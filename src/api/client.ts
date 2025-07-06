@@ -1,0 +1,58 @@
+import {callAsync} from './core';
+import {
+    ApiEndpoints,
+    ApiEndpointParameters,
+    ApiEndpointResponses,
+    ApiEndpoint
+} from './enpoints';
+
+// Helper types for automatic namespace/method extraction
+type ExtractNamespace<T extends string> = T extends `${infer N}.${string}` ? N : never;
+type Namespaces = ExtractNamespace<ApiEndpoint>;
+
+// Force TypeScript to evaluate and display concrete types
+type Evaluate<T> = T extends infer U ? { [K in keyof U]: U[K] } : never;
+
+// Force resolution of parameter types using identity function
+type ResolveParams<K extends ApiEndpoint> = 
+    K extends keyof ApiEndpointParameters ? ApiEndpointParameters[K] : never;
+
+// Force resolution of response types  
+type ResolveResponse<K extends ApiEndpoint> = 
+    K extends keyof ApiEndpointResponses ? ApiEndpointResponses[K] : never;
+
+// Dynamic namespace methods with concrete type resolution
+type NamespaceMethods<N extends Namespaces> = Evaluate<{
+    [K in ApiEndpoint as K extends `${N}.${infer M}` ? M : never]: 
+        (params: ResolveParams<K>) => Promise<ResolveResponse<K>>
+}>;
+
+// Main ApiClient type - fully dynamic, scalable, and with resolved types
+type ApiClientType = Evaluate<{
+    [N in Namespaces]: NamespaceMethods<N>
+}>;
+
+function createApiClient(): ApiClientType {
+    const client = {} as any;
+
+    // Get all endpoint keys and group by namespace
+    const endpointKeys = Object.keys(ApiEndpoints) as ApiEndpoint[];
+
+    endpointKeys.forEach(endpointKey => {
+        const [namespace, method] = endpointKey.split('.') as [string, string];
+
+        if (!client[namespace]) {
+            client[namespace] = {};
+        }
+
+        // Create the method that calls callAsync with proper typing
+        client[namespace][method] = async (params: any) => {
+            return callAsync(ApiEndpoints[endpointKey], params);
+        };
+    });
+
+    return client as ApiClientType;
+}
+
+// Export the main ApiClient - dynamically generated, fully type-safe
+export const ApiClient = createApiClient();
