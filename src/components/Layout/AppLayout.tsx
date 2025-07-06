@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Layout, Button, theme } from 'antd'
 import { MenuOutlined, CloseOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { useAppStore } from '../../store'
+import { useSettingsStore } from '../../store/settings'
 import { LeftPanel } from './LeftPanel'
 
 const { Sider, Content } = Layout
@@ -14,7 +14,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation()
   const { token } = theme.useToken()
-  const { leftPanelCollapsed, setLeftPanelCollapsed } = useAppStore()
+  const { leftPanelCollapsed, setLeftPanelCollapsed } = useSettingsStore()
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   return (
@@ -37,13 +37,12 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Desktop Sidebar */}
       <Sider
-        width={280}
+        width={leftPanelCollapsed ? 60 : 280}
         collapsible
-        collapsed={leftPanelCollapsed}
-        onCollapse={setLeftPanelCollapsed}
+        collapsed={false}
         trigger={null}
         breakpoint="lg"
-        collapsedWidth={0}
+        collapsedWidth={60}
         style={{
           overflow: 'auto',
           height: '100vh',
@@ -52,8 +51,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           top: 0,
           bottom: 0,
           zIndex: 1000,
-          backgroundColor: token.colorBgContainer,
-          borderRight: `1px solid ${token.colorBorderSecondary}`,
+          backgroundColor: 'rgb(20, 20, 20)',
+          borderRight: `1px solid rgba(255,255,255,0.1)`,
+          transition: 'width 0.2s ease',
         }}
         className="hidden lg:block"
       >
@@ -92,7 +92,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content */}
       <Layout
         style={{
-          marginLeft: leftPanelCollapsed ? 0 : 280,
+          marginLeft: leftPanelCollapsed ? 60 : 280,
           transition: 'margin-left 0.2s',
         }}
         className="lg:ml-0"

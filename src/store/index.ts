@@ -27,7 +27,6 @@ interface Assistant {
 
 interface AppState {
   // UI State
-  leftPanelCollapsed: boolean
   currentThreadId: string | null
   
   // Data
@@ -36,7 +35,6 @@ interface AppState {
   assistants: Assistant[]
   
   // Actions
-  setLeftPanelCollapsed: (collapsed: boolean) => void
   setCurrentThreadId: (threadId: string | null) => void
   
   // Thread actions
@@ -58,7 +56,6 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
-  leftPanelCollapsed: false,
   currentThreadId: null,
   threads: [],
   messages: [],
@@ -72,7 +69,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   ],
   
   // Actions
-  setLeftPanelCollapsed: (collapsed) => set({ leftPanelCollapsed: collapsed }),
   setCurrentThreadId: (threadId) => set({ currentThreadId: threadId }),
   
   // Thread actions
