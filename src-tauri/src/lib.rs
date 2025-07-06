@@ -9,24 +9,30 @@ use tower_http::cors::CorsLayer;
 pub fn run() {
     let port = get_http_port();
 
-    //log the port
-    println!("Starting Tauri application with API on port: {}", port);
-
-    tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_http_port])
-        .setup(move |app| {
-            // Create the API router
+    if std::env::var("HEADLESS").unwrap_or_default() == "true" {
+        // Headless mode: Run server only without Tauri GUI
+        println!("Starting headless API server on port: {}", port);
+        
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
             let api_router = create_rest_router();
+            start_api_server(port, api_router).await;
+        });
+    } else {
+        // GUI mode: Run with Tauri
+        println!("Starting Tauri application with API on port: {}", port);
 
-            // Register the API router with the Tauri application
-            tauri::async_runtime::spawn(async move {
-                start_api_server(port, api_router).await;
-            });
+        tauri::Builder::default()
+            .invoke_handler(tauri::generate_handler![get_http_port])
+            .setup(move |app| {
+                // Create the API router
+                let api_router = create_rest_router();
 
-            if std::env::var("HEADLESS").unwrap_or_default() == "true" {
-                // Production headless mode: no webview
-                println!("Headless mode: No webview opened");
-            } else {
+                // Register the API router with the Tauri application
+                tauri::async_runtime::spawn(async move {
+                    start_api_server(port, api_router).await;
+                });
+
                 // Production mode: open default Tauri webview without binding port
                 println!("Production mode: Opening default Tauri webview");
 
@@ -34,12 +40,12 @@ pub fn run() {
                     .title("React Test App")
                     .inner_size(800.0, 600.0)
                     .build()?;
-            }
 
-            Ok(())
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+                Ok(())
+            })
+            .run(tauri::generate_context!())
+            .expect("error while running tauri application");
+    }
 }
 
 async fn start_api_server(port: u16, api_router: Router) {
@@ -61,22 +67,23 @@ async fn start_api_server(port: u16, api_router: Router) {
             .parent()
             .unwrap()
             .join("ui");
-        
+
         if static_dir.exists() {
             println!("Serving UI from: {}", static_dir.display());
             api_router
                 .layer(CorsLayer::permissive())
                 .fallback_service(ServeDir::new(static_dir))
         } else {
-            println!("Warning: UI folder not found at {}, serving API only", static_dir.display());
-            api_router
-                .layer(CorsLayer::permissive())
+            println!(
+                "Warning: UI folder not found at {}, serving API only",
+                static_dir.display()
+            );
+            api_router.layer(CorsLayer::permissive())
         }
     } else {
         // Production mode: API only (webview handles frontend)
         println!("Production mode: API server only on port {}", port);
-        api_router
-            .layer(CorsLayer::permissive())
+        api_router.layer(CorsLayer::permissive())
     };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -106,7 +113,7 @@ async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http:
 
     // Create a new HTTP client request
     match reqwest::get(&proxy_url).await {
-        Ok(mut response) => {
+        Ok(response) => {
             let status = response.status();
             let headers = response.headers().clone();
             let body = response
