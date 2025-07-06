@@ -1,54 +1,44 @@
-import {useState} from "react";
-import reactLogo from "./assets/react.svg";
-import "./App.css";
-import {ApiClient} from "./api/client.ts";
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { ThemeProvider } from './providers/ThemeProvider'
+import { AppLayout } from './components/Layout/AppLayout'
+import { ChatPage } from './components/Pages/ChatPage'
+import { AssistantsPage } from './components/Pages/AssistantsPage'
+import { HubPage } from './components/Pages/HubPage'
+import { SettingsPage } from './components/Pages/SettingsPage'
+import { ModelsPage } from './components/Pages/ModelsPage'
+import { useSettingsStore } from './store/settings'
+import './i18n'
+import '@ant-design/v5-patch-for-react-19'
 
 function App() {
-    const [greetMsg, setGreetMsg] = useState("");
-    const [name, setName] = useState("");
+  const { i18n } = useTranslation()
+  const { language } = useSettingsStore()
 
-    async function greet() {
-        // Clean, type-safe API call using the ApiClient
-        ApiClient.User.greet({name}).then((response) => {
-            console.log("Response from API:", response);
-            setGreetMsg(response); // response is typed as string
-        })
+  // Update language when settings change
+  useEffect(() => {
+    if (i18n.language !== language) {
+      i18n.changeLanguage(language)
     }
+  }, [language, i18n])
 
-    return (
-        <main className="container">
-            <h1>Welcome to Tauri + React</h1>
-
-            <div className="row">
-                <a href="https://vitejs.dev" target="_blank">
-                    <img src="/vite.svg" className="logo vite" alt="Vite logo"/>
-                </a>
-                <a href="https://tauri.app" target="_blank">
-                    <img src="/tauri.svg" className="logo tauri" alt="Tauri logo"/>
-                </a>
-                <a href="https://reactjs.org" target="_blank">
-                    <img src={reactLogo} className="logo react" alt="React logo"/>
-                </a>
-            </div>
-            <p>Click on the Tauri , Vite, and React logos to learn more.</p>
-
-            <form
-                className="row"
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    greet().catch(console.error);
-                }}
-            >
-                <input
-                    id="greet-input"
-                    onChange={(e) => setName(e.currentTarget.value)}
-                    placeholder="Enter a name..."
-                />
-                <button type="submit">Greet</button>
-            </form>
-            <p>{greetMsg}</p>
-        </main>
-    );
+  return (
+    <ThemeProvider>
+      <Router>
+        <AppLayout>
+          <Routes>
+            <Route path="/" element={<ChatPage />} />
+            <Route path="/assistants" element={<AssistantsPage />} />
+            <Route path="/hub" element={<HubPage />} />
+            <Route path="/models" element={<ModelsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppLayout>
+      </Router>
+    </ThemeProvider>
+  )
 }
 
 export default App;

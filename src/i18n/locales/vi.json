@@ -1,0 +1,138 @@
+{
+  "app": {
+    "title": "Jan Chat",
+    "welcome": "Chào mừng đến với Jan Chat",
+    "welcomeDescription": "Bắt đầu cuộc trò chuyện mới hoặc chọn một cuộc trò chuyện có sẵn từ thanh bên."
+  },
+  "navigation": {
+    "newChat": "Trò chuyện mới",
+    "assistants": "Trợ lý",
+    "hub": "Trung tâm",
+    "settings": "Cài đặt"
+  },
+  "chat": {
+    "title": "Trò chuyện",
+    "placeholder": "Nhập tin nhắn của bạn...",
+    "send": "Gửi",
+    "thinking": "Đang suy nghĩ...",
+    "noMessages": "Bắt đầu cuộc trò chuyện",
+    "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",
+    "starred": "YÊU THÍCH",
+    "recent": "GẦN ĐÂY",
+    "noThreads": "Không tìm thấy cuộc trò chuyện"
+  },
+  "thread": {
+    "newChat": "Trò chuyện mới",
+    "rename": "Đổi tên",
+    "delete": "Xóa",
+    "star": "Yêu thích",
+    "unstar": "Bỏ yêu thích",
+    "deleteConfirm": "Bạn có chắc chắn muốn xóa cuộc trò chuyện này không?",
+    "deleteTitle": "Xóa cuộc trò chuyện",
+    "deleteSuccess": "Đã xóa cuộc trò chuyện",
+    "renameSuccess": "Đã đổi tên cuộc trò chuyện"
+  },
+  "assistants": {
+    "title": "Trợ lý",
+    "create": "Tạo trợ lý",
+    "edit": "Chỉnh sửa trợ lý",
+    "delete": "Xóa trợ lý",
+    "deleteConfirm": "Bạn có chắc chắn muốn xóa trợ lý này không?",
+    "name": "Tên",
+    "description": "Mô tả",
+    "model": "Model",
+    "systemPrompt": "System Prompt",
+    "namePlaceholder": "Nhập tên trợ lý",
+    "descriptionPlaceholder": "Nhập mô tả trợ lý",
+    "modelPlaceholder": "ví dụ: gpt-3.5-turbo",
+    "systemPromptPlaceholder": "Nhập system prompt (tùy chọn)",
+    "nameRequired": "Vui lòng nhập tên trợ lý!",
+    "descriptionRequired": "Vui lòng nhập mô tả trợ lý!",
+    "modelRequired": "Vui lòng nhập tên model!"
+  },
+  "hub": {
+    "title": "Trung tâm Model",
+    "description": "Khám phá và tải xuống các AI model cho việc triển khai cục bộ",
+    "use": "Sử dụng",
+    "download": "Tải xuống",
+    "provider": "Nhà cung cấp",
+    "size": "Kích thước",
+    "capabilities": "Khả năng",
+    "status": {
+      "available": "Có sẵn",
+      "downloadable": "Có thể tải",
+      "downloading": "Đang tải",
+      "installed": "Đã cài đặt"
+    }
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "description": "Cấu hình các tùy chọn ứng dụng chat của bạn",
+    "save": "Lưu cài đặt",
+    "reset": "Khôi phục mặc định",
+    "general": {
+      "title": "Cài đặt chung",
+      "defaultModel": "Model mặc định",
+      "theme": "Giao diện",
+      "language": "Ngôn ngữ",
+      "componentSize": "Kích thước thành phần",
+      "themes": {
+        "light": "Sáng",
+        "dark": "Tối",
+        "auto": "Tự động"
+      },
+      "languages": {
+        "en": "English",
+        "vi": "Tiếng Việt"
+      },
+      "componentSizes": {
+        "small": "Nhỏ",
+        "middle": "Vừa",
+        "large": "Lớn"
+      }
+    },
+    "chat": {
+      "title": "Cài đặt trò chuyện",
+      "autoSave": "Tự động lưu cuộc trò chuyện",
+      "showTimestamps": "Hiển thị thời gian",
+      "maxTokens": "Số token tối đa",
+      "temperature": "Nhiệt độ",
+      "maxTokensPlaceholder": "Số token tối đa cho phản hồi",
+      "temperaturePlaceholder": "Mức độ sáng tạo (0-2)"
+    },
+    "api": {
+      "title": "Cài đặt API",
+      "openaiApiKey": "OpenAI API Key",
+      "anthropicApiKey": "Anthropic API Key",
+      "customEndpoint": "API Endpoint tùy chỉnh",
+      "requestTimeout": "Thời gian chờ (giây)",
+      "openaiPlaceholder": "Nhập OpenAI API key của bạn",
+      "anthropicPlaceholder": "Nhập Anthropic API key của bạn",
+      "endpointPlaceholder": "https://api.example.com/v1"
+    },
+    "advanced": {
+      "title": "Cài đặt nâng cao",
+      "enableStreaming": "Bật streaming",
+      "enableFunctionCalling": "Bật function calling",
+      "debugMode": "Chế độ debug",
+      "systemPrompt": "System Prompt",
+      "systemPromptPlaceholder": "Nhập system prompt tùy chỉnh (tùy chọn)"
+    }
+  },
+  "common": {
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "create": "Tạo",
+    "ok": "OK",
+    "yes": "Có",
+    "no": "Không",
+    "close": "Đóng",
+    "loading": "Đang tải...",
+    "error": "Lỗi",
+    "success": "Thành công",
+    "warning": "Cảnh báo",
+    "info": "Thông tin"
+  }
+}
