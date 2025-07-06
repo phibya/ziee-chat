@@ -2,9 +2,14 @@ mod api;
 
 use crate::api::app::methods::get_http_port;
 use axum::{body::Body, http::Request, response::Response, routing::get, routing::post, Router};
+use once_cell::sync::Lazy;
 use std::net::SocketAddr;
 use tauri::{webview::WebviewWindowBuilder, WebviewUrl};
 use tower_http::cors::CorsLayer;
+
+pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| {
+    get_available_port()
+});
 
 pub fn run() {
     let port = get_http_port();
@@ -12,7 +17,7 @@ pub fn run() {
     if std::env::var("HEADLESS").unwrap_or_default() == "true" {
         // Headless mode: Run server only without Tauri GUI
         println!("Starting headless API server on port: {}", port);
-        
+
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
             let api_router = create_rest_router();
@@ -102,7 +107,8 @@ async fn start_api_server(port: u16, api_router: Router) {
 
 // Proxy handler to forward requests to Vite dev server
 async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http::StatusCode> {
-    let vite_url = "http://localhost:1420";
+    let vite_url =
+        std::env::var("TAURI_DEV_HOST").unwrap_or_else(|_| "http://localhost:1420".to_string());
     let uri = req.uri();
     let path_and_query = uri
         .path_and_query()
@@ -136,7 +142,7 @@ async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http:
     }
 }
 
-fn get_available_port() -> u16 {
+pub fn get_available_port() -> u16 {
     // Try PORT environment variable first
     if let Ok(port_str) = std::env::var("PORT") {
         if let Ok(port) = port_str.parse::<u16>() {
@@ -149,12 +155,8 @@ fn get_available_port() -> u16 {
         return 1430;
     }
 
-    // Find a random available port
-    std::net::TcpListener::bind("127.0.0.1:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port()
+    // Use portpicker to find a random available port
+    portpicker::pick_unused_port().unwrap_or(3000)
 }
 
 fn create_rest_router() -> Router {
