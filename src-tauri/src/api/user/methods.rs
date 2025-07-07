@@ -8,6 +8,14 @@ pub struct UserHello {
 
 #[debug_handler]
 pub async fn greet(Json(payload): Json<UserHello>) -> (StatusCode, String) {
-    let name = payload.name;
-    (StatusCode::OK, format!("Hello, {}!", name))
+    let name = payload.name.trim().to_string();
+    if name.is_empty() {
+        return (StatusCode::BAD_REQUEST, "Name cannot be empty".to_string());
+    }
+    // Return a greeting message
+    (
+        StatusCode::OK,
+        serde_json::to_string(&format!("Hello, {}!", name))
+            .unwrap_or_else(|_| "\"Hello, World!\"".to_string()),
+    )
 }

@@ -1,12 +1,30 @@
 mod api;
+mod database;
 
 use crate::api::app::methods::get_http_port;
 use axum::{body::Body, http::Request, response::Response, routing::get, routing::post, Router};
 use once_cell::sync::Lazy;
 use std::net::SocketAddr;
-use tauri::{webview::WebviewWindowBuilder, WebviewUrl};
+use std::path::PathBuf;
+use tauri::webview::WebviewWindowBuilder;
 use tower_http::cors::CorsLayer;
 
+pub static APP_NAME: Lazy<String> =
+    Lazy::new(|| std::env::var("APP_NAME").unwrap_or_else(|_| "ziee".to_string()));
+pub static APP_DATA_DIR: Lazy<PathBuf> = Lazy::new(|| {
+    std::env::var("APP_DATA_DIR")
+        .unwrap_or_else(|_| {
+            // {homedir}/.ziee
+            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+            home_dir
+                .join(".ziee")
+                .to_str()
+                .unwrap_or_default()
+                .to_string()
+        })
+        .parse()
+        .unwrap()
+});
 pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| get_available_port());
 
 pub fn run() {
@@ -18,6 +36,11 @@ pub fn run() {
 
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
+            if let Err(e) = database::initialize_database().await {
+                eprintln!("Failed to initialize database: {}", e);
+                std::process::exit(1);
+            }
+
             let api_router = create_rest_router();
             start_api_server(port, api_router).await;
         });
@@ -30,6 +53,13 @@ pub fn run() {
             .setup(move |app| {
                 // Create the API router
                 let api_router = create_rest_router();
+
+                // Initialize database
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = database::initialize_database().await {
+                        eprintln!("Failed to initialize database: {}", e);
+                    }
+                });
 
                 // Register the API router with the Tauri application
                 tauri::async_runtime::spawn(async move {
