@@ -15,6 +15,7 @@ interface SettingsState {
   // UI settings
   componentSize: ComponentSize
   leftPanelCollapsed: boolean
+  leftPanelWidth: number
 
   // Chat settings
   autoSave: boolean
@@ -42,6 +43,7 @@ interface SettingsState {
   setLanguage: (language: Language) => void
   setComponentSize: (size: ComponentSize) => void
   setLeftPanelCollapsed: (collapsed: boolean) => void
+  setLeftPanelWidth: (width: number) => void
   updateSettings: (settings: Partial<SettingsState>) => void
   resetSettings: () => void
 }
@@ -51,6 +53,7 @@ const defaultSettings = {
   language: 'en' as Language,
   componentSize: 'middle' as ComponentSize,
   leftPanelCollapsed: false,
+  leftPanelWidth: 280,
   autoSave: true,
   showTimestamps: false,
   maxTokens: 2048,
@@ -79,6 +82,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       setLeftPanelCollapsed: leftPanelCollapsed => set({ leftPanelCollapsed }),
 
+      setLeftPanelWidth: leftPanelWidth => set({ leftPanelWidth }),
+
       updateSettings: settings => set(state => ({ ...state, ...settings })),
 
       resetSettings: () => set(defaultSettings),
@@ -91,6 +96,7 @@ export const useSettingsStore = create<SettingsState>()(
         language: state.language,
         componentSize: state.componentSize,
         leftPanelCollapsed: state.leftPanelCollapsed,
+        leftPanelWidth: state.leftPanelWidth,
         autoSave: state.autoSave,
         showTimestamps: state.showTimestamps,
         maxTokens: state.maxTokens,

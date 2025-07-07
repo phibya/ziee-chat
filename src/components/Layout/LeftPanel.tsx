@@ -103,7 +103,7 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
     <div
       className="h-screen flex flex-col p-3 transition-all duration-200"
       style={{
-        width: leftPanelCollapsed ? '60px' : '280px',
+        height: '100%',
         backgroundColor: appTheme.sidebarBackground,
         color: appTheme.sidebarText,
       }}
