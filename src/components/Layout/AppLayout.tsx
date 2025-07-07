@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Layout } from 'antd'
-import { MenuOutlined } from '@ant-design/icons'
+import { Layout } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore } from '../../store/settings'
 import { LeftPanel } from './LeftPanel'
@@ -67,16 +66,16 @@ export function AppLayout({ children }: AppLayoutProps) {
       const wasMobile = isMobile
       const isNowMobile = window.innerWidth < 1024 // lg breakpoint
       setIsMobile(isNowMobile)
-      
+
       // Close mobile overlay when switching from mobile to desktop
       if (wasMobile && !isNowMobile && mobileOverlayOpen) {
         setMobileOverlayOpen(false)
       }
     }
-    
+
     checkMobile()
     window.addEventListener('resize', checkMobile)
-    
+
     return () => window.removeEventListener('resize', checkMobile)
   }, [isMobile, mobileOverlayOpen])
 
@@ -105,10 +104,17 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-
       {/* Desktop Sidebar */}
       <Sider
-        width={isMobile ? (mobileOverlayOpen ? leftPanelWidth : 60) : (leftPanelCollapsed ? 60 : leftPanelWidth)}
+        width={
+          isMobile
+            ? mobileOverlayOpen
+              ? leftPanelWidth
+              : 60
+            : leftPanelCollapsed
+              ? 60
+              : leftPanelWidth
+        }
         collapsible
         collapsed={false}
         trigger={null}
@@ -125,11 +131,14 @@ export function AppLayout({ children }: AppLayoutProps) {
           backgroundColor: appTheme.sidebarBackground,
           borderRight: `1px solid ${appTheme.sidebarBorder}`,
           transition: isResizing ? 'none' : 'width 0.2s ease',
-          boxShadow: isMobile && mobileOverlayOpen ? '0 4px 12px rgba(0, 0, 0, 0.15)' : 'none',
+          boxShadow:
+            isMobile && mobileOverlayOpen
+              ? '0 4px 12px rgba(0, 0, 0, 0.15)'
+              : 'none',
         }}
         className="block"
       >
-        <LeftPanel 
+        <LeftPanel
           onItemClick={() => {
             if (isMobile) {
               setMobileOverlayOpen(false)
@@ -161,11 +170,16 @@ export function AppLayout({ children }: AppLayoutProps) {
         />
       )}
 
-
       {/* Main Content */}
       <Layout
         style={{
-          marginLeft: isMobile ? (mobileOverlayOpen ? 0 : 60) : (leftPanelCollapsed ? 60 : leftPanelWidth),
+          marginLeft: isMobile
+            ? mobileOverlayOpen
+              ? 0
+              : 60
+            : leftPanelCollapsed
+              ? 60
+              : leftPanelWidth,
           transition: isResizing ? 'none' : 'margin-left 0.2s',
         }}
         className="transition-all duration-200"

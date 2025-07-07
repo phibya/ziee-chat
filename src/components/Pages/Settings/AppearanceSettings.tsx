@@ -1,19 +1,32 @@
 import {
   Button,
+  Card,
+  Col,
+  Divider,
+  Flex,
+  Row,
+  Space,
   Switch,
   Typography,
-  Divider,
-  Space,
-  Flex,
-  Card,
-  Row,
-  Col,
 } from 'antd'
+import { useEffect, useState } from 'react'
 import { CopyOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
 
 export function AppearanceSettings() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
   const ColorPicker = ({ colors }: { colors: string[] }) => (
     <Space>
       {colors.map((color, index) => (
@@ -36,7 +49,12 @@ export function AppearanceSettings() {
 
       <Card title="Theme & Display">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Theme</Text>
               <div>
@@ -46,7 +64,12 @@ export function AppearanceSettings() {
             <Button type="default">System</Button>
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Font Size</Text>
               <div>
@@ -60,7 +83,12 @@ export function AppearanceSettings() {
 
       <Card title="Colors">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Window Background</Text>
               <div>
@@ -81,7 +109,12 @@ export function AppearanceSettings() {
             />
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>App Main View</Text>
               <div>
@@ -93,7 +126,12 @@ export function AppearanceSettings() {
             <ColorPicker colors={['#ffffff', '#262626']} />
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Primary</Text>
               <div>
@@ -107,7 +145,12 @@ export function AppearanceSettings() {
             />
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Accent</Text>
               <div>
@@ -119,7 +162,12 @@ export function AppearanceSettings() {
             <ColorPicker colors={['#1890ff', '#f5222d', '#52c41a']} />
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Destructive</Text>
               <div>
@@ -133,7 +181,12 @@ export function AppearanceSettings() {
             />
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Reset to Default</Text>
               <div>
@@ -156,8 +209,8 @@ export function AppearanceSettings() {
             <Text type="secondary">Customize the width of the chat view.</Text>
           </div>
         </div>
-        <Row gutter={16}>
-          <Col span={12}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
             <Card
               size="small"
               className="selected-card"
@@ -179,7 +232,7 @@ export function AppearanceSettings() {
               </Space>
             </Card>
           </Col>
-          <Col span={12}>
+          <Col xs={24} md={12}>
             <Card size="small" title={<Text type="secondary">Full Width</Text>}>
               <Space
                 direction="vertical"
@@ -202,7 +255,12 @@ export function AppearanceSettings() {
 
       <Card title="Code Blocks">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Code Block Theme</Text>
               <div>
@@ -249,7 +307,12 @@ export function AppearanceSettings() {
 
           <Divider style={{ margin: 0 }} />
 
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Show Line Numbers</Text>
               <div>
@@ -263,7 +326,12 @@ export function AppearanceSettings() {
 
           <Divider style={{ margin: 0 }} />
 
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Reset Code Block Style</Text>
               <div>

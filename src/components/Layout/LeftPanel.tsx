@@ -25,7 +25,12 @@ interface LeftPanelProps {
   setMobileOverlayOpen?: (open: boolean) => void
 }
 
-export function LeftPanel({ onItemClick, isMobile, mobileOverlayOpen, setMobileOverlayOpen }: LeftPanelProps) {
+export function LeftPanel({
+  onItemClick,
+  isMobile,
+  mobileOverlayOpen,
+  setMobileOverlayOpen,
+}: LeftPanelProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -117,18 +122,30 @@ export function LeftPanel({ onItemClick, isMobile, mobileOverlayOpen, setMobileO
       >
         <Tooltip
           title={
-            isMobile 
-              ? (mobileOverlayOpen ? 'Close sidebar' : 'Open sidebar')
-              : (leftPanelCollapsed ? 'Expand sidebar' : 'Collapse sidebar')
+            isMobile
+              ? mobileOverlayOpen
+                ? 'Close sidebar'
+                : 'Open sidebar'
+              : leftPanelCollapsed
+                ? 'Expand sidebar'
+                : 'Collapse sidebar'
           }
           placement="right"
         >
           <Button
             type="text"
             icon={
-              isMobile 
-                ? (mobileOverlayOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />)
-                : (leftPanelCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
+              isMobile ? (
+                mobileOverlayOpen ? (
+                  <MenuFoldOutlined />
+                ) : (
+                  <MenuUnfoldOutlined />
+                )
+              ) : leftPanelCollapsed ? (
+                <MenuUnfoldOutlined />
+              ) : (
+                <MenuFoldOutlined />
+              )
             }
             onClick={() => {
               if (isMobile && setMobileOverlayOpen) {
@@ -148,7 +165,11 @@ export function LeftPanel({ onItemClick, isMobile, mobileOverlayOpen, setMobileO
         {navigationItems.map(item => (
           <Tooltip
             key={item.key}
-            title={(isMobile ? !mobileOverlayOpen : leftPanelCollapsed) ? item.label : ''}
+            title={
+              (isMobile ? !mobileOverlayOpen : leftPanelCollapsed)
+                ? item.label
+                : ''
+            }
             placement="right"
             mouseEnterDelay={0.5}
           >
@@ -289,7 +310,11 @@ export function LeftPanel({ onItemClick, isMobile, mobileOverlayOpen, setMobileO
         {bottomNavigationItems.map(item => (
           <Tooltip
             key={item.key}
-            title={(isMobile ? !mobileOverlayOpen : leftPanelCollapsed) ? item.label : ''}
+            title={
+              (isMobile ? !mobileOverlayOpen : leftPanelCollapsed)
+                ? item.label
+                : ''
+            }
             placement="right"
             mouseEnterDelay={0.5}
           >

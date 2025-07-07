@@ -1,16 +1,35 @@
-import { Button, Switch, Typography, Divider, Space, Flex, Card } from 'antd'
-import { FolderOpenOutlined, FileTextOutlined } from '@ant-design/icons'
+import { Button, Card, Divider, Flex, Space, Switch, Typography } from 'antd'
+import { useEffect, useState } from 'react'
+import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
 
 export function GeneralSettings() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Title level={3}>General</Title>
 
       <Card title="Application">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>App Version</Text>
               <div>
@@ -20,7 +39,12 @@ export function GeneralSettings() {
             <Text type="secondary">v0.6.4</Text>
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Check for Updates</Text>
               <div>
@@ -51,7 +75,12 @@ export function GeneralSettings() {
 
       <Card title="Data Folder">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>App Data</Text>
               <div>
@@ -70,18 +99,34 @@ export function GeneralSettings() {
             </Button>
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>App Logs</Text>
               <div>
                 <Text type="secondary">View detailed logs of the App.</Text>
               </div>
             </div>
-            <Space>
-              <Button type="default" icon={<FileTextOutlined />}>
+            <Space
+              direction={isMobile ? 'vertical' : 'horizontal'}
+              style={{ width: isMobile ? '100%' : 'auto' }}
+            >
+              <Button
+                type="default"
+                icon={<FileTextOutlined />}
+                block={isMobile}
+              >
                 Open Logs
               </Button>
-              <Button type="default" icon={<FolderOpenOutlined />}>
+              <Button
+                type="default"
+                icon={<FolderOpenOutlined />}
+                block={isMobile}
+              >
                 Show in Finder
               </Button>
             </Space>
@@ -91,7 +136,12 @@ export function GeneralSettings() {
 
       <Card title="Other">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Spell Check</Text>
               <div>
@@ -103,7 +153,12 @@ export function GeneralSettings() {
             <Switch size="small" defaultChecked />
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Reset To Factory Settings</Text>
               <div>
@@ -123,7 +178,12 @@ export function GeneralSettings() {
 
       <Card title="Resources">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Documentation</Text>
               <div>
@@ -135,7 +195,12 @@ export function GeneralSettings() {
             <Button type="link">View Docs</Button>
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Release Notes</Text>
               <div>
@@ -151,7 +216,12 @@ export function GeneralSettings() {
 
       <Card title="Community">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>GitHub</Text>
               <div>
@@ -170,7 +240,12 @@ export function GeneralSettings() {
             </Button>
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex justify="space-between" align="center">
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
             <div>
               <Text strong>Discord</Text>
               <div>
