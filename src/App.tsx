@@ -1,5 +1,10 @@
 import { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ThemeProvider } from './providers/ThemeProvider'
 import { AppLayout } from './components/Layout/AppLayout'
@@ -8,16 +13,16 @@ import { AssistantsPage } from './components/Pages/AssistantsPage'
 import { HubPage } from './components/Pages/HubPage'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { ModelsPage } from './components/Pages/ModelsPage'
-import { 
-  GeneralSettings, 
-  AppearanceSettings, 
-  PrivacySettings, 
+import {
+  GeneralSettings,
+  AppearanceSettings,
+  PrivacySettings,
   ModelProvidersSettings,
   ShortcutsSettings,
   HardwareSettings,
   LocalApiServerSettings,
   HttpsProxySettings,
-  ExtensionsSettings 
+  ExtensionsSettings,
 } from './components/Pages/Settings'
 import { useSettingsStore } from './store/settings'
 import './i18n'
@@ -44,14 +49,23 @@ function App() {
             <Route path="/hub" element={<HubPage />} />
             <Route path="/models" element={<ModelsPage />} />
             <Route path="/settings" element={<SettingsPage />}>
-              <Route index element={<Navigate to="/settings/general" replace />} />
+              <Route
+                index
+                element={<Navigate to="/settings/general" replace />}
+              />
               <Route path="general" element={<GeneralSettings />} />
               <Route path="appearance" element={<AppearanceSettings />} />
               <Route path="privacy" element={<PrivacySettings />} />
-              <Route path="model-providers" element={<ModelProvidersSettings />} />
+              <Route
+                path="model-providers"
+                element={<ModelProvidersSettings />}
+              />
               <Route path="shortcuts" element={<ShortcutsSettings />} />
               <Route path="hardware" element={<HardwareSettings />} />
-              <Route path="local-api-server" element={<LocalApiServerSettings />} />
+              <Route
+                path="local-api-server"
+                element={<LocalApiServerSettings />}
+              />
               <Route path="https-proxy" element={<HttpsProxySettings />} />
               <Route path="extensions" element={<ExtensionsSettings />} />
             </Route>
@@ -63,4 +77,4 @@ function App() {
   )
 }
 
-export default App;
+export default App

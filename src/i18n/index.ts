@@ -22,11 +22,11 @@ i18n
     lng: 'en', // default language
     fallbackLng: 'en',
     debug: false,
-    
+
     interpolation: {
       escapeValue: false,
     },
-    
+
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],

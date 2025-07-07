@@ -27,7 +27,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     if (selectedTheme === 'auto') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
       const handleChange = () => updateTheme()
-      
+
       mediaQuery.addEventListener('change', handleChange)
       return () => mediaQuery.removeEventListener('change', handleChange)
     }
@@ -54,7 +54,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
           token: {
             colorPrimary: currentTheme.primary,
             borderRadius: 8,
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             colorText: currentTheme.textPrimary,
             colorTextSecondary: currentTheme.textSecondary,
             colorTextTertiary: currentTheme.textTertiary,

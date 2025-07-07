@@ -28,26 +28,26 @@ interface Assistant {
 interface AppState {
   // UI State
   currentThreadId: string | null
-  
+
   // Data
   threads: Thread[]
   messages: Message[]
   assistants: Assistant[]
-  
+
   // Actions
   setCurrentThreadId: (threadId: string | null) => void
-  
+
   // Thread actions
   createThread: (title: string) => string
   deleteThread: (threadId: string) => void
   updateThread: (threadId: string, updates: Partial<Thread>) => void
   starThread: (threadId: string) => void
-  
+
   // Message actions
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void
   updateMessage: (messageId: string, updates: Partial<Message>) => void
   deleteMessage: (messageId: string) => void
-  
+
   // Assistant actions
   createAssistant: (assistant: Omit<Assistant, 'id'>) => void
   updateAssistant: (assistantId: string, updates: Partial<Assistant>) => void
@@ -67,12 +67,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       model: 'gpt-3.5-turbo',
     },
   ],
-  
+
   // Actions
-  setCurrentThreadId: (threadId) => set({ currentThreadId: threadId }),
-  
+  setCurrentThreadId: threadId => set({ currentThreadId: threadId }),
+
   // Thread actions
-  createThread: (title) => {
+  createThread: title => {
     const newThread: Thread = {
       id: crypto.randomUUID(),
       title,
@@ -80,92 +80,93 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
-    set((state) => ({
+    set(state => ({
       threads: [newThread, ...state.threads],
       currentThreadId: newThread.id,
     }))
     return newThread.id
   },
-  
-  deleteThread: (threadId) => {
-    set((state) => ({
+
+  deleteThread: threadId => {
+    set(state => ({
       threads: state.threads.filter(t => t.id !== threadId),
       messages: state.messages.filter(m => m.threadId !== threadId),
-      currentThreadId: state.currentThreadId === threadId ? null : state.currentThreadId,
+      currentThreadId:
+        state.currentThreadId === threadId ? null : state.currentThreadId,
     }))
   },
-  
+
   updateThread: (threadId, updates) => {
-    set((state) => ({
-      threads: state.threads.map(t => 
-        t.id === threadId 
+    set(state => ({
+      threads: state.threads.map(t =>
+        t.id === threadId
           ? { ...t, ...updates, updatedAt: new Date().toISOString() }
-          : t
+          : t,
       ),
     }))
   },
-  
-  starThread: (threadId) => {
-    set((state) => ({
-      threads: state.threads.map(t => 
-        t.id === threadId 
+
+  starThread: threadId => {
+    set(state => ({
+      threads: state.threads.map(t =>
+        t.id === threadId
           ? { ...t, starred: !t.starred, updatedAt: new Date().toISOString() }
-          : t
+          : t,
       ),
     }))
   },
-  
+
   // Message actions
-  addMessage: (message) => {
+  addMessage: message => {
     const newMessage: Message = {
       ...message,
       id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
     }
-    set((state) => ({
+    set(state => ({
       messages: [...state.messages, newMessage],
     }))
-    
+
     // Update thread's updatedAt
     const { updateThread } = get()
     updateThread(message.threadId, {})
   },
-  
+
   updateMessage: (messageId, updates) => {
-    set((state) => ({
-      messages: state.messages.map(m => 
-        m.id === messageId ? { ...m, ...updates } : m
+    set(state => ({
+      messages: state.messages.map(m =>
+        m.id === messageId ? { ...m, ...updates } : m,
       ),
     }))
   },
-  
-  deleteMessage: (messageId) => {
-    set((state) => ({
+
+  deleteMessage: messageId => {
+    set(state => ({
       messages: state.messages.filter(m => m.id !== messageId),
     }))
   },
-  
+
   // Assistant actions
-  createAssistant: (assistant) => {
+  createAssistant: assistant => {
     const newAssistant: Assistant = {
       ...assistant,
       id: crypto.randomUUID(),
     }
-    set((state) => ({
+    set(state => ({
       assistants: [...state.assistants, newAssistant],
     }))
   },
-  
+
   updateAssistant: (assistantId, updates) => {
-    set((state) => ({
-      assistants: state.assistants.map(a => 
-        a.id === assistantId ? { ...a, ...updates } : a
+    set(state => ({
+      assistants: state.assistants.map(a =>
+        a.id === assistantId ? { ...a, ...updates } : a,
       ),
     }))
   },
-  
-  deleteAssistant: (assistantId) => {
-    set((state) => ({
+
+  deleteAssistant: assistantId => {
+    set(state => ({
       assistants: state.assistants.filter(a => a.id !== assistantId),
     }))
   },
