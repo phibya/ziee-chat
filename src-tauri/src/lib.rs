@@ -7,9 +7,7 @@ use std::net::SocketAddr;
 use tauri::{webview::WebviewWindowBuilder, WebviewUrl};
 use tower_http::cors::CorsLayer;
 
-pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| {
-    get_available_port()
-});
+pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| get_available_port());
 
 pub fn run() {
     let port = get_http_port();
@@ -28,7 +26,7 @@ pub fn run() {
         println!("Starting Tauri application with API on port: {}", port);
 
         tauri::Builder::default()
-            .invoke_handler(tauri::generate_handler![get_http_port])
+            .invoke_handler(tauri::generate_handler![get_http_port,])
             .setup(move |app| {
                 // Create the API router
                 let api_router = create_rest_router();

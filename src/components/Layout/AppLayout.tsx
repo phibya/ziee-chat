@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Layout } from 'antd'
-import { useTranslation } from 'react-i18next'
 import { useSettingsStore } from '../../store/settings'
 import { LeftPanel } from './LeftPanel'
 import { useTheme } from '../../hooks/useTheme'
@@ -12,7 +11,6 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { t } = useTranslation()
   const appTheme = useTheme()
   const {
     leftPanelCollapsed,

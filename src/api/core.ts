@@ -2,6 +2,9 @@ import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from './enpoints.ts'
 
 import { invoke } from '@tauri-apps/api/core'
 
+//@ts-ignore
+export const isDesktopApp = !!window.__TAURI_INTERNALS__
+
 const getBaseUrl = (function () {
   let baseUrl: Promise<string>
   //@ts-ignore
@@ -10,10 +13,8 @@ const getBaseUrl = (function () {
       return baseUrl // Return existing promise if already created
     }
 
-    //@ts-ignore
-    let isDesktop = !!window.__TAURI_INTERNALS__
     baseUrl = new Promise<string>(resolve => {
-      if (isDesktop) {
+      if (isDesktopApp) {
         invoke('get_http_port')
           .then(port => {
             resolve(`http://localhost:${port as number}`)
