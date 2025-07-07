@@ -362,10 +362,16 @@ impl UserQueries {
 
     // Get root users
     pub async fn get_root_user(pool: &PgPool) -> Result<Option<User>, sqlx::Error> {
+        let start_time = chrono::Utc::now();
+        println!("get_root_user query started at {}", start_time);
         let user_row = sqlx::query("SELECT * FROM users WHERE username = $1 LIMIT 1")
             .bind("root")
             .fetch_optional(pool)
             .await?;
+
+        // Log the time taken for the query
+        let elapsed = chrono::Utc::now() - start_time;
+        println!("get_root_user query took {} ms", elapsed.num_milliseconds());
 
         let Some(user_row) = user_row else {
             return Ok(None);

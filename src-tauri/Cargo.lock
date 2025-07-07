@@ -3784,6 +3784,7 @@ dependencies = [
  "tokio-tungstenite",
  "tower 0.4.13",
  "tower-http 0.5.2",
+ "tracing",
  "uuid",
 ]
 
