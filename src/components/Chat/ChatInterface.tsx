@@ -2,6 +2,7 @@ import {useState, useRef, useEffect} from 'react'
 import {Input, Button, Space, Typography, Avatar, Card, Spin} from 'antd'
 import {SendOutlined, UserOutlined, RobotOutlined, LoadingOutlined, MessageOutlined} from '@ant-design/icons'
 import {useAppStore} from '../../store'
+import {useTheme} from '../../hooks/useTheme'
 
 const {TextArea} = Input
 const {Text} = Typography
@@ -11,6 +12,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({threadId}: ChatInterfaceProps) {
+    const appTheme = useTheme()
     const {messages, addMessage, threads} = useAppStore()
     const [inputValue, setInputValue] = useState('')
     const [isLoading, setIsLoading] = useState(false)
@@ -66,29 +68,23 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
         return (
             <div
                 key={message.id}
-                style={{
-                    display: 'flex',
-                    justifyContent: isUser ? 'flex-end' : 'flex-start',
-                    marginBottom: '16px',
-                    gap: '12px',
-                }}
+                className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 gap-3`}
             >
                 {isAssistant && (
                     <Avatar
                         size="small"
                         icon={<RobotOutlined/>}
-                        style={{backgroundColor: '#52c41a', flexShrink: 0}}
+                        className="flex-shrink-0"
+                        style={{backgroundColor: appTheme.success}}
                     />
                 )}
 
                 <Card
                     size="small"
+                    className="max-w-[85%] sm:max-w-[70%] border-none rounded-xl"
                     style={{
-                        maxWidth: '70%',
-                        backgroundColor: isUser ? '#1890ff' : '#f5f5f5',
-                        color: isUser ? 'white' : 'inherit',
-                        border: 'none',
-                        borderRadius: '12px',
+                        backgroundColor: isUser ? appTheme.chatMessageUser : appTheme.chatMessageAssistant,
+                        color: isUser ? appTheme.chatMessageUserText : appTheme.chatMessageAssistantText,
                     }}
                     bodyStyle={{
                         padding: '8px 12px',
@@ -103,7 +99,8 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
                     <Avatar
                         size="small"
                         icon={<UserOutlined/>}
-                        style={{backgroundColor: '#1890ff', flexShrink: 0}}
+                        className="flex-shrink-0"
+                        style={{backgroundColor: appTheme.chatMessageUser}}
                     />
                 )}
             </div>
@@ -112,77 +109,43 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
 
     if (!threadId) {
         return (
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                textAlign: 'center',
-                padding: '32px',
-                backgroundColor: 'rgb(26, 26, 26)',
-                color: 'white'
+            <div className="flex flex-col items-center justify-center h-full text-center p-8" style={{
+                backgroundColor: appTheme.chatBackground,
+                color: appTheme.textPrimary
             }}>
-                <div style={{marginBottom: '32px'}}>
-                    <div style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '8px', color: '#ff8c00'}}>
+                <div className="mb-8">
+                    <div className="text-2xl font-bold mb-2" style={{color: appTheme.primary}}>
                         🌟 Evening, Phi
                     </div>
                 </div>
 
-                <div style={{
-                    width: '100%',
-                    maxWidth: '600px',
-                    padding: '24px',
-                    backgroundColor: 'rgb(32, 32, 32)',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(255,255,255,0.1)'
+                <div className="w-full max-w-2xl p-4 sm:p-6 rounded-xl border" style={{
+                    backgroundColor: appTheme.surfaceElevated,
+                    borderColor: appTheme.borderLight
                 }}>
                     <input
                         placeholder="How can I help you today?"
-                        style={{
-                            width: '100%',
-                            padding: '16px',
-                            fontSize: '16px',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            outline: 'none',
-                            color: 'white',
-                        }}
+                        className="w-full p-4 text-base bg-transparent border-none outline-none"
+                        style={{color: appTheme.textPrimary}}
                     />
 
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginTop: '16px',
-                        paddingTop: '16px',
-                        borderTop: '1px solid rgba(255,255,255,0.1)'
-                    }}>
-                        <div style={{display: 'flex', gap: '8px'}}>
-                            <button style={{
-                                padding: '8px 12px',
-                                backgroundColor: 'transparent',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                borderRadius: '6px',
-                                color: 'rgba(255,255,255,0.7)',
-                                fontSize: '14px',
-                                cursor: 'pointer'
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t" style={{borderColor: appTheme.borderLight}}>
+                        <div className="flex gap-2">
+                            <button className="px-3 py-2 bg-transparent border rounded-md text-sm cursor-pointer" style={{
+                                borderColor: appTheme.border,
+                                color: appTheme.textSecondary
                             }}>
                                 + Research
                             </button>
                         </div>
 
-                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-              <span style={{fontSize: '14px', color: 'rgba(255,255,255,0.5)'}}>
+                        <div className="flex items-center gap-2">
+              <span className="text-sm" style={{color: appTheme.textTertiary}}>
                 Claude Sonnet 4
               </span>
-                            <button style={{
-                                padding: '8px',
-                                backgroundColor: '#ff8c00',
-                                border: 'none',
-                                borderRadius: '6px',
-                                color: 'white',
-                                cursor: 'pointer'
+                            <button className="p-2 border-none rounded-md cursor-pointer" style={{
+                                backgroundColor: appTheme.primary,
+                                color: '#ffffff'
                             }}>
                                 ↑
                             </button>
@@ -190,13 +153,7 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
                     </div>
                 </div>
 
-                <div style={{
-                    display: 'flex',
-                    gap: '16px',
-                    marginTop: '32px',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center'
-                }}>
+                <div className="flex gap-2 sm:gap-4 mt-8 flex-wrap justify-center">
                     {[
                         {icon: '✍️', label: 'Write'},
                         {icon: '🎓', label: 'Learn'},
@@ -206,30 +163,18 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
                     ].map((item, index) => (
                         <button
                             key={index}
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-transparent border rounded-lg cursor-pointer text-sm relative"
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '12px 16px',
-                                backgroundColor: 'transparent',
-                                border: '1px solid rgba(255,255,255,0.2)',
-                                borderRadius: '8px',
-                                color: 'rgba(255,255,255,0.7)',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                position: 'relative'
+                                borderColor: appTheme.border,
+                                color: appTheme.textSecondary
                             }}
                         >
                             <span>{item.icon}</span>
                             <span>{item.label}</span>
                             {item.badge && (
-                                <span style={{
-                                    fontSize: '10px',
-                                    backgroundColor: '#ff8c00',
-                                    color: 'white',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    marginLeft: '4px'
+                                <span className="text-xs px-1.5 py-0.5 rounded ml-1" style={{
+                                    backgroundColor: appTheme.primary,
+                                    color: '#ffffff'
                                 }}>
                   {item.badge}
                 </span>
@@ -242,46 +187,24 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
     }
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            height: '100%',
-            backgroundColor: '#fafafa',
-        }}>
+        <div className="flex flex-col h-full" style={{backgroundColor: appTheme.chatBackground}}>
             {/* Header */}
-            <div style={{
-                padding: '16px 24px',
-                borderBottom: '1px solid #f0f0f0',
-                backgroundColor: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
+            <div className="px-4 sm:px-6 py-4 border-b flex items-center gap-3" style={{
+                backgroundColor: appTheme.surface,
+                borderColor: appTheme.borderSecondary
             }}>
-                <RobotOutlined style={{fontSize: '20px', color: '#1890ff'}}/>
-                <Text strong style={{fontSize: '16px'}}>
+                <RobotOutlined className="text-xl" style={{color: appTheme.primary}}/>
+                <Text strong className="text-base">
                     {currentThread?.title || 'Chat'}
                 </Text>
             </div>
 
             {/* Messages */}
-            <div style={{
-                flex: 1,
-                overflow: 'auto',
-                padding: '16px 24px',
-                display: 'flex',
-                flexDirection: 'column',
-            }}>
+            <div className="flex-1 overflow-auto px-4 sm:px-6 py-4 flex flex-col">
                 {threadMessages.length === 0 ? (
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                        textAlign: 'center',
-                    }}>
-                        <MessageOutlined style={{fontSize: '48px', color: '#d9d9d9', marginBottom: '16px'}}/>
-                        <Text type="secondary" style={{fontSize: '16px'}}>
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                        <MessageOutlined className="text-5xl mb-4" style={{color: appTheme.textTertiary}}/>
+                        <Text className="text-base" style={{color: appTheme.textSecondary}}>
                             Start your conversation
                         </Text>
                     </div>
@@ -289,23 +212,21 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
                     <>
                         {threadMessages.map(renderMessage)}
                         {isLoading && (
-                            <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px'}}>
+                            <div className="flex items-center gap-3 mb-4">
                                 <Avatar
                                     size="small"
                                     icon={<RobotOutlined/>}
-                                    style={{backgroundColor: '#52c41a', flexShrink: 0}}
+                                    className="flex-shrink-0"
+                                    style={{backgroundColor: appTheme.success}}
                                 />
                                 <Card
                                     size="small"
-                                    style={{
-                                        backgroundColor: '#f5f5f5',
-                                        border: 'none',
-                                        borderRadius: '12px',
-                                    }}
+                                    className="border-none rounded-xl"
+                                    style={{backgroundColor: appTheme.chatMessageAssistant}}
                                     bodyStyle={{padding: '8px 12px'}}
                                 >
                                     <Spin indicator={<LoadingOutlined style={{fontSize: 16}} spin/>}/>
-                                    <Text type="secondary" style={{marginLeft: '8px'}}>
+                                    <Text type="secondary" className="ml-2">
                                         Thinking...
                                     </Text>
                                 </Card>
@@ -317,19 +238,18 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
             </div>
 
             {/* Input */}
-            <div style={{
-                padding: '16px 24px',
-                borderTop: '1px solid #f0f0f0',
-                backgroundColor: 'white',
+            <div className="px-4 sm:px-6 py-4 border-t" style={{
+                backgroundColor: appTheme.surface,
+                borderColor: appTheme.borderSecondary
             }}>
-                <Space.Compact style={{display: 'flex', width: '100%'}}>
+                <Space.Compact className="flex w-full">
                     <TextArea
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyPress={handleKeyPress}
                         placeholder="Type your message..."
                         autoSize={{minRows: 1, maxRows: 4}}
-                        style={{flex: 1}}
+                        className="flex-1"
                         disabled={isLoading}
                     />
                     <Button
@@ -337,7 +257,7 @@ export function ChatInterface({threadId}: ChatInterfaceProps) {
                         icon={<SendOutlined/>}
                         onClick={handleSend}
                         disabled={!inputValue.trim() || isLoading}
-                        style={{height: 'auto'}}
+                        className="h-auto"
                     >
                         Send
                     </Button>

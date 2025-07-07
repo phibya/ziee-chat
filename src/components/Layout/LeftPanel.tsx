@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons'
 import {useAppStore} from '../../store'
 import {useSettingsStore} from '../../store/settings'
+import {useTheme} from '../../hooks/useTheme'
 
 const {Text} = Typography
 
@@ -25,6 +26,7 @@ export function LeftPanel({onItemClick}: LeftPanelProps) {
     const {t} = useTranslation()
     const navigate = useNavigate()
     const location = useLocation()
+    const appTheme = useTheme()
     const {
         threads,
         currentThreadId,
@@ -102,34 +104,26 @@ export function LeftPanel({onItemClick}: LeftPanelProps) {
     ]
 
     return (
-        <div style={{
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: '12px',
-            backgroundColor: 'rgb(20, 20, 20)',
-            color: 'white',
+        <div className="h-screen flex flex-col p-3 transition-all duration-200" style={{
             width: leftPanelCollapsed ? '60px' : '280px',
-            transition: 'width 0.2s ease'
+            backgroundColor: appTheme.sidebarBackground,
+            color: appTheme.sidebarText,
         }}>
             {/* Collapse Toggle */}
-            <div style={{ marginBottom: '12px', display: 'flex', justifyContent: leftPanelCollapsed ? 'center' : 'flex-end' }}>
+            <div className={`mb-3 flex ${leftPanelCollapsed ? 'justify-center' : 'justify-end'}`}>
                 <Tooltip title={leftPanelCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right">
                     <Button
                         type="text"
                         icon={leftPanelCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
                         onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-                        style={{
-                            color: 'rgba(255,255,255,0.6)',
-                            border: 'none',
-                            padding: '4px 8px'
-                        }}
+                        className="border-none px-2 py-1"
+                        style={{color: appTheme.sidebarTextSecondary}}
                     />
                 </Tooltip>
             </div>
 
             {/* Navigation Items */}
-            <div style={{marginBottom: '16px'}}>
+            <div className="mb-4">
                 {navigationItems.map((item) => (
                     <Tooltip 
                         key={item.key}
@@ -145,15 +139,12 @@ export function LeftPanel({onItemClick}: LeftPanelProps) {
                                 item.onClick()
                                 onItemClick?.()
                             }}
+                            className={`mb-1 ${leftPanelCollapsed ? 'justify-center' : 'justify-start'} h-9 border-none rounded-lg overflow-hidden`}
                             style={{
-                                marginBottom: '4px',
-                                justifyContent: leftPanelCollapsed ? 'center' : 'flex-start',
-                                height: '36px',
-                                color: item.active ? '#ff8c00' : (item.type === 'primary' ? undefined : 'rgba(255,255,255,0.8)'),
-                                backgroundColor: item.type === 'primary' ? '#ff8c00' : (item.active ? 'rgba(255,140,0,0.1)' : 'transparent'),
-                                border: 'none',
-                                borderRadius: '8px',
-                                overflow: 'hidden'
+                                backgroundColor: item.type === 'primary' ? appTheme.primary : 
+                                    item.active ? appTheme.sidebarItemActive : 'transparent',
+                                color: item.type === 'primary' ? '#ffffff' : 
+                                    item.active ? appTheme.primary : appTheme.sidebarText
                             }}
                         >
                             {!leftPanelCollapsed && (
@@ -166,51 +157,31 @@ export function LeftPanel({onItemClick}: LeftPanelProps) {
 
             {/* Recents Section */}
             {!leftPanelCollapsed && (
-                <div style={{marginBottom: '16px'}}>
-                    <Text style={{
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: 'rgba(255,255,255,0.6)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        marginBottom: '8px',
-                        display: 'block'
-                    }}>
+                <div className="mb-4">
+                    <Text className="text-xs font-semibold uppercase tracking-wider mb-2 block" style={{color: appTheme.sidebarTextSecondary}}>
                         Recents
                     </Text>
                 </div>
             )}
 
             {/* Recent Conversations */}
-            <div style={{flex: 1, overflow: 'auto'}}>
+            <div className="flex-1 overflow-auto">
                 {!leftPanelCollapsed ? (
                     threads.length === 0 ? (
-                        <div style={{
-                            padding: '32px 16px',
-                            textAlign: 'center',
-                            color: 'rgba(255,255,255,0.5)'
-                        }}>
-                            <MessageOutlined style={{fontSize: '24px', marginBottom: '8px'}}/>
-                            <div style={{fontSize: '14px'}}>No conversations yet</div>
+                        <div className="py-8 px-4 text-center" style={{color: appTheme.sidebarTextSecondary}}>
+                            <MessageOutlined className="text-2xl mb-2" style={{color: appTheme.sidebarTextSecondary}}/>
+                            <div className="text-sm">No conversations yet</div>
                         </div>
                     ) : (
                         threads.slice(0, 20).map((thread) => (
                             <div
                                 key={thread.id}
                                 onClick={() => handleThreadClick(thread.id)}
+                                className={`px-3 py-2 mb-0.5 rounded-lg cursor-pointer text-sm overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-200 border`}
                                 style={{
-                                    padding: '8px 12px',
-                                    marginBottom: '2px',
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    backgroundColor: currentThreadId === thread.id ? 'rgba(255,140,0,0.1)' : 'transparent',
-                                    color: currentThreadId === thread.id ? '#ff8c00' : 'rgba(255,255,255,0.8)',
-                                    fontSize: '14px',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    transition: 'all 0.2s ease',
-                                    border: currentThreadId === thread.id ? '1px solid rgba(255,140,0,0.3)' : '1px solid transparent'
+                                    backgroundColor: currentThreadId === thread.id ? appTheme.sidebarItemActive : 'transparent',
+                                    color: currentThreadId === thread.id ? appTheme.primary : appTheme.sidebarText,
+                                    borderColor: currentThreadId === thread.id ? appTheme.primary + '4D' : 'transparent'
                                 }}
                                 onMouseEnter={(e) => {
                                     if (currentThreadId !== thread.id) {
@@ -238,14 +209,9 @@ export function LeftPanel({onItemClick}: LeftPanelProps) {
                         >
                             <div
                                 onClick={() => handleThreadClick(thread.id)}
+                                className={`w-2 h-2 rounded-full mx-auto my-1.5 cursor-pointer transition-all duration-200`}
                                 style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '50%',
-                                    backgroundColor: currentThreadId === thread.id ? '#ff8c00' : 'rgba(255,255,255,0.3)',
-                                    margin: '6px auto',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease'
+                                    backgroundColor: currentThreadId === thread.id ? appTheme.primary : appTheme.sidebarTextSecondary
                                 }}
                                 onMouseEnter={(e) => {
                                     if (currentThreadId !== thread.id) {
@@ -264,11 +230,7 @@ export function LeftPanel({onItemClick}: LeftPanelProps) {
             </div>
 
             {/* Bottom Navigation */}
-            <div style={{
-                borderTop: '1px solid rgba(255,255,255,0.1)',
-                paddingTop: '12px',
-                marginTop: '12px'
-            }}>
+            <div className="border-t pt-3 mt-3" style={{borderColor: appTheme.sidebarBorder}}>
                 {bottomNavigationItems.map((item) => (
                     <Tooltip 
                         key={item.key}
@@ -284,19 +246,14 @@ export function LeftPanel({onItemClick}: LeftPanelProps) {
                                 item.onClick()
                                 onItemClick?.()
                             }}
+                            className={`mb-1 ${leftPanelCollapsed ? 'justify-center' : 'justify-start'} h-9 border-none rounded-lg overflow-hidden`}
                             style={{
-                                marginBottom: '4px',
-                                justifyContent: leftPanelCollapsed ? 'center' : 'flex-start',
-                                height: '36px',
-                                color: item.active ? '#ff8c00' : 'rgba(255,255,255,0.8)',
-                                backgroundColor: item.active ? 'rgba(255,140,0,0.1)' : 'transparent',
-                                border: 'none',
-                                borderRadius: '8px',
-                                overflow: 'hidden'
+                                backgroundColor: item.active ? appTheme.sidebarItemActive : 'transparent',
+                                color: item.active ? appTheme.primary : appTheme.sidebarText
                             }}
                         >
                             {!leftPanelCollapsed && (
-                                <span style={{marginLeft: '8px', fontSize: '14px'}}>{item.label}</span>
+                                <span className="ml-2 text-sm">{item.label}</span>
                             )}
                         </Button>
                     </Tooltip>

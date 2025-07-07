@@ -4,6 +4,7 @@ import {MenuOutlined, CloseOutlined} from '@ant-design/icons'
 import {useTranslation} from 'react-i18next'
 import {useSettingsStore} from '../../store/settings'
 import {LeftPanel} from './LeftPanel'
+import {useTheme} from '../../hooks/useTheme'
 
 const {Sider, Content} = Layout
 
@@ -14,6 +15,7 @@ interface AppLayoutProps {
 export function AppLayout({children}: AppLayoutProps) {
     const {t} = useTranslation()
     const {token} = theme.useToken()
+    const appTheme = useTheme()
     const {leftPanelCollapsed} = useSettingsStore()
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
@@ -22,17 +24,17 @@ export function AppLayout({children}: AppLayoutProps) {
             {/* Mobile Header */}
             <div
                 className="lg:hidden flex items-center justify-between p-4 border-b"
-                style={{borderColor: token.colorBorderSecondary}}
+                style={{borderColor: appTheme.borderSecondary}}
             >
                 <Button
                     type="text"
                     icon={<MenuOutlined/>}
                     onClick={() => setMobileDrawerOpen(true)}
                 />
-                <span style={{color: token.colorText, fontWeight: 600}}>
+                <span className="font-semibold" style={{color: appTheme.textPrimary}}>
           {t('app.title')}
         </span>
-                <div style={{width: 32}}/>
+                <div className="w-8"/>
             </div>
 
             {/* Desktop Sidebar */}
@@ -51,8 +53,8 @@ export function AppLayout({children}: AppLayoutProps) {
                     top: 0,
                     bottom: 0,
                     zIndex: 1000,
-                    backgroundColor: 'rgb(20, 20, 20)',
-                    borderRight: `1px solid rgba(255,255,255,0.1)`,
+                    backgroundColor: appTheme.sidebarBackground,
+                    borderRight: `1px solid ${appTheme.sidebarBorder}`,
                     transition: 'width 0.2s ease',
                 }}
                 className="hidden lg:block"
@@ -64,18 +66,19 @@ export function AppLayout({children}: AppLayoutProps) {
             {mobileDrawerOpen && (
                 <>
                     <div
-                        className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+                        className="lg:hidden fixed inset-0 z-40"
+                        style={{backgroundColor: 'rgba(0, 0, 0, 0.5)'}}
                         onClick={() => setMobileDrawerOpen(false)}
                     />
                     <div
                         className="lg:hidden fixed left-0 top-0 bottom-0 w-80 max-w-[80vw] z-50 transform transition-transform duration-300 ease-in-out"
                         style={{
-                            backgroundColor: token.colorBgContainer,
+                            backgroundColor: appTheme.surface,
                             transform: mobileDrawerOpen ? 'translateX(0)' : 'translateX(-100%)',
                         }}
                     >
-                        <div className="flex items-center justify-between p-4 border-b">
-              <span style={{color: token.colorText, fontWeight: 600}}>
+                        <div className="flex items-center justify-between p-4 border-b" style={{borderColor: appTheme.borderSecondary}}>
+              <span className="font-semibold" style={{color: appTheme.textPrimary}}>
                 {t('app.title')}
               </span>
                             <Button
@@ -95,17 +98,11 @@ export function AppLayout({children}: AppLayoutProps) {
                     marginLeft: leftPanelCollapsed ? 60 : 280,
                     transition: 'margin-left 0.2s',
                 }}
-                className="lg:ml-0"
+                className="lg:ml-0 transition-all duration-200"
             >
                 <Content
-                    style={{
-                        margin: 0,
-                        padding: 0,
-                        minHeight: 280,
-                        backgroundColor: 'rgb(26, 26, 26)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                    }}
+                    className="m-0 p-0 min-h-72 flex flex-col"
+                    style={{backgroundColor: appTheme.background}}
                 >
                     {children}
                 </Content>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ConfigProvider, theme } from 'antd'
 import { useSettingsStore, getResolvedTheme } from '../store/settings'
+import { themes, ThemeType } from '../themes'
+import { ThemeContext } from '../hooks/useTheme'
 
 interface ThemeProviderProps {
   children: React.ReactNode
@@ -9,11 +11,14 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const { theme: selectedTheme, componentSize } = useSettingsStore()
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState<ThemeType>(themes.light)
 
   useEffect(() => {
     const updateTheme = () => {
       const resolvedTheme = getResolvedTheme(selectedTheme)
-      setIsDarkMode(resolvedTheme === 'dark')
+      const darkMode = resolvedTheme === 'dark'
+      setIsDarkMode(darkMode)
+      setCurrentTheme(darkMode ? themes.dark : themes.light)
     }
 
     updateTheme()
@@ -41,41 +46,53 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, [isDarkMode])
 
   return (
-    <ConfigProvider
-      componentSize={componentSize}
-      theme={{
-        algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
-        token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 8,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        },
-        components: {
-          Layout: {
-            bodyBg: isDarkMode ? '#141414' : '#ffffff',
-            siderBg: isDarkMode ? '#1f1f1f' : '#ffffff',
-            headerBg: isDarkMode ? '#1f1f1f' : '#ffffff',
+    <ThemeContext.Provider value={currentTheme}>
+      <ConfigProvider
+        componentSize={componentSize}
+        theme={{
+          algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          token: {
+            colorPrimary: currentTheme.primary,
+            borderRadius: 8,
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            colorText: currentTheme.textPrimary,
+            colorTextSecondary: currentTheme.textSecondary,
+            colorTextTertiary: currentTheme.textTertiary,
+            colorTextDisabled: currentTheme.textDisabled,
+            colorBgContainer: currentTheme.surface,
+            colorBgElevated: currentTheme.surfaceElevated,
+            colorBorder: currentTheme.border,
+            colorBorderSecondary: currentTheme.borderSecondary,
           },
-          Menu: {
-            itemBg: 'transparent',
-            itemSelectedBg: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(24, 144, 255, 0.1)',
-            itemHoverBg: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(24, 144, 255, 0.05)',
+          components: {
+            Layout: {
+              bodyBg: currentTheme.background,
+              siderBg: currentTheme.sidebarBackground,
+              headerBg: currentTheme.surface,
+            },
+            Menu: {
+              itemBg: 'transparent',
+              itemSelectedBg: currentTheme.sidebarItemActive,
+              itemHoverBg: currentTheme.sidebarItemHover,
+            },
+            Card: {
+              colorBgContainer: currentTheme.surface,
+            },
+            Input: {
+              colorBgContainer: currentTheme.inputBackground,
+              colorBorder: currentTheme.inputBorder,
+              colorTextPlaceholder: currentTheme.inputPlaceholder,
+            },
+            Button: {
+              colorPrimary: currentTheme.primary,
+              colorPrimaryHover: currentTheme.primaryHover,
+              colorPrimaryActive: currentTheme.primaryActive,
+            },
           },
-          Card: {
-            colorBgContainer: isDarkMode ? '#1f1f1f' : '#ffffff',
-          },
-          Input: {
-            colorBgContainer: isDarkMode ? '#262626' : '#ffffff',
-          },
-          Button: {
-            colorPrimary: '#1890ff',
-            colorPrimaryHover: '#40a9ff',
-            colorPrimaryActive: '#096dd9',
-          },
-        },
-      }}
-    >
-      {children}
-    </ConfigProvider>
+        }}
+      >
+        {children}
+      </ConfigProvider>
+    </ThemeContext.Provider>
   )
 }

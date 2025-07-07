@@ -3,12 +3,14 @@ import {Card, Form, Input, Select, Switch, Button, Typography, InputNumber, mess
 import {SettingOutlined, SaveOutlined} from '@ant-design/icons'
 import {useTranslation} from 'react-i18next'
 import {useSettingsStore} from '../../store/settings'
+import {useTheme} from '../../hooks/useTheme'
 
 const {Title, Text} = Typography
 const {Option} = Select
 
 export function SettingsPage() {
     const {t} = useTranslation()
+    const appTheme = useTheme()
     const [form] = Form.useForm()
     const {
         theme,
@@ -61,16 +63,16 @@ export function SettingsPage() {
     }
 
     return (
-        <div style={{padding: '24px', height: '100%', overflow: 'auto'}}>
-            <div style={{marginBottom: '24px'}}>
+        <div className="p-4 sm:p-6 h-full overflow-auto">
+            <div className="mb-4 sm:mb-6">
                 <Title level={2}>
-                    <SettingOutlined style={{marginRight: '8px'}}/>
+                    <SettingOutlined className="mr-2"/>
                     {t('settings.title')}
                 </Title>
                 <Text type="secondary">{t('settings.description')}</Text>
             </div>
 
-            <Form form={form} layout="vertical" className={'flex flex-col gap-4'}>
+            <Form form={form} layout="vertical" className="flex flex-col gap-3 sm:gap-4">
                 <Card title={t('settings.general.title')}>
                     <Form.Item
                         label={t('settings.general.defaultModel')}
@@ -117,7 +119,7 @@ export function SettingsPage() {
                     </Form.Item>
                 </Card>
 
-                <Card title={t('settings.chat.title')} style={{marginBottom: '16px'}}>
+                <Card title={t('settings.chat.title')} className="mb-4">
                     <Form.Item
                         label={t('settings.chat.autoSave')}
                         name="autoSave"
@@ -141,7 +143,7 @@ export function SettingsPage() {
                         <InputNumber
                             min={100}
                             max={4096}
-                            style={{width: '100%'}}
+                            className="w-full"
                             placeholder={t('settings.chat.maxTokensPlaceholder')}
                         />
                     </Form.Item>
@@ -154,13 +156,13 @@ export function SettingsPage() {
                             min={0}
                             max={2}
                             step={0.1}
-                            style={{width: '100%'}}
+                            className="w-full"
                             placeholder={t('settings.chat.temperaturePlaceholder')}
                         />
                     </Form.Item>
                 </Card>
 
-                <Card title="API Settings" style={{marginBottom: '16px'}}>
+                <Card title="API Settings" className="mb-4">
                     <Form.Item
                         label="OpenAI API Key"
                         name="openaiApiKey"
@@ -190,12 +192,12 @@ export function SettingsPage() {
                         <InputNumber
                             min={5}
                             max={300}
-                            style={{width: '100%'}}
+                            className="w-full"
                         />
                     </Form.Item>
                 </Card>
 
-                <Card title="Advanced Settings" style={{marginBottom: '16px'}}>
+                <Card title="Advanced Settings" className="mb-4">
                     <Form.Item
                         label="Enable Streaming"
                         name="enableStreaming"
@@ -234,7 +236,7 @@ export function SettingsPage() {
                     </Form.Item>
                 </Card>
 
-                <div style={{textAlign: 'right'}}>
+                <div className="text-right">
                     <Button type="primary" icon={<SaveOutlined/>} onClick={handleSave}>
                         {t('settings.save')}
                     </Button>
