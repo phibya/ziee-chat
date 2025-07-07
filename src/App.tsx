@@ -8,6 +8,17 @@ import { AssistantsPage } from './components/Pages/AssistantsPage'
 import { HubPage } from './components/Pages/HubPage'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { ModelsPage } from './components/Pages/ModelsPage'
+import { 
+  GeneralSettings, 
+  AppearanceSettings, 
+  PrivacySettings, 
+  ModelProvidersSettings,
+  ShortcutsSettings,
+  HardwareSettings,
+  LocalApiServerSettings,
+  HttpsProxySettings,
+  ExtensionsSettings 
+} from './components/Pages/Settings'
 import { useSettingsStore } from './store/settings'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
@@ -32,7 +43,18 @@ function App() {
             <Route path="/assistants" element={<AssistantsPage />} />
             <Route path="/hub" element={<HubPage />} />
             <Route path="/models" element={<ModelsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/settings" element={<SettingsPage />}>
+              <Route index element={<Navigate to="/settings/general" replace />} />
+              <Route path="general" element={<GeneralSettings />} />
+              <Route path="appearance" element={<AppearanceSettings />} />
+              <Route path="privacy" element={<PrivacySettings />} />
+              <Route path="model-providers" element={<ModelProvidersSettings />} />
+              <Route path="shortcuts" element={<ShortcutsSettings />} />
+              <Route path="hardware" element={<HardwareSettings />} />
+              <Route path="local-api-server" element={<LocalApiServerSettings />} />
+              <Route path="https-proxy" element={<HttpsProxySettings />} />
+              <Route path="extensions" element={<ExtensionsSettings />} />
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppLayout>

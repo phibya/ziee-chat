@@ -1,13 +1,17 @@
-import {useState} from 'react'
+import {useEffect} from 'react'
 import {Layout, Menu, Typography} from 'antd'
+import {useNavigate, useLocation, Outlet} from 'react-router-dom'
 import {SettingOutlined, UserOutlined, EyeOutlined, LockOutlined, ToolOutlined, SlidersOutlined, ExperimentOutlined} from '@ant-design/icons'
-import {GeneralSettings, AppearanceSettings, PrivacySettings, ModelProvidersSettings} from './Settings'
 
 const {Title} = Typography
 const {Sider, Content} = Layout
 
 export function SettingsPage() {
-    const [selectedCategory, setSelectedCategory] = useState('general')
+    const navigate = useNavigate()
+    const location = useLocation()
+
+    // Extract the current settings section from the URL
+    const currentSection = location.pathname.split('/').pop() || 'general'
 
     const menuItems = [
         {
@@ -57,24 +61,8 @@ export function SettingsPage() {
         },
     ]
 
-    const renderContent = () => {
-        switch (selectedCategory) {
-            case 'general':
-                return <GeneralSettings />
-            case 'appearance':
-                return <AppearanceSettings />
-            case 'privacy':
-                return <PrivacySettings />
-            case 'model-providers':
-                return <ModelProvidersSettings />
-            default:
-                return (
-                    <div className="space-y-6">
-                        <Title level={3}>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</Title>
-                        <div className="text-gray-500">Settings for {selectedCategory} will be implemented here.</div>
-                    </div>
-                )
-        }
+    const handleMenuClick = (key: string) => {
+        navigate(`/settings/${key}`)
     }
 
     return (
@@ -93,15 +81,15 @@ export function SettingsPage() {
                     </div>
                     <Menu
                         mode="inline"
-                        selectedKeys={[selectedCategory]}
+                        selectedKeys={[currentSection]}
                         items={menuItems}
                         className="border-none"
-                        onClick={({ key }) => setSelectedCategory(key)}
+                        onClick={({ key }) => handleMenuClick(key)}
                     />
                 </Sider>
                 <Layout>
                     <Content className="p-6 overflow-auto">
-                        {renderContent()}
+                        <Outlet />
                     </Content>
                 </Layout>
             </Layout>
