@@ -74,16 +74,9 @@ export function SettingsPage() {
 
   return (
     <Layout style={{ height: '100%' }}>
-      <Sider
-        width={200}
-        theme="light"
-        style={{ borderRight: '1px solid #f0f0f0' }}
-      >
-        <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
-          <Title
-            level={4}
-            style={{ margin: 0, display: 'flex', alignItems: 'center' }}
-          >
+      <Sider width={200} theme="light">
+        <div style={{ padding: '16px' }}>
+          <Title level={4} style={{ margin: 0 }}>
             <SettingOutlined style={{ marginRight: 8 }} />
             Settings
           </Title>
@@ -92,7 +85,6 @@ export function SettingsPage() {
           mode="inline"
           selectedKeys={[currentSection]}
           items={menuItems}
-          style={{ border: 'none' }}
           onClick={({ key }) => handleMenuClick(key)}
         />
       </Sider>

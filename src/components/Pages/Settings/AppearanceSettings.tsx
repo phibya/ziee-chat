@@ -17,23 +17,14 @@ export function AppearanceSettings() {
   const ColorPicker = ({ colors }: { colors: string[] }) => (
     <Space>
       {colors.map((color, index) => (
-        <div
+        <Button
           key={index}
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            backgroundColor: color,
-            cursor: 'pointer',
-            border: '2px solid #d9d9d9',
-          }}
+          shape="circle"
+          size="small"
+          style={{ backgroundColor: color, borderColor: color }}
         />
       ))}
-      <Button
-        type="text"
-        size="small"
-        style={{ width: 24, height: 24, minWidth: 24, padding: 0 }}
-      >
+      <Button type="text" size="small" shape="circle">
         ✎
       </Button>
     </Space>
@@ -169,8 +160,8 @@ export function AppearanceSettings() {
           <Col span={12}>
             <Card
               size="small"
-              style={{ border: '2px solid #eb2f96' }}
-              title={<Text style={{ fontSize: 12 }}>Compact Width</Text>}
+              className="selected-card"
+              title={<Text type="secondary">Compact Width</Text>}
             >
               <Space
                 direction="vertical"
@@ -178,24 +169,10 @@ export function AppearanceSettings() {
                 style={{ width: '100%' }}
               >
                 {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      height: 8,
-                      backgroundColor: '#f0f0f0',
-                      borderRadius: 4,
-                    }}
-                  />
+                  <div key={i} className="chat-line" />
                 ))}
-                <div
-                  style={{
-                    padding: 8,
-                    backgroundColor: '#f0f0f0',
-                    borderRadius: 4,
-                    textAlign: 'center',
-                  }}
-                >
-                  <Text style={{ fontSize: 10 }} type="secondary">
+                <div className="chat-input">
+                  <Text type="secondary" style={{ fontSize: 10 }}>
                     Ask me anything...
                   </Text>
                 </div>
@@ -203,34 +180,17 @@ export function AppearanceSettings() {
             </Card>
           </Col>
           <Col span={12}>
-            <Card
-              size="small"
-              title={<Text style={{ fontSize: 12 }}>Full Width</Text>}
-            >
+            <Card size="small" title={<Text type="secondary">Full Width</Text>}>
               <Space
                 direction="vertical"
                 size="small"
                 style={{ width: '100%' }}
               >
                 {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      height: 8,
-                      backgroundColor: '#f0f0f0',
-                      borderRadius: 4,
-                    }}
-                  />
+                  <div key={i} className="chat-line" />
                 ))}
-                <div
-                  style={{
-                    padding: 8,
-                    backgroundColor: '#f0f0f0',
-                    borderRadius: 4,
-                    textAlign: 'center',
-                  }}
-                >
-                  <Text style={{ fontSize: 10 }} type="secondary">
+                <div className="chat-input">
+                  <Text type="secondary" style={{ fontSize: 10 }}>
                     Ask me anything...
                   </Text>
                 </div>
@@ -254,63 +214,36 @@ export function AppearanceSettings() {
             <Button type="default">VSCode Dark+</Button>
           </Flex>
 
-          <Card style={{ backgroundColor: '#1f1f1f' }}>
+          <Card className="code-preview">
             <Flex
               justify="space-between"
               align="center"
               style={{ marginBottom: 8 }}
             >
-              <Text style={{ color: '#8c8c8c', fontSize: 12 }}>Preview</Text>
+              <Text type="secondary">Preview</Text>
               <Space>
-                <Text style={{ color: '#8c8c8c', fontSize: 12 }}>
-                  Typescript
-                </Text>
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<CopyOutlined />}
-                  style={{ color: '#8c8c8c' }}
-                >
+                <Text type="secondary">Typescript</Text>
+                <Button size="small" icon={<CopyOutlined />} type="text">
                   Copy
                 </Button>
               </Space>
             </Flex>
-            <div style={{ fontFamily: 'monospace', fontSize: 12 }}>
-              <div style={{ color: '#8c8c8c' }}>
-                1{' '}
-                <Text style={{ color: '#6a9955' }}>
-                  // Example code for preview
-                </Text>
-              </div>
-              <div style={{ color: '#8c8c8c' }}>
-                2 <Text style={{ color: '#569cd6' }}>function</Text>{' '}
-                <Text style={{ color: '#dcdcaa' }}>greeting</Text>(
-                <Text style={{ color: '#9cdcfe' }}>name</Text>:{' '}
-                <Text style={{ color: '#4ec9b0' }}>string</Text>)
-              </div>
-              <div style={{ color: '#8c8c8c' }}>
-                3 <Text style={{ color: '#569cd6' }}>return</Text>{' '}
-                <Text style={{ color: '#ce9178' }}>`Hello, {'${name}'}!`</Text>;
-              </div>
-              <div style={{ color: '#8c8c8c' }}>4</div>
-              <div style={{ color: '#8c8c8c' }}>5</div>
-              <div style={{ color: '#8c8c8c' }}>
-                6 <Text style={{ color: '#6a9955' }}>// Call the function</Text>
-              </div>
-              <div style={{ color: '#8c8c8c' }}>
-                7 <Text style={{ color: '#569cd6' }}>const</Text>{' '}
-                <Text style={{ color: '#ffffff' }}>message</Text> ={' '}
-                <Text style={{ color: '#dcdcaa' }}>greeting</Text>(
-                <Text style={{ color: '#ce9178' }}>'Jan'</Text>);
-              </div>
-              <div style={{ color: '#8c8c8c' }}>
-                8 <Text style={{ color: '#9cdcfe' }}>console</Text>.
-                <Text style={{ color: '#dcdcaa' }}>log</Text>(
-                <Text style={{ color: '#ffffff' }}>message</Text>);{' '}
-                <Text style={{ color: '#6a9955' }}>
-                  // Outputs: Hello, Jan!
-                </Text>
-              </div>
+            <div>
+              <Text code>1 // Example code for preview</Text>
+              <br />
+              <Text code>2 function greeting(name: string)</Text>
+              <br />
+              <Text code>3 return `Hello, {'${name}'}!`;</Text>
+              <br />
+              <Text code>4</Text>
+              <br />
+              <Text code>5</Text>
+              <br />
+              <Text code>6 // Call the function</Text>
+              <br />
+              <Text code>7 const message = greeting('Jan');</Text>
+              <br />
+              <Text code>8 console.log(message); // Outputs: Hello, Jan!</Text>
             </div>
           </Card>
 
