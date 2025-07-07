@@ -1,17 +1,12 @@
-import {Typography} from 'antd'
+import {Typography, Space} from 'antd'
 
 const {Title, Text} = Typography
 
 export function HardwareSettings() {
     return (
-        <div className="space-y-6">
-            <div className="mb-6">
-                <Title level={3} className="mb-0">Hardware</Title>
-            </div>
-            
-            <div className="border-b pb-4">
-                <Text>Hardware configuration settings will be implemented here.</Text>
-            </div>
-        </div>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Title level={3}>Hardware</Title>
+            <Text type="secondary">Hardware configuration settings will be implemented here.</Text>
+        </Space>
     )
 }

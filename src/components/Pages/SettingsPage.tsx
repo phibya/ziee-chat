@@ -66,33 +66,31 @@ export function SettingsPage() {
     }
 
     return (
-        <div className="h-full">
-            <Layout className="h-full">
-                <Sider 
-                    width={200} 
-                    className="bg-gray-50 border-r border-gray-200"
-                    theme="light"
-                >
-                    <div className="p-4 border-b border-gray-200">
-                        <Title level={4} className="mb-0 flex items-center">
-                            <SettingOutlined className="mr-2" />
-                            Settings
-                        </Title>
-                    </div>
-                    <Menu
-                        mode="inline"
-                        selectedKeys={[currentSection]}
-                        items={menuItems}
-                        className="border-none"
-                        onClick={({ key }) => handleMenuClick(key)}
-                    />
-                </Sider>
-                <Layout>
-                    <Content className="p-6 overflow-auto">
-                        <Outlet />
-                    </Content>
-                </Layout>
+        <Layout style={{ height: '100%' }}>
+            <Sider 
+                width={200} 
+                theme="light"
+                style={{ borderRight: '1px solid #f0f0f0' }}
+            >
+                <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
+                    <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
+                        <SettingOutlined style={{ marginRight: 8 }} />
+                        Settings
+                    </Title>
+                </div>
+                <Menu
+                    mode="inline"
+                    selectedKeys={[currentSection]}
+                    items={menuItems}
+                    style={{ border: 'none' }}
+                    onClick={({ key }) => handleMenuClick(key)}
+                />
+            </Sider>
+            <Layout>
+                <Content style={{ padding: '24px', overflow: 'auto' }}>
+                    <Outlet />
+                </Content>
             </Layout>
-        </div>
+        </Layout>
     )
 }
