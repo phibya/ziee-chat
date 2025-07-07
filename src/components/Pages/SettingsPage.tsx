@@ -1,63 +1,64 @@
-import { useEffect } from 'react'
-import { Card, Form, Input, Select, Switch, Button, Typography, Space, InputNumber, message } from 'antd'
-import { SettingOutlined, SaveOutlined } from '@ant-design/icons'
-import { useTranslation } from 'react-i18next'
-import { useSettingsStore, Theme, Language, ComponentSize } from '../../store/settings'
+import {useEffect} from 'react'
+import {Card, Form, Input, Select, Switch, Button, Typography, InputNumber, message} from 'antd'
+import {SettingOutlined, SaveOutlined} from '@ant-design/icons'
+import {useTranslation} from 'react-i18next'
+import {useSettingsStore} from '../../store/settings'
 
-const { Title, Text } = Typography
-const { Option } = Select
+const {Title, Text} = Typography
+const {Option} = Select
 
 export function SettingsPage() {
-  const { t } = useTranslation()
-  const [form] = Form.useForm()
-  const { 
-    theme,
-    language,
-    componentSize,
-    autoSave,
-    showTimestamps,
-    maxTokens,
-    temperature,
-    openaiApiKey,
-    anthropicApiKey,
-    customEndpoint,
-    requestTimeout,
-    enableStreaming,
-    enableFunctionCalling,
-    debugMode,
-    systemPrompt,
-    defaultModel,
-    updateSettings 
-  } = useSettingsStore()
+    const {t} = useTranslation()
+    const [form] = Form.useForm()
+    const {
+        theme,
+        language,
+        componentSize,
+        autoSave,
+        showTimestamps,
+        maxTokens,
+        temperature,
+        openaiApiKey,
+        anthropicApiKey,
+        customEndpoint,
+        requestTimeout,
+        enableStreaming,
+        enableFunctionCalling,
+        debugMode,
+        systemPrompt,
+        defaultModel,
+        updateSettings
+    } = useSettingsStore()
 
-  // Initialize form with current settings
-  useEffect(() => {
-    form.setFieldsValue({
-      theme,
-      language,
-      componentSize,
-      autoSave,
-      showTimestamps,
-      maxTokens,
-      temperature,
-      openaiApiKey,
-      anthropicApiKey,
-      customEndpoint,
-      requestTimeout,
-      enableStreaming,
-      enableFunctionCalling,
-      debugMode,
-      systemPrompt,
-      defaultModel,
-    })
-  }, [form, theme, language, componentSize, autoSave, showTimestamps, maxTokens, temperature, openaiApiKey, anthropicApiKey, customEndpoint, requestTimeout, enableStreaming, enableFunctionCalling, debugMode, systemPrompt, defaultModel])
+    // Initialize form with current settings
+    useEffect(() => {
+        form.setFieldsValue({
+            theme,
+            language,
+            componentSize,
+            autoSave,
+            showTimestamps,
+            maxTokens,
+            temperature,
+            openaiApiKey,
+            anthropicApiKey,
+            customEndpoint,
+            requestTimeout,
+            enableStreaming,
+            enableFunctionCalling,
+            debugMode,
+            systemPrompt,
+            defaultModel,
+        })
+    }, [form, theme, language, componentSize, autoSave, showTimestamps, maxTokens, temperature, openaiApiKey,
+        anthropicApiKey, customEndpoint, requestTimeout, enableStreaming, enableFunctionCalling, debugMode, systemPrompt, defaultModel])
 
-  const handleSave = () => {
-    form.validateFields().then((values) => {
-      updateSettings(values)
-      message.success(t('common.success'))
-    })
-  }
+    const handleSave = () => {
+        form.validateFields().then((values) => {
+            updateSettings(values)
+            message.success(t('common.success'))
+        })
+    }
 
     return (
         <div style={{padding: '24px', height: '100%', overflow: 'auto'}}>
@@ -69,8 +70,8 @@ export function SettingsPage() {
                 <Text type="secondary">{t('settings.description')}</Text>
             </div>
 
-            <Form form={form} layout="vertical" style={{maxWidth: '600px'}}>
-                <Card title={t('settings.general.title')} style={{marginBottom: '16px'}}>
+            <Form form={form} layout="vertical" className={'flex flex-col gap-4'}>
+                <Card title={t('settings.general.title')}>
                     <Form.Item
                         label={t('settings.general.defaultModel')}
                         name="defaultModel"
