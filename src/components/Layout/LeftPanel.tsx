@@ -20,9 +20,12 @@ const { Text } = Typography
 
 interface LeftPanelProps {
   onItemClick?: () => void
+  isMobile?: boolean
+  mobileOverlayOpen?: boolean
+  setMobileOverlayOpen?: (open: boolean) => void
 }
 
-export function LeftPanel({ onItemClick }: LeftPanelProps) {
+export function LeftPanel({ onItemClick, isMobile, mobileOverlayOpen, setMobileOverlayOpen }: LeftPanelProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -110,18 +113,30 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
     >
       {/* Collapse Toggle */}
       <div
-        className={`mb-3 flex ${leftPanelCollapsed ? 'justify-center' : 'justify-end'}`}
+        className={`mb-3 flex ${(isMobile ? !mobileOverlayOpen : leftPanelCollapsed) ? 'justify-center' : 'justify-end'}`}
       >
         <Tooltip
-          title={leftPanelCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={
+            isMobile 
+              ? (mobileOverlayOpen ? 'Close sidebar' : 'Open sidebar')
+              : (leftPanelCollapsed ? 'Expand sidebar' : 'Collapse sidebar')
+          }
           placement="right"
         >
           <Button
             type="text"
             icon={
-              leftPanelCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />
+              isMobile 
+                ? (mobileOverlayOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />)
+                : (leftPanelCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
             }
-            onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+            onClick={() => {
+              if (isMobile && setMobileOverlayOpen) {
+                setMobileOverlayOpen(!mobileOverlayOpen)
+              } else {
+                setLeftPanelCollapsed(!leftPanelCollapsed)
+              }
+            }}
             className="border-none px-2 py-1"
             style={{ color: appTheme.sidebarTextSecondary }}
           />
@@ -133,7 +148,7 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
         {navigationItems.map(item => (
           <Tooltip
             key={item.key}
-            title={leftPanelCollapsed ? item.label : ''}
+            title={(isMobile ? !mobileOverlayOpen : leftPanelCollapsed) ? item.label : ''}
             placement="right"
             mouseEnterDelay={0.5}
           >
@@ -160,7 +175,7 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
               }}
             >
               <div>{item.icon}</div>
-              {!leftPanelCollapsed && (
+              {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
                 <div className={'flex-1 text-left pl-1'}>{item.label}</div>
               )}
             </Button>
@@ -169,7 +184,7 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
       </div>
 
       {/* Recents Section */}
-      {!leftPanelCollapsed && (
+      {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
         <div className="mb-4">
           <Text
             className="text-xs font-semibold uppercase tracking-wider mb-2 block"
@@ -182,7 +197,7 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
 
       {/* Recent Conversations */}
       <div className="flex-1 overflow-auto">
-        {!leftPanelCollapsed ? (
+        {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) ? (
           threads.length === 0 ? (
             <div
               className="py-8 px-4 text-center"
@@ -274,7 +289,7 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
         {bottomNavigationItems.map(item => (
           <Tooltip
             key={item.key}
-            title={leftPanelCollapsed ? item.label : ''}
+            title={(isMobile ? !mobileOverlayOpen : leftPanelCollapsed) ? item.label : ''}
             placement="right"
             mouseEnterDelay={0.5}
           >
@@ -293,7 +308,7 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
               }}
             >
               <div>{item.icon}</div>
-              {!leftPanelCollapsed && (
+              {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
                 <div className="text-sm text-left flex-1 pl-1">
                   {item.label}
                 </div>

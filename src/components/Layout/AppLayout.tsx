@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button, Layout } from 'antd'
-import { CloseOutlined, MenuOutlined } from '@ant-design/icons'
+import { MenuOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore } from '../../store/settings'
 import { LeftPanel } from './LeftPanel'
@@ -15,9 +15,16 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation()
   const appTheme = useTheme()
-  const { leftPanelCollapsed, leftPanelWidth, setLeftPanelCollapsed, setLeftPanelWidth } = useSettingsStore()
+  const {
+    leftPanelCollapsed,
+    leftPanelWidth,
+    setLeftPanelCollapsed,
+    setLeftPanelWidth,
+  } = useSettingsStore()
   const [isResizing, setIsResizing] = useState(false)
-  
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false)
+
   const MIN_WIDTH = 180
   const MAX_WIDTH = 400
   const COLLAPSE_THRESHOLD = 120
@@ -28,26 +35,57 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [])
 
   const handleMouseMove = useCallback(
+    // eslint-disable-next-line no-undef
     (e: MouseEvent) => {
       if (!isResizing) return
 
+      // eslint-disable-next-line no-undef
       requestAnimationFrame(() => {
         const newWidth = e.clientX
         if (newWidth < COLLAPSE_THRESHOLD) {
           setLeftPanelCollapsed(true)
         } else {
           setLeftPanelCollapsed(false)
-          const clampedWidth = Math.min(Math.max(newWidth, MIN_WIDTH), MAX_WIDTH)
+          const clampedWidth = Math.min(
+            Math.max(newWidth, MIN_WIDTH),
+            MAX_WIDTH,
+          )
           setLeftPanelWidth(clampedWidth)
         }
       })
     },
-    [isResizing, setLeftPanelCollapsed, setLeftPanelWidth]
+    [isResizing, setLeftPanelCollapsed, setLeftPanelWidth],
   )
 
   const handleMouseUp = useCallback(() => {
     setIsResizing(false)
   }, [])
+
+  // Check if screen is mobile size
+  useEffect(() => {
+    const checkMobile = () => {
+      const wasMobile = isMobile
+      const isNowMobile = window.innerWidth < 1024 // lg breakpoint
+      setIsMobile(isNowMobile)
+      
+      // Close mobile overlay when switching from mobile to desktop
+      if (wasMobile && !isNowMobile && mobileOverlayOpen) {
+        setMobileOverlayOpen(false)
+      }
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [isMobile, mobileOverlayOpen])
+
+  // Force collapse on mobile
+  useEffect(() => {
+    if (isMobile && !leftPanelCollapsed) {
+      setLeftPanelCollapsed(true)
+    }
+  }, [isMobile, leftPanelCollapsed, setLeftPanelCollapsed])
 
   useEffect(() => {
     if (isResizing) {
@@ -64,29 +102,13 @@ export function AppLayout({ children }: AppLayoutProps) {
       }
     }
   }, [isResizing, handleMouseMove, handleMouseUp])
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      {/* Mobile Header */}
-      <div
-        className="lg:hidden flex items-center justify-between p-4 border-b"
-        style={{ borderColor: appTheme.borderSecondary }}
-      >
-        <Button
-          type="text"
-          icon={<MenuOutlined />}
-          onClick={() => setMobileDrawerOpen(true)}
-        />
-        <span className="font-semibold" style={{ color: appTheme.textPrimary }}>
-          {t('app.title')}
-        </span>
-        <div className="w-8" />
-      </div>
 
       {/* Desktop Sidebar */}
       <Sider
-        width={leftPanelCollapsed ? 60 : leftPanelWidth}
+        width={isMobile ? (mobileOverlayOpen ? leftPanelWidth : 60) : (leftPanelCollapsed ? 60 : leftPanelWidth)}
         collapsible
         collapsed={false}
         trigger={null}
@@ -99,20 +121,38 @@ export function AppLayout({ children }: AppLayoutProps) {
           left: 0,
           top: 0,
           bottom: 0,
-          zIndex: 1000,
+          zIndex: isMobile && mobileOverlayOpen ? 1050 : 1000,
           backgroundColor: appTheme.sidebarBackground,
           borderRight: `1px solid ${appTheme.sidebarBorder}`,
           transition: isResizing ? 'none' : 'width 0.2s ease',
+          boxShadow: isMobile && mobileOverlayOpen ? '0 4px 12px rgba(0, 0, 0, 0.15)' : 'none',
         }}
-        className="hidden lg:block"
+        className="block"
       >
-        <LeftPanel />
+        <LeftPanel 
+          onItemClick={() => {
+            if (isMobile) {
+              setMobileOverlayOpen(false)
+            }
+          }}
+          isMobile={isMobile}
+          mobileOverlayOpen={mobileOverlayOpen}
+          setMobileOverlayOpen={setMobileOverlayOpen}
+        />
       </Sider>
 
-      {/* Resize Handle */}
-      {!leftPanelCollapsed && (
+      {/* Mobile Overlay Backdrop */}
+      {isMobile && mobileOverlayOpen && (
         <div
-          className="hidden lg:block fixed top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors duration-200 z-[1001]"
+          className="fixed inset-0 bg-black bg-opacity-50 z-[1040]"
+          onClick={() => setMobileOverlayOpen(false)}
+        />
+      )}
+
+      {/* Resize Handle */}
+      {!leftPanelCollapsed && !isMobile && (
+        <div
+          className="fixed top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors duration-200 z-[1001]"
           style={{
             left: `${leftPanelWidth - 2}px`,
             backgroundColor: isResizing ? appTheme.primary : 'transparent',
@@ -121,51 +161,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         />
       )}
 
-      {/* Mobile Drawer */}
-      {mobileDrawerOpen && (
-        <>
-          <div
-            className="lg:hidden fixed inset-0 z-40"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-            onClick={() => setMobileDrawerOpen(false)}
-          />
-          <div
-            className="lg:hidden fixed left-0 top-0 bottom-0 w-80 max-w-[80vw] z-50 transform transition-transform duration-300 ease-in-out"
-            style={{
-              backgroundColor: appTheme.surface,
-              transform: mobileDrawerOpen
-                ? 'translateX(0)'
-                : 'translateX(-100%)',
-            }}
-          >
-            <div
-              className="flex items-center justify-between p-4 border-b"
-              style={{ borderColor: appTheme.borderSecondary }}
-            >
-              <span
-                className="font-semibold"
-                style={{ color: appTheme.textPrimary }}
-              >
-                {t('app.title')}
-              </span>
-              <Button
-                type="text"
-                icon={<CloseOutlined />}
-                onClick={() => setMobileDrawerOpen(false)}
-              />
-            </div>
-            <LeftPanel onItemClick={() => setMobileDrawerOpen(false)} />
-          </div>
-        </>
-      )}
 
       {/* Main Content */}
       <Layout
         style={{
-          marginLeft: leftPanelCollapsed ? 60 : leftPanelWidth,
+          marginLeft: isMobile ? (mobileOverlayOpen ? 0 : 60) : (leftPanelCollapsed ? 60 : leftPanelWidth),
           transition: isResizing ? 'none' : 'margin-left 0.2s',
         }}
-        className="lg:ml-0 transition-all duration-200"
+        className="transition-all duration-200"
       >
         <Content
           className="m-0 p-0 min-h-72 flex flex-col"
