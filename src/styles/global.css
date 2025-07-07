@@ -22,3 +22,22 @@
 .code-preview {
   background-color: #1f1f1f;
 }
+
+/* Left sidebar button alignment */
+.ant-btn.justify-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 8px;
+}
+
+.ant-btn.justify-start > span:not(.anticon) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+
+.ant-btn.justify-start .anticon {
+  margin-right: 0 !important;
+}

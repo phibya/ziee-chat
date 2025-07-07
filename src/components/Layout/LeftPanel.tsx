@@ -1,16 +1,16 @@
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Button, Typography, Tooltip } from 'antd'
+import { Button, Tooltip, Typography } from 'antd'
 import {
-  PlusOutlined,
-  MessageOutlined,
-  FolderOutlined,
-  BlockOutlined,
-  SettingOutlined,
   AppstoreOutlined,
+  BlockOutlined,
   DatabaseOutlined,
+  FolderOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  MessageOutlined,
+  PlusOutlined,
+  SettingOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../../store'
 import { useSettingsStore } from '../../store/settings'
@@ -139,13 +139,11 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
           >
             <Button
               type={item.type === 'primary' ? 'primary' : 'text'}
-              icon={item.icon}
-              block
               onClick={() => {
                 item.onClick()
                 onItemClick?.()
               }}
-              className={`mb-1 ${leftPanelCollapsed ? 'justify-center' : 'justify-start'} h-9 border-none rounded-lg overflow-hidden`}
+              className={`mb-1 w-full ${leftPanelCollapsed ? 'justify-center' : 'justify-start text-left'} h-9 border-none rounded-lg overflow-hidden`}
               style={{
                 backgroundColor:
                   item.type === 'primary'
@@ -161,10 +159,9 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
                       : appTheme.sidebarText,
               }}
             >
+              <div>{item.icon}</div>
               {!leftPanelCollapsed && (
-                <span style={{ marginLeft: '8px', fontSize: '14px' }}>
-                  {item.label}
-                </span>
+                <div className={'flex-1 text-left pl-1'}>{item.label}</div>
               )}
             </Button>
           </Tooltip>
@@ -283,13 +280,11 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
           >
             <Button
               type="text"
-              icon={item.icon}
-              block
               onClick={() => {
                 item.onClick()
                 onItemClick?.()
               }}
-              className={`mb-1 ${leftPanelCollapsed ? 'justify-center' : 'justify-start'} h-9 border-none rounded-lg overflow-hidden`}
+              className={`mb-1 w-full ${leftPanelCollapsed ? 'justify-center' : 'justify-start text-left'} h-9 border-none rounded-lg overflow-hidden`}
               style={{
                 backgroundColor: item.active
                   ? appTheme.sidebarItemActive
@@ -297,8 +292,11 @@ export function LeftPanel({ onItemClick }: LeftPanelProps) {
                 color: item.active ? appTheme.primary : appTheme.sidebarText,
               }}
             >
+              <div>{item.icon}</div>
               {!leftPanelCollapsed && (
-                <span className="ml-2 text-sm">{item.label}</span>
+                <div className="text-sm text-left flex-1 pl-1">
+                  {item.label}
+                </div>
               )}
             </Button>
           </Tooltip>
