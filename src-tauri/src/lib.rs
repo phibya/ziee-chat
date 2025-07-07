@@ -1,4 +1,5 @@
 mod api;
+mod auth;
 mod database;
 
 use crate::api::app::methods::get_http_port;
@@ -190,6 +191,12 @@ pub fn get_available_port() -> u16 {
 fn create_rest_router() -> Router {
     Router::new()
         .route("/api/user/greet", post(api::user::methods::greet))
+        .route("/api/auth/init", get(api::auth::methods::check_init_status))
+        .route("/api/auth/setup", post(api::auth::methods::init_app))
+        .route("/api/auth/login", post(api::auth::methods::login))
+        .route("/api/auth/logout", post(api::auth::methods::logout))
+        .route("/api/auth/register", post(api::auth::methods::register))
+        .route("/api/auth/me", get(api::auth::methods::me))
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }))
         .layer(CorsLayer::permissive())
 }

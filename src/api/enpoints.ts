@@ -1,20 +1,82 @@
 // Define all API endpoints
 
 export const ApiEndpoints = {
-  'User.greet': '/api/user/greet',
-  'App.getHttpPort': '/get_http_port',
+  'User.greet': 'POST /api/user/greet',
+  'App.getHttpPort': 'GET /get_http_port',
+  'Auth.init': 'GET /api/auth/init',
+  'Auth.setup': 'POST /api/auth/setup',
+  'Auth.login': 'POST /api/auth/login',
+  'Auth.logout': 'POST /api/auth/logout',
+  'Auth.register': 'POST /api/auth/register',
+  'Auth.me': 'GET /api/auth/me',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
 export type ApiEndpointParameters = {
   'User.greet': { name: string }
   'App.getHttpPort': void
+  'Auth.init': void
+  'Auth.setup': CreateUserRequest
+  'Auth.login': LoginRequest
+  'Auth.logout': void
+  'Auth.register': CreateUserRequest
+  'Auth.me': void
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
 export type ApiEndpointResponses = {
   'User.greet': string
   'App.getHttpPort': number
+  'Auth.init': InitResponse
+  'Auth.setup': AuthResponse
+  'Auth.login': AuthResponse
+  'Auth.logout': void
+  'Auth.register': AuthResponse
+  'Auth.me': User
+}
+
+// Auth types
+export interface User {
+  id: string
+  username: string
+  emails: UserEmail[]
+  created_at: string
+  profile?: any
+  services: UserServices
+}
+
+export interface UserEmail {
+  address: string
+  verified: boolean
+}
+
+export interface UserServices {
+  facebook?: any
+  resume?: any
+  password?: any
+}
+
+export interface CreateUserRequest {
+  username: string
+  email: string
+  password: string
+  profile?: any
+}
+
+export interface LoginRequest {
+  username_or_email: string
+  password: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+  expires_at: string
+}
+
+export interface InitResponse {
+  needs_setup: boolean
+  is_desktop: boolean
 }
 
 // Type helpers

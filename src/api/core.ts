@@ -2,6 +2,17 @@ import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from './enpoints.ts'
 
 import { invoke } from '@tauri-apps/api/core'
 
+// Import getAuthToken function (avoiding circular import)
+const getAuthToken = () => {
+  // eslint-disable-next-line no-undef
+  const authData = localStorage.getItem('auth-storage')
+  if (authData) {
+    const parsed = JSON.parse(authData)
+    return parsed.state?.token || null
+  }
+  return null
+}
+
 //@ts-ignore
 export const isDesktopApp = !!window.__TAURI_INTERNALS__
 
@@ -38,11 +49,22 @@ export const callAsync = async <U extends ApiEndpointUrl>(
   let bUrl = await getBaseUrl()
 
   try {
-    const response = await fetch(`${bUrl}${endpointUrl}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+
+    // Add auth token if available
+    const token = getAuthToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const method = endpointUrl.startsWith('POST') ? 'POST' : 'GET'
+    const endpointPath = endpointUrl.replace(/^(POST|GET)\s+/, '')
+
+    const response = await fetch(`${bUrl}${endpointPath}`, {
+      method,
+      headers,
       body: params === undefined ? undefined : JSON.stringify(params),
     })
 

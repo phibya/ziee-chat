@@ -1,19 +1,22 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Button, Tooltip, Typography } from 'antd'
+import { Button, Dropdown, Tooltip, Typography } from 'antd'
 import {
   AppstoreOutlined,
   BlockOutlined,
   DatabaseOutlined,
   FolderOutlined,
+  LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
   PlusOutlined,
   SettingOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../../store'
 import { useSettingsStore } from '../../store/settings'
+import { useAuthStore } from '../../store/auth'
 import { useTheme } from '../../hooks/useTheme'
 
 const { Text } = Typography
@@ -38,6 +41,7 @@ export function LeftPanel({
   const { threads, currentThreadId, setCurrentThreadId, createThread } =
     useAppStore()
   const { leftPanelCollapsed, setLeftPanelCollapsed } = useSettingsStore()
+  const { user, logout, isDesktop } = useAuthStore()
 
   const handleNewChat = () => {
     const threadId = createThread(t('thread.newChat'))
@@ -342,6 +346,93 @@ export function LeftPanel({
           </Tooltip>
         ))}
       </div>
+
+      {/* User Profile Section */}
+      {user && (
+        <div
+          className="border-t pt-3 mt-3"
+          style={{ borderColor: appTheme.sidebarBorder }}
+        >
+          {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) ? (
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'profile',
+                    icon: <UserOutlined />,
+                    label: 'Profile',
+                    onClick: () => {
+                      // Navigate to profile page or open profile modal
+                      console.log('Profile clicked')
+                    },
+                  },
+                  ...(!isDesktop
+                    ? [
+                        {
+                          type: 'divider' as const,
+                        },
+                        {
+                          key: 'logout',
+                          icon: <LogoutOutlined />,
+                          label: 'Logout',
+                          onClick: async () => {
+                            await logout()
+                            onItemClick?.()
+                          },
+                        },
+                      ]
+                    : []),
+                ],
+              }}
+              placement="topLeft"
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+                className="w-full justify-start text-left h-10 border-none rounded-lg overflow-hidden"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: appTheme.sidebarText,
+                }}
+              >
+                <div className="flex items-center w-full">
+                  <div className="flex-shrink-0">
+                    <UserOutlined />
+                  </div>
+                  <div className="flex-1 text-left pl-2 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {user.username}
+                    </div>
+                    <div
+                      className="text-xs truncate"
+                      style={{ color: appTheme.sidebarTextSecondary }}
+                    >
+                      {user.emails[0]?.address}
+                    </div>
+                  </div>
+                </div>
+              </Button>
+            </Dropdown>
+          ) : (
+            <Tooltip
+              title={`${user.username} (${user.emails[0]?.address})`}
+              placement="right"
+              mouseEnterDelay={0.5}
+            >
+              <Button
+                type="text"
+                className="w-full justify-center h-10 border-none rounded-lg"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: appTheme.sidebarText,
+                }}
+              >
+                <UserOutlined />
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      )}
     </div>
   )
 }
