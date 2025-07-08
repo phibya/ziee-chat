@@ -328,6 +328,32 @@ fn create_rest_router() -> Router {
             put(api::configuration::methods::update_user_registration_status)
                 .layer(middleware::from_fn(api::middleware::config_user_registration_edit_middleware))
         )
+        // User settings routes
+        .route(
+            "/api/user/settings",
+            get(api::user_settings::methods::get_user_settings)
+                .layer(middleware::from_fn(api::middleware::settings_read_middleware))
+        )
+        .route(
+            "/api/user/settings",
+            post(api::user_settings::methods::set_user_setting)
+                .layer(middleware::from_fn(api::middleware::settings_edit_middleware))
+        )
+        .route(
+            "/api/user/settings/{key}",
+            get(api::user_settings::methods::get_user_setting)
+                .layer(middleware::from_fn(api::middleware::settings_read_middleware))
+        )
+        .route(
+            "/api/user/settings/{key}",
+            delete(api::user_settings::methods::delete_user_setting)
+                .layer(middleware::from_fn(api::middleware::settings_delete_middleware))
+        )
+        .route(
+            "/api/user/settings/all",
+            delete(api::user_settings::methods::delete_all_user_settings)
+                .layer(middleware::from_fn(api::middleware::settings_delete_middleware))
+        )
         .layer(middleware::from_fn(api::middleware::auth_middleware));
 
     // Combine public and protected routes

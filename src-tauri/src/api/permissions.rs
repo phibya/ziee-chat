@@ -40,6 +40,12 @@ pub mod permissions {
     // Profile permissions
     pub const PROFILE_EDIT: &str = "profile::edit";
     
+    // User settings permissions
+    pub const SETTINGS_READ: &str = "settings::read";
+    pub const SETTINGS_EDIT: &str = "settings::edit";
+    pub const SETTINGS_DELETE: &str = "settings::delete";
+    pub const SETTINGS_ALL: &str = "settings::*";
+    
     // Wildcard permissions
     pub const ALL: &str = "*";
 }
@@ -113,6 +119,11 @@ pub fn expand_wildcard_permission(wildcard: &str) -> Vec<&'static str> {
             permissions::GROUPS_DELETE,
             permissions::GROUPS_CREATE,
         ],
+        permissions::SETTINGS_ALL => vec![
+            permissions::SETTINGS_READ,
+            permissions::SETTINGS_EDIT,
+            permissions::SETTINGS_DELETE,
+        ],
         permissions::CONFIG_UPDATES_ALL => vec![
             permissions::CONFIG_UPDATES_READ,
             permissions::CONFIG_UPDATES_EDIT,
@@ -150,6 +161,9 @@ pub fn expand_wildcard_permission(wildcard: &str) -> Vec<&'static str> {
             permissions::CONFIG_FACTORY_RESET_EDIT,
             permissions::CHAT_USE,
             permissions::PROFILE_EDIT,
+            permissions::SETTINGS_READ,
+            permissions::SETTINGS_EDIT,
+            permissions::SETTINGS_DELETE,
         ],
         _ => vec![],
     }

@@ -19,7 +19,15 @@ import {
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
 } from './config.ts'
-import { UserGroupListResponse } from './userGroup.ts' // API endpoint definitions
+import { UserGroupListResponse } from './userGroup.ts'
+import {
+  UserSetting,
+  UserSettingRequest,
+  UserSettingsResponse,
+  UserSettingKeys,
+  SetUserSettingRequest,
+  GetUserSettingResponse,
+} from './userSettings'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -53,6 +61,12 @@ export const ApiEndpoints = {
   'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
   'Admin.updateUserRegistrationStatus':
     'PUT /api/admin/config/user-registration',
+  // User settings management
+  'UserSettings.getAll': 'GET /api/user/settings',
+  'UserSettings.get': 'GET /api/user/settings/{key}',
+  'UserSettings.set': 'POST /api/user/settings',
+  'UserSettings.delete': 'DELETE /api/user/settings/{key}',
+  'UserSettings.deleteAll': 'DELETE /api/user/settings/all',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -89,6 +103,12 @@ export type ApiEndpointParameters = {
   // Admin configuration management
   'Admin.getUserRegistrationStatus': void
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
+  // User settings management
+  'UserSettings.getAll': void
+  'UserSettings.get': { key: string }
+  'UserSettings.set': UserSettingRequest
+  'UserSettings.delete': { key: string }
+  'UserSettings.deleteAll': void
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -121,6 +141,12 @@ export type ApiEndpointResponses = {
   // Admin configuration management
   'Admin.getUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
+  // User settings management
+  'UserSettings.getAll': UserSettingsResponse
+  'UserSettings.get': UserSetting
+  'UserSettings.set': UserSetting
+  'UserSettings.delete': void
+  'UserSettings.deleteAll': { deleted: number }
 }
 
 // Type helpers

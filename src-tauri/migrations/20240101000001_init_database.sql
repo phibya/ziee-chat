@@ -141,7 +141,7 @@ INSERT INTO user_groups (name, description, permissions, is_active)
 VALUES (
     'user',
     'Default user group with basic permissions',
-    '["chat::use", "profile::edit"]',
+    '["chat::use", "profile::edit", "settings::read", "settings::edit", "settings::delete"]',
     TRUE
 );
 

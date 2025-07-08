@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { Layout, Spin } from 'antd'
 import { useAuthStore } from '../../store/auth'
+import { initializeUserSettings } from '../../store/userSettings'
 import { AuthPage } from './AuthPage'
 
 const { Content } = Layout
@@ -25,6 +26,15 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
       getCurrentUser()
     }
   }, [token])
+
+  useEffect(() => {
+    // Initialize user settings after authentication
+    if (isAuthenticated && !isLoading) {
+      initializeUserSettings().catch(error => {
+        console.error('Failed to initialize user settings:', error)
+      })
+    }
+  }, [isAuthenticated, isLoading])
 
   // Show loading spinner while checking auth status
   if (isLoading) {

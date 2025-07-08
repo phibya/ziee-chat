@@ -14,6 +14,17 @@ pub struct ConfigurationDb {
     pub updated_at: DateTime<Utc>,
 }
 
+// User settings table structure
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UserSettingDb {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub key: String,
+    pub value: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 // Database table structures (for direct DB operations)
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct UserDb {
@@ -160,6 +171,28 @@ pub struct LoginResponse {
     pub token: String,
     pub user: User,
     pub expires_at: DateTime<Utc>,
+}
+
+// User settings structures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSetting {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub key: String,
+    pub value: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSettingRequest {
+    pub key: String,
+    pub value: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSettingsResponse {
+    pub settings: Vec<UserSetting>,
 }
 
 // User group management structures

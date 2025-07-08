@@ -13,6 +13,7 @@ use crate::database::models::User;
 
 #[derive(Debug, Clone)]
 pub struct AuthenticatedUser {
+    pub user_id: uuid::Uuid,
     pub user: User,
 }
 
@@ -40,7 +41,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
     if is_desktop_app() {
         match auth_service.get_or_create_default_admin_user().await {
             Ok(user) => {
-                req.extensions_mut().insert(AuthenticatedUser { user });
+                req.extensions_mut().insert(AuthenticatedUser { user_id: user.id, user });
                 return Ok(next.run(req).await);
             }
             Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -50,7 +51,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
     // For web app, validate JWT token
     match auth_service.get_user_by_token(token).await {
         Ok(Some(user)) => {
-            req.extensions_mut().insert(AuthenticatedUser { user });
+            req.extensions_mut().insert(AuthenticatedUser { user_id: user.id, user });
             Ok(next.run(req).await)
         }
         Ok(None) => Err(StatusCode::UNAUTHORIZED),
@@ -291,6 +292,39 @@ pub async fn config_factory_reset_edit_middleware(req: Request, next: Next) -> R
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_FACTORY_RESET_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for settings::read permission
+pub async fn settings_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::SETTINGS_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for settings::edit permission
+pub async fn settings_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::SETTINGS_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for settings::delete permission
+pub async fn settings_delete_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::SETTINGS_DELETE) {
         return Err(StatusCode::FORBIDDEN);
     }
 

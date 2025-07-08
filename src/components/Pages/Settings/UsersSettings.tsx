@@ -38,6 +38,7 @@ import {
 } from '../../../types'
 import { ApiClient } from '../../../api/client.ts'
 import { Permission, usePermissions } from '../../../permissions'
+import { UserRegistrationSettings } from './UserRegistrationSettings'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -48,8 +49,6 @@ export function UsersSettings() {
   const [users, setUsers] = useState<User[]>([])
   const [groups, setGroups] = useState<UserGroup[]>([])
   const [loading, setLoading] = useState(false)
-  const [registrationEnabled, setRegistrationEnabled] = useState(true)
-  const [registrationLoading, setRegistrationLoading] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [passwordModalVisible, setPasswordModalVisible] = useState(false)
   const [groupsDrawerVisible, setGroupsDrawerVisible] = useState(false)
@@ -78,7 +77,6 @@ export function UsersSettings() {
     }
     fetchUsers()
     fetchGroups()
-    fetchRegistrationStatus()
   }, [canAccessUsers])
 
   const fetchUsers = async () => {
@@ -110,40 +108,6 @@ export function UsersSettings() {
       message.error(
         error instanceof Error ? error.message : 'Failed to fetch groups',
       )
-    }
-  }
-
-  const fetchRegistrationStatus = async () => {
-    try {
-      const response = await ApiClient.Admin.getUserRegistrationStatus()
-      setRegistrationEnabled(response.enabled)
-    } catch (error) {
-      message.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to fetch registration status',
-      )
-    }
-  }
-
-  const handleToggleRegistration = async (enabled: boolean) => {
-    setRegistrationLoading(true)
-    try {
-      await ApiClient.Admin.updateUserRegistrationStatus({ enabled })
-      setRegistrationEnabled(enabled)
-      message.success(
-        `User registration ${enabled ? 'enabled' : 'disabled'} successfully`,
-      )
-    } catch (error) {
-      message.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to update registration status',
-      )
-      // Revert the switch state on error
-      setRegistrationEnabled(!enabled)
-    } finally {
-      setRegistrationLoading(false)
     }
   }
 
@@ -418,26 +382,7 @@ export function UsersSettings() {
 
       {/* User Registration Settings */}
       <Flex vertical className="gap-6">
-        {canEditUsers && (
-          <Card title="User Registration" className="mb-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <Text strong>Enable User Registration</Text>
-                <div>
-                  <Text type="secondary">
-                    Allow new users to register for accounts
-                  </Text>
-                </div>
-              </div>
-              <Switch
-                checked={registrationEnabled}
-                loading={registrationLoading}
-                onChange={handleToggleRegistration}
-                size="default"
-              />
-            </div>
-          </Card>
-        )}
+        <UserRegistrationSettings />
 
         <Card>
           <Table
