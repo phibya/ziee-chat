@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { CreateUserRequest, LoginRequest, User } from '../api/enpoints'
+import type { CreateUserRequest, LoginRequest, User } from '../types'
 import { ApiClient } from '../api/client.ts'
 
 interface AuthState {

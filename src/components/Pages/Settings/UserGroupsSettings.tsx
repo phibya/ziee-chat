@@ -32,9 +32,9 @@ import {
   UpdateUserGroupRequest,
   User,
   UserGroup,
-} from '../../../api/enpoints'
+} from '../../../types'
 import { ApiClient } from '../../../api/client.ts'
-import { PermissionKeys, usePermissions } from '../../../permissions'
+import { Permission, usePermissions } from '../../../permissions'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -54,10 +54,10 @@ export function UserGroupsSettings() {
   const [editForm] = Form.useForm()
 
   // Check permissions
-  const canReadGroups = hasPermission(PermissionKeys.GROUPS_READ)
-  const canEditGroups = hasPermission(PermissionKeys.GROUPS_EDIT)
-  const canCreateGroups = hasPermission(PermissionKeys.GROUPS_CREATE)
-  const canDeleteGroups = hasPermission(PermissionKeys.GROUPS_DELETE)
+  const canReadGroups = hasPermission(Permission.groups.read)
+  const canEditGroups = hasPermission(Permission.groups.edit)
+  const canCreateGroups = hasPermission(Permission.groups.create)
+  const canDeleteGroups = hasPermission(Permission.groups.delete)
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
@@ -292,7 +292,7 @@ export function UserGroupsSettings() {
       <Result
         icon={<ExclamationCircleOutlined />}
         title="Access Denied"
-        subTitle={`You do not have permission to view user groups. Contact your administrator to request ${PermissionKeys.GROUPS_READ} permission.`}
+        subTitle={`You do not have permission to view user groups. Contact your administrator to request ${Permission.groups.read} permission.`}
         extra={
           <Button type="primary" onClick={() => window.history.back()}>
             Go Back

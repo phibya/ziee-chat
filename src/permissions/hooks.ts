@@ -5,22 +5,22 @@
 import { useMemo } from 'react'
 import { useAuthStore } from '../store/auth'
 import {
-  hasPermission,
-  hasAnyPermission,
-  hasAllPermissions,
-  getUserEffectivePermissions,
-  expandWildcardPermission,
-  isWildcardPermission,
-  getPermissionDisplayName,
-  getPermissionDescription,
-  groupPermissionsByCategory,
-  getAllPermissionsGrouped,
   canPerformAction,
-  getMissingPermissions,
+  expandWildcardPermission,
   formatPermissionsForDisplay,
+  getAllPermissionsGrouped,
+  getMissingPermissions,
+  getPermissionDescription,
+  getPermissionDisplayName,
+  getUserEffectivePermissions,
+  groupPermissionsByCategory,
+  hasAllPermissions,
+  hasAnyPermission,
+  hasPermission,
+  isWildcardPermission,
 } from './utils'
 import type { PermissionKey } from './constants'
-import type { User, PermissionContext } from './types'
+import type { PermissionContext } from './types'
 
 /**
  * Main permission hook providing all permission-related functionality
@@ -36,9 +36,12 @@ export function usePermissions(): PermissionContext {
   return {
     user,
     effectivePermissions,
-    hasPermission: (permission: PermissionKey) => hasPermission(user, permission),
-    hasAnyPermission: (permissions: PermissionKey[]) => hasAnyPermission(user, permissions),
-    hasAllPermissions: (permissions: PermissionKey[]) => hasAllPermissions(user, permissions),
+    hasPermission: (permission: PermissionKey) =>
+      hasPermission(user, permission),
+    hasAnyPermission: (permissions: PermissionKey[]) =>
+      hasAnyPermission(user, permissions),
+    hasAllPermissions: (permissions: PermissionKey[]) =>
+      hasAllPermissions(user, permissions),
   }
 }
 
@@ -55,10 +58,7 @@ export function useHasPermission(permission: PermissionKey): boolean {
  */
 export function useHasAnyPermission(permissions: PermissionKey[]): boolean {
   const user = useAuthStore(state => state.user)
-  return useMemo(
-    () => hasAnyPermission(user, permissions),
-    [user, permissions],
-  )
+  return useMemo(() => hasAnyPermission(user, permissions), [user, permissions])
 }
 
 /**
@@ -144,17 +144,25 @@ export function useAdminPermissions() {
     canEditUsers: hasPermission('users::edit'),
     canCreateUsers: hasPermission('users::create'),
     canDeleteUsers: hasPermission('users::delete'),
-    canManageUsers: hasAnyPermission(['users::edit', 'users::create', 'users::delete']),
-    
+    canManageUsers: hasAnyPermission([
+      'users::edit',
+      'users::create',
+      'users::delete',
+    ]),
+
     canViewGroups: hasPermission('groups::read'),
     canEditGroups: hasPermission('groups::edit'),
     canCreateGroups: hasPermission('groups::create'),
     canDeleteGroups: hasPermission('groups::delete'),
-    canManageGroups: hasAnyPermission(['groups::edit', 'groups::create', 'groups::delete']),
-    
+    canManageGroups: hasAnyPermission([
+      'groups::edit',
+      'groups::create',
+      'groups::delete',
+    ]),
+
     canViewConfig: hasPermission('config::user-registration::read'),
     canEditConfig: hasPermission('config::user-registration::edit'),
-    
+
     isAdmin: hasPermission('*'),
   }
 }
@@ -175,25 +183,32 @@ export function useUserPermissions() {
  * Hook for conditional rendering based on permissions
  */
 export function usePermissionGuard() {
-  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions()
+  const { hasPermission, hasAnyPermission, hasAllPermissions } =
+    usePermissions()
 
   return {
     /**
      * Render children only if user has the required permission
      */
-    requirePermission: (permission: PermissionKey, children: React.ReactNode) =>
-      hasPermission(permission) ? children : null,
+    requirePermission: (
+      permission: PermissionKey,
+      children: React.ReactNode,
+    ) => (hasPermission(permission) ? children : null),
 
     /**
      * Render children only if user has any of the required permissions
      */
-    requireAnyPermission: (permissions: PermissionKey[], children: React.ReactNode) =>
-      hasAnyPermission(permissions) ? children : null,
+    requireAnyPermission: (
+      permissions: PermissionKey[],
+      children: React.ReactNode,
+    ) => (hasAnyPermission(permissions) ? children : null),
 
     /**
      * Render children only if user has all of the required permissions
      */
-    requireAllPermissions: (permissions: PermissionKey[], children: React.ReactNode) =>
-      hasAllPermissions(permissions) ? children : null,
+    requireAllPermissions: (
+      permissions: PermissionKey[],
+      children: React.ReactNode,
+    ) => (hasAllPermissions(permissions) ? children : null),
   }
 }

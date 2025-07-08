@@ -13,7 +13,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { isDesktopApp } from '../../api/core'
-import { PermissionKeys, usePermissions } from '../../permissions'
+import { Permission, usePermissions } from '../../permissions'
 
 const { Title } = Typography
 const { Sider, Content } = Layout
@@ -94,10 +94,8 @@ export function SettingsPage() {
         const items = []
 
         // Check if user has any admin permissions
-        const hasUserManagement = hasPermission(PermissionKeys.USERS_READ)
-        const hasGroupManagement = hasPermission(
-          PermissionKeys.GROUPS_READ,
-        )
+        const hasUserManagement = hasPermission(Permission.users.read)
+        const hasGroupManagement = hasPermission(Permission.groups.read)
 
         if (hasUserManagement || hasGroupManagement) {
           items.push({

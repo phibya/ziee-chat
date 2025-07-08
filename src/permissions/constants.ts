@@ -3,119 +3,106 @@
  * This file contains all permission constants used throughout the application
  */
 
-// AWS-style permissions matching server-side implementation
-export const PermissionKeys = {
+// The original permission description object
+export const PermissionDescription = {
+  '*': 'Grants all permissions in the system',
   // User management permissions
-  USERS_READ: 'users::read',
-  USERS_EDIT: 'users::edit',
-  USERS_DELETE: 'users::delete',
-  USERS_CREATE: 'users::create',
-  USERS_ALL: 'users::*',
-  
+  'users::*': 'Grants all user management permissions',
+  'users::read': 'Allows viewing user lists and user details',
+  'users::edit':
+    'Allows editing user information, resetting passwords, and managing user status',
+  'users::delete': 'Allows deleting user accounts',
+  'users::create': 'Allows creating new user accounts',
   // Group management permissions
-  GROUPS_READ: 'groups::read',
-  GROUPS_EDIT: 'groups::edit',
-  GROUPS_DELETE: 'groups::delete',
-  GROUPS_CREATE: 'groups::create',
-  GROUPS_ALL: 'groups::*',
-  
-  // Fine-grained configuration permissions
-  CONFIG_USER_REGISTRATION_READ: 'config::user-registration::read',
-  CONFIG_USER_REGISTRATION_EDIT: 'config::user-registration::edit',
-  
+  'groups::*': 'Grants all group management permissions',
+  'groups::read': 'Allows viewing group lists and group details',
+  'groups::edit':
+    'Allows editing group information and managing group memberships',
+  'groups::delete': 'Allows deleting user groups',
+  'groups::create': 'Allows creating new user groups',
+  // Configuration permissions
+  'config::user-registration::*':
+    'Grants all user registration configuration permissions',
+  'config::user-registration::read':
+    'Allows viewing user registration settings',
+  'config::user-registration::edit':
+    'Allows modifying user registration settings',
   // Chat permissions
-  CHAT_USE: 'chat::use',
-  
+  'chat::use': 'Allows using chat functionality',
   // Profile permissions
-  PROFILE_EDIT: 'profile::edit',
-  
-  // Wildcard permissions
-  ALL: '*',
-} as const
+  'profile::edit': 'Allows editing own profile information',
+} as const // 'as const' is important for TypeScript to infer literal types
+export const PermissionKeys = Object.keys(
+  PermissionDescription,
+) as Array<PermissionKey>
 
-export type PermissionKey = typeof PermissionKeys[keyof typeof PermissionKeys]
+// A union of all the keys from PermissionDescription
+export type PermissionKey = keyof typeof PermissionDescription
+
+// Utility type to convert kebab-case strings to camelCase
+type KebabToCamel<S extends string> = S extends `${infer T}-${infer U}`
+  ? `${T}${Capitalize<KebabToCamel<U>>}`
+  : S
+
+// Utility type to transform a single part of a path (e.g., 'user-registration' -> 'userRegistration', '*' -> 'all')
+type TransformPathPart<T extends string> = T extends '*'
+  ? 'all'
+  : KebabToCamel<T>
+
+// Recursively builds a nested object type from a permission string (e.g., 'a::b::c' -> { a: { b: { c: 'a::b::c' } } })
+type BuildPath<
+  T extends string,
+  TOriginal extends string = T,
+> = T extends `${infer THead}::${infer TTail}`
+  ? { readonly [K in TransformPathPart<THead>]: BuildPath<TTail, TOriginal> }
+  : { readonly [K in TransformPathPart<T>]: TOriginal }
+
+// Utility type to merge a union of objects into a single intersection (e.g., {a:1}|{b:2} -> {a:1}&{b:2})
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I,
+) => void
+  ? I
+  : never
+
+// The final, deeply nested Permission type with full IntelliSense support.
+// It maps over each permission key, builds its path, and then merges all paths together.
+export type PermissionType = UnionToIntersection<
+  { [K in PermissionKey]: BuildPath<K> }[PermissionKey]
+>
 
 /**
- * Permission categories for grouping and organization
+ * Creates a deeply nested, dot-accessible object from the PermissionDescription.
+ * The resulting object is fully typed by `PermissionType` for IntelliSense.
  */
-export const PermissionCategories = {
-  USERS: 'users',
-  GROUPS: 'groups',
-  CONFIG: 'config',
-  CHAT: 'chat',
-  PROFILE: 'profile',
-} as const
+function createPermissionsObject(
+  description: Record<string, string>,
+): PermissionType {
+  const permissions: any = {}
 
-/**
- * Permission display names for UI
- */
-export const PermissionDisplayNames: Record<PermissionKey, string> = {
-  [PermissionKeys.USERS_READ]: 'View Users',
-  [PermissionKeys.USERS_EDIT]: 'Edit Users',
-  [PermissionKeys.USERS_DELETE]: 'Delete Users',
-  [PermissionKeys.USERS_CREATE]: 'Create Users',
-  [PermissionKeys.USERS_ALL]: 'All User Permissions',
-  [PermissionKeys.GROUPS_READ]: 'View Groups',
-  [PermissionKeys.GROUPS_EDIT]: 'Edit Groups',
-  [PermissionKeys.GROUPS_DELETE]: 'Delete Groups',
-  [PermissionKeys.GROUPS_CREATE]: 'Create Groups',
-  [PermissionKeys.GROUPS_ALL]: 'All Group Permissions',
-  [PermissionKeys.CONFIG_USER_REGISTRATION_READ]: 'View Registration Settings',
-  [PermissionKeys.CONFIG_USER_REGISTRATION_EDIT]: 'Edit Registration Settings',
-  [PermissionKeys.CHAT_USE]: 'Use Chat',
-  [PermissionKeys.PROFILE_EDIT]: 'Edit Profile',
-  [PermissionKeys.ALL]: 'All Permissions',
+  const kebabToCamel = (s: string): string =>
+    s.replace(/-./g, x => x[1].toUpperCase())
+
+  for (const key in description) {
+    let currentLevel = permissions
+    const parts = key.split('::')
+
+    parts.forEach((part, index) => {
+      // Transform part name: '*' -> 'all', 'kebab-case' -> 'camelCase'
+      const transformedPart = part === '*' ? 'all' : kebabToCamel(part)
+
+      // If it's the last part, assign the original key as the value
+      if (index === parts.length - 1) {
+        currentLevel[transformedPart] = key
+      } else {
+        // Otherwise, traverse deeper, creating new objects if they don't exist
+        if (!currentLevel[transformedPart]) {
+          currentLevel[transformedPart] = {}
+        }
+        currentLevel = currentLevel[transformedPart]
+      }
+    })
+  }
+  return permissions as PermissionType
 }
 
-/**
- * Permission descriptions for tooltips and help text
- */
-export const PermissionDescriptions: Record<PermissionKey, string> = {
-  [PermissionKeys.USERS_READ]: 'Allows viewing user lists and user details',
-  [PermissionKeys.USERS_EDIT]: 'Allows editing user information, resetting passwords, and managing user status',
-  [PermissionKeys.USERS_DELETE]: 'Allows deleting user accounts',
-  [PermissionKeys.USERS_CREATE]: 'Allows creating new user accounts',
-  [PermissionKeys.USERS_ALL]: 'Grants all user management permissions',
-  [PermissionKeys.GROUPS_READ]: 'Allows viewing group lists and group details',
-  [PermissionKeys.GROUPS_EDIT]: 'Allows editing group information and managing group memberships',
-  [PermissionKeys.GROUPS_DELETE]: 'Allows deleting user groups',
-  [PermissionKeys.GROUPS_CREATE]: 'Allows creating new user groups',
-  [PermissionKeys.GROUPS_ALL]: 'Grants all group management permissions',
-  [PermissionKeys.CONFIG_USER_REGISTRATION_READ]: 'Allows viewing user registration settings',
-  [PermissionKeys.CONFIG_USER_REGISTRATION_EDIT]: 'Allows modifying user registration settings',
-  [PermissionKeys.CHAT_USE]: 'Allows using chat functionality',
-  [PermissionKeys.PROFILE_EDIT]: 'Allows editing own profile information',
-  [PermissionKeys.ALL]: 'Grants all permissions in the system',
-}
-
-/**
- * Wildcard permission mappings
- */
-export const WildcardPermissions: Record<string, PermissionKey[]> = {
-  [PermissionKeys.USERS_ALL]: [
-    PermissionKeys.USERS_READ,
-    PermissionKeys.USERS_EDIT,
-    PermissionKeys.USERS_DELETE,
-    PermissionKeys.USERS_CREATE,
-  ],
-  [PermissionKeys.GROUPS_ALL]: [
-    PermissionKeys.GROUPS_READ,
-    PermissionKeys.GROUPS_EDIT,
-    PermissionKeys.GROUPS_DELETE,
-    PermissionKeys.GROUPS_CREATE,
-  ],
-  [PermissionKeys.ALL]: [
-    PermissionKeys.USERS_READ,
-    PermissionKeys.USERS_EDIT,
-    PermissionKeys.USERS_DELETE,
-    PermissionKeys.USERS_CREATE,
-    PermissionKeys.GROUPS_READ,
-    PermissionKeys.GROUPS_EDIT,
-    PermissionKeys.GROUPS_DELETE,
-    PermissionKeys.GROUPS_CREATE,
-    PermissionKeys.CONFIG_USER_REGISTRATION_READ,
-    PermissionKeys.CONFIG_USER_REGISTRATION_EDIT,
-    PermissionKeys.CHAT_USE,
-    PermissionKeys.PROFILE_EDIT,
-  ],
-}
+export const Permission = createPermissionsObject(PermissionDescription)

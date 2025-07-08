@@ -1,4 +1,4 @@
-import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from './enpoints.ts'
+import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from '../types'
 
 import { invoke } from '@tauri-apps/api/core'
 

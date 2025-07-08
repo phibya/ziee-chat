@@ -2,15 +2,13 @@
  * Permission utility functions
  */
 
-import { 
-  PermissionKeys, 
-  PermissionCategories, 
-  PermissionDisplayNames, 
-  PermissionDescriptions,
-  WildcardPermissions,
-  type PermissionKey 
-} from './constants'
-import type { User, UserGroup } from './types'
+import { User, UserGroup } from '../types'
+import {
+  Permission,
+  PermissionDescription,
+  PermissionKey,
+  PermissionKeys,
+} from './constants.ts'
 
 /**
  * Check if a user has a specific permission based on their group memberships
@@ -35,7 +33,7 @@ export function hasPermission(
     }
 
     // Check for global wildcard
-    if (group.permissions.includes(PermissionKeys.ALL)) {
+    if (group.permissions.includes(Permission.all)) {
       return true
     }
 
@@ -55,9 +53,10 @@ export function hasPermission(
 /**
  * Extract the category from a permission string (e.g., "users::read" -> "users")
  */
-export function getPermissionCategory(permission: PermissionKey): string | null {
-  const parts = permission.split('::')
-  return parts.length > 1 ? parts[0] : null
+export function getPermissionCategory(
+  permission: PermissionKey,
+): string | null {
+  return permission.replace(/::[^:]*$/, '') || null
 }
 
 /**
@@ -86,7 +85,22 @@ export function hasAllPermissions(
 export function expandWildcardPermission(
   wildcard: PermissionKey,
 ): PermissionKey[] {
-  return WildcardPermissions[wildcard] || []
+  if (!isWildcardPermission(wildcard)) {
+    return []
+  }
+  // Handle global wildcard
+  if (wildcard === Permission.all) {
+    return PermissionKeys
+  }
+  // Handle category wildcards (e.g., "users::*")
+  const category = getPermissionCategory(wildcard)
+  if (!category) {
+    return []
+  }
+
+  return PermissionKeys.filter(permission =>
+    permission.startsWith(category + '::'),
+  )
 }
 
 /**
@@ -125,21 +139,21 @@ export function getUserEffectivePermissions(
  * Check if a permission is a wildcard permission
  */
 export function isWildcardPermission(permission: PermissionKey): boolean {
-  return permission === PermissionKeys.ALL || permission.endsWith('::*')
+  return permission === Permission.all || permission.endsWith('::*')
 }
 
 /**
  * Get the display name for a permission
  */
 export function getPermissionDisplayName(permission: PermissionKey): string {
-  return PermissionDisplayNames[permission] || permission
+  return PermissionDescription[permission] || permission
 }
 
 /**
  * Get the description for a permission
  */
 export function getPermissionDescription(permission: PermissionKey): string {
-  return PermissionDescriptions[permission] || ''
+  return PermissionDescription[permission] || ''
 }
 
 /**
@@ -172,16 +186,18 @@ export function getAllPermissionsGrouped(): Record<string, PermissionKey[]> {
 /**
  * Validate if a permission string is valid
  */
-export function isValidPermission(permission: string): permission is PermissionKey {
-  return Object.values(PermissionKeys).includes(permission as PermissionKey)
+export function isValidPermission(
+  permission: string,
+): permission is PermissionKey {
+  return PermissionKeys.includes(permission as PermissionKey)
 }
 
 /**
  * Get permissions for a specific category
  */
 export function getPermissionsForCategory(category: string): PermissionKey[] {
-  return Object.values(PermissionKeys).filter(permission => 
-    getPermissionCategory(permission) === category
+  return Object.values(PermissionKeys).filter(
+    permission => getPermissionCategory(permission) === category,
   )
 }
 
@@ -206,8 +222,8 @@ export function getMissingPermissions(
   user: User | null,
   requiredPermissions: PermissionKey[],
 ): PermissionKey[] {
-  return requiredPermissions.filter(permission => 
-    !hasPermission(user, permission)
+  return requiredPermissions.filter(
+    permission => !hasPermission(user, permission),
   )
 }
 
@@ -216,7 +232,12 @@ export function getMissingPermissions(
  */
 export function formatPermissionsForDisplay(
   permissions: PermissionKey[],
-): Array<{ key: PermissionKey; name: string; description: string; category: string }> {
+): Array<{
+  key: PermissionKey
+  name: string
+  description: string
+  category: string
+}> {
   return permissions.map(permission => ({
     key: permission,
     name: getPermissionDisplayName(permission),

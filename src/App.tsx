@@ -28,7 +28,7 @@ import {
   UsersSettings,
 } from './components/Pages/Settings'
 import { useSettingsStore } from './store/settings'
-import { PermissionKeys, usePermissions } from './permissions'
+import { Permission, usePermissions } from './permissions'
 import { isDesktopApp } from './api/core'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
@@ -75,17 +75,12 @@ function App() {
                 />
                 <Route path="https-proxy" element={<HttpsProxySettings />} />
                 <Route path="extensions" element={<ExtensionsSettings />} />
-                {!isDesktopApp &&
-                  hasPermission(PermissionKeys.USERS_READ) && (
-                    <Route path="users" element={<UsersSettings />} />
-                  )}
-                {!isDesktopApp &&
-                  hasPermission(PermissionKeys.GROUPS_READ) && (
-                    <Route
-                      path="user-groups"
-                      element={<UserGroupsSettings />}
-                    />
-                  )}
+                {!isDesktopApp && hasPermission(Permission.users.read) && (
+                  <Route path="users" element={<UsersSettings />} />
+                )}
+                {!isDesktopApp && hasPermission(Permission.groups.read) && (
+                  <Route path="user-groups" element={<UserGroupsSettings />} />
+                )}
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

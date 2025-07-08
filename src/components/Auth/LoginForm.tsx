@@ -2,7 +2,7 @@ import React from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../store/auth'
-import type { LoginRequest } from '../../api/enpoints'
+import type { LoginRequest } from '../../types'
 
 const { Title, Text } = Typography
 

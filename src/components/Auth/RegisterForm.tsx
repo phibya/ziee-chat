@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../store/auth'
-import type { CreateUserRequest } from '../../api/enpoints'
+import type { CreateUserRequest } from '../../types'
 import { ApiClient } from '../../api/client'
 
 const { Title, Text } = Typography

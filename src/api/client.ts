@@ -4,7 +4,7 @@ import {
   ApiEndpointParameters,
   ApiEndpointResponses,
   ApiEndpoint,
-} from './enpoints'
+} from '../types'
 
 // Helper types for automatic namespace/method extraction
 type ExtractNamespace<T extends string> = T extends `${infer N}.${string}`

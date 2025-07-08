@@ -35,9 +35,9 @@ import {
   UpdateUserRequest,
   User,
   UserGroup,
-} from '../../../api/enpoints'
+} from '../../../types'
 import { ApiClient } from '../../../api/client.ts'
-import { PermissionKeys, usePermissions } from '../../../permissions'
+import { Permission, usePermissions } from '../../../permissions'
 
 const { Title, Text } = Typography
 const { Option } = Select
@@ -60,11 +60,9 @@ export function UsersSettings() {
   const [assignGroupForm] = Form.useForm()
 
   // Check permissions
-  const canReadUsers = hasPermission(PermissionKeys.USERS_READ)
-  const canEditUsers = hasPermission(PermissionKeys.USERS_EDIT)
-  const canCreateUsers = hasPermission(PermissionKeys.USERS_CREATE)
-  const canDeleteUsers = hasPermission(PermissionKeys.USERS_DELETE)
-  
+  const canReadUsers = hasPermission(Permission.users.read)
+  const canEditUsers = hasPermission(Permission.users.edit)
+
   // User needs at least read permission to access this page
   const canAccessUsers = canReadUsers
 
@@ -402,7 +400,7 @@ export function UsersSettings() {
       <Result
         icon={<ExclamationCircleOutlined />}
         title="Access Denied"
-        subTitle={`You do not have permission to access user management. Contact your administrator to request ${PermissionKeys.USERS_READ} permission.`}
+        subTitle={`You do not have permission to access user management. Contact your administrator to request ${Permission.users.read} permission.`}
         extra={
           <Button type="primary" onClick={() => window.history.back()}>
             Go Back
