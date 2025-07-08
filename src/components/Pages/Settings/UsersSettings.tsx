@@ -61,7 +61,13 @@ export function UsersSettings() {
   const [assignGroupForm] = Form.useForm()
 
   // Check permissions
-  const canManageUsers = hasPermission(PermissionKeys.user_management)
+  const canReadUsers = hasPermission(PermissionKeys.USERS_READ)
+  const canEditUsers = hasPermission(PermissionKeys.USERS_EDIT)
+  const canCreateUsers = hasPermission(PermissionKeys.USERS_CREATE)
+  const canDeleteUsers = hasPermission(PermissionKeys.USERS_DELETE)
+  
+  // User needs at least read permission to access this page
+  const canAccessUsers = canReadUsers
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
@@ -69,14 +75,14 @@ export function UsersSettings() {
       message.warning('User management is not available in desktop mode')
       return
     }
-    if (!canManageUsers) {
-      message.warning('You do not have permission to manage users')
+    if (!canAccessUsers) {
+      message.warning('You do not have permission to access user management')
       return
     }
     fetchUsers()
     fetchGroups()
     fetchRegistrationStatus()
-  }, [canManageUsers])
+  }, [canAccessUsers])
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -335,37 +341,45 @@ export function UsersSettings() {
       key: 'actions',
       render: (_, record: User) => (
         <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          >
-            Edit
-          </Button>
-          <Button
-            type="link"
-            icon={<LockOutlined />}
-            onClick={() => openPasswordModal(record)}
-          >
-            Reset Password
-          </Button>
-          <Button
-            type="link"
-            icon={<TeamOutlined />}
-            onClick={() => openGroupsDrawer(record)}
-          >
-            Groups
-          </Button>
-          <Popconfirm
-            title={`${record.is_active ? 'Deactivate' : 'Activate'} this user?`}
-            onConfirm={() => handleToggleActive(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button type="link" danger={record.is_active}>
-              {record.is_active ? 'Deactivate' : 'Activate'}
+          {canEditUsers && (
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            >
+              Edit
             </Button>
-          </Popconfirm>
+          )}
+          {canEditUsers && (
+            <Button
+              type="link"
+              icon={<LockOutlined />}
+              onClick={() => openPasswordModal(record)}
+            >
+              Reset Password
+            </Button>
+          )}
+          {canReadUsers && (
+            <Button
+              type="link"
+              icon={<TeamOutlined />}
+              onClick={() => openGroupsDrawer(record)}
+            >
+              Groups
+            </Button>
+          )}
+          {canEditUsers && (
+            <Popconfirm
+              title={`${record.is_active ? 'Deactivate' : 'Activate'} this user?`}
+              onConfirm={() => handleToggleActive(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button type="link" danger={record.is_active}>
+                {record.is_active ? 'Deactivate' : 'Activate'}
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -384,12 +398,12 @@ export function UsersSettings() {
     )
   }
 
-  if (!canManageUsers) {
+  if (!canAccessUsers) {
     return (
       <Result
         icon={<ExclamationCircleOutlined />}
         title="Access Denied"
-        subTitle={`You do not have permission to access user management. Contact your administrator to request ${PermissionKeys.user_management} permission.`}
+        subTitle={`You do not have permission to access user management. Contact your administrator to request ${PermissionKeys.USERS_READ} permission.`}
         extra={
           <Button type="primary" onClick={() => window.history.back()}>
             Go Back
@@ -407,24 +421,26 @@ export function UsersSettings() {
 
       {/* User Registration Settings */}
       <Flex vertical className="gap-6">
-        <Card title="User Registration" className="mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <Text strong>Enable User Registration</Text>
+        {canEditUsers && (
+          <Card title="User Registration" className="mb-6">
+            <div className="flex justify-between items-center">
               <div>
-                <Text type="secondary">
-                  Allow new users to register for accounts
-                </Text>
+                <Text strong>Enable User Registration</Text>
+                <div>
+                  <Text type="secondary">
+                    Allow new users to register for accounts
+                  </Text>
+                </div>
               </div>
+              <Switch
+                checked={registrationEnabled}
+                loading={registrationLoading}
+                onChange={handleToggleRegistration}
+                size="default"
+              />
             </div>
-            <Switch
-              checked={registrationEnabled}
-              loading={registrationLoading}
-              onChange={handleToggleRegistration}
-              size="default"
-            />
-          </div>
-        </Card>
+          </Card>
+        )}
 
         <Card>
           <Table
@@ -586,16 +602,18 @@ export function UsersSettings() {
         open={groupsDrawerVisible}
         width={400}
         extra={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setGroupsDrawerVisible(false)
-              openAssignGroupModal(selectedUser!)
-            }}
-          >
-            Assign Group
-          </Button>
+          canEditUsers && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setGroupsDrawerVisible(false)
+                openAssignGroupModal(selectedUser!)
+              }}
+            >
+              Assign Group
+            </Button>
+          )
         }
       >
         <List
@@ -603,20 +621,22 @@ export function UsersSettings() {
           renderItem={group => (
             <List.Item
               actions={[
-                <Popconfirm
-                  key="remove"
-                  title="Remove user from this group?"
-                  onConfirm={() =>
-                    handleRemoveFromGroup(selectedUser!.id, group.id)
-                  }
-                  okText="Yes"
-                  cancelText="No"
-                >
-                  <Button type="link" danger size="small">
-                    Remove
-                  </Button>
-                </Popconfirm>,
-              ]}
+                canEditUsers && (
+                  <Popconfirm
+                    key="remove"
+                    title="Remove user from this group?"
+                    onConfirm={() =>
+                      handleRemoveFromGroup(selectedUser!.id, group.id)
+                    }
+                    okText="Yes"
+                    cancelText="No"
+                  >
+                    <Button type="link" danger size="small">
+                      Remove
+                    </Button>
+                  </Popconfirm>
+                ),
+              ].filter(Boolean)}
             >
               <List.Item.Meta
                 avatar={<TeamOutlined />}

@@ -95,9 +95,9 @@ export function SettingsPage() {
         const items = []
 
         // Check if user has any admin permissions
-        const hasUserManagement = hasPermission(PermissionKeys.user_management)
+        const hasUserManagement = hasPermission(PermissionKeys.USERS_READ)
         const hasGroupManagement = hasPermission(
-          PermissionKeys.group_management,
+          PermissionKeys.GROUPS_READ,
         )
 
         if (hasUserManagement || hasGroupManagement) {

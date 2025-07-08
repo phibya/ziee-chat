@@ -55,7 +55,10 @@ export function UserGroupsSettings() {
   const [editForm] = Form.useForm()
 
   // Check permissions
-  const canManageGroups = hasPermission(PermissionKeys.group_management)
+  const canReadGroups = hasPermission(PermissionKeys.GROUPS_READ)
+  const canEditGroups = hasPermission(PermissionKeys.GROUPS_EDIT)
+  const canCreateGroups = hasPermission(PermissionKeys.GROUPS_CREATE)
+  const canDeleteGroups = hasPermission(PermissionKeys.GROUPS_DELETE)
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
@@ -63,12 +66,12 @@ export function UserGroupsSettings() {
       message.warning('User group management is not available in desktop mode')
       return
     }
-    if (!canManageGroups) {
-      message.warning('You do not have permission to manage user groups')
+    if (!canReadGroups) {
+      message.warning('You do not have permission to view user groups')
       return
     }
     fetchGroups()
-  }, [canManageGroups])
+  }, [canReadGroups])
 
   const fetchGroups = async () => {
     setLoading(true)
@@ -88,6 +91,10 @@ export function UserGroupsSettings() {
   }
 
   const handleCreateGroup = async (values: any) => {
+    if (!canCreateGroups) {
+      message.error('You do not have permission to create user groups')
+      return
+    }
     try {
       const groupData: CreateUserGroupRequest = {
         name: values.name,
@@ -108,6 +115,10 @@ export function UserGroupsSettings() {
 
   const handleEditGroup = async (values: any) => {
     if (!selectedGroup) return
+    if (!canEditGroups) {
+      message.error('You do not have permission to edit user groups')
+      return
+    }
 
     try {
       const updateData: UpdateUserGroupRequest = {
@@ -133,6 +144,10 @@ export function UserGroupsSettings() {
   }
 
   const handleDeleteGroup = async (groupId: string) => {
+    if (!canDeleteGroups) {
+      message.error('You do not have permission to delete user groups')
+      return
+    }
     try {
       await ApiClient.Admin.deleteGroup({ group_id: groupId })
       message.success('User group deleted successfully')
@@ -234,23 +249,27 @@ export function UserGroupsSettings() {
           >
             Members
           </Button>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          >
-            Edit
-          </Button>
-          <Popconfirm
-            title="Are you sure you want to delete this group?"
-            onConfirm={() => handleDeleteGroup(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button type="link" danger icon={<DeleteOutlined />}>
-              Delete
+          {canEditGroups && (
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            >
+              Edit
             </Button>
-          </Popconfirm>
+          )}
+          {canDeleteGroups && (
+            <Popconfirm
+              title="Are you sure you want to delete this group?"
+              onConfirm={() => handleDeleteGroup(record.id)}
+              okText="Yes"
+              cancelText="No"
+            >
+              <Button type="link" danger icon={<DeleteOutlined />}>
+                Delete
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -269,12 +288,12 @@ export function UserGroupsSettings() {
     )
   }
 
-  if (!canManageGroups) {
+  if (!canReadGroups) {
     return (
       <Result
         icon={<ExclamationCircleOutlined />}
         title="Access Denied"
-        subTitle={`You do not have permission to access user group management. Contact your administrator to request ${PermissionKeys.group_management} permission.`}
+        subTitle={`You do not have permission to view user groups. Contact your administrator to request ${PermissionKeys.GROUPS_READ} permission.`}
         extra={
           <Button type="primary" onClick={() => window.history.back()}>
             Go Back
@@ -288,13 +307,15 @@ export function UserGroupsSettings() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <Title level={3}>User Groups</Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => setCreateModalVisible(true)}
-        >
-          Create Group
-        </Button>
+        {canCreateGroups && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateModalVisible(true)}
+          >
+            Create Group
+          </Button>
+        )}
       </div>
 
       <Card>

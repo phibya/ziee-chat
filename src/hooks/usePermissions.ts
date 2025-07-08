@@ -3,11 +3,16 @@ import {
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
-  PermissionKey,
+  getUserEffectivePermissions,
+  expandWildcardPermission,
+  isWildcardPermission,
+  getPermissionDisplayName,
+  groupPermissionsByCategory,
 } from '../utils/permissions'
+import type { PermissionKey } from '../api/enpoints'
 
 /**
- * React hook for checking user permissions
+ * React hook for checking user permissions with AWS-style permission support
  */
 export function usePermissions() {
   const user = useAuthStore(state => state.user)
@@ -30,6 +35,36 @@ export function usePermissions() {
      */
     hasAllPermissions: (permissions: PermissionKey[]) =>
       hasAllPermissions(user, permissions),
+
+    /**
+     * Get all effective permissions for the current user (including expanded wildcards)
+     */
+    getEffectivePermissions: () =>
+      getUserEffectivePermissions(user),
+
+    /**
+     * Expand a wildcard permission to all permissions it grants
+     */
+    expandWildcardPermission: (wildcard: PermissionKey) =>
+      expandWildcardPermission(wildcard),
+
+    /**
+     * Check if a permission is a wildcard permission
+     */
+    isWildcardPermission: (permission: PermissionKey) =>
+      isWildcardPermission(permission),
+
+    /**
+     * Get the display name for a permission
+     */
+    getPermissionDisplayName: (permission: PermissionKey) =>
+      getPermissionDisplayName(permission),
+
+    /**
+     * Group permissions by category for display
+     */
+    groupPermissionsByCategory: (permissions: PermissionKey[]) =>
+      groupPermissionsByCategory(permissions),
 
     /**
      * Get the current user object

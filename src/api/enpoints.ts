@@ -149,26 +149,44 @@ export interface InitResponse {
   is_desktop: boolean
 }
 
+// AWS-style permissions matching server-side implementation
 export const PermissionKeys = {
-  user_management: 'user_management',
-  group_management: 'group_management',
-  chat: 'chat',
-  profile_edit: 'profile_edit',
+  // User management permissions
+  USERS_READ: 'users::read',
+  USERS_EDIT: 'users::edit',
+  USERS_DELETE: 'users::delete',
+  USERS_CREATE: 'users::create',
+  USERS_ALL: 'users::*',
+  
+  // Group management permissions
+  GROUPS_READ: 'groups::read',
+  GROUPS_EDIT: 'groups::edit',
+  GROUPS_DELETE: 'groups::delete',
+  GROUPS_CREATE: 'groups::create',
+  GROUPS_ALL: 'groups::*',
+  
+  // Fine-grained configuration permissions
+  CONFIG_USER_REGISTRATION_READ: 'config::user-registration::read',
+  CONFIG_USER_REGISTRATION_EDIT: 'config::user-registration::edit',
+  
+  // Chat permissions
+  CHAT_USE: 'chat::use',
+  
+  // Profile permissions
+  PROFILE_EDIT: 'profile::edit',
+  
+  // Wildcard permissions
+  ALL: '*',
 } as const
 
-export interface Permissions {
-  [PermissionKeys.user_management]: boolean
-  [PermissionKeys.group_management]: boolean
-  [PermissionKeys.chat]: boolean
-  [PermissionKeys.profile_edit]: boolean
-}
+export type PermissionKey = typeof PermissionKeys[keyof typeof PermissionKeys]
 
 // Admin types
 export interface UserGroup {
   id: string
   name: string
   description?: string
-  permissions: Permissions
+  permissions: PermissionKey[] // Array of permission strings
   is_active: boolean
   created_at: string
   updated_at: string
@@ -177,14 +195,14 @@ export interface UserGroup {
 export interface CreateUserGroupRequest {
   name: string
   description?: string
-  permissions: any
+  permissions: PermissionKey[]
 }
 
 export interface UpdateUserGroupRequest {
   group_id: string
   name?: string
   description?: string
-  permissions?: any
+  permissions?: PermissionKey[]
   is_active?: boolean
 }
 

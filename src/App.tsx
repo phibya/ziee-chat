@@ -77,11 +77,11 @@ function App() {
                 <Route path="https-proxy" element={<HttpsProxySettings />} />
                 <Route path="extensions" element={<ExtensionsSettings />} />
                 {!isDesktopApp &&
-                  hasPermission(PermissionKeys.user_management) && (
+                  hasPermission(PermissionKeys.USERS_READ) && (
                     <Route path="users" element={<UsersSettings />} />
                   )}
                 {!isDesktopApp &&
-                  hasPermission(PermissionKeys.group_management) && (
+                  hasPermission(PermissionKeys.GROUPS_READ) && (
                     <Route
                       path="user-groups"
                       element={<UserGroupsSettings />}
