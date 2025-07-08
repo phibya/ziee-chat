@@ -7,6 +7,7 @@ pub mod models;
 pub(crate) mod queries;
 
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();
+static POSTGRESQL_INSTANCE: OnceCell<PostgreSQL> = OnceCell::const_new();
 
 pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Error>> {
     println!("Initializing database");
@@ -51,13 +52,24 @@ pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Er
             // Wait for PostgreSQL to be ready with retry logic
             let pool = connect_with_retry(&database_url).await?;
 
+            //test query to ensure the connection is valid
+            println!("Testing database connection...");
+            sqlx::query("SELECT 1").execute(&pool).await?;
+
             // Run migrations
             println!("Running database migrations...");
             sqlx::migrate!("./migrations").run(&pool).await?;
 
+            // Store the PostgreSQL instance to keep it alive
+            POSTGRESQL_INSTANCE.set(postgresql).map_err(|_| "Failed to store PostgreSQL instance")?;
+
             Ok::<Arc<PgPool>, Box<dyn std::error::Error>>(Arc::new(pool))
         })
         .await?;
+
+    //test query again to ensure the connection is valid after migrations
+    let new_pool = get_database_pool()?;
+    sqlx::query("SELECT 1").execute(new_pool.as_ref()).await?;
 
     println!("Database initialized successfully");
 
