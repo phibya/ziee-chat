@@ -49,8 +49,8 @@ pub async fn get_user_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
+    // Check group_management or user_management permission
+    if !check_permission(&auth_user.user, "group_management") && !check_permission(&auth_user.user, "user_management") {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -69,8 +69,8 @@ pub async fn list_user_groups(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<crate::database::models::UserGroupListResponse>, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
+    // Check group_management or user_management permission
+    if !check_permission(&auth_user.user, "group_management") && !check_permission(&auth_user.user, "user_management") {
         return Err(StatusCode::FORBIDDEN);
     }
 

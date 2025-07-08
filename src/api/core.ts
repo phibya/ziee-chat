@@ -95,14 +95,30 @@ export const callAsync = async <U extends ApiEndpointUrl>(
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`
 
-      try {
-        // Try to extract error message from response body
-        const errorResponse = await response.json()
-        if (errorResponse.error) {
-          errorMessage = errorResponse.error
+      // Handle 403 Forbidden specifically
+      if (response.status === 403) {
+        try {
+          // Try to extract specific error message from response body
+          const errorResponse = await response.json()
+          if (errorResponse.error) {
+            errorMessage = errorResponse.error
+          } else {
+            errorMessage = 'Permission denied'
+          }
+        } catch (e) {
+          // If we can't parse the error response, use default permission denied message
+          errorMessage = 'Permission denied'
         }
-      } catch (e) {
-        // If we can't parse the error response, use the default message
+      } else {
+        try {
+          // Try to extract error message from response body for other errors
+          const errorResponse = await response.json()
+          if (errorResponse.error) {
+            errorMessage = errorResponse.error
+          }
+        } catch (e) {
+          // If we can't parse the error response, use the default message
+        }
       }
 
       throw new Error(errorMessage)

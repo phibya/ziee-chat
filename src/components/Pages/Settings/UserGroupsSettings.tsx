@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  App,
   Badge,
   Button,
   Card,
@@ -7,7 +8,6 @@ import {
   Form,
   Input,
   List,
-  message,
   Modal,
   Popconfirm,
   Result,
@@ -41,6 +41,7 @@ const { Title, Text } = Typography
 const { TextArea } = Input
 
 export function UserGroupsSettings() {
+  const { message } = App.useApp()
   const { hasPermission } = usePermissions()
   const [groups, setGroups] = useState<UserGroup[]>([])
   const [loading, setLoading] = useState(false)
@@ -78,7 +79,9 @@ export function UserGroupsSettings() {
       })
       setGroups(groups)
     } catch (error) {
-      message.error('Failed to fetch user groups')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to fetch user groups',
+      )
     } finally {
       setLoading(false)
     }
@@ -97,7 +100,9 @@ export function UserGroupsSettings() {
       createForm.resetFields()
       fetchGroups()
     } catch (error) {
-      message.error('Failed to create user group')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to create user group',
+      )
     }
   }
 
@@ -121,7 +126,9 @@ export function UserGroupsSettings() {
       editForm.resetFields()
       fetchGroups()
     } catch (error) {
-      message.error('Failed to update user group')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to update user group',
+      )
     }
   }
 
@@ -131,7 +138,9 @@ export function UserGroupsSettings() {
       message.success('User group deleted successfully')
       fetchGroups()
     } catch (error) {
-      message.error('Failed to delete user group')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to delete user group',
+      )
     }
   }
 
@@ -147,7 +156,11 @@ export function UserGroupsSettings() {
       })
       setGroupMembers(users)
     } catch (error) {
-      message.error('Failed to fetch group members')
+      message.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch group members',
+      )
     } finally {
       setMembersLoading(false)
     }

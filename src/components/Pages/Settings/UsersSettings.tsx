@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  App,
   Badge,
   Button,
   Card,
@@ -8,7 +9,6 @@ import {
   Form,
   Input,
   List,
-  message,
   Modal,
   Popconfirm,
   Result,
@@ -44,6 +44,7 @@ const { Title, Text } = Typography
 const { Option } = Select
 
 export function UsersSettings() {
+  const { message } = App.useApp()
   const { hasPermission } = usePermissions()
   const [users, setUsers] = useState<User[]>([])
   const [groups, setGroups] = useState<UserGroup[]>([])
@@ -86,7 +87,9 @@ export function UsersSettings() {
       })
       setUsers(users)
     } catch (error) {
-      message.error('Failed to fetch users')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to fetch users',
+      )
     } finally {
       setLoading(false)
     }
@@ -101,7 +104,9 @@ export function UsersSettings() {
 
       setGroups(groups.filter(g => g.is_active))
     } catch (error) {
-      message.error('Failed to fetch groups')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to fetch groups',
+      )
     }
   }
 
@@ -110,7 +115,11 @@ export function UsersSettings() {
       const response = await ApiClient.Admin.getUserRegistrationStatus()
       setRegistrationEnabled(response.enabled)
     } catch (error) {
-      message.error('Failed to fetch registration status')
+      message.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch registration status',
+      )
     }
   }
 
@@ -123,7 +132,11 @@ export function UsersSettings() {
         `User registration ${enabled ? 'enabled' : 'disabled'} successfully`,
       )
     } catch (error) {
-      message.error('Failed to update registration status')
+      message.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update registration status',
+      )
       // Revert the switch state on error
       setRegistrationEnabled(!enabled)
     } finally {
@@ -151,7 +164,9 @@ export function UsersSettings() {
       editForm.resetFields()
       fetchUsers()
     } catch (error) {
-      message.error('Failed to update user')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to update user',
+      )
     }
   }
 
@@ -171,7 +186,9 @@ export function UsersSettings() {
       setSelectedUser(null)
       passwordForm.resetFields()
     } catch (error) {
-      message.error('Failed to reset password')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to reset password',
+      )
     }
   }
 
@@ -181,7 +198,9 @@ export function UsersSettings() {
       message.success('User status updated successfully')
       fetchUsers()
     } catch (error) {
-      message.error('Failed to update user status')
+      message.error(
+        error instanceof Error ? error.message : 'Failed to update user status',
+      )
     }
   }
 
@@ -200,7 +219,11 @@ export function UsersSettings() {
       assignGroupForm.resetFields()
       fetchUsers()
     } catch (error) {
-      message.error('Failed to assign user to group')
+      message.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to assign user to group',
+      )
     }
   }
 
@@ -214,7 +237,11 @@ export function UsersSettings() {
       message.success('User removed from group successfully')
       fetchUsers()
     } catch (error) {
-      message.error('Failed to remove user from group')
+      message.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to remove user from group',
+      )
     }
   }
 
