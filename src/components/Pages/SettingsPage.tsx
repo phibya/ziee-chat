@@ -13,6 +13,8 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { isDesktopApp } from '../../api/core'
+import { usePermissions } from '../../hooks/usePermissions'
+import { PermissionKeys } from '../../api/enpoints'
 
 const { Title } = Typography
 const { Sider, Content } = Layout
@@ -22,6 +24,7 @@ export function SettingsPage() {
   const location = useLocation()
   const [isMobile, setIsMobile] = useState(false)
   const [drawerVisible, setDrawerVisible] = useState(false)
+  const { hasPermission } = usePermissions()
 
   // Extract the current settings section from the URL
   const currentSection = location.pathname.split('/').pop() || 'general'
@@ -86,28 +89,47 @@ export function SettingsPage() {
     },
   ]
 
+  // Build admin menu items based on permissions
   const adminMenuItems = !isDesktopApp
-    ? [
-        {
-          type: 'divider' as const,
-        },
-        {
-          key: 'admin',
-          icon: <SettingOutlined />,
-          label: 'Admin',
-          type: 'group' as const,
-        },
-        {
-          key: 'users',
-          icon: <UserOutlined />,
-          label: 'Users',
-        },
-        {
-          key: 'user-groups',
-          icon: <TeamOutlined />,
-          label: 'User Groups',
-        },
-      ]
+    ? (() => {
+        const items = []
+
+        // Check if user has any admin permissions
+        const hasUserManagement = hasPermission(PermissionKeys.user_management)
+        const hasGroupManagement = hasPermission(
+          PermissionKeys.group_management,
+        )
+
+        if (hasUserManagement || hasGroupManagement) {
+          items.push({
+            type: 'divider' as const,
+          })
+          items.push({
+            key: 'admin',
+            icon: <SettingOutlined />,
+            label: 'Admin',
+            type: 'group' as const,
+          })
+
+          if (hasUserManagement) {
+            items.push({
+              key: 'users',
+              icon: <UserOutlined />,
+              label: 'Users',
+            })
+          }
+
+          if (hasGroupManagement) {
+            items.push({
+              key: 'user-groups',
+              icon: <TeamOutlined />,
+              label: 'User Groups',
+            })
+          }
+        }
+
+        return items
+      })()
     : []
 
   const menuItems = [...baseMenuItems, ...adminMenuItems]

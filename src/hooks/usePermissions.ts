@@ -3,7 +3,7 @@ import {
   hasAllPermissions,
   hasAnyPermission,
   hasPermission,
-  type Permission,
+  PermissionKey,
 } from '../utils/permissions'
 
 /**
@@ -16,18 +16,19 @@ export function usePermissions() {
     /**
      * Check if the current user has a specific permission
      */
-    hasPermission: (permission: Permission) => hasPermission(user, permission),
+    hasPermission: (permission: PermissionKey) =>
+      hasPermission(user, permission),
 
     /**
      * Check if the current user has any of the specified permissions
      */
-    hasAnyPermission: (permissions: Permission[]) =>
+    hasAnyPermission: (permissions: PermissionKey[]) =>
       hasAnyPermission(user, permissions),
 
     /**
      * Check if the current user has all of the specified permissions
      */
-    hasAllPermissions: (permissions: Permission[]) =>
+    hasAllPermissions: (permissions: PermissionKey[]) =>
       hasAllPermissions(user, permissions),
 
     /**

@@ -28,12 +28,16 @@ import {
   UsersSettings,
 } from './components/Pages/Settings'
 import { useSettingsStore } from './store/settings'
+import { usePermissions } from './hooks/usePermissions'
+import { PermissionKeys } from './api/enpoints'
+import { isDesktopApp } from './api/core'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
 
 function App() {
   const { i18n } = useTranslation()
   const { language } = useSettingsStore()
+  const { hasPermission } = usePermissions()
 
   // Update language when settings change
   useEffect(() => {
@@ -72,8 +76,17 @@ function App() {
                 />
                 <Route path="https-proxy" element={<HttpsProxySettings />} />
                 <Route path="extensions" element={<ExtensionsSettings />} />
-                <Route path="users" element={<UsersSettings />} />
-                <Route path="user-groups" element={<UserGroupsSettings />} />
+                {!isDesktopApp &&
+                  hasPermission(PermissionKeys.user_management) && (
+                    <Route path="users" element={<UsersSettings />} />
+                  )}
+                {!isDesktopApp &&
+                  hasPermission(PermissionKeys.group_management) && (
+                    <Route
+                      path="user-groups"
+                      element={<UserGroupsSettings />}
+                    />
+                  )}
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

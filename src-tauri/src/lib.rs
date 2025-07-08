@@ -6,6 +6,7 @@ use crate::api::app::methods::get_http_port;
 use axum::{
     body::Body,
     http::Request,
+    middleware,
     response::Response,
     routing::{delete, get, post, put},
     Router,
@@ -232,17 +233,24 @@ pub fn get_available_port() -> u16 {
 }
 
 fn create_rest_router() -> Router {
-    Router::new()
-        // Basic user routes
-        .route("/api/user/greet", post(api::user::methods::greet))
-        // Auth routes
+    // Public routes (no authentication required)
+    let public_routes = Router::new()
         .route("/api/auth/init", get(api::auth::methods::check_init_status))
         .route("/api/auth/setup", post(api::auth::methods::init_app))
         .route("/api/auth/login", post(api::auth::methods::login))
-        .route("/api/auth/logout", post(api::auth::methods::logout))
         .route("/api/auth/register", post(api::auth::methods::register))
+        .route(
+            "/api/config/user-registration",
+            get(api::configuration::methods::get_user_registration_status),
+        )
+        .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }));
+
+    // Protected routes requiring authentication (permission checks handled in endpoint functions)
+    let protected_routes = Router::new()
+        .route("/api/user/greet", post(api::user::methods::greet))
+        .route("/api/auth/logout", post(api::auth::methods::logout))
         .route("/api/auth/me", get(api::auth::methods::me))
-        // Admin user management routes
+        // Admin user management routes (require user_management permission)
         .route("/api/admin/users", get(api::user::methods::list_users))
         .route(
             "/api/admin/users/{user_id}",
@@ -260,7 +268,7 @@ fn create_rest_router() -> Router {
             "/api/admin/users/reset-password",
             post(api::user::methods::reset_user_password),
         )
-        // Admin user group management routes
+        // Admin user group management routes (require group_management permission)
         .route(
             "/api/admin/groups",
             get(api::user_groups::methods::list_user_groups),
@@ -293,12 +301,7 @@ fn create_rest_router() -> Router {
             "/api/admin/groups/{user_id}/{group_id}/remove",
             delete(api::user_groups::methods::remove_user_from_group),
         )
-        // Public configuration routes
-        .route(
-            "/api/config/user-registration",
-            get(api::configuration::methods::get_user_registration_status),
-        )
-        // Admin configuration routes
+        // Admin configuration routes (require system_admin permission)
         .route(
             "/api/admin/config/user-registration",
             get(api::configuration::methods::get_user_registration_status_admin),
@@ -307,8 +310,12 @@ fn create_rest_router() -> Router {
             "/api/admin/config/user-registration",
             put(api::configuration::methods::update_user_registration_status),
         )
-        // Health check
-        .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }))
+        .layer(middleware::from_fn(api::middleware::auth_middleware));
+
+    // Combine public and protected routes
+    Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .layer(CorsLayer::permissive())
 }
 
