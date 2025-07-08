@@ -208,3 +208,91 @@ pub async fn config_user_registration_edit_middleware(req: Request, next: Next) 
 
     Ok(next.run(req).await)
 }
+
+/// Middleware that checks for config::updates::read permission
+pub async fn config_updates_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_UPDATES_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::updates::edit permission
+pub async fn config_updates_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_UPDATES_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::experimental::read permission
+pub async fn config_experimental_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_EXPERIMENTAL_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::experimental::edit permission
+pub async fn config_experimental_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_EXPERIMENTAL_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::data-folder::read permission
+pub async fn config_data_folder_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_DATA_FOLDER_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::data-folder::edit permission
+pub async fn config_data_folder_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_DATA_FOLDER_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::factory-reset::read permission
+pub async fn config_factory_reset_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_FACTORY_RESET_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::factory-reset::edit permission
+pub async fn config_factory_reset_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_FACTORY_RESET_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}

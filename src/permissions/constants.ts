@@ -27,6 +27,21 @@ export const PermissionDescription = {
     'Allows viewing user registration settings',
   'config::user-registration::edit':
     'Allows modifying user registration settings',
+  // Advanced configuration permissions (admin-only)
+  'config::updates::*': 'Grants all update configuration permissions',
+  'config::updates::read': 'Allows viewing update settings',
+  'config::updates::edit':
+    'Allows checking for updates and configuring update settings',
+  'config::experimental::*': 'Grants all experimental features permissions',
+  'config::experimental::read': 'Allows viewing experimental features settings',
+  'config::experimental::edit':
+    'Allows enabling/disabling experimental features',
+  'config::data-folder::*': 'Grants all data folder configuration permissions',
+  'config::data-folder::read': 'Allows viewing data folder location',
+  'config::data-folder::edit': 'Allows changing data folder location',
+  'config::factory-reset::*': 'Grants all factory reset permissions',
+  'config::factory-reset::read': 'Allows viewing factory reset options',
+  'config::factory-reset::edit': 'Allows performing factory reset operations',
   // Chat permissions
   'chat::use': 'Allows using chat functionality',
   // Profile permissions

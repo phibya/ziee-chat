@@ -1,11 +1,13 @@
 import { Button, Card, Divider, Flex, Space, Switch, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
+import { Permission, usePermissions } from '../../../permissions'
 
 const { Title, Text } = Typography
 
 export function GeneralSettings() {
   const [isMobile, setIsMobile] = useState(false)
+  const { hasPermission } = usePermissions()
 
   useEffect(() => {
     const checkMobile = () => {
@@ -39,100 +41,120 @@ export function GeneralSettings() {
             <Text type="secondary">v0.6.4</Text>
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex
-            justify="space-between"
-            align={isMobile ? 'flex-start' : 'center'}
-            vertical={isMobile}
-            gap={isMobile ? 'small' : 0}
-          >
-            <div>
-              <Text strong>Check for Updates</Text>
+          {hasPermission(Permission.config.updates.read) && (
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
+            >
               <div>
-                <Text type="secondary">
-                  Check if a newer version of Jan is available.
-                </Text>
+                <Text strong>Check for Updates</Text>
+                <div>
+                  <Text type="secondary">
+                    Check if a newer version of Jan is available.
+                  </Text>
+                </div>
               </div>
-            </div>
-            <Button type="default">Check for Updates</Button>
-          </Flex>
+              <Button
+                type="default"
+                disabled={!hasPermission(Permission.config.updates.edit)}
+              >
+                Check for Updates
+              </Button>
+            </Flex>
+          )}
         </Space>
       </Card>
 
-      <Card title="Advanced">
-        <Flex justify="space-between" align="center">
-          <div>
-            <Text strong>Experimental Features</Text>
+      {hasPermission(Permission.config.experimental.read) && (
+        <Card title="Advanced">
+          <Flex justify="space-between" align="center">
             <div>
-              <Text type="secondary">
-                Enable experimental features. They may be unstable or change at
-                any time.
-              </Text>
-            </div>
-          </div>
-          <Switch size="small" />
-        </Flex>
-      </Card>
-
-      <Card title="Data Folder">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex
-            justify="space-between"
-            align={isMobile ? 'flex-start' : 'center'}
-            vertical={isMobile}
-            gap={isMobile ? 'small' : 0}
-          >
-            <div>
-              <Text strong>App Data</Text>
+              <Text strong>Experimental Features</Text>
               <div>
                 <Text type="secondary">
-                  Default location for messages and other user data.
-                </Text>
-              </div>
-              <div>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  /Users/royal/Library/Application Support/Jan/data
+                  Enable experimental features. They may be unstable or change
+                  at any time.
                 </Text>
               </div>
             </div>
-            <Button type="default" icon={<FolderOpenOutlined />}>
-              Change Location
-            </Button>
+            <Switch
+              size="small"
+              disabled={!hasPermission(Permission.config.experimental.edit)}
+            />
           </Flex>
-          <Divider style={{ margin: 0 }} />
-          <Flex
-            justify="space-between"
-            align={isMobile ? 'flex-start' : 'center'}
-            vertical={isMobile}
-            gap={isMobile ? 'small' : 0}
-          >
-            <div>
-              <Text strong>App Logs</Text>
-              <div>
-                <Text type="secondary">View detailed logs of the App.</Text>
-              </div>
-            </div>
-            <Space
-              direction={isMobile ? 'vertical' : 'horizontal'}
-              style={{ width: isMobile ? '100%' : 'auto' }}
+        </Card>
+      )}
+
+      {hasPermission(Permission.config.dataFolder.read) && (
+        <Card title="Data Folder">
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
             >
-              <Button
-                type="default"
-                icon={<FileTextOutlined />}
-                block={isMobile}
-              >
-                Open Logs
-              </Button>
+              <div>
+                <Text strong>App Data</Text>
+                <div>
+                  <Text type="secondary">
+                    Default location for messages and other user data.
+                  </Text>
+                </div>
+                <div>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    /Users/royal/Library/Application Support/Jan/data
+                  </Text>
+                </div>
+              </div>
               <Button
                 type="default"
                 icon={<FolderOpenOutlined />}
-                block={isMobile}
+                disabled={!hasPermission(Permission.config.dataFolder.edit)}
               >
-                Show in Finder
+                Change Location
               </Button>
-            </Space>
-          </Flex>
-        </Space>
-      </Card>
+            </Flex>
+            <Divider style={{ margin: 0 }} />
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
+            >
+              <div>
+                <Text strong>App Logs</Text>
+                <div>
+                  <Text type="secondary">View detailed logs of the App.</Text>
+                </div>
+              </div>
+              <Space
+                direction={isMobile ? 'vertical' : 'horizontal'}
+                style={{ width: isMobile ? '100%' : 'auto' }}
+              >
+                <Button
+                  type="default"
+                  icon={<FileTextOutlined />}
+                  block={isMobile}
+                  disabled={!hasPermission(Permission.config.dataFolder.edit)}
+                >
+                  Open Logs
+                </Button>
+                <Button
+                  type="default"
+                  icon={<FolderOpenOutlined />}
+                  block={isMobile}
+                  disabled={!hasPermission(Permission.config.dataFolder.edit)}
+                >
+                  Show in Finder
+                </Button>
+              </Space>
+            </Flex>
+          </Space>
+        </Card>
+      )}
 
       <Card title="Other">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -153,26 +175,32 @@ export function GeneralSettings() {
             <Switch size="small" defaultChecked />
           </Flex>
           <Divider style={{ margin: 0 }} />
-          <Flex
-            justify="space-between"
-            align={isMobile ? 'flex-start' : 'center'}
-            vertical={isMobile}
-            gap={isMobile ? 'small' : 0}
-          >
-            <div>
-              <Text strong>Reset To Factory Settings</Text>
+          {hasPermission(Permission.config.factoryReset.read) && (
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
+            >
               <div>
-                <Text type="secondary">
-                  Restore application to its initial state, erasing all models
-                  and chat history. This action is irreversible and recommended
-                  only if the application is corrupted.
-                </Text>
+                <Text strong>Reset To Factory Settings</Text>
+                <div>
+                  <Text type="secondary">
+                    Restore application to its initial state, erasing all models
+                    and chat history. This action is irreversible and
+                    recommended only if the application is corrupted.
+                  </Text>
+                </div>
               </div>
-            </div>
-            <Button type="primary" danger>
-              Reset
-            </Button>
-          </Flex>
+              <Button
+                type="primary"
+                danger
+                disabled={!hasPermission(Permission.config.factoryReset.edit)}
+              >
+                Reset
+              </Button>
+            </Flex>
+          )}
         </Space>
       </Card>
 

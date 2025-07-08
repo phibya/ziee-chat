@@ -20,6 +20,20 @@ pub mod permissions {
     pub const CONFIG_USER_REGISTRATION_READ: &str = "config::user-registration::read";
     pub const CONFIG_USER_REGISTRATION_EDIT: &str = "config::user-registration::edit";
     
+    // Advanced configuration permissions (admin-only)
+    pub const CONFIG_UPDATES_READ: &str = "config::updates::read";
+    pub const CONFIG_UPDATES_EDIT: &str = "config::updates::edit";
+    pub const CONFIG_UPDATES_ALL: &str = "config::updates::*";
+    pub const CONFIG_EXPERIMENTAL_READ: &str = "config::experimental::read";
+    pub const CONFIG_EXPERIMENTAL_EDIT: &str = "config::experimental::edit";
+    pub const CONFIG_EXPERIMENTAL_ALL: &str = "config::experimental::*";
+    pub const CONFIG_DATA_FOLDER_READ: &str = "config::data-folder::read";
+    pub const CONFIG_DATA_FOLDER_EDIT: &str = "config::data-folder::edit";
+    pub const CONFIG_DATA_FOLDER_ALL: &str = "config::data-folder::*";
+    pub const CONFIG_FACTORY_RESET_READ: &str = "config::factory-reset::read";
+    pub const CONFIG_FACTORY_RESET_EDIT: &str = "config::factory-reset::edit";
+    pub const CONFIG_FACTORY_RESET_ALL: &str = "config::factory-reset::*";
+    
     // Chat permissions
     pub const CHAT_USE: &str = "chat::use";
     
@@ -99,6 +113,22 @@ pub fn expand_wildcard_permission(wildcard: &str) -> Vec<&'static str> {
             permissions::GROUPS_DELETE,
             permissions::GROUPS_CREATE,
         ],
+        permissions::CONFIG_UPDATES_ALL => vec![
+            permissions::CONFIG_UPDATES_READ,
+            permissions::CONFIG_UPDATES_EDIT,
+        ],
+        permissions::CONFIG_EXPERIMENTAL_ALL => vec![
+            permissions::CONFIG_EXPERIMENTAL_READ,
+            permissions::CONFIG_EXPERIMENTAL_EDIT,
+        ],
+        permissions::CONFIG_DATA_FOLDER_ALL => vec![
+            permissions::CONFIG_DATA_FOLDER_READ,
+            permissions::CONFIG_DATA_FOLDER_EDIT,
+        ],
+        permissions::CONFIG_FACTORY_RESET_ALL => vec![
+            permissions::CONFIG_FACTORY_RESET_READ,
+            permissions::CONFIG_FACTORY_RESET_EDIT,
+        ],
         permissions::ALL => vec![
             permissions::USERS_READ,
             permissions::USERS_EDIT,
@@ -110,6 +140,14 @@ pub fn expand_wildcard_permission(wildcard: &str) -> Vec<&'static str> {
             permissions::GROUPS_CREATE,
             permissions::CONFIG_USER_REGISTRATION_READ,
             permissions::CONFIG_USER_REGISTRATION_EDIT,
+            permissions::CONFIG_UPDATES_READ,
+            permissions::CONFIG_UPDATES_EDIT,
+            permissions::CONFIG_EXPERIMENTAL_READ,
+            permissions::CONFIG_EXPERIMENTAL_EDIT,
+            permissions::CONFIG_DATA_FOLDER_READ,
+            permissions::CONFIG_DATA_FOLDER_EDIT,
+            permissions::CONFIG_FACTORY_RESET_READ,
+            permissions::CONFIG_FACTORY_RESET_EDIT,
             permissions::CHAT_USE,
             permissions::PROFILE_EDIT,
         ],
