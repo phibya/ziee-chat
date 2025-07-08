@@ -349,14 +349,10 @@ pub async fn cleanup_expired_tokens() -> Result<u64, sqlx::Error> {
 // Get root users
 pub async fn get_root_user() -> Result<Option<User>, sqlx::Error> {
     let pool = get_database_pool()?;
-    let start_time = chrono::Utc::now();
     let user_row = sqlx::query("SELECT * FROM users WHERE username = $1 LIMIT 1")
         .bind("root")
         .fetch_optional(&*pool)
         .await?;
-
-    // Log the time taken for the query
-    let elapsed = chrono::Utc::now() - start_time;
 
     let Some(user_row) = user_row else {
         return Ok(None);
