@@ -1,10 +1,10 @@
 import {
+  App,
   Button,
   Card,
   Divider,
   Flex,
   Form,
-  message,
   Space,
   Switch,
   Typography,
@@ -17,6 +17,7 @@ import { isDesktopApp } from '../../../api/core'
 const { Title, Text } = Typography
 
 export function GeneralSettings() {
+  const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
   const [experimentalFeatures, setExperimentalFeatures] = useState(false)

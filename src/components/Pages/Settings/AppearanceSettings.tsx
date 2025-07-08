@@ -1,9 +1,9 @@
 import {
+  App,
   Card,
   Divider,
   Flex,
   Form,
-  message,
   Select,
   Space,
   Typography,
@@ -14,6 +14,7 @@ import { useAppearanceSettings } from '../../../store'
 const { Title, Text } = Typography
 
 export function AppearanceSettings() {
+  const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
   const {

@@ -1,4 +1,4 @@
-import { Card, Flex, Form, message, Select, Space, Typography } from 'antd'
+import { App, Card, Flex, Form, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useUserSettingsStore } from '../../../../store'
 import { isDesktopApp } from '../../../../api/core'
@@ -8,6 +8,7 @@ import { ApiClient } from '../../../../api/client'
 const { Title, Text } = Typography
 
 export function AdminAppearanceSettings() {
+  const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
   const [loading, setLoading] = useState(false)

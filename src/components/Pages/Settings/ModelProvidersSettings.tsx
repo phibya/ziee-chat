@@ -1,4 +1,5 @@
 import {
+  App,
   Button,
   Card,
   Divider,
@@ -13,7 +14,6 @@ import {
   Space,
   Switch,
   Typography,
-  message,
 } from 'antd'
 import { useState, useEffect } from 'react'
 import {
@@ -325,6 +325,7 @@ const INITIAL_PROVIDERS: Provider[] = [
 ]
 
 export function ModelProvidersSettings() {
+  const { message } = App.useApp()
   const [providers, setProviders] = useState<Provider[]>(INITIAL_PROVIDERS)
   const [selectedProvider, setSelectedProvider] = useState<string>('llama.cpp')
   const [form] = Form.useForm()
