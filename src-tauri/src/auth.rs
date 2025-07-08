@@ -182,29 +182,38 @@ impl AuthService {
         Ok(())
     }
 
-    /// Create default admin user for desktop app
+    /// Create default root user for desktop app
     pub async fn create_default_admin_user(&self) -> Result<User, String> {
         let admin_request = CreateUserRequest {
-            username: "admin".to_string(),
-            email: "admin@domain.com".to_string(),
-            password: "admin".to_string(),
-            profile: Some(serde_json::json!({"isAdmin": true})),
+            username: "root".to_string(),
+            email: "root@domain.com".to_string(),
+            password: "root".to_string(),
+            profile: Some(serde_json::json!({})),
         };
 
-        self.create_user(admin_request).await
+        let user = self.create_user(admin_request).await?;
+
+        // Assign admin user to admin group
+        if let Err(e) =
+            crate::database::queries::user_groups::assign_user_to_admin_group(user.id).await
+        {
+            eprintln!("Warning: Failed to assign admin user to admin group: {}", e);
+        }
+
+        Ok(user)
     }
 
-    /// Get or create default admin user for desktop app
+    /// Get or create default root user for desktop app
     pub async fn get_or_create_default_admin_user(&self) -> Result<User, String> {
-        // Try to get existing admin user
-        if let Some(admin) = users::get_user_by_username("admin")
+        // Try to get existing root user
+        if let Some(admin) = users::get_user_by_username("root")
             .await
             .map_err(|e| e.to_string())?
         {
             return Ok(admin);
         }
 
-        // Create default admin user
+        // Create default root user
         self.create_default_admin_user().await
     }
 

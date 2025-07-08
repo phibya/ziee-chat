@@ -127,6 +127,14 @@ pub async fn update_user_group(
 ) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
     
+    // Check if this is a protected group (admin or user)
+    let existing_group = get_user_group_by_id(group_id).await?;
+    if let Some(group) = &existing_group {
+        if group.name == "admin" || group.name == "user" {
+            return Err(sqlx::Error::RowNotFound);
+        }
+    }
+    
     let mut query = String::from("UPDATE user_groups SET");
     let mut updates = Vec::new();
     let mut param_index = 1;
@@ -190,6 +198,14 @@ pub async fn update_user_group(
 
 pub async fn delete_user_group(group_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
+    
+    // Check if this is a protected group (admin or user)
+    let existing_group = get_user_group_by_id(group_id).await?;
+    if let Some(group) = existing_group {
+        if group.name == "admin" || group.name == "user" {
+            return Err(sqlx::Error::RowNotFound);
+        }
+    }
     
     let result = sqlx::query("DELETE FROM user_groups WHERE id = $1")
         .bind(group_id)
@@ -257,6 +273,68 @@ pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroupDb>, sqlx::Er
     }).collect();
 
     Ok(groups)
+}
+
+// Helper function to get admin group ID
+pub async fn get_admin_group_id() -> Result<Option<Uuid>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    
+    let row = sqlx::query("SELECT id FROM user_groups WHERE name = 'admin'")
+        .fetch_optional(&*pool)
+        .await?;
+    
+    Ok(row.map(|r| r.get("id")))
+}
+
+// Helper function to get user group ID
+pub async fn get_user_group_id() -> Result<Option<Uuid>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    
+    let row = sqlx::query("SELECT id FROM user_groups WHERE name = 'user'")
+        .fetch_optional(&*pool)
+        .await?;
+    
+    Ok(row.map(|r| r.get("id")))
+}
+
+// Function to assign user to admin group (for root/admin users)
+pub async fn assign_user_to_admin_group(user_id: Uuid) -> Result<(), sqlx::Error> {
+    if let Some(admin_group_id) = get_admin_group_id().await? {
+        // Check if user is already in admin group
+        let pool = get_database_pool()?;
+        let existing = sqlx::query(
+            "SELECT id FROM user_group_memberships WHERE user_id = $1 AND group_id = $2"
+        )
+        .bind(user_id)
+        .bind(admin_group_id)
+        .fetch_optional(&*pool)
+        .await?;
+        
+        if existing.is_none() {
+            assign_user_to_group(user_id, admin_group_id, None).await?;
+        }
+    }
+    Ok(())
+}
+
+// Function to assign user to default user group
+pub async fn assign_user_to_default_group(user_id: Uuid) -> Result<(), sqlx::Error> {
+    if let Some(user_group_id) = get_user_group_id().await? {
+        // Check if user is already in user group
+        let pool = get_database_pool()?;
+        let existing = sqlx::query(
+            "SELECT id FROM user_group_memberships WHERE user_id = $1 AND group_id = $2"
+        )
+        .bind(user_id)
+        .bind(user_group_id)
+        .fetch_optional(&*pool)
+        .await?;
+        
+        if existing.is_none() {
+            assign_user_to_group(user_id, user_group_id, None).await?;
+        }
+    }
+    Ok(())
 }
 
 pub async fn get_group_members(group_id: Uuid, page: i32, per_page: i32) -> Result<UserListResponse, sqlx::Error> {

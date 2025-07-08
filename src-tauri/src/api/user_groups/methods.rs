@@ -84,7 +84,10 @@ pub async fn update_user_group(
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Error updating user group: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            match e {
+                sqlx::Error::RowNotFound => Err(StatusCode::FORBIDDEN),
+                _ => Err(StatusCode::INTERNAL_SERVER_ERROR),
+            }
         }
     }
 }
@@ -96,7 +99,10 @@ pub async fn delete_user_group(Path(group_id): Path<Uuid>) -> Result<StatusCode,
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Error deleting user group: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            match e {
+                sqlx::Error::RowNotFound => Err(StatusCode::FORBIDDEN),
+                _ => Err(StatusCode::INTERNAL_SERVER_ERROR),
+            }
         }
     }
 }

@@ -78,13 +78,20 @@ pub async fn create_user(
 
     tx.commit().await?;
 
-    Ok(User::from_db_parts(
+    let user = User::from_db_parts(
         user_db,
         vec![email_db],
         services,
         vec![],
         vec![],
-    ))
+    );
+
+    // Automatically assign new user to default user group
+    if let Err(e) = crate::database::queries::user_groups::assign_user_to_default_group(user.id).await {
+        eprintln!("Warning: Failed to assign user to default group: {}", e);
+    }
+
+    Ok(user)
 }
 
 // Get user by ID with all related data

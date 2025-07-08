@@ -61,13 +61,18 @@ pub async fn init_app(
         ));
     }
 
-    // Create root user with "root" username
     let mut root_request = payload;
-    root_request.username = "root".to_string();
-    root_request.profile = Some(serde_json::json!({"isAdmin": true}));
+    root_request.profile = Some(serde_json::json!({}));
 
     match AUTH_SERVICE.create_user(root_request).await {
         Ok(user) => {
+            // Assign root user to admin group
+            if let Err(e) =
+                crate::database::queries::user_groups::assign_user_to_admin_group(user.id).await
+            {
+                eprintln!("Warning: Failed to assign root user to admin group: {}", e);
+            }
+
             // Generate token for the new root user
             match AUTH_SERVICE.generate_token(&user) {
                 Ok(token) => {
