@@ -147,3 +147,22 @@ fn get_database_pool() -> Result<Arc<PgPool>, sqlx::Error> {
         .cloned()
         .ok_or(sqlx::Error::PoolTimedOut)
 }
+
+pub async fn cleanup_database() {
+    println!("Cleaning up database...");
+    
+    // Close the database pool
+    if let Some(pool) = DATABASE_POOL.get() {
+        pool.close().await;
+        println!("Database pool closed");
+    }
+    
+    // Stop the PostgreSQL instance
+    if let Some(postgresql) = POSTGRESQL_INSTANCE.get() {
+        if let Err(e) = postgresql.stop().await {
+            eprintln!("Error stopping PostgreSQL: {}", e);
+        } else {
+            println!("PostgreSQL instance stopped");
+        }
+    }
+}

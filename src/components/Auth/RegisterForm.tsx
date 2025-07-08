@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../store/auth'
@@ -35,6 +35,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
   const title = isSetup ? 'Setup Admin Account' : 'Create Account'
   const submitText = isSetup ? 'Setup App' : 'Sign Up'
+
+  useEffect(() => {
+    if (isSetup) {
+      form.setFieldsValue({
+        username: 'root',
+      })
+    }
+  }, [])
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -78,6 +86,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             prefix={<UserOutlined />}
             placeholder="Enter username"
             autoComplete="username"
+            disabled={isSetup} // Disable username input during setup
           />
         </Form.Item>
 

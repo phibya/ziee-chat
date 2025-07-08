@@ -8,6 +8,7 @@ use once_cell::sync::Lazy;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use tauri::webview::WebviewWindowBuilder;
+use tokio::signal;
 use tower_http::cors::CorsLayer;
 
 pub static APP_NAME: Lazy<String> =
@@ -43,7 +44,29 @@ pub fn run() {
             }
 
             let api_router = create_rest_router();
-            start_api_server(port, api_router).await;
+
+            // Setup graceful shutdown
+            let (tx, rx) = tokio::sync::oneshot::channel();
+
+            // Spawn the server task
+            let server_task = tokio::spawn(async move {
+                start_api_server(port, api_router).await;
+            });
+
+            // Setup signal handler
+            tokio::spawn(async move {
+                shutdown_signal().await;
+                let _ = tx.send(());
+            });
+
+            // Wait for shutdown signal
+            let _ = rx.await;
+
+            // Cleanup database
+            database::cleanup_database().await;
+
+            server_task.abort();
+            println!("Application shutdown complete");
         });
     } else {
         // GUI mode: Run with Tauri
@@ -76,6 +99,14 @@ pub fn run() {
                     .build()?;
 
                 Ok(())
+            })
+            .on_window_event(|window, event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    // Cleanup database before closing
+                    tauri::async_runtime::spawn(async move {
+                        database::cleanup_database().await;
+                    });
+                }
             })
             .run(tauri::generate_context!())
             .expect("error while running tauri application");
@@ -199,4 +230,32 @@ fn create_rest_router() -> Router {
         .route("/api/auth/me", get(api::auth::methods::me))
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }))
         .layer(CorsLayer::permissive())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {
+            println!("Received Ctrl+C, shutting down...");
+        },
+        _ = terminate => {
+            println!("Received terminate signal, shutting down...");
+        },
+    }
 }
