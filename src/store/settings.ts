@@ -181,8 +181,9 @@ export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
   getAppearanceLanguage: () => {
     const state = get()
     // If user has explicitly set language preference, use it
-    if (state.settings['appearance.language']) {
-      return state.settings['appearance.language']
+    // Check if the key exists in settings (not just if it's truthy)
+    if ('appearance.language' in state.settings) {
+      return state.settings['appearance.language']!
     }
     // Otherwise, use global default language
     return state.globalDefaultLanguage

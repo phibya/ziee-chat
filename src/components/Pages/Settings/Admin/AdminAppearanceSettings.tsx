@@ -1,29 +1,18 @@
-import {
-  Card,
-  Divider,
-  Flex,
-  Form,
-  message,
-  Select,
-  Space,
-  Typography,
-} from 'antd'
+import { Card, Flex, Form, message, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
-import { useAppearanceSettings } from '../../../../store'
+import { useUserSettingsStore } from '../../../../store'
 import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
+import { ApiClient } from '../../../../api/client'
 
 const { Title, Text } = Typography
 
 export function AdminAppearanceSettings() {
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
+  const [loading, setLoading] = useState(false)
   const { hasPermission } = usePermissions()
-  const {
-    language,
-    setLanguage,
-    loading,
-  } = useAppearanceSettings()
+  const { globalDefaultLanguage } = useUserSettingsStore()
 
   // Check permissions - using a general config permission for appearance settings
   const canEditAppearance = hasPermission(Permission.config.experimental.edit)
@@ -41,24 +30,35 @@ export function AdminAppearanceSettings() {
 
   useEffect(() => {
     form.setFieldsValue({
-      language,
+      language: globalDefaultLanguage,
     })
-  }, [language, form])
+  }, [globalDefaultLanguage, form])
 
   const handleFormChange = async (changedValues: any) => {
     if ('language' in changedValues) {
       if (!canEditAppearance) {
         message.error('You do not have permission to change system settings')
-        form.setFieldsValue({ language })
+        form.setFieldsValue({ language: globalDefaultLanguage })
         return
       }
-      
+
+      setLoading(true)
       try {
-        await setLanguage(changedValues.language)
+        // Update global default language via admin API
+        await ApiClient.Admin.updateDefaultLanguage({
+          language: changedValues.language,
+        })
+
+        // Update the store's global language
+        const store = useUserSettingsStore.getState()
+        await store.loadGlobalLanguage()
+
         message.success('Default language updated successfully')
       } catch {
         message.error('Failed to update default language')
-        form.setFieldsValue({ language })
+        form.setFieldsValue({ language: globalDefaultLanguage })
+      } finally {
+        setLoading(false)
       }
     }
   }
@@ -85,7 +85,7 @@ export function AdminAppearanceSettings() {
           form={form}
           onValuesChange={handleFormChange}
           initialValues={{
-            language,
+            language: globalDefaultLanguage,
           }}
         >
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -99,7 +99,8 @@ export function AdminAppearanceSettings() {
                 <Text strong>Default Language</Text>
                 <div>
                   <Text type="secondary">
-                    Set the default language for new users and the system interface.
+                    Set the default language for new users and the system
+                    interface.
                   </Text>
                 </div>
               </div>

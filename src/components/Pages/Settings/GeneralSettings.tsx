@@ -44,19 +44,21 @@ export function GeneralSettings() {
     try {
       if ('experimentalFeatures' in changedValues) {
         if (!hasPermission(Permission.config.experimental.edit)) {
-          message.error('You do not have permission to change experimental features')
+          message.error(
+            'You do not have permission to change experimental features',
+          )
           form.setFieldsValue({ experimentalFeatures })
           return
         }
         setExperimentalFeatures(changedValues.experimentalFeatures)
         message.success(
-          `Experimental features ${changedValues.experimentalFeatures ? 'enabled' : 'disabled'}`
+          `Experimental features ${changedValues.experimentalFeatures ? 'enabled' : 'disabled'}`,
         )
       }
       if ('spellCheck' in changedValues) {
         setSpellCheck(changedValues.spellCheck)
         message.success(
-          `Spell check ${changedValues.spellCheck ? 'enabled' : 'disabled'}`
+          `Spell check ${changedValues.spellCheck ? 'enabled' : 'disabled'}`,
         )
       }
     } catch {
@@ -135,7 +137,11 @@ export function GeneralSettings() {
                   </Text>
                 </div>
               </div>
-              <Form.Item name="experimentalFeatures" valuePropName="checked" style={{ margin: 0 }}>
+              <Form.Item
+                name="experimentalFeatures"
+                valuePropName="checked"
+                style={{ margin: 0 }}
+              >
                 <Switch
                   size="small"
                   disabled={!hasPermission(Permission.config.experimental.edit)}
@@ -239,7 +245,11 @@ export function GeneralSettings() {
                   </Text>
                 </div>
               </div>
-              <Form.Item name="spellCheck" valuePropName="checked" style={{ margin: 0 }}>
+              <Form.Item
+                name="spellCheck"
+                valuePropName="checked"
+                style={{ margin: 0 }}
+              >
                 <Switch size="small" />
               </Form.Item>
             </Flex>

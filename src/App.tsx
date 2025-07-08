@@ -87,9 +87,13 @@ function App() {
                 {!isDesktopApp && hasPermission(Permission.groups.read) && (
                   <Route path="user-groups" element={<UserGroupsSettings />} />
                 )}
-                {!isDesktopApp && hasPermission(Permission.config.experimental.edit) && (
-                  <Route path="admin-appearance" element={<AdminAppearanceSettings />} />
-                )}
+                {!isDesktopApp &&
+                  hasPermission(Permission.config.experimental.edit) && (
+                    <Route
+                      path="admin-appearance"
+                      element={<AdminAppearanceSettings />}
+                    />
+                  )}
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

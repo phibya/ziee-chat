@@ -115,6 +115,14 @@ export function SettingsPage() {
             type: 'group' as const,
           })
 
+          if (hasAppearanceManagement) {
+            items.push({
+              key: 'admin-appearance',
+              icon: <EyeOutlined />,
+              label: 'Appearance',
+            })
+          }
+
           if (hasUserManagement) {
             items.push({
               key: 'users',
@@ -128,14 +136,6 @@ export function SettingsPage() {
               key: 'user-groups',
               icon: <TeamOutlined />,
               label: 'User Groups',
-            })
-          }
-
-          if (hasAppearanceManagement) {
-            items.push({
-              key: 'admin-appearance',
-              icon: <EyeOutlined />,
-              label: 'Appearance',
             })
           }
         }
