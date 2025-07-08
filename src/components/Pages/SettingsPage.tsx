@@ -13,8 +13,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { isDesktopApp } from '../../api/core'
-import { usePermissions } from '../../hooks/usePermissions'
-import { PermissionKeys } from '../../api/enpoints'
+import { PermissionKeys, usePermissions } from '../../permissions'
 
 const { Title } = Typography
 const { Sider, Content } = Layout

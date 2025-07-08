@@ -101,30 +101,8 @@ export type ApiEndpointResponses = {
   'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
 }
 
-// Auth types
-export interface User {
-  id: string
-  username: string
-  emails: UserEmail[]
-  created_at: string
-  profile?: any
-  services: UserServices
-  is_active: boolean
-  last_login_at?: string
-  updated_at: string
-  groups: UserGroup[]
-}
-
-export interface UserEmail {
-  address: string
-  verified: boolean
-}
-
-export interface UserServices {
-  facebook?: any
-  resume?: any
-  password?: any
-}
+// Re-export auth types from centralized permissions module
+export type { UserEmail, UserServices } from '../permissions'
 
 export interface CreateUserRequest {
   username: string
@@ -149,94 +127,25 @@ export interface InitResponse {
   is_desktop: boolean
 }
 
-// AWS-style permissions matching server-side implementation
-export const PermissionKeys = {
-  // User management permissions
-  USERS_READ: 'users::read',
-  USERS_EDIT: 'users::edit',
-  USERS_DELETE: 'users::delete',
-  USERS_CREATE: 'users::create',
-  USERS_ALL: 'users::*',
-  
-  // Group management permissions
-  GROUPS_READ: 'groups::read',
-  GROUPS_EDIT: 'groups::edit',
-  GROUPS_DELETE: 'groups::delete',
-  GROUPS_CREATE: 'groups::create',
-  GROUPS_ALL: 'groups::*',
-  
-  // Fine-grained configuration permissions
-  CONFIG_USER_REGISTRATION_READ: 'config::user-registration::read',
-  CONFIG_USER_REGISTRATION_EDIT: 'config::user-registration::edit',
-  
-  // Chat permissions
-  CHAT_USE: 'chat::use',
-  
-  // Profile permissions
-  PROFILE_EDIT: 'profile::edit',
-  
-  // Wildcard permissions
-  ALL: '*',
-} as const
+// Re-export permission constants from centralized permissions module
+export { PermissionKeys, type PermissionKey } from '../permissions'
 
-export type PermissionKey = typeof PermissionKeys[keyof typeof PermissionKeys]
+// Re-export types from centralized permissions module
+export type {
+  User,
+  UserGroup,
+  CreateUserGroupRequest,
+  UpdateUserGroupRequest,
+  UserListResponse,
+  UserGroupListResponse,
+} from '../permissions'
 
-// Admin types
-export interface UserGroup {
-  id: string
-  name: string
-  description?: string
-  permissions: PermissionKey[] // Array of permission strings
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface CreateUserGroupRequest {
-  name: string
-  description?: string
-  permissions: PermissionKey[]
-}
-
-export interface UpdateUserGroupRequest {
-  group_id: string
-  name?: string
-  description?: string
-  permissions?: PermissionKey[]
-  is_active?: boolean
-}
-
-export interface UpdateUserRequest {
-  user_id: string
-  username?: string
-  email?: string
-  is_active?: boolean
-  profile?: any
-}
-
-export interface ResetPasswordRequest {
-  user_id: string
-  new_password: string
-}
-
-export interface AssignUserToGroupRequest {
-  user_id: string
-  group_id: string
-}
-
-export interface UserListResponse {
-  users: User[]
-  total: number
-  page: number
-  per_page: number
-}
-
-export interface UserGroupListResponse {
-  groups: UserGroup[]
-  total: number
-  page: number
-  per_page: number
-}
+// Re-export request/response types from centralized permissions module
+export type {
+  UpdateUserRequest,
+  ResetPasswordRequest,
+  AssignUserToGroupRequest,
+} from '../permissions'
 
 // Configuration types
 export interface UserRegistrationStatusResponse {

@@ -28,8 +28,7 @@ import {
   UsersSettings,
 } from './components/Pages/Settings'
 import { useSettingsStore } from './store/settings'
-import { usePermissions } from './hooks/usePermissions'
-import { PermissionKeys } from './api/enpoints'
+import { PermissionKeys, usePermissions } from './permissions'
 import { isDesktopApp } from './api/core'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'

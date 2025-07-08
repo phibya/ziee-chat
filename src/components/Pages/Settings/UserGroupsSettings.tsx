@@ -29,13 +29,12 @@ import type { ColumnsType } from 'antd/es/table'
 import { isDesktopApp } from '../../../api/core'
 import {
   CreateUserGroupRequest,
-  PermissionKeys,
   UpdateUserGroupRequest,
   User,
   UserGroup,
 } from '../../../api/enpoints'
 import { ApiClient } from '../../../api/client.ts'
-import { usePermissions } from '../../../hooks/usePermissions'
+import { PermissionKeys, usePermissions } from '../../../permissions'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
