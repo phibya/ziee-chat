@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::sync::OnceCell;
 
 pub mod models;
-pub mod queries;
+pub(crate) mod queries;
 
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();
 
@@ -129,6 +129,9 @@ async fn connect_with_retry(database_url: &str) -> Result<PgPool, Box<dyn std::e
     }
 }
 
-pub async fn get_database_pool() -> Option<Arc<PgPool>> {
-    DATABASE_POOL.get().cloned()
+async fn get_database_pool() -> Result<Arc<PgPool>, sqlx::Error> {
+    DATABASE_POOL
+        .get()
+        .cloned()
+        .ok_or(sqlx::Error::PoolTimedOut)
 }

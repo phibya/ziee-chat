@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::database::models::*;
-use crate::database::queries::UserQueries;
+use crate::database::queries::users;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -65,7 +65,7 @@ impl AuthService {
     pub fn generate_token(&self, user: &User) -> Result<String, jsonwebtoken::errors::Error> {
         let now = Utc::now();
         let exp = now + Duration::hours(self.config.jwt_expiration_hours);
-        
+
         let claims = Claims {
             sub: user.id.to_string(),
             username: user.username.clone(),
@@ -76,7 +76,7 @@ impl AuthService {
 
         let header = Header::new(Algorithm::HS256);
         let key = EncodingKey::from_secret(self.config.jwt_secret.as_ref());
-        
+
         encode(&header, &claims, &key)
     }
 
@@ -84,7 +84,7 @@ impl AuthService {
     pub fn verify_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
         let key = DecodingKey::from_secret(self.config.jwt_secret.as_ref());
         let validation = Validation::new(Algorithm::HS256);
-        
+
         let token_data = decode::<Claims>(token, &key, &validation)?;
         Ok(token_data.claims)
     }
@@ -99,14 +99,14 @@ impl AuthService {
     /// Authenticate user with username/email and password
     pub async fn authenticate_user(
         &self,
-        pool: &sqlx::PgPool,
         username_or_email: &str,
         password: &str,
     ) -> Result<Option<LoginResponse>, String> {
         // Get user by username or email
-        let user = UserQueries::get_user_by_username_or_email(pool, username_or_email).await
+        let user = users::get_user_by_username_or_email(username_or_email)
+            .await
             .map_err(|e| e.to_string())?;
-        
+
         let Some(user) = user else {
             return Ok(None);
         };
@@ -117,27 +117,24 @@ impl AuthService {
         };
 
         // Verify password
-        if !self.verify_password(password, &password_service.bcrypt)
-            .map_err(|e| e.to_string())? {
+        if !self
+            .verify_password(password, &password_service.bcrypt)
+            .map_err(|e| e.to_string())?
+        {
             return Ok(None);
         }
 
         // Generate JWT token
-        let token = self.generate_token(&user)
-            .map_err(|e| e.to_string())?;
-        
+        let token = self.generate_token(&user).map_err(|e| e.to_string())?;
+
         // Generate login token and store it
         let login_token = self.generate_login_token();
         let when_created = Utc::now().timestamp_millis();
         let expires_at = Utc::now() + Duration::hours(self.config.jwt_expiration_hours);
-        
-        UserQueries::add_login_token(
-            pool,
-            user.id,
-            login_token.clone(),
-            when_created,
-            Some(expires_at),
-        ).await.map_err(|e| e.to_string())?;
+
+        users::add_login_token(user.id, login_token.clone(), when_created, Some(expires_at))
+            .await
+            .map_err(|e| e.to_string())?;
 
         Ok(Some(LoginResponse {
             token,
@@ -147,59 +144,46 @@ impl AuthService {
     }
 
     /// Create a new user with email and password
-    pub async fn create_user(
-        &self,
-        pool: &sqlx::PgPool,
-        request: CreateUserRequest,
-    ) -> Result<User, String> {
+    pub async fn create_user(&self, request: CreateUserRequest) -> Result<User, String> {
         // Hash password
-        let password_hash = self.hash_password(&request.password)
+        let password_hash = self
+            .hash_password(&request.password)
             .map_err(|e| e.to_string())?;
-        
+
         // Create user
-        let user = UserQueries::create_user(
-            pool,
+        let user = users::create_user(
             request.username,
             request.email,
             Some(password_hash),
             request.profile,
-        ).await.map_err(|e| e.to_string())?;
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
         Ok(user)
     }
 
     /// Get user by JWT token
-    pub async fn get_user_by_token(
-        &self,
-        pool: &sqlx::PgPool,
-        token: &str,
-    ) -> Result<Option<User>, String> {
-        let claims = self.verify_token(token)
-            .map_err(|e| e.to_string())?;
-        let user_id = Uuid::parse_str(&claims.sub)
-            .map_err(|e| e.to_string())?;
-        
-        let user = UserQueries::get_user_by_id(pool, user_id).await
+    pub async fn get_user_by_token(&self, token: &str) -> Result<Option<User>, String> {
+        let claims = self.verify_token(token).map_err(|e| e.to_string())?;
+        let user_id = Uuid::parse_str(&claims.sub).map_err(|e| e.to_string())?;
+
+        let user = users::get_user_by_id(user_id)
+            .await
             .map_err(|e| e.to_string())?;
         Ok(user)
     }
 
     /// Logout user by removing login token
-    pub async fn logout_user(
-        &self,
-        pool: &sqlx::PgPool,
-        token: &str,
-    ) -> Result<(), String> {
-        UserQueries::remove_login_token(pool, token).await
+    pub async fn logout_user(&self, token: &str) -> Result<(), String> {
+        users::remove_login_token(token)
+            .await
             .map_err(|e| e.to_string())?;
         Ok(())
     }
 
     /// Create default admin user for desktop app
-    pub async fn create_default_admin_user(
-        &self,
-        pool: &sqlx::PgPool,
-    ) -> Result<User, String> {
+    pub async fn create_default_admin_user(&self) -> Result<User, String> {
         let admin_request = CreateUserRequest {
             username: "admin".to_string(),
             email: "admin@domain.com".to_string(),
@@ -207,47 +191,45 @@ impl AuthService {
             profile: Some(serde_json::json!({"isAdmin": true})),
         };
 
-        self.create_user(pool, admin_request).await
+        self.create_user(admin_request).await
     }
 
     /// Get or create default admin user for desktop app
-    pub async fn get_or_create_default_admin_user(
-        &self,
-        pool: &sqlx::PgPool,
-    ) -> Result<User, String> {
+    pub async fn get_or_create_default_admin_user(&self) -> Result<User, String> {
         // Try to get existing admin user
-        if let Some(admin) = UserQueries::get_user_by_username(pool, "admin").await
-            .map_err(|e| e.to_string())? {
+        if let Some(admin) = users::get_user_by_username("admin")
+            .await
+            .map_err(|e| e.to_string())?
+        {
             return Ok(admin);
         }
 
         // Create default admin user
-        self.create_default_admin_user(pool).await
+        self.create_default_admin_user().await
     }
 
     /// Auto-login for desktop app - returns JWT token for default admin
-    pub async fn auto_login_desktop(
-        &self,
-        pool: &sqlx::PgPool,
-    ) -> Result<LoginResponse, String> {
-        let admin_user = self.get_or_create_default_admin_user(pool).await?;
-        
+    pub async fn auto_login_desktop(&self) -> Result<LoginResponse, String> {
+        let admin_user = self.get_or_create_default_admin_user().await?;
+
         // Generate JWT token
-        let token = self.generate_token(&admin_user)
+        let token = self
+            .generate_token(&admin_user)
             .map_err(|e| e.to_string())?;
-        
+
         // Generate login token and store it
         let login_token = self.generate_login_token();
         let when_created = Utc::now().timestamp_millis();
         let expires_at = Utc::now() + Duration::hours(self.config.jwt_expiration_hours);
-        
-        UserQueries::add_login_token(
-            pool,
+
+        users::add_login_token(
             admin_user.id,
             login_token.clone(),
             when_created,
             Some(expires_at),
-        ).await.map_err(|e| e.to_string())?;
+        )
+        .await
+        .map_err(|e| e.to_string())?;
 
         Ok(LoginResponse {
             token,

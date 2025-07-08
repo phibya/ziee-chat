@@ -9,9 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::api::app::methods::is_desktop_app;
 use crate::auth::AuthService;
-use crate::database::get_database_pool;
 use crate::database::models::*;
-use crate::database::queries::UserQueries;
+use crate::database::queries::users;
 
 static AUTH_SERVICE: Lazy<AuthService> = Lazy::new(|| AuthService::default());
 
@@ -36,16 +35,7 @@ pub struct ErrorResponse {
 /// Check if the app needs initial setup (no root user exists)
 #[debug_handler]
 pub async fn check_init_status() -> Result<Json<InitResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let Some(pool) = get_database_pool().await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: "Database not available".to_string(),
-            }),
-        ));
-    };
-
-    let needs_setup = match UserQueries::get_root_user(&pool).await {
+    let needs_setup = match users::get_root_user().await {
         Ok(user) => user.is_none(),
         Err(_) => true,
     };
@@ -61,17 +51,8 @@ pub async fn check_init_status() -> Result<Json<InitResponse>, (StatusCode, Json
 pub async fn init_app(
     Json(payload): Json<CreateUserRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let Some(pool) = get_database_pool().await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: "Database not available".to_string(),
-            }),
-        ));
-    };
-
     // Check if root user already exists
-    if let Ok(Some(_)) = UserQueries::get_root_user(&pool).await {
+    if let Ok(Some(_)) = users::get_root_user().await {
         return Err((
             StatusCode::CONFLICT,
             Json(ErrorResponse {
@@ -85,7 +66,7 @@ pub async fn init_app(
     root_request.username = "root".to_string();
     root_request.profile = Some(serde_json::json!({"isAdmin": true}));
 
-    match AUTH_SERVICE.create_user(&pool, root_request).await {
+    match AUTH_SERVICE.create_user(root_request).await {
         Ok(user) => {
             // Generate token for the new root user
             match AUTH_SERVICE.generate_token(&user) {
@@ -96,14 +77,9 @@ pub async fn init_app(
                     let login_token = AUTH_SERVICE.generate_login_token();
                     let when_created = chrono::Utc::now().timestamp_millis();
 
-                    if let Err(_) = UserQueries::add_login_token(
-                        &pool,
-                        user.id,
-                        login_token,
-                        when_created,
-                        Some(expires_at),
-                    )
-                    .await
+                    if let Err(_) =
+                        users::add_login_token(user.id, login_token, when_created, Some(expires_at))
+                            .await
                     {
                         return Err((
                             StatusCode::INTERNAL_SERVER_ERROR,
@@ -141,18 +117,9 @@ pub async fn init_app(
 pub async fn login(
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let Some(pool) = get_database_pool().await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: "Database not available".to_string(),
-            }),
-        ));
-    };
-
     // For desktop app, always auto-login with default admin
     if is_desktop_app() {
-        match AUTH_SERVICE.auto_login_desktop(&pool).await {
+        match AUTH_SERVICE.auto_login_desktop().await {
             Ok(login_response) => {
                 return Ok(Json(AuthResponse {
                     token: login_response.token,
@@ -173,7 +140,7 @@ pub async fn login(
 
     // For web app, authenticate with credentials
     match AUTH_SERVICE
-        .authenticate_user(&pool, &payload.username_or_email, &payload.password)
+        .authenticate_user(&payload.username_or_email, &payload.password)
         .await
     {
         Ok(Some(login_response)) => Ok(Json(AuthResponse {
@@ -199,15 +166,6 @@ pub async fn login(
 /// Logout endpoint
 #[debug_handler]
 pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
-    let Some(pool) = get_database_pool().await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: "Database not available".to_string(),
-            }),
-        ));
-    };
-
     // Extract token from Authorization header
     let auth_header = req
         .headers()
@@ -230,7 +188,7 @@ pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorR
     }
 
     // For web app, remove the login token
-    if let Err(e) = AUTH_SERVICE.logout_user(&pool, token).await {
+    if let Err(e) = AUTH_SERVICE.logout_user(token).await {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
@@ -245,15 +203,6 @@ pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorR
 /// Get current user endpoint
 #[debug_handler]
 pub async fn me(req: Request) -> Result<Json<User>, (StatusCode, Json<ErrorResponse>)> {
-    let Some(pool) = get_database_pool().await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: "Database not available".to_string(),
-            }),
-        ));
-    };
-
     // Extract token from Authorization header
     let auth_header = req
         .headers()
@@ -272,7 +221,7 @@ pub async fn me(req: Request) -> Result<Json<User>, (StatusCode, Json<ErrorRespo
 
     // For desktop app, return the default admin user
     if is_desktop_app() {
-        match AUTH_SERVICE.get_or_create_default_admin_user(&pool).await {
+        match AUTH_SERVICE.get_or_create_default_admin_user().await {
             Ok(user) => return Ok(Json(user)),
             Err(e) => {
                 return Err((
@@ -286,7 +235,7 @@ pub async fn me(req: Request) -> Result<Json<User>, (StatusCode, Json<ErrorRespo
     }
 
     // For web app, get user by JWT token
-    match AUTH_SERVICE.get_user_by_token(&pool, token).await {
+    match AUTH_SERVICE.get_user_by_token(token).await {
         Ok(Some(user)) => Ok(Json(user)),
         Ok(None) => Err((
             StatusCode::UNAUTHORIZED,
@@ -318,17 +267,8 @@ pub async fn register(
         ));
     }
 
-    let Some(pool) = get_database_pool().await else {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: "Database not available".to_string(),
-            }),
-        ));
-    };
-
     // Check if root user exists (app must be initialized first)
-    if let Ok(None) = UserQueries::get_root_user(&pool).await {
+    if let Ok(None) = users::get_root_user().await {
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse {
@@ -338,7 +278,7 @@ pub async fn register(
     }
 
     // Create new user
-    match AUTH_SERVICE.create_user(&pool, payload).await {
+    match AUTH_SERVICE.create_user(payload).await {
         Ok(user) => {
             // Generate token for the new user
             match AUTH_SERVICE.generate_token(&user) {
@@ -349,14 +289,9 @@ pub async fn register(
                     let login_token = AUTH_SERVICE.generate_login_token();
                     let when_created = chrono::Utc::now().timestamp_millis();
 
-                    if let Err(_) = UserQueries::add_login_token(
-                        &pool,
-                        user.id,
-                        login_token,
-                        when_created,
-                        Some(expires_at),
-                    )
-                    .await
+                    if let Err(_) =
+                        users::add_login_token(user.id, login_token, when_created, Some(expires_at))
+                            .await
                     {
                         return Err((
                             StatusCode::INTERNAL_SERVER_ERROR,
