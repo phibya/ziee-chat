@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   Drawer,
+  Flex,
   Form,
   Input,
   List,
@@ -30,10 +31,8 @@ import type {
   AssignUserToGroupRequest,
   ResetPasswordRequest,
   UpdateUserRequest,
-  UpdateUserRegistrationRequest,
   User,
   UserGroup,
-  UserRegistrationStatusResponse,
 } from '../../../api/enpoints'
 import { ApiClient } from '../../../api/client.ts'
 
@@ -109,7 +108,7 @@ export function UsersSettings() {
       await ApiClient.Admin.updateUserRegistrationStatus({ enabled })
       setRegistrationEnabled(enabled)
       message.success(
-        `User registration ${enabled ? 'enabled' : 'disabled'} successfully`
+        `User registration ${enabled ? 'enabled' : 'disabled'} successfully`,
       )
     } catch (error) {
       message.error('Failed to update registration status')
@@ -353,38 +352,40 @@ export function UsersSettings() {
       </div>
 
       {/* User Registration Settings */}
-      <Card title="User Registration" className="mb-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <Text strong>Enable User Registration</Text>
+      <Flex vertical className="gap-6">
+        <Card title="User Registration" className="mb-6">
+          <div className="flex justify-between items-center">
             <div>
-              <Text type="secondary">
-                Allow new users to register for accounts
-              </Text>
+              <Text strong>Enable User Registration</Text>
+              <div>
+                <Text type="secondary">
+                  Allow new users to register for accounts
+                </Text>
+              </div>
             </div>
+            <Switch
+              checked={registrationEnabled}
+              loading={registrationLoading}
+              onChange={handleToggleRegistration}
+              size="default"
+            />
           </div>
-          <Switch
-            checked={registrationEnabled}
-            loading={registrationLoading}
-            onChange={handleToggleRegistration}
-            size="default"
-          />
-        </div>
-      </Card>
+        </Card>
 
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={users}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: total => `Total ${total} users`,
-          }}
-        />
-      </Card>
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={users}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: total => `Total ${total} users`,
+            }}
+          />
+        </Card>
+      </Flex>
 
       {/* Edit User Modal */}
       <Modal
