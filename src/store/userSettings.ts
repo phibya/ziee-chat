@@ -32,7 +32,7 @@ interface UserSettingsState {
 
   // Computed values
   getAppearanceTheme: () => 'light' | 'dark' | 'system'
-  getAppearanceFontSize: () => number
+  getAppearanceComponentSize: () => 'small' | 'medium' | 'large'
 
   // Helper to get resolved theme (system -> light/dark)
   getResolvedTheme: () => 'light' | 'dark'
@@ -151,9 +151,9 @@ export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
     return state.getSetting('appearance.theme')
   },
 
-  getAppearanceFontSize: () => {
+  getAppearanceComponentSize: () => {
     const state = get()
-    return state.getSetting('appearance.fontSize')
+    return state.getSetting('appearance.componentSize')
   },
 
   getResolvedTheme: () => {
@@ -178,7 +178,7 @@ export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
 export const useAppearanceSettings = () => {
   const {
     getAppearanceTheme,
-    getAppearanceFontSize,
+    getAppearanceComponentSize,
     getResolvedTheme,
     setSetting,
     loading,
@@ -186,12 +186,12 @@ export const useAppearanceSettings = () => {
 
   return {
     theme: getAppearanceTheme(),
-    fontSize: getAppearanceFontSize(),
+    componentSize: getAppearanceComponentSize(),
     resolvedTheme: getResolvedTheme(),
     setTheme: (theme: 'light' | 'dark' | 'system') =>
       setSetting('appearance.theme', theme),
-    setFontSize: (fontSize: number) =>
-      setSetting('appearance.fontSize', fontSize),
+    setComponentSize: (componentSize: 'small' | 'medium' | 'large') =>
+      setSetting('appearance.componentSize', componentSize),
     loading,
   }
 }

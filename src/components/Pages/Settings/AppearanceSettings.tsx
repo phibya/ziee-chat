@@ -1,4 +1,4 @@
-import { Button, Card, Divider, Flex, Space, Typography, Select, InputNumber, message } from 'antd'
+import { Button, Card, Divider, Flex, Space, Typography, Select, message } from 'antd'
 import { useEffect, useState } from 'react'
 import { useAppearanceSettings } from '../../../store/userSettings'
 
@@ -8,9 +8,9 @@ export function AppearanceSettings() {
   const [isMobile, setIsMobile] = useState(false)
   const {
     theme,
-    fontSize,
+    componentSize,
     setTheme,
-    setFontSize,
+    setComponentSize,
     loading
   } = useAppearanceSettings()
 
@@ -34,14 +34,12 @@ export function AppearanceSettings() {
     }
   }
 
-  const handleFontSizeChange = async (newFontSize: number | null) => {
-    if (newFontSize === null) return
-    
+  const handleComponentSizeChange = async (newComponentSize: 'small' | 'medium' | 'large') => {
     try {
-      await setFontSize(newFontSize)
-      message.success('Font size updated successfully')
+      await setComponentSize(newComponentSize)
+      message.success('Component size updated successfully')
     } catch (error) {
-      message.error('Failed to update font size')
+      message.error('Failed to update component size')
     }
   }
 
@@ -54,10 +52,13 @@ export function AppearanceSettings() {
     }
   }
 
-  const getFontSizeLabel = (fontSize: number) => {
-    if (fontSize <= 12) return 'Small'
-    if (fontSize <= 16) return 'Medium'
-    return 'Large'
+  const getComponentSizeLabel = (size: 'small' | 'medium' | 'large') => {
+    switch (size) {
+      case 'small': return 'Small'
+      case 'medium': return 'Medium'
+      case 'large': return 'Large'
+      default: return 'Medium'
+    }
   }
 
   return (
@@ -98,29 +99,22 @@ export function AppearanceSettings() {
             gap={isMobile ? 'small' : 0}
           >
             <div>
-              <Text strong>Font Size</Text>
+              <Text strong>Component Size</Text>
               <div>
-                <Text type="secondary">Adjust the app's font size (8-32px).</Text>
+                <Text type="secondary">Adjust the size of UI components throughout the app.</Text>
               </div>
             </div>
-            <Space.Compact>
-              <InputNumber
-                value={fontSize}
-                onChange={handleFontSizeChange}
-                min={8}
-                max={32}
-                step={1}
-                style={{ width: 80 }}
-                loading={loading}
-              />
-              <Button 
-                type="default" 
-                disabled
-                style={{ minWidth: 80 }}
-              >
-                {getFontSizeLabel(fontSize)}
-              </Button>
-            </Space.Compact>
+            <Select
+              value={componentSize}
+              onChange={handleComponentSizeChange}
+              loading={loading}
+              style={{ minWidth: 120 }}
+              options={[
+                { value: 'small', label: 'Small' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'large', label: 'Large' }
+              ]}
+            />
           </Flex>
         </Space>
       </Card>

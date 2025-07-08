@@ -95,16 +95,16 @@ pub async fn set_user_appearance_theme(user_id: &Uuid, theme: &str) -> Result<Us
     set_user_setting(user_id, "appearance.theme", &value).await
 }
 
-pub async fn get_user_appearance_font_size(user_id: &Uuid) -> Result<Option<i32>, sqlx::Error> {
-    if let Some(setting) = get_user_setting(user_id, "appearance.fontSize").await? {
-        if let Some(size) = setting.value.as_i64() {
-            return Ok(Some(size as i32));
+pub async fn get_user_appearance_component_size(user_id: &Uuid) -> Result<Option<String>, sqlx::Error> {
+    if let Some(setting) = get_user_setting(user_id, "appearance.componentSize").await? {
+        if let Some(size) = setting.value.as_str() {
+            return Ok(Some(size.to_string()));
         }
     }
     Ok(None)
 }
 
-pub async fn set_user_appearance_font_size(user_id: &Uuid, font_size: i32) -> Result<UserSettingDb, sqlx::Error> {
-    let value = serde_json::Value::Number(serde_json::Number::from(font_size));
-    set_user_setting(user_id, "appearance.fontSize", &value).await
+pub async fn set_user_appearance_component_size(user_id: &Uuid, component_size: &str) -> Result<UserSettingDb, sqlx::Error> {
+    let value = serde_json::Value::String(component_size.to_string());
+    set_user_setting(user_id, "appearance.componentSize", &value).await
 }

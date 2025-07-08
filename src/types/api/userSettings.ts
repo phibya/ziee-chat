@@ -19,13 +19,13 @@ export interface UserSettingsResponse {
 // Strongly typed appearance settings
 export interface AppearanceSettings {
   theme: 'light' | 'dark' | 'system'
-  fontSize: number
+  componentSize: 'small' | 'medium' | 'large'
 }
 
 // Strongly typed user setting keys and values
 export interface UserSettingKeys {
   'appearance.theme': 'light' | 'dark' | 'system'
-  'appearance.fontSize': number
+  'appearance.componentSize': 'small' | 'medium' | 'large'
   // Future settings can be added here
   // 'shortcuts.save': string
   // 'proxy.host': string
@@ -55,7 +55,7 @@ export type GetUserSettingResponse<
 // Default values for user settings
 export const DEFAULT_USER_SETTINGS: UserSettingKeys = {
   'appearance.theme': 'system',
-  'appearance.fontSize': 14,
+  'appearance.componentSize': 'medium',
 }
 
 // Type guard to check if a key is a valid user setting key
