@@ -1,4 +1,14 @@
-import { Button, Card, Divider, Flex, Space, Switch, Typography } from 'antd'
+import {
+  Button,
+  Card,
+  Divider,
+  Flex,
+  Form,
+  message,
+  Space,
+  Switch,
+  Typography,
+} from 'antd'
 import { useEffect, useState } from 'react'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../permissions'
@@ -6,7 +16,10 @@ import { Permission, usePermissions } from '../../../permissions'
 const { Title, Text } = Typography
 
 export function GeneralSettings() {
+  const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
+  const [experimentalFeatures, setExperimentalFeatures] = useState(false)
+  const [spellCheck, setSpellCheck] = useState(true)
   const { hasPermission } = usePermissions()
 
   useEffect(() => {
@@ -19,6 +32,41 @@ export function GeneralSettings() {
 
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  useEffect(() => {
+    form.setFieldsValue({
+      experimentalFeatures,
+      spellCheck,
+    })
+  }, [experimentalFeatures, spellCheck, form])
+
+  const handleFormChange = async (changedValues: any) => {
+    try {
+      if ('experimentalFeatures' in changedValues) {
+        if (!hasPermission(Permission.config.experimental.edit)) {
+          message.error('You do not have permission to change experimental features')
+          form.setFieldsValue({ experimentalFeatures })
+          return
+        }
+        setExperimentalFeatures(changedValues.experimentalFeatures)
+        message.success(
+          `Experimental features ${changedValues.experimentalFeatures ? 'enabled' : 'disabled'}`
+        )
+      }
+      if ('spellCheck' in changedValues) {
+        setSpellCheck(changedValues.spellCheck)
+        message.success(
+          `Spell check ${changedValues.spellCheck ? 'enabled' : 'disabled'}`
+        )
+      }
+    } catch {
+      message.error('Failed to update settings')
+      form.setFieldsValue({
+        experimentalFeatures,
+        spellCheck,
+      })
+    }
+  }
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -69,21 +117,32 @@ export function GeneralSettings() {
 
       {hasPermission(Permission.config.experimental.read) && (
         <Card title="Advanced">
-          <Flex justify="space-between" align="center">
-            <div>
-              <Text strong>Experimental Features</Text>
+          <Form
+            form={form}
+            onValuesChange={handleFormChange}
+            initialValues={{
+              experimentalFeatures,
+              spellCheck,
+            }}
+          >
+            <Flex justify="space-between" align="center">
               <div>
-                <Text type="secondary">
-                  Enable experimental features. They may be unstable or change
-                  at any time.
-                </Text>
+                <Text strong>Experimental Features</Text>
+                <div>
+                  <Text type="secondary">
+                    Enable experimental features. They may be unstable or change
+                    at any time.
+                  </Text>
+                </div>
               </div>
-            </div>
-            <Switch
-              size="small"
-              disabled={!hasPermission(Permission.config.experimental.edit)}
-            />
-          </Flex>
+              <Form.Item name="experimentalFeatures" valuePropName="checked" style={{ margin: 0 }}>
+                <Switch
+                  size="small"
+                  disabled={!hasPermission(Permission.config.experimental.edit)}
+                />
+              </Form.Item>
+            </Flex>
+          </Form>
         </Card>
       )}
 
@@ -158,22 +217,33 @@ export function GeneralSettings() {
 
       <Card title="Other">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Flex
-            justify="space-between"
-            align={isMobile ? 'flex-start' : 'center'}
-            vertical={isMobile}
-            gap={isMobile ? 'small' : 0}
+          <Form
+            form={form}
+            onValuesChange={handleFormChange}
+            initialValues={{
+              experimentalFeatures,
+              spellCheck,
+            }}
           >
-            <div>
-              <Text strong>Spell Check</Text>
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
+            >
               <div>
-                <Text type="secondary">
-                  Enable spell check for your threads.
-                </Text>
+                <Text strong>Spell Check</Text>
+                <div>
+                  <Text type="secondary">
+                    Enable spell check for your threads.
+                  </Text>
+                </div>
               </div>
-            </div>
-            <Switch size="small" defaultChecked />
-          </Flex>
+              <Form.Item name="spellCheck" valuePropName="checked" style={{ margin: 0 }}>
+                <Switch size="small" />
+              </Form.Item>
+            </Flex>
+          </Form>
           <Divider style={{ margin: 0 }} />
           {hasPermission(Permission.config.factoryReset.read) && (
             <Flex

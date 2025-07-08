@@ -96,8 +96,15 @@ export function SettingsPage() {
         // Check if user has any admin permissions
         const hasUserManagement = hasPermission(Permission.users.read)
         const hasGroupManagement = hasPermission(Permission.groups.read)
+        const hasAppearanceManagement = hasPermission(
+          Permission.config.experimental.edit,
+        )
 
-        if (hasUserManagement || hasGroupManagement) {
+        if (
+          hasUserManagement ||
+          hasGroupManagement ||
+          hasAppearanceManagement
+        ) {
           items.push({
             type: 'divider' as const,
           })
@@ -121,6 +128,14 @@ export function SettingsPage() {
               key: 'user-groups',
               icon: <TeamOutlined />,
               label: 'User Groups',
+            })
+          }
+
+          if (hasAppearanceManagement) {
+            items.push({
+              key: 'admin-appearance',
+              icon: <EyeOutlined />,
+              label: 'Appearance',
             })
           }
         }
