@@ -243,6 +243,10 @@ fn create_rest_router() -> Router {
             "/api/config/user-registration",
             get(api::configuration::methods::get_user_registration_status),
         )
+        .route(
+            "/api/config/default-language",
+            get(api::configuration::methods::get_default_language_public),
+        )
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }));
 
     // Protected routes requiring authentication (permission checks handled in endpoint functions)
@@ -327,6 +331,16 @@ fn create_rest_router() -> Router {
             "/api/admin/config/user-registration",
             put(api::configuration::methods::update_user_registration_status)
                 .layer(middleware::from_fn(api::middleware::config_user_registration_edit_middleware))
+        )
+        .route(
+            "/api/admin/config/default-language",
+            get(api::configuration::methods::get_default_language_admin)
+                .layer(middleware::from_fn(api::middleware::config_appearance_read_middleware))
+        )
+        .route(
+            "/api/admin/config/default-language",
+            put(api::configuration::methods::update_default_language)
+                .layer(middleware::from_fn(api::middleware::config_appearance_edit_middleware))
         )
         // User settings routes
         .route(

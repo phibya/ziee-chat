@@ -27,7 +27,7 @@ import {
   UserGroupsSettings,
   UsersSettings,
 } from './components/Pages/Settings'
-import { useSettingsStore } from './store/settings'
+import { initializeUserSettings, useAppearanceSettings } from './store/settings'
 import { Permission, usePermissions } from './permissions'
 import { isDesktopApp } from './api/core'
 import './i18n'
@@ -35,8 +35,13 @@ import '@ant-design/v5-patch-for-react-19'
 
 function App() {
   const { i18n } = useTranslation()
-  const { language } = useSettingsStore()
+  const { language } = useAppearanceSettings()
   const { hasPermission } = usePermissions()
+
+  // Initialize user settings on app start
+  useEffect(() => {
+    initializeUserSettings()
+  }, [])
 
   // Update language when settings change
   useEffect(() => {

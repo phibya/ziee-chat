@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 
 export { useAuthStore } from './auth'
-export { useSettingsStore } from './settings'
 export {
   useUserSettingsStore,
   useAppearanceSettings,
+  useUISettings,
   initializeUserSettings,
-} from './userSettings'
+} from './settings'
 
 interface Thread {
   id: string

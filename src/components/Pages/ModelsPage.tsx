@@ -1,17 +1,17 @@
 import {
+  Avatar,
+  Button,
   Card,
   List,
-  Button,
+  Progress,
+  Space,
   Tag,
   Typography,
-  Space,
-  Avatar,
-  Progress,
 } from 'antd'
 import {
-  DownloadOutlined,
-  DatabaseOutlined,
   CheckCircleOutlined,
+  DatabaseOutlined,
+  DownloadOutlined,
   LoadingOutlined,
 } from '@ant-design/icons'
 

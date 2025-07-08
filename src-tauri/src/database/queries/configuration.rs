@@ -69,3 +69,20 @@ pub async fn set_user_registration_enabled(enabled: bool) -> Result<(), sqlx::Er
     .await?;
     Ok(())
 }
+
+pub async fn get_default_language() -> Result<String, sqlx::Error> {
+    match get_configuration("appearance.defaultLanguage").await? {
+        Some(config) => Ok(config.value),
+        None => Ok("en".to_string()), // Default to English if not set
+    }
+}
+
+pub async fn set_default_language(language: &str) -> Result<(), sqlx::Error> {
+    set_configuration(
+        "appearance.defaultLanguage",
+        language,
+        Some("Default language for the application when user language preference is not set"),
+    )
+    .await?;
+    Ok(())
+}

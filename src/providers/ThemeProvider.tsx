@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ConfigProvider, theme } from 'antd'
-import { useSettingsStore, getResolvedTheme } from '../store/settings'
+import { useUserSettingsStore } from '../store/settings'
 import { themes, ThemeType } from '../themes'
 import { ThemeContext } from '../hooks/useTheme'
 
@@ -9,13 +9,21 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const { theme: selectedTheme, componentSize } = useSettingsStore()
+  const { getAppearanceTheme, getAppearanceComponentSize, getResolvedTheme } =
+    useUserSettingsStore()
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<ThemeType>(themes.light)
 
+  const selectedTheme = getAppearanceTheme()
+  const rawComponentSize = getAppearanceComponentSize()
+
+  // Map component size to Ant Design's expected values
+  const componentSize =
+    rawComponentSize === 'medium' ? 'middle' : rawComponentSize
+
   useEffect(() => {
     const updateTheme = () => {
-      const resolvedTheme = getResolvedTheme(selectedTheme)
+      const resolvedTheme = getResolvedTheme()
       const darkMode = resolvedTheme === 'dark'
       setIsDarkMode(darkMode)
       setCurrentTheme(darkMode ? themes.dark : themes.light)
@@ -23,15 +31,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
     updateTheme()
 
-    // Listen for system theme changes if auto mode is selected
-    if (selectedTheme === 'auto') {
+    // Listen for system theme changes if system mode is selected
+    if (selectedTheme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
       const handleChange = () => updateTheme()
 
       mediaQuery.addEventListener('change', handleChange)
       return () => mediaQuery.removeEventListener('change', handleChange)
     }
-  }, [selectedTheme])
+  }, [selectedTheme, getResolvedTheme])
 
   // Update document class for global theme styling
   useEffect(() => {

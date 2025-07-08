@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import {
-  Card,
-  List,
+  Avatar,
   Button,
-  Modal,
+  Card,
   Form,
   Input,
+  List,
+  Modal,
   Typography,
-  Avatar,
 } from 'antd'
 import {
+  DeleteOutlined,
+  EditOutlined,
   PlusOutlined,
   UserOutlined,
-  EditOutlined,
-  DeleteOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../../store'
 

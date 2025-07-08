@@ -20,12 +20,16 @@ export interface UserSettingsResponse {
 export interface AppearanceSettings {
   theme: 'light' | 'dark' | 'system'
   componentSize: 'small' | 'medium' | 'large'
+  language: 'en' | 'vi'
 }
 
 // Strongly typed user setting keys and values
 export interface UserSettingKeys {
   'appearance.theme': 'light' | 'dark' | 'system'
   'appearance.componentSize': 'small' | 'medium' | 'large'
+  'appearance.language': 'en' | 'vi'
+  'ui.leftPanelCollapsed': boolean
+  'ui.leftPanelWidth': number
   // Future settings can be added here
   // 'shortcuts.save': string
   // 'proxy.host': string
@@ -52,10 +56,13 @@ export type GetUserSettingResponse<
   updatedAt: string
 }
 
-// Default values for user settings
+// Default values for user settings (fallback to global config for language)
 export const DEFAULT_USER_SETTINGS: UserSettingKeys = {
   'appearance.theme': 'system',
   'appearance.componentSize': 'medium',
+  'appearance.language': 'en', // Will be overridden by global config if available
+  'ui.leftPanelCollapsed': false,
+  'ui.leftPanelWidth': 280,
 }
 
 // Type guard to check if a key is a valid user setting key

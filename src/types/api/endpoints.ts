@@ -19,14 +19,15 @@ import {
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
 } from './config.ts'
+import {
+  DefaultLanguageResponse,
+  UpdateDefaultLanguageRequest,
+} from './globalConfig'
 import { UserGroupListResponse } from './userGroup.ts'
 import {
   UserSetting,
   UserSettingRequest,
   UserSettingsResponse,
-  UserSettingKeys,
-  SetUserSettingRequest,
-  GetUserSettingResponse,
 } from './userSettings'
 
 // API endpoint definitions
@@ -57,10 +58,13 @@ export const ApiEndpoints = {
     'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
   // Public configuration
   'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
+  'Config.getDefaultLanguage': 'GET /api/config/default-language',
   // Admin configuration management
   'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
   'Admin.updateUserRegistrationStatus':
     'PUT /api/admin/config/user-registration',
+  'Admin.getDefaultLanguage': 'GET /api/admin/config/default-language',
+  'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
   // User settings management
   'UserSettings.getAll': 'GET /api/user/settings',
   'UserSettings.get': 'GET /api/user/settings/{key}',
@@ -100,9 +104,12 @@ export type ApiEndpointParameters = {
   'Admin.removeUserFromGroup': { user_id: string; group_id: string }
   // Public configuration
   'Config.getUserRegistrationStatus': void
+  'Config.getDefaultLanguage': void
   // Admin configuration management
   'Admin.getUserRegistrationStatus': void
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
+  'Admin.getDefaultLanguage': void
+  'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
   // User settings management
   'UserSettings.getAll': void
   'UserSettings.get': { key: string }
@@ -138,9 +145,12 @@ export type ApiEndpointResponses = {
   'Admin.removeUserFromGroup': void
   // Public configuration
   'Config.getUserRegistrationStatus': UserRegistrationStatusResponse
+  'Config.getDefaultLanguage': DefaultLanguageResponse
   // Admin configuration management
   'Admin.getUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
+  'Admin.getDefaultLanguage': DefaultLanguageResponse
+  'Admin.updateDefaultLanguage': DefaultLanguageResponse
   // User settings management
   'UserSettings.getAll': UserSettingsResponse
   'UserSettings.get': UserSetting

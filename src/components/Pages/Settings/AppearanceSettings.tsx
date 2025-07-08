@@ -1,6 +1,6 @@
-import { Button, Card, Divider, Flex, Space, Typography, Select, message } from 'antd'
+import { Card, Divider, Flex, message, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
-import { useAppearanceSettings } from '../../../store/userSettings'
+import { useAppearanceSettings } from '../../../store/settings'
 
 const { Title, Text } = Typography
 
@@ -9,9 +9,11 @@ export function AppearanceSettings() {
   const {
     theme,
     componentSize,
+    language,
     setTheme,
     setComponentSize,
-    loading
+    setLanguage,
+    loading,
   } = useAppearanceSettings()
 
   useEffect(() => {
@@ -34,7 +36,9 @@ export function AppearanceSettings() {
     }
   }
 
-  const handleComponentSizeChange = async (newComponentSize: 'small' | 'medium' | 'large') => {
+  const handleComponentSizeChange = async (
+    newComponentSize: 'small' | 'medium' | 'large',
+  ) => {
     try {
       await setComponentSize(newComponentSize)
       message.success('Component size updated successfully')
@@ -43,21 +47,12 @@ export function AppearanceSettings() {
     }
   }
 
-  const getThemeLabel = (theme: 'light' | 'dark' | 'system') => {
-    switch (theme) {
-      case 'light': return 'Light'
-      case 'dark': return 'Dark'
-      case 'system': return 'System'
-      default: return 'System'
-    }
-  }
-
-  const getComponentSizeLabel = (size: 'small' | 'medium' | 'large') => {
-    switch (size) {
-      case 'small': return 'Small'
-      case 'medium': return 'Medium'
-      case 'large': return 'Large'
-      default: return 'Medium'
+  const handleLanguageChange = async (newLanguage: 'en' | 'vi') => {
+    try {
+      await setLanguage(newLanguage)
+      message.success('Language updated successfully')
+    } catch (error) {
+      message.error('Failed to update language')
     }
   }
 
@@ -76,7 +71,9 @@ export function AppearanceSettings() {
             <div>
               <Text strong>Theme</Text>
               <div>
-                <Text type="secondary">Choose your preferred theme or match the OS theme.</Text>
+                <Text type="secondary">
+                  Choose your preferred theme or match the OS theme.
+                </Text>
               </div>
             </div>
             <Select
@@ -87,7 +84,7 @@ export function AppearanceSettings() {
               options={[
                 { value: 'light', label: 'Light' },
                 { value: 'dark', label: 'Dark' },
-                { value: 'system', label: 'System' }
+                { value: 'system', label: 'System' },
               ]}
             />
           </Flex>
@@ -101,7 +98,9 @@ export function AppearanceSettings() {
             <div>
               <Text strong>Component Size</Text>
               <div>
-                <Text type="secondary">Adjust the size of UI components throughout the app.</Text>
+                <Text type="secondary">
+                  Adjust the size of UI components throughout the app.
+                </Text>
               </div>
             </div>
             <Select
@@ -112,7 +111,33 @@ export function AppearanceSettings() {
               options={[
                 { value: 'small', label: 'Small' },
                 { value: 'medium', label: 'Medium' },
-                { value: 'large', label: 'Large' }
+                { value: 'large', label: 'Large' },
+              ]}
+            />
+          </Flex>
+          <Divider style={{ margin: 0 }} />
+          <Flex
+            justify="space-between"
+            align={isMobile ? 'flex-start' : 'center'}
+            vertical={isMobile}
+            gap={isMobile ? 'small' : 0}
+          >
+            <div>
+              <Text strong>Language</Text>
+              <div>
+                <Text type="secondary">
+                  Choose your preferred language for the interface.
+                </Text>
+              </div>
+            </div>
+            <Select
+              value={language}
+              onChange={handleLanguageChange}
+              loading={loading}
+              style={{ minWidth: 120 }}
+              options={[
+                { value: 'en', label: 'English' },
+                { value: 'vi', label: 'Tiếng Việt' },
               ]}
             />
           </Flex>

@@ -3,12 +3,7 @@
  */
 
 import { User, UserGroup } from '../types'
-import {
-  Permission,
-  PermissionDescription,
-  PermissionKey,
-  PermissionKeys,
-} from './constants.ts'
+import { Permission, PermissionDescription, PermissionKey, PermissionKeys } from './constants.ts'
 
 /**
  * Check if a user has a specific permission based on their group memberships

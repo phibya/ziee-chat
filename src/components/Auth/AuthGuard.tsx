@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { Layout, Spin } from 'antd'
 import { useAuthStore } from '../../store/auth'
-import { initializeUserSettings } from '../../store/userSettings'
+import { initializeUserSettings } from '../../store/settings'
 import { AuthPage } from './AuthPage'
 
 const { Content } = Layout
@@ -30,7 +30,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   useEffect(() => {
     // Initialize user settings after authentication
     if (isAuthenticated && !isLoading) {
-      initializeUserSettings().catch(error => {
+      initializeUserSettings().catch((error: unknown) => {
         console.error('Failed to initialize user settings:', error)
       })
     }

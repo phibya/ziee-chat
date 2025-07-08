@@ -15,7 +15,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { useAppStore } from '../../store'
-import { useSettingsStore } from '../../store/settings'
+import { useUISettings } from '../../store/settings'
 import { useAuthStore } from '../../store/auth'
 import { useTheme } from '../../hooks/useTheme'
 
@@ -40,7 +40,7 @@ export function LeftPanel({
   const appTheme = useTheme()
   const { threads, currentThreadId, setCurrentThreadId, createThread } =
     useAppStore()
-  const { leftPanelCollapsed, setLeftPanelCollapsed } = useSettingsStore()
+  const { leftPanelCollapsed, setLeftPanelCollapsed } = useUISettings()
   const { user, logout, isDesktop } = useAuthStore()
 
   const handleNewChat = () => {

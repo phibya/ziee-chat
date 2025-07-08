@@ -19,6 +19,8 @@ pub mod permissions {
     // Fine-grained configuration permissions
     pub const CONFIG_USER_REGISTRATION_READ: &str = "config::user-registration::read";
     pub const CONFIG_USER_REGISTRATION_EDIT: &str = "config::user-registration::edit";
+    pub const CONFIG_APPEARANCE_READ: &str = "config::appearance::read";
+    pub const CONFIG_APPEARANCE_EDIT: &str = "config::appearance::edit";
     
     // Advanced configuration permissions (admin-only)
     pub const CONFIG_UPDATES_READ: &str = "config::updates::read";
@@ -151,6 +153,8 @@ pub fn expand_wildcard_permission(wildcard: &str) -> Vec<&'static str> {
             permissions::GROUPS_CREATE,
             permissions::CONFIG_USER_REGISTRATION_READ,
             permissions::CONFIG_USER_REGISTRATION_EDIT,
+            permissions::CONFIG_APPEARANCE_READ,
+            permissions::CONFIG_APPEARANCE_EDIT,
             permissions::CONFIG_UPDATES_READ,
             permissions::CONFIG_UPDATES_EDIT,
             permissions::CONFIG_EXPERIMENTAL_READ,

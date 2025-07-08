@@ -298,6 +298,28 @@ pub async fn config_factory_reset_edit_middleware(req: Request, next: Next) -> R
     Ok(next.run(req).await)
 }
 
+/// Middleware that checks for config::appearance::read permission
+pub async fn config_appearance_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_APPEARANCE_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::appearance::edit permission
+pub async fn config_appearance_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_APPEARANCE_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
 /// Middleware that checks for settings::read permission
 pub async fn settings_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;

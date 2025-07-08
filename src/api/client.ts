@@ -1,9 +1,9 @@
 import { callAsync } from './core'
 import {
-  ApiEndpoints,
+  ApiEndpoint,
   ApiEndpointParameters,
   ApiEndpointResponses,
-  ApiEndpoint,
+  ApiEndpoints,
 } from '../types'
 
 // Helper types for automatic namespace/method extraction

@@ -1,134 +1,279 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { ApiClient } from '../api/client'
+import {
+  DEFAULT_USER_SETTINGS,
+  getDefaultUserSettingValue,
+  isValidUserSettingKey,
+  UserSetting,
+  UserSettingKeys,
+} from '../types'
 
-export type Theme = 'light' | 'dark' | 'auto'
-export type Language = 'en' | 'vi'
-export type ComponentSize = 'small' | 'middle' | 'large'
+interface UserSettingsState {
+  // Current user settings
+  settings: Partial<UserSettingKeys>
 
-interface SettingsState {
-  // Theme settings
-  theme: Theme
+  // Global default language (fallback when user hasn't set language preference)
+  globalDefaultLanguage: 'en' | 'vi'
 
-  // Language settings
-  language: Language
-
-  // UI settings
-  componentSize: ComponentSize
-  leftPanelCollapsed: boolean
-  leftPanelWidth: number
-
-  // Chat settings
-  autoSave: boolean
-  showTimestamps: boolean
-  maxTokens: number
-  temperature: number
-
-  // API settings
-  openaiApiKey: string
-  anthropicApiKey: string
-  customEndpoint: string
-  requestTimeout: number
-
-  // Advanced settings
-  enableStreaming: boolean
-  enableFunctionCalling: boolean
-  debugMode: boolean
-  systemPrompt: string
-
-  // Default model
-  defaultModel: string
+  // Loading states
+  loading: boolean
+  initializing: boolean
 
   // Actions
-  setTheme: (theme: Theme) => void
-  setLanguage: (language: Language) => void
-  setComponentSize: (size: ComponentSize) => void
-  setLeftPanelCollapsed: (collapsed: boolean) => void
-  setLeftPanelWidth: (width: number) => void
-  updateSettings: (settings: Partial<SettingsState>) => void
-  resetSettings: () => void
+  loadSettings: () => Promise<void>
+  loadGlobalLanguage: () => Promise<void>
+  getSetting: <K extends keyof UserSettingKeys>(key: K) => UserSettingKeys[K]
+  setSetting: <K extends keyof UserSettingKeys>(
+    key: K,
+    value: UserSettingKeys[K],
+  ) => Promise<void>
+  updateSetting: <K extends keyof UserSettingKeys>(
+    key: K,
+    value: UserSettingKeys[K],
+  ) => void
+  deleteSetting: (key: keyof UserSettingKeys) => Promise<void>
+  resetSettings: () => Promise<void>
+
+  // Computed values
+  getAppearanceTheme: () => 'light' | 'dark' | 'system'
+  getAppearanceComponentSize: () => 'small' | 'medium' | 'large'
+  getAppearanceLanguage: () => 'en' | 'vi'
+  getLeftPanelCollapsed: () => boolean
+  getLeftPanelWidth: () => number
+
+  // Helper to get resolved theme (system -> light/dark)
+  getResolvedTheme: () => 'light' | 'dark'
+
+  // UI actions
+  setLeftPanelCollapsed: (collapsed: boolean) => Promise<void>
+  setLeftPanelWidth: (width: number) => Promise<void>
 }
 
-const defaultSettings = {
-  theme: 'light' as Theme,
-  language: 'en' as Language,
-  componentSize: 'middle' as ComponentSize,
-  leftPanelCollapsed: false,
-  leftPanelWidth: 280,
-  autoSave: true,
-  showTimestamps: false,
-  maxTokens: 2048,
-  temperature: 0.7,
-  openaiApiKey: '',
-  anthropicApiKey: '',
-  customEndpoint: '',
-  requestTimeout: 30,
-  enableStreaming: true,
-  enableFunctionCalling: true,
-  debugMode: false,
-  systemPrompt: '',
-  defaultModel: 'gpt-3.5-turbo',
-}
+export const useUserSettingsStore = create<UserSettingsState>((set, get) => ({
+  settings: {},
+  globalDefaultLanguage: 'en',
+  loading: false,
+  initializing: false,
 
-export const useSettingsStore = create<SettingsState>()(
-  persist(
-    set => ({
-      ...defaultSettings,
+  loadSettings: async () => {
+    set({ initializing: true })
 
-      setTheme: theme => set({ theme }),
+    try {
+      const response = await ApiClient.UserSettings.getAll()
+      const settingsMap: Partial<UserSettingKeys> = {}
 
-      setLanguage: language => set({ language }),
+      response.settings.forEach((setting: UserSetting) => {
+        if (isValidUserSettingKey(setting.key)) {
+          // Type assertion is safe here because we validated the key
+          settingsMap[setting.key as keyof UserSettingKeys] =
+            setting.value as any
+        }
+      })
 
-      setComponentSize: componentSize => set({ componentSize }),
+      set({ settings: settingsMap })
+    } catch (error) {
+      console.error('Failed to load user settings:', error)
+      // Use default settings if loading fails
+      set({ settings: DEFAULT_USER_SETTINGS })
+    } finally {
+      set({ initializing: false })
+    }
+  },
 
-      setLeftPanelCollapsed: leftPanelCollapsed => set({ leftPanelCollapsed }),
+  loadGlobalLanguage: async () => {
+    try {
+      const response = await ApiClient.Config.getDefaultLanguage()
+      set({ globalDefaultLanguage: response.language as 'en' | 'vi' })
+    } catch (error) {
+      console.error('Failed to load global default language:', error)
+      // Keep default 'en' if loading fails
+    }
+  },
 
-      setLeftPanelWidth: leftPanelWidth => set({ leftPanelWidth }),
+  getSetting: <K extends keyof UserSettingKeys>(key: K): UserSettingKeys[K] => {
+    const state = get()
+    return state.settings[key] ?? getDefaultUserSettingValue(key)
+  },
 
-      updateSettings: settings => set(state => ({ ...state, ...settings })),
+  setSetting: async <K extends keyof UserSettingKeys>(
+    key: K,
+    value: UserSettingKeys[K],
+  ) => {
+    set({ loading: true })
 
-      resetSettings: () => set(defaultSettings),
-    }),
-    {
-      name: 'jan-chat-settings',
-      version: 1,
-      partialize: state => ({
-        theme: state.theme,
-        language: state.language,
-        componentSize: state.componentSize,
-        leftPanelCollapsed: state.leftPanelCollapsed,
-        leftPanelWidth: state.leftPanelWidth,
-        autoSave: state.autoSave,
-        showTimestamps: state.showTimestamps,
-        maxTokens: state.maxTokens,
-        temperature: state.temperature,
-        openaiApiKey: state.openaiApiKey,
-        anthropicApiKey: state.anthropicApiKey,
-        customEndpoint: state.customEndpoint,
-        requestTimeout: state.requestTimeout,
-        enableStreaming: state.enableStreaming,
-        enableFunctionCalling: state.enableFunctionCalling,
-        debugMode: state.debugMode,
-        systemPrompt: state.systemPrompt,
-        defaultModel: state.defaultModel,
-      }),
-    },
-  ),
-)
+    try {
+      await ApiClient.UserSettings.set({
+        key,
+        value,
+      })
 
-// Helper function to get system theme preference
-export const getSystemTheme = (): 'light' | 'dark' => {
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
+      // Update local state
+      set(state => ({
+        settings: {
+          ...state.settings,
+          [key]: value,
+        },
+      }))
+    } catch (error) {
+      console.error(`Failed to set setting ${key}:`, error)
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  updateSetting: <K extends keyof UserSettingKeys>(
+    key: K,
+    value: UserSettingKeys[K],
+  ) => {
+    set(state => ({
+      settings: {
+        ...state.settings,
+        [key]: value,
+      },
+    }))
+  },
+
+  deleteSetting: async (key: keyof UserSettingKeys) => {
+    set({ loading: true })
+
+    try {
+      await ApiClient.UserSettings.delete({ key })
+
+      // Remove from local state
+      set(state => {
+        const newSettings = { ...state.settings }
+        delete newSettings[key]
+        return { settings: newSettings }
+      })
+    } catch (error) {
+      console.error(`Failed to delete setting ${key}:`, error)
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  resetSettings: async () => {
+    set({ loading: true })
+
+    try {
+      await ApiClient.UserSettings.deleteAll()
+      set({ settings: {} })
+    } catch (error) {
+      console.error('Failed to reset settings:', error)
+      throw error
+    } finally {
+      set({ loading: false })
+    }
+  },
+
+  getAppearanceTheme: () => {
+    const state = get()
+    return state.getSetting('appearance.theme')
+  },
+
+  getAppearanceComponentSize: () => {
+    const state = get()
+    return state.getSetting('appearance.componentSize')
+  },
+
+  getAppearanceLanguage: () => {
+    const state = get()
+    // If user has explicitly set language preference, use it
+    if (state.settings['appearance.language']) {
+      return state.settings['appearance.language']
+    }
+    // Otherwise, use global default language
+    return state.globalDefaultLanguage
+  },
+
+  getLeftPanelCollapsed: () => {
+    const state = get()
+    return state.getSetting('ui.leftPanelCollapsed')
+  },
+
+  getLeftPanelWidth: () => {
+    const state = get()
+    return state.getSetting('ui.leftPanelWidth')
+  },
+
+  getResolvedTheme: () => {
+    const state = get()
+    const theme = state.getAppearanceTheme()
+
+    if (theme === 'system') {
+      // Check system preference
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
+      }
+      return 'light'
+    }
+
+    return theme
+  },
+
+  setLeftPanelCollapsed: async (collapsed: boolean) => {
+    const state = get()
+    await state.setSetting('ui.leftPanelCollapsed', collapsed)
+  },
+
+  setLeftPanelWidth: async (width: number) => {
+    const state = get()
+    await state.setSetting('ui.leftPanelWidth', width)
+  },
+}))
+
+// Helper hook for appearance settings
+export const useAppearanceSettings = () => {
+  const {
+    getAppearanceTheme,
+    getAppearanceComponentSize,
+    getAppearanceLanguage,
+    getResolvedTheme,
+    setSetting,
+    loading,
+  } = useUserSettingsStore()
+
+  return {
+    theme: getAppearanceTheme(),
+    componentSize: getAppearanceComponentSize(),
+    language: getAppearanceLanguage(),
+    resolvedTheme: getResolvedTheme(),
+    setTheme: (theme: 'light' | 'dark' | 'system') =>
+      setSetting('appearance.theme', theme),
+    setComponentSize: (componentSize: 'small' | 'medium' | 'large') =>
+      setSetting('appearance.componentSize', componentSize),
+    setLanguage: (language: 'en' | 'vi') =>
+      setSetting('appearance.language', language),
+    loading,
   }
-  return 'light'
 }
 
-// Helper function to resolve actual theme
-export const getResolvedTheme = (theme: Theme): 'light' | 'dark' => {
-  if (theme === 'auto') {
-    return getSystemTheme()
+// Helper hook for UI settings
+export const useUISettings = () => {
+  const {
+    getLeftPanelCollapsed,
+    getLeftPanelWidth,
+    setLeftPanelCollapsed,
+    setLeftPanelWidth,
+    loading,
+  } = useUserSettingsStore()
+
+  return {
+    leftPanelCollapsed: getLeftPanelCollapsed(),
+    leftPanelWidth: getLeftPanelWidth(),
+    setLeftPanelCollapsed,
+    setLeftPanelWidth,
+    loading,
   }
-  return theme
+}
+
+// Initialize settings on app start
+export const initializeUserSettings = async () => {
+  const store = useUserSettingsStore.getState()
+  // Load both user settings and global language configuration
+  await Promise.all([store.loadSettings(), store.loadGlobalLanguage()])
 }

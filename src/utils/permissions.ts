@@ -15,4 +15,4 @@ export {
 } from '../permissions'
 
 // Re-export types for backward compatibility
-export type { PermissionKey, User, UserGroup } from '../permissions'
+export type { PermissionKey } from '../permissions'

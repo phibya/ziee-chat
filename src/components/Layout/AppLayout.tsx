@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Layout } from 'antd'
-import { useSettingsStore } from '../../store/settings'
+import { useUISettings } from '../../store/settings'
 import { LeftPanel } from './LeftPanel'
 import { useTheme } from '../../hooks/useTheme'
 
@@ -17,7 +17,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     leftPanelWidth,
     setLeftPanelCollapsed,
     setLeftPanelWidth,
-  } = useSettingsStore()
+  } = useUISettings()
   const [isResizing, setIsResizing] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false)

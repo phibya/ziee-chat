@@ -1,5 +1,5 @@
-import { Card, List, Button, Tag, Typography, Space, Avatar } from 'antd'
-import { DownloadOutlined, AppstoreOutlined } from '@ant-design/icons'
+import { Avatar, Button, Card, List, Space, Tag, Typography } from 'antd'
+import { AppstoreOutlined, DownloadOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
 
