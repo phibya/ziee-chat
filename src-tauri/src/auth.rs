@@ -145,6 +145,16 @@ impl AuthService {
 
     /// Create a new user with email and password
     pub async fn create_user(&self, request: CreateUserRequest) -> Result<User, String> {
+        // Check if username already exists
+        if let Ok(Some(_)) = users::get_user_by_username(&request.username).await {
+            return Err(format!("Username '{}' is already taken", request.username));
+        }
+
+        // Check if email already exists
+        if let Ok(Some(_)) = users::get_user_by_email(&request.email).await {
+            return Err(format!("Email '{}' is already registered", request.email));
+        }
+
         // Hash password
         let password_hash = self
             .hash_password(&request.password)
