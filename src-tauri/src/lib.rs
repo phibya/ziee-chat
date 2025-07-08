@@ -106,11 +106,17 @@ pub fn run() {
 
                 Ok(())
             })
-            .on_window_event(|window, event| {
+            .on_window_event(|_window, event| {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     // Cleanup database before closing
-                    tauri::async_runtime::spawn(async move {
+                    let handle = tauri::async_runtime::spawn(async move {
                         database::cleanup_database().await;
+                    });
+                    
+                    // Wait for cleanup to complete
+                    std::thread::spawn(move || {
+                        let rt = tokio::runtime::Runtime::new().unwrap();
+                        rt.block_on(handle).unwrap();
                     });
                 }
             })
