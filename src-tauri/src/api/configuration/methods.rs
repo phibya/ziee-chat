@@ -27,8 +27,8 @@ pub async fn get_user_registration_status() -> Result<Json<UserRegistrationStatu
 pub async fn get_user_registration_status_admin(
     Extension(auth_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<UserRegistrationStatusResponse>, StatusCode> {
-    // Check system_admin permission
-    if !check_permission(&auth_user.user, "system_admin") {
+    // Check user_management permission
+    if !check_permission(&auth_user.user, "user_management") {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -43,8 +43,8 @@ pub async fn update_user_registration_status(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateUserRegistrationRequest>,
 ) -> Result<Json<UserRegistrationStatusResponse>, StatusCode> {
-    // Check system_admin permission
-    if !check_permission(&auth_user.user, "system_admin") {
+    // Check user_management permission
+    if !check_permission(&auth_user.user, "user_management") {
         return Err(StatusCode::FORBIDDEN);
     }
 

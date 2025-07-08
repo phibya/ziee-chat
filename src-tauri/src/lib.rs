@@ -301,7 +301,7 @@ fn create_rest_router() -> Router {
             "/api/admin/groups/{user_id}/{group_id}/remove",
             delete(api::user_groups::methods::remove_user_from_group),
         )
-        // Admin configuration routes (require system_admin permission)
+        // Admin configuration routes (require user_management permission)
         .route(
             "/api/admin/config/user-registration",
             get(api::configuration::methods::get_user_registration_status_admin),

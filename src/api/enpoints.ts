@@ -152,7 +152,6 @@ export interface InitResponse {
 export const PermissionKeys = {
   user_management: 'user_management',
   group_management: 'group_management',
-  system_admin: 'system_admin',
   chat: 'chat',
   profile_edit: 'profile_edit',
 } as const
@@ -160,7 +159,6 @@ export const PermissionKeys = {
 export interface Permissions {
   [PermissionKeys.user_management]: boolean
   [PermissionKeys.group_management]: boolean
-  [PermissionKeys.system_admin]: boolean
   [PermissionKeys.chat]: boolean
   [PermissionKeys.profile_edit]: boolean
 }

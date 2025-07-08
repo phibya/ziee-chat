@@ -95,7 +95,9 @@ pub async fn init_app(
                     }
 
                     // Mark app as initialized
-                    if let Err(e) = crate::database::queries::configuration::mark_app_initialized().await {
+                    if let Err(e) =
+                        crate::database::queries::configuration::mark_app_initialized().await
+                    {
                         eprintln!("Warning: Failed to mark app as initialized: {}", e);
                     }
 
@@ -212,54 +214,10 @@ pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorR
 
 /// Get current user endpoint
 #[debug_handler]
-pub async fn me(req: Request) -> Result<Json<User>, (StatusCode, Json<ErrorResponse>)> {
-    // Extract token from Authorization header
-    let auth_header = req
-        .headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .and_then(|h| h.strip_prefix("Bearer "));
-
-    let Some(token) = auth_header else {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse {
-                error: "Missing or invalid authorization header".to_string(),
-            }),
-        ));
-    };
-
-    // For desktop app, return the default admin user
-    if is_desktop_app() {
-        match AUTH_SERVICE.get_or_create_default_admin_user().await {
-            Ok(user) => return Ok(Json(user)),
-            Err(e) => {
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        error: format!("Failed to get desktop admin user: {}", e),
-                    }),
-                ))
-            }
-        }
-    }
-
-    // For web app, get user by JWT token
-    match AUTH_SERVICE.get_user_by_token(token).await {
-        Ok(Some(user)) => Ok(Json(user)),
-        Ok(None) => Err((
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse {
-                error: "Invalid token".to_string(),
-            }),
-        )),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: format!("Failed to get user: {}", e),
-            }),
-        )),
-    }
+pub async fn me(
+    axum::Extension(auth_user): axum::Extension<crate::api::middleware::AuthenticatedUser>,
+) -> Result<Json<User>, (StatusCode, Json<ErrorResponse>)> {
+    Ok(Json(auth_user.user))
 }
 
 /// Register endpoint (for web app only)
@@ -288,7 +246,8 @@ pub async fn register(
     }
 
     // Check if user registration is enabled
-    if let Ok(false) = crate::database::queries::configuration::is_user_registration_enabled().await {
+    if let Ok(false) = crate::database::queries::configuration::is_user_registration_enabled().await
+    {
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse {

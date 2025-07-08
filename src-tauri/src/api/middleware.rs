@@ -21,10 +21,7 @@ pub struct ErrorResponse {
 }
 
 /// Authentication middleware that validates JWT token and adds user to request extensions
-pub async fn auth_middleware(
-    mut req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, StatusCode> {
     // Extract token from Authorization header
     let auth_header = req
         .headers()
@@ -56,7 +53,7 @@ pub async fn auth_middleware(
             Ok(next.run(req).await)
         }
         Ok(None) => Err(StatusCode::UNAUTHORIZED),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(err) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
 
@@ -66,7 +63,7 @@ pub fn check_permission(user: &User, permission: &str) -> bool {
         if !group.is_active {
             continue;
         }
-        
+
         if let Some(permissions) = group.permissions.as_object() {
             if let Some(has_permission) = permissions.get(permission) {
                 if has_permission.as_bool().unwrap_or(false) {
@@ -87,43 +84,23 @@ pub fn get_authenticated_user(req: &Request) -> Result<&User, StatusCode> {
 }
 
 /// Middleware that checks for user_management permission
-pub async fn user_management_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn user_management_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
-    
+
     if !check_permission(user, "user_management") {
         return Err(StatusCode::FORBIDDEN);
     }
-    
+
     Ok(next.run(req).await)
 }
 
 /// Middleware that checks for group_management permission
-pub async fn group_management_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn group_management_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
-    
+
     if !check_permission(user, "group_management") {
         return Err(StatusCode::FORBIDDEN);
     }
-    
-    Ok(next.run(req).await)
-}
 
-/// Middleware that checks for system_admin permission
-pub async fn system_admin_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-    
-    if !check_permission(user, "system_admin") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-    
     Ok(next.run(req).await)
 }

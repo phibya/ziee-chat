@@ -26,7 +26,7 @@ pub struct AuthConfig {
 impl Default for AuthConfig {
     fn default() -> Self {
         Self {
-            jwt_secret: generate_jwt_secret(),
+            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| generate_jwt_secret()),
             jwt_expiration_hours: 24 * 7, // 1 week
         }
     }

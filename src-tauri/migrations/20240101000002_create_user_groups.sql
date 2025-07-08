@@ -53,7 +53,7 @@ INSERT INTO user_groups (name, description, permissions, is_active)
 VALUES (
     'admin',
     'Administrator group with full permissions',
-    '{"user_management": true, "group_management": true, "system_admin": true}',
+    '{"user_management": true, "group_management": true}',
     TRUE
 );
 
