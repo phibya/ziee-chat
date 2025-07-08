@@ -79,8 +79,10 @@ export const AuthPage: React.FC = () => {
           {mode === 'setup' && <RegisterForm isSetup={true} />}
 
           {mode === 'login' && (
-            <LoginForm 
-              onSwitchToRegister={registrationEnabled ? handleSwitchToRegister : undefined} 
+            <LoginForm
+              onSwitchToRegister={
+                registrationEnabled ? handleSwitchToRegister : undefined
+              }
             />
           )}
 

@@ -29,7 +29,8 @@ export const ApiEndpoints = {
   'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
   // Admin configuration management
   'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
-  'Admin.updateUserRegistrationStatus': 'PUT /api/admin/config/user-registration',
+  'Admin.updateUserRegistrationStatus':
+    'PUT /api/admin/config/user-registration',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -148,12 +149,28 @@ export interface InitResponse {
   is_desktop: boolean
 }
 
+export const PermissionKeys = {
+  user_management: 'user_management',
+  group_management: 'group_management',
+  system_admin: 'system_admin',
+  chat: 'chat',
+  profile_edit: 'profile_edit',
+} as const
+
+export interface Permissions {
+  [PermissionKeys.user_management]: boolean
+  [PermissionKeys.group_management]: boolean
+  [PermissionKeys.system_admin]: boolean
+  [PermissionKeys.chat]: boolean
+  [PermissionKeys.profile_edit]: boolean
+}
+
 // Admin types
 export interface UserGroup {
   id: string
   name: string
   description?: string
-  permissions: any
+  permissions: Permissions
   is_active: boolean
   created_at: string
   updated_at: string

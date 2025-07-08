@@ -94,7 +94,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
     // Parse the response as JSON
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`
-      
+
       try {
         // Try to extract error message from response body
         const errorResponse = await response.json()
@@ -104,7 +104,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       } catch (e) {
         // If we can't parse the error response, use the default message
       }
-      
+
       throw new Error(errorMessage)
     }
 

@@ -11,6 +11,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Result,
   Select,
   Space,
   Switch,
@@ -20,6 +21,7 @@ import {
 } from 'antd'
 import {
   EditOutlined,
+  ExclamationCircleOutlined,
   LockOutlined,
   PlusOutlined,
   TeamOutlined,
@@ -27,19 +29,22 @@ import {
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { isDesktopApp } from '../../../api/core'
-import type {
+import {
   AssignUserToGroupRequest,
+  PermissionKeys,
   ResetPasswordRequest,
   UpdateUserRequest,
   User,
   UserGroup,
 } from '../../../api/enpoints'
 import { ApiClient } from '../../../api/client.ts'
+import { usePermissions } from '../../../hooks/usePermissions'
 
 const { Title, Text } = Typography
 const { Option } = Select
 
 export function UsersSettings() {
+  const { hasPermission } = usePermissions()
   const [users, setUsers] = useState<User[]>([])
   const [groups, setGroups] = useState<UserGroup[]>([])
   const [loading, setLoading] = useState(false)
@@ -54,16 +59,23 @@ export function UsersSettings() {
   const [passwordForm] = Form.useForm()
   const [assignGroupForm] = Form.useForm()
 
-  // Redirect if desktop app
+  // Check permissions
+  const canManageUsers = hasPermission(PermissionKeys.user_management)
+
+  // Redirect if desktop app or insufficient permissions
   useEffect(() => {
     if (isDesktopApp) {
       message.warning('User management is not available in desktop mode')
       return
     }
+    if (!canManageUsers) {
+      message.warning('You do not have permission to manage users')
+      return
+    }
     fetchUsers()
     fetchGroups()
     fetchRegistrationStatus()
-  }, [])
+  }, [canManageUsers])
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -342,6 +354,21 @@ export function UsersSettings() {
           </Text>
         </div>
       </Card>
+    )
+  }
+
+  if (!canManageUsers) {
+    return (
+      <Result
+        icon={<ExclamationCircleOutlined />}
+        title="Access Denied"
+        subTitle={`You do not have permission to access user management. Contact your administrator to request ${PermissionKeys.user_management} permission.`}
+        extra={
+          <Button type="primary" onClick={() => window.history.back()}>
+            Go Back
+          </Button>
+        }
+      />
     )
   }
 

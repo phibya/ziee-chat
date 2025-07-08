@@ -10,6 +10,7 @@ import {
   message,
   Modal,
   Popconfirm,
+  Result,
   Space,
   Switch,
   Table,
@@ -19,6 +20,7 @@ import {
 import {
   DeleteOutlined,
   EditOutlined,
+  ExclamationCircleOutlined,
   PlusOutlined,
   TeamOutlined,
   UserOutlined,
@@ -27,16 +29,19 @@ import type { ColumnsType } from 'antd/es/table'
 import { isDesktopApp } from '../../../api/core'
 import {
   CreateUserGroupRequest,
+  PermissionKeys,
   UpdateUserGroupRequest,
   User,
   UserGroup,
 } from '../../../api/enpoints'
 import { ApiClient } from '../../../api/client.ts'
+import { usePermissions } from '../../../hooks/usePermissions'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
 
 export function UserGroupsSettings() {
+  const { hasPermission } = usePermissions()
   const [groups, setGroups] = useState<UserGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [createModalVisible, setCreateModalVisible] = useState(false)
@@ -48,14 +53,21 @@ export function UserGroupsSettings() {
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
 
-  // Redirect if desktop app
+  // Check permissions
+  const canManageGroups = hasPermission(PermissionKeys.group_management)
+
+  // Redirect if desktop app or insufficient permissions
   useEffect(() => {
     if (isDesktopApp) {
       message.warning('User group management is not available in desktop mode')
       return
     }
+    if (!canManageGroups) {
+      message.warning('You do not have permission to manage user groups')
+      return
+    }
     fetchGroups()
-  }, [])
+  }, [canManageGroups])
 
   const fetchGroups = async () => {
     setLoading(true)
@@ -241,6 +253,21 @@ export function UserGroupsSettings() {
           </Text>
         </div>
       </Card>
+    )
+  }
+
+  if (!canManageGroups) {
+    return (
+      <Result
+        icon={<ExclamationCircleOutlined />}
+        title="Access Denied"
+        subTitle={`You do not have permission to access user group management. Contact your administrator to request ${PermissionKeys.group_management} permission.`}
+        extra={
+          <Button type="primary" onClick={() => window.history.back()}>
+            Go Back
+          </Button>
+        }
+      />
     )
   }
 
