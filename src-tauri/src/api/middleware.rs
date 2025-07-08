@@ -7,6 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::api::app::methods::is_desktop_app;
+use crate::api::permissions::{check_permission, permissions};
 use crate::auth::AuthService;
 use crate::database::models::User;
 
@@ -53,26 +54,15 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
             Ok(next.run(req).await)
         }
         Ok(None) => Err(StatusCode::UNAUTHORIZED),
-        Err(err) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(_err) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
 
 /// Check if the authenticated user has a specific permission
-pub fn check_permission(user: &User, permission: &str) -> bool {
-    for group in &user.groups {
-        if !group.is_active {
-            continue;
-        }
-
-        if let Some(permissions) = group.permissions.as_object() {
-            if let Some(has_permission) = permissions.get(permission) {
-                if has_permission.as_bool().unwrap_or(false) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
+/// This function is now deprecated - use crate::api::permissions::check_permission instead
+#[deprecated(note = "Use crate::api::permissions::check_permission instead")]
+pub fn check_permission_legacy(user: &User, permission: &str) -> bool {
+    check_permission(user, permission)
 }
 
 /// Extract authenticated user from request extensions
@@ -83,22 +73,136 @@ pub fn get_authenticated_user(req: &Request) -> Result<&User, StatusCode> {
         .ok_or(StatusCode::UNAUTHORIZED)
 }
 
-/// Middleware that checks for user_management permission
+/// Middleware that checks for user_management permission (legacy - removed)
+/// Use specific permission middleware instead
+#[deprecated(note = "Use specific permission middleware instead")]
 pub async fn user_management_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
-    if !check_permission(user, "user_management") {
+    if !check_permission(user, permissions::USERS_READ) {
         return Err(StatusCode::FORBIDDEN);
     }
 
     Ok(next.run(req).await)
 }
 
-/// Middleware that checks for group_management permission
+/// Middleware that checks for group_management permission (legacy - removed)
+/// Use specific permission middleware instead
+#[deprecated(note = "Use specific permission middleware instead")]
 pub async fn group_management_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
-    if !check_permission(user, "group_management") {
+    if !check_permission(user, permissions::GROUPS_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for users::read permission
+pub async fn users_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::USERS_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for users::edit permission
+pub async fn users_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::USERS_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for users::create permission
+pub async fn users_create_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::USERS_CREATE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for users::delete permission
+pub async fn users_delete_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::USERS_DELETE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for groups::read permission
+pub async fn groups_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::GROUPS_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for groups::edit permission
+pub async fn groups_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::GROUPS_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for groups::create permission
+pub async fn groups_create_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::GROUPS_CREATE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for groups::delete permission
+pub async fn groups_delete_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::GROUPS_DELETE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::user-registration::read permission
+pub async fn config_user_registration_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_USER_REGISTRATION_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::user-registration::edit permission
+pub async fn config_user_registration_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_USER_REGISTRATION_EDIT) {
         return Err(StatusCode::FORBIDDEN);
     }
 

@@ -7,7 +7,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::api::middleware::{AuthenticatedUser, check_permission};
+use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{UpdateUserRequest, ResetPasswordRequest},
     queries::users,
@@ -42,11 +42,6 @@ pub async fn list_users(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<crate::database::models::UserListResponse>, StatusCode> {
-    // Check user_management or group_management permission
-    if !check_permission(&auth_user.user, "user_management") && !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -64,11 +59,6 @@ pub async fn get_user(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<crate::database::models::User>, StatusCode> {
-    // Check user_management or group_management permission
-    if !check_permission(&auth_user.user, "user_management") && !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match users::get_user_by_id(user_id).await {
         Ok(Some(user)) => Ok(Json(user)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
@@ -85,11 +75,6 @@ pub async fn update_user(
     Path(user_id): Path<Uuid>,
     Json(request): Json<UpdateUserRequest>,
 ) -> Result<Json<crate::database::models::User>, StatusCode> {
-    // Check user_management permission
-    if !check_permission(&auth_user.user, "user_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match users::update_user(
         user_id,
         request.username,
@@ -113,11 +98,6 @@ pub async fn reset_user_password(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<ResetPasswordRequest>,
 ) -> Result<StatusCode, StatusCode> {
-    // Check user_management permission
-    if !check_permission(&auth_user.user, "user_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     // Hash the password
     let password_hash = match bcrypt::hash(&request.new_password, bcrypt::DEFAULT_COST) {
         Ok(hash) => hash,
@@ -142,11 +122,6 @@ pub async fn toggle_user_active(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    // Check user_management permission
-    if !check_permission(&auth_user.user, "user_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match users::toggle_user_active(user_id).await {
         Ok(is_active) => Ok(Json(serde_json::json!({ "is_active": is_active }))),
         Err(e) => {

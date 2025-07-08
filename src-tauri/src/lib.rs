@@ -250,65 +250,83 @@ fn create_rest_router() -> Router {
         .route("/api/user/greet", post(api::user::methods::greet))
         .route("/api/auth/logout", post(api::auth::methods::logout))
         .route("/api/auth/me", get(api::auth::methods::me))
-        // Admin user management routes (require user_management permission)
-        .route("/api/admin/users", get(api::user::methods::list_users))
+        // Admin user management routes with AWS-style permissions
         .route(
-            "/api/admin/users/{user_id}",
-            get(api::user::methods::get_user),
+            "/api/admin/users",
+            get(api::user::methods::list_users)
+                .layer(middleware::from_fn(api::middleware::users_read_middleware))
         )
         .route(
             "/api/admin/users/{user_id}",
-            put(api::user::methods::update_user),
+            get(api::user::methods::get_user)
+                .layer(middleware::from_fn(api::middleware::users_read_middleware))
+        )
+        .route(
+            "/api/admin/users/{user_id}",
+            put(api::user::methods::update_user)
+                .layer(middleware::from_fn(api::middleware::users_edit_middleware))
         )
         .route(
             "/api/admin/users/{user_id}/toggle-active",
-            post(api::user::methods::toggle_user_active),
+            post(api::user::methods::toggle_user_active)
+                .layer(middleware::from_fn(api::middleware::users_edit_middleware))
         )
         .route(
             "/api/admin/users/reset-password",
-            post(api::user::methods::reset_user_password),
+            post(api::user::methods::reset_user_password)
+                .layer(middleware::from_fn(api::middleware::users_edit_middleware))
         )
-        // Admin user group management routes (require group_management permission)
+        // Admin user group management routes with AWS-style permissions
         .route(
             "/api/admin/groups",
-            get(api::user_groups::methods::list_user_groups),
+            get(api::user_groups::methods::list_user_groups)
+                .layer(middleware::from_fn(api::middleware::groups_read_middleware))
         )
         .route(
             "/api/admin/groups",
-            post(api::user_groups::methods::create_user_group),
+            post(api::user_groups::methods::create_user_group)
+                .layer(middleware::from_fn(api::middleware::groups_create_middleware))
         )
         .route(
             "/api/admin/groups/{group_id}",
-            get(api::user_groups::methods::get_user_group),
+            get(api::user_groups::methods::get_user_group)
+                .layer(middleware::from_fn(api::middleware::groups_read_middleware))
         )
         .route(
             "/api/admin/groups/{group_id}",
-            put(api::user_groups::methods::update_user_group),
+            put(api::user_groups::methods::update_user_group)
+                .layer(middleware::from_fn(api::middleware::groups_edit_middleware))
         )
         .route(
             "/api/admin/groups/{group_id}",
-            delete(api::user_groups::methods::delete_user_group),
+            delete(api::user_groups::methods::delete_user_group)
+                .layer(middleware::from_fn(api::middleware::groups_delete_middleware))
         )
         .route(
             "/api/admin/groups/{group_id}/members",
-            get(api::user_groups::methods::get_group_members),
+            get(api::user_groups::methods::get_group_members)
+                .layer(middleware::from_fn(api::middleware::groups_read_middleware))
         )
         .route(
             "/api/admin/groups/assign",
-            post(api::user_groups::methods::assign_user_to_group),
+            post(api::user_groups::methods::assign_user_to_group)
+                .layer(middleware::from_fn(api::middleware::groups_edit_middleware))
         )
         .route(
             "/api/admin/groups/{user_id}/{group_id}/remove",
-            delete(api::user_groups::methods::remove_user_from_group),
+            delete(api::user_groups::methods::remove_user_from_group)
+                .layer(middleware::from_fn(api::middleware::groups_edit_middleware))
         )
-        // Admin configuration routes (require user_management permission)
+        // Admin configuration routes with fine-grained permissions
         .route(
             "/api/admin/config/user-registration",
-            get(api::configuration::methods::get_user_registration_status_admin),
+            get(api::configuration::methods::get_user_registration_status_admin)
+                .layer(middleware::from_fn(api::middleware::config_user_registration_read_middleware))
         )
         .route(
             "/api/admin/config/user-registration",
-            put(api::configuration::methods::update_user_registration_status),
+            put(api::configuration::methods::update_user_registration_status)
+                .layer(middleware::from_fn(api::middleware::config_user_registration_edit_middleware))
         )
         .layer(middleware::from_fn(api::middleware::auth_middleware));
 

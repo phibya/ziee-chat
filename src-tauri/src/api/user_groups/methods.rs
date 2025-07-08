@@ -7,7 +7,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::api::middleware::{AuthenticatedUser, check_permission};
+use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{CreateUserGroupRequest, UpdateUserGroupRequest, AssignUserToGroupRequest},
     queries::user_groups,
@@ -24,11 +24,6 @@ pub async fn create_user_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateUserGroupRequest>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match user_groups::create_user_group(
         request.name,
         request.description,
@@ -49,11 +44,6 @@ pub async fn get_user_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
-    // Check group_management or user_management permission
-    if !check_permission(&auth_user.user, "group_management") && !check_permission(&auth_user.user, "user_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match user_groups::get_user_group_by_id(group_id).await {
         Ok(Some(group)) => Ok(Json(group)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
@@ -69,11 +59,6 @@ pub async fn list_user_groups(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<crate::database::models::UserGroupListResponse>, StatusCode> {
-    // Check group_management or user_management permission
-    if !check_permission(&auth_user.user, "group_management") && !check_permission(&auth_user.user, "user_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -92,11 +77,6 @@ pub async fn update_user_group(
     Path(group_id): Path<Uuid>,
     Json(request): Json<UpdateUserGroupRequest>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match user_groups::update_user_group(
         group_id,
         request.name,
@@ -123,11 +103,6 @@ pub async fn delete_user_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
 ) -> Result<StatusCode, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match user_groups::delete_user_group(group_id).await {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
         Ok(false) => Err(StatusCode::NOT_FOUND),
@@ -146,11 +121,6 @@ pub async fn assign_user_to_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<AssignUserToGroupRequest>,
 ) -> Result<StatusCode, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match user_groups::assign_user_to_group(request.user_id, request.group_id, None).await {
         Ok(()) => Ok(StatusCode::OK),
         Err(e) => {
@@ -165,11 +135,6 @@ pub async fn remove_user_from_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path((user_id, group_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     match user_groups::remove_user_from_group(user_id, group_id).await {
         Ok(true) => Ok(StatusCode::OK),
         Ok(false) => Err(StatusCode::NOT_FOUND),
@@ -186,11 +151,6 @@ pub async fn get_group_members(
     Path(group_id): Path<Uuid>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<crate::database::models::UserListResponse>, StatusCode> {
-    // Check group_management permission
-    if !check_permission(&auth_user.user, "group_management") {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
