@@ -9,7 +9,7 @@ pub async fn create_user(
     password_hash: Option<String>,
     profile: Option<serde_json::Value>,
 ) -> Result<User, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let mut tx = pool.begin().await?;
 
     // Insert user
@@ -85,7 +85,7 @@ pub async fn create_user(
 
 // Get user by ID with all related data
 pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let user_row = sqlx::query("SELECT * FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_optional(&*pool)
@@ -164,7 +164,7 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
 
 // Get user by email
 pub async fn get_user_by_email(email: &str) -> Result<Option<User>, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let email_row = sqlx::query("SELECT * FROM user_emails WHERE address = $1")
         .bind(email)
         .fetch_optional(&*pool)
@@ -180,7 +180,7 @@ pub async fn get_user_by_email(email: &str) -> Result<Option<User>, sqlx::Error>
 
 // Get user by username
 pub async fn get_user_by_username(username: &str) -> Result<Option<User>, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let user_row = sqlx::query("SELECT * FROM users WHERE username = $1")
         .bind(username)
         .fetch_optional(&*pool)
@@ -213,7 +213,7 @@ pub async fn add_email_to_user(
     email: String,
     verified: bool,
 ) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     sqlx::query("INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3)")
         .bind(user_id)
         .bind(email)
@@ -226,7 +226,7 @@ pub async fn add_email_to_user(
 
 // Verify email
 pub async fn verify_email(user_id: Uuid, email: &str) -> Result<bool, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let result =
         sqlx::query("UPDATE user_emails SET verified = TRUE WHERE user_id = $1 AND address = $2")
             .bind(user_id)
@@ -244,7 +244,7 @@ pub async fn add_login_token(
     when_created: i64,
     expires_at: Option<chrono::DateTime<chrono::Utc>>,
 ) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     sqlx::query("INSERT INTO user_login_tokens (user_id, token, when_created, expires_at) VALUES ($1, $2, $3, $4)")
     .bind(user_id)
     .bind(token)
@@ -258,7 +258,7 @@ pub async fn add_login_token(
 
 // Get user by login token
 pub async fn get_user_by_login_token(token: &str) -> Result<Option<User>, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let token_row = sqlx::query("SELECT * FROM user_login_tokens WHERE token = $1 AND (expires_at IS NULL OR expires_at > NOW())")
     .bind(token)
     .fetch_optional(&*pool)
@@ -274,7 +274,7 @@ pub async fn get_user_by_login_token(token: &str) -> Result<Option<User>, sqlx::
 
 // Remove login token
 pub async fn remove_login_token(token: &str) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     sqlx::query("DELETE FROM user_login_tokens WHERE token = $1")
         .bind(token)
         .execute(&*pool)
@@ -288,7 +288,7 @@ pub async fn update_user_profile(
     user_id: Uuid,
     profile: serde_json::Value,
 ) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     sqlx::query("UPDATE users SET profile = $1 WHERE id = $2")
         .bind(profile)
         .bind(user_id)
@@ -304,7 +304,7 @@ pub async fn add_or_update_service(
     service_name: String,
     service_data: serde_json::Value,
 ) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     sqlx::query(
         r#"
             INSERT INTO user_services (user_id, service_name, service_data)
@@ -324,7 +324,7 @@ pub async fn add_or_update_service(
 
 // Remove service
 pub async fn remove_service(user_id: Uuid, service_name: &str) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     sqlx::query("DELETE FROM user_services WHERE user_id = $1 AND service_name = $2")
         .bind(user_id)
         .bind(service_name)
@@ -336,7 +336,7 @@ pub async fn remove_service(user_id: Uuid, service_name: &str) -> Result<(), sql
 
 // Clean up expired login tokens
 pub async fn cleanup_expired_tokens() -> Result<u64, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let result = sqlx::query(
         "DELETE FROM user_login_tokens WHERE expires_at IS NOT NULL AND expires_at < NOW()",
     )
@@ -348,7 +348,7 @@ pub async fn cleanup_expired_tokens() -> Result<u64, sqlx::Error> {
 
 // Get root users
 pub async fn get_root_user() -> Result<Option<User>, sqlx::Error> {
-    let pool = get_database_pool().await?;
+    let pool = get_database_pool()?;
     let start_time = chrono::Utc::now();
     println!("get_root_user query started at {}", start_time);
     let user_row = sqlx::query("SELECT * FROM users WHERE username = $1 LIMIT 1")

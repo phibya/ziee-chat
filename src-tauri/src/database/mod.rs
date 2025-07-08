@@ -129,7 +129,7 @@ async fn connect_with_retry(database_url: &str) -> Result<PgPool, Box<dyn std::e
     }
 }
 
-async fn get_database_pool() -> Result<Arc<PgPool>, sqlx::Error> {
+fn get_database_pool() -> Result<Arc<PgPool>, sqlx::Error> {
     DATABASE_POOL
         .get()
         .cloned()
