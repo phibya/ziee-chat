@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from 'react'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../permissions'
+import { isDesktopApp } from '../../../api/core'
 
 const { Title, Text } = Typography
 
@@ -90,34 +91,36 @@ export function GeneralSettings() {
             </div>
             <Text type="secondary">v0.6.4</Text>
           </Flex>
-          <Divider style={{ margin: 0 }} />
-          {hasPermission(Permission.config.updates.read) && (
-            <Flex
-              justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
-              vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
-            >
-              <div>
-                <Text strong>Check for Updates</Text>
-                <div>
-                  <Text type="secondary">
-                    Check if a newer version of Jan is available.
-                  </Text>
-                </div>
-              </div>
-              <Button
-                type="default"
-                disabled={!hasPermission(Permission.config.updates.edit)}
+          {isDesktopApp && hasPermission(Permission.config.updates.read) && (
+            <>
+              <Divider style={{ margin: 0 }} />
+              <Flex
+                justify="space-between"
+                align={isMobile ? 'flex-start' : 'center'}
+                vertical={isMobile}
+                gap={isMobile ? 'small' : 0}
               >
-                Check for Updates
-              </Button>
-            </Flex>
+                <div>
+                  <Text strong>Check for Updates</Text>
+                  <div>
+                    <Text type="secondary">
+                      Check if a newer version of Jan is available.
+                    </Text>
+                  </div>
+                </div>
+                <Button
+                  type="default"
+                  disabled={!hasPermission(Permission.config.updates.edit)}
+                >
+                  Check for Updates
+                </Button>
+              </Flex>
+            </>
           )}
         </Space>
       </Card>
 
-      {hasPermission(Permission.config.experimental.read) && (
+      {isDesktopApp && hasPermission(Permission.config.experimental.read) && (
         <Card title="Advanced">
           <Form
             form={form}
@@ -152,7 +155,7 @@ export function GeneralSettings() {
         </Card>
       )}
 
-      {hasPermission(Permission.config.dataFolder.read) && (
+      {isDesktopApp && hasPermission(Permission.config.dataFolder.read) && (
         <Card title="Data Folder">
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Flex

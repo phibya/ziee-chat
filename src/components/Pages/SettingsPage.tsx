@@ -117,6 +117,14 @@ export function SettingsPage() {
 
           if (hasAppearanceManagement) {
             items.push({
+              key: 'admin-general',
+              icon: <UserOutlined />,
+              label: 'General',
+            })
+          }
+
+          if (hasAppearanceManagement) {
+            items.push({
               key: 'admin-appearance',
               icon: <EyeOutlined />,
               label: 'Appearance',
