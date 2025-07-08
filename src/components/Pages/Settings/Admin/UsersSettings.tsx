@@ -28,17 +28,17 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { isDesktopApp } from '../../../api/core'
+import { isDesktopApp } from '../../../../api/core.ts'
 import {
   AssignUserToGroupRequest,
   ResetPasswordRequest,
   UpdateUserRequest,
   User,
   UserGroup,
-} from '../../../types'
-import { ApiClient } from '../../../api/client.ts'
-import { Permission, usePermissions } from '../../../permissions'
-import { UserRegistrationSettings } from './UserRegistrationSettings'
+} from '../../../../types'
+import { ApiClient } from '../../../../api/client.ts'
+import { Permission, usePermissions } from '../../../../permissions'
+import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
 const { Title, Text } = Typography
 const { Option } = Select

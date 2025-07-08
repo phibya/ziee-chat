@@ -1,6 +1,6 @@
 import { Card, Divider, Flex, message, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
-import { useAppearanceSettings } from '../../../store/settings'
+import { useAppearanceSettings } from '../../../store'
 
 const { Title, Text } = Typography
 

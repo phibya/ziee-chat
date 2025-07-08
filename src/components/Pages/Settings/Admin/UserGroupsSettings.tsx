@@ -26,15 +26,15 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
-import { isDesktopApp } from '../../../api/core'
+import { isDesktopApp } from '../../../../api/core.ts'
 import {
   CreateUserGroupRequest,
   UpdateUserGroupRequest,
   User,
   UserGroup,
-} from '../../../types'
-import { ApiClient } from '../../../api/client.ts'
-import { Permission, usePermissions } from '../../../permissions'
+} from '../../../../types'
+import { ApiClient } from '../../../../api/client.ts'
+import { Permission, usePermissions } from '../../../../permissions'
 
 const { Title, Text } = Typography
 const { TextArea } = Input

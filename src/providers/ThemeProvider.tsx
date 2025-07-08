@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ConfigProvider, theme } from 'antd'
-import { useUserSettingsStore } from '../store/settings'
+import { useUserSettingsStore } from '../store'
 import { themes, ThemeType } from '../themes'
 import { ThemeContext } from '../hooks/useTheme'
 

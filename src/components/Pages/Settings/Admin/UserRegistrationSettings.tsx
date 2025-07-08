@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { App, Card, Form, Switch, Typography } from 'antd'
-import { ApiClient } from '../../../api/client'
-import { Permission, usePermissions } from '../../../permissions'
+import { ApiClient } from '../../../../api/client.ts'
+import { Permission, usePermissions } from '../../../../permissions'
 
 const { Text } = Typography
 
