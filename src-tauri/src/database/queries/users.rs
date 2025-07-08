@@ -377,13 +377,13 @@ pub async fn get_root_user() -> Result<Option<User>, sqlx::Error> {
 pub async fn list_users(page: i32, per_page: i32) -> Result<UserListResponse, sqlx::Error> {
     let pool = get_database_pool()?;
     let offset = (page - 1) * per_page;
-    
+
     // Get total count
     let total_row = sqlx::query("SELECT COUNT(*) as count FROM users")
         .fetch_one(&*pool)
         .await?;
     let total: i64 = total_row.get("count");
-    
+
     // Get users
     let rows = sqlx::query("SELECT id FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2")
         .bind(per_page)
@@ -417,46 +417,50 @@ pub async fn update_user(
 ) -> Result<Option<User>, sqlx::Error> {
     let pool = get_database_pool()?;
     let mut tx = pool.begin().await?;
-    
+
     // Update user table
     let mut user_updates = Vec::new();
-    let mut user_params = Vec::new();
     let mut param_index = 1;
-    
-    if let Some(username) = &username {
+
+    if username.is_some() {
         user_updates.push(format!("username = ${}", param_index));
-        user_params.push(username.clone());
         param_index += 1;
     }
-    
-    if let Some(is_active) = &is_active {
+
+    if is_active.is_some() {
         user_updates.push(format!("is_active = ${}", param_index));
-        user_params.push(is_active.to_string());
         param_index += 1;
     }
-    
-    if let Some(profile) = &profile {
+
+    if profile.is_some() {
         user_updates.push(format!("profile = ${}", param_index));
-        user_params.push(profile.to_string());
         param_index += 1;
     }
-    
+
     if !user_updates.is_empty() {
         let query = format!(
             "UPDATE users SET {} WHERE id = ${}",
             user_updates.join(", "),
             param_index
         );
-        
+
         let mut sql_query = sqlx::query(&query);
-        for param in user_params {
-            sql_query = sql_query.bind(param);
-        }
-        sql_query = sql_query.bind(user_id);
         
+        if let Some(username) = username.clone() {
+            sql_query = sql_query.bind(username);
+        }
+        if let Some(is_active) = is_active {
+            sql_query = sql_query.bind(is_active);
+        }
+        if let Some(profile) = profile.clone() {
+            sql_query = sql_query.bind(profile);
+        }
+        
+        sql_query = sql_query.bind(user_id);
+
         sql_query.execute(&mut *tx).await?;
     }
-    
+
     // Update email if provided
     if let Some(email) = email {
         sqlx::query("UPDATE user_emails SET address = $1 WHERE user_id = $2")
@@ -465,9 +469,9 @@ pub async fn update_user(
             .execute(&mut *tx)
             .await?;
     }
-    
+
     tx.commit().await?;
-    
+
     // Return updated user
     get_user_by_id(user_id).await
 }
@@ -475,11 +479,11 @@ pub async fn update_user(
 // Reset user password
 pub async fn reset_user_password(user_id: Uuid, password_hash: String) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
-    
+
     let password_service = serde_json::json!({
         "bcrypt": password_hash
     });
-    
+
     let result = sqlx::query(
         r#"
         INSERT INTO user_services (user_id, service_name, service_data)
@@ -493,30 +497,30 @@ pub async fn reset_user_password(user_id: Uuid, password_hash: String) -> Result
     .bind(&password_service)
     .execute(&*pool)
     .await?;
-    
+
     Ok(result.rows_affected() > 0)
 }
 
 // Update last login time
 pub async fn update_last_login(user_id: Uuid) -> Result<(), sqlx::Error> {
     let pool = get_database_pool()?;
-    
+
     sqlx::query("UPDATE users SET last_login_at = NOW() WHERE id = $1")
         .bind(user_id)
         .execute(&*pool)
         .await?;
-    
+
     Ok(())
 }
 
 // Toggle user active status
 pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
-    
+
     let result = sqlx::query("UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active")
         .bind(user_id)
         .fetch_optional(&*pool)
         .await?;
-    
+
     Ok(result.map_or(false, |r| r.get("is_active")))
 }

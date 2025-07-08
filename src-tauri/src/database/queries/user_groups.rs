@@ -128,48 +128,47 @@ pub async fn update_user_group(
     let pool = get_database_pool()?;
     
     let mut query = String::from("UPDATE user_groups SET");
-    let mut params = Vec::new();
+    let mut updates = Vec::new();
     let mut param_index = 1;
     
-    if let Some(name) = &name {
-        query.push_str(&format!(" name = ${}", param_index));
-        params.push(name.clone());
+    if name.is_some() {
+        updates.push(format!(" name = ${}", param_index));
         param_index += 1;
     }
     
-    if let Some(description) = &description {
-        if param_index > 1 {
-            query.push_str(",");
-        }
-        query.push_str(&format!(" description = ${}", param_index));
-        params.push(description.clone());
+    if description.is_some() {
+        updates.push(format!(" description = ${}", param_index));
         param_index += 1;
     }
     
-    if let Some(permissions) = &permissions {
-        if param_index > 1 {
-            query.push_str(",");
-        }
-        query.push_str(&format!(" permissions = ${}", param_index));
-        params.push(permissions.to_string());
+    if permissions.is_some() {
+        updates.push(format!(" permissions = ${}", param_index));
         param_index += 1;
     }
     
-    if let Some(is_active) = &is_active {
-        if param_index > 1 {
-            query.push_str(",");
-        }
-        query.push_str(&format!(" is_active = ${}", param_index));
-        params.push(is_active.to_string());
+    if is_active.is_some() {
+        updates.push(format!(" is_active = ${}", param_index));
         param_index += 1;
     }
     
+    query.push_str(&updates.join(","));
     query.push_str(&format!(" WHERE id = ${} RETURNING *", param_index));
     
     let mut sql_query = sqlx::query(&query);
-    for param in params {
-        sql_query = sql_query.bind(param);
+    
+    if let Some(name) = name {
+        sql_query = sql_query.bind(name);
     }
+    if let Some(description) = description {
+        sql_query = sql_query.bind(description);
+    }
+    if let Some(permissions) = permissions {
+        sql_query = sql_query.bind(permissions);
+    }
+    if let Some(is_active) = is_active {
+        sql_query = sql_query.bind(is_active);
+    }
+    
     sql_query = sql_query.bind(group_id);
     
     let row = sql_query.fetch_optional(&*pool).await?;

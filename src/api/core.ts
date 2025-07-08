@@ -65,16 +65,29 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       | 'PUT'
       | 'DELETE'
       | 'PATCH'
-    const endpointPath = endpointUrl.replace(/^[A-Z]+\s+/, '').trim()
+    let endpointPath = endpointUrl.replace(/^[A-Z]+\s+/, '').trim()
+    //get {capture} from endpointPath
+    const captureMatches = (endpointPath.match(/{([^}]+)}/g) || []).map(match =>
+      match.slice(1, -1),
+    )
+    // Replace {capture} with actual values from params
+    captureMatches.forEach(capture => {
+      let c = capture.trim() as keyof typeof params
+      if (params[c] !== undefined) {
+        //@ts-ignore
+        endpointPath = endpointPath.replace(`{${capture}}`, params[c])
+        delete params[c] // Remove from params to avoid sending it in body
+      } else {
+        throw new Error(`Missing required parameter: ${capture}`)
+      }
+    })
 
     const response = await fetch(`${bUrl}${endpointPath}`, {
       method,
       headers,
       body:
-        method === 'POST'
-          ? params === undefined
-            ? undefined
-            : JSON.stringify(params)
+        ['POST', 'PUT', 'PATCH'].includes(method) && params !== undefined
+          ? JSON.stringify(params)
           : undefined,
     })
 

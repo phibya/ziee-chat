@@ -94,6 +94,7 @@ export function UserGroupsSettings() {
 
     try {
       const updateData: UpdateUserGroupRequest = {
+        group_id: selectedGroup.id,
         name: values.name,
         description: values.description,
         permissions: values.permissions
@@ -101,10 +102,7 @@ export function UserGroupsSettings() {
           : undefined,
         is_active: values.is_active,
       }
-      await ApiClient.Admin.updateGroup({
-        group_id: selectedGroup.id,
-        data: updateData,
-      })
+      await ApiClient.Admin.updateGroup(updateData)
       message.success('User group updated successfully')
       setEditModalVisible(false)
       setSelectedGroup(null)

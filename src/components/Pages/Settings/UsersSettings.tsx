@@ -94,16 +94,14 @@ export function UsersSettings() {
 
     try {
       const updateData: UpdateUserRequest = {
+        user_id: selectedUser.id,
         username: values.username,
         email: values.email,
         is_active: values.is_active,
         profile: values.profile ? JSON.parse(values.profile) : undefined,
       }
 
-      await ApiClient.Admin.updateUser({
-        user_id: selectedUser.id,
-        data: updateData,
-      })
+      await ApiClient.Admin.updateUser(updateData)
 
       message.success('User updated successfully')
       setEditModalVisible(false)

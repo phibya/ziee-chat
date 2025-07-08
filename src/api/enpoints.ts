@@ -11,19 +11,20 @@ export const ApiEndpoints = {
   'Auth.me': 'GET /api/auth/me',
   // Admin user management
   'Admin.listUsers': 'GET /api/admin/users',
-  'Admin.getUser': 'GET /api/admin/users',
-  'Admin.updateUser': 'PUT /api/admin/users',
-  'Admin.toggleUserActive': 'POST /api/admin/users',
+  'Admin.getUser': 'GET /api/admin/users/{user_id}',
+  'Admin.updateUser': 'PUT /api/admin/users/{user_id}',
+  'Admin.toggleUserActive': 'POST /api/admin/users/{user_id}/toggle-active',
   'Admin.resetPassword': 'POST /api/admin/users/reset-password',
   // Admin group management
   'Admin.listGroups': 'GET /api/admin/groups',
   'Admin.createGroup': 'POST /api/admin/groups',
-  'Admin.getGroup': 'GET /api/admin/groups',
-  'Admin.updateGroup': 'PUT /api/admin/groups',
-  'Admin.deleteGroup': 'DELETE /api/admin/groups',
-  'Admin.getGroupMembers': 'GET /api/admin/groups',
+  'Admin.getGroup': 'GET /api/admin/groups/{group_id}',
+  'Admin.updateGroup': 'PUT /api/admin/groups/{group_id}',
+  'Admin.deleteGroup': 'DELETE /api/admin/groups/{group_id}',
+  'Admin.getGroupMembers': 'GET /api/admin/groups/{group_id}/members',
   'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
-  'Admin.removeUserFromGroup': 'DELETE /api/admin/groups',
+  'Admin.removeUserFromGroup':
+    'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -39,14 +40,14 @@ export type ApiEndpointParameters = {
   // Admin user management
   'Admin.listUsers': { page?: number; per_page?: number }
   'Admin.getUser': { user_id: string }
-  'Admin.updateUser': { user_id: string; data: UpdateUserRequest }
+  'Admin.updateUser': UpdateUserRequest
   'Admin.toggleUserActive': { user_id: string }
   'Admin.resetPassword': ResetPasswordRequest
   // Admin group management
   'Admin.listGroups': { page?: number; per_page?: number }
   'Admin.createGroup': CreateUserGroupRequest
   'Admin.getGroup': { group_id: string }
-  'Admin.updateGroup': { group_id: string; data: UpdateUserGroupRequest }
+  'Admin.updateGroup': UpdateUserGroupRequest
   'Admin.deleteGroup': { group_id: string }
   'Admin.getGroupMembers': {
     group_id: string
@@ -150,6 +151,7 @@ export interface CreateUserGroupRequest {
 }
 
 export interface UpdateUserGroupRequest {
+  group_id: string
   name?: string
   description?: string
   permissions?: any
@@ -157,6 +159,7 @@ export interface UpdateUserGroupRequest {
 }
 
 export interface UpdateUserRequest {
+  user_id: string
   username?: string
   email?: string
   is_active?: boolean

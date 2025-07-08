@@ -29,6 +29,7 @@ pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Er
                 settings.password =
                     std::env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_string());
             }
+            settings.data_dir = settings.installation_dir.clone().join("data");
 
             //get port from POSTGRES_PORT
             settings.port = std::env::var("POSTGRES_PORT")
@@ -61,7 +62,9 @@ pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Er
             sqlx::migrate!("./migrations").run(&pool).await?;
 
             // Store the PostgreSQL instance to keep it alive
-            POSTGRESQL_INSTANCE.set(postgresql).map_err(|_| "Failed to store PostgreSQL instance")?;
+            POSTGRESQL_INSTANCE
+                .set(postgresql)
+                .map_err(|_| "Failed to store PostgreSQL instance")?;
 
             Ok::<Arc<PgPool>, Box<dyn std::error::Error>>(Arc::new(pool))
         })
@@ -150,13 +153,13 @@ fn get_database_pool() -> Result<Arc<PgPool>, sqlx::Error> {
 
 pub async fn cleanup_database() {
     println!("Cleaning up database...");
-    
+
     // Close the database pool
     if let Some(pool) = DATABASE_POOL.get() {
         pool.close().await;
         println!("Database pool closed");
     }
-    
+
     // Stop the PostgreSQL instance
     if let Some(postgresql) = POSTGRESQL_INSTANCE.get() {
         if let Err(e) = postgresql.stop().await {

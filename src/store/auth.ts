@@ -114,10 +114,7 @@ export const useAuthStore = create<AuthState>()(
       setupApp: async (userData: CreateUserRequest) => {
         set({ isLoading: true, error: null })
         try {
-          const { token, user } = await ApiClient.Auth.login({
-            username_or_email: userData.username,
-            password: userData.password,
-          })
+          const { token, user } = await ApiClient.Auth.setup(userData)
 
           set({
             user,
