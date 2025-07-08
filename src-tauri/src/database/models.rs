@@ -10,6 +10,9 @@ pub struct UserDb {
     pub username: String,
     pub created_at: DateTime<Utc>,
     pub profile: Option<serde_json::Value>,
+    pub is_active: bool,
+    pub last_login_at: Option<DateTime<Utc>>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -40,6 +43,27 @@ pub struct UserLoginTokenDb {
     pub created_at: DateTime<Utc>,
 }
 
+// User groups database table structure
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UserGroupDb {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub permissions: serde_json::Value,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UserGroupMembershipDb {
+    pub id: Uuid,
+    pub user_id: Uuid,
+    pub group_id: Uuid,
+    pub assigned_at: DateTime<Utc>,
+    pub assigned_by: Option<Uuid>,
+}
+
 // Meteor-like User structure (for API responses)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
@@ -49,6 +73,22 @@ pub struct User {
     pub created_at: DateTime<Utc>,
     pub profile: Option<serde_json::Value>,
     pub services: UserServices,
+    pub is_active: bool,
+    pub last_login_at: Option<DateTime<Utc>>,
+    pub updated_at: DateTime<Utc>,
+    pub groups: Vec<UserGroup>,
+}
+
+// User group structure for API responses
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserGroup {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub permissions: serde_json::Value,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 // Email structure for the emails array
@@ -111,9 +151,63 @@ pub struct LoginResponse {
     pub expires_at: DateTime<Utc>,
 }
 
+// User group management structures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateUserGroupRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub permissions: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateUserGroupRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub permissions: Option<serde_json::Value>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssignUserToGroupRequest {
+    pub user_id: Uuid,
+    pub group_id: Uuid,
+}
+
+// User management structures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateUserRequest {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub is_active: Option<bool>,
+    pub profile: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub user_id: Uuid,
+    pub new_password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserListResponse {
+    pub users: Vec<User>,
+    pub total: i64,
+    pub page: i32,
+    pub per_page: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserGroupListResponse {
+    pub groups: Vec<UserGroup>,
+    pub total: i64,
+    pub page: i32,
+    pub per_page: i32,
+}
+
 // Helper functions for working with the Meteor-like structure
 impl User {
     pub fn new(username: String, email: String) -> Self {
+        let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
             username,
@@ -121,9 +215,13 @@ impl User {
                 address: email,
                 verified: false,
             }],
-            created_at: Utc::now(),
+            created_at: now,
             profile: None,
             services: UserServices::default(),
+            is_active: true,
+            last_login_at: None,
+            updated_at: now,
+            groups: vec![],
         }
     }
     
@@ -175,6 +273,7 @@ impl User {
         emails: Vec<UserEmailDb>,
         services: Vec<UserServiceDb>,
         login_tokens: Vec<UserLoginTokenDb>,
+        groups: Vec<UserGroupDb>,
     ) -> Self {
         let mut user = User {
             id: user_db.id,
@@ -186,6 +285,18 @@ impl User {
             created_at: user_db.created_at,
             profile: user_db.profile,
             services: UserServices::default(),
+            is_active: user_db.is_active,
+            last_login_at: user_db.last_login_at,
+            updated_at: user_db.updated_at,
+            groups: groups.into_iter().map(|g| UserGroup {
+                id: g.id,
+                name: g.name,
+                description: g.description,
+                permissions: g.permissions,
+                is_active: g.is_active,
+                created_at: g.created_at,
+                updated_at: g.updated_at,
+            }).collect(),
         };
         
         // Build services from database records

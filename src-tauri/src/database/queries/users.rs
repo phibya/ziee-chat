@@ -14,7 +14,7 @@ pub async fn create_user(
 
     // Insert user
     let user_row = sqlx::query(
-    "INSERT INTO users (username, profile) VALUES ($1, $2) RETURNING id, username, created_at, profile"
+    "INSERT INTO users (username, profile) VALUES ($1, $2) RETURNING id, username, created_at, profile, is_active, last_login_at, updated_at"
   )
     .bind(&username)
     .bind(&profile)
@@ -26,6 +26,9 @@ pub async fn create_user(
         username: user_row.get("username"),
         created_at: user_row.get("created_at"),
         profile: user_row.get("profile"),
+        is_active: user_row.get("is_active"),
+        last_login_at: user_row.get("last_login_at"),
+        updated_at: user_row.get("updated_at"),
     };
 
     // Insert email
@@ -80,6 +83,7 @@ pub async fn create_user(
         vec![email_db],
         services,
         vec![],
+        vec![],
     ))
 }
 
@@ -100,6 +104,9 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
         username: user_row.get("username"),
         created_at: user_row.get("created_at"),
         profile: user_row.get("profile"),
+        is_active: user_row.get("is_active"),
+        last_login_at: user_row.get("last_login_at"),
+        updated_at: user_row.get("updated_at"),
     };
 
     let email_rows =
@@ -154,11 +161,15 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
         })
         .collect();
 
+    // Get user groups
+    let groups = super::user_groups::get_user_groups(user_id).await?;
+
     Ok(Some(User::from_db_parts(
         user_db,
         emails,
         services,
         login_tokens,
+        groups,
     )))
 }
 
@@ -360,4 +371,152 @@ pub async fn get_root_user() -> Result<Option<User>, sqlx::Error> {
 
     let user_id: Uuid = user_row.get("id");
     get_user_by_id(user_id).await
+}
+
+// List users with pagination
+pub async fn list_users(page: i32, per_page: i32) -> Result<UserListResponse, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let offset = (page - 1) * per_page;
+    
+    // Get total count
+    let total_row = sqlx::query("SELECT COUNT(*) as count FROM users")
+        .fetch_one(&*pool)
+        .await?;
+    let total: i64 = total_row.get("count");
+    
+    // Get users
+    let rows = sqlx::query("SELECT id FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2")
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(&*pool)
+        .await?;
+
+    let mut users = Vec::new();
+    for row in rows {
+        let user_id: Uuid = row.get("id");
+        if let Some(user) = get_user_by_id(user_id).await? {
+            users.push(user);
+        }
+    }
+
+    Ok(UserListResponse {
+        users,
+        total,
+        page,
+        per_page,
+    })
+}
+
+// Update user
+pub async fn update_user(
+    user_id: Uuid,
+    username: Option<String>,
+    email: Option<String>,
+    is_active: Option<bool>,
+    profile: Option<serde_json::Value>,
+) -> Result<Option<User>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let mut tx = pool.begin().await?;
+    
+    // Update user table
+    let mut user_updates = Vec::new();
+    let mut user_params = Vec::new();
+    let mut param_index = 1;
+    
+    if let Some(username) = &username {
+        user_updates.push(format!("username = ${}", param_index));
+        user_params.push(username.clone());
+        param_index += 1;
+    }
+    
+    if let Some(is_active) = &is_active {
+        user_updates.push(format!("is_active = ${}", param_index));
+        user_params.push(is_active.to_string());
+        param_index += 1;
+    }
+    
+    if let Some(profile) = &profile {
+        user_updates.push(format!("profile = ${}", param_index));
+        user_params.push(profile.to_string());
+        param_index += 1;
+    }
+    
+    if !user_updates.is_empty() {
+        let query = format!(
+            "UPDATE users SET {} WHERE id = ${}",
+            user_updates.join(", "),
+            param_index
+        );
+        
+        let mut sql_query = sqlx::query(&query);
+        for param in user_params {
+            sql_query = sql_query.bind(param);
+        }
+        sql_query = sql_query.bind(user_id);
+        
+        sql_query.execute(&mut *tx).await?;
+    }
+    
+    // Update email if provided
+    if let Some(email) = email {
+        sqlx::query("UPDATE user_emails SET address = $1 WHERE user_id = $2")
+            .bind(&email)
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await?;
+    }
+    
+    tx.commit().await?;
+    
+    // Return updated user
+    get_user_by_id(user_id).await
+}
+
+// Reset user password
+pub async fn reset_user_password(user_id: Uuid, password_hash: String) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    
+    let password_service = serde_json::json!({
+        "bcrypt": password_hash
+    });
+    
+    let result = sqlx::query(
+        r#"
+        INSERT INTO user_services (user_id, service_name, service_data)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (user_id, service_name)
+        DO UPDATE SET service_data = $3
+        "#,
+    )
+    .bind(user_id)
+    .bind("password")
+    .bind(&password_service)
+    .execute(&*pool)
+    .await?;
+    
+    Ok(result.rows_affected() > 0)
+}
+
+// Update last login time
+pub async fn update_last_login(user_id: Uuid) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    
+    sqlx::query("UPDATE users SET last_login_at = NOW() WHERE id = $1")
+        .bind(user_id)
+        .execute(&*pool)
+        .await?;
+    
+    Ok(())
+}
+
+// Toggle user active status
+pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    
+    let result = sqlx::query("UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active")
+        .bind(user_id)
+        .fetch_optional(&*pool)
+        .await?;
+    
+    Ok(result.map_or(false, |r| r.get("is_active")))
 }

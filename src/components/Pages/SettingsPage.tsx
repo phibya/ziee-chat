@@ -8,9 +8,11 @@ import {
   MenuOutlined,
   SettingOutlined,
   SlidersOutlined,
+  TeamOutlined,
   ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons'
+import { isDesktopApp } from '../../api/core'
 
 const { Title } = Typography
 const { Sider, Content } = Layout
@@ -36,7 +38,7 @@ export function SettingsPage() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  const menuItems = [
+  const baseMenuItems = [
     {
       key: 'general',
       icon: <UserOutlined />,
@@ -83,6 +85,32 @@ export function SettingsPage() {
       label: 'Extensions',
     },
   ]
+
+  const adminMenuItems = !isDesktopApp
+    ? [
+        {
+          type: 'divider' as const,
+        },
+        {
+          key: 'admin',
+          icon: <SettingOutlined />,
+          label: 'Admin',
+          type: 'group' as const,
+        },
+        {
+          key: 'users',
+          icon: <UserOutlined />,
+          label: 'Users',
+        },
+        {
+          key: 'user-groups',
+          icon: <TeamOutlined />,
+          label: 'User Groups',
+        },
+      ]
+    : []
+
+  const menuItems = [...baseMenuItems, ...adminMenuItems]
 
   const handleMenuClick = (key: string) => {
     navigate(`/settings/${key}`)

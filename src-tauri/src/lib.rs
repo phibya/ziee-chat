@@ -3,7 +3,13 @@ mod auth;
 mod database;
 
 use crate::api::app::methods::get_http_port;
-use axum::{body::Body, http::Request, response::Response, routing::get, routing::post, Router};
+use axum::{
+    body::Body,
+    http::Request,
+    response::Response,
+    routing::{delete, get, post, put},
+    Router,
+};
 use once_cell::sync::Lazy;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -221,13 +227,67 @@ pub fn get_available_port() -> u16 {
 
 fn create_rest_router() -> Router {
     Router::new()
+        // Basic user routes
         .route("/api/user/greet", post(api::user::methods::greet))
+        // Auth routes
         .route("/api/auth/init", get(api::auth::methods::check_init_status))
         .route("/api/auth/setup", post(api::auth::methods::init_app))
         .route("/api/auth/login", post(api::auth::methods::login))
         .route("/api/auth/logout", post(api::auth::methods::logout))
         .route("/api/auth/register", post(api::auth::methods::register))
         .route("/api/auth/me", get(api::auth::methods::me))
+        // Admin user management routes
+        .route("/api/admin/users", get(api::user::methods::list_users))
+        .route(
+            "/api/admin/users/{user_id}",
+            get(api::user::methods::get_user),
+        )
+        .route(
+            "/api/admin/users/{user_id}",
+            put(api::user::methods::update_user),
+        )
+        .route(
+            "/api/admin/users/{user_id}/toggle-active",
+            post(api::user::methods::toggle_user_active),
+        )
+        .route(
+            "/api/admin/users/reset-password",
+            post(api::user::methods::reset_user_password),
+        )
+        // Admin user group management routes
+        .route(
+            "/api/admin/groups",
+            get(api::user_groups::methods::list_user_groups),
+        )
+        .route(
+            "/api/admin/groups",
+            post(api::user_groups::methods::create_user_group),
+        )
+        .route(
+            "/api/admin/groups/{group_id}",
+            get(api::user_groups::methods::get_user_group),
+        )
+        .route(
+            "/api/admin/groups/{group_id}",
+            put(api::user_groups::methods::update_user_group),
+        )
+        .route(
+            "/api/admin/groups/{group_id}",
+            delete(api::user_groups::methods::delete_user_group),
+        )
+        .route(
+            "/api/admin/groups/{group_id}/members",
+            get(api::user_groups::methods::get_group_members),
+        )
+        .route(
+            "/api/admin/groups/assign",
+            post(api::user_groups::methods::assign_user_to_group),
+        )
+        .route(
+            "/api/admin/groups/{user_id}/{group_id}/remove",
+            delete(api::user_groups::methods::remove_user_from_group),
+        )
+        // Health check
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }))
         .layer(CorsLayer::permissive())
 }

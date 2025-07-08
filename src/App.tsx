@@ -24,6 +24,8 @@ import {
   ModelProvidersSettings,
   PrivacySettings,
   ShortcutsSettings,
+  UserGroupsSettings,
+  UsersSettings,
 } from './components/Pages/Settings'
 import { useSettingsStore } from './store/settings'
 import './i18n'
@@ -70,6 +72,8 @@ function App() {
                 />
                 <Route path="https-proxy" element={<HttpsProxySettings />} />
                 <Route path="extensions" element={<ExtensionsSettings />} />
+                <Route path="users" element={<UsersSettings />} />
+                <Route path="user-groups" element={<UserGroupsSettings />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

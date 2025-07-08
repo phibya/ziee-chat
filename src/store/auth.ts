@@ -1,8 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { callAsync } from '../api/core'
 import type { CreateUserRequest, LoginRequest, User } from '../api/enpoints'
-import { ApiEndpoints } from '../api/enpoints'
+import { ApiClient } from '../api/client.ts'
 
 interface AuthState {
   user: User | null
@@ -41,11 +40,7 @@ export const useAuthStore = create<AuthState>()(
       login: async (credentials: LoginRequest) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await callAsync(
-            ApiEndpoints['Auth.login'],
-            credentials,
-          )
-          const { token, user } = response
+          const { token, user } = await ApiClient.Auth.login(credentials)
 
           set({
             user,
@@ -72,7 +67,7 @@ export const useAuthStore = create<AuthState>()(
           const { token } = get()
           if (token) {
             // Call logout API to invalidate token on server
-            await callAsync(ApiEndpoints['Auth.logout'], undefined)
+            await ApiClient.Auth.logout()
           }
 
           set({
@@ -97,11 +92,7 @@ export const useAuthStore = create<AuthState>()(
       register: async (userData: CreateUserRequest) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await callAsync(
-            ApiEndpoints['Auth.register'],
-            userData,
-          )
-          const { token, user } = response
+          const { token, user } = await ApiClient.Auth.register(userData)
 
           set({
             user,
@@ -123,8 +114,10 @@ export const useAuthStore = create<AuthState>()(
       setupApp: async (userData: CreateUserRequest) => {
         set({ isLoading: true, error: null })
         try {
-          const response = await callAsync(ApiEndpoints['Auth.setup'], userData)
-          const { token, user } = response
+          const { token, user } = await ApiClient.Auth.login({
+            username_or_email: userData.username,
+            password: userData.password,
+          })
 
           set({
             user,
@@ -147,16 +140,16 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const response = await callAsync(ApiEndpoints['Auth.init'], undefined)
+          const { needs_setup, is_desktop } = await ApiClient.Auth.init()
 
           set({
-            needsSetup: response.needs_setup,
-            isDesktop: response.is_desktop,
+            needsSetup: needs_setup,
+            isDesktop: is_desktop,
             isLoading: false,
           })
 
           // For desktop app, automatically attempt login
-          if (response.is_desktop) {
+          if (is_desktop) {
             try {
               await get().login({
                 username_or_email: 'admin',
@@ -184,7 +177,7 @@ export const useAuthStore = create<AuthState>()(
 
         set({ isLoading: true, error: null })
         try {
-          const user = await callAsync(ApiEndpoints['Auth.me'], undefined)
+          const user = await ApiClient.Auth.me()
 
           set({
             user,

@@ -59,13 +59,23 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       headers['Authorization'] = `Bearer ${token}`
     }
 
-    const method = endpointUrl.startsWith('POST') ? 'POST' : 'GET'
-    const endpointPath = endpointUrl.replace(/^(POST|GET)\s+/, '')
+    const method = endpointUrl.split(' ')[0] as
+      | 'POST'
+      | 'GET'
+      | 'PUT'
+      | 'DELETE'
+      | 'PATCH'
+    const endpointPath = endpointUrl.replace(/^[A-Z]+\s+/, '').trim()
 
     const response = await fetch(`${bUrl}${endpointPath}`, {
       method,
       headers,
-      body: params === undefined ? undefined : JSON.stringify(params),
+      body:
+        method === 'POST'
+          ? params === undefined
+            ? undefined
+            : JSON.stringify(params)
+          : undefined,
     })
 
     // Parse the response as JSON

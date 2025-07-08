@@ -9,6 +9,21 @@ export const ApiEndpoints = {
   'Auth.logout': 'POST /api/auth/logout',
   'Auth.register': 'POST /api/auth/register',
   'Auth.me': 'GET /api/auth/me',
+  // Admin user management
+  'Admin.listUsers': 'GET /api/admin/users',
+  'Admin.getUser': 'GET /api/admin/users',
+  'Admin.updateUser': 'PUT /api/admin/users',
+  'Admin.toggleUserActive': 'POST /api/admin/users',
+  'Admin.resetPassword': 'POST /api/admin/users/reset-password',
+  // Admin group management
+  'Admin.listGroups': 'GET /api/admin/groups',
+  'Admin.createGroup': 'POST /api/admin/groups',
+  'Admin.getGroup': 'GET /api/admin/groups',
+  'Admin.updateGroup': 'PUT /api/admin/groups',
+  'Admin.deleteGroup': 'DELETE /api/admin/groups',
+  'Admin.getGroupMembers': 'GET /api/admin/groups',
+  'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
+  'Admin.removeUserFromGroup': 'DELETE /api/admin/groups',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -21,6 +36,25 @@ export type ApiEndpointParameters = {
   'Auth.logout': void
   'Auth.register': CreateUserRequest
   'Auth.me': void
+  // Admin user management
+  'Admin.listUsers': { page?: number; per_page?: number }
+  'Admin.getUser': { user_id: string }
+  'Admin.updateUser': { user_id: string; data: UpdateUserRequest }
+  'Admin.toggleUserActive': { user_id: string }
+  'Admin.resetPassword': ResetPasswordRequest
+  // Admin group management
+  'Admin.listGroups': { page?: number; per_page?: number }
+  'Admin.createGroup': CreateUserGroupRequest
+  'Admin.getGroup': { group_id: string }
+  'Admin.updateGroup': { group_id: string; data: UpdateUserGroupRequest }
+  'Admin.deleteGroup': { group_id: string }
+  'Admin.getGroupMembers': {
+    group_id: string
+    page?: number
+    per_page?: number
+  }
+  'Admin.assignUserToGroup': AssignUserToGroupRequest
+  'Admin.removeUserFromGroup': { user_id: string; group_id: string }
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -33,6 +67,21 @@ export type ApiEndpointResponses = {
   'Auth.logout': void
   'Auth.register': AuthResponse
   'Auth.me': User
+  // Admin user management
+  'Admin.listUsers': UserListResponse
+  'Admin.getUser': User
+  'Admin.updateUser': User
+  'Admin.toggleUserActive': { is_active: boolean }
+  'Admin.resetPassword': void
+  // Admin group management
+  'Admin.listGroups': UserGroupListResponse
+  'Admin.createGroup': UserGroup
+  'Admin.getGroup': UserGroup
+  'Admin.updateGroup': UserGroup
+  'Admin.deleteGroup': void
+  'Admin.getGroupMembers': UserListResponse
+  'Admin.assignUserToGroup': void
+  'Admin.removeUserFromGroup': void
 }
 
 // Auth types
@@ -43,6 +92,10 @@ export interface User {
   created_at: string
   profile?: any
   services: UserServices
+  is_active: boolean
+  last_login_at?: string
+  updated_at: string
+  groups: UserGroup[]
 }
 
 export interface UserEmail {
@@ -77,6 +130,61 @@ export interface AuthResponse {
 export interface InitResponse {
   needs_setup: boolean
   is_desktop: boolean
+}
+
+// Admin types
+export interface UserGroup {
+  id: string
+  name: string
+  description?: string
+  permissions: any
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateUserGroupRequest {
+  name: string
+  description?: string
+  permissions: any
+}
+
+export interface UpdateUserGroupRequest {
+  name?: string
+  description?: string
+  permissions?: any
+  is_active?: boolean
+}
+
+export interface UpdateUserRequest {
+  username?: string
+  email?: string
+  is_active?: boolean
+  profile?: any
+}
+
+export interface ResetPasswordRequest {
+  user_id: string
+  new_password: string
+}
+
+export interface AssignUserToGroupRequest {
+  user_id: string
+  group_id: string
+}
+
+export interface UserListResponse {
+  users: User[]
+  total: number
+  page: number
+  per_page: number
+}
+
+export interface UserGroupListResponse {
+  groups: UserGroup[]
+  total: number
+  page: number
+  per_page: number
 }
 
 // Type helpers
