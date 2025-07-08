@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Divider,
+  Dropdown,
   Flex,
   Form,
   Input,
@@ -19,9 +20,11 @@ import { useState, useEffect } from 'react'
 import {
   CopyOutlined,
   DeleteOutlined,
+  DownOutlined,
   EditOutlined,
   EyeInvisibleOutlined,
   EyeTwoTone,
+  MenuOutlined,
   PlusOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
@@ -421,6 +424,31 @@ export function ModelProvidersSettings() {
     style: { backgroundColor: undefined },
   })
 
+  const ResponsiveConfigItem = ({ 
+    title, 
+    description, 
+    children 
+  }: { 
+    title: string; 
+    description: string; 
+    children: React.ReactNode 
+  }) => (
+    <Flex 
+      justify="space-between" 
+      align={isMobile ? "flex-start" : "center"}
+      vertical={isMobile}
+      gap={isMobile ? "small" : 0}
+    >
+      <div style={{ flex: isMobile ? undefined : 1 }}>
+        <Text strong>{title}</Text>
+        <div>
+          <Text type="secondary">{description}</Text>
+        </div>
+      </div>
+      {children}
+    </Flex>
+  )
+
   const ProviderMenu = () => (
     <Menu
       mode="inline"
@@ -442,23 +470,38 @@ export function ModelProvidersSettings() {
 
     return (
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        {/* Provider Header */}
-        <Flex justify="space-between" align="center">
-          <Flex align="center" gap="middle">
-            <span style={{ fontSize: '24px' }}>
-              {PROVIDER_ICONS[currentProvider.id]}
-            </span>
-            <Title level={3} style={{ margin: 0 }}>
-              {currentProvider.name}
-            </Title>
+        {/* Provider Header - Hide on mobile since it's shown in dropdown */}
+        {!isMobile && (
+          <Flex justify="space-between" align="center">
+            <Flex align="center" gap="middle">
+              <span style={{ fontSize: '24px' }}>
+                {PROVIDER_ICONS[currentProvider.id]}
+              </span>
+              <Title level={3} style={{ margin: 0 }}>
+                {currentProvider.name}
+              </Title>
+            </Flex>
+            <Switch
+              checked={currentProvider.enabled}
+              onChange={enabled =>
+                handleProviderToggle(currentProvider.id, enabled)
+              }
+            />
           </Flex>
-          <Switch
-            checked={currentProvider.enabled}
-            onChange={enabled =>
-              handleProviderToggle(currentProvider.id, enabled)
-            }
-          />
-        </Flex>
+        )}
+        
+        {/* Mobile Provider Toggle */}
+        {isMobile && (
+          <Flex justify="space-between" align="center" style={{ marginBottom: '16px' }}>
+            <Text strong style={{ fontSize: '16px' }}>Enable Provider</Text>
+            <Switch
+              checked={currentProvider.enabled}
+              onChange={enabled =>
+                handleProviderToggle(currentProvider.id, enabled)
+              }
+            />
+          </Flex>
+        )}
 
         {currentProvider.enabled && (
           <>
@@ -533,11 +576,18 @@ export function ModelProvidersSettings() {
               {currentProvider.id === 'llama.cpp' && (
                 <Flex
                   justify="space-between"
-                  align="center"
+                  align={isMobile ? "flex-start" : "center"}
+                  vertical={isMobile}
+                  gap={isMobile ? "small" : 0}
                   style={{ marginBottom: 16 }}
                 >
                   <Text>Import models from your local machine</Text>
-                  <Button icon={<PlusOutlined />}>Import</Button>
+                  <Button 
+                    icon={<PlusOutlined />}
+                    block={isMobile}
+                  >
+                    Import
+                  </Button>
                 </Flex>
               )}
 
@@ -550,20 +600,32 @@ export function ModelProvidersSettings() {
                         key="edit"
                         type="text"
                         icon={<EditOutlined />}
+                        size={isMobile ? "small" : "default"}
                         onClick={() =>
                           message.info(
                             'Edit model functionality would be implemented',
                           )
                         }
-                      />,
+                      >
+                        {!isMobile && "Edit"}
+                      </Button>,
                       currentProvider.id === 'llama.cpp' &&
                       model.name.includes('gemma3') ? (
-                        <Button key="action" type="primary" danger>
+                        <Button 
+                          key="action" 
+                          type="primary" 
+                          danger
+                          size={isMobile ? "small" : "default"}
+                        >
                           Stop
                         </Button>
                       ) : currentProvider.id === 'llama.cpp' &&
                         model.isDeprecated ? (
-                        <Button key="action" type="primary">
+                        <Button 
+                          key="action" 
+                          type="primary"
+                          size={isMobile ? "small" : "default"}
+                        >
                           Start
                         </Button>
                       ) : null,
@@ -571,8 +633,11 @@ export function ModelProvidersSettings() {
                         key="delete"
                         type="text"
                         icon={<DeleteOutlined />}
+                        size={isMobile ? "small" : "default"}
                         onClick={() => handleDeleteModel(model.id)}
-                      />,
+                      >
+                        {!isMobile && "Delete"}
+                      </Button>,
                     ].filter(Boolean)}
                   >
                     <List.Item.Meta
@@ -603,17 +668,10 @@ export function ModelProvidersSettings() {
                     size="middle"
                     style={{ width: '100%' }}
                   >
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>Auto-Unload Old Models</Text>
-                        <div>
-                          <Text type="secondary">
-                            Automatically unloads models that are not in use to
-                            free up memory. Ensure only one model is loaded at a
-                            time.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="Auto-Unload Old Models"
+                      description="Automatically unloads models that are not in use to free up memory. Ensure only one model is loaded at a time."
+                    >
                       <Form.Item
                         name="autoUnloadOldModels"
                         valuePropName="checked"
@@ -621,22 +679,14 @@ export function ModelProvidersSettings() {
                       >
                         <Switch />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>Context Shift</Text>
-                        <div>
-                          <Text type="secondary">
-                            Automatically shifts the context window when the
-                            model is unable to process the entire prompt,
-                            ensuring that the most relevant information is
-                            always included.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="Context Shift"
+                      description="Automatically shifts the context window when the model is unable to process the entire prompt, ensuring that the most relevant information is always included."
+                    >
                       <Form.Item
                         name="contextShift"
                         valuePropName="checked"
@@ -644,20 +694,14 @@ export function ModelProvidersSettings() {
                       >
                         <Switch />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>Continuous Batching</Text>
-                        <div>
-                          <Text type="secondary">
-                            Allows processing prompts in parallel with text
-                            generation, which usually improves performance.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="Continuous Batching"
+                      description="Allows processing prompts in parallel with text generation, which usually improves performance."
+                    >
                       <Form.Item
                         name="continuousBatching"
                         valuePropName="checked"
@@ -665,80 +709,56 @@ export function ModelProvidersSettings() {
                       >
                         <Switch />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>Parallel Operations</Text>
-                        <div>
-                          <Text type="secondary">
-                            Number of prompts that can be processed
-                            simultaneously by the model.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="Parallel Operations"
+                      description="Number of prompts that can be processed simultaneously by the model."
+                    >
                       <Form.Item
                         name="parallelOperations"
-                        style={{ margin: 0, width: 100 }}
+                        style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                       >
-                        <InputNumber min={1} max={16} />
+                        <InputNumber min={1} max={16} style={{ width: '100%' }} />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>CPU Threads</Text>
-                        <div>
-                          <Text type="secondary">
-                            Number of CPU cores used for model processing when
-                            running without GPU.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="CPU Threads"
+                      description="Number of CPU cores used for model processing when running without GPU."
+                    >
                       <Form.Item
                         name="cpuThreads"
-                        style={{ margin: 0, width: 100 }}
+                        style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                       >
-                        <InputNumber placeholder="-1 (auto)" />
+                        <InputNumber placeholder="-1 (auto)" style={{ width: '100%' }} />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>Threads (Batch)</Text>
-                        <div>
-                          <Text type="secondary">
-                            Number of threads for batch and prompt processing
-                            (default: same as Threads).
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="Threads (Batch)"
+                      description="Number of threads for batch and prompt processing (default: same as Threads)."
+                    >
                       <Form.Item
                         name="threadsBatch"
-                        style={{ margin: 0, width: 100 }}
+                        style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                       >
-                        <InputNumber placeholder="-1 (same as Threads)" />
+                        <InputNumber placeholder="-1 (same as Threads)" style={{ width: '100%' }} />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>Flash Attention</Text>
-                        <div>
-                          <Text type="secondary">
-                            Optimizes memory usage and speeds up model inference
-                            using an efficient attention implementation.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="Flash Attention"
+                      description="Optimizes memory usage and speeds up model inference using an efficient attention implementation."
+                    >
                       <Form.Item
                         name="flashAttention"
                         valuePropName="checked"
@@ -746,20 +766,14 @@ export function ModelProvidersSettings() {
                       >
                         <Switch />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>Caching</Text>
-                        <div>
-                          <Text type="secondary">
-                            Stores recent prompts and responses to improve speed
-                            when similar questions are asked.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="Caching"
+                      description="Stores recent prompts and responses to improve speed when similar questions are asked."
+                    >
                       <Form.Item
                         name="caching"
                         valuePropName="checked"
@@ -767,24 +781,20 @@ export function ModelProvidersSettings() {
                       >
                         <Switch />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>KV Cache Type</Text>
-                        <div>
-                          <Text type="secondary">
-                            Controls memory usage and precision trade-off.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="KV Cache Type"
+                      description="Controls memory usage and precision trade-off."
+                    >
                       <Form.Item
                         name="kvCacheType"
-                        style={{ margin: 0, width: 100 }}
+                        style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                       >
                         <Select
+                          style={{ width: '100%' }}
                           options={[
                             { value: 'q8_0', label: 'q8_0' },
                             { value: 'q4_0', label: 'q4_0' },
@@ -794,20 +804,14 @@ export function ModelProvidersSettings() {
                           ]}
                         />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
-                    <Flex justify="space-between" align="center">
-                      <div>
-                        <Text strong>mmap</Text>
-                        <div>
-                          <Text type="secondary">
-                            Loads model files more efficiently by mapping them
-                            to memory, reducing RAM usage.
-                          </Text>
-                        </div>
-                      </div>
+                    <ResponsiveConfigItem
+                      title="mmap"
+                      description="Loads model files more efficiently by mapping them to memory, reducing RAM usage."
+                    >
                       <Form.Item
                         name="mmap"
                         valuePropName="checked"
@@ -815,7 +819,7 @@ export function ModelProvidersSettings() {
                       >
                         <Switch />
                       </Form.Item>
-                    </Flex>
+                    </ResponsiveConfigItem>
 
                     <Divider style={{ margin: 0 }} />
 
@@ -833,7 +837,10 @@ export function ModelProvidersSettings() {
                         name="huggingFaceAccessToken"
                         style={{ marginTop: 8, marginBottom: 0 }}
                       >
-                        <Input.Password placeholder="hf_*****************************" />
+                        <Input.Password 
+                          placeholder="hf_*****************************"
+                          style={{ width: '100%' }}
+                        />
                       </Form.Item>
                     </div>
                   </Space>
@@ -873,6 +880,43 @@ export function ModelProvidersSettings() {
             overflow: 'auto',
           }}
         >
+          {/* Mobile Header with Provider Selector */}
+          {isMobile && (
+            <div style={{ marginBottom: '24px' }}>
+              <Title level={3} style={{ margin: '0 0 16px 0' }}>
+                <SettingOutlined style={{ marginRight: 8 }} />
+                Model Providers
+              </Title>
+              <Dropdown
+                menu={{
+                  items: menuItems,
+                  onClick: ({ key }) => {
+                    if (key === 'add-provider') {
+                      message.info('Add provider functionality would be implemented here')
+                    } else {
+                      setSelectedProvider(key)
+                    }
+                  },
+                }}
+                trigger={['click']}
+              >
+                <Button
+                  size="large"
+                  style={{ width: '100%', textAlign: 'left' }}
+                >
+                  <Flex justify="space-between" align="center">
+                    <Flex align="center" gap="middle">
+                      <span style={{ fontSize: '20px' }}>
+                        {PROVIDER_ICONS[selectedProvider]}
+                      </span>
+                      <span>{currentProvider?.name}</span>
+                    </Flex>
+                    <DownOutlined />
+                  </Flex>
+                </Button>
+              </Dropdown>
+            </div>
+          )}
           {renderProviderSettings()}
         </Content>
       </Layout>
