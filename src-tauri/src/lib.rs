@@ -293,6 +293,20 @@ fn create_rest_router() -> Router {
             "/api/admin/groups/{user_id}/{group_id}/remove",
             delete(api::user_groups::methods::remove_user_from_group),
         )
+        // Public configuration routes
+        .route(
+            "/api/config/user-registration",
+            get(api::configuration::methods::get_user_registration_status),
+        )
+        // Admin configuration routes
+        .route(
+            "/api/admin/config/user-registration",
+            get(api::configuration::methods::get_user_registration_status_admin),
+        )
+        .route(
+            "/api/admin/config/user-registration",
+            put(api::configuration::methods::update_user_registration_status),
+        )
         // Health check
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }))
         .layer(CorsLayer::permissive())

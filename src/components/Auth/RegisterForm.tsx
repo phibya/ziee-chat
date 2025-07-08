@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../../store/auth'
 import type { CreateUserRequest } from '../../api/enpoints'
+import { ApiClient } from '../../api/client'
 
 const { Title, Text } = Typography
 
@@ -16,8 +17,30 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   isSetup = false,
 }) => {
   const [form] = Form.useForm()
+  const [registrationEnabled, setRegistrationEnabled] = useState(true)
+  const [checkingRegistration, setCheckingRegistration] = useState(false)
   const { register, setupApp, isLoading, error, clearError, isDesktop } =
     useAuthStore()
+
+  // Check registration status for web app (except for setup mode)
+  useEffect(() => {
+    if (!isSetup && !isDesktop) {
+      const checkRegistrationStatus = async () => {
+        setCheckingRegistration(true)
+        try {
+          const response = await ApiClient.Config.getUserRegistrationStatus()
+          setRegistrationEnabled(response.enabled)
+        } catch (error) {
+          // If we can't check status, assume registration is enabled
+          setRegistrationEnabled(true)
+        } finally {
+          setCheckingRegistration(false)
+        }
+      }
+
+      checkRegistrationStatus()
+    }
+  }, [isSetup, isDesktop])
 
   const onFinish = async (values: CreateUserRequest) => {
     try {
@@ -35,6 +58,38 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
   const title = isSetup ? 'Setup Admin Account' : 'Create Account'
   const submitText = isSetup ? 'Setup App' : 'Sign Up'
+
+  // Show loading state while checking registration status
+  if (checkingRegistration) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <div className="text-center p-4">
+          <Text type="secondary">Checking registration status...</Text>
+        </div>
+      </Card>
+    )
+  }
+
+  // Show disabled message if registration is not enabled
+  if (!isSetup && !isDesktop && !registrationEnabled) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <div className="text-center">
+          <Title level={3}>Registration Disabled</Title>
+          <Text type="secondary">
+            User registration is currently disabled by the administrator.
+          </Text>
+          {onSwitchToLogin && (
+            <div className="mt-4">
+              <Button type="primary" onClick={onSwitchToLogin}>
+                Back to Login
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card className="w-full max-w-md mx-auto">

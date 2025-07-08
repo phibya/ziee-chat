@@ -287,6 +287,16 @@ pub async fn register(
         ));
     }
 
+    // Check if user registration is enabled
+    if let Ok(false) = crate::database::queries::configuration::is_user_registration_enabled().await {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse {
+                error: "User registration is currently disabled".to_string(),
+            }),
+        ));
+    }
+
     // Create new user
     match AUTH_SERVICE.create_user(payload).await {
         Ok(user) => {

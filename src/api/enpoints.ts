@@ -25,6 +25,11 @@ export const ApiEndpoints = {
   'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
   'Admin.removeUserFromGroup':
     'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
+  // Public configuration
+  'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
+  // Admin configuration management
+  'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
+  'Admin.updateUserRegistrationStatus': 'PUT /api/admin/config/user-registration',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -56,6 +61,11 @@ export type ApiEndpointParameters = {
   }
   'Admin.assignUserToGroup': AssignUserToGroupRequest
   'Admin.removeUserFromGroup': { user_id: string; group_id: string }
+  // Public configuration
+  'Config.getUserRegistrationStatus': void
+  // Admin configuration management
+  'Admin.getUserRegistrationStatus': void
+  'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -83,6 +93,11 @@ export type ApiEndpointResponses = {
   'Admin.getGroupMembers': UserListResponse
   'Admin.assignUserToGroup': void
   'Admin.removeUserFromGroup': void
+  // Public configuration
+  'Config.getUserRegistrationStatus': UserRegistrationStatusResponse
+  // Admin configuration management
+  'Admin.getUserRegistrationStatus': UserRegistrationStatusResponse
+  'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
 }
 
 // Auth types
@@ -188,6 +203,15 @@ export interface UserGroupListResponse {
   total: number
   page: number
   per_page: number
+}
+
+// Configuration types
+export interface UserRegistrationStatusResponse {
+  enabled: boolean
+}
+
+export interface UpdateUserRegistrationRequest {
+  enabled: boolean
 }
 
 // Type helpers

@@ -3,6 +3,7 @@ import { Layout, Spin, Typography } from 'antd'
 import { useAuthStore } from '../../store/auth'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
+import { ApiClient } from '../../api/client'
 
 const { Content } = Layout
 const { Title } = Typography
@@ -11,7 +12,29 @@ type AuthMode = 'login' | 'register' | 'setup'
 
 export const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login')
+  const [registrationEnabled, setRegistrationEnabled] = useState(true)
+  const [checkingRegistration, setCheckingRegistration] = useState(false)
   const { isLoading, needsSetup, isDesktop, isAuthenticated } = useAuthStore()
+
+  // Check registration status for web app
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      if (!needsSetup && !isDesktop) {
+        setCheckingRegistration(true)
+        try {
+          const response = await ApiClient.Config.getUserRegistrationStatus()
+          setRegistrationEnabled(response.enabled)
+        } catch (error) {
+          // If we can't check status, assume registration is enabled
+          setRegistrationEnabled(true)
+        } finally {
+          setCheckingRegistration(false)
+        }
+      }
+    }
+
+    checkRegistrationStatus()
+  }, [needsSetup, isDesktop])
 
   useEffect(() => {
     if (needsSetup) {
@@ -23,12 +46,19 @@ export const AuthPage: React.FC = () => {
     }
   }, [needsSetup, isDesktop])
 
+  const handleSwitchToRegister = () => {
+    if (!registrationEnabled) {
+      return // Don't allow switching if registration is disabled
+    }
+    setMode('register')
+  }
+
   // Don't render anything if already authenticated
   if (isAuthenticated) {
     return null
   }
 
-  if (isLoading) {
+  if (isLoading || checkingRegistration) {
     return (
       <Layout className="min-h-screen">
         <Content className="flex items-center justify-center">
@@ -49,10 +79,12 @@ export const AuthPage: React.FC = () => {
           {mode === 'setup' && <RegisterForm isSetup={true} />}
 
           {mode === 'login' && (
-            <LoginForm onSwitchToRegister={() => setMode('register')} />
+            <LoginForm 
+              onSwitchToRegister={registrationEnabled ? handleSwitchToRegister : undefined} 
+            />
           )}
 
-          {mode === 'register' && (
+          {mode === 'register' && registrationEnabled && (
             <RegisterForm onSwitchToLogin={() => setMode('login')} />
           )}
         </div>
