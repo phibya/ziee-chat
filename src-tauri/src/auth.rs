@@ -224,7 +224,14 @@ impl AuthService {
         }
 
         // Create default root user
-        self.create_default_admin_user().await
+        let user = self.create_default_admin_user().await?;
+
+        // Mark app as initialized for desktop apps
+        if let Err(e) = crate::database::queries::configuration::mark_app_initialized().await {
+            eprintln!("Warning: Failed to mark app as initialized: {}", e);
+        }
+
+        Ok(user)
     }
 
     /// Auto-login for desktop app - returns JWT token for default admin

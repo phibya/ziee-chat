@@ -3,6 +3,17 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+// Configuration table structure
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ConfigurationDb {
+    pub id: i32,
+    pub name: String,
+    pub value: String,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 // Database table structures (for direct DB operations)
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct UserDb {

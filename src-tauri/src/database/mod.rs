@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use tokio::sync::OnceCell;
 
 pub mod models;
-pub(crate) mod queries;
+pub mod queries;
 
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();
 static POSTGRESQL_INSTANCE: OnceCell<Arc<Mutex<PostgreSQL>>> = OnceCell::const_new();
@@ -191,7 +191,7 @@ async fn connect_with_retry(
     }
 }
 
-fn get_database_pool() -> Result<Arc<PgPool>, sqlx::Error> {
+pub fn get_database_pool() -> Result<Arc<PgPool>, sqlx::Error> {
     DATABASE_POOL
         .get()
         .cloned()

@@ -32,11 +32,11 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-/// Check if the app needs initial setup (no root user exists)
+/// Check if the app needs initial setup (not initialized)
 #[debug_handler]
 pub async fn check_init_status() -> Result<Json<InitResponse>, (StatusCode, Json<ErrorResponse>)> {
-    let needs_setup = match users::get_root_user().await {
-        Ok(user) => user.is_none(),
+    let needs_setup = match crate::database::queries::configuration::is_app_initialized().await {
+        Ok(is_initialized) => !is_initialized,
         Err(_) => true,
     };
 
@@ -51,12 +51,12 @@ pub async fn check_init_status() -> Result<Json<InitResponse>, (StatusCode, Json
 pub async fn init_app(
     Json(payload): Json<CreateUserRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
-    // Check if root user already exists
-    if let Ok(Some(_)) = users::get_root_user().await {
+    // Check if app is already initialized
+    if let Ok(true) = crate::database::queries::configuration::is_app_initialized().await {
         return Err((
             StatusCode::CONFLICT,
             Json(ErrorResponse {
-                error: "Root user already exists".to_string(),
+                error: "App already initialized".to_string(),
             }),
         ));
     }
@@ -92,6 +92,11 @@ pub async fn init_app(
                                 error: "Failed to store login token".to_string(),
                             }),
                         ));
+                    }
+
+                    // Mark app as initialized
+                    if let Err(e) = crate::database::queries::configuration::mark_app_initialized().await {
+                        eprintln!("Warning: Failed to mark app as initialized: {}", e);
                     }
 
                     Ok(Json(AuthResponse {
@@ -272,12 +277,12 @@ pub async fn register(
         ));
     }
 
-    // Check if root user exists (app must be initialized first)
-    if let Ok(None) = users::get_root_user().await {
+    // Check if app is initialized
+    if let Ok(false) = crate::database::queries::configuration::is_app_initialized().await {
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse {
-                error: "App not initialized. Please create root user first".to_string(),
+                error: "App not initialized. Please initialize the app first".to_string(),
             }),
         ));
     }
