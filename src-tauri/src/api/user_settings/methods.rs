@@ -1,9 +1,4 @@
-use axum::{
-    extract::Path,
-    http::StatusCode,
-    Extension,
-    Json,
-};
+use axum::{extract::Path, http::StatusCode, Extension, Json};
 
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
@@ -17,14 +12,17 @@ pub async fn get_user_settings(
 ) -> Result<Json<UserSettingsResponse>, StatusCode> {
     match user_settings::get_user_settings(&auth_user.user_id).await {
         Ok(settings_db) => {
-            let settings = settings_db.into_iter().map(|s| UserSetting {
-                id: s.id,
-                user_id: s.user_id,
-                key: s.key,
-                value: s.value,
-                created_at: s.created_at,
-                updated_at: s.updated_at,
-            }).collect();
+            let settings = settings_db
+                .into_iter()
+                .map(|s| UserSetting {
+                    id: s.id,
+                    user_id: s.user_id,
+                    key: s.key,
+                    value: s.value,
+                    created_at: s.created_at,
+                    updated_at: s.updated_at,
+                })
+                .collect();
             Ok(Json(UserSettingsResponse { settings }))
         }
         Err(e) => {

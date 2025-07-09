@@ -81,11 +81,16 @@ export function SettingsPage() {
       icon: <ToolOutlined />,
       label: 'Local API Server',
     },
-    {
-      key: 'https-proxy',
-      icon: <ToolOutlined />,
-      label: 'HTTPS Proxy',
-    },
+    // HTTPS Proxy only shows in main menu for desktop apps
+    ...(isDesktopApp
+      ? [
+          {
+            key: 'https-proxy',
+            icon: <ToolOutlined />,
+            label: 'HTTPS Proxy',
+          },
+        ]
+      : []),
     {
       key: 'extensions',
       icon: <ExperimentOutlined />,
@@ -107,12 +112,14 @@ export function SettingsPage() {
         const hasModelProviderManagement = hasPermission(
           Permission.config.modelProviders.read,
         )
+        const hasProxyManagement = hasPermission(Permission.config.proxy.read)
 
         if (
           hasUserManagement ||
           hasGroupManagement ||
           hasAppearanceManagement ||
-          hasModelProviderManagement
+          hasModelProviderManagement ||
+          hasProxyManagement
         ) {
           items.push({
             type: 'divider' as const,
@@ -145,6 +152,14 @@ export function SettingsPage() {
               key: 'model-providers',
               icon: <ToolOutlined />,
               label: 'Model Providers',
+            })
+          }
+
+          if (hasProxyManagement) {
+            items.push({
+              key: 'https-proxy',
+              icon: <ToolOutlined />,
+              label: 'HTTPS Proxy',
             })
           }
 

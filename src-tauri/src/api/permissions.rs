@@ -8,20 +8,23 @@ pub mod permissions {
     pub const USERS_DELETE: &str = "users::delete";
     pub const USERS_CREATE: &str = "users::create";
     pub const USERS_ALL: &str = "users::*";
-    
+
     // Group management permissions
     pub const GROUPS_READ: &str = "groups::read";
     pub const GROUPS_EDIT: &str = "groups::edit";
     pub const GROUPS_DELETE: &str = "groups::delete";
     pub const GROUPS_CREATE: &str = "groups::create";
     pub const GROUPS_ALL: &str = "groups::*";
-    
+
     // Fine-grained configuration permissions
     pub const CONFIG_USER_REGISTRATION_READ: &str = "config::user-registration::read";
     pub const CONFIG_USER_REGISTRATION_EDIT: &str = "config::user-registration::edit";
     pub const CONFIG_APPEARANCE_READ: &str = "config::appearance::read";
     pub const CONFIG_APPEARANCE_EDIT: &str = "config::appearance::edit";
-    
+    pub const CONFIG_PROXY_READ: &str = "config::proxy::read";
+    pub const CONFIG_PROXY_EDIT: &str = "config::proxy::edit";
+    pub const CONFIG_PROXY_ALL: &str = "config::proxy::*";
+
     // Advanced configuration permissions (admin-only)
     pub const CONFIG_UPDATES_READ: &str = "config::updates::read";
     pub const CONFIG_UPDATES_EDIT: &str = "config::updates::edit";
@@ -35,26 +38,26 @@ pub mod permissions {
     pub const CONFIG_FACTORY_RESET_READ: &str = "config::factory-reset::read";
     pub const CONFIG_FACTORY_RESET_EDIT: &str = "config::factory-reset::edit";
     pub const CONFIG_FACTORY_RESET_ALL: &str = "config::factory-reset::*";
-    
+
     // Chat permissions
     pub const CHAT_USE: &str = "chat::use";
-    
+
     // Profile permissions
     pub const PROFILE_EDIT: &str = "profile::edit";
-    
+
     // User settings permissions
     pub const SETTINGS_READ: &str = "settings::read";
     pub const SETTINGS_EDIT: &str = "settings::edit";
     pub const SETTINGS_DELETE: &str = "settings::delete";
     pub const SETTINGS_ALL: &str = "settings::*";
-    
+
     // Model provider permissions
     pub const MODEL_PROVIDERS_READ: &str = "config::model-providers::read";
     pub const MODEL_PROVIDERS_EDIT: &str = "config::model-providers::edit";
     pub const MODEL_PROVIDERS_DELETE: &str = "config::model-providers::delete";
     pub const MODEL_PROVIDERS_CREATE: &str = "config::model-providers::create";
     pub const MODEL_PROVIDERS_ALL: &str = "config::model-providers::*";
-    
+
     // Wildcard permissions
     pub const ALL: &str = "*";
 }
@@ -66,26 +69,27 @@ pub fn check_permission(user: &User, permission: &str) -> bool {
         if !group.is_active {
             continue;
         }
-        
+
         // Convert permissions from JSON array to Vec<String>
         let group_permissions: Vec<String> = match group.permissions.as_array() {
-            Some(perms) => perms.iter()
+            Some(perms) => perms
+                .iter()
                 .filter_map(|p| p.as_str())
                 .map(|s| s.to_string())
                 .collect(),
             None => continue,
         };
-        
+
         // Check for exact permission match
         if group_permissions.contains(&permission.to_string()) {
             return true;
         }
-        
+
         // Check for wildcard matches
         if group_permissions.contains(&permissions::ALL.to_string()) {
             return true;
         }
-        
+
         // Check for category wildcards (e.g., "users::*" for "users::read")
         if let Some(category) = get_permission_category(permission) {
             let wildcard = format!("{}::*", category);
@@ -94,7 +98,7 @@ pub fn check_permission(user: &User, permission: &str) -> bool {
             }
         }
     }
-    
+
     false
 }
 
@@ -266,20 +270,31 @@ mod tests {
         assert!(check_permission(&user, permissions::USERS_EDIT));
         assert!(check_permission(&user, permissions::GROUPS_READ));
         assert!(check_permission(&user, permissions::GROUPS_EDIT));
-        assert!(check_permission(&user, permissions::CONFIG_USER_REGISTRATION_READ));
-        assert!(check_permission(&user, permissions::CONFIG_USER_REGISTRATION_EDIT));
+        assert!(check_permission(
+            &user,
+            permissions::CONFIG_USER_REGISTRATION_READ
+        ));
+        assert!(check_permission(
+            &user,
+            permissions::CONFIG_USER_REGISTRATION_EDIT
+        ));
         assert!(check_permission(&user, permissions::CHAT_USE));
         assert!(check_permission(&user, permissions::PROFILE_EDIT));
     }
 
     #[test]
     fn test_config_fine_grained_permissions() {
-        let user = create_test_user_with_permissions(vec![
-            permissions::CONFIG_USER_REGISTRATION_READ,
-        ]);
+        let user =
+            create_test_user_with_permissions(vec![permissions::CONFIG_USER_REGISTRATION_READ]);
 
-        assert!(check_permission(&user, permissions::CONFIG_USER_REGISTRATION_READ));
-        assert!(!check_permission(&user, permissions::CONFIG_USER_REGISTRATION_EDIT));
+        assert!(check_permission(
+            &user,
+            permissions::CONFIG_USER_REGISTRATION_READ
+        ));
+        assert!(!check_permission(
+            &user,
+            permissions::CONFIG_USER_REGISTRATION_EDIT
+        ));
     }
 
     #[test]
@@ -296,24 +311,42 @@ mod tests {
         assert!(check_permission(&user, permissions::GROUPS_EDIT));
         assert!(check_permission(&user, permissions::GROUPS_DELETE));
         assert!(check_permission(&user, permissions::GROUPS_CREATE));
-        assert!(!check_permission(&user, permissions::CONFIG_USER_REGISTRATION_READ));
-        assert!(check_permission(&user, permissions::CONFIG_USER_REGISTRATION_EDIT));
+        assert!(!check_permission(
+            &user,
+            permissions::CONFIG_USER_REGISTRATION_READ
+        ));
+        assert!(check_permission(
+            &user,
+            permissions::CONFIG_USER_REGISTRATION_EDIT
+        ));
     }
 
     #[test]
     fn test_check_any_permission() {
         let user = create_test_user_with_permissions(vec![permissions::USERS_READ]);
 
-        assert!(check_any_permission(&user, &[permissions::USERS_READ, permissions::USERS_EDIT]));
-        assert!(!check_any_permission(&user, &[permissions::USERS_EDIT, permissions::USERS_DELETE]));
+        assert!(check_any_permission(
+            &user,
+            &[permissions::USERS_READ, permissions::USERS_EDIT]
+        ));
+        assert!(!check_any_permission(
+            &user,
+            &[permissions::USERS_EDIT, permissions::USERS_DELETE]
+        ));
     }
 
     #[test]
     fn test_check_all_permissions() {
         let user = create_test_user_with_permissions(vec![permissions::USERS_ALL]);
 
-        assert!(check_all_permissions(&user, &[permissions::USERS_READ, permissions::USERS_EDIT]));
-        assert!(!check_all_permissions(&user, &[permissions::USERS_READ, permissions::GROUPS_READ]));
+        assert!(check_all_permissions(
+            &user,
+            &[permissions::USERS_READ, permissions::USERS_EDIT]
+        ));
+        assert!(!check_all_permissions(
+            &user,
+            &[permissions::USERS_READ, permissions::GROUPS_READ]
+        ));
     }
 
     #[test]
@@ -344,7 +377,10 @@ mod tests {
     fn test_get_permission_category() {
         assert_eq!(get_permission_category("users::read"), Some("users"));
         assert_eq!(get_permission_category("groups::edit"), Some("groups"));
-        assert_eq!(get_permission_category("config::user-registration::read"), Some("config"));
+        assert_eq!(
+            get_permission_category("config::user-registration::read"),
+            Some("config")
+        );
         assert_eq!(get_permission_category("invalid"), Some("invalid"));
     }
 

@@ -1,8 +1,7 @@
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
-    Extension,
-    Json,
+    Extension, Json,
 };
 use serde::Deserialize;
 use uuid::Uuid;
@@ -10,8 +9,8 @@ use uuid::Uuid;
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        CreateModelProviderRequest, UpdateModelProviderRequest, CreateModelRequest,
-        UpdateModelRequest, ModelProviderListResponse, ModelProvider, ModelProviderModel,
+        CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderListResponse,
+        ModelProviderModel, UpdateModelProviderRequest, UpdateModelRequest,
     },
     queries::model_providers,
 };
@@ -58,7 +57,15 @@ pub async fn create_model_provider(
     Json(mut request): Json<CreateModelProviderRequest>,
 ) -> Result<Json<ModelProvider>, StatusCode> {
     // Validate provider type
-    let valid_types = ["llama.cpp", "openai", "anthropic", "groq", "gemini", "mistral", "custom"];
+    let valid_types = [
+        "llama.cpp",
+        "openai",
+        "anthropic",
+        "groq",
+        "gemini",
+        "mistral",
+        "custom",
+    ];
     if !valid_types.contains(&request.provider_type.as_str()) {
         return Err(StatusCode::BAD_REQUEST);
     }
@@ -71,13 +78,13 @@ pub async fn create_model_provider(
                 eprintln!("Cannot create enabled provider: API key is required");
                 return Err(StatusCode::BAD_REQUEST);
             }
-            
+
             // Check base URL
             if request.base_url.is_none() || request.base_url.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: Base URL is required");
                 return Err(StatusCode::BAD_REQUEST);
             }
-            
+
             // Validate URL format
             if !is_valid_url(request.base_url.as_ref().unwrap()) {
                 eprintln!("Cannot create enabled provider: Invalid base URL format");
@@ -115,31 +122,47 @@ pub async fn update_model_provider(
                 // Check if provider type requires API key and base URL
                 if current_provider.provider_type != "llama.cpp" {
                     // Check API key
-                    let api_key = request.api_key.as_ref()
+                    let api_key = request
+                        .api_key
+                        .as_ref()
                         .or(current_provider.api_key.as_ref());
                     if api_key.is_none() || api_key.unwrap().trim().is_empty() {
-                        eprintln!("Cannot enable provider {}: API key is required", provider_id);
+                        eprintln!(
+                            "Cannot enable provider {}: API key is required",
+                            provider_id
+                        );
                         return Err(StatusCode::BAD_REQUEST);
                     }
-                    
+
                     // Check base URL
-                    let base_url = request.base_url.as_ref()
+                    let base_url = request
+                        .base_url
+                        .as_ref()
                         .or(current_provider.base_url.as_ref());
                     if base_url.is_none() || base_url.unwrap().trim().is_empty() {
-                        eprintln!("Cannot enable provider {}: Base URL is required", provider_id);
+                        eprintln!(
+                            "Cannot enable provider {}: Base URL is required",
+                            provider_id
+                        );
                         return Err(StatusCode::BAD_REQUEST);
                     }
-                    
+
                     // Validate URL format
                     if !is_valid_url(base_url.unwrap()) {
-                        eprintln!("Cannot enable provider {}: Invalid base URL format", provider_id);
+                        eprintln!(
+                            "Cannot enable provider {}: Invalid base URL format",
+                            provider_id
+                        );
                         return Err(StatusCode::BAD_REQUEST);
                     }
                 }
-                
+
                 // Check if provider has any models
                 if current_provider.models.is_empty() {
-                    eprintln!("Cannot enable provider {}: No models available", provider_id);
+                    eprintln!(
+                        "Cannot enable provider {}: No models available",
+                        provider_id
+                    );
                     return Err(StatusCode::BAD_REQUEST);
                 }
             }
@@ -150,7 +173,7 @@ pub async fn update_model_provider(
             }
         }
     }
-    
+
     match model_providers::update_model_provider(provider_id, request).await {
         Ok(Some(provider)) => Ok(Json(provider)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
@@ -169,7 +192,10 @@ pub async fn delete_model_provider(
         Ok(Ok(true)) => Ok(StatusCode::NO_CONTENT),
         Ok(Ok(false)) => Err(StatusCode::NOT_FOUND),
         Ok(Err(error_message)) => {
-            eprintln!("Cannot delete model provider {}: {}", provider_id, error_message);
+            eprintln!(
+                "Cannot delete model provider {}: {}",
+                provider_id, error_message
+            );
             // Return a JSON response with the error message for better UX
             Err(StatusCode::BAD_REQUEST)
         }

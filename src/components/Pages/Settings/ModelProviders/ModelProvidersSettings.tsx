@@ -57,7 +57,6 @@ const PROVIDER_ICONS: Record<ModelProviderType, string> = {
   custom: '🔧',
 }
 
-
 export function ModelProvidersSettings() {
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
@@ -106,7 +105,7 @@ export function ModelProvidersSettings() {
   }, [])
 
   const currentProvider = providers.find(p => p.id === selectedProvider)
-  
+
   const canEnableProvider = (provider: ModelProvider): boolean => {
     if (provider.enabled) return true // Already enabled
     if (provider.models.length === 0) return false
@@ -123,10 +122,13 @@ export function ModelProvidersSettings() {
 
   const getEnableDisabledReason = (provider: ModelProvider): string | null => {
     if (provider.enabled) return null
-    if (provider.models.length === 0) return 'No models available. Add at least one model first.'
+    if (provider.models.length === 0)
+      return 'No models available. Add at least one model first.'
     if (provider.type === 'llama.cpp') return null
-    if (!provider.api_key || provider.api_key.trim() === '') return 'API key is required'
-    if (!provider.base_url || provider.base_url.trim() === '') return 'Base URL is required'
+    if (!provider.api_key || provider.api_key.trim() === '')
+      return 'API key is required'
+    if (!provider.base_url || provider.base_url.trim() === '')
+      return 'Base URL is required'
     try {
       new URL(provider.base_url)
       return null
@@ -178,11 +180,11 @@ export function ModelProvidersSettings() {
     }
 
     try {
-      const updatedProvider = await ApiClient.ModelProviders.update({ 
-        provider_id: providerId, 
-        enabled 
+      const updatedProvider = await ApiClient.ModelProviders.update({
+        provider_id: providerId,
+        enabled,
       })
-      
+
       setProviders(prev =>
         prev.map(p => (p.id === providerId ? updatedProvider : p)),
       )
@@ -195,13 +197,27 @@ export function ModelProvidersSettings() {
         const provider = providers.find(p => p.id === providerId)
         if (provider) {
           if (provider.models.length === 0) {
-            message.error(`Cannot enable "${provider.name}" - No models available`)
-          } else if (provider.type !== 'llama.cpp' && (!provider.api_key || provider.api_key.trim() === '')) {
-            message.error(`Cannot enable "${provider.name}" - API key is required`)
-          } else if (provider.type !== 'llama.cpp' && (!provider.base_url || provider.base_url.trim() === '')) {
-            message.error(`Cannot enable "${provider.name}" - Base URL is required`)
+            message.error(
+              `Cannot enable "${provider.name}" - No models available`,
+            )
+          } else if (
+            provider.type !== 'llama.cpp' &&
+            (!provider.api_key || provider.api_key.trim() === '')
+          ) {
+            message.error(
+              `Cannot enable "${provider.name}" - API key is required`,
+            )
+          } else if (
+            provider.type !== 'llama.cpp' &&
+            (!provider.base_url || provider.base_url.trim() === '')
+          ) {
+            message.error(
+              `Cannot enable "${provider.name}" - Base URL is required`,
+            )
           } else {
-            message.error(`Cannot enable "${provider.name}" - Invalid base URL format`)
+            message.error(
+              `Cannot enable "${provider.name}" - Invalid base URL format`,
+            )
           }
         } else {
           message.error('Failed to update provider')
@@ -223,11 +239,11 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !canEditProviders) return
 
     try {
-      const updatedProvider = await ApiClient.ModelProviders.update({ 
-        provider_id: currentProvider.id, 
-        name: changedValues.name 
+      const updatedProvider = await ApiClient.ModelProviders.update({
+        provider_id: currentProvider.id,
+        name: changedValues.name,
       })
-      
+
       setProviders(prev =>
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
@@ -241,9 +257,9 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !canEditProviders) return
 
     setHasUnsavedChanges(true)
-    setPendingSettings((prev: any) => ({ 
-      ...prev, 
-      settings: { ...currentProvider.settings, ...changedValues } 
+    setPendingSettings((prev: any) => ({
+      ...prev,
+      settings: { ...currentProvider.settings, ...changedValues },
     }))
   }
 
@@ -251,22 +267,22 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !canEditProviders || !pendingSettings) return
 
     try {
-      const updatedProvider = await ApiClient.ModelProviders.update({ 
-        provider_id: currentProvider.id, 
-        ...pendingSettings 
+      const updatedProvider = await ApiClient.ModelProviders.update({
+        provider_id: currentProvider.id,
+        ...pendingSettings,
       })
-      
+
       setProviders(prev =>
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
-      
+
       // Update form with the new values
       form.setFieldsValue({
         api_key: updatedProvider.api_key,
         base_url: updatedProvider.base_url,
         settings: updatedProvider.settings,
       })
-      
+
       setHasUnsavedChanges(false)
       setPendingSettings(null)
       message.success('Settings saved successfully')
@@ -294,19 +310,27 @@ export function ModelProvidersSettings() {
       onOk: async () => {
         try {
           await ApiClient.ModelProviders.delete({ provider_id: providerId })
-          
+
           setProviders(prev => prev.filter(p => p.id !== providerId))
           if (selectedProvider === providerId) {
-            const remainingProviders = providers.filter(p => p.id !== providerId)
-            setSelectedProvider(remainingProviders.length > 0 ? remainingProviders[0].id : '')
+            const remainingProviders = providers.filter(
+              p => p.id !== providerId,
+            )
+            setSelectedProvider(
+              remainingProviders.length > 0 ? remainingProviders[0].id : '',
+            )
           }
           message.success('Provider deleted')
         } catch (error: any) {
           console.error('Failed to delete provider:', error)
           if (error.response?.status === 400) {
-            message.error(`Cannot delete "${provider.name}" - default model providers cannot be deleted`)
+            message.error(
+              `Cannot delete "${provider.name}" - default model providers cannot be deleted`,
+            )
           } else if (error.response?.status === 403) {
-            message.error('You do not have permission to delete model providers')
+            message.error(
+              'You do not have permission to delete model providers',
+            )
           } else if (error.response?.status === 404) {
             message.error('Provider not found')
           } else {
@@ -324,10 +348,10 @@ export function ModelProvidersSettings() {
     }
 
     try {
-      const clonedProvider = await ApiClient.ModelProviders.clone({ 
-        provider_id: providerId 
+      const clonedProvider = await ApiClient.ModelProviders.clone({
+        provider_id: providerId,
       })
-      
+
       setProviders(prev => [...prev, clonedProvider])
       message.success('Provider cloned successfully')
     } catch (error) {
@@ -339,14 +363,16 @@ export function ModelProvidersSettings() {
   const handleAddProvider = async (providerData: any) => {
     try {
       const newProvider = await ApiClient.ModelProviders.create(providerData)
-      
+
       setProviders(prev => [...prev, newProvider])
       setIsAddModalOpen(false)
       message.success('Provider added successfully')
     } catch (error: any) {
       console.error('Failed to add provider:', error)
       if (error.response?.status === 400) {
-        message.error('Failed to add provider - Please check API key and base URL are provided and valid')
+        message.error(
+          'Failed to add provider - Please check API key and base URL are provided and valid',
+        )
       } else {
         message.error('Failed to add provider')
       }
@@ -357,9 +383,9 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      const newModel = await ApiClient.ModelProviders.addModel({ 
-        provider_id: currentProvider.id, 
-        ...modelData 
+      const newModel = await ApiClient.ModelProviders.addModel({
+        provider_id: currentProvider.id,
+        ...modelData,
       })
 
       const updatedProvider = {
@@ -382,9 +408,9 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !selectedModel) return
 
     try {
-      const updatedModel = await ApiClient.Models.update({ 
-        model_id: modelData.id, 
-        ...modelData 
+      const updatedModel = await ApiClient.Models.update({
+        model_id: modelData.id,
+        ...modelData,
       })
 
       const updatedModels = currentProvider.models.map(m =>
@@ -434,9 +460,9 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      const updatedModel = await ApiClient.Models.update({ 
-        model_id: modelId, 
-        enabled 
+      const updatedModel = await ApiClient.Models.update({
+        model_id: modelId,
+        enabled,
       })
 
       const updatedModels = currentProvider.models.map(m =>
@@ -452,7 +478,9 @@ export function ModelProvidersSettings() {
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
 
-      message.success(`${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`)
+      message.success(
+        `${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`,
+      )
     } catch (error) {
       console.error('Failed to toggle model:', error)
       message.error('Failed to toggle model')
@@ -463,9 +491,9 @@ export function ModelProvidersSettings() {
     if (!currentProvider || currentProvider.type !== 'llama.cpp') return
 
     try {
-      const updatedModel = await ApiClient.Models.update({ 
-        model_id: modelId, 
-        isActive 
+      const updatedModel = await ApiClient.Models.update({
+        model_id: modelId,
+        isActive,
       })
 
       const updatedModels = currentProvider.models.map(m =>
@@ -481,7 +509,9 @@ export function ModelProvidersSettings() {
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
 
-      message.success(`${updatedModel.name} ${isActive ? 'started' : 'stopped'}`)
+      message.success(
+        `${updatedModel.name} ${isActive ? 'started' : 'stopped'}`,
+      )
     } catch (error) {
       console.error('Failed to start/stop model:', error)
       message.error('Failed to start/stop model')
@@ -660,20 +690,20 @@ export function ModelProvidersSettings() {
               const switchElement = (
                 <Switch
                   checked={currentProvider.enabled}
-                  disabled={!canEditProviders || (!currentProvider.enabled && !canEnableProvider(currentProvider))}
+                  disabled={
+                    !canEditProviders ||
+                    (!currentProvider.enabled &&
+                      !canEnableProvider(currentProvider))
+                  }
                   onChange={enabled =>
                     handleProviderToggle(currentProvider.id, enabled)
                   }
                 />
               )
-              
+
               if (!canEditProviders) return switchElement
               if (disabledReason && !currentProvider.enabled) {
-                return (
-                  <Tooltip title={disabledReason}>
-                    {switchElement}
-                  </Tooltip>
-                )
+                return <Tooltip title={disabledReason}>{switchElement}</Tooltip>
               }
               return switchElement
             })()}
@@ -712,19 +742,21 @@ export function ModelProvidersSettings() {
                 const switchElement = (
                   <Switch
                     checked={currentProvider.enabled}
-                    disabled={!canEditProviders || (!currentProvider.enabled && !canEnableProvider(currentProvider))}
+                    disabled={
+                      !canEditProviders ||
+                      (!currentProvider.enabled &&
+                        !canEnableProvider(currentProvider))
+                    }
                     onChange={enabled =>
                       handleProviderToggle(currentProvider.id, enabled)
                     }
                   />
                 )
-                
+
                 if (!canEditProviders) return switchElement
                 if (disabledReason && !currentProvider.enabled) {
                   return (
-                    <Tooltip title={disabledReason}>
-                      {switchElement}
-                    </Tooltip>
+                    <Tooltip title={disabledReason}>{switchElement}</Tooltip>
                   )
                 }
                 return switchElement
@@ -744,7 +776,7 @@ export function ModelProvidersSettings() {
             }}
             onValuesChange={handleFormChange}
           >
-            <Card 
+            <Card
               title="API Configuration"
               extra={
                 canEditProviders && (
@@ -955,7 +987,7 @@ export function ModelProvidersSettings() {
             initialValues={currentProvider.settings}
             onValuesChange={handleSettingsChange}
           >
-            <Card 
+            <Card
               title="Configuration"
               extra={
                 canEditProviders && (

@@ -379,18 +379,18 @@ impl User {
             groups: vec![],
         }
     }
-    
+
     pub fn get_primary_email(&self) -> Option<String> {
         self.emails.first().map(|e| e.address.clone())
     }
-    
+
     pub fn add_email(&mut self, email: String, verified: bool) {
         self.emails.push(UserEmail {
             address: email,
             verified,
         });
     }
-    
+
     pub fn verify_email(&mut self, email: &str) -> bool {
         for email_obj in &mut self.emails {
             if email_obj.address == email {
@@ -400,19 +400,19 @@ impl User {
         }
         false
     }
-    
+
     pub fn set_password(&mut self, password_hash: String) {
         self.services.password = Some(PasswordService {
             bcrypt: password_hash,
         });
     }
-    
+
     pub fn add_login_token(&mut self, token: String) {
         let login_token = LoginToken {
             token,
             when: Utc::now().timestamp_millis(),
         };
-        
+
         if let Some(resume) = &mut self.services.resume {
             resume.login_tokens.push(login_token);
         } else {
@@ -421,7 +421,7 @@ impl User {
             });
         }
     }
-    
+
     // Convert from database structures to Meteor-like User
     pub fn from_db_parts(
         user_db: UserDb,
@@ -433,56 +433,69 @@ impl User {
         let mut user = User {
             id: user_db.id,
             username: user_db.username,
-            emails: emails.into_iter().map(|e| UserEmail {
-                address: e.address,
-                verified: e.verified,
-            }).collect(),
+            emails: emails
+                .into_iter()
+                .map(|e| UserEmail {
+                    address: e.address,
+                    verified: e.verified,
+                })
+                .collect(),
             created_at: user_db.created_at,
             profile: user_db.profile,
             services: UserServices::default(),
             is_active: user_db.is_active,
             last_login_at: user_db.last_login_at,
             updated_at: user_db.updated_at,
-            groups: groups.into_iter().map(|g| UserGroup {
-                id: g.id,
-                name: g.name,
-                description: g.description,
-                permissions: g.permissions,
-                is_active: g.is_active,
-                created_at: g.created_at,
-                updated_at: g.updated_at,
-            }).collect(),
+            groups: groups
+                .into_iter()
+                .map(|g| UserGroup {
+                    id: g.id,
+                    name: g.name,
+                    description: g.description,
+                    permissions: g.permissions,
+                    is_active: g.is_active,
+                    created_at: g.created_at,
+                    updated_at: g.updated_at,
+                })
+                .collect(),
         };
-        
+
         // Build services from database records
         for service in services {
             match service.service_name.as_str() {
                 "facebook" => {
-                    if let Ok(fb_service) = serde_json::from_value::<FacebookService>(service.service_data) {
+                    if let Ok(fb_service) =
+                        serde_json::from_value::<FacebookService>(service.service_data)
+                    {
                         user.services.facebook = Some(fb_service);
                     }
                 }
                 "password" => {
-                    if let Ok(pwd_service) = serde_json::from_value::<PasswordService>(service.service_data) {
+                    if let Ok(pwd_service) =
+                        serde_json::from_value::<PasswordService>(service.service_data)
+                    {
                         user.services.password = Some(pwd_service);
                     }
                 }
                 _ => {}
             }
         }
-        
+
         // Add login tokens to resume service
         if !login_tokens.is_empty() {
-            let tokens: Vec<LoginToken> = login_tokens.into_iter().map(|t| LoginToken {
-                token: t.token,
-                when: t.when_created,
-            }).collect();
-            
+            let tokens: Vec<LoginToken> = login_tokens
+                .into_iter()
+                .map(|t| LoginToken {
+                    token: t.token,
+                    when: t.when_created,
+                })
+                .collect();
+
             user.services.resume = Some(ResumeService {
                 login_tokens: tokens,
             });
         }
-        
+
         user
     }
 }

@@ -18,6 +18,10 @@ import {
 import {
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
+  ProxySettingsResponse,
+  UpdateProxySettingsRequest,
+  TestProxyConnectionRequest,
+  TestProxyConnectionResponse,
 } from './config.ts'
 import {
   DefaultLanguageResponse,
@@ -74,6 +78,9 @@ export const ApiEndpoints = {
     'PUT /api/admin/config/user-registration',
   'Admin.getDefaultLanguage': 'GET /api/admin/config/default-language',
   'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
+  'Admin.getProxySettings': 'GET /api/admin/config/proxy',
+  'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
+  'Admin.testProxyConnection': 'POST /api/admin/config/proxy/test',
   // User settings management
   'UserSettings.getAll': 'GET /api/user/settings',
   'UserSettings.get': 'GET /api/user/settings/{key}',
@@ -131,6 +138,9 @@ export type ApiEndpointParameters = {
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
   'Admin.getDefaultLanguage': void
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
+  'Admin.getProxySettings': void
+  'Admin.updateProxySettings': UpdateProxySettingsRequest
+  'Admin.testProxyConnection': TestProxyConnectionRequest
   // User settings management
   'UserSettings.getAll': void
   'UserSettings.get': { key: string }
@@ -183,6 +193,9 @@ export type ApiEndpointResponses = {
   'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.getDefaultLanguage': DefaultLanguageResponse
   'Admin.updateDefaultLanguage': DefaultLanguageResponse
+  'Admin.getProxySettings': ProxySettingsResponse
+  'Admin.updateProxySettings': ProxySettingsResponse
+  'Admin.testProxyConnection': TestProxyConnectionResponse
   // User settings management
   'UserSettings.getAll': UserSettingsResponse
   'UserSettings.get': UserSetting

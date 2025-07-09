@@ -41,7 +41,10 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
     if is_desktop_app() {
         match auth_service.get_or_create_default_admin_user().await {
             Ok(user) => {
-                req.extensions_mut().insert(AuthenticatedUser { user_id: user.id, user });
+                req.extensions_mut().insert(AuthenticatedUser {
+                    user_id: user.id,
+                    user,
+                });
                 return Ok(next.run(req).await);
             }
             Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -51,7 +54,10 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
     // For web app, validate JWT token
     match auth_service.get_user_by_token(token).await {
         Ok(Some(user)) => {
-            req.extensions_mut().insert(AuthenticatedUser { user_id: user.id, user });
+            req.extensions_mut().insert(AuthenticatedUser {
+                user_id: user.id,
+                user,
+            });
             Ok(next.run(req).await)
         }
         Ok(None) => Err(StatusCode::UNAUTHORIZED),
@@ -189,7 +195,10 @@ pub async fn groups_delete_middleware(req: Request, next: Next) -> Result<Respon
 }
 
 /// Middleware that checks for config::user-registration::read permission
-pub async fn config_user_registration_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_user_registration_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_USER_REGISTRATION_READ) {
@@ -200,7 +209,10 @@ pub async fn config_user_registration_read_middleware(req: Request, next: Next) 
 }
 
 /// Middleware that checks for config::user-registration::edit permission
-pub async fn config_user_registration_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_user_registration_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_USER_REGISTRATION_EDIT) {
@@ -211,7 +223,10 @@ pub async fn config_user_registration_edit_middleware(req: Request, next: Next) 
 }
 
 /// Middleware that checks for config::updates::read permission
-pub async fn config_updates_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_updates_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_UPDATES_READ) {
@@ -222,7 +237,10 @@ pub async fn config_updates_read_middleware(req: Request, next: Next) -> Result<
 }
 
 /// Middleware that checks for config::updates::edit permission
-pub async fn config_updates_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_updates_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_UPDATES_EDIT) {
@@ -233,7 +251,10 @@ pub async fn config_updates_edit_middleware(req: Request, next: Next) -> Result<
 }
 
 /// Middleware that checks for config::experimental::read permission
-pub async fn config_experimental_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_experimental_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_EXPERIMENTAL_READ) {
@@ -244,7 +265,10 @@ pub async fn config_experimental_read_middleware(req: Request, next: Next) -> Re
 }
 
 /// Middleware that checks for config::experimental::edit permission
-pub async fn config_experimental_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_experimental_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_EXPERIMENTAL_EDIT) {
@@ -255,7 +279,10 @@ pub async fn config_experimental_edit_middleware(req: Request, next: Next) -> Re
 }
 
 /// Middleware that checks for config::data-folder::read permission
-pub async fn config_data_folder_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_data_folder_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_DATA_FOLDER_READ) {
@@ -266,7 +293,10 @@ pub async fn config_data_folder_read_middleware(req: Request, next: Next) -> Res
 }
 
 /// Middleware that checks for config::data-folder::edit permission
-pub async fn config_data_folder_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_data_folder_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_DATA_FOLDER_EDIT) {
@@ -277,7 +307,10 @@ pub async fn config_data_folder_edit_middleware(req: Request, next: Next) -> Res
 }
 
 /// Middleware that checks for config::factory-reset::read permission
-pub async fn config_factory_reset_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_factory_reset_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_FACTORY_RESET_READ) {
@@ -288,7 +321,10 @@ pub async fn config_factory_reset_read_middleware(req: Request, next: Next) -> R
 }
 
 /// Middleware that checks for config::factory-reset::edit permission
-pub async fn config_factory_reset_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_factory_reset_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_FACTORY_RESET_EDIT) {
@@ -299,7 +335,10 @@ pub async fn config_factory_reset_edit_middleware(req: Request, next: Next) -> R
 }
 
 /// Middleware that checks for config::appearance::read permission
-pub async fn config_appearance_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_appearance_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_APPEARANCE_READ) {
@@ -310,7 +349,10 @@ pub async fn config_appearance_read_middleware(req: Request, next: Next) -> Resu
 }
 
 /// Middleware that checks for config::appearance::edit permission
-pub async fn config_appearance_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn config_appearance_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_APPEARANCE_EDIT) {
@@ -354,7 +396,10 @@ pub async fn settings_delete_middleware(req: Request, next: Next) -> Result<Resp
 }
 
 /// Middleware that checks for config::model-providers::read permission
-pub async fn model_providers_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn model_providers_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::MODEL_PROVIDERS_READ) {
@@ -365,7 +410,10 @@ pub async fn model_providers_read_middleware(req: Request, next: Next) -> Result
 }
 
 /// Middleware that checks for config::model-providers::edit permission
-pub async fn model_providers_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn model_providers_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::MODEL_PROVIDERS_EDIT) {
@@ -376,7 +424,10 @@ pub async fn model_providers_edit_middleware(req: Request, next: Next) -> Result
 }
 
 /// Middleware that checks for config::model-providers::create permission
-pub async fn model_providers_create_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn model_providers_create_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::MODEL_PROVIDERS_CREATE) {
@@ -387,10 +438,41 @@ pub async fn model_providers_create_middleware(req: Request, next: Next) -> Resu
 }
 
 /// Middleware that checks for config::model-providers::delete permission
-pub async fn model_providers_delete_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+pub async fn model_providers_delete_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::MODEL_PROVIDERS_DELETE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::proxy::read permission
+pub async fn config_proxy_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_PROXY_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::proxy::edit permission
+pub async fn config_proxy_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_PROXY_EDIT) {
         return Err(StatusCode::FORBIDDEN);
     }
 

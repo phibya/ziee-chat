@@ -1,15 +1,14 @@
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
-    Extension,
-    Json,
+    Extension, Json,
 };
 use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
-    models::{UpdateUserRequest, ResetPasswordRequest},
+    models::{ResetPasswordRequest, UpdateUserRequest},
     queries::users,
 };
 

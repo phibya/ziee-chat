@@ -42,6 +42,9 @@ export const PermissionDescription = {
   'config::factory-reset::*': 'Grants all factory reset permissions',
   'config::factory-reset::read': 'Allows viewing factory reset options',
   'config::factory-reset::edit': 'Allows performing factory reset operations',
+  'config::proxy::*': 'Grants all proxy configuration permissions',
+  'config::proxy::read': 'Allows viewing proxy settings',
+  'config::proxy::edit': 'Allows configuring proxy settings',
   // Model provider permissions
   'config::model-providers::*':
     'Grants all model provider configuration permissions',

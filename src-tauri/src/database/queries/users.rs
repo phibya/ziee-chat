@@ -78,16 +78,12 @@ pub async fn create_user(
 
     tx.commit().await?;
 
-    let user = User::from_db_parts(
-        user_db,
-        vec![email_db],
-        services,
-        vec![],
-        vec![],
-    );
+    let user = User::from_db_parts(user_db, vec![email_db], services, vec![], vec![]);
 
     // Automatically assign new user to default user group
-    if let Err(e) = crate::database::queries::user_groups::assign_user_to_default_group(user.id).await {
+    if let Err(e) =
+        crate::database::queries::user_groups::assign_user_to_default_group(user.id).await
+    {
         eprintln!("Warning: Failed to assign user to default group: {}", e);
     }
 
@@ -452,7 +448,7 @@ pub async fn update_user(
         );
 
         let mut sql_query = sqlx::query(&query);
-        
+
         if let Some(username) = username.clone() {
             sql_query = sql_query.bind(username);
         }
@@ -462,7 +458,7 @@ pub async fn update_user(
         if let Some(profile) = profile.clone() {
             sql_query = sql_query.bind(profile);
         }
-        
+
         sql_query = sql_query.bind(user_id);
 
         sql_query.execute(&mut *tx).await?;
@@ -484,7 +480,10 @@ pub async fn update_user(
 }
 
 // Reset user password
-pub async fn reset_user_password(user_id: Uuid, password_hash: String) -> Result<bool, sqlx::Error> {
+pub async fn reset_user_password(
+    user_id: Uuid,
+    password_hash: String,
+) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
 
     let password_service = serde_json::json!({
@@ -524,10 +523,11 @@ pub async fn update_last_login(user_id: Uuid) -> Result<(), sqlx::Error> {
 pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let result = sqlx::query("UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active")
-        .bind(user_id)
-        .fetch_optional(&*pool)
-        .await?;
+    let result =
+        sqlx::query("UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active")
+            .bind(user_id)
+            .fetch_optional(&*pool)
+            .await?;
 
     Ok(result.map_or(false, |r| r.get("is_active")))
 }

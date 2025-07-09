@@ -1,15 +1,14 @@
 use axum::{
     extract::{Path, Query},
     http::StatusCode,
-    Extension,
-    Json,
+    Extension, Json,
 };
 use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
-    models::{CreateUserGroupRequest, UpdateUserGroupRequest, AssignUserToGroupRequest},
+    models::{AssignUserToGroupRequest, CreateUserGroupRequest, UpdateUserGroupRequest},
     queries::user_groups,
 };
 
@@ -24,12 +23,8 @@ pub async fn create_user_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateUserGroupRequest>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
-    match user_groups::create_user_group(
-        request.name,
-        request.description,
-        request.permissions,
-    )
-    .await
+    match user_groups::create_user_group(request.name, request.description, request.permissions)
+        .await
     {
         Ok(group) => Ok(Json(group)),
         Err(e) => {
