@@ -204,6 +204,10 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
       })
 
       setMessages(conversationResponse.messages)
+
+      // Reset loading states after successful completion
+      setIsLoading(false)
+      setIsStreaming(false)
     } catch (error) {
       message.error('Failed to send message')
       setIsLoading(false)

@@ -309,7 +309,7 @@ pub async fn send_message_stream(
     let chat_request = ChatRequest {
         messages,
         model: model.name.clone(), // The name field should contain the provider model ID (e.g., "claude-3-sonnet-20240229")
-        stream: false,                       // For now, use non-streaming
+        stream: true,                        // Enable streaming
         temperature: Some(0.7),
         max_tokens: Some(4096),
         top_p: Some(0.95),
@@ -323,7 +323,8 @@ pub async fn send_message_stream(
             // Create user message first
             let user_message_req = SendMessageRequest {
                 conversation_id: request.conversation_id,
-                content: format!("USER: {}", request.content), // Mark as user message
+                content: request.content.clone(),
+                role: "user".to_string(),
                 parent_id: request.parent_id,
                 model_provider_id: request.model_provider_id,
                 model_id: request.model_id,
@@ -341,7 +342,8 @@ pub async fn send_message_stream(
             // Create assistant message
             let assistant_message_req = SendMessageRequest {
                 conversation_id: request.conversation_id,
-                content: format!("ASSISTANT: {}", response.content), // Mark as assistant message
+                content: response.content.clone(),
+                role: "assistant".to_string(),
                 parent_id: None, // Assistant message is a response to user message
                 model_provider_id: request.model_provider_id,
                 model_id: request.model_id,

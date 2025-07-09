@@ -140,7 +140,7 @@ impl AIProvider for AnthropicProvider {
         println!("DEBUG: Base URL: {}", self.base_url);
         
         let response = self.client
-            .post(&format!("{}/v1/messages", self.base_url))
+            .post(&format!("{}/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("Content-Type", "application/json")
             .header("anthropic-version", "2023-06-01")
@@ -180,7 +180,7 @@ impl AIProvider for AnthropicProvider {
         let body = self.prepare_request(&request);
         
         let response = self.client
-            .post(&format!("{}/v1/messages", self.base_url))
+            .post(&format!("{}/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("Content-Type", "application/json")
             .header("anthropic-version", "2023-06-01")

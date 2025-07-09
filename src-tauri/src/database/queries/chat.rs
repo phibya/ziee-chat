@@ -139,14 +139,9 @@ pub async fn send_message(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     
-    // Determine the role based on content prefix
-    let (role, content) = if request.content.starts_with("USER: ") {
-        ("user", request.content.strip_prefix("USER: ").unwrap_or(&request.content))
-    } else if request.content.starts_with("ASSISTANT: ") {
-        ("assistant", request.content.strip_prefix("ASSISTANT: ").unwrap_or(&request.content))
-    } else {
-        ("user", request.content.as_str()) // Default to user
-    };
+    // Use the role from the request
+    let role = &request.role;
+    let content = &request.content;
     
     let message_id = Uuid::new_v4();
     let branch_id = Uuid::new_v4();

@@ -603,6 +603,7 @@ pub struct UpdateConversationRequest {
 pub struct SendMessageRequest {
     pub conversation_id: Uuid,
     pub content: String,
+    pub role: String,
     pub parent_id: Option<Uuid>,
     pub model_provider_id: Uuid,
     pub model_id: Uuid,
