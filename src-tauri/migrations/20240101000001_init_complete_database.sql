@@ -71,15 +71,6 @@ CREATE TABLE user_group_memberships (
     UNIQUE(user_id, group_id)
 );
 
--- Create user group model provider relationships
-CREATE TABLE user_group_model_providers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_id UUID NOT NULL REFERENCES user_groups(id) ON DELETE CASCADE,
-    provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
-    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(group_id, provider_id)
-);
-
 -- Create configuration table
 CREATE TABLE configurations (
     id SERIAL PRIMARY KEY,
@@ -125,6 +116,15 @@ CREATE TABLE model_providers (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create user group model provider relationships
+CREATE TABLE user_group_model_providers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES user_groups(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(group_id, provider_id)
+);
+
 -- Create model provider models table
 CREATE TABLE model_provider_models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -150,6 +150,7 @@ CREATE TABLE assistants (
     parameters JSONB DEFAULT '{}',
     created_by UUID REFERENCES users(id),
     is_template BOOLEAN DEFAULT false,
+    is_default BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -224,6 +225,7 @@ CREATE INDEX idx_model_provider_models_enabled ON model_provider_models(enabled)
 
 CREATE INDEX idx_assistants_created_by ON assistants(created_by);
 CREATE INDEX idx_assistants_is_template ON assistants(is_template);
+CREATE INDEX idx_assistants_is_default ON assistants(is_default);
 CREATE INDEX idx_assistants_is_active ON assistants(is_active);
 CREATE INDEX idx_assistants_name ON assistants(name);
 
@@ -319,8 +321,8 @@ INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url,
 ('Mistral', 'mistral', false, true, 'https://api.mistral.ai', '{}');
 
 -- Insert default template assistant
-INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_active) VALUES 
-('Default Assistant', 'This is the default assistant.', 'You can use this assistant to chat with the LLM.', '{"stream": true, "temperature": 0.7, "frequency_penalty": 0.7, "presence_penalty": 0.7, "top_p": 0.95, "top_k": 2}', NULL, true, true);
+INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_default, is_active) VALUES 
+('Default Assistant', 'This is the default assistant.', 'You can use this assistant to chat with the LLM.', '{"stream": true, "temperature": 0.7, "frequency_penalty": 0.7, "presence_penalty": 0.7, "top_p": 0.95, "top_k": 2}', NULL, true, true, true);
 
 -- Add comments to document the tables
 COMMENT ON TABLE users IS 'Users table with Meteor-like structure';
@@ -350,6 +352,7 @@ COMMENT ON COLUMN model_providers.proxy_host_ssl IS 'Whether to use SSL for host
 COMMENT ON COLUMN model_providers.proxy_peer_ssl IS 'Whether to use SSL for peer connection';
 COMMENT ON COLUMN model_providers.proxy_host_ssl_verify IS 'Whether to verify SSL certificates for host';
 COMMENT ON COLUMN assistants.is_template IS 'Whether this assistant is a template (admin-created) that can be cloned by users';
+COMMENT ON COLUMN assistants.is_default IS 'Whether this template assistant is automatically cloned for new users';
 COMMENT ON COLUMN assistants.created_by IS 'User who created this assistant (NULL for system/template assistants)';
 COMMENT ON COLUMN conversations.assistant_id IS 'Assistant used in this conversation';
 COMMENT ON COLUMN conversations.model_provider_id IS 'Model provider used in this conversation';

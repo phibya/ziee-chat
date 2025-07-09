@@ -10,6 +10,7 @@ export interface Assistant {
   parameters?: Record<string, any>
   created_by?: string
   is_template: boolean
+  is_default: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -21,6 +22,7 @@ export interface CreateAssistantRequest {
   instructions?: string
   parameters?: Record<string, any>
   is_template?: boolean
+  is_default?: boolean
 }
 
 export interface UpdateAssistantRequest {
@@ -29,6 +31,7 @@ export interface UpdateAssistantRequest {
   instructions?: string
   parameters?: Record<string, any>
   is_template?: boolean
+  is_default?: boolean
   is_active?: boolean
 }
 

@@ -35,7 +35,7 @@ interface AssistantFormData {
   description?: string
   instructions?: string
   parameters?: string
-  is_template?: boolean
+  is_default?: boolean
   is_active?: boolean
 }
 
@@ -92,7 +92,8 @@ export const AdminAssistantsSettings: React.FC = () => {
         description: values.description,
         instructions: values.instructions,
         parameters: parametersString ? JSON.parse(parametersString) : undefined,
-        is_template: values.is_template,
+        is_template: true, // Always true for admin-created assistants
+        is_default: values.is_default,
         is_active: values.is_active,
       }
 
@@ -207,7 +208,7 @@ export const AdminAssistantsSettings: React.FC = () => {
       description: assistant.description,
       instructions: assistant.instructions,
       parameters: parametersJson,
-      is_template: assistant.is_template,
+      is_default: assistant.is_default,
       is_active: assistant.is_active,
     })
     setParameterJson(parametersJson)
@@ -232,7 +233,7 @@ export const AdminAssistantsSettings: React.FC = () => {
       2,
     )
     form.setFieldsValue({
-      is_template: true,
+      is_default: false,
       is_active: true,
       parameters: defaultParams,
     })
@@ -251,7 +252,7 @@ export const AdminAssistantsSettings: React.FC = () => {
         <Space>
           <RobotOutlined />
           <Text strong>{text}</Text>
-          {record.is_template && <Tag color="blue">Template</Tag>}
+          {record.is_default && <Tag color="green">Default</Tag>}
           {!record.is_active && <Tag color="red">Inactive</Tag>}
         </Space>
       ),
@@ -312,7 +313,8 @@ export const AdminAssistantsSettings: React.FC = () => {
         <div>
           <Title level={3}>Assistants</Title>
           <Text type="secondary">
-            Manage template assistants available for users to clone
+            Manage template assistants. Default assistants are automatically
+            cloned for new users.
           </Text>
         </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
@@ -487,11 +489,7 @@ export const AdminAssistantsSettings: React.FC = () => {
             )}
           </Form.Item>
 
-          <Form.Item
-            name="is_template"
-            label="Template"
-            valuePropName="checked"
-          >
+          <Form.Item name="is_default" label="Default" valuePropName="checked">
             <Switch />
           </Form.Item>
 

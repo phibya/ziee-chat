@@ -87,7 +87,27 @@ pub async fn create_user(
         eprintln!("Warning: Failed to assign user to default group: {}", e);
     }
 
+    // Clone default assistants for new user
+    if let Err(e) = clone_default_assistants_for_user(user.id).await {
+        eprintln!("Warning: Failed to clone default assistants for user: {}", e);
+    }
+
     Ok(user)
+}
+
+/// Clone default assistants for a new user
+async fn clone_default_assistants_for_user(user_id: Uuid) -> Result<(), sqlx::Error> {
+    // Get all default assistants
+    let default_assistants = crate::database::queries::assistants::get_default_assistants().await?;
+    
+    // Clone each default assistant for the user
+    for assistant in default_assistants {
+        if let Err(e) = crate::database::queries::assistants::clone_assistant_for_user(assistant.id, user_id).await {
+            eprintln!("Warning: Failed to clone assistant '{}' for user: {}", assistant.name, e);
+        }
+    }
+    
+    Ok(())
 }
 
 // Get user by ID with all related data

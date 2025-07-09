@@ -444,6 +444,7 @@ pub struct AssistantDb {
     pub parameters: serde_json::Value,
     pub created_by: Option<Uuid>,
     pub is_template: bool,
+    pub is_default: bool,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -458,6 +459,7 @@ pub struct Assistant {
     pub parameters: Option<serde_json::Value>,
     pub created_by: Option<Uuid>,
     pub is_template: bool,
+    pub is_default: bool,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -470,6 +472,7 @@ pub struct CreateAssistantRequest {
     pub instructions: Option<String>,
     pub parameters: Option<serde_json::Value>,
     pub is_template: Option<bool>,
+    pub is_default: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -479,6 +482,7 @@ pub struct UpdateAssistantRequest {
     pub instructions: Option<String>,
     pub parameters: Option<serde_json::Value>,
     pub is_template: Option<bool>,
+    pub is_default: Option<bool>,
     pub is_active: Option<bool>,
 }
 
