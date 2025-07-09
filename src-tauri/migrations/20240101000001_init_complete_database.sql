@@ -213,13 +213,13 @@ VALUES (
 );
 
 -- Insert default model providers
-INSERT INTO model_providers (id, name, provider_type, enabled, is_default, base_url, settings) VALUES
-('11111111-1111-1111-1111-111111111111', 'Llama.cpp', 'llama.cpp', false, true, null, '{"autoUnloadOldModels": true, "contextShift": false, "continuousBatching": false, "parallelOperations": 1, "cpuThreads": -1, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true, "huggingFaceAccessToken": ""}'),
-('22222222-2222-2222-2222-222222222222', 'OpenAI', 'openai', false, true, 'https://api.openai.com/v1', '{}'),
-('33333333-3333-3333-3333-333333333333', 'Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1', '{}'),
-('44444444-4444-4444-4444-444444444444', 'Groq', 'groq', false, true, 'https://api.groq.com/openai/v1', '{}'),
-('55555555-5555-5555-5555-555555555555', 'Gemini', 'gemini', false, true, 'https://generativelanguage.googleapis.com/v1beta/openai', '{}'),
-('66666666-6666-6666-6666-666666666666', 'Mistral', 'mistral', false, true, 'https://api.mistral.ai', '{}');
+INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url, settings) VALUES
+('Llama.cpp', 'llama.cpp', false, true, null, '{"autoUnloadOldModels": true, "contextShift": false, "continuousBatching": false, "parallelOperations": 1, "cpuThreads": -1, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true, "huggingFaceAccessToken": ""}'),
+('OpenAI', 'openai', false, true, 'https://api.openai.com/v1', '{}'),
+('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1', '{}'),
+('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1', '{}'),
+('Gemini', 'gemini', false, true, 'https://generativelanguage.googleapis.com/v1beta/openai', '{}'),
+('Mistral', 'mistral', false, true, 'https://api.mistral.ai', '{}');
 
 -- Add comments to document the tables
 COMMENT ON TABLE users IS 'Users table with Meteor-like structure';

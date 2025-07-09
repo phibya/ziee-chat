@@ -196,6 +196,84 @@ pub async fn delete_model_provider(provider_id: Uuid) -> Result<bool, sqlx::Erro
     Ok(result.rows_affected() > 0)
 }
 
+pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvider>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
+    // First get the original provider
+    let original_provider = match get_model_provider_by_id(provider_id).await? {
+        Some(provider) => provider,
+        None => return Ok(None),
+    };
+    
+    // Create a new provider with cloned data
+    let new_provider_id = Uuid::new_v4();
+    let cloned_name = format!("{} (Clone)", original_provider.name);
+    
+    let provider_row: ModelProviderDb = sqlx::query_as(
+        "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, created_at, updated_at"
+    )
+    .bind(new_provider_id)
+    .bind(&cloned_name)
+    .bind(&original_provider.provider_type)
+    .bind(false) // Cloned providers are disabled by default
+    .bind(&original_provider.api_key)
+    .bind(&original_provider.base_url)
+    .bind(&original_provider.settings)
+    .bind(false) // Cloned providers are never default
+    .fetch_one(pool)
+    .await?;
+    
+    // Clone all models from the original provider
+    let mut cloned_models = Vec::new();
+    for model in &original_provider.models {
+        let cloned_model_id = Uuid::new_v4();
+        let cloned_model_row: ModelProviderModelDb = sqlx::query_as(
+            "INSERT INTO model_provider_models (id, provider_id, name, description, path, enabled, capabilities, parameters) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+             RETURNING id, provider_id, name, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
+        )
+        .bind(cloned_model_id)
+        .bind(new_provider_id)
+        .bind(&model.name)
+        .bind(&model.description)
+        .bind(&model.path)
+        .bind(false) // Cloned models are disabled by default
+        .bind(model.capabilities.as_ref().unwrap_or(&serde_json::json!({})))
+        .bind(model.parameters.as_ref().unwrap_or(&serde_json::json!({})))
+        .fetch_one(pool)
+        .await?;
+        
+        cloned_models.push(ModelProviderModel {
+            id: cloned_model_row.id,
+            name: cloned_model_row.name,
+            description: cloned_model_row.description,
+            path: cloned_model_row.path,
+            enabled: cloned_model_row.enabled,
+            is_deprecated: cloned_model_row.is_deprecated,
+            is_active: cloned_model_row.is_active,
+            capabilities: Some(cloned_model_row.capabilities),
+            parameters: Some(cloned_model_row.parameters),
+        });
+    }
+    
+    Ok(Some(ModelProvider {
+        id: provider_row.id,
+        name: provider_row.name,
+        provider_type: provider_row.provider_type,
+        enabled: provider_row.enabled,
+        api_key: provider_row.api_key,
+        base_url: provider_row.base_url,
+        models: cloned_models,
+        settings: Some(provider_row.settings),
+        is_default: provider_row.is_default,
+        created_at: provider_row.created_at,
+        updated_at: provider_row.updated_at,
+    }))
+}
+
 // Model queries
 async fn get_models_for_provider(provider_id: Uuid) -> Result<Vec<ModelProviderModel>, sqlx::Error> {
     let pool = get_database_pool()?;

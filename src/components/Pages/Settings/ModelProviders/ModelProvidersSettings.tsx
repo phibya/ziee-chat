@@ -71,6 +71,8 @@ export function ModelProvidersSettings() {
   const [selectedModel, setSelectedModel] = useState<ModelProviderModel | null>(
     null,
   )
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [pendingSettings, setPendingSettings] = useState<any>(null)
 
   // Check permissions for web app
   const canEditProviders =
@@ -117,6 +119,9 @@ export function ModelProvidersSettings() {
       nameForm.setFieldsValue({
         name: currentProvider.name,
       })
+      // Clear unsaved changes when switching providers
+      setHasUnsavedChanges(false)
+      setPendingSettings(null)
     }
   }, [currentProvider, form, nameForm])
 
@@ -160,22 +165,11 @@ export function ModelProvidersSettings() {
     }
   }
 
-  const handleFormChange = async (changedValues: any) => {
+  const handleFormChange = (changedValues: any) => {
     if (!currentProvider || !canEditProviders) return
 
-    try {
-      const updatedProvider = await ApiClient.ModelProviders.update({ 
-        provider_id: currentProvider.id, 
-        ...changedValues 
-      })
-      
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
-    } catch (error) {
-      console.error('Failed to update provider:', error)
-      message.error('Failed to update provider')
-    }
+    setHasUnsavedChanges(true)
+    setPendingSettings((prev: any) => ({ ...prev, ...changedValues }))
   }
 
   const handleNameChange = async (changedValues: any) => {
@@ -196,21 +190,34 @@ export function ModelProvidersSettings() {
     }
   }
 
-  const handleSettingsChange = async (changedValues: any) => {
+  const handleSettingsChange = (changedValues: any) => {
     if (!currentProvider || !canEditProviders) return
+
+    setHasUnsavedChanges(true)
+    setPendingSettings((prev: any) => ({ 
+      ...prev, 
+      settings: { ...currentProvider.settings, ...changedValues } 
+    }))
+  }
+
+  const handleSaveSettings = async () => {
+    if (!currentProvider || !canEditProviders || !pendingSettings) return
 
     try {
       const updatedProvider = await ApiClient.ModelProviders.update({ 
         provider_id: currentProvider.id, 
-        settings: { ...currentProvider.settings, ...changedValues } 
+        ...pendingSettings 
       })
       
       setProviders(prev =>
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
+      setHasUnsavedChanges(false)
+      setPendingSettings(null)
+      message.success('Settings saved successfully')
     } catch (error) {
-      console.error('Failed to update provider:', error)
-      message.error('Failed to update provider')
+      console.error('Failed to save settings:', error)
+      message.error('Failed to save settings')
     }
   }
 
@@ -242,19 +249,12 @@ export function ModelProvidersSettings() {
     }
 
     try {
-      const provider = providers.find(p => p.id === providerId)
-      if (!provider) return
-
-      const clonedProvider = {
-        ...provider,
-        id: `${provider.id}-clone-${Date.now()}`,
-        name: `${provider.name} (Clone)`,
-        enabled: false,
-        isDefault: false,
-      }
-
+      const clonedProvider = await ApiClient.ModelProviders.clone({ 
+        provider_id: providerId 
+      })
+      
       setProviders(prev => [...prev, clonedProvider])
-      message.success('Provider cloned')
+      message.success('Provider cloned successfully')
     } catch (error) {
       console.error('Failed to clone provider:', error)
       message.error('Failed to clone provider')
@@ -636,7 +636,20 @@ export function ModelProvidersSettings() {
             }}
             onValuesChange={handleFormChange}
           >
-            <Card title="API Configuration">
+            <Card 
+              title="API Configuration"
+              extra={
+                canEditProviders && (
+                  <Button
+                    type="primary"
+                    onClick={handleSaveSettings}
+                    disabled={!hasUnsavedChanges}
+                  >
+                    Save
+                  </Button>
+                )
+              }
+            >
               <Space
                 direction="vertical"
                 size="large"
@@ -834,7 +847,20 @@ export function ModelProvidersSettings() {
             initialValues={currentProvider.settings}
             onValuesChange={handleSettingsChange}
           >
-            <Card title="Configuration">
+            <Card 
+              title="Configuration"
+              extra={
+                canEditProviders && (
+                  <Button
+                    type="primary"
+                    onClick={handleSaveSettings}
+                    disabled={!hasUnsavedChanges}
+                  >
+                    Save
+                  </Button>
+                )
+              }
+            >
               <Space
                 direction="vertical"
                 size="middle"

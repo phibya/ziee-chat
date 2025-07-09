@@ -101,6 +101,20 @@ pub async fn delete_model_provider(
     }
 }
 
+pub async fn clone_model_provider(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(provider_id): Path<Uuid>,
+) -> Result<Json<ModelProvider>, StatusCode> {
+    match model_providers::clone_model_provider(provider_id).await {
+        Ok(Some(provider)) => Ok(Json(provider)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            eprintln!("Failed to clone model provider {}: {}", provider_id, e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 // Model endpoints
 pub async fn create_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,

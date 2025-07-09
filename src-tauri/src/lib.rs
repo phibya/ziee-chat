@@ -394,6 +394,11 @@ fn create_rest_router() -> Router {
             delete(api::model_providers::methods::delete_model_provider)
                 .layer(middleware::from_fn(api::middleware::model_providers_delete_middleware))
         )
+        .route(
+            "/api/admin/model-providers/{provider_id}/clone",
+            post(api::model_providers::methods::clone_model_provider)
+                .layer(middleware::from_fn(api::middleware::model_providers_create_middleware))
+        )
         // Model routes
         .route(
             "/api/admin/model-providers/{provider_id}/models",
