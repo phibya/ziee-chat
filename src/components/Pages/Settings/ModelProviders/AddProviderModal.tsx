@@ -105,6 +105,7 @@ export function AddProviderModal({
       confirmLoading={loading}
       width={600}
       destroyOnClose
+      maskClosable={false}
     >
       <Form
         form={form}

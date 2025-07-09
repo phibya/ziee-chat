@@ -410,6 +410,7 @@ export function UsersSettings() {
         }}
         footer={null}
         width={600}
+        maskClosable={false}
       >
         <Form form={editForm} layout="vertical" onFinish={handleEditUser}>
           <Form.Item
@@ -483,6 +484,7 @@ export function UsersSettings() {
           passwordForm.resetFields()
         }}
         footer={null}
+        maskClosable={false}
       >
         <Form
           form={passwordForm}
@@ -600,6 +602,7 @@ export function UsersSettings() {
           assignGroupForm.resetFields()
         }}
         footer={null}
+        maskClosable={false}
       >
         <Form
           form={assignGroupForm}

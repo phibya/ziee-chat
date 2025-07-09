@@ -213,6 +213,7 @@ export function AddModelModal({
         </Button>,
       ]}
       width={600}
+      maskClosable={false}
     >
       <Form
         form={form}

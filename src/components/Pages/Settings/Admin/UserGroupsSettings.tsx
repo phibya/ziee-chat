@@ -423,6 +423,7 @@ export function UserGroupsSettings() {
         }}
         footer={null}
         width={600}
+        maskClosable={false}
       >
         <Form form={createForm} layout="vertical" onFinish={handleCreateGroup}>
           <Form.Item
@@ -510,6 +511,7 @@ export function UserGroupsSettings() {
         }}
         footer={null}
         width={600}
+        maskClosable={false}
       >
         <Form form={editForm} layout="vertical" onFinish={handleEditGroup}>
           <Form.Item

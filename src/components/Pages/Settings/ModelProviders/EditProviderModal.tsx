@@ -67,6 +67,7 @@ export function EditProviderModal({
       confirmLoading={loading}
       width={600}
       destroyOnClose
+      maskClosable={false}
     >
       <Form form={form} layout="vertical">
         <Form.Item

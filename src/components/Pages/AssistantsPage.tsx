@@ -407,6 +407,7 @@ export const AssistantsPage: React.FC = () => {
         }}
         footer={null}
         width={800}
+        maskClosable={false}
       >
         <Form form={form} onFinish={handleCreateEdit} layout="vertical">
           <Form.Item
@@ -585,6 +586,7 @@ export const AssistantsPage: React.FC = () => {
         onCancel={() => setTemplateModalVisible(false)}
         footer={null}
         width={900}
+        maskClosable={false}
       >
         <div className="mb-4">
           <Text type="secondary">

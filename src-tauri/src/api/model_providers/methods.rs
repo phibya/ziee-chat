@@ -24,19 +24,38 @@ pub struct PaginationQuery {
 
 // Model Provider endpoints
 pub async fn list_model_providers(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<ModelProviderListResponse>, StatusCode> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
-    match model_providers::list_model_providers(page, per_page).await {
-        Ok(response) => Ok(Json(response)),
+    // Get model providers based on user permissions
+    let user_providers = match user_group_model_providers::get_model_providers_for_user(auth_user.user.id).await {
+        Ok(providers) => providers,
         Err(e) => {
-            eprintln!("Failed to list model providers: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            eprintln!("Failed to get model providers for user {}: {}", auth_user.user.id, e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
-    }
+    };
+
+    // Calculate pagination
+    let total = user_providers.len() as i64;
+    let start = ((page - 1) * per_page) as usize;
+    let end = (start + per_page as usize).min(user_providers.len());
+    
+    let paginated_providers = if start < user_providers.len() {
+        user_providers[start..end].to_vec()
+    } else {
+        Vec::new()
+    };
+
+    Ok(Json(ModelProviderListResponse {
+        providers: paginated_providers,
+        total,
+        page,
+        per_page,
+    }))
 }
 
 pub async fn get_model_provider(

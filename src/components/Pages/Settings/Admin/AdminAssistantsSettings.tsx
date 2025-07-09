@@ -342,6 +342,7 @@ export const AdminAssistantsSettings: React.FC = () => {
         }}
         footer={null}
         width={800}
+        maskClosable={false}
       >
         <Form form={form} onFinish={handleCreateEdit} layout="vertical">
           <Form.Item
