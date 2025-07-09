@@ -44,6 +44,21 @@ import {
   UpdateModelProviderRequest,
   UpdateModelRequest,
 } from './modelProvider'
+import {
+  Assistant,
+  AssistantListResponse,
+  CreateAssistantRequest,
+  UpdateAssistantRequest,
+} from './assistant'
+import {
+  Conversation,
+  ConversationListResponse,
+  CreateConversationRequest,
+  UpdateConversationRequest,
+  Message,
+  SendMessageRequest,
+  EditMessageRequest,
+} from './chat'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -71,6 +86,17 @@ export const ApiEndpoints = {
   'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
   'Admin.removeUserFromGroup':
     'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
+  // User Group Model Provider relationships
+  'Admin.getGroupModelProviders':
+    'GET /api/admin/groups/{group_id}/model-providers',
+  'Admin.assignModelProviderToGroup':
+    'POST /api/admin/groups/assign-model-provider',
+  'Admin.removeModelProviderFromGroup':
+    'DELETE /api/admin/groups/{group_id}/model-providers/{provider_id}',
+  'Admin.getProviderGroups':
+    'GET /api/admin/model-providers/{provider_id}/groups',
+  'Admin.listUserGroupModelProviderRelationships':
+    'GET /api/admin/user-group-model-provider-relationships',
   // Public configuration
   'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
   'Config.getDefaultLanguage': 'GET /api/config/default-language',
@@ -103,6 +129,28 @@ export const ApiEndpoints = {
   'Models.delete': 'DELETE /api/admin/models/{model_id}',
   'ModelProviders.testProxy':
     'POST /api/admin/model-providers/{provider_id}/test-proxy',
+  // Assistant endpoints - User
+  'Assistant.list': 'GET /api/assistants',
+  'Assistant.create': 'POST /api/assistants',
+  'Assistant.get': 'GET /api/assistants/{assistant_id}',
+  'Assistant.update': 'PUT /api/assistants/{assistant_id}',
+  'Assistant.delete': 'DELETE /api/assistants/{assistant_id}',
+  'Assistant.getDefault': 'GET /api/assistants/default',
+  // Assistant endpoints - Admin
+  'Admin.listAssistants': 'GET /api/admin/assistants',
+  'Admin.createAssistant': 'POST /api/admin/assistants',
+  'Admin.getAssistant': 'GET /api/admin/assistants/{assistant_id}',
+  'Admin.updateAssistant': 'PUT /api/admin/assistants/{assistant_id}',
+  'Admin.deleteAssistant': 'DELETE /api/admin/assistants/{assistant_id}',
+  // Chat endpoints
+  'Chat.listConversations': 'GET /api/chat/conversations',
+  'Chat.createConversation': 'POST /api/chat/conversations',
+  'Chat.getConversation': 'GET /api/chat/conversations/{conversation_id}',
+  'Chat.updateConversation': 'PUT /api/chat/conversations/{conversation_id}',
+  'Chat.deleteConversation': 'DELETE /api/chat/conversations/{conversation_id}',
+  'Chat.sendMessage': 'POST /api/chat/messages',
+  'Chat.editMessage': 'PUT /api/chat/messages/{message_id}',
+  'Chat.searchConversations': 'GET /api/chat/search',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -134,6 +182,15 @@ export type ApiEndpointParameters = {
   }
   'Admin.assignUserToGroup': AssignUserToGroupRequest
   'Admin.removeUserFromGroup': { user_id: string; group_id: string }
+  // User Group Model Provider relationships
+  'Admin.getGroupModelProviders': { group_id: string }
+  'Admin.assignModelProviderToGroup': { group_id: string; provider_id: string }
+  'Admin.removeModelProviderFromGroup': {
+    group_id: string
+    provider_id: string
+  }
+  'Admin.getProviderGroups': { provider_id: string }
+  'Admin.listUserGroupModelProviderRelationships': void
   // Public configuration
   'Config.getUserRegistrationStatus': void
   'Config.getDefaultLanguage': void
@@ -165,6 +222,30 @@ export type ApiEndpointParameters = {
   'ModelProviders.testProxy': {
     provider_id: string
   } & TestModelProviderProxyRequest
+  // Assistant endpoints - User
+  'Assistant.list': { page?: number; per_page?: number }
+  'Assistant.create': CreateAssistantRequest
+  'Assistant.get': { assistant_id: string }
+  'Assistant.update': { assistant_id: string } & UpdateAssistantRequest
+  'Assistant.delete': { assistant_id: string }
+  'Assistant.getDefault': void
+  // Assistant endpoints - Admin
+  'Admin.listAssistants': { page?: number; per_page?: number }
+  'Admin.createAssistant': CreateAssistantRequest
+  'Admin.getAssistant': { assistant_id: string }
+  'Admin.updateAssistant': { assistant_id: string } & UpdateAssistantRequest
+  'Admin.deleteAssistant': { assistant_id: string }
+  // Chat endpoints
+  'Chat.listConversations': { page?: number; per_page?: number }
+  'Chat.createConversation': CreateConversationRequest
+  'Chat.getConversation': { conversation_id: string }
+  'Chat.updateConversation': {
+    conversation_id: string
+  } & UpdateConversationRequest
+  'Chat.deleteConversation': { conversation_id: string }
+  'Chat.sendMessage': SendMessageRequest
+  'Chat.editMessage': { message_id: string } & EditMessageRequest
+  'Chat.searchConversations': { q: string; page?: number; per_page?: number }
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -192,6 +273,26 @@ export type ApiEndpointResponses = {
   'Admin.getGroupMembers': UserListResponse
   'Admin.assignUserToGroup': void
   'Admin.removeUserFromGroup': void
+  // User Group Model Provider relationships
+  'Admin.getGroupModelProviders': ModelProvider[]
+  'Admin.assignModelProviderToGroup': {
+    id: string
+    group_id: string
+    provider_id: string
+    assigned_at: string
+    provider: ModelProvider
+    group: UserGroup
+  }
+  'Admin.removeModelProviderFromGroup': void
+  'Admin.getProviderGroups': UserGroup[]
+  'Admin.listUserGroupModelProviderRelationships': {
+    id: string
+    group_id: string
+    provider_id: string
+    assigned_at: string
+    provider: ModelProvider
+    group: UserGroup
+  }[]
   // Public configuration
   'Config.getUserRegistrationStatus': UserRegistrationStatusResponse
   'Config.getDefaultLanguage': DefaultLanguageResponse
@@ -221,6 +322,28 @@ export type ApiEndpointResponses = {
   'Models.update': ModelProviderModel
   'Models.delete': void
   'ModelProviders.testProxy': TestModelProviderProxyResponse
+  // Assistant endpoints - User
+  'Assistant.list': AssistantListResponse
+  'Assistant.create': Assistant
+  'Assistant.get': Assistant
+  'Assistant.update': Assistant
+  'Assistant.delete': void
+  'Assistant.getDefault': Assistant
+  // Assistant endpoints - Admin
+  'Admin.listAssistants': AssistantListResponse
+  'Admin.createAssistant': Assistant
+  'Admin.getAssistant': Assistant
+  'Admin.updateAssistant': Assistant
+  'Admin.deleteAssistant': void
+  // Chat endpoints
+  'Chat.listConversations': ConversationListResponse
+  'Chat.createConversation': Conversation
+  'Chat.getConversation': Conversation
+  'Chat.updateConversation': Conversation
+  'Chat.deleteConversation': void
+  'Chat.sendMessage': Message
+  'Chat.editMessage': Message
+  'Chat.searchConversations': ConversationListResponse
 }
 
 // Type helpers

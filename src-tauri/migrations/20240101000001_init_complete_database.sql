@@ -71,6 +71,15 @@ CREATE TABLE user_group_memberships (
     UNIQUE(user_id, group_id)
 );
 
+-- Create user group model provider relationships
+CREATE TABLE user_group_model_providers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES user_groups(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(group_id, provider_id)
+);
+
 -- Create configuration table
 CREATE TABLE configurations (
     id SERIAL PRIMARY KEY,
@@ -132,6 +141,43 @@ CREATE TABLE model_provider_models (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create assistants table
+CREATE TABLE assistants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    instructions TEXT,
+    parameters JSONB DEFAULT '{}',
+    created_by UUID REFERENCES users(id),
+    is_template BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create conversations table
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    assistant_id UUID REFERENCES assistants(id),
+    model_provider_id UUID REFERENCES model_providers(id),
+    model_id UUID REFERENCES model_provider_models(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create messages table
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    parent_message_id UUID REFERENCES messages(id),
+    content TEXT NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+    branch_index INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_created_at ON users(created_at);
@@ -160,6 +206,9 @@ CREATE INDEX idx_user_group_memberships_user_id ON user_group_memberships(user_i
 CREATE INDEX idx_user_group_memberships_group_id ON user_group_memberships(group_id);
 CREATE INDEX idx_user_group_memberships_assigned_by ON user_group_memberships(assigned_by);
 
+CREATE INDEX idx_user_group_model_providers_group_id ON user_group_model_providers(group_id);
+CREATE INDEX idx_user_group_model_providers_provider_id ON user_group_model_providers(provider_id);
+
 CREATE INDEX idx_configurations_name ON configurations(name);
 
 CREATE INDEX idx_user_settings_user_id ON user_settings(user_id);
@@ -172,6 +221,23 @@ CREATE INDEX idx_model_providers_enabled ON model_providers(enabled);
 CREATE INDEX idx_model_providers_proxy_enabled ON model_providers(proxy_enabled);
 CREATE INDEX idx_model_provider_models_provider_id ON model_provider_models(provider_id);
 CREATE INDEX idx_model_provider_models_enabled ON model_provider_models(enabled);
+
+CREATE INDEX idx_assistants_created_by ON assistants(created_by);
+CREATE INDEX idx_assistants_is_template ON assistants(is_template);
+CREATE INDEX idx_assistants_is_active ON assistants(is_active);
+CREATE INDEX idx_assistants_name ON assistants(name);
+
+CREATE INDEX idx_conversations_user_id ON conversations(user_id);
+CREATE INDEX idx_conversations_assistant_id ON conversations(assistant_id);
+CREATE INDEX idx_conversations_model_provider_id ON conversations(model_provider_id);
+CREATE INDEX idx_conversations_model_id ON conversations(model_id);
+CREATE INDEX idx_conversations_created_at ON conversations(created_at);
+
+CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
+CREATE INDEX idx_messages_parent_message_id ON messages(parent_message_id);
+CREATE INDEX idx_messages_role ON messages(role);
+CREATE INDEX idx_messages_created_at ON messages(created_at);
+CREATE INDEX idx_messages_branch_index ON messages(branch_index);
 
 -- Create triggers for updated_at columns
 CREATE TRIGGER update_users_updated_at
@@ -197,6 +263,16 @@ CREATE TRIGGER update_model_providers_updated_at
 CREATE TRIGGER update_model_provider_models_updated_at 
     BEFORE UPDATE ON model_provider_models
     FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_assistants_updated_at
+    BEFORE UPDATE ON assistants
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_conversations_updated_at
+    BEFORE UPDATE ON conversations
+    FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert default configuration values
@@ -242,6 +318,10 @@ INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url,
 ('Gemini', 'gemini', false, true, 'https://generativelanguage.googleapis.com/v1beta/openai', '{}'),
 ('Mistral', 'mistral', false, true, 'https://api.mistral.ai', '{}');
 
+-- Insert default template assistant
+INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_active) VALUES 
+('Default Assistant', 'This is the default assistant.', 'You can use this assistant to chat with the LLM.', '{"stream": true, "temperature": 0.7, "frequency_penalty": 0.7, "presence_penalty": 0.7, "top_p": 0.95, "top_k": 2}', NULL, true, true);
+
 -- Add comments to document the tables
 COMMENT ON TABLE users IS 'Users table with Meteor-like structure';
 COMMENT ON TABLE user_groups IS 'User groups with AWS-style permissions in array format';
@@ -249,6 +329,9 @@ COMMENT ON TABLE configurations IS 'Application configuration settings including
 COMMENT ON TABLE user_settings IS 'User settings table for storing personal preferences like appearance, shortcuts, proxy settings, etc.';
 COMMENT ON TABLE model_providers IS 'Model providers table for managing AI model providers like OpenAI, Anthropic, etc.';
 COMMENT ON TABLE model_provider_models IS 'Individual models within each provider';
+COMMENT ON TABLE assistants IS 'Assistants table with template and user-created assistants';
+COMMENT ON TABLE conversations IS 'Chat conversations table';
+COMMENT ON TABLE messages IS 'Chat messages table with branching support';
 
 COMMENT ON COLUMN user_groups.permissions IS 'AWS-style permissions stored as JSON array. Supports wildcards like "users::*", "groups::*", and "*"';
 COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g., "appearance.theme", "appearance.fontSize")';
@@ -266,3 +349,11 @@ COMMENT ON COLUMN model_providers.proxy_ssl IS 'Whether to use SSL for proxy con
 COMMENT ON COLUMN model_providers.proxy_host_ssl IS 'Whether to use SSL for host connection';
 COMMENT ON COLUMN model_providers.proxy_peer_ssl IS 'Whether to use SSL for peer connection';
 COMMENT ON COLUMN model_providers.proxy_host_ssl_verify IS 'Whether to verify SSL certificates for host';
+COMMENT ON COLUMN assistants.is_template IS 'Whether this assistant is a template (admin-created) that can be cloned by users';
+COMMENT ON COLUMN assistants.created_by IS 'User who created this assistant (NULL for system/template assistants)';
+COMMENT ON COLUMN conversations.assistant_id IS 'Assistant used in this conversation';
+COMMENT ON COLUMN conversations.model_provider_id IS 'Model provider used in this conversation';
+COMMENT ON COLUMN conversations.model_id IS 'Specific model used in this conversation';
+COMMENT ON COLUMN messages.parent_message_id IS 'Parent message for branching support';
+COMMENT ON COLUMN messages.branch_index IS 'Branch index for message branching';
+COMMENT ON COLUMN messages.role IS 'Message role: user, assistant, or system';

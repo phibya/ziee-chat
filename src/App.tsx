@@ -11,11 +11,13 @@ import { AuthGuard } from './components/Auth'
 import { AppLayout } from './components/Layout/AppLayout'
 import { ChatPage } from './components/Pages/ChatPage'
 import { AssistantsPage } from './components/Pages/AssistantsPage'
+import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
 import { HubPage } from './components/Pages/HubPage'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { ModelsPage } from './components/Pages/ModelsPage'
 import {
   AdminAppearanceSettings,
+  AdminAssistantsSettings,
   AdminGeneralSettings,
   AppearanceSettings,
   ExtensionsSettings,
@@ -60,6 +62,7 @@ function App() {
             <Routes>
               <Route path="/" element={<ChatPage />} />
               <Route path="/assistants" element={<AssistantsPage />} />
+              <Route path="/chat-history" element={<ChatHistoryPage />} />
               <Route path="/hub" element={<HubPage />} />
               <Route path="/models" element={<ModelsPage />} />
               <Route path="/settings" element={<SettingsPage />}>
@@ -105,6 +108,13 @@ function App() {
                     <Route
                       path="admin-appearance"
                       element={<AdminAppearanceSettings />}
+                    />
+                  )}
+                {!isDesktopApp &&
+                  hasPermission(Permission.config.assistants.read) && (
+                    <Route
+                      path="admin-assistants"
+                      element={<AdminAssistantsSettings />}
                     />
                   )}
               </Route>

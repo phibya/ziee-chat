@@ -1,5 +1,7 @@
 pub(crate) mod app;
+pub mod assistants;
 pub mod auth;
+pub mod chat;
 pub mod configuration;
 pub mod middleware;
 pub mod model_providers;

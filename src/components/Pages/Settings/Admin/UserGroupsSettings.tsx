@@ -16,6 +16,7 @@ import {
   Table,
   Tag,
   Typography,
+  Select,
 } from 'antd'
 import {
   DeleteOutlined,
@@ -33,6 +34,7 @@ import {
   User,
   UserGroup,
 } from '../../../../types'
+import { ModelProvider } from '../../../../types/api/modelProvider'
 import { ApiClient } from '../../../../api/client.ts'
 import { Permission, usePermissions } from '../../../../permissions'
 
@@ -50,6 +52,7 @@ export function UserGroupsSettings() {
   const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null)
   const [groupMembers, setGroupMembers] = useState<User[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
+  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
 
@@ -58,6 +61,9 @@ export function UserGroupsSettings() {
   const canEditGroups = hasPermission(Permission.groups.edit)
   const canCreateGroups = hasPermission(Permission.groups.create)
   const canDeleteGroups = hasPermission(Permission.groups.delete)
+  const canManageModelProviders = hasPermission(
+    Permission.config.modelProviders.edit,
+  )
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
@@ -70,6 +76,7 @@ export function UserGroupsSettings() {
       return
     }
     fetchGroups()
+    fetchModelProviders()
   }, [canReadGroups])
 
   const fetchGroups = async () => {
@@ -89,16 +96,46 @@ export function UserGroupsSettings() {
     }
   }
 
+  const fetchModelProviders = async () => {
+    try {
+      const response = await ApiClient.ModelProviders.list({
+        page: 1,
+        per_page: 100,
+      })
+      setModelProviders(response.providers)
+    } catch (error) {
+      message.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch model providers',
+      )
+    }
+  }
+
   const handleCreateGroup = async (values: any) => {
     if (!canCreateGroups) {
       message.error('You do not have permission to create user groups')
       return
     }
+
+    // Check if user is trying to assign model providers but doesn't have permission
+    if (
+      values.model_provider_ids &&
+      values.model_provider_ids.length > 0 &&
+      !canManageModelProviders
+    ) {
+      message.error(
+        'You do not have permission to assign model providers to groups',
+      )
+      return
+    }
+
     try {
       const groupData: CreateUserGroupRequest = {
         name: values.name,
         description: values.description,
         permissions: values.permissions ? JSON.parse(values.permissions) : {},
+        model_provider_ids: values.model_provider_ids || [],
       }
       await ApiClient.Admin.createGroup(groupData)
       message.success('User group created successfully')
@@ -119,6 +156,20 @@ export function UserGroupsSettings() {
       return
     }
 
+    // Check if user is trying to modify model providers but doesn't have permission
+    const originalProviders = selectedGroup.model_provider_ids || []
+    const newProviders = values.model_provider_ids || []
+    const providersChanged =
+      JSON.stringify(originalProviders.sort()) !==
+      JSON.stringify(newProviders.sort())
+
+    if (providersChanged && !canManageModelProviders) {
+      message.error(
+        'You do not have permission to modify model provider assignments',
+      )
+      return
+    }
+
     try {
       const updateData: UpdateUserGroupRequest = {
         group_id: selectedGroup.id,
@@ -127,6 +178,7 @@ export function UserGroupsSettings() {
         permissions: values.permissions
           ? JSON.parse(values.permissions)
           : undefined,
+        model_provider_ids: values.model_provider_ids || [],
         is_active: values.is_active,
       }
       await ApiClient.Admin.updateGroup(updateData)
@@ -186,6 +238,7 @@ export function UserGroupsSettings() {
       name: group.name,
       description: group.description,
       permissions: JSON.stringify(group.permissions, null, 2),
+      model_provider_ids: group.model_provider_ids || [],
       is_active: group.is_active,
     })
     setEditModalVisible(true)
@@ -219,6 +272,35 @@ export function UserGroupsSettings() {
         <Text code>{Object.keys(permissions || {}).length} permissions</Text>
       ),
     },
+    ...(canManageModelProviders
+      ? [
+          {
+            title: 'Model Providers',
+            dataIndex: 'model_provider_ids',
+            key: 'model_provider_ids',
+            render: (providerIds: string[], record: UserGroup) => {
+              const ids = providerIds || record.model_provider_ids || []
+              if (ids.length === 0) {
+                return <Text type="secondary">No providers assigned</Text>
+              }
+              return (
+                <Space size={[0, 4]} wrap>
+                  {ids.map(providerId => {
+                    const provider = modelProviders.find(
+                      p => p.id === providerId,
+                    )
+                    return (
+                      <Tag key={providerId} color="blue">
+                        {provider?.name || providerId}
+                      </Tag>
+                    )
+                  })}
+                </Space>
+              )
+            },
+          },
+        ]
+      : []),
     {
       title: 'Status',
       dataIndex: 'is_active',
@@ -375,6 +457,30 @@ export function UserGroupsSettings() {
               placeholder='{"user_management": true, "chat": true}'
             />
           </Form.Item>
+
+          {canManageModelProviders && (
+            <Form.Item
+              name="model_provider_ids"
+              label="Model Providers"
+              tooltip="Select which model providers this group can access"
+            >
+              <Select
+                mode="multiple"
+                placeholder="Select model providers"
+                options={modelProviders.map(provider => ({
+                  value: provider.id,
+                  label: provider.name,
+                  disabled: !provider.enabled,
+                }))}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+          )}
           <Form.Item className="mb-0">
             <Space>
               <Button type="primary" htmlType="submit">
@@ -435,6 +541,31 @@ export function UserGroupsSettings() {
           >
             <TextArea rows={6} />
           </Form.Item>
+
+          {canManageModelProviders && (
+            <Form.Item
+              name="model_provider_ids"
+              label="Model Providers"
+              tooltip="Select which model providers this group can access"
+            >
+              <Select
+                mode="multiple"
+                placeholder="Select model providers"
+                options={modelProviders.map(provider => ({
+                  value: provider.id,
+                  label: provider.name,
+                  disabled: !provider.enabled,
+                }))}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+          )}
+
           <Form.Item name="is_active" label="Active" valuePropName="checked">
             <Switch />
           </Form.Item>

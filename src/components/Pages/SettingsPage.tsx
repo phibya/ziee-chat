@@ -6,6 +6,7 @@ import {
   EyeOutlined,
   LockOutlined,
   MenuOutlined,
+  RobotOutlined,
   SettingOutlined,
   SlidersOutlined,
   TeamOutlined,
@@ -113,13 +114,17 @@ export function SettingsPage() {
           Permission.config.modelProviders.read,
         )
         const hasProxyManagement = hasPermission(Permission.config.proxy.read)
+        const hasAssistantsManagement = hasPermission(
+          Permission.config.assistants.read,
+        )
 
         if (
           hasUserManagement ||
           hasGroupManagement ||
           hasAppearanceManagement ||
           hasModelProviderManagement ||
-          hasProxyManagement
+          hasProxyManagement ||
+          hasAssistantsManagement
         ) {
           items.push({
             type: 'divider' as const,
@@ -160,6 +165,14 @@ export function SettingsPage() {
               key: 'https-proxy',
               icon: <ToolOutlined />,
               label: 'HTTPS Proxy',
+            })
+          }
+
+          if (hasAssistantsManagement) {
+            items.push({
+              key: 'admin-assistants',
+              icon: <RobotOutlined />,
+              label: 'Assistants',
             })
           }
 

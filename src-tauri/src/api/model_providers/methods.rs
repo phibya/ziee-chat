@@ -11,9 +11,9 @@ use crate::database::{
     models::{
         CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderListResponse,
         ModelProviderModel, TestModelProviderProxyRequest, TestModelProviderProxyResponse,
-        UpdateModelProviderRequest, UpdateModelRequest,
+        UpdateModelProviderRequest, UpdateModelRequest, UserGroup,
     },
-    queries::model_providers,
+    queries::{model_providers, user_group_model_providers},
 };
 
 #[derive(Debug, Deserialize)]
@@ -370,6 +370,20 @@ async fn test_proxy_connectivity_for_provider(proxy_config: &TestModelProviderPr
             } else {
                 Err(format!("Network request failed: {}", e))
             }
+        }
+    }
+}
+
+// Get groups that have access to a model provider
+pub async fn get_provider_groups(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(provider_id): Path<Uuid>,
+) -> Result<Json<Vec<UserGroup>>, StatusCode> {
+    match user_group_model_providers::get_groups_for_model_provider(provider_id).await {
+        Ok(groups) => Ok(Json(groups)),
+        Err(e) => {
+            eprintln!("Error getting groups for model provider: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
 }

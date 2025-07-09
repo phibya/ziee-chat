@@ -323,6 +323,27 @@ fn create_rest_router() -> Router {
             delete(api::user_groups::methods::remove_user_from_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
+        // User Group Model Provider relationship routes
+        .route(
+            "/api/admin/groups/{group_id}/model-providers",
+            get(api::user_groups::methods::get_group_model_providers)
+                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+        )
+        .route(
+            "/api/admin/groups/assign-model-provider",
+            post(api::user_groups::methods::assign_model_provider_to_group)
+                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+        )
+        .route(
+            "/api/admin/groups/{group_id}/model-providers/{provider_id}",
+            delete(api::user_groups::methods::remove_model_provider_from_group)
+                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+        )
+        .route(
+            "/api/admin/user-group-model-provider-relationships",
+            get(api::user_groups::methods::list_user_group_model_provider_relationships)
+                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+        )
         // Admin configuration routes with fine-grained permissions
         .route(
             "/api/admin/config/user-registration",
@@ -440,6 +461,12 @@ fn create_rest_router() -> Router {
                 api::middleware::model_providers_read_middleware,
             )),
         )
+        .route(
+            "/api/admin/model-providers/{provider_id}/groups",
+            get(api::model_providers::methods::get_provider_groups).layer(middleware::from_fn(
+                api::middleware::model_providers_read_middleware,
+            )),
+        )
         // Model routes
         .route(
             "/api/admin/model-providers/{provider_id}/models",
@@ -464,6 +491,104 @@ fn create_rest_router() -> Router {
             delete(api::model_providers::methods::delete_model).layer(middleware::from_fn(
                 api::middleware::model_providers_delete_middleware,
             )),
+        )
+        // Assistant routes - User endpoints
+        .route(
+            "/api/assistants",
+            get(api::assistants::methods::list_assistants)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/assistants",
+            post(api::assistants::methods::create_assistant)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/assistants/{assistant_id}",
+            get(api::assistants::methods::get_assistant)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/assistants/{assistant_id}",
+            put(api::assistants::methods::update_assistant)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/assistants/{assistant_id}",
+            delete(api::assistants::methods::delete_assistant)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/assistants/default",
+            get(api::assistants::methods::get_default_assistant)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        // Assistant routes - Admin endpoints
+        .route(
+            "/api/admin/assistants",
+            get(api::assistants::methods::list_assistants_admin)
+                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+        )
+        .route(
+            "/api/admin/assistants",
+            post(api::assistants::methods::create_template_assistant)
+                .layer(middleware::from_fn(api::middleware::groups_create_middleware)),
+        )
+        .route(
+            "/api/admin/assistants/{assistant_id}",
+            get(api::assistants::methods::get_assistant_admin)
+                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+        )
+        .route(
+            "/api/admin/assistants/{assistant_id}",
+            put(api::assistants::methods::update_assistant_admin)
+                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+        )
+        .route(
+            "/api/admin/assistants/{assistant_id}",
+            delete(api::assistants::methods::delete_assistant_admin)
+                .layer(middleware::from_fn(api::middleware::groups_delete_middleware)),
+        )
+        // Chat routes
+        .route(
+            "/api/chat/conversations",
+            get(api::chat::methods::list_conversations)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations",
+            post(api::chat::methods::create_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}",
+            get(api::chat::methods::get_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}",
+            put(api::chat::methods::update_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}",
+            delete(api::chat::methods::delete_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/messages",
+            post(api::chat::methods::send_message)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/messages/{message_id}",
+            put(api::chat::methods::edit_message)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/search",
+            get(api::chat::methods::search_conversations)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .layer(middleware::from_fn(api::middleware::auth_middleware));
 

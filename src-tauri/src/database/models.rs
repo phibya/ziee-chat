@@ -108,6 +108,7 @@ pub struct UserGroup {
     pub name: String,
     pub description: Option<String>,
     pub permissions: serde_json::Value,
+    pub model_provider_ids: Vec<Uuid>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -195,12 +196,38 @@ pub struct UserSettingsResponse {
     pub settings: Vec<UserSetting>,
 }
 
+// User group model provider relationship
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UserGroupModelProviderDb {
+    pub id: Uuid,
+    pub group_id: Uuid,
+    pub provider_id: Uuid,
+    pub assigned_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssignModelProviderToGroupRequest {
+    pub group_id: Uuid,
+    pub provider_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserGroupModelProviderResponse {
+    pub id: Uuid,
+    pub group_id: Uuid,
+    pub provider_id: Uuid,
+    pub assigned_at: DateTime<Utc>,
+    pub provider: ModelProvider,
+    pub group: UserGroup,
+}
+
 // User group management structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateUserGroupRequest {
     pub name: String,
     pub description: Option<String>,
     pub permissions: serde_json::Value,
+    pub model_provider_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -208,6 +235,7 @@ pub struct UpdateUserGroupRequest {
     pub name: Option<String>,
     pub description: Option<String>,
     pub permissions: Option<serde_json::Value>,
+    pub model_provider_ids: Option<Vec<Uuid>>,
     pub is_active: Option<bool>,
 }
 
@@ -406,6 +434,167 @@ pub struct TestModelProviderProxyResponse {
     pub message: String,
 }
 
+// Assistants structures
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct AssistantDb {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub instructions: Option<String>,
+    pub parameters: serde_json::Value,
+    pub created_by: Option<Uuid>,
+    pub is_template: bool,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Assistant {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub instructions: Option<String>,
+    pub parameters: Option<serde_json::Value>,
+    pub created_by: Option<Uuid>,
+    pub is_template: bool,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateAssistantRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub instructions: Option<String>,
+    pub parameters: Option<serde_json::Value>,
+    pub is_template: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateAssistantRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub instructions: Option<String>,
+    pub parameters: Option<serde_json::Value>,
+    pub is_template: Option<bool>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssistantListResponse {
+    pub assistants: Vec<Assistant>,
+    pub total: i64,
+    pub page: i32,
+    pub per_page: i32,
+}
+
+// Chat structures
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ConversationDb {
+    pub id: Uuid,
+    pub title: String,
+    pub user_id: Uuid,
+    pub assistant_id: Option<Uuid>,
+    pub model_provider_id: Option<Uuid>,
+    pub model_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MessageDb {
+    pub id: Uuid,
+    pub conversation_id: Uuid,
+    pub parent_message_id: Option<Uuid>,
+    pub content: String,
+    pub role: String,
+    pub branch_index: i32,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Conversation {
+    pub id: Uuid,
+    pub title: String,
+    pub user_id: Uuid,
+    pub assistant_id: Option<Uuid>,
+    pub model_provider_id: Option<Uuid>,
+    pub model_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub messages: Vec<Message>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Message {
+    pub id: Uuid,
+    pub conversation_id: Uuid,
+    pub parent_message_id: Option<Uuid>,
+    pub content: String,
+    pub role: String,
+    pub branch_index: i32,
+    pub created_at: DateTime<Utc>,
+    pub branches: Vec<Message>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateConversationRequest {
+    pub title: String,
+    pub assistant_id: Option<Uuid>,
+    pub model_provider_id: Option<Uuid>,
+    pub model_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateConversationRequest {
+    pub title: Option<String>,
+    pub assistant_id: Option<Uuid>,
+    pub model_provider_id: Option<Uuid>,
+    pub model_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SendMessageRequest {
+    pub conversation_id: Uuid,
+    pub content: String,
+    pub parent_message_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditMessageRequest {
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConversationListResponse {
+    pub conversations: Vec<ConversationSummary>,
+    pub total: i64,
+    pub page: i32,
+    pub per_page: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConversationSummary {
+    pub id: Uuid,
+    pub title: String,
+    pub user_id: Uuid,
+    pub assistant_id: Option<Uuid>,
+    pub model_provider_id: Option<Uuid>,
+    pub model_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub last_message: Option<String>,
+    pub message_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatResponse {
+    pub message: Message,
+    pub conversation: Conversation,
+}
+
 // Helper functions for working with the Meteor-like structure
 impl User {
     pub fn new(username: String, email: String) -> Self {
@@ -500,6 +689,7 @@ impl User {
                     name: g.name,
                     description: g.description,
                     permissions: g.permissions,
+                    model_provider_ids: vec![], // TODO: Fetch actual model provider IDs asynchronously
                     is_active: g.is_active,
                     created_at: g.created_at,
                     updated_at: g.updated_at,

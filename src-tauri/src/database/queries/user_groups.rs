@@ -1,5 +1,6 @@
 use crate::database::get_database_pool;
 use crate::database::models::*;
+use crate::database::queries::user_group_model_providers::get_model_provider_ids_for_group;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -24,11 +25,15 @@ pub async fn create_user_group(
     .fetch_one(&*pool)
     .await?;
 
+    let group_id: Uuid = row.get("id");
+    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
+    
     Ok(UserGroup {
-        id: row.get("id"),
+        id: group_id,
         name: row.get("name"),
         description: row.get("description"),
         permissions: row.get("permissions"),
+        model_provider_ids,
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
@@ -47,11 +52,15 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
         return Ok(None);
     };
 
+    let group_id: Uuid = row.get("id");
+    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
+    
     Ok(Some(UserGroup {
-        id: row.get("id"),
+        id: group_id,
         name: row.get("name"),
         description: row.get("description"),
         permissions: row.get("permissions"),
+        model_provider_ids,
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
@@ -70,11 +79,15 @@ pub async fn get_user_group_by_name(name: &str) -> Result<Option<UserGroup>, sql
         return Ok(None);
     };
 
+    let group_id: Uuid = row.get("id");
+    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
+    
     Ok(Some(UserGroup {
-        id: row.get("id"),
+        id: group_id,
         name: row.get("name"),
         description: row.get("description"),
         permissions: row.get("permissions"),
+        model_provider_ids,
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
@@ -101,18 +114,22 @@ pub async fn list_user_groups(
         .fetch_all(&*pool)
         .await?;
 
-    let groups = rows
-        .into_iter()
-        .map(|row| UserGroup {
-            id: row.get("id"),
+    let mut groups = Vec::new();
+    for row in rows {
+        let group_id: Uuid = row.get("id");
+        let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
+        
+        groups.push(UserGroup {
+            id: group_id,
             name: row.get("name"),
             description: row.get("description"),
             permissions: row.get("permissions"),
+            model_provider_ids,
             is_active: row.get("is_active"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
-        })
-        .collect();
+        });
+    }
 
     Ok(UserGroupListResponse {
         groups,
@@ -189,11 +206,15 @@ pub async fn update_user_group(
         return Ok(None);
     };
 
+    let group_id: Uuid = row.get("id");
+    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
+    
     Ok(Some(UserGroup {
-        id: row.get("id"),
+        id: group_id,
         name: row.get("name"),
         description: row.get("description"),
         permissions: row.get("permissions"),
+        model_provider_ids,
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),

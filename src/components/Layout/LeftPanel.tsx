@@ -6,11 +6,13 @@ import {
   BlockOutlined,
   DatabaseOutlined,
   FolderOutlined,
+  HistoryOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MessageOutlined,
   PlusOutlined,
+  RobotOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -72,6 +74,13 @@ export function LeftPanel({
       active: location.pathname === '/',
     },
     {
+      key: 'chat-history',
+      icon: <HistoryOutlined />,
+      label: 'Chat History',
+      onClick: () => navigate('/chat-history'),
+      active: location.pathname === '/chat-history',
+    },
+    {
       key: 'projects',
       icon: <FolderOutlined />,
       label: 'Projects',
@@ -94,6 +103,13 @@ export function LeftPanel({
       label: t('navigation.hub'),
       onClick: () => navigate('/hub'),
       active: location.pathname === '/hub',
+    },
+    {
+      key: 'assistants',
+      icon: <RobotOutlined />,
+      label: 'Assistants',
+      onClick: () => navigate('/assistants'),
+      active: location.pathname === '/assistants',
     },
     {
       key: 'models',
