@@ -70,10 +70,13 @@ function App() {
                 <Route path="general" element={<GeneralSettings />} />
                 <Route path="appearance" element={<AppearanceSettings />} />
                 <Route path="privacy" element={<PrivacySettings />} />
-                <Route
-                  path="model-providers"
-                  element={<ModelProvidersSettings />}
-                />
+                {/* Model Providers: Main settings for desktop, Admin section for web */}
+                {(isDesktopApp || (!isDesktopApp && hasPermission(Permission.config.modelProviders.read))) && (
+                  <Route
+                    path="model-providers"
+                    element={<ModelProvidersSettings />}
+                  />
+                )}
                 <Route path="shortcuts" element={<ShortcutsSettings />} />
                 <Route path="hardware" element={<HardwareSettings />} />
                 <Route

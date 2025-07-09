@@ -29,6 +29,15 @@ import {
   UserSettingRequest,
   UserSettingsResponse,
 } from './userSettings'
+import {
+  ModelProvider,
+  ModelProviderListResponse,
+  CreateModelProviderRequest,
+  UpdateModelProviderRequest,
+  CloneModelProviderRequest,
+  AddModelToProviderRequest,
+  RemoveModelFromProviderRequest,
+} from './modelProvider'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -71,6 +80,15 @@ export const ApiEndpoints = {
   'UserSettings.set': 'POST /api/user/settings',
   'UserSettings.delete': 'DELETE /api/user/settings/{key}',
   'UserSettings.deleteAll': 'DELETE /api/user/settings/all',
+  // Model Provider management
+  'ModelProviders.list': 'GET /api/model-providers',
+  'ModelProviders.get': 'GET /api/model-providers/{provider_id}',
+  'ModelProviders.create': 'POST /api/model-providers',
+  'ModelProviders.update': 'PUT /api/model-providers/{provider_id}',
+  'ModelProviders.delete': 'DELETE /api/model-providers/{provider_id}',
+  'ModelProviders.clone': 'POST /api/model-providers/{provider_id}/clone',
+  'ModelProviders.addModel': 'POST /api/model-providers/{provider_id}/models',
+  'ModelProviders.removeModel': 'DELETE /api/model-providers/{provider_id}/models/{model_id}',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -116,6 +134,15 @@ export type ApiEndpointParameters = {
   'UserSettings.set': UserSettingRequest
   'UserSettings.delete': { key: string }
   'UserSettings.deleteAll': void
+  // Model Provider management
+  'ModelProviders.list': { page?: number; per_page?: number }
+  'ModelProviders.get': { provider_id: string }
+  'ModelProviders.create': CreateModelProviderRequest
+  'ModelProviders.update': UpdateModelProviderRequest
+  'ModelProviders.delete': { provider_id: string }
+  'ModelProviders.clone': CloneModelProviderRequest
+  'ModelProviders.addModel': AddModelToProviderRequest
+  'ModelProviders.removeModel': RemoveModelFromProviderRequest
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -157,6 +184,15 @@ export type ApiEndpointResponses = {
   'UserSettings.set': UserSetting
   'UserSettings.delete': void
   'UserSettings.deleteAll': { deleted: number }
+  // Model Provider management
+  'ModelProviders.list': ModelProviderListResponse
+  'ModelProviders.get': ModelProvider
+  'ModelProviders.create': ModelProvider
+  'ModelProviders.update': ModelProvider
+  'ModelProviders.delete': void
+  'ModelProviders.clone': ModelProvider
+  'ModelProviders.addModel': void
+  'ModelProviders.removeModel': void
 }
 
 // Type helpers

@@ -56,11 +56,12 @@ export function SettingsPage() {
       icon: <LockOutlined />,
       label: 'Privacy',
     },
-    {
+    // Model Providers only shows in main menu for desktop apps
+    ...(isDesktopApp ? [{
       key: 'model-providers',
       icon: <ToolOutlined />,
       label: 'Model Providers',
-    },
+    }] : []),
     {
       key: 'shortcuts',
       icon: <SlidersOutlined />,
@@ -99,11 +100,15 @@ export function SettingsPage() {
         const hasAppearanceManagement = hasPermission(
           Permission.config.experimental.edit,
         )
+        const hasModelProviderManagement = hasPermission(
+          Permission.config.modelProviders.read,
+        )
 
         if (
           hasUserManagement ||
           hasGroupManagement ||
-          hasAppearanceManagement
+          hasAppearanceManagement ||
+          hasModelProviderManagement
         ) {
           items.push({
             type: 'divider' as const,
@@ -128,6 +133,14 @@ export function SettingsPage() {
               key: 'admin-appearance',
               icon: <EyeOutlined />,
               label: 'Appearance',
+            })
+          }
+
+          if (hasModelProviderManagement) {
+            items.push({
+              key: 'model-providers',
+              icon: <ToolOutlined />,
+              label: 'Model Providers',
             })
           }
 

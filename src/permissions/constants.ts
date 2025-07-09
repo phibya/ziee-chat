@@ -42,6 +42,10 @@ export const PermissionDescription = {
   'config::factory-reset::*': 'Grants all factory reset permissions',
   'config::factory-reset::read': 'Allows viewing factory reset options',
   'config::factory-reset::edit': 'Allows performing factory reset operations',
+  // Model provider permissions
+  'config::model-providers::*': 'Grants all model provider configuration permissions',
+  'config::model-providers::read': 'Allows viewing model provider settings',
+  'config::model-providers::edit': 'Allows configuring model providers and their settings',
   // Chat permissions
   'chat::use': 'Allows using chat functionality',
   // Profile permissions
