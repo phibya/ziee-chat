@@ -1,12 +1,12 @@
 import {
   Button,
-  Checkbox,
   Form,
   Input,
   InputNumber,
   message,
   Modal,
   Space,
+  Switch,
   Typography,
   Upload,
 } from 'antd'
@@ -14,7 +14,7 @@ import { useState } from 'react'
 import { UploadOutlined } from '@ant-design/icons'
 import { ModelProviderType } from '../../../../types/api/modelProvider'
 
-const { Text, Title } = Typography
+const { Title } = Typography
 const { TextArea } = Input
 
 interface AddModelModalProps {
@@ -268,35 +268,71 @@ export function AddModelModal({
         )}
 
         <Title level={5}>Capabilities</Title>
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Form.Item
-            name="vision"
-            valuePropName="checked"
-            style={{ marginBottom: 8 }}
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
           >
-            <Checkbox>Vision</Checkbox>
-          </Form.Item>
-          <Form.Item
-            name="audio"
-            valuePropName="checked"
-            style={{ marginBottom: 8 }}
+            <span>Vision</span>
+            <Form.Item
+              name="vision"
+              valuePropName="checked"
+              style={{ marginBottom: 0 }}
+            >
+              <Switch />
+            </Form.Item>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
           >
-            <Checkbox>Audio</Checkbox>
-          </Form.Item>
-          <Form.Item
-            name="tools"
-            valuePropName="checked"
-            style={{ marginBottom: 8 }}
+            <span>Audio</span>
+            <Form.Item
+              name="audio"
+              valuePropName="checked"
+              style={{ marginBottom: 0 }}
+            >
+              <Switch />
+            </Form.Item>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
           >
-            <Checkbox>Tools</Checkbox>
-          </Form.Item>
-          <Form.Item
-            name="codeInterpreter"
-            valuePropName="checked"
-            style={{ marginBottom: 8 }}
+            <span>Tools</span>
+            <Form.Item
+              name="tools"
+              valuePropName="checked"
+              style={{ marginBottom: 0 }}
+            >
+              <Switch />
+            </Form.Item>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
           >
-            <Checkbox>Code Interpreter</Checkbox>
-          </Form.Item>
+            <span>Code Interpreter</span>
+            <Form.Item
+              name="codeInterpreter"
+              valuePropName="checked"
+              style={{ marginBottom: 0 }}
+            >
+              <Switch />
+            </Form.Item>
+          </div>
         </Space>
 
         {providerType === 'llama.cpp' && renderLlamaCppParameters()}

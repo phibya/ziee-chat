@@ -31,12 +31,12 @@ import {
 } from './userSettings'
 import {
   AddModelToProviderRequest,
-  CloneModelProviderRequest,
   CreateModelProviderRequest,
   ModelProvider,
   ModelProviderListResponse,
-  RemoveModelFromProviderRequest,
+  ModelProviderModel,
   UpdateModelProviderRequest,
+  UpdateModelRequest,
 } from './modelProvider'
 
 // API endpoint definitions
@@ -81,15 +81,16 @@ export const ApiEndpoints = {
   'UserSettings.delete': 'DELETE /api/user/settings/{key}',
   'UserSettings.deleteAll': 'DELETE /api/user/settings/all',
   // Model Provider management
-  'ModelProviders.list': 'GET /api/model-providers',
-  'ModelProviders.get': 'GET /api/model-providers/{provider_id}',
-  'ModelProviders.create': 'POST /api/model-providers',
-  'ModelProviders.update': 'PUT /api/model-providers/{provider_id}',
-  'ModelProviders.delete': 'DELETE /api/model-providers/{provider_id}',
-  'ModelProviders.clone': 'POST /api/model-providers/{provider_id}/clone',
-  'ModelProviders.addModel': 'POST /api/model-providers/{provider_id}/models',
-  'ModelProviders.removeModel':
-    'DELETE /api/model-providers/{provider_id}/models/{model_id}',
+  'ModelProviders.list': 'GET /api/admin/model-providers',
+  'ModelProviders.get': 'GET /api/admin/model-providers/{provider_id}',
+  'ModelProviders.create': 'POST /api/admin/model-providers',
+  'ModelProviders.update': 'PUT /api/admin/model-providers/{provider_id}',
+  'ModelProviders.delete': 'DELETE /api/admin/model-providers/{provider_id}',
+  'ModelProviders.addModel':
+    'POST /api/admin/model-providers/{provider_id}/models',
+  'Models.get': 'GET /api/admin/models/{model_id}',
+  'Models.update': 'PUT /api/admin/models/{model_id}',
+  'Models.delete': 'DELETE /api/admin/models/{model_id}',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -139,11 +140,12 @@ export type ApiEndpointParameters = {
   'ModelProviders.list': { page?: number; per_page?: number }
   'ModelProviders.get': { provider_id: string }
   'ModelProviders.create': CreateModelProviderRequest
-  'ModelProviders.update': UpdateModelProviderRequest
+  'ModelProviders.update': { provider_id: string } & UpdateModelProviderRequest
   'ModelProviders.delete': { provider_id: string }
-  'ModelProviders.clone': CloneModelProviderRequest
-  'ModelProviders.addModel': AddModelToProviderRequest
-  'ModelProviders.removeModel': RemoveModelFromProviderRequest
+  'ModelProviders.addModel': { provider_id: string } & AddModelToProviderRequest
+  'Models.get': { model_id: string }
+  'Models.update': { model_id: string } & UpdateModelRequest
+  'Models.delete': { model_id: string }
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -191,9 +193,10 @@ export type ApiEndpointResponses = {
   'ModelProviders.create': ModelProvider
   'ModelProviders.update': ModelProvider
   'ModelProviders.delete': void
-  'ModelProviders.clone': ModelProvider
-  'ModelProviders.addModel': void
-  'ModelProviders.removeModel': void
+  'ModelProviders.addModel': ModelProviderModel
+  'Models.get': ModelProviderModel
+  'Models.update': ModelProviderModel
+  'Models.delete': void
 }
 
 // Type helpers

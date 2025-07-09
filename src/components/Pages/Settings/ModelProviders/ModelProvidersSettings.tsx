@@ -40,6 +40,7 @@ import {
 import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
+import { ApiClient } from '../../../../api/client'
 
 const { Title, Text } = Typography
 const { Sider, Content } = Layout
@@ -54,74 +55,6 @@ const PROVIDER_ICONS: Record<ModelProviderType, string> = {
   custom: '🔧',
 }
 
-const DEFAULT_PROVIDERS: Partial<ModelProvider>[] = [
-  {
-    id: 'llama.cpp',
-    name: 'Llama.cpp',
-    type: 'llama.cpp',
-    enabled: false,
-    isDefault: true,
-    models: [],
-    settings: {
-      autoUnloadOldModels: true,
-      contextShift: false,
-      continuousBatching: false,
-      parallelOperations: 1,
-      cpuThreads: -1,
-      threadsBatch: -1,
-      flashAttention: true,
-      caching: true,
-      kvCacheType: 'q8_0',
-      mmap: true,
-      huggingFaceAccessToken: '',
-    },
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    type: 'openai',
-    enabled: false,
-    isDefault: true,
-    baseUrl: 'https://api.openai.com/v1',
-    models: [],
-  },
-  {
-    id: 'anthropic',
-    name: 'Anthropic',
-    type: 'anthropic',
-    enabled: false,
-    isDefault: true,
-    baseUrl: 'https://api.anthropic.com/v1',
-    models: [],
-  },
-  {
-    id: 'groq',
-    name: 'Groq',
-    type: 'groq',
-    enabled: false,
-    isDefault: true,
-    baseUrl: 'https://api.groq.com/openai/v1',
-    models: [],
-  },
-  {
-    id: 'gemini',
-    name: 'Gemini',
-    type: 'gemini',
-    enabled: false,
-    isDefault: true,
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    models: [],
-  },
-  {
-    id: 'mistral',
-    name: 'Mistral',
-    type: 'mistral',
-    enabled: false,
-    isDefault: true,
-    baseUrl: 'https://api.mistral.ai',
-    models: [],
-  },
-]
 
 export function ModelProvidersSettings() {
   const { message } = App.useApp()
@@ -190,14 +123,10 @@ export function ModelProvidersSettings() {
   const loadProviders = async () => {
     try {
       setLoading(true)
-      // For now, use mock data. In production, this would call the API
-      // const response = await ApiClient.ModelProviders.list({})
-      // setProviders(response.providers)
-
-      // Mock data for development
-      setProviders(DEFAULT_PROVIDERS as ModelProvider[])
-      if (DEFAULT_PROVIDERS.length > 0) {
-        setSelectedProvider(DEFAULT_PROVIDERS[0].id!)
+      const response = await ApiClient.ModelProviders.list({})
+      setProviders(response.providers)
+      if (response.providers.length > 0) {
+        setSelectedProvider(response.providers[0].id)
       }
     } catch (error) {
       console.error('Failed to load providers:', error)
@@ -214,14 +143,16 @@ export function ModelProvidersSettings() {
     }
 
     try {
-      // For now, update locally. In production, this would call the API
-      // await ApiClient.ModelProviders.update({ id: providerId, enabled })
-
+      const updatedProvider = await ApiClient.ModelProviders.update({ 
+        provider_id: providerId, 
+        enabled 
+      })
+      
       setProviders(prev =>
-        prev.map(p => (p.id === providerId ? { ...p, enabled } : p)),
+        prev.map(p => (p.id === providerId ? updatedProvider : p)),
       )
       message.success(
-        `${currentProvider?.name} ${enabled ? 'enabled' : 'disabled'}`,
+        `${updatedProvider.name} ${enabled ? 'enabled' : 'disabled'}`,
       )
     } catch (error) {
       console.error('Failed to update provider:', error)
@@ -229,36 +160,58 @@ export function ModelProvidersSettings() {
     }
   }
 
-  const handleFormChange = (changedValues: any) => {
+  const handleFormChange = async (changedValues: any) => {
     if (!currentProvider || !canEditProviders) return
 
-    setProviders(prev =>
-      prev.map(p =>
-        p.id === selectedProvider ? { ...p, ...changedValues } : p,
-      ),
-    )
+    try {
+      const updatedProvider = await ApiClient.ModelProviders.update({ 
+        provider_id: currentProvider.id, 
+        ...changedValues 
+      })
+      
+      setProviders(prev =>
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
+      )
+    } catch (error) {
+      console.error('Failed to update provider:', error)
+      message.error('Failed to update provider')
+    }
   }
 
-  const handleNameChange = (changedValues: any) => {
+  const handleNameChange = async (changedValues: any) => {
     if (!currentProvider || !canEditProviders) return
 
-    setProviders(prev =>
-      prev.map(p =>
-        p.id === selectedProvider ? { ...p, name: changedValues.name } : p,
-      ),
-    )
+    try {
+      const updatedProvider = await ApiClient.ModelProviders.update({ 
+        provider_id: currentProvider.id, 
+        name: changedValues.name 
+      })
+      
+      setProviders(prev =>
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
+      )
+    } catch (error) {
+      console.error('Failed to update provider:', error)
+      message.error('Failed to update provider')
+    }
   }
 
-  const handleSettingsChange = (changedValues: any) => {
+  const handleSettingsChange = async (changedValues: any) => {
     if (!currentProvider || !canEditProviders) return
 
-    setProviders(prev =>
-      prev.map(p =>
-        p.id === selectedProvider
-          ? { ...p, settings: { ...p.settings, ...changedValues } }
-          : p,
-      ),
-    )
+    try {
+      const updatedProvider = await ApiClient.ModelProviders.update({ 
+        provider_id: currentProvider.id, 
+        settings: { ...currentProvider.settings, ...changedValues } 
+      })
+      
+      setProviders(prev =>
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
+      )
+    } catch (error) {
+      console.error('Failed to update provider:', error)
+      message.error('Failed to update provider')
+    }
   }
 
   const handleDeleteProvider = async (providerId: string) => {
@@ -268,12 +221,12 @@ export function ModelProvidersSettings() {
     }
 
     try {
-      // For now, delete locally. In production, this would call the API
-      // await ApiClient.ModelProviders.delete({ provider_id: providerId })
-
+      await ApiClient.ModelProviders.delete({ provider_id: providerId })
+      
       setProviders(prev => prev.filter(p => p.id !== providerId))
       if (selectedProvider === providerId) {
-        setSelectedProvider(providers.length > 1 ? providers[0].id : '')
+        const remainingProviders = providers.filter(p => p.id !== providerId)
+        setSelectedProvider(remainingProviders.length > 0 ? remainingProviders[0].id : '')
       }
       message.success('Provider deleted')
     } catch (error) {
@@ -310,18 +263,8 @@ export function ModelProvidersSettings() {
 
   const handleAddProvider = async (providerData: any) => {
     try {
-      // For now, add locally. In production, this would call the API
-      // const newProvider = await ApiClient.ModelProviders.create(providerData)
-
-      const newProvider: ModelProvider = {
-        id: `custom-${Date.now()}`,
-        ...providerData,
-        models: [],
-        isDefault: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-
+      const newProvider = await ApiClient.ModelProviders.create(providerData)
+      
       setProviders(prev => [...prev, newProvider])
       setIsAddModalOpen(false)
       message.success('Provider added successfully')
@@ -335,12 +278,14 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      // For now, update locally. In production, this would call the API
-      // await ApiClient.ModelProviders.addModel({ providerId: currentProvider.id, ...modelData })
+      const newModel = await ApiClient.ModelProviders.addModel({ 
+        provider_id: currentProvider.id, 
+        ...modelData 
+      })
 
       const updatedProvider = {
         ...currentProvider,
-        models: [...(currentProvider.models || []), modelData],
+        models: [...(currentProvider.models || []), newModel],
       }
 
       setProviders(prev =>
@@ -358,11 +303,13 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !selectedModel) return
 
     try {
-      // For now, update locally. In production, this would call the API
-      // await ApiClient.ModelProviders.updateModel({ providerId: currentProvider.id, ...modelData })
+      const updatedModel = await ApiClient.Models.update({ 
+        model_id: modelData.id, 
+        ...modelData 
+      })
 
       const updatedModels = currentProvider.models.map(m =>
-        m.id === modelData.id ? modelData : m,
+        m.id === modelData.id ? updatedModel : m,
       )
 
       const updatedProvider = {
@@ -385,8 +332,7 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      // For now, update locally. In production, this would call the API
-      // await ApiClient.ModelProviders.removeModel({ providerId: currentProvider.id, modelId })
+      await ApiClient.Models.delete({ model_id: modelId })
 
       const updatedModels = currentProvider.models.filter(m => m.id !== modelId)
 
@@ -409,9 +355,13 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      // For now, update locally. In production, this would call the API
+      const updatedModel = await ApiClient.Models.update({ 
+        model_id: modelId, 
+        enabled 
+      })
+
       const updatedModels = currentProvider.models.map(m =>
-        m.id === modelId ? { ...m, enabled } : m,
+        m.id === modelId ? updatedModel : m,
       )
 
       const updatedProvider = {
@@ -423,8 +373,7 @@ export function ModelProvidersSettings() {
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
 
-      const model = currentProvider.models.find(m => m.id === modelId)
-      message.success(`${model?.name} ${enabled ? 'enabled' : 'disabled'}`)
+      message.success(`${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`)
     } catch (error) {
       console.error('Failed to toggle model:', error)
       message.error('Failed to toggle model')
@@ -435,9 +384,13 @@ export function ModelProvidersSettings() {
     if (!currentProvider || currentProvider.type !== 'llama.cpp') return
 
     try {
-      // For now, update locally. In production, this would call the API
+      const updatedModel = await ApiClient.Models.update({ 
+        model_id: modelId, 
+        isActive 
+      })
+
       const updatedModels = currentProvider.models.map(m =>
-        m.id === modelId ? { ...m, isActive } : m,
+        m.id === modelId ? updatedModel : m,
       )
 
       const updatedProvider = {
@@ -449,8 +402,7 @@ export function ModelProvidersSettings() {
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
 
-      const model = currentProvider.models.find(m => m.id === modelId)
-      message.success(`${model?.name} ${isActive ? 'started' : 'stopped'}`)
+      message.success(`${updatedModel.name} ${isActive ? 'started' : 'stopped'}`)
     } catch (error) {
       console.error('Failed to start/stop model:', error)
       message.error('Failed to start/stop model')
@@ -458,8 +410,8 @@ export function ModelProvidersSettings() {
   }
 
   const copyToClipboard = (text: string) => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(text)
+    if (typeof window !== 'undefined' && window.navigator?.clipboard) {
+      window.navigator.clipboard.writeText(text)
       message.success('Copied to clipboard')
     } else {
       message.error('Clipboard not available')
@@ -685,13 +637,18 @@ export function ModelProvidersSettings() {
             onValuesChange={handleFormChange}
           >
             <Card title="API Configuration">
-              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              <Space
+                direction="vertical"
+                size="large"
+                style={{ width: '100%' }}
+              >
                 <div>
                   <Title level={5}>API Key</Title>
                   <Text type="secondary">
-                    The {currentProvider.name} API uses API keys for authentication.
-                    Visit your <Text type="danger">API Keys</Text> page to retrieve
-                    the API key you'll use in your requests.
+                    The {currentProvider.name} API uses API keys for
+                    authentication. Visit your{' '}
+                    <Text type="danger">API Keys</Text> page to retrieve the API
+                    key you'll use in your requests.
                   </Text>
                   <Form.Item
                     name="apiKey"
@@ -722,9 +679,13 @@ export function ModelProvidersSettings() {
                   <Title level={5}>Base URL</Title>
                   <Text type="secondary">
                     The base{' '}
-                    {currentProvider.type === 'gemini' ? 'OpenAI-compatible' : ''}{' '}
+                    {currentProvider.type === 'gemini'
+                      ? 'OpenAI-compatible'
+                      : ''}{' '}
                     endpoint to use. See the{' '}
-                    <Text type="danger">{currentProvider.name} documentation</Text>{' '}
+                    <Text type="danger">
+                      {currentProvider.name} documentation
+                    </Text>{' '}
                     for more information.
                   </Text>
                   <Form.Item
@@ -758,13 +719,13 @@ export function ModelProvidersSettings() {
           {currentProvider.type === 'llama.cpp' && (
             <Flex
               justify="space-between"
-              align={isMobile ? "flex-start" : "center"}
+              align={isMobile ? 'flex-start' : 'center'}
               vertical={isMobile}
-              gap={isMobile ? "small" : 0}
+              gap={isMobile ? 'small' : 0}
               style={{ marginBottom: 16 }}
             >
               <Text>Import models from your local machine</Text>
-              <Button 
+              <Button
                 icon={<PlusOutlined />}
                 block={isMobile}
                 disabled={!canEditProviders}
@@ -783,18 +744,19 @@ export function ModelProvidersSettings() {
                 actions={
                   canEditProviders
                     ? [
-                        currentProvider.type === 'llama.cpp' && currentProvider.enabled && (
-                          <Button
-                            key="start-stop"
-                            type={model.isActive ? 'default' : 'primary'}
-                            size={isMobile ? 'small' : 'middle'}
-                            onClick={() =>
-                              handleStartStopModel(model.id, !model.isActive)
-                            }
-                          >
-                            {model.isActive ? 'Stop' : 'Start'}
-                          </Button>
-                        ),
+                        currentProvider.type === 'llama.cpp' &&
+                          currentProvider.enabled && (
+                            <Button
+                              key="start-stop"
+                              type={model.isActive ? 'default' : 'primary'}
+                              size={isMobile ? 'small' : 'middle'}
+                              onClick={() =>
+                                handleStartStopModel(model.id, !model.isActive)
+                              }
+                            >
+                              {model.isActive ? 'Stop' : 'Start'}
+                            </Button>
+                          ),
                         <Button
                           key="edit"
                           type="text"
@@ -887,9 +849,7 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch
-                      disabled={!canEditProviders}
-                    />
+                    <Switch disabled={!canEditProviders} />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -904,9 +864,7 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch
-                      disabled={!canEditProviders}
-                    />
+                    <Switch disabled={!canEditProviders} />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -921,9 +879,7 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch
-                      disabled={!canEditProviders}
-                    />
+                    <Switch disabled={!canEditProviders} />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -993,9 +949,7 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch
-                      disabled={!canEditProviders}
-                    />
+                    <Switch disabled={!canEditProviders} />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -1010,9 +964,7 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch
-                      disabled={!canEditProviders}
-                    />
+                    <Switch disabled={!canEditProviders} />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -1051,9 +1003,7 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch
-                      disabled={!canEditProviders}
-                    />
+                    <Switch disabled={!canEditProviders} />
                   </Form.Item>
                 </ResponsiveConfigItem>
 

@@ -88,7 +88,6 @@ export interface CreateModelProviderRequest {
 }
 
 export interface UpdateModelProviderRequest {
-  id: string
   name?: string
   enabled?: boolean
   apiKey?: string
@@ -109,9 +108,22 @@ export interface CloneModelProviderRequest {
 }
 
 export interface AddModelToProviderRequest {
-  providerId: string
-  modelId: string
-  modelName: string
+  name: string
+  description?: string
+  path?: string
+  enabled?: boolean
+  capabilities?: ModelCapabilities
+  parameters?: ModelParameters
+}
+
+export interface UpdateModelRequest {
+  name?: string
+  description?: string
+  path?: string
+  enabled?: boolean
+  isActive?: boolean
+  capabilities?: ModelCapabilities
+  parameters?: ModelParameters
 }
 
 export interface RemoveModelFromProviderRequest {

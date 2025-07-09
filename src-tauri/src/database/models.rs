@@ -248,6 +248,117 @@ pub struct UserGroupListResponse {
     pub per_page: i32,
 }
 
+// Model provider structures
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ModelProviderDb {
+    pub id: Uuid,
+    pub name: String,
+    pub provider_type: String,
+    pub enabled: bool,
+    pub api_key: Option<String>,
+    pub base_url: Option<String>,
+    pub settings: serde_json::Value,
+    pub is_default: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ModelProviderModelDb {
+    pub id: Uuid,
+    pub provider_id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub path: Option<String>,
+    pub enabled: bool,
+    pub is_deprecated: bool,
+    pub is_active: bool,
+    pub capabilities: serde_json::Value,
+    pub parameters: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+// API structures for model providers
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelProvider {
+    pub id: Uuid,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub provider_type: String,
+    pub enabled: bool,
+    pub api_key: Option<String>,
+    pub base_url: Option<String>,
+    pub models: Vec<ModelProviderModel>,
+    pub settings: Option<serde_json::Value>,
+    pub is_default: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelProviderModel {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub path: Option<String>,
+    pub enabled: bool,
+    pub is_deprecated: bool,
+    pub is_active: bool,
+    pub capabilities: Option<serde_json::Value>,
+    pub parameters: Option<serde_json::Value>,
+}
+
+// Request/Response structures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateModelProviderRequest {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub provider_type: String,
+    pub enabled: Option<bool>,
+    pub api_key: Option<String>,
+    pub base_url: Option<String>,
+    pub settings: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateModelProviderRequest {
+    pub name: Option<String>,
+    pub enabled: Option<bool>,
+    pub api_key: Option<String>,
+    pub base_url: Option<String>,
+    pub settings: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateModelRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub path: Option<String>,
+    pub enabled: Option<bool>,
+    pub capabilities: Option<serde_json::Value>,
+    pub parameters: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateModelRequest {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub path: Option<String>,
+    pub enabled: Option<bool>,
+    pub is_active: Option<bool>,
+    pub capabilities: Option<serde_json::Value>,
+    pub parameters: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelProviderListResponse {
+    pub providers: Vec<ModelProvider>,
+    pub total: i64,
+    pub page: i32,
+    pub per_page: i32,
+}
+
 // Helper functions for working with the Meteor-like structure
 impl User {
     pub fn new(username: String, email: String) -> Self {

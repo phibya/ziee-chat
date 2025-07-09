@@ -368,6 +368,53 @@ fn create_rest_router() -> Router {
             delete(api::user_settings::methods::delete_all_user_settings)
                 .layer(middleware::from_fn(api::middleware::settings_delete_middleware))
         )
+        // Model provider routes
+        .route(
+            "/api/admin/model-providers",
+            get(api::model_providers::methods::list_model_providers)
+                .layer(middleware::from_fn(api::middleware::model_providers_read_middleware))
+        )
+        .route(
+            "/api/admin/model-providers",
+            post(api::model_providers::methods::create_model_provider)
+                .layer(middleware::from_fn(api::middleware::model_providers_create_middleware))
+        )
+        .route(
+            "/api/admin/model-providers/{provider_id}",
+            get(api::model_providers::methods::get_model_provider)
+                .layer(middleware::from_fn(api::middleware::model_providers_read_middleware))
+        )
+        .route(
+            "/api/admin/model-providers/{provider_id}",
+            put(api::model_providers::methods::update_model_provider)
+                .layer(middleware::from_fn(api::middleware::model_providers_edit_middleware))
+        )
+        .route(
+            "/api/admin/model-providers/{provider_id}",
+            delete(api::model_providers::methods::delete_model_provider)
+                .layer(middleware::from_fn(api::middleware::model_providers_delete_middleware))
+        )
+        // Model routes
+        .route(
+            "/api/admin/model-providers/{provider_id}/models",
+            post(api::model_providers::methods::create_model)
+                .layer(middleware::from_fn(api::middleware::model_providers_edit_middleware))
+        )
+        .route(
+            "/api/admin/models/{model_id}",
+            get(api::model_providers::methods::get_model)
+                .layer(middleware::from_fn(api::middleware::model_providers_read_middleware))
+        )
+        .route(
+            "/api/admin/models/{model_id}",
+            put(api::model_providers::methods::update_model)
+                .layer(middleware::from_fn(api::middleware::model_providers_edit_middleware))
+        )
+        .route(
+            "/api/admin/models/{model_id}",
+            delete(api::model_providers::methods::delete_model)
+                .layer(middleware::from_fn(api::middleware::model_providers_delete_middleware))
+        )
         .layer(middleware::from_fn(api::middleware::auth_middleware));
 
     // Combine public and protected routes

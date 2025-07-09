@@ -352,3 +352,47 @@ pub async fn settings_delete_middleware(req: Request, next: Next) -> Result<Resp
 
     Ok(next.run(req).await)
 }
+
+/// Middleware that checks for config::model-providers::read permission
+pub async fn model_providers_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::MODEL_PROVIDERS_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::model-providers::edit permission
+pub async fn model_providers_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::MODEL_PROVIDERS_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::model-providers::create permission
+pub async fn model_providers_create_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::MODEL_PROVIDERS_CREATE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::model-providers::delete permission
+pub async fn model_providers_delete_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::MODEL_PROVIDERS_DELETE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
