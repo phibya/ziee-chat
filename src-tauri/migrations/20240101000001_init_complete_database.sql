@@ -102,6 +102,16 @@ CREATE TABLE model_providers (
     base_url VARCHAR(512),
     settings JSONB DEFAULT '{}',
     is_default BOOLEAN DEFAULT FALSE,
+    proxy_enabled BOOLEAN DEFAULT FALSE,
+    proxy_url VARCHAR(512) DEFAULT '',
+    proxy_username VARCHAR(255) DEFAULT '',
+    proxy_password TEXT DEFAULT '',
+    proxy_no_proxy TEXT DEFAULT '',
+    proxy_ignore_ssl_certificates BOOLEAN DEFAULT FALSE,
+    proxy_ssl BOOLEAN DEFAULT FALSE,
+    proxy_host_ssl BOOLEAN DEFAULT FALSE,
+    proxy_peer_ssl BOOLEAN DEFAULT FALSE,
+    proxy_host_ssl_verify BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -159,6 +169,7 @@ CREATE INDEX idx_user_settings_value ON user_settings USING GIN(value);
 
 CREATE INDEX idx_model_providers_provider_type ON model_providers(provider_type);
 CREATE INDEX idx_model_providers_enabled ON model_providers(enabled);
+CREATE INDEX idx_model_providers_proxy_enabled ON model_providers(proxy_enabled);
 CREATE INDEX idx_model_provider_models_provider_id ON model_provider_models(provider_id);
 CREATE INDEX idx_model_provider_models_enabled ON model_provider_models(enabled);
 
@@ -192,7 +203,17 @@ CREATE TRIGGER update_model_provider_models_updated_at
 INSERT INTO configurations (name, value, description) VALUES 
     ('is_initialized', 'false', 'Indicates whether the application has been initialized'),
     ('enable_user_registration', 'true', 'Controls whether new user registration is enabled'),
-    ('appearance.defaultLanguage', 'en', 'Default language for the application when user language preference is not set');
+    ('appearance.defaultLanguage', 'en', 'Default language for the application when user language preference is not set'),
+    ('proxy.enabled', 'false', 'Enable global HTTP proxy for the application'),
+    ('proxy.url', '', 'Global HTTP proxy URL'),
+    ('proxy.username', '', 'Global HTTP proxy username'),
+    ('proxy.password', '', 'Global HTTP proxy password'),
+    ('proxy.noProxy', '', 'Global HTTP proxy no-proxy list (comma-separated)'),
+    ('proxy.ignoreSslCertificates', 'false', 'Ignore SSL certificates for proxy'),
+    ('proxy.proxySsl', 'false', 'Validate SSL certificate when connecting to proxy'),
+    ('proxy.proxyHostSsl', 'false', 'Validate SSL certificate of proxy host'),
+    ('proxy.peerSsl', 'false', 'Validate SSL certificates of peer connections'),
+    ('proxy.hostSsl', 'false', 'Validate SSL certificates of destination hosts');
 
 -- Create default admin group with wildcard permissions
 INSERT INTO user_groups (name, description, permissions, is_active)
@@ -224,7 +245,7 @@ INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url,
 -- Add comments to document the tables
 COMMENT ON TABLE users IS 'Users table with Meteor-like structure';
 COMMENT ON TABLE user_groups IS 'User groups with AWS-style permissions in array format';
-COMMENT ON TABLE configurations IS 'Application configuration settings including appearance defaults and system settings';
+COMMENT ON TABLE configurations IS 'Application configuration settings including appearance defaults, system settings, and HTTP proxy settings';
 COMMENT ON TABLE user_settings IS 'User settings table for storing personal preferences like appearance, shortcuts, proxy settings, etc.';
 COMMENT ON TABLE model_providers IS 'Model providers table for managing AI model providers like OpenAI, Anthropic, etc.';
 COMMENT ON TABLE model_provider_models IS 'Individual models within each provider';
@@ -235,3 +256,13 @@ COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flex
 COMMENT ON COLUMN model_providers.provider_type IS 'Type of provider: llama.cpp, openai, anthropic, groq, gemini, mistral, custom';
 COMMENT ON COLUMN model_provider_models.path IS 'File path for llama.cpp models';
 COMMENT ON COLUMN model_provider_models.is_active IS 'Whether the model is currently running (for llama.cpp models)';
+COMMENT ON COLUMN model_providers.proxy_enabled IS 'Whether proxy is enabled for this provider';
+COMMENT ON COLUMN model_providers.proxy_url IS 'Proxy URL for this provider';
+COMMENT ON COLUMN model_providers.proxy_username IS 'Proxy username for authentication';
+COMMENT ON COLUMN model_providers.proxy_password IS 'Proxy password for authentication';
+COMMENT ON COLUMN model_providers.proxy_no_proxy IS 'Comma-separated list of hosts to bypass proxy';
+COMMENT ON COLUMN model_providers.proxy_ignore_ssl_certificates IS 'Whether to ignore SSL certificate errors';
+COMMENT ON COLUMN model_providers.proxy_ssl IS 'Whether to use SSL for proxy connection';
+COMMENT ON COLUMN model_providers.proxy_host_ssl IS 'Whether to use SSL for host connection';
+COMMENT ON COLUMN model_providers.proxy_peer_ssl IS 'Whether to use SSL for peer connection';
+COMMENT ON COLUMN model_providers.proxy_host_ssl_verify IS 'Whether to verify SSL certificates for host';

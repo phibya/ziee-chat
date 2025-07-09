@@ -259,6 +259,16 @@ pub struct ModelProviderDb {
     pub base_url: Option<String>,
     pub settings: serde_json::Value,
     pub is_default: bool,
+    pub proxy_enabled: bool,
+    pub proxy_url: String,
+    pub proxy_username: String,
+    pub proxy_password: String,
+    pub proxy_no_proxy: String,
+    pub proxy_ignore_ssl_certificates: bool,
+    pub proxy_ssl: bool,
+    pub proxy_host_ssl: bool,
+    pub proxy_peer_ssl: bool,
+    pub proxy_host_ssl_verify: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -281,6 +291,20 @@ pub struct ModelProviderModelDb {
 
 // API structures for model providers
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelProviderProxySettings {
+    pub enabled: bool,
+    pub url: String,
+    pub username: String,
+    pub password: String,
+    pub no_proxy: String,
+    pub ignore_ssl_certificates: bool,
+    pub proxy_ssl: bool,
+    pub proxy_host_ssl: bool,
+    pub peer_ssl: bool,
+    pub host_ssl: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelProvider {
     pub id: Uuid,
     pub name: String,
@@ -291,6 +315,7 @@ pub struct ModelProvider {
     pub base_url: Option<String>,
     pub models: Vec<ModelProviderModel>,
     pub settings: Option<serde_json::Value>,
+    pub proxy_settings: Option<ModelProviderProxySettings>,
     pub is_default: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -319,6 +344,7 @@ pub struct CreateModelProviderRequest {
     pub api_key: Option<String>,
     pub base_url: Option<String>,
     pub settings: Option<serde_json::Value>,
+    pub proxy_settings: Option<ModelProviderProxySettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -328,6 +354,7 @@ pub struct UpdateModelProviderRequest {
     pub api_key: Option<String>,
     pub base_url: Option<String>,
     pub settings: Option<serde_json::Value>,
+    pub proxy_settings: Option<ModelProviderProxySettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -357,6 +384,26 @@ pub struct ModelProviderListResponse {
     pub total: i64,
     pub page: i32,
     pub per_page: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestModelProviderProxyRequest {
+    pub enabled: bool,
+    pub url: String,
+    pub username: String,
+    pub password: String,
+    pub no_proxy: String,
+    pub ignore_ssl_certificates: bool,
+    pub proxy_ssl: bool,
+    pub proxy_host_ssl: bool,
+    pub peer_ssl: bool,
+    pub host_ssl: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TestModelProviderProxyResponse {
+    pub success: bool,
+    pub message: String,
 }
 
 // Helper functions for working with the Meteor-like structure

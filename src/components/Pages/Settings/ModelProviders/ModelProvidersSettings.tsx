@@ -42,6 +42,7 @@ import {
 import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
+import { ModelProviderProxySettingsForm } from './ModelProviderProxySettings'
 import { ApiClient } from '../../../../api/client'
 
 const { Title, Text } = Typography
@@ -289,6 +290,26 @@ export function ModelProvidersSettings() {
     } catch (error) {
       console.error('Failed to save settings:', error)
       message.error('Failed to save settings')
+    }
+  }
+
+  const handleProxySettingsSave = async (proxySettings: any) => {
+    if (!currentProvider || !canEditProviders) return
+
+    try {
+      const updatedProvider = await ApiClient.ModelProviders.update({
+        provider_id: currentProvider.id,
+        proxy_settings: proxySettings,
+      })
+
+      setProviders(prev =>
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
+      )
+
+      message.success('Proxy settings saved successfully')
+    } catch (error) {
+      console.error('Failed to save proxy settings:', error)
+      message.error('Failed to save proxy settings')
     }
   }
 
@@ -979,6 +1000,17 @@ export function ModelProvidersSettings() {
             )}
           />
         </Card>
+
+        {/* Proxy Settings - For non-Llama.cpp providers */}
+        {currentProvider.type !== 'llama.cpp' &&
+          currentProvider.proxy_settings && (
+            <ModelProviderProxySettingsForm
+              providerId={currentProvider.id}
+              initialSettings={currentProvider.proxy_settings}
+              onSave={handleProxySettingsSave}
+              disabled={!canEditProviders}
+            />
+          )}
 
         {/* Llama.cpp Specific Settings */}
         {currentProvider.type === 'llama.cpp' && currentProvider.settings && (

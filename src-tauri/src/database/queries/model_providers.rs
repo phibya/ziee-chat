@@ -5,7 +5,7 @@ use crate::database::{
     models::{
         CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderDb,
         ModelProviderListResponse, ModelProviderModel, ModelProviderModelDb,
-        UpdateModelProviderRequest, UpdateModelRequest,
+        ModelProviderProxySettings, UpdateModelProviderRequest, UpdateModelRequest,
     },
 };
 
@@ -26,7 +26,7 @@ pub async fn list_model_providers(
 
     // Get providers with their models
     let provider_rows: Vec<ModelProviderDb> = sqlx::query_as(
-        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, created_at, updated_at 
+        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at 
          FROM model_providers 
          ORDER BY is_default DESC, created_at ASC 
          LIMIT $1 OFFSET $2"
@@ -48,6 +48,18 @@ pub async fn list_model_providers(
             base_url: provider_db.base_url,
             models,
             settings: Some(provider_db.settings),
+            proxy_settings: Some(ModelProviderProxySettings {
+                enabled: provider_db.proxy_enabled,
+                url: provider_db.proxy_url,
+                username: provider_db.proxy_username,
+                password: provider_db.proxy_password,
+                no_proxy: provider_db.proxy_no_proxy,
+                ignore_ssl_certificates: provider_db.proxy_ignore_ssl_certificates,
+                proxy_ssl: provider_db.proxy_ssl,
+                proxy_host_ssl: provider_db.proxy_host_ssl,
+                peer_ssl: provider_db.proxy_peer_ssl,
+                host_ssl: provider_db.proxy_host_ssl_verify,
+            }),
             is_default: provider_db.is_default,
             created_at: provider_db.created_at,
             updated_at: provider_db.updated_at,
@@ -69,7 +81,7 @@ pub async fn get_model_provider_by_id(
     let pool = pool.as_ref();
 
     let provider_row: Option<ModelProviderDb> = sqlx::query_as(
-        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, created_at, updated_at 
+        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at 
          FROM model_providers 
          WHERE id = $1"
     )
@@ -89,6 +101,18 @@ pub async fn get_model_provider_by_id(
                 base_url: provider_db.base_url,
                 models,
                 settings: Some(provider_db.settings),
+                proxy_settings: Some(ModelProviderProxySettings {
+                    enabled: false,
+                    url: String::new(),
+                    username: String::new(),
+                    password: String::new(),
+                    no_proxy: String::new(),
+                    ignore_ssl_certificates: false,
+                    proxy_ssl: false,
+                    proxy_host_ssl: false,
+                    peer_ssl: false,
+                    host_ssl: false,
+                }),
                 is_default: provider_db.is_default,
                 created_at: provider_db.created_at,
                 updated_at: provider_db.updated_at,
@@ -108,7 +132,7 @@ pub async fn create_model_provider(
     let provider_row: ModelProviderDb = sqlx::query_as(
         "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, created_at, updated_at"
+         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at"
     )
     .bind(provider_id)
     .bind(&request.name)
@@ -130,6 +154,18 @@ pub async fn create_model_provider(
         base_url: provider_row.base_url,
         models: vec![], // New provider has no models
         settings: Some(provider_row.settings),
+        proxy_settings: Some(ModelProviderProxySettings {
+            enabled: false,
+            url: String::new(),
+            username: String::new(),
+            password: String::new(),
+            no_proxy: String::new(),
+            ignore_ssl_certificates: false,
+            proxy_ssl: false,
+            proxy_host_ssl: false,
+            peer_ssl: false,
+            host_ssl: false,
+        }),
         is_default: provider_row.is_default,
         created_at: provider_row.created_at,
         updated_at: provider_row.updated_at,
@@ -152,7 +188,7 @@ pub async fn update_model_provider(
              settings = COALESCE($6, settings),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, created_at, updated_at"
+         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at"
     )
     .bind(provider_id)
     .bind(&request.name)
@@ -175,6 +211,18 @@ pub async fn update_model_provider(
                 base_url: provider_db.base_url,
                 models,
                 settings: Some(provider_db.settings),
+                proxy_settings: Some(ModelProviderProxySettings {
+                    enabled: false,
+                    url: String::new(),
+                    username: String::new(),
+                    password: String::new(),
+                    no_proxy: String::new(),
+                    ignore_ssl_certificates: false,
+                    proxy_ssl: false,
+                    proxy_host_ssl: false,
+                    peer_ssl: false,
+                    host_ssl: false,
+                }),
                 is_default: provider_db.is_default,
                 created_at: provider_db.created_at,
                 updated_at: provider_db.updated_at,
@@ -228,7 +276,7 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
     let provider_row: ModelProviderDb = sqlx::query_as(
         "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, created_at, updated_at"
+         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at"
     )
     .bind(new_provider_id)
     .bind(&cloned_name)
@@ -283,6 +331,18 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         base_url: provider_row.base_url,
         models: cloned_models,
         settings: Some(provider_row.settings),
+        proxy_settings: Some(ModelProviderProxySettings {
+            enabled: false,
+            url: String::new(),
+            username: String::new(),
+            password: String::new(),
+            no_proxy: String::new(),
+            ignore_ssl_certificates: false,
+            proxy_ssl: false,
+            proxy_host_ssl: false,
+            peer_ssl: false,
+            host_ssl: false,
+        }),
         is_default: provider_row.is_default,
         created_at: provider_row.created_at,
         updated_at: provider_row.updated_at,

@@ -434,6 +434,12 @@ fn create_rest_router() -> Router {
                 api::middleware::model_providers_create_middleware,
             )),
         )
+        .route(
+            "/api/admin/model-providers/{provider_id}/test-proxy",
+            post(api::model_providers::methods::test_model_provider_proxy_connection).layer(middleware::from_fn(
+                api::middleware::model_providers_read_middleware,
+            )),
+        )
         // Model routes
         .route(
             "/api/admin/model-providers/{provider_id}/models",

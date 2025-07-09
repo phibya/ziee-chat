@@ -10,7 +10,8 @@ use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
         CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderListResponse,
-        ModelProviderModel, UpdateModelProviderRequest, UpdateModelRequest,
+        ModelProviderModel, TestModelProviderProxyRequest, TestModelProviderProxyResponse,
+        UpdateModelProviderRequest, UpdateModelRequest,
     },
     queries::model_providers,
 };
@@ -277,3 +278,99 @@ pub async fn get_model(
         }
     }
 }
+
+// Test proxy connection for model provider
+pub async fn test_model_provider_proxy_connection(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(_provider_id): Path<Uuid>,
+    Json(request): Json<TestModelProviderProxyRequest>,
+) -> Result<Json<TestModelProviderProxyResponse>, StatusCode> {
+    // Test the proxy connection by making a simple HTTP request through the proxy
+    match test_proxy_connectivity_for_provider(&request).await {
+        Ok(()) => Ok(Json(TestModelProviderProxyResponse {
+            success: true,
+            message: "Proxy connection successful".to_string(),
+        })),
+        Err(e) => Ok(Json(TestModelProviderProxyResponse {
+            success: false,
+            message: format!("Proxy connection failed: {}", e),
+        })),
+    }
+}
+
+async fn test_proxy_connectivity_for_provider(proxy_config: &TestModelProviderProxyRequest) -> Result<(), String> {
+    // Validate proxy URL format
+    if proxy_config.url.trim().is_empty() {
+        return Err("Proxy URL is empty".to_string());
+    }
+
+    // Parse and validate the proxy URL
+    let _proxy_url = reqwest::Url::parse(&proxy_config.url)
+        .map_err(|e| format!("Invalid proxy URL format: {}", e))?;
+
+    // Create a reqwest client with proxy configuration
+    let mut proxy_builder = reqwest::Proxy::all(&proxy_config.url)
+        .map_err(|e| format!("Failed to create proxy: {}", e))?;
+
+    // Add authentication if provided
+    if !proxy_config.username.is_empty() {
+        proxy_builder = proxy_builder.basic_auth(&proxy_config.username, &proxy_config.password);
+    }
+
+    // Build the client with proxy and SSL settings
+    let mut client_builder = reqwest::Client::builder()
+        .proxy(proxy_builder)
+        .timeout(std::time::Duration::from_secs(30))  // Increased timeout for proxy connections
+        .no_proxy(); // Disable system proxy to ensure we only use our configured proxy
+
+    // Configure SSL verification based on settings
+    if proxy_config.ignore_ssl_certificates {
+        client_builder = client_builder.danger_accept_invalid_certs(true);
+    }
+
+    let client = client_builder
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    // Test the proxy by making a request to a reliable endpoint
+    // Using httpbin.org as it's a simple testing service that returns IP info
+    let test_url = "https://httpbin.org/ip";
+    
+    match client.get(test_url).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                // Try to read the response to ensure it's valid
+                match response.text().await {
+                    Ok(body) => {
+                        // Verify the response contains expected IP information
+                        if body.contains("origin") {
+                            Ok(())
+                        } else {
+                            Err(format!("Unexpected response format: {}", body))
+                        }
+                    }
+                    Err(e) => Err(format!("Failed to read response body: {}", e)),
+                }
+            } else {
+                Err(format!(
+                    "HTTP request failed with status: {}",
+                    response.status()
+                ))
+            }
+        }
+        Err(e) => {
+            // Check if it's a proxy-related error
+            let error_msg = e.to_string();
+            if error_msg.contains("proxy") || error_msg.contains("CONNECT") {
+                Err(format!("Proxy connection failed: {}", e))
+            } else if error_msg.contains("timeout") {
+                Err("Proxy connection timed out".to_string())
+            } else if error_msg.contains("dns") {
+                Err(format!("DNS resolution failed (check proxy settings): {}", e))
+            } else {
+                Err(format!("Network request failed: {}", e))
+            }
+        }
+    }
+}
+

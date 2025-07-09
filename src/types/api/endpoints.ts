@@ -39,6 +39,8 @@ import {
   ModelProvider,
   ModelProviderListResponse,
   ModelProviderModel,
+  TestModelProviderProxyRequest,
+  TestModelProviderProxyResponse,
   UpdateModelProviderRequest,
   UpdateModelRequest,
 } from './modelProvider'
@@ -99,6 +101,8 @@ export const ApiEndpoints = {
   'Models.get': 'GET /api/admin/models/{model_id}',
   'Models.update': 'PUT /api/admin/models/{model_id}',
   'Models.delete': 'DELETE /api/admin/models/{model_id}',
+  'ModelProviders.testProxy':
+    'POST /api/admin/model-providers/{provider_id}/test-proxy',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -158,6 +162,9 @@ export type ApiEndpointParameters = {
   'Models.get': { model_id: string }
   'Models.update': { model_id: string } & UpdateModelRequest
   'Models.delete': { model_id: string }
+  'ModelProviders.testProxy': {
+    provider_id: string
+  } & TestModelProviderProxyRequest
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -213,6 +220,7 @@ export type ApiEndpointResponses = {
   'Models.get': ModelProviderModel
   'Models.update': ModelProviderModel
   'Models.delete': void
+  'ModelProviders.testProxy': TestModelProviderProxyResponse
 }
 
 // Type helpers

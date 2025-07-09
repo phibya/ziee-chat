@@ -54,6 +54,19 @@ export interface ModelProviderSettings {
   [key: string]: any
 }
 
+export interface ModelProviderProxySettings {
+  enabled: boolean
+  url: string
+  username: string
+  password: string
+  no_proxy: string
+  ignore_ssl_certificates: boolean
+  proxy_ssl: boolean
+  proxy_host_ssl: boolean
+  peer_ssl: boolean
+  host_ssl: boolean
+}
+
 export interface ModelProvider {
   id: string
   name: string
@@ -64,6 +77,7 @@ export interface ModelProvider {
   base_url?: string
   models: ModelProviderModel[]
   settings?: ModelProviderSettings
+  proxy_settings?: ModelProviderProxySettings
   is_default?: boolean
   created_at?: string
   updated_at?: string
@@ -85,6 +99,7 @@ export interface CreateModelProviderRequest {
   api_key?: string
   base_url?: string
   settings?: ModelProviderSettings
+  proxy_settings?: ModelProviderProxySettings
 }
 
 export interface UpdateModelProviderRequest {
@@ -93,6 +108,7 @@ export interface UpdateModelProviderRequest {
   api_key?: string
   base_url?: string
   settings?: ModelProviderSettings
+  proxy_settings?: ModelProviderProxySettings
 }
 
 export interface ModelProviderListResponse {
@@ -129,4 +145,22 @@ export interface UpdateModelRequest {
 export interface RemoveModelFromProviderRequest {
   providerId: string
   modelId: string
+}
+
+export interface TestModelProviderProxyRequest {
+  enabled: boolean
+  url: string
+  username: string
+  password: string
+  no_proxy: string
+  ignore_ssl_certificates: boolean
+  proxy_ssl: boolean
+  proxy_host_ssl: boolean
+  peer_ssl: boolean
+  host_ssl: boolean
+}
+
+export interface TestModelProviderProxyResponse {
+  success: boolean
+  message: string
 }
