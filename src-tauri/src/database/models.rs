@@ -310,6 +310,7 @@ pub struct ModelProviderModelDb {
     pub id: Uuid,
     pub provider_id: Uuid,
     pub name: String,
+    pub alias: String,
     pub description: Option<String>,
     pub path: Option<String>,
     pub enabled: bool,
@@ -357,6 +358,7 @@ pub struct ModelProvider {
 pub struct ModelProviderModel {
     pub id: Uuid,
     pub name: String,
+    pub alias: String,
     pub description: Option<String>,
     pub path: Option<String>,
     pub enabled: bool,
@@ -392,6 +394,7 @@ pub struct UpdateModelProviderRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateModelRequest {
     pub name: String,
+    pub alias: String,
     pub description: Option<String>,
     pub path: Option<String>,
     pub enabled: Option<bool>,
@@ -402,6 +405,7 @@ pub struct CreateModelRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateModelRequest {
     pub name: Option<String>,
+    pub alias: Option<String>,
     pub description: Option<String>,
     pub path: Option<String>,
     pub enabled: Option<bool>,
@@ -597,8 +601,11 @@ pub struct UpdateConversationRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendMessageRequest {
+    pub conversation_id: Uuid,
     pub content: String,
     pub parent_id: Option<Uuid>,
+    pub model_provider_id: Uuid,
+    pub model_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

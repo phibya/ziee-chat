@@ -294,13 +294,14 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
     for model in &original_provider.models {
         let cloned_model_id = Uuid::new_v4();
         let cloned_model_row: ModelProviderModelDb = sqlx::query_as(
-            "INSERT INTO model_provider_models (id, provider_id, name, description, path, enabled, capabilities, parameters) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-             RETURNING id, provider_id, name, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
+            "INSERT INTO model_provider_models (id, provider_id, name, alias, description, path, enabled, capabilities, parameters) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+             RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
         )
         .bind(cloned_model_id)
         .bind(new_provider_id)
         .bind(&model.name)
+        .bind(&model.alias)
         .bind(&model.description)
         .bind(&model.path)
         .bind(false) // Cloned models are disabled by default
@@ -312,6 +313,7 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         cloned_models.push(ModelProviderModel {
             id: cloned_model_row.id,
             name: cloned_model_row.name,
+            alias: cloned_model_row.alias,
             description: cloned_model_row.description,
             path: cloned_model_row.path,
             enabled: cloned_model_row.enabled,
@@ -357,7 +359,7 @@ async fn get_models_for_provider(
     let pool = pool.as_ref();
 
     let model_rows: Vec<ModelProviderModelDb> = sqlx::query_as(
-        "SELECT id, provider_id, name, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
+        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
          FROM model_provider_models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC"
@@ -371,6 +373,7 @@ async fn get_models_for_provider(
         .map(|model_db| ModelProviderModel {
             id: model_db.id,
             name: model_db.name,
+            alias: model_db.alias,
             description: model_db.description,
             path: model_db.path,
             enabled: model_db.enabled,
@@ -391,13 +394,14 @@ pub async fn create_model(
     let model_id = Uuid::new_v4();
 
     let model_row: ModelProviderModelDb = sqlx::query_as(
-        "INSERT INTO model_provider_models (id, provider_id, name, description, path, enabled, capabilities, parameters) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, provider_id, name, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
+        "INSERT INTO model_provider_models (id, provider_id, name, alias, description, path, enabled, capabilities, parameters) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
     )
     .bind(model_id)
     .bind(provider_id)
     .bind(&request.name)
+    .bind(&request.alias)
     .bind(&request.description)
     .bind(&request.path)
     .bind(request.enabled.unwrap_or(true))
@@ -409,6 +413,7 @@ pub async fn create_model(
     Ok(ModelProviderModel {
         id: model_row.id,
         name: model_row.name,
+        alias: model_row.alias,
         description: model_row.description,
         path: model_row.path,
         enabled: model_row.enabled,
@@ -429,18 +434,20 @@ pub async fn update_model(
     let model_row: Option<ModelProviderModelDb> = sqlx::query_as(
         "UPDATE model_provider_models 
          SET name = COALESCE($2, name),
-             description = COALESCE($3, description),
-             path = COALESCE($4, path),
-             enabled = COALESCE($5, enabled),
-             is_active = COALESCE($6, is_active),
-             capabilities = COALESCE($7, capabilities),
-             parameters = COALESCE($8, parameters),
+             alias = COALESCE($3, alias),
+             description = COALESCE($4, description),
+             path = COALESCE($5, path),
+             enabled = COALESCE($6, enabled),
+             is_active = COALESCE($7, is_active),
+             capabilities = COALESCE($8, capabilities),
+             parameters = COALESCE($9, parameters),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
+         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
     )
     .bind(model_id)
     .bind(&request.name)
+    .bind(&request.alias)
     .bind(&request.description)
     .bind(&request.path)
     .bind(request.enabled)
@@ -454,6 +461,7 @@ pub async fn update_model(
         Some(model_db) => Ok(Some(ModelProviderModel {
             id: model_db.id,
             name: model_db.name,
+            alias: model_db.alias,
             description: model_db.description,
             path: model_db.path,
             enabled: model_db.enabled,
@@ -483,7 +491,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<ModelProviderModel
     let pool = pool.as_ref();
 
     let model_row: Option<ModelProviderModelDb> = sqlx::query_as(
-        "SELECT id, provider_id, name, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
+        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
          FROM model_provider_models 
          WHERE id = $1"
     )
@@ -495,6 +503,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<ModelProviderModel
         Some(model_db) => Ok(Some(ModelProviderModel {
             id: model_db.id,
             name: model_db.name,
+            alias: model_db.alias,
             description: model_db.description,
             path: model_db.path,
             enabled: model_db.enabled,

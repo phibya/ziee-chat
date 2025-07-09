@@ -42,6 +42,7 @@ export function EditModelModal({
     if (model && open) {
       form.setFieldsValue({
         name: model.name,
+        alias: model.alias,
         description: model.description,
         path: model.path,
         vision: model.capabilities?.vision,
@@ -236,10 +237,20 @@ export function EditModelModal({
       <Form form={form} layout="vertical">
         <Form.Item
           name="name"
-          label="Name"
-          rules={[{ required: true, message: 'Please enter a model name' }]}
+          label="Model ID"
+          rules={[{ required: true, message: 'Please enter a model ID' }]}
+          help="The technical model identifier used by the provider (e.g., 'claude-3-sonnet-20240229', 'gpt-4')"
         >
-          <Input placeholder="Enter model name" />
+          <Input placeholder="Enter model ID (e.g., claude-3-sonnet-20240229)" />
+        </Form.Item>
+
+        <Form.Item
+          name="alias"
+          label="Display Name"
+          rules={[{ required: true, message: 'Please enter a display name' }]}
+          help="User-friendly name shown in the interface"
+        >
+          <Input placeholder="Enter display name (e.g., Claude 3 Sonnet)" />
         </Form.Item>
 
         <Form.Item name="description" label="Description">

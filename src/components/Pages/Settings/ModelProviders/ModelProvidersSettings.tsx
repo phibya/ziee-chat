@@ -966,7 +966,7 @@ export function ModelProvidersSettings() {
                   }
                   title={
                     <Flex align="center" gap="small">
-                      <Text>{model.name}</Text>
+                      <Text>{model.alias}</Text>
                       {model.isDeprecated && (
                         <span style={{ fontSize: '12px' }}>⚠️</span>
                       )}
@@ -974,6 +974,9 @@ export function ModelProvidersSettings() {
                   }
                   description={
                     <Space direction="vertical" size="small">
+                      <Text type="secondary" className="text-xs">
+                        Model ID: {model.name}
+                      </Text>
                       {model.description && (
                         <Text type="secondary">{model.description}</Text>
                       )}

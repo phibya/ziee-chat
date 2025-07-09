@@ -198,38 +198,12 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
         model_id: modelId,
       })
 
-      // For now, add a user message immediately
-      const userMessage: Message = {
-        id: 'temp-' + Date.now(),
+      // Reload the conversation to get the updated messages
+      const conversationResponse = await ApiClient.Chat.getConversation({
         conversation_id: currentConversation.id,
-        role: 'user',
-        content: userInput,
-        branch_id: 'temp-branch',
-        is_active_branch: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
+      })
 
-      setMessages(prev => [...prev, userMessage])
-
-      // TODO: Implement streaming response handling
-      // For now, simulate a response
-      setTimeout(() => {
-        const aiMessage: Message = {
-          id: 'temp-ai-' + Date.now(),
-          conversation_id: currentConversation.id,
-          role: 'assistant',
-          content: `I received your message: "${userInput}". This is a placeholder response. The actual AI integration will be implemented next.`,
-          branch_id: 'temp-branch-ai',
-          is_active_branch: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-
-        setMessages(prev => [...prev, aiMessage])
-        setIsLoading(false)
-        setIsStreaming(false)
-      }, 1000)
+      setMessages(conversationResponse.messages)
     } catch (error) {
       message.error('Failed to send message')
       setIsLoading(false)
@@ -458,7 +432,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
                         key={`${provider.id}:${model.id}`}
                         value={`${provider.id}:${model.id}`}
                       >
-                        {model.name}
+                        {model.alias}
                       </Option>
                     ))}
                   </Select.OptGroup>

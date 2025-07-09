@@ -27,6 +27,7 @@ export interface ModelParameters {
 export interface ModelProviderModel {
   id: string
   name: string
+  alias: string
   description?: string
   path?: string // For Llama.cpp models
   isDeprecated?: boolean
@@ -125,6 +126,7 @@ export interface CloneModelProviderRequest {
 
 export interface AddModelToProviderRequest {
   name: string
+  alias: string
   description?: string
   path?: string
   enabled?: boolean
@@ -134,6 +136,7 @@ export interface AddModelToProviderRequest {
 
 export interface UpdateModelRequest {
   name?: string
+  alias?: string
   description?: string
   path?: string
   enabled?: boolean
