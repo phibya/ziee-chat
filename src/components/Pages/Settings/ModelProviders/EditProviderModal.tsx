@@ -37,8 +37,8 @@ export function EditProviderModal({
       form.setFieldsValue({
         name: provider.name,
         enabled: provider.enabled,
-        apiKey: provider.apiKey,
-        baseUrl: provider.baseUrl,
+        api_key: provider.api_key,
+        base_url: provider.base_url,
         settings: provider.settings,
       })
     }
@@ -86,7 +86,7 @@ export function EditProviderModal({
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title="API Configuration">
               <Form.Item
-                name="apiKey"
+                name="api_key"
                 label="API Key"
                 rules={[{ required: true, message: 'Please enter API key' }]}
               >
@@ -99,7 +99,7 @@ export function EditProviderModal({
               </Form.Item>
 
               <Form.Item
-                name="baseUrl"
+                name="base_url"
                 label="Base URL"
                 rules={[{ required: true, message: 'Please enter base URL' }]}
               >

@@ -60,13 +60,13 @@ export interface ModelProvider {
   type: ModelProviderType
   icon?: string
   enabled: boolean
-  apiKey?: string
-  baseUrl?: string
+  api_key?: string
+  base_url?: string
   models: ModelProviderModel[]
   settings?: ModelProviderSettings
-  isDefault?: boolean
-  createdAt?: string
-  updatedAt?: string
+  is_default?: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 export type ModelProviderType =
@@ -82,16 +82,16 @@ export interface CreateModelProviderRequest {
   name: string
   type: ModelProviderType
   enabled?: boolean
-  apiKey?: string
-  baseUrl?: string
+  api_key?: string
+  base_url?: string
   settings?: ModelProviderSettings
 }
 
 export interface UpdateModelProviderRequest {
   name?: string
   enabled?: boolean
-  apiKey?: string
-  baseUrl?: string
+  api_key?: string
+  base_url?: string
   settings?: ModelProviderSettings
 }
 

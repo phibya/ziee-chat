@@ -12,10 +12,12 @@ import {
   Layout,
   List,
   Menu,
+  Modal,
   Select,
   Space,
   Spin,
   Switch,
+  Tooltip,
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
@@ -104,6 +106,34 @@ export function ModelProvidersSettings() {
   }, [])
 
   const currentProvider = providers.find(p => p.id === selectedProvider)
+  
+  const canEnableProvider = (provider: ModelProvider): boolean => {
+    if (provider.enabled) return true // Already enabled
+    if (provider.models.length === 0) return false
+    if (provider.type === 'llama.cpp') return true
+    if (!provider.api_key || provider.api_key.trim() === '') return false
+    if (!provider.base_url || provider.base_url.trim() === '') return false
+    try {
+      new URL(provider.base_url)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const getEnableDisabledReason = (provider: ModelProvider): string | null => {
+    if (provider.enabled) return null
+    if (provider.models.length === 0) return 'No models available. Add at least one model first.'
+    if (provider.type === 'llama.cpp') return null
+    if (!provider.api_key || provider.api_key.trim() === '') return 'API key is required'
+    if (!provider.base_url || provider.base_url.trim() === '') return 'Base URL is required'
+    try {
+      new URL(provider.base_url)
+      return null
+    } catch {
+      return 'Invalid base URL format'
+    }
+  }
 
   useEffect(() => {
     loadProviders()
@@ -112,8 +142,8 @@ export function ModelProvidersSettings() {
   useEffect(() => {
     if (currentProvider) {
       form.setFieldsValue({
-        apiKey: currentProvider.apiKey,
-        baseUrl: currentProvider.baseUrl,
+        api_key: currentProvider.api_key,
+        base_url: currentProvider.base_url,
         settings: currentProvider.settings,
       })
       nameForm.setFieldsValue({
@@ -159,9 +189,26 @@ export function ModelProvidersSettings() {
       message.success(
         `${updatedProvider.name} ${enabled ? 'enabled' : 'disabled'}`,
       )
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update provider:', error)
-      message.error('Failed to update provider')
+      if (error.response?.status === 400) {
+        const provider = providers.find(p => p.id === providerId)
+        if (provider) {
+          if (provider.models.length === 0) {
+            message.error(`Cannot enable "${provider.name}" - No models available`)
+          } else if (provider.type !== 'llama.cpp' && (!provider.api_key || provider.api_key.trim() === '')) {
+            message.error(`Cannot enable "${provider.name}" - API key is required`)
+          } else if (provider.type !== 'llama.cpp' && (!provider.base_url || provider.base_url.trim() === '')) {
+            message.error(`Cannot enable "${provider.name}" - Base URL is required`)
+          } else {
+            message.error(`Cannot enable "${provider.name}" - Invalid base URL format`)
+          }
+        } else {
+          message.error('Failed to update provider')
+        }
+      } else {
+        message.error('Failed to update provider')
+      }
     }
   }
 
@@ -212,6 +259,14 @@ export function ModelProvidersSettings() {
       setProviders(prev =>
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
+      
+      // Update form with the new values
+      form.setFieldsValue({
+        api_key: updatedProvider.api_key,
+        base_url: updatedProvider.base_url,
+        settings: updatedProvider.settings,
+      })
+      
       setHasUnsavedChanges(false)
       setPendingSettings(null)
       message.success('Settings saved successfully')
@@ -227,19 +282,39 @@ export function ModelProvidersSettings() {
       return
     }
 
-    try {
-      await ApiClient.ModelProviders.delete({ provider_id: providerId })
-      
-      setProviders(prev => prev.filter(p => p.id !== providerId))
-      if (selectedProvider === providerId) {
-        const remainingProviders = providers.filter(p => p.id !== providerId)
-        setSelectedProvider(remainingProviders.length > 0 ? remainingProviders[0].id : '')
-      }
-      message.success('Provider deleted')
-    } catch (error) {
-      console.error('Failed to delete provider:', error)
-      message.error('Failed to delete provider')
-    }
+    const provider = providers.find(p => p.id === providerId)
+    if (!provider) return
+
+    Modal.confirm({
+      title: 'Delete Model Provider',
+      content: `Are you sure you want to delete "${provider.name}"? This action cannot be undone.`,
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await ApiClient.ModelProviders.delete({ provider_id: providerId })
+          
+          setProviders(prev => prev.filter(p => p.id !== providerId))
+          if (selectedProvider === providerId) {
+            const remainingProviders = providers.filter(p => p.id !== providerId)
+            setSelectedProvider(remainingProviders.length > 0 ? remainingProviders[0].id : '')
+          }
+          message.success('Provider deleted')
+        } catch (error: any) {
+          console.error('Failed to delete provider:', error)
+          if (error.response?.status === 400) {
+            message.error(`Cannot delete "${provider.name}" - default model providers cannot be deleted`)
+          } else if (error.response?.status === 403) {
+            message.error('You do not have permission to delete model providers')
+          } else if (error.response?.status === 404) {
+            message.error('Provider not found')
+          } else {
+            message.error('Failed to delete provider')
+          }
+        }
+      },
+    })
   }
 
   const handleCloneProvider = async (providerId: string) => {
@@ -268,9 +343,13 @@ export function ModelProvidersSettings() {
       setProviders(prev => [...prev, newProvider])
       setIsAddModalOpen(false)
       message.success('Provider added successfully')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to add provider:', error)
-      message.error('Failed to add provider')
+      if (error.response?.status === 400) {
+        message.error('Failed to add provider - Please check API key and base URL are provided and valid')
+      } else {
+        message.error('Failed to add provider')
+      }
     }
   }
 
@@ -438,14 +517,13 @@ export function ModelProvidersSettings() {
         onClick: () => handleCloneProvider(provider.id),
       })
 
-      if (!provider.isDefault) {
-        actions.push({
-          key: 'delete',
-          icon: <DeleteOutlined />,
-          label: 'Delete',
-          onClick: () => handleDeleteProvider(provider.id),
-        })
-      }
+      actions.push({
+        key: 'delete',
+        icon: <DeleteOutlined />,
+        label: 'Delete',
+        onClick: () => handleDeleteProvider(provider.id),
+        disabled: provider.is_default,
+      })
     }
 
     return actions
@@ -577,13 +655,28 @@ export function ModelProvidersSettings() {
                 </Form.Item>
               </Form>
             </Flex>
-            <Switch
-              checked={currentProvider.enabled}
-              disabled={!canEditProviders}
-              onChange={enabled =>
-                handleProviderToggle(currentProvider.id, enabled)
+            {(() => {
+              const disabledReason = getEnableDisabledReason(currentProvider)
+              const switchElement = (
+                <Switch
+                  checked={currentProvider.enabled}
+                  disabled={!canEditProviders || (!currentProvider.enabled && !canEnableProvider(currentProvider))}
+                  onChange={enabled =>
+                    handleProviderToggle(currentProvider.id, enabled)
+                  }
+                />
+              )
+              
+              if (!canEditProviders) return switchElement
+              if (disabledReason && !currentProvider.enabled) {
+                return (
+                  <Tooltip title={disabledReason}>
+                    {switchElement}
+                  </Tooltip>
+                )
               }
-            />
+              return switchElement
+            })()}
           </Flex>
         )}
 
@@ -614,13 +707,28 @@ export function ModelProvidersSettings() {
               <Text strong style={{ fontSize: '16px' }}>
                 Enable Provider
               </Text>
-              <Switch
-                checked={currentProvider.enabled}
-                disabled={!canEditProviders}
-                onChange={enabled =>
-                  handleProviderToggle(currentProvider.id, enabled)
+              {(() => {
+                const disabledReason = getEnableDisabledReason(currentProvider)
+                const switchElement = (
+                  <Switch
+                    checked={currentProvider.enabled}
+                    disabled={!canEditProviders || (!currentProvider.enabled && !canEnableProvider(currentProvider))}
+                    onChange={enabled =>
+                      handleProviderToggle(currentProvider.id, enabled)
+                    }
+                  />
+                )
+                
+                if (!canEditProviders) return switchElement
+                if (disabledReason && !currentProvider.enabled) {
+                  return (
+                    <Tooltip title={disabledReason}>
+                      {switchElement}
+                    </Tooltip>
+                  )
                 }
-              />
+                return switchElement
+              })()}
             </Flex>
           </Space>
         )}
@@ -631,8 +739,8 @@ export function ModelProvidersSettings() {
             form={form}
             layout="vertical"
             initialValues={{
-              apiKey: currentProvider.apiKey,
-              baseUrl: currentProvider.baseUrl,
+              api_key: currentProvider.api_key,
+              base_url: currentProvider.base_url,
             }}
             onValuesChange={handleFormChange}
           >
@@ -664,7 +772,7 @@ export function ModelProvidersSettings() {
                     key you'll use in your requests.
                   </Text>
                   <Form.Item
-                    name="apiKey"
+                    name="api_key"
                     style={{ marginBottom: 0, marginTop: 16 }}
                   >
                     <Input.Password
@@ -678,7 +786,7 @@ export function ModelProvidersSettings() {
                           type="text"
                           icon={<CopyOutlined />}
                           onClick={() =>
-                            copyToClipboard(currentProvider.apiKey || '')
+                            copyToClipboard(currentProvider.api_key || '')
                           }
                         />
                       }
@@ -702,7 +810,7 @@ export function ModelProvidersSettings() {
                     for more information.
                   </Text>
                   <Form.Item
-                    name="baseUrl"
+                    name="base_url"
                     style={{ marginBottom: 0, marginTop: 16 }}
                   >
                     <Input

@@ -182,18 +182,34 @@ pub async fn update_model_provider(
     }
 }
 
-pub async fn delete_model_provider(provider_id: Uuid) -> Result<bool, sqlx::Error> {
+pub async fn delete_model_provider(provider_id: Uuid) -> Result<Result<bool, String>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     
-    let result = sqlx::query(
-        "DELETE FROM model_providers WHERE id = $1 AND is_default = false"
+    // First check if provider exists and if it's default
+    let provider_row: Option<(bool,)> = sqlx::query_as(
+        "SELECT is_default FROM model_providers WHERE id = $1"
     )
     .bind(provider_id)
-    .execute(pool)
+    .fetch_optional(pool)
     .await?;
-
-    Ok(result.rows_affected() > 0)
+    
+    match provider_row {
+        Some((is_default,)) => {
+            if is_default {
+                Ok(Err("Cannot delete default model provider".to_string()))
+            } else {
+                let result = sqlx::query(
+                    "DELETE FROM model_providers WHERE id = $1"
+                )
+                .bind(provider_id)
+                .execute(pool)
+                .await?;
+                Ok(Ok(result.rows_affected() > 0))
+            }
+        }
+        None => Ok(Ok(false)), // Provider not found
+    }
 }
 
 pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvider>, sqlx::Error> {

@@ -44,7 +44,7 @@ export function AddProviderModal({
   const handleTypeChange = (type: ModelProviderType) => {
     setProviderType(type)
     // Reset form when type changes
-    form.resetFields(['apiKey', 'baseUrl', 'settings'])
+    form.resetFields(['api_key', 'base_url', 'settings'])
 
     // Set default values based on provider type
     const defaults = getDefaultValues(type)
@@ -54,17 +54,17 @@ export function AddProviderModal({
   const getDefaultValues = (type: ModelProviderType) => {
     switch (type) {
       case 'openai':
-        return { baseUrl: 'https://api.openai.com/v1' }
+        return { base_url: 'https://api.openai.com/v1' }
       case 'anthropic':
-        return { baseUrl: 'https://api.anthropic.com/v1' }
+        return { base_url: 'https://api.anthropic.com/v1' }
       case 'groq':
-        return { baseUrl: 'https://api.groq.com/openai/v1' }
+        return { base_url: 'https://api.groq.com/openai/v1' }
       case 'gemini':
         return {
-          baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+          base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
         }
       case 'mistral':
-        return { baseUrl: 'https://api.mistral.ai' }
+        return { base_url: 'https://api.mistral.ai' }
       case 'llama.cpp':
         return {
           settings: {
@@ -144,7 +144,7 @@ export function AddProviderModal({
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title="API Configuration">
               <Form.Item
-                name="apiKey"
+                name="api_key"
                 label="API Key"
                 rules={[{ required: true, message: 'Please enter API key' }]}
               >
@@ -157,7 +157,7 @@ export function AddProviderModal({
               </Form.Item>
 
               <Form.Item
-                name="baseUrl"
+                name="base_url"
                 label="Base URL"
                 rules={[{ required: true, message: 'Please enter base URL' }]}
               >

@@ -149,6 +149,12 @@ pub fn expand_wildcard_permission(wildcard: &str) -> Vec<&'static str> {
             permissions::CONFIG_FACTORY_RESET_READ,
             permissions::CONFIG_FACTORY_RESET_EDIT,
         ],
+        permissions::MODEL_PROVIDERS_ALL => vec![
+            permissions::MODEL_PROVIDERS_READ,
+            permissions::MODEL_PROVIDERS_EDIT,
+            permissions::MODEL_PROVIDERS_DELETE,
+            permissions::MODEL_PROVIDERS_CREATE,
+        ],
         permissions::ALL => vec![
             permissions::USERS_READ,
             permissions::USERS_EDIT,
@@ -175,6 +181,10 @@ pub fn expand_wildcard_permission(wildcard: &str) -> Vec<&'static str> {
             permissions::SETTINGS_READ,
             permissions::SETTINGS_EDIT,
             permissions::SETTINGS_DELETE,
+            permissions::MODEL_PROVIDERS_READ,
+            permissions::MODEL_PROVIDERS_EDIT,
+            permissions::MODEL_PROVIDERS_DELETE,
+            permissions::MODEL_PROVIDERS_CREATE,
         ],
         _ => vec![],
     }
