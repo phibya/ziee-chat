@@ -30,13 +30,13 @@ import {
   UserSettingsResponse,
 } from './userSettings'
 import {
+  AddModelToProviderRequest,
+  CloneModelProviderRequest,
+  CreateModelProviderRequest,
   ModelProvider,
   ModelProviderListResponse,
-  CreateModelProviderRequest,
-  UpdateModelProviderRequest,
-  CloneModelProviderRequest,
-  AddModelToProviderRequest,
   RemoveModelFromProviderRequest,
+  UpdateModelProviderRequest,
 } from './modelProvider'
 
 // API endpoint definitions
@@ -88,7 +88,8 @@ export const ApiEndpoints = {
   'ModelProviders.delete': 'DELETE /api/model-providers/{provider_id}',
   'ModelProviders.clone': 'POST /api/model-providers/{provider_id}/clone',
   'ModelProviders.addModel': 'POST /api/model-providers/{provider_id}/models',
-  'ModelProviders.removeModel': 'DELETE /api/model-providers/{provider_id}/models/{model_id}',
+  'ModelProviders.removeModel':
+    'DELETE /api/model-providers/{provider_id}/models/{model_id}',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered

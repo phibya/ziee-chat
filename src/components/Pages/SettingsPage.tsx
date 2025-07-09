@@ -57,11 +57,15 @@ export function SettingsPage() {
       label: 'Privacy',
     },
     // Model Providers only shows in main menu for desktop apps
-    ...(isDesktopApp ? [{
-      key: 'model-providers',
-      icon: <ToolOutlined />,
-      label: 'Model Providers',
-    }] : []),
+    ...(isDesktopApp
+      ? [
+          {
+            key: 'model-providers',
+            icon: <ToolOutlined />,
+            label: 'Model Providers',
+          },
+        ]
+      : []),
     {
       key: 'shortcuts',
       icon: <SlidersOutlined />,

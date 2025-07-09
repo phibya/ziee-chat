@@ -49,7 +49,7 @@ export interface ModelProviderSettings {
   kvCacheType?: string
   mmap?: boolean
   huggingFaceAccessToken?: string
-  
+
   // Custom settings for other providers
   [key: string]: any
 }
@@ -69,7 +69,7 @@ export interface ModelProvider {
   updatedAt?: string
 }
 
-export type ModelProviderType = 
+export type ModelProviderType =
   | 'llama.cpp'
   | 'openai'
   | 'anthropic'

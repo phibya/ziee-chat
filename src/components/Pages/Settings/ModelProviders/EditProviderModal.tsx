@@ -1,17 +1,19 @@
 import {
-  Modal,
+  Card,
   Form,
   Input,
-  Switch,
-  Space,
-  Card,
   InputNumber,
+  Modal,
   Select,
+  Space,
+  Switch,
 } from 'antd'
 import { useEffect } from 'react'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
-import { ModelProvider, UpdateModelProviderRequest } from '../../../../types/api/modelProvider'
-
+import {
+  ModelProvider,
+  UpdateModelProviderRequest,
+} from '../../../../types/api/modelProvider'
 
 interface EditProviderModalProps {
   open: boolean
@@ -21,7 +23,13 @@ interface EditProviderModalProps {
   loading?: boolean
 }
 
-export function EditProviderModal({ open, provider, onClose, onSubmit, loading }: EditProviderModalProps) {
+export function EditProviderModal({
+  open,
+  provider,
+  onClose,
+  onSubmit,
+  loading,
+}: EditProviderModalProps) {
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -60,10 +68,7 @@ export function EditProviderModal({ open, provider, onClose, onSubmit, loading }
       width={600}
       destroyOnClose
     >
-      <Form
-        form={form}
-        layout="vertical"
-      >
+      <Form form={form} layout="vertical">
         <Form.Item
           name="name"
           label="Provider Name"
@@ -72,11 +77,7 @@ export function EditProviderModal({ open, provider, onClose, onSubmit, loading }
           <Input placeholder="Enter provider name" />
         </Form.Item>
 
-        <Form.Item
-          name="enabled"
-          label="Enabled"
-          valuePropName="checked"
-        >
+        <Form.Item name="enabled" label="Enabled" valuePropName="checked">
           <Switch />
         </Form.Item>
 
@@ -91,7 +92,9 @@ export function EditProviderModal({ open, provider, onClose, onSubmit, loading }
               >
                 <Input.Password
                   placeholder="Insert API Key"
-                  iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                  iconRender={visible =>
+                    visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                  }
                 />
               </Form.Item>
 
@@ -141,18 +144,21 @@ export function EditProviderModal({ open, provider, onClose, onSubmit, loading }
                 <InputNumber min={1} max={16} style={{ width: '100%' }} />
               </Form.Item>
 
-              <Form.Item
-                name={['settings', 'cpuThreads']}
-                label="CPU Threads"
-              >
-                <InputNumber placeholder="-1 (auto)" style={{ width: '100%' }} />
+              <Form.Item name={['settings', 'cpuThreads']} label="CPU Threads">
+                <InputNumber
+                  placeholder="-1 (auto)"
+                  style={{ width: '100%' }}
+                />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'threadsBatch']}
                 label="Threads (Batch)"
               >
-                <InputNumber placeholder="-1 (same as Threads)" style={{ width: '100%' }} />
+                <InputNumber
+                  placeholder="-1 (same as Threads)"
+                  style={{ width: '100%' }}
+                />
               </Form.Item>
 
               <Form.Item

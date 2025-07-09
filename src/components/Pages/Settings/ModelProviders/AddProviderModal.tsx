@@ -1,17 +1,19 @@
 import {
-  Modal,
+  Card,
   Form,
   Input,
-  Select,
-  Switch,
-  Space,
-  Card,
   InputNumber,
+  Modal,
+  Select,
+  Space,
+  Switch,
 } from 'antd'
 import { useState } from 'react'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
-import { ModelProviderType, CreateModelProviderRequest } from '../../../../types/api/modelProvider'
-
+import {
+  CreateModelProviderRequest,
+  ModelProviderType,
+} from '../../../../types/api/modelProvider'
 
 interface AddProviderModalProps {
   open: boolean
@@ -20,9 +22,15 @@ interface AddProviderModalProps {
   loading?: boolean
 }
 
-export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProviderModalProps) {
+export function AddProviderModal({
+  open,
+  onClose,
+  onSubmit,
+  loading,
+}: AddProviderModalProps) {
   const [form] = Form.useForm()
-  const [providerType, setProviderType] = useState<ModelProviderType>('llama.cpp')
+  const [providerType, setProviderType] =
+    useState<ModelProviderType>('llama.cpp')
 
   const handleSubmit = async () => {
     try {
@@ -37,7 +45,7 @@ export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProvid
     setProviderType(type)
     // Reset form when type changes
     form.resetFields(['apiKey', 'baseUrl', 'settings'])
-    
+
     // Set default values based on provider type
     const defaults = getDefaultValues(type)
     form.setFieldsValue(defaults)
@@ -52,7 +60,9 @@ export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProvid
       case 'groq':
         return { baseUrl: 'https://api.groq.com/openai/v1' }
       case 'gemini':
-        return { baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai' }
+        return {
+          baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        }
       case 'mistral':
         return { baseUrl: 'https://api.mistral.ai' }
       case 'llama.cpp':
@@ -69,7 +79,7 @@ export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProvid
             kvCacheType: 'q8_0',
             mmap: true,
             huggingFaceAccessToken: '',
-          }
+          },
         }
       default:
         return {}
@@ -102,7 +112,7 @@ export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProvid
         initialValues={{
           type: 'llama.cpp',
           enabled: true,
-          ...getDefaultValues('llama.cpp')
+          ...getDefaultValues('llama.cpp'),
         }}
       >
         <Form.Item
@@ -125,11 +135,7 @@ export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProvid
           />
         </Form.Item>
 
-        <Form.Item
-          name="enabled"
-          label="Enabled"
-          valuePropName="checked"
-        >
+        <Form.Item name="enabled" label="Enabled" valuePropName="checked">
           <Switch />
         </Form.Item>
 
@@ -144,7 +150,9 @@ export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProvid
               >
                 <Input.Password
                   placeholder="Insert API Key"
-                  iconRender={visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                  iconRender={visible =>
+                    visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                  }
                 />
               </Form.Item>
 
@@ -194,18 +202,21 @@ export function AddProviderModal({ open, onClose, onSubmit, loading }: AddProvid
                 <InputNumber min={1} max={16} style={{ width: '100%' }} />
               </Form.Item>
 
-              <Form.Item
-                name={['settings', 'cpuThreads']}
-                label="CPU Threads"
-              >
-                <InputNumber placeholder="-1 (auto)" style={{ width: '100%' }} />
+              <Form.Item name={['settings', 'cpuThreads']} label="CPU Threads">
+                <InputNumber
+                  placeholder="-1 (auto)"
+                  style={{ width: '100%' }}
+                />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'threadsBatch']}
                 label="Threads (Batch)"
               >
-                <InputNumber placeholder="-1 (same as Threads)" style={{ width: '100%' }} />
+                <InputNumber
+                  placeholder="-1 (same as Threads)"
+                  style={{ width: '100%' }}
+                />
               </Form.Item>
 
               <Form.Item

@@ -4,6 +4,7 @@ import {
   Card,
   Divider,
   Dropdown,
+  Empty,
   Flex,
   Form,
   Input,
@@ -13,12 +14,11 @@ import {
   Menu,
   Select,
   Space,
+  Spin,
   Switch,
   Typography,
-  Empty,
-  Spin,
 } from 'antd'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -32,7 +32,11 @@ import {
 } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
-import { ModelProvider, ModelProviderType, ModelProviderModel } from '../../../../types/api/modelProvider'
+import {
+  ModelProvider,
+  ModelProviderModel,
+  ModelProviderType,
+} from '../../../../types/api/modelProvider'
 import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
@@ -42,12 +46,12 @@ const { Sider, Content } = Layout
 
 const PROVIDER_ICONS: Record<ModelProviderType, string> = {
   'llama.cpp': '🦙',
-  'openai': '🤖',
-  'anthropic': '🤖',
-  'groq': '⚡',
-  'gemini': '💎',
-  'mistral': '🌊',
-  'custom': '🔧',
+  openai: '🤖',
+  anthropic: '🤖',
+  groq: '⚡',
+  gemini: '💎',
+  mistral: '🌊',
+  custom: '🔧',
 }
 
 const DEFAULT_PROVIDERS: Partial<ModelProvider>[] = [
@@ -131,11 +135,15 @@ export function ModelProvidersSettings() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isAddModelModalOpen, setIsAddModelModalOpen] = useState(false)
   const [isEditModelModalOpen, setIsEditModelModalOpen] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<ModelProviderModel | null>(null)
+  const [selectedModel, setSelectedModel] = useState<ModelProviderModel | null>(
+    null,
+  )
 
   // Check permissions for web app
-  const canEditProviders = isDesktopApp || hasPermission(Permission.config.modelProviders.edit)
-  const canViewProviders = isDesktopApp || hasPermission(Permission.config.modelProviders.read)
+  const canEditProviders =
+    isDesktopApp || hasPermission(Permission.config.modelProviders.edit)
+  const canViewProviders =
+    isDesktopApp || hasPermission(Permission.config.modelProviders.read)
 
   // If user doesn't have view permissions, don't render the component
   if (!canViewProviders) {
@@ -185,7 +193,7 @@ export function ModelProvidersSettings() {
       // For now, use mock data. In production, this would call the API
       // const response = await ApiClient.ModelProviders.list({})
       // setProviders(response.providers)
-      
+
       // Mock data for development
       setProviders(DEFAULT_PROVIDERS as ModelProvider[])
       if (DEFAULT_PROVIDERS.length > 0) {
@@ -208,7 +216,7 @@ export function ModelProvidersSettings() {
     try {
       // For now, update locally. In production, this would call the API
       // await ApiClient.ModelProviders.update({ id: providerId, enabled })
-      
+
       setProviders(prev =>
         prev.map(p => (p.id === providerId ? { ...p, enabled } : p)),
       )
@@ -262,7 +270,7 @@ export function ModelProvidersSettings() {
     try {
       // For now, delete locally. In production, this would call the API
       // await ApiClient.ModelProviders.delete({ provider_id: providerId })
-      
+
       setProviders(prev => prev.filter(p => p.id !== providerId))
       if (selectedProvider === providerId) {
         setSelectedProvider(providers.length > 1 ? providers[0].id : '')
@@ -304,7 +312,7 @@ export function ModelProvidersSettings() {
     try {
       // For now, add locally. In production, this would call the API
       // const newProvider = await ApiClient.ModelProviders.create(providerData)
-      
+
       const newProvider: ModelProvider = {
         id: `custom-${Date.now()}`,
         ...providerData,
@@ -329,14 +337,14 @@ export function ModelProvidersSettings() {
     try {
       // For now, update locally. In production, this would call the API
       // await ApiClient.ModelProviders.addModel({ providerId: currentProvider.id, ...modelData })
-      
+
       const updatedProvider = {
         ...currentProvider,
         models: [...(currentProvider.models || []), modelData],
       }
 
       setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p))
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
       setIsAddModelModalOpen(false)
       message.success('Model added successfully')
@@ -352,9 +360,9 @@ export function ModelProvidersSettings() {
     try {
       // For now, update locally. In production, this would call the API
       // await ApiClient.ModelProviders.updateModel({ providerId: currentProvider.id, ...modelData })
-      
+
       const updatedModels = currentProvider.models.map(m =>
-        m.id === modelData.id ? modelData : m
+        m.id === modelData.id ? modelData : m,
       )
 
       const updatedProvider = {
@@ -363,7 +371,7 @@ export function ModelProvidersSettings() {
       }
 
       setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p))
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
       setIsEditModelModalOpen(false)
       message.success('Model updated successfully')
@@ -379,7 +387,7 @@ export function ModelProvidersSettings() {
     try {
       // For now, update locally. In production, this would call the API
       // await ApiClient.ModelProviders.removeModel({ providerId: currentProvider.id, modelId })
-      
+
       const updatedModels = currentProvider.models.filter(m => m.id !== modelId)
 
       const updatedProvider = {
@@ -388,7 +396,7 @@ export function ModelProvidersSettings() {
       }
 
       setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p))
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
       message.success('Model deleted successfully')
     } catch (error) {
@@ -403,7 +411,7 @@ export function ModelProvidersSettings() {
     try {
       // For now, update locally. In production, this would call the API
       const updatedModels = currentProvider.models.map(m =>
-        m.id === modelId ? { ...m, enabled } : m
+        m.id === modelId ? { ...m, enabled } : m,
       )
 
       const updatedProvider = {
@@ -412,9 +420,9 @@ export function ModelProvidersSettings() {
       }
 
       setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p))
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
-      
+
       const model = currentProvider.models.find(m => m.id === modelId)
       message.success(`${model?.name} ${enabled ? 'enabled' : 'disabled'}`)
     } catch (error) {
@@ -429,7 +437,7 @@ export function ModelProvidersSettings() {
     try {
       // For now, update locally. In production, this would call the API
       const updatedModels = currentProvider.models.map(m =>
-        m.id === modelId ? { ...m, isActive } : m
+        m.id === modelId ? { ...m, isActive } : m,
       )
 
       const updatedProvider = {
@@ -438,9 +446,9 @@ export function ModelProvidersSettings() {
       }
 
       setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p))
+        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
       )
-      
+
       const model = currentProvider.models.find(m => m.id === modelId)
       message.success(`${model?.name} ${isActive ? 'started' : 'stopped'}`)
     } catch (error) {
@@ -448,7 +456,6 @@ export function ModelProvidersSettings() {
       message.error('Failed to start/stop model')
     }
   }
-
 
   const copyToClipboard = (text: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -529,20 +536,20 @@ export function ModelProvidersSettings() {
     })
   }
 
-  const ResponsiveConfigItem = ({ 
-    title, 
-    description, 
-    children 
-  }: { 
-    title: string; 
-    description: string; 
-    children: React.ReactNode 
+  const ResponsiveConfigItem = ({
+    title,
+    description,
+    children,
+  }: {
+    title: string
+    description: string
+    children: React.ReactNode
   }) => (
-    <Flex 
-      justify="space-between" 
-      align={isMobile ? "flex-start" : "center"}
+    <Flex
+      justify="space-between"
+      align={isMobile ? 'flex-start' : 'center'}
       vertical={isMobile}
-      gap={isMobile ? "small" : 0}
+      gap={isMobile ? 'small' : 0}
     >
       <div style={{ flex: isMobile ? undefined : 1 }}>
         <Text strong>{title}</Text>
@@ -603,18 +610,15 @@ export function ModelProvidersSettings() {
                 initialValues={{ name: currentProvider.name }}
                 onValuesChange={handleNameChange}
               >
-                <Form.Item
-                  name="name"
-                  style={{ margin: 0 }}
-                >
+                <Form.Item name="name" style={{ margin: 0 }}>
                   <Input
                     variant="borderless"
-                    style={{ 
+                    style={{
                       fontSize: '24px',
                       fontWeight: 600,
                       padding: 0,
                       border: 'none',
-                      boxShadow: 'none'
+                      boxShadow: 'none',
                     }}
                     disabled={!canEditProviders}
                   />
@@ -630,7 +634,7 @@ export function ModelProvidersSettings() {
             />
           </Flex>
         )}
-        
+
         {/* Mobile Provider Header */}
         {isMobile && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -646,7 +650,7 @@ export function ModelProvidersSettings() {
                 style={{ margin: 0 }}
               >
                 <Input
-                  style={{ 
+                  style={{
                     fontSize: '16px',
                     fontWeight: 600,
                   }}
@@ -655,7 +659,9 @@ export function ModelProvidersSettings() {
               </Form.Item>
             </Form>
             <Flex justify="space-between" align="center">
-              <Text strong style={{ fontSize: '16px' }}>Enable Provider</Text>
+              <Text strong style={{ fontSize: '16px' }}>
+                Enable Provider
+              </Text>
               <Switch
                 checked={currentProvider.enabled}
                 disabled={!canEditProviders}
@@ -678,52 +684,60 @@ export function ModelProvidersSettings() {
             }}
             onValuesChange={handleFormChange}
           >
-            <Card title="API Key">
-              <Text type="secondary">
-                The {currentProvider.name} API uses API keys for
-                authentication. Visit your{' '}
-                <Text type="danger">API Keys</Text> page to retrieve the API
-                key you'll use in your requests.
-              </Text>
-              <Form.Item
-                name="apiKey"
-                style={{ marginBottom: 0, marginTop: 16 }}
-              >
-                <Input.Password
-                  placeholder="Insert API Key"
-                  disabled={!canEditProviders || !currentProvider.enabled}
-                  iconRender={visible =>
-                    visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
-                  }
-                  suffix={
-                    <Button
-                      type="text"
-                      icon={<CopyOutlined />}
-                      onClick={() =>
-                        copyToClipboard(currentProvider.apiKey || '')
+            <Card title="API Configuration">
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <div>
+                  <Title level={5}>API Key</Title>
+                  <Text type="secondary">
+                    The {currentProvider.name} API uses API keys for authentication.
+                    Visit your <Text type="danger">API Keys</Text> page to retrieve
+                    the API key you'll use in your requests.
+                  </Text>
+                  <Form.Item
+                    name="apiKey"
+                    style={{ marginBottom: 0, marginTop: 16 }}
+                  >
+                    <Input.Password
+                      placeholder="Insert API Key"
+                      disabled={!canEditProviders}
+                      iconRender={visible =>
+                        visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                      }
+                      suffix={
+                        <Button
+                          type="text"
+                          icon={<CopyOutlined />}
+                          onClick={() =>
+                            copyToClipboard(currentProvider.apiKey || '')
+                          }
+                        />
                       }
                     />
-                  }
-                />
-              </Form.Item>
-            </Card>
+                  </Form.Item>
+                </div>
 
-            <Card title="Base URL">
-              <Text type="secondary">
-                The base{' '}
-                {currentProvider.type === 'gemini' ? 'OpenAI-compatible' : ''}{' '}
-                endpoint to use. See the{' '}
-                <Text type="danger">
-                  {currentProvider.name} documentation
-                </Text>{' '}
-                for more information.
-              </Text>
-              <Form.Item
-                name="baseUrl"
-                style={{ marginBottom: 0, marginTop: 16 }}
-              >
-                <Input placeholder="Base URL" disabled={!canEditProviders || !currentProvider.enabled} />
-              </Form.Item>
+                <Divider style={{ margin: 0 }} />
+
+                <div>
+                  <Title level={5}>Base URL</Title>
+                  <Text type="secondary">
+                    The base{' '}
+                    {currentProvider.type === 'gemini' ? 'OpenAI-compatible' : ''}{' '}
+                    endpoint to use. See the{' '}
+                    <Text type="danger">{currentProvider.name} documentation</Text>{' '}
+                    for more information.
+                  </Text>
+                  <Form.Item
+                    name="baseUrl"
+                    style={{ marginBottom: 0, marginTop: 16 }}
+                  >
+                    <Input
+                      placeholder="Base URL"
+                      disabled={!canEditProviders}
+                    />
+                  </Form.Item>
+                </div>
+              </Space>
             </Card>
           </Form>
         )}
@@ -732,7 +746,7 @@ export function ModelProvidersSettings() {
         <Card
           title="Models"
           extra={
-            canEditProviders && currentProvider.enabled && (
+            canEditProviders && (
               <Button
                 type="text"
                 icon={<PlusOutlined />}
@@ -753,7 +767,8 @@ export function ModelProvidersSettings() {
               <Button 
                 icon={<PlusOutlined />}
                 block={isMobile}
-                disabled={!canEditProviders || !currentProvider.enabled}
+                disabled={!canEditProviders}
+                onClick={() => setIsAddModelModalOpen(true)}
               >
                 Import
               </Button>
@@ -765,46 +780,52 @@ export function ModelProvidersSettings() {
             locale={{ emptyText: 'No models added yet' }}
             renderItem={model => (
               <List.Item
-                actions={canEditProviders && currentProvider.enabled ? [
-                  currentProvider.type === 'llama.cpp' && (
-                    <Button
-                      key="start-stop"
-                      type={model.isActive ? "default" : "primary"}
-                      size={isMobile ? "small" : "middle"}
-                      onClick={() => handleStartStopModel(model.id, !model.isActive)}
-                    >
-                      {model.isActive ? 'Stop' : 'Start'}
-                    </Button>
-                  ),
-                  <Button
-                    key="edit"
-                    type="text"
-                    icon={<EditOutlined />}
-                    size={isMobile ? "small" : "middle"}
-                    onClick={() => {
-                      setSelectedModel(model)
-                      setIsEditModelModalOpen(true)
-                    }}
-                  >
-                    {!isMobile && "Edit"}
-                  </Button>,
-                  <Button
-                    key="delete"
-                    type="text"
-                    icon={<DeleteOutlined />}
-                    size={isMobile ? "small" : "middle"}
-                    onClick={() => handleDeleteModel(model.id)}
-                  >
-                    {!isMobile && "Delete"}
-                  </Button>,
-                ].filter(Boolean) : []}
+                actions={
+                  canEditProviders
+                    ? [
+                        currentProvider.type === 'llama.cpp' && currentProvider.enabled && (
+                          <Button
+                            key="start-stop"
+                            type={model.isActive ? 'default' : 'primary'}
+                            size={isMobile ? 'small' : 'middle'}
+                            onClick={() =>
+                              handleStartStopModel(model.id, !model.isActive)
+                            }
+                          >
+                            {model.isActive ? 'Stop' : 'Start'}
+                          </Button>
+                        ),
+                        <Button
+                          key="edit"
+                          type="text"
+                          icon={<EditOutlined />}
+                          size={isMobile ? 'small' : 'middle'}
+                          onClick={() => {
+                            setSelectedModel(model)
+                            setIsEditModelModalOpen(true)
+                          }}
+                        >
+                          {!isMobile && 'Edit'}
+                        </Button>,
+                        <Button
+                          key="delete"
+                          type="text"
+                          icon={<DeleteOutlined />}
+                          size={isMobile ? 'small' : 'middle'}
+                          onClick={() => handleDeleteModel(model.id)}
+                        >
+                          {!isMobile && 'Delete'}
+                        </Button>,
+                      ].filter(Boolean)
+                    : []
+                }
               >
                 <List.Item.Meta
                   avatar={
                     <Switch
                       checked={model.enabled !== false}
-                      onChange={(checked) => handleToggleModel(model.id, checked)}
-                      disabled={!canEditProviders || !currentProvider.enabled}
+                      onChange={checked => handleToggleModel(model.id, checked)}
+                      disabled={!canEditProviders}
                     />
                   }
                   title={
@@ -817,13 +838,23 @@ export function ModelProvidersSettings() {
                   }
                   description={
                     <Space direction="vertical" size="small">
-                      {model.description && <Text type="secondary">{model.description}</Text>}
+                      {model.description && (
+                        <Text type="secondary">{model.description}</Text>
+                      )}
                       {model.capabilities && (
                         <Space size="small" wrap>
-                          {model.capabilities.vision && <Text type="secondary">👁️ Vision</Text>}
-                          {model.capabilities.audio && <Text type="secondary">🎵 Audio</Text>}
-                          {model.capabilities.tools && <Text type="secondary">🔧 Tools</Text>}
-                          {model.capabilities.codeInterpreter && <Text type="secondary">💻 Code</Text>}
+                          {model.capabilities.vision && (
+                            <Text type="secondary">👁️ Vision</Text>
+                          )}
+                          {model.capabilities.audio && (
+                            <Text type="secondary">🎵 Audio</Text>
+                          )}
+                          {model.capabilities.tools && (
+                            <Text type="secondary">🔧 Tools</Text>
+                          )}
+                          {model.capabilities.codeInterpreter && (
+                            <Text type="secondary">💻 Code</Text>
+                          )}
                         </Space>
                       )}
                     </Space>
@@ -856,7 +887,9 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch disabled={!canEditProviders || !currentProvider.enabled} />
+                    <Switch
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -871,7 +904,9 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch disabled={!canEditProviders || !currentProvider.enabled} />
+                    <Switch
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -886,7 +921,9 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch disabled={!canEditProviders || !currentProvider.enabled} />
+                    <Switch
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -900,7 +937,12 @@ export function ModelProvidersSettings() {
                     name="parallelOperations"
                     style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                   >
-                    <InputNumber min={1} max={16} style={{ width: '100%' }} disabled={!canEditProviders || !currentProvider.enabled} />
+                    <InputNumber
+                      min={1}
+                      max={16}
+                      style={{ width: '100%' }}
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -914,7 +956,11 @@ export function ModelProvidersSettings() {
                     name="cpuThreads"
                     style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                   >
-                    <InputNumber placeholder="-1 (auto)" style={{ width: '100%' }} disabled={!canEditProviders || !currentProvider.enabled} />
+                    <InputNumber
+                      placeholder="-1 (auto)"
+                      style={{ width: '100%' }}
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -928,7 +974,11 @@ export function ModelProvidersSettings() {
                     name="threadsBatch"
                     style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                   >
-                    <InputNumber placeholder="-1 (same as Threads)" style={{ width: '100%' }} disabled={!canEditProviders || !currentProvider.enabled} />
+                    <InputNumber
+                      placeholder="-1 (same as Threads)"
+                      style={{ width: '100%' }}
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -943,7 +993,9 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch disabled={!canEditProviders || !currentProvider.enabled} />
+                    <Switch
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -958,7 +1010,9 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch disabled={!canEditProviders || !currentProvider.enabled} />
+                    <Switch
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -974,7 +1028,7 @@ export function ModelProvidersSettings() {
                   >
                     <Select
                       style={{ width: '100%' }}
-                      disabled={!canEditProviders || !currentProvider.enabled}
+                      disabled={!canEditProviders}
                       options={[
                         { value: 'q8_0', label: 'q8_0' },
                         { value: 'q4_0', label: 'q4_0' },
@@ -997,7 +1051,9 @@ export function ModelProvidersSettings() {
                     valuePropName="checked"
                     style={{ margin: 0 }}
                   >
-                    <Switch disabled={!canEditProviders || !currentProvider.enabled} />
+                    <Switch
+                      disabled={!canEditProviders}
+                    />
                   </Form.Item>
                 </ResponsiveConfigItem>
 
@@ -1007,20 +1063,20 @@ export function ModelProvidersSettings() {
                   <Text strong>Hugging Face Access Token</Text>
                   <div>
                     <Text type="secondary">
-                      Access tokens programmatically authenticate your
-                      identity to the Hugging Face Hub, allowing
-                      applications to perform specific actions specified by
-                      the scope of permissions granted.
+                      Access tokens programmatically authenticate your identity
+                      to the Hugging Face Hub, allowing applications to perform
+                      specific actions specified by the scope of permissions
+                      granted.
                     </Text>
                   </div>
                   <Form.Item
                     name="huggingFaceAccessToken"
                     style={{ marginTop: 8, marginBottom: 0 }}
                   >
-                    <Input.Password 
+                    <Input.Password
                       placeholder="hf_*****************************"
                       style={{ width: '100%' }}
-                      disabled={!canEditProviders || !currentProvider.enabled}
+                      disabled={!canEditProviders}
                     />
                   </Form.Item>
                 </div>
@@ -1086,7 +1142,9 @@ export function ModelProvidersSettings() {
                   <Flex justify="space-between" align="center">
                     <Flex align="center" gap="middle">
                       <span style={{ fontSize: '20px' }}>
-                        {currentProvider ? PROVIDER_ICONS[currentProvider.type] : ''}
+                        {currentProvider
+                          ? PROVIDER_ICONS[currentProvider.type]
+                          : ''}
                       </span>
                       <span>{currentProvider?.name}</span>
                     </Flex>

@@ -1,14 +1,14 @@
 import {
-  Modal,
+  Button,
+  Checkbox,
   Form,
   Input,
-  Button,
+  InputNumber,
+  message,
+  Modal,
   Space,
   Typography,
-  Checkbox,
-  InputNumber,
   Upload,
-  message,
 } from 'antd'
 import { useState } from 'react'
 import { UploadOutlined } from '@ant-design/icons'
@@ -37,7 +37,7 @@ export function AddModelModal({
     try {
       setLoading(true)
       const values = await form.validateFields()
-      
+
       const modelData = {
         id: `model-${Date.now()}`,
         ...values,
@@ -75,17 +75,13 @@ export function AddModelModal({
   const renderLlamaCppParameters = () => (
     <>
       <Title level={5}>Parameters</Title>
-      
+
       <Form.Item
         label="Context Size"
         name={['parameters', 'contextSize']}
         help="Size of the prompt context (0 = loaded from model)"
       >
-        <InputNumber
-          placeholder="8192"
-          style={{ width: '100%' }}
-          min={0}
-        />
+        <InputNumber placeholder="8192" style={{ width: '100%' }} min={0} />
       </Form.Item>
 
       <Form.Item
@@ -93,11 +89,7 @@ export function AddModelModal({
         name={['parameters', 'gpuLayers']}
         help="Number of model layers to offload to the GPU (-1 for all layers, 0 for CPU only)"
       >
-        <InputNumber
-          placeholder="100"
-          style={{ width: '100%' }}
-          min={-1}
-        />
+        <InputNumber placeholder="100" style={{ width: '100%' }} min={-1} />
       </Form.Item>
 
       <Form.Item
@@ -119,11 +111,7 @@ export function AddModelModal({
         name={['parameters', 'topK']}
         help="Top-K sampling (0 = disabled)"
       >
-        <InputNumber
-          placeholder="40"
-          style={{ width: '100%' }}
-          min={0}
-        />
+        <InputNumber placeholder="40" style={{ width: '100%' }} min={0} />
       </Form.Item>
 
       <Form.Item
@@ -159,11 +147,7 @@ export function AddModelModal({
         name={['parameters', 'repeatLastN']}
         help="Number of tokens to consider for repeat penalty (0 = disabled, -1 = ctx_size)"
       >
-        <InputNumber
-          placeholder="64"
-          style={{ width: '100%' }}
-          min={-1}
-        />
+        <InputNumber placeholder="64" style={{ width: '100%' }} min={-1} />
       </Form.Item>
 
       <Form.Item
@@ -257,10 +241,7 @@ export function AddModelModal({
         </Form.Item>
 
         <Form.Item name="description" label="Description">
-          <TextArea
-            placeholder="Enter model description"
-            rows={3}
-          />
+          <TextArea placeholder="Enter model description" rows={3} />
         </Form.Item>
 
         {providerType === 'llama.cpp' && (
@@ -288,16 +269,32 @@ export function AddModelModal({
 
         <Title level={5}>Capabilities</Title>
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Form.Item name="vision" valuePropName="checked" style={{ marginBottom: 8 }}>
+          <Form.Item
+            name="vision"
+            valuePropName="checked"
+            style={{ marginBottom: 8 }}
+          >
             <Checkbox>Vision</Checkbox>
           </Form.Item>
-          <Form.Item name="audio" valuePropName="checked" style={{ marginBottom: 8 }}>
+          <Form.Item
+            name="audio"
+            valuePropName="checked"
+            style={{ marginBottom: 8 }}
+          >
             <Checkbox>Audio</Checkbox>
           </Form.Item>
-          <Form.Item name="tools" valuePropName="checked" style={{ marginBottom: 8 }}>
+          <Form.Item
+            name="tools"
+            valuePropName="checked"
+            style={{ marginBottom: 8 }}
+          >
             <Checkbox>Tools</Checkbox>
           </Form.Item>
-          <Form.Item name="codeInterpreter" valuePropName="checked" style={{ marginBottom: 8 }}>
+          <Form.Item
+            name="codeInterpreter"
+            valuePropName="checked"
+            style={{ marginBottom: 8 }}
+          >
             <Checkbox>Code Interpreter</Checkbox>
           </Form.Item>
         </Space>

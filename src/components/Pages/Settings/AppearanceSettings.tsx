@@ -1,13 +1,4 @@
-import {
-  App,
-  Card,
-  Divider,
-  Flex,
-  Form,
-  Select,
-  Space,
-  Typography,
-} from 'antd'
+import { App, Card, Divider, Flex, Form, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useAppearanceSettings } from '../../../store'
 

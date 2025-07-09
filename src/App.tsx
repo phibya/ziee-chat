@@ -15,6 +15,8 @@ import { HubPage } from './components/Pages/HubPage'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { ModelsPage } from './components/Pages/ModelsPage'
 import {
+  AdminAppearanceSettings,
+  AdminGeneralSettings,
   AppearanceSettings,
   ExtensionsSettings,
   GeneralSettings,
@@ -26,8 +28,6 @@ import {
   ShortcutsSettings,
   UserGroupsSettings,
   UsersSettings,
-  AdminAppearanceSettings,
-  AdminGeneralSettings,
 } from './components/Pages/Settings'
 import { initializeUserSettings, useAppearanceSettings } from './store/settings'
 import { Permission, usePermissions } from './permissions'
@@ -71,7 +71,9 @@ function App() {
                 <Route path="appearance" element={<AppearanceSettings />} />
                 <Route path="privacy" element={<PrivacySettings />} />
                 {/* Model Providers: Main settings for desktop, Admin section for web */}
-                {(isDesktopApp || (!isDesktopApp && hasPermission(Permission.config.modelProviders.read))) && (
+                {(isDesktopApp ||
+                  (!isDesktopApp &&
+                    hasPermission(Permission.config.modelProviders.read))) && (
                   <Route
                     path="model-providers"
                     element={<ModelProvidersSettings />}
