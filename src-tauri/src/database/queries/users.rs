@@ -12,12 +12,19 @@ pub async fn create_user(
     let pool = get_database_pool()?;
     let mut tx = pool.begin().await?;
 
+    // Check if this is the first user in the system
+    let user_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(&mut *tx)
+        .await?;
+    let is_first_user = user_count.0 == 0;
+
     // Insert user
     let user_row = sqlx::query(
-    "INSERT INTO users (username, profile) VALUES ($1, $2) RETURNING id, username, created_at, profile, is_active, last_login_at, updated_at"
+    "INSERT INTO users (username, profile, is_protected) VALUES ($1, $2, $3) RETURNING id, username, created_at, profile, is_active, is_protected, last_login_at, updated_at"
   )
     .bind(&username)
     .bind(&profile)
+    .bind(is_first_user) // Mark first user as protected
     .fetch_one(&mut *tx)
     .await?;
 
@@ -27,6 +34,7 @@ pub async fn create_user(
         created_at: user_row.get("created_at"),
         profile: user_row.get("profile"),
         is_active: user_row.get("is_active"),
+        is_protected: user_row.get("is_protected"),
         last_login_at: user_row.get("last_login_at"),
         updated_at: user_row.get("updated_at"),
     };
@@ -128,6 +136,7 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
         created_at: user_row.get("created_at"),
         profile: user_row.get("profile"),
         is_active: user_row.get("is_active"),
+        is_protected: user_row.get("is_protected"),
         last_login_at: user_row.get("last_login_at"),
         updated_at: user_row.get("updated_at"),
     };
@@ -543,11 +552,29 @@ pub async fn update_last_login(user_id: Uuid) -> Result<(), sqlx::Error> {
 pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let result =
-        sqlx::query("UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active")
+    // Check if user is protected
+    let user_info: Option<(bool, bool)> = sqlx::query_as(
+        "SELECT is_active, is_protected FROM users WHERE id = $1"
+    )
+    .bind(user_id)
+    .fetch_optional(&*pool)
+    .await?;
+
+    if let Some((is_active, is_protected)) = user_info {
+        // If user is protected and currently active, prevent deactivation
+        if is_protected && is_active {
+            return Err(sqlx::Error::RowNotFound); // Return error to prevent deactivation
+        }
+        
+        // Allow toggle if user is not protected, or if protected user is being reactivated
+        let result = sqlx::query("UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active")
             .bind(user_id)
             .fetch_optional(&*pool)
             .await?;
 
-    Ok(result.map_or(false, |r| r.get("is_active")))
+        Ok(result.map_or(false, |r| r.get("is_active")))
+    } else {
+        // User not found
+        Ok(false)
+    }
 }

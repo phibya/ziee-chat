@@ -16,7 +16,7 @@ pub async fn create_user_group(
         r#"
         INSERT INTO user_groups (name, description, permissions)
         VALUES ($1, $2, $3)
-        RETURNING id, name, description, permissions, is_active, created_at, updated_at
+        RETURNING id, name, description, permissions, is_protected, is_active, created_at, updated_at
         "#,
     )
     .bind(&name)
@@ -34,6 +34,7 @@ pub async fn create_user_group(
         description: row.get("description"),
         permissions: row.get("permissions"),
         model_provider_ids,
+        is_protected: row.get("is_protected"),
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
@@ -61,6 +62,7 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
         description: row.get("description"),
         permissions: row.get("permissions"),
         model_provider_ids,
+        is_protected: row.get("is_protected"),
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
@@ -88,6 +90,7 @@ pub async fn get_user_group_by_name(name: &str) -> Result<Option<UserGroup>, sql
         description: row.get("description"),
         permissions: row.get("permissions"),
         model_provider_ids,
+        is_protected: row.get("is_protected"),
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
@@ -125,6 +128,7 @@ pub async fn list_user_groups(
             description: row.get("description"),
             permissions: row.get("permissions"),
             model_provider_ids,
+            is_protected: row.get("is_protected"),
             is_active: row.get("is_active"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
@@ -148,11 +152,15 @@ pub async fn update_user_group(
 ) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    // Check if this is a protected group (admin or user)
+    // Check if this is a protected group and apply restrictions
     let existing_group = get_user_group_by_id(group_id).await?;
     if let Some(group) = &existing_group {
-        if group.name == "admin" || group.name == "user" {
-            return Err(sqlx::Error::RowNotFound);
+        if group.is_protected {
+            // For protected groups, only allow editing description
+            // Name, permissions, and is_active cannot be changed
+            if name.is_some() || permissions.is_some() || is_active.is_some() {
+                return Err(sqlx::Error::RowNotFound);
+            }
         }
     }
 
@@ -180,6 +188,14 @@ pub async fn update_user_group(
         param_index += 1;
     }
 
+    // If no updates are provided, return the existing group
+    if updates.is_empty() {
+        return get_user_group_by_id(group_id).await;
+    }
+
+    // Always update the updated_at field
+    updates.push(" updated_at = CURRENT_TIMESTAMP".to_string());
+    
     query.push_str(&updates.join(","));
     query.push_str(&format!(" WHERE id = ${} RETURNING *", param_index));
 
@@ -215,6 +231,7 @@ pub async fn update_user_group(
         description: row.get("description"),
         permissions: row.get("permissions"),
         model_provider_ids,
+        is_protected: row.get("is_protected"),
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
@@ -227,7 +244,7 @@ pub async fn delete_user_group(group_id: Uuid) -> Result<bool, sqlx::Error> {
     // Check if this is a protected group (admin or user)
     let existing_group = get_user_group_by_id(group_id).await?;
     if let Some(group) = existing_group {
-        if group.name == "admin" || group.name == "user" {
+        if group.is_protected {
             return Err(sqlx::Error::RowNotFound);
         }
     }
@@ -263,6 +280,21 @@ pub async fn assign_user_to_group(
 pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
 
+    // Check if user is protected
+    let user_protected: Option<(bool,)> = sqlx::query_as(
+        "SELECT is_protected FROM users WHERE id = $1"
+    )
+    .bind(user_id)
+    .fetch_optional(&*pool)
+    .await?;
+
+    if let Some((is_protected,)) = user_protected {
+        if is_protected {
+            // Protected users cannot be removed from groups
+            return Err(sqlx::Error::RowNotFound);
+        }
+    }
+
     let result =
         sqlx::query("DELETE FROM user_group_memberships WHERE user_id = $1 AND group_id = $2")
             .bind(user_id)
@@ -295,6 +327,7 @@ pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroupDb>, sqlx::Er
             name: row.get("name"),
             description: row.get("description"),
             permissions: row.get("permissions"),
+            is_protected: row.get("is_protected"),
             is_active: row.get("is_active"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),

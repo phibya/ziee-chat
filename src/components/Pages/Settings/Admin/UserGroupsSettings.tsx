@@ -173,13 +173,15 @@ export function UserGroupsSettings() {
     try {
       const updateData: UpdateUserGroupRequest = {
         group_id: selectedGroup.id,
-        name: values.name,
+        name: selectedGroup.is_protected ? undefined : values.name,
         description: values.description,
-        permissions: values.permissions
-          ? JSON.parse(values.permissions)
-          : undefined,
+        permissions: selectedGroup.is_protected
+          ? undefined
+          : values.permissions
+            ? JSON.parse(values.permissions)
+            : undefined,
         model_provider_ids: values.model_provider_ids || [],
-        is_active: values.is_active,
+        is_active: selectedGroup.is_protected ? undefined : values.is_active,
       }
       await ApiClient.Admin.updateGroup(updateData)
       message.success('User group updated successfully')
@@ -253,6 +255,7 @@ export function UserGroupsSettings() {
         <Space>
           <TeamOutlined />
           <span>{name}</span>
+          {record.is_protected && <Tag color="orange">Protected</Tag>}
           {!record.is_active && <Tag color="red">Inactive</Tag>}
         </Space>
       ),
@@ -339,7 +342,7 @@ export function UserGroupsSettings() {
               Edit
             </Button>
           )}
-          {canDeleteGroups && (
+          {canDeleteGroups && !record.is_protected && (
             <Popconfirm
               title="Are you sure you want to delete this group?"
               onConfirm={() => handleDeleteGroup(record.id)}
@@ -517,9 +520,17 @@ export function UserGroupsSettings() {
           <Form.Item
             name="name"
             label="Group Name"
+            tooltip={
+              selectedGroup?.is_protected
+                ? 'Protected groups cannot have their name changed'
+                : undefined
+            }
             rules={[{ required: true, message: 'Please enter group name' }]}
           >
-            <Input placeholder="Enter group name" />
+            <Input
+              placeholder="Enter group name"
+              disabled={selectedGroup?.is_protected}
+            />
           </Form.Item>
           <Form.Item name="description" label="Description">
             <TextArea rows={3} placeholder="Enter group description" />
@@ -527,6 +538,11 @@ export function UserGroupsSettings() {
           <Form.Item
             name="permissions"
             label="Permissions (JSON)"
+            tooltip={
+              selectedGroup?.is_protected
+                ? 'Protected groups cannot have their permissions modified'
+                : undefined
+            }
             rules={[
               {
                 validator: (_, value) => {
@@ -541,7 +557,7 @@ export function UserGroupsSettings() {
               },
             ]}
           >
-            <TextArea rows={6} />
+            <TextArea rows={6} disabled={selectedGroup?.is_protected} />
           </Form.Item>
 
           {canManageModelProviders && (
@@ -568,8 +584,17 @@ export function UserGroupsSettings() {
             </Form.Item>
           )}
 
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
-            <Switch />
+          <Form.Item
+            name="is_active"
+            label="Active"
+            valuePropName="checked"
+            tooltip={
+              selectedGroup?.is_protected
+                ? 'Protected groups cannot have their active status changed'
+                : undefined
+            }
+          >
+            <Switch disabled={selectedGroup?.is_protected} />
           </Form.Item>
           <Form.Item className="mb-0">
             <Space>

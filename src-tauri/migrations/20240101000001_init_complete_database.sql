@@ -17,6 +17,7 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     profile JSONB,
     is_active BOOLEAN DEFAULT TRUE,
+    is_protected BOOLEAN DEFAULT FALSE,
     last_login_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -56,6 +57,7 @@ CREATE TABLE user_groups (
     name VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
     permissions JSONB DEFAULT '[]', -- Array format for AWS-style permissions
+    is_protected BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
@@ -184,6 +186,7 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_created_at ON users(created_at);
 CREATE INDEX idx_users_profile ON users USING GIN(profile);
 CREATE INDEX idx_users_is_active ON users(is_active);
+CREATE INDEX idx_users_is_protected ON users(is_protected);
 CREATE INDEX idx_users_last_login_at ON users(last_login_at);
 CREATE INDEX idx_users_updated_at ON users(updated_at);
 
@@ -200,6 +203,7 @@ CREATE INDEX idx_user_login_tokens_token ON user_login_tokens(token);
 CREATE INDEX idx_user_login_tokens_expires_at ON user_login_tokens(expires_at);
 
 CREATE INDEX idx_user_groups_name ON user_groups(name);
+CREATE INDEX idx_user_groups_is_protected ON user_groups(is_protected);
 CREATE INDEX idx_user_groups_is_active ON user_groups(is_active);
 CREATE INDEX idx_user_groups_permissions ON user_groups USING GIN(permissions);
 
@@ -294,20 +298,22 @@ INSERT INTO configurations (name, value, description) VALUES
     ('proxy.hostSsl', 'false', 'Validate SSL certificates of destination hosts');
 
 -- Create default admin group with wildcard permissions
-INSERT INTO user_groups (name, description, permissions, is_active)
+INSERT INTO user_groups (name, description, permissions, is_protected, is_active)
 VALUES (
     'admin',
     'Administrator group with full permissions',
     '["*"]',
+    TRUE,
     TRUE
 );
 
 -- Create default user group with basic permissions
-INSERT INTO user_groups (name, description, permissions, is_active)
+INSERT INTO user_groups (name, description, permissions, is_protected, is_active)
 VALUES (
     'user',
     'Default user group with basic permissions',
     '["chat::use", "profile::edit", "settings::read", "settings::edit", "settings::delete"]',
+    TRUE,
     TRUE
 );
 

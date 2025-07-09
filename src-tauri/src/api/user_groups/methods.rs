@@ -8,9 +8,11 @@ use uuid::Uuid;
 
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
-    models::{AssignUserToGroupRequest, CreateUserGroupRequest, UpdateUserGroupRequest, 
-             AssignModelProviderToGroupRequest, UserGroupModelProviderResponse},
-    queries::{user_groups, user_group_model_providers},
+    models::{
+        AssignModelProviderToGroupRequest, AssignUserToGroupRequest, CreateUserGroupRequest,
+        UpdateUserGroupRequest, UserGroupModelProviderResponse,
+    },
+    queries::{user_group_model_providers, user_groups},
 };
 
 #[derive(Debug, Deserialize)]
@@ -35,13 +37,16 @@ pub async fn create_user_group(
                         group_id: group.id,
                         provider_id,
                     };
-                    if let Err(e) = user_group_model_providers::assign_model_provider_to_group(assign_request).await {
+                    if let Err(e) =
+                        user_group_model_providers::assign_model_provider_to_group(assign_request)
+                            .await
+                    {
                         eprintln!("Error assigning model provider to group: {}", e);
                         // Continue with other providers even if one fails
                     }
                 }
             }
-            
+
             // Return the updated group with model provider IDs
             match user_groups::get_user_group_by_id(group.id).await {
                 Ok(Some(updated_group)) => Ok(Json(updated_group)),
@@ -51,7 +56,7 @@ pub async fn create_user_group(
                     Err(StatusCode::INTERNAL_SERVER_ERROR)
                 }
             }
-        },
+        }
         Err(e) => {
             eprintln!("Error creating user group: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -100,17 +105,25 @@ pub async fn update_user_group(
     // Handle model provider assignments if provided
     if let Some(provider_ids) = &request.model_provider_ids {
         // First, get current assignments
-        let current_providers = user_group_model_providers::get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
-        
+        let current_providers =
+            user_group_model_providers::get_model_provider_ids_for_group(group_id)
+                .await
+                .unwrap_or_default();
+
         // Remove providers that are no longer in the list
         for current_provider in &current_providers {
             if !provider_ids.contains(current_provider) {
-                if let Err(e) = user_group_model_providers::remove_model_provider_from_group(group_id, *current_provider).await {
+                if let Err(e) = user_group_model_providers::remove_model_provider_from_group(
+                    group_id,
+                    *current_provider,
+                )
+                .await
+                {
                     eprintln!("Error removing model provider from group: {}", e);
                 }
             }
         }
-        
+
         // Add new providers
         for provider_id in provider_ids {
             if !current_providers.contains(provider_id) {
@@ -118,13 +131,15 @@ pub async fn update_user_group(
                     group_id,
                     provider_id: *provider_id,
                 };
-                if let Err(e) = user_group_model_providers::assign_model_provider_to_group(assign_request).await {
+                if let Err(e) =
+                    user_group_model_providers::assign_model_provider_to_group(assign_request).await
+                {
                     eprintln!("Error assigning model provider to group: {}", e);
                 }
             }
         }
     }
-    
+
     match user_groups::update_user_group(
         group_id,
         request.name,
@@ -250,7 +265,8 @@ pub async fn remove_model_provider_from_group(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path((group_id, provider_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, StatusCode> {
-    match user_group_model_providers::remove_model_provider_from_group(group_id, provider_id).await {
+    match user_group_model_providers::remove_model_provider_from_group(group_id, provider_id).await
+    {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -267,7 +283,10 @@ pub async fn list_user_group_model_provider_relationships(
     match user_group_model_providers::list_user_group_model_provider_relationships().await {
         Ok(relationships) => Ok(Json(relationships)),
         Err(e) => {
-            eprintln!("Error listing user group model provider relationships: {}", e);
+            eprintln!(
+                "Error listing user group model provider relationships: {}",
+                e
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }

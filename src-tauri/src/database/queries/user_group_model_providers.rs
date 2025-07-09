@@ -162,8 +162,8 @@ pub async fn get_model_providers_for_user(
     let has_read_permission = check_user_model_providers_read_permission(user_id).await?;
     
     if has_read_permission {
-        // User has read permission, return all enabled model providers
-        return get_all_enabled_model_providers().await;
+        // User has read permission, return all model providers (enabled and disabled)
+        return get_all_model_providers().await;
     }
 
     // User doesn't have read permission, return only providers assigned to their groups
@@ -215,6 +215,27 @@ async fn check_user_model_providers_read_permission(user_id: Uuid) -> Result<boo
     .await?;
 
     Ok(has_permission.is_some())
+}
+
+/// Get all model providers (for admin users)
+async fn get_all_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM model_providers ORDER BY is_default DESC, created_at ASC"
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut providers = Vec::new();
+    for (provider_id,) in provider_ids {
+        if let Some(provider) = get_model_provider_by_id(provider_id).await? {
+            providers.push(provider);
+        }
+    }
+
+    Ok(providers)
 }
 
 /// Get all enabled model providers

@@ -246,7 +246,14 @@ export function UsersSettings() {
         <Space>
           <UserOutlined />
           <div>
-            <div>{record.username}</div>
+            <div>
+              <span>{record.username}</span>
+              {record.is_protected && (
+                <Tag color="gold" className="ml-2">
+                  Protected
+                </Tag>
+              )}
+            </div>
             <Text type="secondary" className="text-xs">
               {record.emails[0]?.address}
             </Text>
@@ -302,7 +309,7 @@ export function UsersSettings() {
       key: 'actions',
       render: (_, record: User) => (
         <Space>
-          {canEditUsers && (
+          {canEditUsers && !record.is_protected && (
             <Button
               type="link"
               icon={<EditOutlined />}
@@ -311,7 +318,7 @@ export function UsersSettings() {
               Edit
             </Button>
           )}
-          {canEditUsers && (
+          {canEditUsers && !record.is_protected && (
             <Button
               type="link"
               icon={<LockOutlined />}
@@ -329,7 +336,7 @@ export function UsersSettings() {
               Groups
             </Button>
           )}
-          {canEditUsers && (
+          {canEditUsers && !(record.is_protected && record.is_active) && (
             <Popconfirm
               title={`${record.is_active ? 'Deactivate' : 'Activate'} this user?`}
               onConfirm={() => handleToggleActive(record.id)}
@@ -546,7 +553,8 @@ export function UsersSettings() {
         open={groupsDrawerVisible}
         width={400}
         extra={
-          canEditUsers && (
+          canEditUsers &&
+          !selectedUser?.is_protected && (
             <Button
               type="primary"
               icon={<PlusOutlined />}
@@ -565,7 +573,7 @@ export function UsersSettings() {
           renderItem={group => (
             <List.Item
               actions={[
-                canEditUsers && (
+                canEditUsers && !selectedUser?.is_protected && (
                   <Popconfirm
                     key="remove"
                     title="Remove user from this group?"

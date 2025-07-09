@@ -8,6 +8,7 @@ export interface User {
   profile?: any
   services: UserServices
   is_active: boolean
+  is_protected: boolean
   last_login_at?: string
   updated_at: string
   groups: UserGroup[]
@@ -39,6 +40,7 @@ export interface UserGroup {
   description?: string
   permissions: PermissionKey[] // Array of permission strings
   model_provider_ids: string[] // Array of model provider IDs assigned to this group
+  is_protected: boolean // Whether this group is protected (admin/user groups)
   is_active: boolean
   created_at: string
   updated_at: string
