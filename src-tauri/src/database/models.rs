@@ -502,8 +502,8 @@ pub struct AssistantListResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ConversationDb {
     pub id: Uuid,
-    pub title: String,
     pub user_id: Uuid,
+    pub title: String,
     pub assistant_id: Option<Uuid>,
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
@@ -515,36 +515,68 @@ pub struct ConversationDb {
 pub struct MessageDb {
     pub id: Uuid,
     pub conversation_id: Uuid,
-    pub parent_message_id: Option<Uuid>,
-    pub content: String,
+    pub parent_id: Option<Uuid>,
     pub role: String,
-    pub branch_index: i32,
+    pub content: String,
+    pub branch_id: Uuid,
+    pub is_active_branch: bool,
+    pub model_provider_id: Option<Uuid>,
+    pub model_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct MessageMetadataDb {
+    pub id: Uuid,
+    pub message_id: Uuid,
+    pub key: String,
+    pub value: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ConversationMetadataDb {
+    pub id: Uuid,
+    pub conversation_id: Uuid,
+    pub key: String,
+    pub value: serde_json::Value,
     pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Conversation {
     pub id: Uuid,
-    pub title: String,
     pub user_id: Uuid,
+    pub title: String,
     pub assistant_id: Option<Uuid>,
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub messages: Vec<Message>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub id: Uuid,
     pub conversation_id: Uuid,
-    pub parent_message_id: Option<Uuid>,
-    pub content: String,
+    pub parent_id: Option<Uuid>,
     pub role: String,
-    pub branch_index: i32,
+    pub content: String,
+    pub branch_id: Uuid,
+    pub is_active_branch: bool,
+    pub model_provider_id: Option<Uuid>,
+    pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
-    pub branches: Vec<Message>,
+    pub updated_at: DateTime<Utc>,
+    pub branches: Option<Vec<Message>>,
+    pub metadata: Option<Vec<MessageMetadata>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageMetadata {
+    pub key: String,
+    pub value: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -565,14 +597,19 @@ pub struct UpdateConversationRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendMessageRequest {
-    pub conversation_id: Uuid,
     pub content: String,
-    pub parent_message_id: Option<Uuid>,
+    pub parent_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditMessageRequest {
     pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreamChunk {
+    pub delta: String,
+    pub finish_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

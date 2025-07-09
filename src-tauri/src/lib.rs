@@ -576,8 +576,8 @@ fn create_rest_router() -> Router {
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
-            "/api/chat/messages",
-            post(api::chat::methods::send_message)
+            "/api/chat/messages/stream",
+            post(api::chat::methods::send_message_stream)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
@@ -586,8 +586,13 @@ fn create_rest_router() -> Router {
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
-            "/api/chat/search",
-            get(api::chat::methods::search_conversations)
+            "/api/chat/messages/{message_id}/branches",
+            get(api::chat::methods::get_message_branches)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}/branches/{branch_id}",
+            post(api::chat::methods::switch_branch)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .layer(middleware::from_fn(api::middleware::auth_middleware));

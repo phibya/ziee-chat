@@ -36,6 +36,7 @@ quote = "1.0"
 syn = { version = "2.0", features = ["full"] }
 paste = "1.0"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
+async-trait = "0.1"
 tauri-plugin-localhost = "2"
 reqwest = { version = "0.12", features = ["json"] }
 portpicker = "0.1"

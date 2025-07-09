@@ -4,25 +4,32 @@
 
 export interface Conversation {
   id: string
-  title: string
   user_id: string
+  title: string
   assistant_id?: string
   model_provider_id?: string
   model_id?: string
   created_at: string
   updated_at: string
-  messages: Message[]
 }
 
 export interface Message {
   id: string
   conversation_id: string
-  parent_message_id?: string
-  content: string
+  parent_id?: string
   role: 'user' | 'assistant' | 'system'
-  branch_index: number
+  content: string
+  branch_id: string
+  is_active_branch: boolean
+  model_provider_id?: string
+  model_id?: string
   created_at: string
-  branches: Message[]
+  updated_at: string
+  branches?: Message[]
+  metadata?: Array<{
+    key: string
+    value: any
+  }>
 }
 
 export interface CreateConversationRequest {
@@ -42,7 +49,9 @@ export interface UpdateConversationRequest {
 export interface SendMessageRequest {
   conversation_id: string
   content: string
-  parent_message_id?: string
+  parent_id?: string
+  model_provider_id: string
+  model_id: string
 }
 
 export interface EditMessageRequest {

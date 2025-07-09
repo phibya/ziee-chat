@@ -98,23 +98,12 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
       setAssistants(userAssistants)
       setCurrentUser(userResponse)
 
-      // Filter model providers based on user's group assignments
-      const userGroupIds = userResponse.groups.map(g => g.id)
-      const availableProviders = providersResponse.providers.filter(p => {
-        // If user is in any group, check if the provider is assigned to any of their groups
-        if (userGroupIds.length > 0) {
-          return (
-            p.enabled &&
-            userResponse.groups.some(
-              group =>
-                group.model_provider_ids &&
-                group.model_provider_ids.includes(p.id),
-            )
-          )
-        }
-        // If user is not in any groups, they can access all enabled providers (fallback)
-        return p.enabled
-      })
+      // The backend already filters model providers based on permissions
+      // Admin users with config::model-providers::read permission get all providers
+      // Other users only get providers assigned to their groups
+      const availableProviders = providersResponse.providers.filter(
+        p => p.enabled,
+      )
       setModelProviders(availableProviders)
 
       // Set default selections
@@ -421,7 +410,6 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
                     <Space>
                       <RobotOutlined />
                       {assistant.name}
-                      <Text type="secondary">(Personal)</Text>
                     </Space>
                   </Option>
                 ))}
@@ -439,19 +427,18 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
                 showSearch
                 optionFilterProp="children"
               >
-                {modelProviders.map(provider =>
-                  provider.models.map(model => (
-                    <Option
-                      key={`${provider.id}:${model.id}`}
-                      value={`${provider.id}:${model.id}`}
-                    >
-                      <Space>
-                        <Text>{model.name}</Text>
-                        <Text type="secondary">({provider.name})</Text>
-                      </Space>
-                    </Option>
-                  )),
-                )}
+                {modelProviders.map(provider => (
+                  <Select.OptGroup key={provider.id} label={provider.name}>
+                    {provider.models.map(model => (
+                      <Option
+                        key={`${provider.id}:${model.id}`}
+                        value={`${provider.id}:${model.id}`}
+                      >
+                        {model.name}
+                      </Option>
+                    ))}
+                  </Select.OptGroup>
+                ))}
               </Select>
             </Col>
           </Row>
