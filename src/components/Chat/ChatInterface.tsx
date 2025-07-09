@@ -56,6 +56,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
+  const [isStreaming, setIsStreaming] = useState(false)
   const [assistants, setAssistants] = useState<Assistant[]>([])
   const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
   const [_currentUser, setCurrentUser] = useState<User | null>(null)
@@ -127,15 +128,15 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
         conversation_id: conversationId,
       })
 
-      setConversation(conversationResponse)
+      setConversation(conversationResponse.conversation)
       setMessages(conversationResponse.messages)
 
-      if (conversationResponse.assistant_id) {
-        setSelectedAssistant(conversationResponse.assistant_id)
+      if (conversationResponse.conversation.assistant_id) {
+        setSelectedAssistant(conversationResponse.conversation.assistant_id)
       }
-      if (conversationResponse.model_provider_id) {
+      if (conversationResponse.conversation.model_provider_id) {
         setSelectedModel(
-          `${conversationResponse.model_provider_id}:${conversationResponse.model_id}`,
+          `${conversationResponse.conversation.model_provider_id}:${conversationResponse.conversation.model_id}`,
         )
       }
     } catch (error) {
@@ -174,7 +175,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
   }
 
   const handleSend = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() || !selectedAssistant || !selectedModel) return
 
     let currentConversation = conversation
     if (!currentConversation) {
@@ -182,35 +183,57 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
       if (!currentConversation) return
     }
 
+    const [providerId, modelId] = selectedModel.split(':')
+    const userInput = inputValue.trim()
+    setInputValue('')
+    setIsLoading(true)
+    setIsStreaming(true)
+
     try {
-      const userMessage = await ApiClient.Chat.sendMessage({
+      // Send the message to the backend
+      await ApiClient.Chat.sendMessage({
         conversation_id: currentConversation.id,
-        content: inputValue.trim(),
+        content: userInput,
+        model_provider_id: providerId,
+        model_id: modelId,
       })
 
+      // For now, add a user message immediately
+      const userMessage: Message = {
+        id: 'temp-' + Date.now(),
+        conversation_id: currentConversation.id,
+        role: 'user',
+        content: userInput,
+        branch_id: 'temp-branch',
+        is_active_branch: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
       setMessages(prev => [...prev, userMessage])
-      setInputValue('')
-      setIsLoading(true)
 
-      // Note: In a real implementation, this would stream the response
-      // For now, we'll simulate an AI response
-      setTimeout(async () => {
-        try {
-          const aiMessage = await ApiClient.Chat.sendMessage({
-            conversation_id: currentConversation.id,
-            content: `I received your message: "${inputValue.trim()}". This is a simulated response from the AI assistant. In a real implementation, this would be connected to your LLM backend.`,
-          })
-
-          setMessages(prev => [...prev, aiMessage])
-        } catch (error) {
-          message.error('Failed to get AI response')
-        } finally {
-          setIsLoading(false)
+      // TODO: Implement streaming response handling
+      // For now, simulate a response
+      setTimeout(() => {
+        const aiMessage: Message = {
+          id: 'temp-ai-' + Date.now(),
+          conversation_id: currentConversation.id,
+          role: 'assistant',
+          content: `I received your message: "${userInput}". This is a placeholder response. The actual AI integration will be implemented next.`,
+          branch_id: 'temp-branch-ai',
+          is_active_branch: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }
+
+        setMessages(prev => [...prev, aiMessage])
+        setIsLoading(false)
+        setIsStreaming(false)
       }, 1000)
     } catch (error) {
       message.error('Failed to send message')
       setIsLoading(false)
+      setIsStreaming(false)
     }
   }
 
@@ -223,6 +246,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
 
   const handleStopGeneration = () => {
     setIsLoading(false)
+    setIsStreaming(false)
     message.info('Generation stopped')
   }
 
@@ -358,7 +382,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
             <div className="flex items-center gap-2 mt-2">
               <Button size="small" type="text" icon={<LeftOutlined />} />
               <Text type="secondary" className="text-xs">
-                {msg.branch_index + 1} / {msg.branches.length}
+                1 / {msg.branches.length}
               </Text>
               <Button size="small" type="text" icon={<RightOutlined />} />
             </div>
@@ -568,7 +592,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
         ) : (
           <>
             {messages.map(renderMessage)}
-            {isLoading && (
+            {(isLoading || isStreaming) && (
               <div className="flex items-center gap-3 mb-4">
                 <Avatar
                   size="small"
@@ -588,7 +612,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
                     }
                   />
                   <Text type="secondary" className="ml-2">
-                    Thinking...
+                    {isStreaming ? 'Generating...' : 'Thinking...'}
                   </Text>
                 </Card>
               </div>
@@ -614,10 +638,10 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
             placeholder="Type your message..."
             autoSize={{ minRows: 1, maxRows: 4 }}
             className="flex-1"
-            disabled={isLoading}
+            disabled={isLoading || isStreaming}
           />
           <div className="flex gap-2">
-            {isLoading && (
+            {(isLoading || isStreaming) && (
               <Button
                 type="text"
                 icon={<StopOutlined />}
@@ -631,7 +655,7 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
               type="primary"
               icon={<SendOutlined />}
               onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading}
+              disabled={!inputValue.trim() || isLoading || isStreaming}
             >
               Send
             </Button>

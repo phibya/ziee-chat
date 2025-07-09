@@ -151,7 +151,8 @@ export const ApiEndpoints = {
   'Chat.sendMessage': 'POST /api/chat/messages/stream',
   'Chat.editMessage': 'PUT /api/chat/messages/{message_id}',
   'Chat.getMessageBranches': 'GET /api/chat/messages/{message_id}/branches',
-  'Chat.switchBranch': 'POST /api/chat/conversations/{conversation_id}/branches/{branch_id}',
+  'Chat.switchBranch':
+    'POST /api/chat/conversations/{conversation_id}/branches/{branch_id}',
   'Chat.searchConversations': 'GET /api/chat/search',
 } as const
 
