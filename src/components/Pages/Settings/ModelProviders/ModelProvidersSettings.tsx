@@ -113,7 +113,7 @@ export function ModelProvidersSettings() {
     if (!provider.api_key || provider.api_key.trim() === '') return false
     if (!provider.base_url || provider.base_url.trim() === '') return false
     try {
-      new URL(provider.base_url)
+      new globalThis.URL(provider.base_url)
       return true
     } catch {
       return false
@@ -130,7 +130,7 @@ export function ModelProvidersSettings() {
     if (!provider.base_url || provider.base_url.trim() === '')
       return 'Base URL is required'
     try {
-      new URL(provider.base_url)
+      new globalThis.URL(provider.base_url)
       return null
     } catch {
       return 'Invalid base URL format'

@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
             error: null,
           })
-        } catch (error) {
+        } catch {
           // Even if logout fails on server, clear local state
           set({
             user: null,

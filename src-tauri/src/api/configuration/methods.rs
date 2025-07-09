@@ -89,7 +89,7 @@ pub async fn get_user_registration_status(
 
 // Admin endpoint to check registration status
 pub async fn get_user_registration_status_admin(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<UserRegistrationStatusResponse>, StatusCode> {
     match is_user_registration_enabled().await {
         Ok(enabled) => Ok(Json(UserRegistrationStatusResponse { enabled })),
@@ -99,7 +99,7 @@ pub async fn get_user_registration_status_admin(
 
 // Admin endpoint to update registration status
 pub async fn update_user_registration_status(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateUserRegistrationRequest>,
 ) -> Result<Json<UserRegistrationStatusResponse>, StatusCode> {
     match set_user_registration_enabled(request.enabled).await {
@@ -120,7 +120,7 @@ pub async fn get_default_language_public() -> Result<Json<DefaultLanguageRespons
 
 // Admin endpoint to get default language
 pub async fn get_default_language_admin(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<DefaultLanguageResponse>, StatusCode> {
     match get_default_language().await {
         Ok(language) => Ok(Json(DefaultLanguageResponse { language })),
@@ -130,7 +130,7 @@ pub async fn get_default_language_admin(
 
 // Admin endpoint to update default language
 pub async fn update_default_language(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateDefaultLanguageRequest>,
 ) -> Result<Json<DefaultLanguageResponse>, StatusCode> {
     match set_default_language(&request.language).await {
@@ -250,9 +250,18 @@ pub async fn test_proxy_connection(
 }
 
 async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> Result<(), String> {
+    // Validate proxy URL format
+    if proxy_config.url.trim().is_empty() {
+        return Err("Proxy URL is empty".to_string());
+    }
+
+    // Parse and validate the proxy URL
+    let _proxy_url = reqwest::Url::parse(&proxy_config.url)
+        .map_err(|e| format!("Invalid proxy URL format: {}", e))?;
+
     // Create a reqwest client with proxy configuration
-    let mut proxy_builder =
-        reqwest::Proxy::all(&proxy_config.url).map_err(|e| format!("Invalid proxy URL: {}", e))?;
+    let mut proxy_builder = reqwest::Proxy::all(&proxy_config.url)
+        .map_err(|e| format!("Failed to create proxy: {}", e))?;
 
     // Add authentication if provided
     if !proxy_config.username.is_empty() {
@@ -262,7 +271,8 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
     // Build the client with proxy and SSL settings
     let mut client_builder = reqwest::Client::builder()
         .proxy(proxy_builder)
-        .timeout(std::time::Duration::from_secs(10));
+        .timeout(std::time::Duration::from_secs(30))  // Increased timeout for proxy connections
+        .no_proxy(); // Disable system proxy to ensure we only use our configured proxy
 
     // Configure SSL verification based on settings
     if proxy_config.ignore_ssl_certificates {
@@ -274,11 +284,24 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
     // Test the proxy by making a request to a reliable endpoint
-    // Using httpbin.org as it's a simple testing service
-    match client.get("https://httpbin.org/ip").send().await {
+    // Using httpbin.org as it's a simple testing service that returns IP info
+    let test_url = "https://httpbin.org/ip";
+    
+    match client.get(test_url).send().await {
         Ok(response) => {
             if response.status().is_success() {
-                Ok(())
+                // Try to read the response to ensure it's valid
+                match response.text().await {
+                    Ok(body) => {
+                        // Verify the response contains expected IP information
+                        if body.contains("origin") {
+                            Ok(())
+                        } else {
+                            Err(format!("Unexpected response format: {}", body))
+                        }
+                    }
+                    Err(e) => Err(format!("Failed to read response body: {}", e)),
+                }
             } else {
                 Err(format!(
                     "HTTP request failed with status: {}",
@@ -286,6 +309,18 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
                 ))
             }
         }
-        Err(e) => Err(format!("HTTP request failed: {}", e)),
+        Err(e) => {
+            // Check if it's a proxy-related error
+            let error_msg = e.to_string();
+            if error_msg.contains("proxy") || error_msg.contains("CONNECT") {
+                Err(format!("Proxy connection failed: {}", e))
+            } else if error_msg.contains("timeout") {
+                Err("Proxy connection timed out".to_string())
+            } else if error_msg.contains("dns") {
+                Err(format!("DNS resolution failed (check proxy settings): {}", e))
+            } else {
+                Err(format!("Network request failed: {}", e))
+            }
+        }
     }
 }

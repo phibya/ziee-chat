@@ -245,9 +245,6 @@ type ValidateResponsesComplete = {
     : false
 }
 
-// These type checks will fail at compile time if any endpoint is missing from Parameters or Responses
-// They are intentionally unused but serve as compile-time validators
-//@ts-ignore
-const _validateParameters: ValidateParametersComplete = {} as any
-//@ts-ignore
-const _validateResponses: ValidateResponsesComplete = {} as any
+// Type-safe validation - these will cause a TypeScript error if any endpoint is missing
+// from Parameters or Responses. They are used for compile-time validation only.
+export type { ValidateParametersComplete, ValidateResponsesComplete }

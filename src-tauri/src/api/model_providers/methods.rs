@@ -112,7 +112,7 @@ fn is_valid_url(url: &str) -> bool {
 pub async fn update_model_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-    Json(mut request): Json<UpdateModelProviderRequest>,
+    Json(request): Json<UpdateModelProviderRequest>,
 ) -> Result<Json<ModelProvider>, StatusCode> {
     // If trying to enable the provider, validate requirements
     if let Some(true) = request.enabled {

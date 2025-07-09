@@ -24,7 +24,7 @@ export const AuthPage: React.FC = () => {
         try {
           const response = await ApiClient.Config.getUserRegistrationStatus()
           setRegistrationEnabled(response.enabled)
-        } catch (error) {
+        } catch {
           // If we can't check status, assume registration is enabled
           setRegistrationEnabled(true)
         } finally {

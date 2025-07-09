@@ -105,7 +105,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
           } else {
             errorMessage = 'Permission denied'
           }
-        } catch (e) {
+        } catch {
           // If we can't parse the error response, use default permission denied message
           errorMessage = 'Permission denied'
         }
@@ -116,7 +116,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
           if (errorResponse.error) {
             errorMessage = errorResponse.error
           }
-        } catch (e) {
+        } catch {
           // If we can't parse the error response, use the default message
         }
       }
