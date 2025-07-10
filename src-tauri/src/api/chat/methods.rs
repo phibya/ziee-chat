@@ -1,10 +1,15 @@
 use axum::{
     extract::{Path, Query},
-    http::StatusCode,
+    http::{StatusCode, HeaderMap, HeaderValue},
+    response::{Response, Sse},
     Extension, Json,
 };
-use futures_util::StreamExt;
-use serde::Deserialize;
+use axum::response::sse::{Event, KeepAlive};
+use futures_util::{StreamExt, Stream};
+use serde::{Deserialize, Serialize};
+use std::convert::Infallible;
+use std::time::Duration;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::ai::{
@@ -41,6 +46,30 @@ pub struct ChatMessageRequest {
     pub parent_id: Option<Uuid>,
     pub model_provider_id: Uuid,
     pub model_id: Uuid,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StreamResponse {
+    pub r#type: String,
+    pub data: serde_json::Value,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StreamChunkData {
+    pub delta: String,
+    pub message_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StreamCompleteData {
+    pub message_id: String,
+    pub conversation_id: String,
+    pub total_tokens: Option<i32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct StreamErrorData {
+    pub error: String,
 }
 
 /// Create a new conversation
@@ -136,264 +165,330 @@ pub async fn delete_conversation(
     }
 }
 
-/// Send a message with AI provider integration
+/// Send a message with AI provider integration using SSE streaming
 pub async fn send_message_stream(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<ChatMessageRequest>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    println!(
-        "DEBUG: send_message_stream called with request: {:?}",
-        request
-    );
-    // Get the model provider configuration
-    let provider = match get_model_provider_by_id(request.model_provider_id).await {
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+    // Create a channel for streaming events
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+    
+    // Spawn a task to handle the async AI interaction
+    tokio::spawn(async move {
+        // Send initial event
+        let _ = tx.send(Ok(Event::default().data("start")));
+        
+        // Get the model provider configuration
+        let provider = match get_model_provider_by_id(request.model_provider_id).await {
         Ok(Some(provider)) => {
             println!("DEBUG: Found provider: {:?}", provider.name);
             provider
         }
         Ok(None) => {
-            println!(
-                "DEBUG: Provider not found for ID: {}",
-                request.model_provider_id
-            );
-            return Err(StatusCode::NOT_FOUND);
+            let _ = tx.send(Ok(Event::default()
+                .event("error")
+                .data(&serde_json::to_string(&StreamErrorData {
+                    error: "Provider not found".to_string()
+                }).unwrap_or_default())));
+            return;
         }
         Err(e) => {
-            eprintln!("Error getting model provider: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            let _ = tx.send(Ok(Event::default()
+                .event("error") 
+                .data(&serde_json::to_string(&StreamErrorData {
+                    error: format!("Error getting model provider: {}", e)
+                }).unwrap_or_default())));
+            return;
         }
     };
 
-    // Check if provider is enabled
-    if !provider.enabled {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
-    // Get the model to get the actual model name
-    let model = match get_model_by_id(request.model_id).await {
-        Ok(Some(model)) => {
-            println!("DEBUG: Found model: {:?}", model.name);
-            model
-        },
-        Ok(None) => {
-            println!("DEBUG: Model not found for ID: {}", request.model_id);
-            return Err(StatusCode::NOT_FOUND);
-        },
-        Err(e) => {
-            eprintln!("Error getting model: {}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        // Check if provider is enabled
+        if !provider.enabled {
+            let _ = tx.send(Ok(Event::default()
+                .event("error")
+                .data(&serde_json::to_string(&StreamErrorData {
+                    error: "Provider is disabled".to_string()
+                }).unwrap_or_default())));
+            return;
         }
-    };
 
-    // Get the assistant for instructions if available
-    let conversation =
-        match chat::get_conversation_by_id(request.conversation_id, auth_user.user.id).await {
-            Ok(Some(conv)) => conv,
-            Ok(None) => return Err(StatusCode::NOT_FOUND),
+        // Get the model to get the actual model name
+        let model = match get_model_by_id(request.model_id).await {
+            Ok(Some(model)) => {
+                println!("DEBUG: Found model: {:?}", model.name);
+                model
+            },
+            Ok(None) => {
+                let _ = tx.send(Ok(Event::default()
+                    .event("error")
+                    .data(&serde_json::to_string(&StreamErrorData {
+                        error: "Model not found".to_string()
+                    }).unwrap_or_default())));
+                return;
+            },
             Err(e) => {
-                eprintln!("Error getting conversation: {}", e);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                let _ = tx.send(Ok(Event::default()
+                    .event("error")
+                    .data(&serde_json::to_string(&StreamErrorData {
+                        error: format!("Error getting model: {}", e)
+                    }).unwrap_or_default())));
+                return;
             }
         };
 
-    // Build chat messages for AI provider
-    let mut messages = Vec::new();
+        // Get the assistant for instructions if available
+        let conversation = match chat::get_conversation_by_id(request.conversation_id, auth_user.user.id).await {
+            Ok(Some(conv)) => conv,
+            Ok(None) => {
+                let _ = tx.send(Ok(Event::default()
+                    .event("error")
+                    .data(&serde_json::to_string(&StreamErrorData {
+                        error: "Conversation not found".to_string()
+                    }).unwrap_or_default())));
+                return;
+            },
+            Err(e) => {
+                let _ = tx.send(Ok(Event::default()
+                    .event("error")
+                    .data(&serde_json::to_string(&StreamErrorData {
+                        error: format!("Error getting conversation: {}", e)
+                    }).unwrap_or_default())));
+                return;
+            }
+        };
 
-    // Add system message from assistant if available
-    if let Some(assistant_id) = conversation.assistant_id {
-        if let Ok(Some(assistant)) =
-            get_assistant_by_id(assistant_id, Some(auth_user.user.id)).await
-        {
-            if let Some(instructions) = assistant.instructions {
-                if !instructions.trim().is_empty() {
+        // Build chat messages for AI provider
+        let mut messages = Vec::new();
+
+        // Add system message from assistant if available
+        if let Some(assistant_id) = conversation.assistant_id {
+            if let Ok(Some(assistant)) =
+                get_assistant_by_id(assistant_id, Some(auth_user.user.id)).await
+            {
+                if let Some(instructions) = assistant.instructions {
+                    if !instructions.trim().is_empty() {
+                        messages.push(ChatMessage {
+                            role: "system".to_string(),
+                            content: instructions,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Get conversation history and add it to messages
+        match chat::get_conversation_messages(request.conversation_id, auth_user.user.id).await {
+            Ok(conversation_messages) => {
+                // Add each message from the conversation history
+                for msg in conversation_messages {
                     messages.push(ChatMessage {
-                        role: "system".to_string(),
-                        content: instructions,
+                        role: msg.role,
+                        content: msg.content,
                     });
                 }
             }
-        }
-    }
-
-    // Get conversation history and add it to messages
-    match chat::get_conversation_messages(request.conversation_id, auth_user.user.id).await {
-        Ok(conversation_messages) => {
-            // Add each message from the conversation history
-            for msg in conversation_messages {
-                messages.push(ChatMessage {
-                    role: msg.role,
-                    content: msg.content,
-                });
+            Err(e) => {
+                eprintln!("Warning: Could not load conversation history: {}", e);
+                // Continue without history rather than failing completely
             }
         }
-        Err(e) => {
-            eprintln!("Warning: Could not load conversation history: {}", e);
-            // Continue without history rather than failing completely
-        }
-    }
 
-    // Add the current user's message
-    messages.push(ChatMessage {
-        role: "user".to_string(),
-        content: request.content.clone(),
+        // Add the current user's message
+        messages.push(ChatMessage {
+            role: "user".to_string(),
+            content: request.content.clone(),
+        });
+
+        // Create AI provider
+        let ai_provider: Box<dyn AIProvider> = match provider.provider_type.as_str() {
+            "openai" => {
+                let proxy_config = if let Some(proxy_settings) = &provider.proxy_settings {
+                    Some(ProxyConfig {
+                        enabled: proxy_settings.enabled,
+                        url: proxy_settings.url.clone(),
+                        username: if proxy_settings.username.is_empty() {
+                            None
+                        } else {
+                            Some(proxy_settings.username.clone())
+                        },
+                        password: if proxy_settings.password.is_empty() {
+                            None
+                        } else {
+                            Some(proxy_settings.password.clone())
+                        },
+                        no_proxy: proxy_settings
+                            .no_proxy
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .collect(),
+                        ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
+                    })
+                } else {
+                    None
+                };
+
+                match OpenAIProvider::new(
+                    provider.api_key.unwrap_or_default(),
+                    provider.base_url,
+                    proxy_config,
+                ) {
+                    Ok(provider) => Box::new(provider),
+                    Err(e) => {
+                        let _ = tx.send(Ok(Event::default()
+                            .event("error")
+                            .data(&serde_json::to_string(&StreamErrorData {
+                                error: format!("Error creating OpenAI provider: {}", e)
+                            }).unwrap_or_default())));
+                        return;
+                    }
+                }
+            }
+            "anthropic" => {
+                let proxy_config = if let Some(proxy_settings) = &provider.proxy_settings {
+                    Some(ProxyConfig {
+                        enabled: proxy_settings.enabled,
+                        url: proxy_settings.url.clone(),
+                        username: if proxy_settings.username.is_empty() {
+                            None
+                        } else {
+                            Some(proxy_settings.username.clone())
+                        },
+                        password: if proxy_settings.password.is_empty() {
+                            None
+                        } else {
+                            Some(proxy_settings.password.clone())
+                        },
+                        no_proxy: proxy_settings
+                            .no_proxy
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .collect(),
+                        ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
+                    })
+                } else {
+                    None
+                };
+
+                match AnthropicProvider::new(
+                    provider.api_key.unwrap_or_default(),
+                    provider.base_url,
+                    proxy_config,
+                ) {
+                    Ok(provider) => Box::new(provider),
+                    Err(e) => {
+                        let _ = tx.send(Ok(Event::default()
+                            .event("error")
+                            .data(&serde_json::to_string(&StreamErrorData {
+                                error: format!("Error creating Anthropic provider: {}", e)
+                            }).unwrap_or_default())));
+                        return;
+                    }
+                }
+            }
+            _ => {
+                let _ = tx.send(Ok(Event::default()
+                    .event("error")
+                    .data(&serde_json::to_string(&StreamErrorData {
+                        error: format!("Unsupported provider type: {}", provider.provider_type)
+                    }).unwrap_or_default())));
+                return;
+            }
+        };
+
+        // Create chat request
+        let chat_request = ChatRequest {
+            messages,
+            model: model.name.clone(),
+            stream: true,
+            temperature: Some(0.7),
+            max_tokens: Some(4096),
+            top_p: Some(0.95),
+            frequency_penalty: None,
+            presence_penalty: None,
+        };
+
+        // First save the user message
+        let user_message_req = SendMessageRequest {
+            conversation_id: request.conversation_id,
+            content: request.content.clone(),
+            role: "user".to_string(),
+            parent_id: request.parent_id,
+            model_provider_id: request.model_provider_id,
+            model_id: request.model_id,
+        };
+
+        if let Err(e) = chat::send_message(user_message_req, auth_user.user.id).await {
+            let _ = tx.send(Ok(Event::default()
+                .event("error")
+                .data(&serde_json::to_string(&StreamErrorData {
+                    error: format!("Error saving user message: {}", e)
+                }).unwrap_or_default())));
+            return;
+        }
+
+        // Call AI provider
+        match ai_provider.chat(chat_request).await {
+            Ok(response) => {
+                // Stream the content back to the client
+                let _ = tx.send(Ok(Event::default()
+                    .event("chunk")
+                    .data(&serde_json::to_string(&StreamChunkData {
+                        delta: response.content.clone(),
+                        message_id: None,
+                    }).unwrap_or_default())));
+
+                // Save the assistant message
+                let assistant_message_req = SendMessageRequest {
+                    conversation_id: request.conversation_id,
+                    content: response.content.clone(),
+                    role: "assistant".to_string(),
+                    parent_id: None,
+                    model_provider_id: request.model_provider_id,
+                    model_id: request.model_id,
+                };
+
+                match chat::send_message(assistant_message_req, auth_user.user.id).await {
+                    Ok(assistant_message) => {
+                        // Update conversation title if needed
+                        if conversation.title == "New Conversation" {
+                            let _ = chat::auto_update_conversation_title(
+                                request.conversation_id,
+                                auth_user.user.id,
+                            ).await;
+                        }
+
+                        // Send completion event
+                        let _ = tx.send(Ok(Event::default()
+                            .event("complete")
+                            .data(&serde_json::to_string(&StreamCompleteData {
+                                message_id: assistant_message.id.to_string(),
+                                conversation_id: request.conversation_id.to_string(),
+                                total_tokens: response.usage.and_then(|u| u.total_tokens).map(|t| t as i32),
+                            }).unwrap_or_default())));
+                    }
+                    Err(e) => {
+                        let _ = tx.send(Ok(Event::default()
+                            .event("error")
+                            .data(&serde_json::to_string(&StreamErrorData {
+                                error: format!("Error saving assistant message: {}", e)
+                            }).unwrap_or_default())));
+                    }
+                }
+            }
+            Err(e) => {
+                let _ = tx.send(Ok(Event::default()
+                    .event("error")
+                    .data(&serde_json::to_string(&StreamErrorData {
+                        error: format!("Error calling AI provider: {}", e)
+                    }).unwrap_or_default())));
+            }
+        }
     });
 
-    // Create AI provider
-    let ai_provider: Box<dyn AIProvider> = match provider.provider_type.as_str() {
-        "openai" => {
-            let proxy_config = if let Some(proxy_settings) = &provider.proxy_settings {
-                Some(ProxyConfig {
-                    enabled: proxy_settings.enabled,
-                    url: proxy_settings.url.clone(),
-                    username: if proxy_settings.username.is_empty() {
-                        None
-                    } else {
-                        Some(proxy_settings.username.clone())
-                    },
-                    password: if proxy_settings.password.is_empty() {
-                        None
-                    } else {
-                        Some(proxy_settings.password.clone())
-                    },
-                    no_proxy: proxy_settings
-                        .no_proxy
-                        .split(',')
-                        .map(|s| s.trim().to_string())
-                        .collect(),
-                    ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
-                })
-            } else {
-                None
-            };
+    // Convert the receiver to a stream and return as SSE
+    let stream = UnboundedReceiverStream::new(rx);
 
-            match OpenAIProvider::new(
-                provider.api_key.unwrap_or_default(),
-                provider.base_url,
-                proxy_config,
-            ) {
-                Ok(provider) => Box::new(provider),
-                Err(e) => {
-                    eprintln!("Error creating OpenAI provider: {}", e);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
-            }
-        }
-        "anthropic" => {
-            let proxy_config = if let Some(proxy_settings) = &provider.proxy_settings {
-                Some(ProxyConfig {
-                    enabled: proxy_settings.enabled,
-                    url: proxy_settings.url.clone(),
-                    username: if proxy_settings.username.is_empty() {
-                        None
-                    } else {
-                        Some(proxy_settings.username.clone())
-                    },
-                    password: if proxy_settings.password.is_empty() {
-                        None
-                    } else {
-                        Some(proxy_settings.password.clone())
-                    },
-                    no_proxy: proxy_settings
-                        .no_proxy
-                        .split(',')
-                        .map(|s| s.trim().to_string())
-                        .collect(),
-                    ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
-                })
-            } else {
-                None
-            };
-
-            match AnthropicProvider::new(
-                provider.api_key.unwrap_or_default(),
-                provider.base_url,
-                proxy_config,
-            ) {
-                Ok(provider) => Box::new(provider),
-                Err(e) => {
-                    eprintln!("Error creating Anthropic provider: {}", e);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
-            }
-        }
-        _ => {
-            eprintln!("Unsupported provider type: {}", provider.provider_type);
-            return Err(StatusCode::BAD_REQUEST);
-        }
-    };
-
-    // Create chat request
-    let chat_request = ChatRequest {
-        messages,
-        model: model.name.clone(), // The name field should contain the provider model ID (e.g., "claude-3-sonnet-20240229")
-        stream: true,                        // Enable streaming
-        temperature: Some(0.7),
-        max_tokens: Some(4096),
-        top_p: Some(0.95),
-        frequency_penalty: None,
-        presence_penalty: None,
-    };
-
-    // Call AI provider
-    match ai_provider.chat(chat_request).await {
-        Ok(response) => {
-            // Create user message first
-            let user_message_req = SendMessageRequest {
-                conversation_id: request.conversation_id,
-                content: request.content.clone(),
-                role: "user".to_string(),
-                parent_id: request.parent_id,
-                model_provider_id: request.model_provider_id,
-                model_id: request.model_id,
-            };
-
-            let _user_message = match chat::send_message(user_message_req, auth_user.user.id).await
-            {
-                Ok(msg) => msg,
-                Err(e) => {
-                    eprintln!("Error saving user message: {}", e);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
-            };
-
-            // Create assistant message
-            let assistant_message_req = SendMessageRequest {
-                conversation_id: request.conversation_id,
-                content: response.content.clone(),
-                role: "assistant".to_string(),
-                parent_id: None, // Assistant message is a response to user message
-                model_provider_id: request.model_provider_id,
-                model_id: request.model_id,
-            };
-
-            match chat::send_message(assistant_message_req, auth_user.user.id).await {
-                Ok(_assistant_message) => {
-                    // Update conversation title if it's still "New Conversation"
-                    if conversation.title == "New Conversation" {
-                        let _ = chat::auto_update_conversation_title(
-                            request.conversation_id,
-                            auth_user.user.id,
-                        )
-                        .await;
-                    }
-                    
-                    Ok(Json(serde_json::json!({
-                        "content": response.content,
-                        "finish_reason": response.finish_reason,
-                        "usage": response.usage
-                    })))
-                }
-                Err(e) => {
-                    eprintln!("Error saving assistant message: {}", e);
-                    Err(StatusCode::INTERNAL_SERVER_ERROR)
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("Error calling AI provider: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 /// Helper function to get AI response for an edited message

@@ -21,6 +21,8 @@ export interface Message {
   content: string
   branch_id: string
   is_active_branch: boolean
+  originated_from_id?: string
+  edit_count: number
   model_provider_id?: string
   model_id?: string
   created_at: string

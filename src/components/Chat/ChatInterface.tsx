@@ -23,7 +23,7 @@ import { Assistant } from '../../types/api/assistant'
 import { ModelProvider } from '../../types/api/modelProvider'
 import { User } from '../../types/api/user'
 import { App } from 'antd'
-import ReactMarkdown from 'react-markdown'
+import { MarkdownRenderer } from './MarkdownRenderer'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -58,6 +58,20 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     [key: string]: boolean
   }>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const getAuthToken = () => {
+    if (typeof window === 'undefined') return null
+    const authData = localStorage.getItem('auth-storage')
+    if (authData) {
+      try {
+        const parsed = JSON.parse(authData)
+        return parsed.state?.token || null
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
 
   useEffect(() => {
     initializeData()
@@ -181,8 +195,54 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     setIsLoading(true)
     setIsStreaming(true)
 
+    // Add user message immediately to UI
+    const tempUserMessage: Message = {
+      id: `temp-${Date.now()}`,
+      conversation_id: currentConversation.id,
+      content: userInput,
+      role: 'user',
+      model_provider_id: providerId,
+      model_id: modelId,
+      branch_id: '', // Will be set by backend
+      is_active_branch: true,
+      originated_from_id: undefined,
+      edit_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    // Add temp assistant message for streaming
+    const tempAssistantMessage: Message = {
+      id: `temp-assistant-${Date.now()}`,
+      conversation_id: currentConversation.id,
+      content: '',
+      role: 'assistant',
+      model_provider_id: providerId,
+      model_id: modelId,
+      branch_id: '',
+      is_active_branch: true,
+      originated_from_id: undefined,
+      edit_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    setMessages(prev => [...prev, tempUserMessage, tempAssistantMessage])
+
+    // Get auth token
+    const token = getAuthToken()
+    if (!token) {
+      message.error('Authentication required')
+      setIsLoading(false)
+      setIsStreaming(false)
+      setMessages(prev => prev.filter(msg => 
+        msg.id !== tempUserMessage.id && msg.id !== tempAssistantMessage.id
+      ))
+      return
+    }
+
     try {
-      // Send the message to the backend
+      // First try using the regular API client to test the endpoint
       await ApiClient.Chat.sendMessage({
         conversation_id: currentConversation.id,
         content: userInput,
@@ -190,20 +250,23 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         model_id: modelId,
       })
 
-      // Reload the conversation to get the updated messages
+      // If successful, reload the conversation to get the actual messages
       const conversationResponse = await ApiClient.Chat.getConversation({
         conversation_id: currentConversation.id,
       })
 
       setMessages(conversationResponse.messages)
+      setIsLoading(false)
+      setIsStreaming(false)
 
-      // Reset loading states after successful completion
-      setIsLoading(false)
-      setIsStreaming(false)
     } catch (error) {
-      message.error('Failed to send message')
+      console.error('Chat error:', error)
+      message.error('Failed to send message: ' + (error instanceof Error ? error.message : 'Unknown error'))
       setIsLoading(false)
       setIsStreaming(false)
+      setMessages(prev => prev.filter(msg => 
+        msg.id !== tempUserMessage.id && msg.id !== tempAssistantMessage.id
+      ))
     }
   }
 
@@ -390,7 +453,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 {isUser ? (
                   msg.content
                 ) : (
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  <MarkdownRenderer content={msg.content} />
                 )}
               </div>
             )}
