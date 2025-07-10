@@ -1,6 +1,6 @@
+export { ComponentTokens, GlobalTokens } from './tokens'
 export { lightTheme } from './light'
 export { darkTheme } from './dark'
-export type { ThemeType } from './light'
 
 import { lightTheme } from './light'
 import { darkTheme } from './dark'

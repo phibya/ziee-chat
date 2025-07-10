@@ -1,9 +1,9 @@
 import { createContext, useContext } from 'react'
-import { ThemeType } from '../themes'
+import { ThemeConfig } from 'antd'
 
-export const ThemeContext = createContext<ThemeType | undefined>(undefined)
+export const ThemeContext = createContext<ThemeConfig | undefined>(undefined)
 
-export function useTheme(): ThemeType {
+export function useTheme(): ThemeConfig {
   const theme = useContext(ThemeContext)
   if (!theme) {
     throw new Error('useTheme must be used within a ThemeProvider')

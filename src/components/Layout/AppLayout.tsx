@@ -126,8 +126,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           top: 0,
           bottom: 0,
           zIndex: isMobile && mobileOverlayOpen ? 1050 : 1000,
-          backgroundColor: appTheme.sidebarBackground,
-          borderRight: `1px solid ${appTheme.sidebarBorder}`,
           transition: isResizing ? 'none' : 'width 0.2s ease',
           boxShadow:
             isMobile && mobileOverlayOpen
@@ -162,7 +160,6 @@ export function AppLayout({ children }: AppLayoutProps) {
           className="fixed top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors duration-200 z-[1001]"
           style={{
             left: `${leftPanelWidth - 2}px`,
-            backgroundColor: isResizing ? appTheme.primary : 'transparent',
           }}
           onMouseDown={handleMouseDown}
         />
@@ -182,12 +179,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         }}
         className="transition-all duration-200"
       >
-        <Content
-          className="m-0 p-0 min-h-72 flex flex-col"
-          style={{ backgroundColor: appTheme.background }}
-        >
-          {children}
-        </Content>
+        <Content className="m-0 p-0 min-h-72 flex flex-col">{children}</Content>
       </Layout>
     </Layout>
   )

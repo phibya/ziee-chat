@@ -18,7 +18,6 @@ import {
 } from '@ant-design/icons'
 import { useUISettings } from '../../store/settings'
 import { useAuthStore } from '../../store/auth'
-import { useTheme } from '../../hooks/useTheme'
 import { RecentConversations } from '../Chat/RecentConversations'
 
 const { Text } = Typography
@@ -39,7 +38,6 @@ export function LeftPanel({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const appTheme = useTheme()
   const { leftPanelCollapsed, setLeftPanelCollapsed } = useUISettings()
   const { user, logout, isDesktop } = useAuthStore()
 
@@ -119,14 +117,7 @@ export function LeftPanel({
   ]
 
   return (
-    <div
-      className="h-screen flex flex-col p-3 transition-all duration-200"
-      style={{
-        height: '100%',
-        backgroundColor: appTheme.sidebarBackground,
-        color: appTheme.sidebarText,
-      }}
-    >
+    <div className="h-screen flex flex-col p-3 transition-all duration-200">
       {/* Collapse Toggle */}
       <div
         className={`mb-3 flex ${(isMobile ? !mobileOverlayOpen : leftPanelCollapsed) ? 'justify-center' : 'justify-end'}`}
@@ -166,7 +157,6 @@ export function LeftPanel({
               }
             }}
             className="border-none px-2 py-1"
-            style={{ color: appTheme.sidebarTextSecondary }}
           />
         </Tooltip>
       </div>
@@ -191,20 +181,6 @@ export function LeftPanel({
                 onItemClick?.()
               }}
               className={`mb-1 w-full ${leftPanelCollapsed ? 'justify-center' : 'justify-start text-left'} h-9 border-none rounded-lg overflow-hidden`}
-              style={{
-                backgroundColor:
-                  item.type === 'primary'
-                    ? appTheme.primary
-                    : item.active
-                      ? appTheme.sidebarItemActive
-                      : 'transparent',
-                color:
-                  item.type === 'primary'
-                    ? '#ffffff'
-                    : item.active
-                      ? appTheme.primary
-                      : appTheme.sidebarText,
-              }}
             >
               <div>{item.icon}</div>
               {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
@@ -218,10 +194,7 @@ export function LeftPanel({
       {/* Recents Section */}
       {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
         <div className="mb-4">
-          <Text
-            className="text-xs font-semibold uppercase tracking-wider mb-2 block"
-            style={{ color: appTheme.sidebarTextSecondary }}
-          >
+          <Text className="text-xs font-semibold uppercase tracking-wider mb-2 block">
             Recents
           </Text>
         </div>
@@ -236,10 +209,7 @@ export function LeftPanel({
       />
 
       {/* Bottom Navigation */}
-      <div
-        className="border-t pt-3 mt-3"
-        style={{ borderColor: appTheme.sidebarBorder }}
-      >
+      <div className="border-t pt-3 mt-3">
         {bottomNavigationItems.map(item => (
           <Tooltip
             key={item.key}
@@ -258,12 +228,6 @@ export function LeftPanel({
                 onItemClick?.()
               }}
               className={`mb-1 w-full ${leftPanelCollapsed ? 'justify-center' : 'justify-start text-left'} h-9 border-none rounded-lg overflow-hidden`}
-              style={{
-                backgroundColor: item.active
-                  ? appTheme.sidebarItemActive
-                  : 'transparent',
-                color: item.active ? appTheme.primary : appTheme.sidebarText,
-              }}
             >
               <div>{item.icon}</div>
               {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
@@ -278,10 +242,7 @@ export function LeftPanel({
 
       {/* User Profile Section */}
       {user && (
-        <div
-          className="border-t pt-3 mt-3"
-          style={{ borderColor: appTheme.sidebarBorder }}
-        >
+        <div className="border-t pt-3 mt-3">
           {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) ? (
             <Dropdown
               menu={{
@@ -319,10 +280,6 @@ export function LeftPanel({
               <Button
                 type="text"
                 className="w-full justify-start text-left h-10 border-none rounded-lg overflow-hidden"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: appTheme.sidebarText,
-                }}
               >
                 <div className="flex items-center w-full">
                   <div className="flex-shrink-0">
@@ -332,10 +289,7 @@ export function LeftPanel({
                     <div className="text-sm font-medium truncate">
                       {user.username}
                     </div>
-                    <div
-                      className="text-xs truncate"
-                      style={{ color: appTheme.sidebarTextSecondary }}
-                    >
+                    <div className="text-xs truncate">
                       {user.emails[0]?.address}
                     </div>
                   </div>
@@ -351,10 +305,6 @@ export function LeftPanel({
               <Button
                 type="text"
                 className="w-full justify-center h-10 border-none rounded-lg"
-                style={{
-                  backgroundColor: 'transparent',
-                  color: appTheme.sidebarText,
-                }}
               >
                 <UserOutlined />
               </Button>

@@ -1,29 +1,38 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Input, Space, Spin, Typography, Select, Row, Col, Avatar } from 'antd'
+import {
+  App,
+  Avatar,
+  Button,
+  Col,
+  Input,
+  Row,
+  Select,
+  Space,
+  Spin,
+  Typography,
+} from 'antd'
 import { useTranslation } from 'react-i18next'
 import {
-  LoadingOutlined,
-  MessageOutlined,
-  RobotOutlined,
-  SendOutlined,
-  StopOutlined,
-  SaveOutlined,
   CloseOutlined,
   LeftOutlined,
+  LoadingOutlined,
+  MessageOutlined,
   RightOutlined,
+  RobotOutlined,
+  SaveOutlined,
+  SendOutlined,
+  StopOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { ApiClient } from '../../api/client'
-import { useTheme } from '../../hooks/useTheme'
 import {
   Conversation,
-  Message,
   CreateConversationRequest,
+  Message,
 } from '../../types/api/chat'
 import { Assistant } from '../../types/api/assistant'
 import { ModelProvider } from '../../types/api/modelProvider'
 import { User } from '../../types/api/user'
-import { App } from 'antd'
 import { MarkdownRenderer } from './MarkdownRenderer'
 
 const { TextArea } = Input
@@ -36,7 +45,6 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const { t } = useTranslation()
-  const appTheme = useTheme()
   const { message } = App.useApp()
   const navigate = useNavigate()
   const [inputValue, setInputValue] = useState('')
@@ -63,6 +71,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
+    // eslint-disable-next-line no-undef
     const authData = localStorage.getItem('auth-storage')
     if (authData) {
       try {
@@ -558,18 +567,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   // Empty state (no conversation loaded)
   if (!conversation && !conversationId) {
     return (
-      <div
-        className="flex flex-col h-full"
-        style={{ backgroundColor: appTheme.chatBackground }}
-      >
+      <div className="flex flex-col h-full">
         {/* Header with model selection */}
-        <div
-          className="px-4 sm:px-6 py-4 border-b"
-          style={{
-            backgroundColor: appTheme.surface,
-            borderColor: appTheme.borderSecondary,
-          }}
-        >
+        <div className="px-4 sm:px-6 py-4 border-b">
           <Row gutter={16} align="middle">
             <Col xs={24} sm={12} md={8}>
               <div className="mb-2">
@@ -681,10 +681,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }
 
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{ backgroundColor: appTheme.chatBackground }}
-    >
+    <div className="flex flex-col h-full">
       {/* Header with conversation title and controls */}
       <div className="px-4 sm:px-6 py-4">
         <div className="max-w-4xl mx-auto">
@@ -767,7 +764,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                         }
                       />
                       <span>
-                        {isStreaming ? t('chat.generating') : t('chat.thinking')}
+                        {isStreaming
+                          ? t('chat.generating')
+                          : t('chat.thinking')}
                       </span>
                     </div>
                   </div>

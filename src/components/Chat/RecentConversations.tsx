@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Tooltip, Modal, Input } from 'antd'
+import { App, Button, Input, Modal, Tooltip } from 'antd'
 import {
-  MessageOutlined,
-  EditOutlined,
   DeleteOutlined,
+  EditOutlined,
   ExclamationCircleOutlined,
+  MessageOutlined,
 } from '@ant-design/icons'
-import { useTheme } from '../../hooks/useTheme'
 import { ApiClient } from '../../api/client'
 import { ConversationSummary } from '../../types/api/chat'
-import { App } from 'antd'
 
 const { confirm } = Modal
 
@@ -28,7 +26,6 @@ export function RecentConversations({
   onConversationClick,
 }: RecentConversationsProps) {
   const navigate = useNavigate()
-  const appTheme = useTheme()
   const { message } = App.useApp()
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [loading, setLoading] = useState(false)
@@ -141,16 +138,6 @@ export function RecentConversations({
             <div
               onClick={() => handleConversationClick(conversation.id)}
               className="w-2 h-2 rounded-full mx-auto my-1.5 cursor-pointer transition-all duration-200"
-              style={{
-                backgroundColor: appTheme.sidebarTextSecondary,
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.6)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor =
-                  appTheme.sidebarTextSecondary
-              }}
             />
           </Tooltip>
         ))}
@@ -161,21 +148,12 @@ export function RecentConversations({
   return (
     <div className="flex-1 overflow-auto">
       {loading ? (
-        <div
-          className="py-8 px-4 text-center"
-          style={{ color: appTheme.sidebarTextSecondary }}
-        >
+        <div className="py-8 px-4 text-center">
           <div className="text-sm">Loading...</div>
         </div>
       ) : conversations.length === 0 ? (
-        <div
-          className="py-8 px-4 text-center"
-          style={{ color: appTheme.sidebarTextSecondary }}
-        >
-          <MessageOutlined
-            className="text-2xl mb-2"
-            style={{ color: appTheme.sidebarTextSecondary }}
-          />
+        <div className="py-8 px-4 text-center">
+          <MessageOutlined className="text-2xl mb-2" />
           <div className="text-sm">No conversations yet</div>
         </div>
       ) : (
@@ -183,17 +161,6 @@ export function RecentConversations({
           <div
             key={conversation.id}
             className="group px-3 py-2 mb-0.5 rounded-lg transition-all duration-200 border relative"
-            style={{
-              backgroundColor: 'transparent',
-              color: appTheme.sidebarText,
-              borderColor: 'transparent',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-            }}
           >
             {editingId === conversation.id ? (
               <div className="flex items-center gap-2">
@@ -206,12 +173,7 @@ export function RecentConversations({
                   size="small"
                   className="flex-1"
                 />
-                <Button
-                  size="small"
-                  type="text"
-                  onClick={handleCancelEdit}
-                  style={{ color: appTheme.sidebarTextSecondary }}
-                >
+                <Button size="small" type="text" onClick={handleCancelEdit}>
                   ×
                 </Button>
               </div>
@@ -226,10 +188,7 @@ export function RecentConversations({
 
                 {/* Last message preview */}
                 {conversation.last_message && (
-                  <div
-                    className="text-xs mt-1 opacity-60 overflow-hidden text-ellipsis whitespace-nowrap pr-16"
-                    style={{ color: appTheme.sidebarTextSecondary }}
-                  >
+                  <div className="text-xs mt-1 opacity-60 overflow-hidden text-ellipsis whitespace-nowrap pr-16">
                     {conversation.last_message.substring(0, 50)}
                     {conversation.last_message.length > 50 ? '...' : ''}
                   </div>
@@ -247,7 +206,6 @@ export function RecentConversations({
                         handleEditTitle(conversation)
                       }}
                       className="p-1"
-                      style={{ color: appTheme.sidebarTextSecondary }}
                     />
                   </Tooltip>
                   <Tooltip title="Delete">
@@ -260,7 +218,6 @@ export function RecentConversations({
                         handleDeleteConversation(conversation)
                       }}
                       className="p-1"
-                      style={{ color: appTheme.sidebarTextSecondary }}
                     />
                   </Tooltip>
                 </div>

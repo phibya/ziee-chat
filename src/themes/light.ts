@@ -1,59 +1,46 @@
-export const lightTheme = {
-  // Primary colors
-  primary: '#1890ff',
-  primaryHover: '#40a9ff',
-  primaryActive: '#096dd9',
+import { theme, ThemeConfig } from 'antd'
+import { ComponentTokens, GlobalTokens } from './tokens.ts'
+import { ComponentOverrides, TokenOverrides } from './override.ts'
 
-  // Background colors
-  background: '#ffffff',
-  backgroundSecondary: '#f5f5f5',
-  backgroundElevated: '#ffffff',
+const baseTheme = {
+  algorithm: [theme.compactAlgorithm, theme.defaultAlgorithm],
+  token: {
+    ...GlobalTokens,
+    ...TokenOverrides,
+  },
+  components: {
+    ...ComponentTokens,
+    ...ComponentOverrides,
+    Button: {
+      ...ComponentTokens.Button,
+      ...ComponentOverrides.Button,
+      // Override button tokens for light theme
+    },
+    // Other component overrides can go here
+  },
+  app: {
+    chatBackground: '#f0f2f5',
+  },
+} as const
 
-  // Surface colors
-  surface: '#ffffff',
-  surfaceSecondary: '#fafafa',
-  surfaceElevated: '#ffffff',
-
-  // Text colors
-  textPrimary: '#262626',
-  textSecondary: '#595959',
-  textTertiary: '#8c8c8c',
-  textDisabled: '#bfbfbf',
-
-  // Border colors
-  border: '#d9d9d9',
-  borderSecondary: '#f0f0f0',
-  borderLight: '#f5f5f5',
-
-  // Status colors
-  success: '#52c41a',
-  warning: '#faad14',
-  error: '#ff4d4f',
-  info: '#1890ff',
-
-  // Sidebar specific
-  sidebarBackground: '#ffffff',
-  sidebarBorder: '#f0f0f0',
-  sidebarItemHover: 'rgba(24, 144, 255, 0.05)',
-  sidebarItemActive: 'rgba(24, 144, 255, 0.1)',
-  sidebarText: '#262626',
-  sidebarTextSecondary: '#595959',
-
-  // Chat specific
-  chatBackground: '#fafafa',
-  chatMessageUser: '#1890ff',
-  chatMessageAssistant: '#f5f5f5',
-  chatMessageUserText: '#ffffff',
-  chatMessageAssistantText: '#262626',
-
-  // Input specific
-  inputBackground: '#ffffff',
-  inputBorder: '#d9d9d9',
-  inputPlaceholder: '#bfbfbf',
-
-  // Shadow
-  shadow: 'rgba(0, 0, 0, 0.1)',
-  shadowElevated: 'rgba(0, 0, 0, 0.15)',
+type AppTokenKeys = keyof typeof baseTheme.app
+type AppToken = {
+  [K in AppTokenKeys]: (typeof baseTheme.app)[K] extends string
+    ? string
+    : (typeof baseTheme.app)[K] extends number
+      ? number
+      : (typeof baseTheme.app)[K] extends boolean
+        ? boolean
+        : (typeof baseTheme.app)[K]
 }
 
-export type ThemeType = typeof lightTheme
+export type AppThemeConfig = {
+  algorithm: ThemeConfig['algorithm']
+  token: ThemeConfig['token']
+  components: ThemeConfig['components']
+  app: AppToken
+}
+
+const lightTheme = baseTheme as unknown as AppThemeConfig
+
+export { lightTheme }
