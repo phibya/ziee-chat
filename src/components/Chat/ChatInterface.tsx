@@ -267,15 +267,13 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const loadMessageBranches = async (msg: Message) => {
     if (!conversation) return
 
-    const branchKey = `${msg.created_at}`
+    const branchKey = `${msg.id}`
 
     setLoadingBranches(prev => ({ ...prev, [branchKey]: true }))
 
     try {
-      const timestamp = new Date(msg.created_at).toISOString()
       const branches = await ApiClient.Chat.getMessageBranches({
-        conversation_id: conversation.id,
-        timestamp: timestamp,
+        message_id: msg.id,
       })
 
       setMessageBranches(prev => ({ ...prev, [branchKey]: branches }))
@@ -309,7 +307,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   }
 
   const getBranchInfo = (msg: Message) => {
-    const branchKey = `${msg.created_at}`
+    const branchKey = `${msg.id}`
     const branches = messageBranches[branchKey] || []
     const currentIndex = branches.findIndex(b => b.is_active_branch)
 

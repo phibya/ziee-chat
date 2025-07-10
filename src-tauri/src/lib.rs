@@ -587,7 +587,7 @@ fn create_rest_router() -> Router {
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
-            "/api/chat/conversations/{conversation_id}/branches/{timestamp}",
+            "/api/chat/messages/{message_id}/branches",
             get(api::chat::methods::get_message_branches)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )

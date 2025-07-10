@@ -595,16 +595,50 @@ pub async fn switch_branch(
     }
 }
 
-/// Get message branches for a specific conversation position
+/// Get message branches for a specific message (all messages with same originated_from_id)
 pub async fn get_message_branches(
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Path((conversation_id, timestamp)): Path<(Uuid, String)>,
+    Path(message_id): Path<Uuid>,
 ) -> Result<Json<Vec<Message>>, StatusCode> {
-    // Parse the timestamp
-    let created_at = match chrono::DateTime::parse_from_rfc3339(&timestamp) {
-        Ok(dt) => dt.with_timezone(&chrono::Utc),
-        Err(_) => return Err(StatusCode::BAD_REQUEST),
+    use sqlx::Row;
+    
+    // Get the database pool
+    let pool = match crate::database::queries::get_database_pool() {
+        Ok(pool) => pool,
+        Err(e) => {
+            eprintln!("Error getting database pool: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
     };
+    
+    // Get the message to find its conversation and created_at
+    let message_row = match sqlx::query(
+        r#"
+        SELECT m.*, c.user_id as conversation_user_id
+        FROM messages m
+        JOIN conversations c ON m.conversation_id = c.id
+        WHERE m.id = $1
+        "#,
+    )
+    .bind(message_id)
+    .fetch_optional(pool.as_ref())
+    .await
+    {
+        Ok(Some(row)) => row,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            eprintln!("Error getting message: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+    
+    let conversation_user_id: Uuid = message_row.get("conversation_user_id");
+    if conversation_user_id != auth_user.user.id {
+        return Err(StatusCode::NOT_FOUND);
+    }
+    
+    let conversation_id: Uuid = message_row.get("conversation_id");
+    let created_at: chrono::DateTime<chrono::Utc> = message_row.get("created_at");
     
     match chat::get_message_branches(conversation_id, created_at, auth_user.user.id).await {
         Ok(branches) => Ok(Json(branches)),

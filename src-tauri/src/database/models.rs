@@ -511,6 +511,7 @@ pub struct ConversationDb {
     pub assistant_id: Option<Uuid>,
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
+    pub active_branch_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -522,12 +523,24 @@ pub struct MessageDb {
     pub parent_id: Option<Uuid>,
     pub role: String,
     pub content: String,
-    pub branch_id: Uuid,
-    pub is_active_branch: bool,
+    pub branch_id: Uuid, // Old branch system - will be deprecated
+    pub new_branch_id: Option<Uuid>, // New proper branch system
+    pub is_active_branch: bool, // Will be deprecated in favor of conversation.active_branch_id
+    pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
+    pub edit_count: Option<i32>, // Number of times this message lineage has been edited
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+// Branch structures for proper branching system
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct BranchDb {
+    pub id: Uuid,
+    pub conversation_id: Uuid,
+    pub name: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -556,6 +569,7 @@ pub struct Conversation {
     pub assistant_id: Option<Uuid>,
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
+    pub active_branch_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -567,14 +581,26 @@ pub struct Message {
     pub parent_id: Option<Uuid>,
     pub role: String,
     pub content: String,
-    pub branch_id: Uuid,
-    pub is_active_branch: bool,
+    pub branch_id: Uuid, // Legacy field - will be deprecated
+    pub new_branch_id: Option<Uuid>, // New proper branch system
+    pub is_active_branch: bool, // Legacy field - will be deprecated
+    pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
+    pub edit_count: Option<i32>, // Number of times this message lineage has been edited
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub branches: Option<Vec<Message>>,
+    pub branches: Option<Vec<Message>>, // Available branches for this message position
     pub metadata: Option<Vec<MessageMetadata>>,
+}
+
+// Branch API model for proper branching system
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Branch {
+    pub id: Uuid,
+    pub conversation_id: Uuid,
+    pub name: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

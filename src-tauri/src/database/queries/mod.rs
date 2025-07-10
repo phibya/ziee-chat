@@ -1,4 +1,5 @@
 pub mod assistants;
+pub mod branches;
 pub mod chat;
 pub mod configuration;
 pub mod model_providers;
