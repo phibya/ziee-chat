@@ -1,34 +1,34 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
-  Card,
+  App,
   Button,
-  Input,
-  Row,
+  Card,
   Col,
-  Typography,
-  Select,
-  Modal,
-  Form,
   Dropdown,
+  Form,
+  Input,
   MenuProps,
+  Modal,
+  Row,
+  Select,
+  Typography,
 } from 'antd'
 import {
+  CalendarOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  FolderOutlined,
+  MoreOutlined,
   PlusOutlined,
   SearchOutlined,
-  MoreOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  FolderOutlined,
-  CalendarOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { ApiClient } from '../../api/client'
 import {
-  Project,
   CreateProjectRequest,
+  Project,
   UpdateProjectRequest,
 } from '../../types/api/projects'
-import { App } from 'antd'
 import { PageContainer } from '../common/PageContainer'
 
 const { Title, Text } = Typography
@@ -205,235 +205,223 @@ export const ProjectsPage: React.FC = () => {
 
   return (
     <PageContainer>
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <Title level={2} className="!mb-0">
-            Projects
-          </Title>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setNewProjectModalVisible(true)}
-          >
-            New project
-          </Button>
-        </div>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <Title level={2} className="!mb-0">
+          Projects
+        </Title>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setNewProjectModalVisible(true)}
+        >
+          New project
+        </Button>
+      </div>
 
-        {/* Search and Sort */}
-        <div className="flex justify-between items-center mb-6">
-          <Search
-            placeholder="Search projects..."
-            prefix={<SearchOutlined />}
-            style={{ width: 400 }}
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            allowClear
+      {/* Search and Sort */}
+      <div className="flex justify-between items-center mb-6">
+        <Search
+          placeholder="Search projects..."
+          prefix={<SearchOutlined />}
+          style={{ width: 400 }}
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          allowClear
+        />
+        <div className="flex items-center gap-2">
+          <Text type="secondary">Sort by</Text>
+          <Select
+            value={sortBy}
+            onChange={setSortBy}
+            style={{ width: 120 }}
+            options={[
+              { label: 'Activity', value: 'activity' },
+              { label: 'Name', value: 'name' },
+              { label: 'Created', value: 'created' },
+            ]}
           />
-          <div className="flex items-center gap-2">
-            <Text type="secondary">Sort by</Text>
-            <Select
-              value={sortBy}
-              onChange={setSortBy}
-              style={{ width: 120 }}
-              options={[
-                { label: 'Activity', value: 'activity' },
-                { label: 'Name', value: 'name' },
-                { label: 'Created', value: 'created' },
-              ]}
-            />
-          </div>
         </div>
+      </div>
 
-        {/* Projects Grid */}
-        <Row gutter={[16, 16]}>
-          {projects.map(project => (
-            <Col xs={24} sm={12} lg={8} xl={6} key={project.id}>
-              <Card
-                hoverable
-                className="h-full cursor-pointer"
-                onClick={() => navigate(`/projects/${project.id}`)}
-                actions={[
-                  <Dropdown
-                    menu={{ items: getProjectMenuItems(project) }}
-                    trigger={['click']}
-                  >
-                    <Button
-                      type="text"
-                      icon={<MoreOutlined />}
-                      onClick={e => e.stopPropagation()}
-                    />
-                  </Dropdown>,
-                ]}
-              >
-                <div className="flex flex-col h-full">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <FolderOutlined />
-                      <Text strong className="text-base">
-                        {project.name}
-                      </Text>
-                    </div>
-                    {project.is_private && (
-                      <Text type="secondary" className="text-xs">
-                        Private
-                      </Text>
-                    )}
+      {/* Projects Grid */}
+      <Row gutter={[16, 16]}>
+        {projects.map(project => (
+          <Col xs={24} sm={12} lg={8} xl={6} key={project.id}>
+            <Card
+              hoverable
+              className="h-full cursor-pointer"
+              onClick={() => navigate(`/projects/${project.id}`)}
+              actions={[
+                <Dropdown
+                  menu={{ items: getProjectMenuItems(project) }}
+                  trigger={['click']}
+                >
+                  <Button
+                    type="text"
+                    icon={<MoreOutlined />}
+                    onClick={e => e.stopPropagation()}
+                  />
+                </Dropdown>,
+              ]}
+            >
+              <div className="flex flex-col h-full">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <FolderOutlined />
+                    <Text strong className="text-base">
+                      {project.name}
+                    </Text>
                   </div>
-
-                  {project.description && (
-                    <Text
-                      type="secondary"
-                      className="text-sm mb-4 line-clamp-2"
-                    >
-                      {project.description}
+                  {project.is_private && (
+                    <Text type="secondary" className="text-xs">
+                      Private
                     </Text>
                   )}
+                </div>
 
-                  <div className="mt-auto">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <CalendarOutlined />
-                        <span>Updated {formatTimeAgo(project.updated_at)}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 mt-2">
-                      <span>{project.document_count || 0} documents</span>
-                      <span>
-                        {project.conversation_count || 0} conversations
-                      </span>
+                {project.description && (
+                  <Text type="secondary" className="text-sm mb-4 line-clamp-2">
+                    {project.description}
+                  </Text>
+                )}
+
+                <div className="mt-auto">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <CalendarOutlined />
+                      <span>Updated {formatTimeAgo(project.updated_at)}</span>
                     </div>
                   </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span>{project.document_count || 0} documents</span>
+                    <span>{project.conversation_count || 0} conversations</span>
+                  </div>
                 </div>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+              </div>
+            </Card>
+          </Col>
+        ))}
+      </Row>
 
-        {/* Empty State */}
-        {!loading && projects.length === 0 && (
-          <div className="text-center py-12">
-            <FolderOutlined className="text-6xl mb-4" />
-            <Title level={3} type="secondary">
-              {searchQuery ? 'No projects found' : 'No projects yet'}
-            </Title>
-            <Text type="secondary" className="block mb-4">
-              {searchQuery
-                ? 'Try adjusting your search criteria'
-                : 'Create your first project to get started'}
-            </Text>
-            {!searchQuery && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setNewProjectModalVisible(true)}
-              >
-                Create project
-              </Button>
-            )}
-          </div>
-        )}
+      {/* Empty State */}
+      {!loading && projects.length === 0 && (
+        <div className="text-center py-12">
+          <FolderOutlined className="text-6xl mb-4" />
+          <Title level={3} type="secondary">
+            {searchQuery ? 'No projects found' : 'No projects yet'}
+          </Title>
+          <Text type="secondary" className="block mb-4">
+            {searchQuery
+              ? 'Try adjusting your search criteria'
+              : 'Create your first project to get started'}
+          </Text>
+          {!searchQuery && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setNewProjectModalVisible(true)}
+            >
+              Create project
+            </Button>
+          )}
+        </div>
+      )}
 
-        {/* New Project Modal */}
-        <Modal
-          title="Create a personal project"
-          open={newProjectModalVisible}
-          onCancel={() => {
-            setNewProjectModalVisible(false)
-            form.resetFields()
-          }}
-          footer={null}
-          width={600}
+      {/* New Project Modal */}
+      <Modal
+        title="Create a personal project"
+        open={newProjectModalVisible}
+        onCancel={() => {
+          setNewProjectModalVisible(false)
+          form.resetFields()
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleCreateProject}
+          initialValues={{ is_private: true }}
         >
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleCreateProject}
-            initialValues={{ is_private: true }}
+          <Form.Item
+            label="What are you working on?"
+            name="name"
+            rules={[{ required: true, message: 'Please enter a project name' }]}
           >
-            <Form.Item
-              label="What are you working on?"
-              name="name"
-              rules={[
-                { required: true, message: 'Please enter a project name' },
-              ]}
+            <Input placeholder="Name your project" size="large" />
+          </Form.Item>
+
+          <Form.Item label="What are you trying to achieve?" name="description">
+            <TextArea
+              placeholder="Describe your project, goals, subject, etc..."
+              rows={4}
+              size="large"
+            />
+          </Form.Item>
+
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              onClick={() => {
+                setNewProjectModalVisible(false)
+                form.resetFields()
+              }}
             >
-              <Input placeholder="Name your project" size="large" />
-            </Form.Item>
+              Cancel
+            </Button>
+            <Button type="primary" htmlType="submit">
+              Create project
+            </Button>
+          </div>
+        </Form>
+      </Modal>
 
-            <Form.Item
-              label="What are you trying to achieve?"
-              name="description"
+      {/* Edit Project Modal */}
+      <Modal
+        title="Edit Project"
+        open={editProjectModalVisible}
+        onCancel={() => {
+          setEditProjectModalVisible(false)
+          setEditingProject(null)
+          form.resetFields()
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form form={form} layout="vertical" onFinish={handleEditProject}>
+          <Form.Item
+            label="Project Name"
+            name="name"
+            rules={[{ required: true, message: 'Please enter a project name' }]}
+          >
+            <Input placeholder="Name your project" size="large" />
+          </Form.Item>
+
+          <Form.Item label="Description" name="description">
+            <TextArea
+              placeholder="Describe your project, goals, subject, etc..."
+              rows={4}
+              size="large"
+            />
+          </Form.Item>
+
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              onClick={() => {
+                setEditProjectModalVisible(false)
+                setEditingProject(null)
+                form.resetFields()
+              }}
             >
-              <TextArea
-                placeholder="Describe your project, goals, subject, etc..."
-                rows={4}
-                size="large"
-              />
-            </Form.Item>
-
-            <div className="flex justify-end gap-2 mt-6">
-              <Button
-                onClick={() => {
-                  setNewProjectModalVisible(false)
-                  form.resetFields()
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit">
-                Create project
-              </Button>
-            </div>
-          </Form>
-        </Modal>
-
-        {/* Edit Project Modal */}
-        <Modal
-          title="Edit Project"
-          open={editProjectModalVisible}
-          onCancel={() => {
-            setEditProjectModalVisible(false)
-            setEditingProject(null)
-            form.resetFields()
-          }}
-          footer={null}
-          width={600}
-        >
-          <Form form={form} layout="vertical" onFinish={handleEditProject}>
-            <Form.Item
-              label="Project Name"
-              name="name"
-              rules={[
-                { required: true, message: 'Please enter a project name' },
-              ]}
-            >
-              <Input placeholder="Name your project" size="large" />
-            </Form.Item>
-
-            <Form.Item label="Description" name="description">
-              <TextArea
-                placeholder="Describe your project, goals, subject, etc..."
-                rows={4}
-                size="large"
-              />
-            </Form.Item>
-
-            <div className="flex justify-end gap-2 mt-6">
-              <Button
-                onClick={() => {
-                  setEditProjectModalVisible(false)
-                  setEditingProject(null)
-                  form.resetFields()
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="primary" htmlType="submit">
-                Update project
-              </Button>
-            </div>
-          </Form>
-        </Modal>
+              Cancel
+            </Button>
+            <Button type="primary" htmlType="submit">
+              Update project
+            </Button>
+          </div>
+        </Form>
+      </Modal>
     </PageContainer>
   )
 }

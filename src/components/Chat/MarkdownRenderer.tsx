@@ -3,7 +3,7 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
-import { Typography, Divider } from 'antd'
+import { Divider, Typography } from 'antd'
 import 'prismjs/themes/prism-tomorrow.css'
 
 const { Text, Title, Link } = Typography
@@ -25,9 +25,7 @@ export function MarkdownRenderer({
         components={{
           // Custom components using Ant Design theme and Tailwind
           p: ({ children }) => (
-            <Text className="block mb-3 leading-relaxed">
-              {children}
-            </Text>
+            <Text className="block mb-3 leading-relaxed">{children}</Text>
           ),
           code: ({ inline, className, children, ...props }: any) => {
             if (inline) {
@@ -69,26 +67,18 @@ export function MarkdownRenderer({
             </Title>
           ),
           ul: ({ children }) => (
-            <ul className="pl-6 my-2 space-y-1">
-              {children}
-            </ul>
+            <ul className="pl-6 my-2 space-y-1">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="pl-6 my-2 space-y-1">
-              {children}
-            </ol>
+            <ol className="pl-6 my-2 space-y-1">{children}</ol>
           ),
           li: ({ children }) => (
             <li className="leading-relaxed">
               <Text>{children}</Text>
             </li>
           ),
-          strong: ({ children }) => (
-            <Text strong>{children}</Text>
-          ),
-          em: ({ children }) => (
-            <Text italic>{children}</Text>
-          ),
+          strong: ({ children }) => <Text strong>{children}</Text>,
+          em: ({ children }) => <Text italic>{children}</Text>,
           a: ({ href, children }) => (
             <Link href={href} target="_blank" rel="noopener noreferrer">
               {children}
@@ -96,9 +86,7 @@ export function MarkdownRenderer({
           ),
           table: ({ children }) => (
             <div className="overflow-x-auto my-4">
-              <table className="w-full border-collapse">
-                {children}
-              </table>
+              <table className="w-full border-collapse">{children}</table>
             </div>
           ),
           th: ({ children }) => (
@@ -111,9 +99,7 @@ export function MarkdownRenderer({
               <Text>{children}</Text>
             </td>
           ),
-          hr: () => (
-            <Divider className="my-6" />
-          ),
+          hr: () => <Divider className="my-6" />,
         }}
       >
         {content}

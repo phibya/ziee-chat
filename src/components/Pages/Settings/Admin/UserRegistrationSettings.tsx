@@ -76,25 +76,25 @@ export function UserRegistrationSettings() {
   return (
     <PageContainer>
       <Card title="User Registration" className="mb-6">
-      <Form
-        form={form}
-        onValuesChange={handleFormChange}
-        initialValues={{ enabled: registrationEnabled }}
-      >
-        <div className="flex justify-between items-center">
-          <div>
-            <Text strong>Enable User Registration</Text>
+        <Form
+          form={form}
+          onValuesChange={handleFormChange}
+          initialValues={{ enabled: registrationEnabled }}
+        >
+          <div className="flex justify-between items-center">
             <div>
-              <Text type="secondary">
-                Allow new users to register for accounts
-              </Text>
+              <Text strong>Enable User Registration</Text>
+              <div>
+                <Text type="secondary">
+                  Allow new users to register for accounts
+                </Text>
+              </div>
             </div>
+            <Form.Item name="enabled" valuePropName="checked" className="mb-0">
+              <Switch loading={loading} size="default" />
+            </Form.Item>
           </div>
-          <Form.Item name="enabled" valuePropName="checked" className="mb-0">
-            <Switch loading={loading} size="default" />
-          </Form.Item>
-        </div>
-      </Form>
+        </Form>
       </Card>
     </PageContainer>
   )

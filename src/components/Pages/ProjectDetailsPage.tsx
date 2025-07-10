@@ -1,39 +1,39 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
-  Card,
+  App,
   Button,
+  Card,
+  Dropdown,
+  Form,
   Input,
+  Progress,
+  Select,
+  Tag,
   Typography,
   Upload,
-  Progress,
-  Dropdown,
-  Tag,
-  Select,
-  Form,
 } from 'antd'
 import {
-  StarOutlined,
-  MoreOutlined,
-  PlusOutlined,
-  PaperClipOutlined,
-  SearchOutlined,
   ArrowUpOutlined,
-  UploadOutlined,
-  FileTextOutlined,
   DeleteOutlined,
   EditOutlined,
+  FileTextOutlined,
   MessageOutlined,
+  MoreOutlined,
+  PaperClipOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  StarOutlined,
+  UploadOutlined,
 } from '@ant-design/icons'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ApiClient } from '../../api/client'
 import {
   Project,
-  ProjectDocument,
   ProjectConversation,
   ProjectDetailResponse,
+  ProjectDocument,
   UploadDocumentRequest,
 } from '../../types/api/projects'
-import { App } from 'antd'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -227,9 +227,7 @@ export const ProjectDetailsPage: React.FC = () => {
                   key={msg.id}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div
-                    className="max-w-2xl px-4 py-3 rounded-lg"
-                  >
+                  <div className="max-w-2xl px-4 py-3 rounded-lg">
                     <div className="whitespace-pre-wrap">{msg.content}</div>
                     <Text type="secondary" className="text-xs mt-1">
                       {new Date(msg.timestamp).toLocaleTimeString()}
@@ -244,9 +242,21 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="border-t px-6 py-4">
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center gap-2 mb-3">
-                <Button icon={<PlusOutlined />} type="text" className="text-xs" />
-                <Button icon={<PaperClipOutlined />} type="text" className="text-xs" />
-                <Button icon={<SearchOutlined />} type="text" className="text-xs">
+                <Button
+                  icon={<PlusOutlined />}
+                  type="text"
+                  className="text-xs"
+                />
+                <Button
+                  icon={<PaperClipOutlined />}
+                  type="text"
+                  className="text-xs"
+                />
+                <Button
+                  icon={<SearchOutlined />}
+                  type="text"
+                  className="text-xs"
+                >
                   Research
                 </Button>
                 <div className="ml-auto flex items-center gap-2">
@@ -314,7 +324,11 @@ export const ProjectDetailsPage: React.FC = () => {
                     />
                   </Form.Item>
                   <div className="flex gap-2">
-                    <Button className="text-xs" htmlType="submit" type="primary">
+                    <Button
+                      className="text-xs"
+                      htmlType="submit"
+                      type="primary"
+                    >
                       Save
                     </Button>
                     <Button
@@ -334,10 +348,7 @@ export const ProjectDetailsPage: React.FC = () => {
                     {project.description ||
                       '"This project is to response to reviewer comment for the..."'}
                   </Text>
-                  <Button
-                    type="link"
-                    className="text-xs !p-0 !h-auto !ml-1"
-                  >
+                  <Button type="link" className="text-xs !p-0 !h-auto !ml-1">
                     Edit
                   </Button>
                 </div>

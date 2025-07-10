@@ -16,8 +16,7 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { useUISettings } from '../../store/settings'
-import { useAuthStore } from '../../store/auth'
+import { useAuthStore, useUISettings } from '../../store'
 import { RecentConversations } from '../Chat/RecentConversations'
 
 const { Text } = Typography

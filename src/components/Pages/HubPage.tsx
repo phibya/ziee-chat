@@ -1,23 +1,23 @@
 import {
   Button,
   Card,
+  Col,
   Input,
+  Row,
+  Select,
   Space,
   Tag,
   Typography,
-  Select,
-  Row,
-  Col,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { PageContainer } from '../common/PageContainer'
 import {
+  ClockCircleOutlined,
   DownloadOutlined,
   SearchOutlined,
-  ClockCircleOutlined,
   TagOutlined,
 } from '@ant-design/icons'
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 const { Title, Text } = Typography
 
@@ -199,163 +199,167 @@ export function HubPage() {
           <Title level={2} className="mb-2">
             {t('hub.title')}
           </Title>
-          <Text type="secondary">
-            {t('hub.description')}
-          </Text>
+          <Text type="secondary">{t('hub.description')}</Text>
         </div>
 
-      {/* Search and Filters */}
-      <div className="mb-6 p-4 rounded-lg">
+        {/* Search and Filters */}
+        <div className="mb-6 p-4 rounded-lg">
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={24} md={12} lg={8}>
+              <Input
+                placeholder={t('hub.searchPlaceholder')}
+                prefix={<SearchOutlined />}
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                allowClear
+              />
+            </Col>
+            <Col xs={12} sm={12} md={6} lg={4}>
+              <Select
+                placeholder="Category"
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                style={{ width: '100%' }}
+              >
+                <Select.Option value="all">{t('hub.all')}</Select.Option>
+                <Select.Option value="embedding">Embedding</Select.Option>
+                <Select.Option value="vision">Vision</Select.Option>
+                <Select.Option value="tools">Tools</Select.Option>
+                <Select.Option value="thinking">Thinking</Select.Option>
+              </Select>
+            </Col>
+            <Col xs={12} sm={12} md={6} lg={4}>
+              <Select
+                placeholder="Sort by"
+                value={sortBy}
+                onChange={setSortBy}
+                style={{ width: '100%' }}
+              >
+                <Select.Option value="popular">
+                  {t('hub.popular')}
+                </Select.Option>
+                <Select.Option value="name">{t('hub.name')}</Select.Option>
+                <Select.Option value="updated">
+                  {t('hub.recentlyUpdated')}
+                </Select.Option>
+              </Select>
+            </Col>
+          </Row>
+        </div>
+
+        {/* Model Cards */}
         <Row gutter={[16, 16]}>
-          <Col xs={24} sm={24} md={12} lg={8}>
-            <Input
-              placeholder={t('hub.searchPlaceholder')}
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              allowClear
-            />
-          </Col>
-          <Col xs={12} sm={12} md={6} lg={4}>
-            <Select
-              placeholder="Category"
-              value={selectedCategory}
-              onChange={setSelectedCategory}
-              style={{ width: '100%' }}
-            >
-              <Select.Option value="all">{t('hub.all')}</Select.Option>
-              <Select.Option value="embedding">Embedding</Select.Option>
-              <Select.Option value="vision">Vision</Select.Option>
-              <Select.Option value="tools">Tools</Select.Option>
-              <Select.Option value="thinking">Thinking</Select.Option>
-            </Select>
-          </Col>
-          <Col xs={12} sm={12} md={6} lg={4}>
-            <Select
-              placeholder="Sort by"
-              value={sortBy}
-              onChange={setSortBy}
-              style={{ width: '100%' }}
-            >
-              <Select.Option value="popular">{t('hub.popular')}</Select.Option>
-              <Select.Option value="name">{t('hub.name')}</Select.Option>
-              <Select.Option value="updated">{t('hub.recentlyUpdated')}</Select.Option>
-            </Select>
-          </Col>
-        </Row>
-      </div>
-
-      {/* Model Cards */}
-      <Row gutter={[16, 16]}>
-        {filteredModels.map(model => (
-          <Col xs={24} sm={24} md={12} lg={8} xl={6} key={model.id}>
-            <Card
-              hoverable
-              style={{ height: '100%' }}
-              bodyStyle={{ padding: '16px' }}
-            >
-              <div style={{ marginBottom: '12px' }}>
-                <Title level={4} style={{ margin: 0, marginBottom: '4px' }}>
-                  {model.name}
-                </Title>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  {model.description}
-                </Text>
-              </div>
-
-              {/* Variants/Tags */}
-              {model.variants && model.variants.length > 0 && (
+          {filteredModels.map(model => (
+            <Col xs={24} sm={24} md={12} lg={8} xl={6} key={model.id}>
+              <Card
+                hoverable
+                style={{ height: '100%' }}
+                bodyStyle={{ padding: '16px' }}
+              >
                 <div style={{ marginBottom: '12px' }}>
-                  <Space wrap>
-                    {model.variants.map(variant => (
-                      <Tag
-                        key={variant}
-                        color="blue"
-                        style={{ fontSize: '11px' }}
-                      >
-                        {variant}
-                      </Tag>
-                    ))}
-                  </Space>
-                </div>
-              )}
-
-              {/* Capabilities */}
-              {model.capabilities && model.capabilities.length > 0 && (
-                <div style={{ marginBottom: '12px' }}>
-                  <Space wrap>
-                    {model.capabilities.map(capability => (
-                      <Tag
-                        key={capability}
-                        color={getCapabilityColor(capability)}
-                        style={{ fontSize: '11px' }}
-                      >
-                        {capability}
-                      </Tag>
-                    ))}
-                  </Space>
-                </div>
-              )}
-
-              {/* Stats */}
-              <div style={{ marginBottom: '12px' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '4px',
-                  }}
-                >
-                  <Space size={4}>
-                    <DownloadOutlined
-                      style={{ fontSize: '12px', color: '#666' }}
-                    />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      {model.pulls} Pulls
-                    </Text>
-                  </Space>
-                  <Space size={4}>
-                    <TagOutlined style={{ fontSize: '12px', color: '#666' }} />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      {model.tags} Tags
-                    </Text>
-                  </Space>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <ClockCircleOutlined
-                    style={{
-                      fontSize: '12px',
-                      color: '#666',
-                      marginRight: '4px',
-                    }}
-                  />
+                  <Title level={4} style={{ margin: 0, marginBottom: '4px' }}>
+                    {model.name}
+                  </Title>
                   <Text type="secondary" style={{ fontSize: '12px' }}>
-                    Updated {model.lastUpdated}
+                    {model.description}
                   </Text>
                 </div>
-              </div>
 
-              {/* Action Button */}
-              <Button
-                type="primary"
-                block
-                size="small"
-                onClick={() => handleDownload(model.id)}
-                style={{ marginTop: 'auto' }}
-              >
-                {t('hub.pullModel')}
-              </Button>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+                {/* Variants/Tags */}
+                {model.variants && model.variants.length > 0 && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <Space wrap>
+                      {model.variants.map(variant => (
+                        <Tag
+                          key={variant}
+                          color="blue"
+                          style={{ fontSize: '11px' }}
+                        >
+                          {variant}
+                        </Tag>
+                      ))}
+                    </Space>
+                  </div>
+                )}
 
-      {filteredModels.length === 0 && (
-        <div className="text-center py-12">
-          <Text type="secondary">{t('hub.noModels')}</Text>
-        </div>
-      )}
+                {/* Capabilities */}
+                {model.capabilities && model.capabilities.length > 0 && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <Space wrap>
+                      {model.capabilities.map(capability => (
+                        <Tag
+                          key={capability}
+                          color={getCapabilityColor(capability)}
+                          style={{ fontSize: '11px' }}
+                        >
+                          {capability}
+                        </Tag>
+                      ))}
+                    </Space>
+                  </div>
+                )}
+
+                {/* Stats */}
+                <div style={{ marginBottom: '12px' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    <Space size={4}>
+                      <DownloadOutlined
+                        style={{ fontSize: '12px', color: '#666' }}
+                      />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {model.pulls} Pulls
+                      </Text>
+                    </Space>
+                    <Space size={4}>
+                      <TagOutlined
+                        style={{ fontSize: '12px', color: '#666' }}
+                      />
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        {model.tags} Tags
+                      </Text>
+                    </Space>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <ClockCircleOutlined
+                      style={{
+                        fontSize: '12px',
+                        color: '#666',
+                        marginRight: '4px',
+                      }}
+                    />
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Updated {model.lastUpdated}
+                    </Text>
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <Button
+                  type="primary"
+                  block
+                  size="small"
+                  onClick={() => handleDownload(model.id)}
+                  style={{ marginTop: 'auto' }}
+                >
+                  {t('hub.pullModel')}
+                </Button>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+
+        {filteredModels.length === 0 && (
+          <div className="text-center py-12">
+            <Text type="secondary">{t('hub.noModels')}</Text>
+          </div>
+        )}
       </div>
     </PageContainer>
   )

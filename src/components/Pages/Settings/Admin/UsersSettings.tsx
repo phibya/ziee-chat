@@ -385,275 +385,276 @@ export function UsersSettings() {
   return (
     <PageContainer>
       <div>
-      <div className="flex justify-between items-center mb-6">
-        <Title level={3}>Users</Title>
-      </div>
+        <div className="flex justify-between items-center mb-6">
+          <Title level={3}>Users</Title>
+        </div>
 
-      {/* User Registration Settings */}
-      <Flex vertical className="gap-6">
-        <UserRegistrationSettings />
+        {/* User Registration Settings */}
+        <Flex vertical className="gap-6">
+          <UserRegistrationSettings />
 
-        <Card>
-          <Table
-            columns={columns}
-            dataSource={users}
-            rowKey="id"
-            loading={loading}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: total => `Total ${total} users`,
-            }}
-          />
-        </Card>
-      </Flex>
-
-      {/* Edit User Modal */}
-      <Modal
-        title="Edit User"
-        open={editModalVisible}
-        onCancel={() => {
-          setEditModalVisible(false)
-          setSelectedUser(null)
-          editForm.resetFields()
-        }}
-        footer={null}
-        width={600}
-        maskClosable={false}
-      >
-        <Form form={editForm} layout="vertical" onFinish={handleEditUser}>
-          <Form.Item
-            name="username"
-            label="Username"
-            rules={[{ required: true, message: 'Please enter username' }]}
-          >
-            <Input placeholder="Enter username" />
-          </Form.Item>
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[
-              {
-                required: true,
-                type: 'email',
-                message: 'Please enter valid email',
-              },
-            ]}
-          >
-            <Input placeholder="Enter email" />
-          </Form.Item>
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item
-            name="profile"
-            label="Profile (JSON)"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value) return Promise.resolve()
-                  try {
-                    JSON.parse(value)
-                    return Promise.resolve()
-                  } catch {
-                    return Promise.reject('Invalid JSON format')
-                  }
-                },
-              },
-            ]}
-          >
-            <Input.TextArea rows={4} placeholder='{"name": "John Doe"}' />
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space>
-              <Button type="primary" htmlType="submit">
-                Update User
-              </Button>
-              <Button
-                onClick={() => {
-                  setEditModalVisible(false)
-                  setSelectedUser(null)
-                  editForm.resetFields()
-                }}
-              >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Reset Password Modal */}
-      <Modal
-        title="Reset Password"
-        open={passwordModalVisible}
-        onCancel={() => {
-          setPasswordModalVisible(false)
-          setSelectedUser(null)
-          passwordForm.resetFields()
-        }}
-        footer={null}
-        maskClosable={false}
-      >
-        <Form
-          form={passwordForm}
-          layout="vertical"
-          onFinish={handleResetPassword}
-        >
-          <Form.Item
-            name="new_password"
-            label="New Password"
-            rules={[
-              { required: true, message: 'Please enter new password' },
-              { min: 6, message: 'Password must be at least 6 characters' },
-            ]}
-          >
-            <Input.Password placeholder="Enter new password" />
-          </Form.Item>
-          <Form.Item
-            name="confirm_password"
-            label="Confirm Password"
-            dependencies={['new_password']}
-            rules={[
-              { required: true, message: 'Please confirm password' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('new_password') === value) {
-                    return Promise.resolve()
-                  }
-                  return Promise.reject('Passwords do not match')
-                },
-              }),
-            ]}
-          >
-            <Input.Password placeholder="Confirm new password" />
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space>
-              <Button type="primary" htmlType="submit">
-                Reset Password
-              </Button>
-              <Button
-                onClick={() => {
-                  setPasswordModalVisible(false)
-                  setSelectedUser(null)
-                  passwordForm.resetFields()
-                }}
-              >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Groups Drawer */}
-      <Drawer
-        title={`Groups for ${selectedUser?.username}`}
-        placement="right"
-        onClose={() => setGroupsDrawerVisible(false)}
-        open={groupsDrawerVisible}
-        width={400}
-        extra={
-          canEditUsers &&
-          !selectedUser?.is_protected && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setGroupsDrawerVisible(false)
-                openAssignGroupModal(selectedUser!)
+          <Card>
+            <Table
+              columns={columns}
+              dataSource={users}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: total => `Total ${total} users`,
               }}
-            >
-              Assign Group
-            </Button>
-          )
-        }
-      >
-        <List
-          dataSource={selectedUser?.groups || []}
-          renderItem={group => (
-            <List.Item
-              actions={[
-                canEditUsers && !selectedUser?.is_protected && (
-                  <Popconfirm
-                    key="remove"
-                    title="Remove user from this group?"
-                    onConfirm={() =>
-                      handleRemoveFromGroup(selectedUser!.id, group.id)
-                    }
-                    okText="Yes"
-                    cancelText="No"
-                  >
-                    <Button type="link" danger size="small">
-                      Remove
-                    </Button>
-                  </Popconfirm>
-                ),
-              ].filter(Boolean)}
-            >
-              <List.Item.Meta
-                avatar={<TeamOutlined />}
-                title={group.name}
-                description={group.description}
-              />
-            </List.Item>
-          )}
-        />
-      </Drawer>
+            />
+          </Card>
+        </Flex>
 
-      {/* Assign Group Modal */}
-      <Modal
-        title="Assign User to Group"
-        open={assignGroupModalVisible}
-        onCancel={() => {
-          setAssignGroupModalVisible(false)
-          setSelectedUser(null)
-          assignGroupForm.resetFields()
-        }}
-        footer={null}
-        maskClosable={false}
-      >
-        <Form
-          form={assignGroupForm}
-          layout="vertical"
-          onFinish={handleAssignGroup}
+        {/* Edit User Modal */}
+        <Modal
+          title="Edit User"
+          open={editModalVisible}
+          onCancel={() => {
+            setEditModalVisible(false)
+            setSelectedUser(null)
+            editForm.resetFields()
+          }}
+          footer={null}
+          width={600}
+          maskClosable={false}
         >
-          <Form.Item
-            name="group_id"
-            label="Select Group"
-            rules={[{ required: true, message: 'Please select a group' }]}
+          <Form form={editForm} layout="vertical" onFinish={handleEditUser}>
+            <Form.Item
+              name="username"
+              label="Username"
+              rules={[{ required: true, message: 'Please enter username' }]}
+            >
+              <Input placeholder="Enter username" />
+            </Form.Item>
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[
+                {
+                  required: true,
+                  type: 'email',
+                  message: 'Please enter valid email',
+                },
+              ]}
+            >
+              <Input placeholder="Enter email" />
+            </Form.Item>
+            <Form.Item name="is_active" label="Active" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Form.Item
+              name="profile"
+              label="Profile (JSON)"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve()
+                    try {
+                      JSON.parse(value)
+                      return Promise.resolve()
+                    } catch {
+                      return Promise.reject('Invalid JSON format')
+                    }
+                  },
+                },
+              ]}
+            >
+              <Input.TextArea rows={4} placeholder='{"name": "John Doe"}' />
+            </Form.Item>
+            <Form.Item className="mb-0">
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  Update User
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditModalVisible(false)
+                    setSelectedUser(null)
+                    editForm.resetFields()
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Reset Password Modal */}
+        <Modal
+          title="Reset Password"
+          open={passwordModalVisible}
+          onCancel={() => {
+            setPasswordModalVisible(false)
+            setSelectedUser(null)
+            passwordForm.resetFields()
+          }}
+          footer={null}
+          maskClosable={false}
+        >
+          <Form
+            form={passwordForm}
+            layout="vertical"
+            onFinish={handleResetPassword}
           >
-            <Select placeholder="Select a group to assign">
-              {groups
-                .filter(
-                  group => !selectedUser?.groups.some(ug => ug.id === group.id),
-                )
-                .map(group => (
-                  <Option key={group.id} value={group.id}>
-                    {group.name}
-                  </Option>
-                ))}
-            </Select>
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space>
-              <Button type="primary" htmlType="submit">
+            <Form.Item
+              name="new_password"
+              label="New Password"
+              rules={[
+                { required: true, message: 'Please enter new password' },
+                { min: 6, message: 'Password must be at least 6 characters' },
+              ]}
+            >
+              <Input.Password placeholder="Enter new password" />
+            </Form.Item>
+            <Form.Item
+              name="confirm_password"
+              label="Confirm Password"
+              dependencies={['new_password']}
+              rules={[
+                { required: true, message: 'Please confirm password' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('new_password') === value) {
+                      return Promise.resolve()
+                    }
+                    return Promise.reject('Passwords do not match')
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="Confirm new password" />
+            </Form.Item>
+            <Form.Item className="mb-0">
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  Reset Password
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPasswordModalVisible(false)
+                    setSelectedUser(null)
+                    passwordForm.resetFields()
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Groups Drawer */}
+        <Drawer
+          title={`Groups for ${selectedUser?.username}`}
+          placement="right"
+          onClose={() => setGroupsDrawerVisible(false)}
+          open={groupsDrawerVisible}
+          width={400}
+          extra={
+            canEditUsers &&
+            !selectedUser?.is_protected && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setGroupsDrawerVisible(false)
+                  openAssignGroupModal(selectedUser!)
+                }}
+              >
                 Assign Group
               </Button>
-              <Button
-                onClick={() => {
-                  setAssignGroupModalVisible(false)
-                  setSelectedUser(null)
-                  assignGroupForm.resetFields()
-                }}
+            )
+          }
+        >
+          <List
+            dataSource={selectedUser?.groups || []}
+            renderItem={group => (
+              <List.Item
+                actions={[
+                  canEditUsers && !selectedUser?.is_protected && (
+                    <Popconfirm
+                      key="remove"
+                      title="Remove user from this group?"
+                      onConfirm={() =>
+                        handleRemoveFromGroup(selectedUser!.id, group.id)
+                      }
+                      okText="Yes"
+                      cancelText="No"
+                    >
+                      <Button type="link" danger size="small">
+                        Remove
+                      </Button>
+                    </Popconfirm>
+                  ),
+                ].filter(Boolean)}
               >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+                <List.Item.Meta
+                  avatar={<TeamOutlined />}
+                  title={group.name}
+                  description={group.description}
+                />
+              </List.Item>
+            )}
+          />
+        </Drawer>
+
+        {/* Assign Group Modal */}
+        <Modal
+          title="Assign User to Group"
+          open={assignGroupModalVisible}
+          onCancel={() => {
+            setAssignGroupModalVisible(false)
+            setSelectedUser(null)
+            assignGroupForm.resetFields()
+          }}
+          footer={null}
+          maskClosable={false}
+        >
+          <Form
+            form={assignGroupForm}
+            layout="vertical"
+            onFinish={handleAssignGroup}
+          >
+            <Form.Item
+              name="group_id"
+              label="Select Group"
+              rules={[{ required: true, message: 'Please select a group' }]}
+            >
+              <Select placeholder="Select a group to assign">
+                {groups
+                  .filter(
+                    group =>
+                      !selectedUser?.groups.some(ug => ug.id === group.id),
+                  )
+                  .map(group => (
+                    <Option key={group.id} value={group.id}>
+                      {group.name}
+                    </Option>
+                  ))}
+              </Select>
+            </Form.Item>
+            <Form.Item className="mb-0">
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  Assign Group
+                </Button>
+                <Button
+                  onClick={() => {
+                    setAssignGroupModalVisible(false)
+                    setSelectedUser(null)
+                    assignGroupForm.resetFields()
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
       </div>
     </PageContainer>
   )

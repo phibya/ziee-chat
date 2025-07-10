@@ -30,9 +30,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     <Card className="w-full max-w-md mx-auto">
       <div className="text-center mb-6">
         <Title level={3}>{t('auth.signIn')}</Title>
-        {isDesktop && (
-          <Text type="secondary">{t('auth.desktopAutoAuth')}</Text>
-        )}
+        {isDesktop && <Text type="secondary">{t('auth.desktopAutoAuth')}</Text>}
       </div>
 
       {error && (

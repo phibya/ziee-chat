@@ -142,75 +142,79 @@ export function ModelsPage() {
   return (
     <PageContainer>
       <div style={{ height: '100%', overflow: 'auto' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2}>
-          <DatabaseOutlined style={{ marginRight: '8px' }} />
-          Local Models
-        </Title>
-        <Text type="secondary">
-          Manage your downloaded AI models for local inference
-        </Text>
-      </div>
+        <div style={{ marginBottom: '24px' }}>
+          <Title level={2}>
+            <DatabaseOutlined style={{ marginRight: '8px' }} />
+            Local Models
+          </Title>
+          <Text type="secondary">
+            Manage your downloaded AI models for local inference
+          </Text>
+        </div>
 
-      <div style={{ marginBottom: '16px' }}>
-        <Space>
-          <Text strong>Storage Used: </Text>
-          <Text>14.0 GB / 50.0 GB</Text>
-          <Progress percent={28} showInfo={false} style={{ width: '200px' }} />
-        </Space>
-      </div>
+        <div style={{ marginBottom: '16px' }}>
+          <Space>
+            <Text strong>Storage Used: </Text>
+            <Text>14.0 GB / 50.0 GB</Text>
+            <Progress
+              percent={28}
+              showInfo={false}
+              style={{ width: '200px' }}
+            />
+          </Space>
+        </div>
 
-      <List
-        grid={{ gutter: 16, xs: 1, sm: 1, md: 2, lg: 2, xl: 3 }}
-        dataSource={mockLocalModels}
-        renderItem={model => (
-          <List.Item>
-            <Card
-              hoverable
-              style={{ height: '100%' }}
-              actions={[renderModelActions(model)]}
-            >
-              <Card.Meta
-                avatar={<Avatar size="large" icon={<DatabaseOutlined />} />}
-                title={
-                  <Space>
-                    {model.name}
-                    <Tag
-                      color={getStatusColor(model.status)}
-                      icon={getStatusIcon(model.status)}
-                    >
-                      {model.status}
-                    </Tag>
-                  </Space>
-                }
-                description={
-                  <div>
-                    <Text style={{ marginBottom: '8px', display: 'block' }}>
-                      {model.description}
-                    </Text>
-                    <div style={{ marginBottom: '8px' }}>
-                      <Text type="secondary">Provider: </Text>
-                      <Text strong>{model.provider}</Text>
-                    </div>
-                    <div style={{ marginBottom: '8px' }}>
-                      <Text type="secondary">Size: </Text>
-                      <Text code>{model.size}</Text>
-                    </div>
+        <List
+          grid={{ gutter: 16, xs: 1, sm: 1, md: 2, lg: 2, xl: 3 }}
+          dataSource={mockLocalModels}
+          renderItem={model => (
+            <List.Item>
+              <Card
+                hoverable
+                style={{ height: '100%' }}
+                actions={[renderModelActions(model)]}
+              >
+                <Card.Meta
+                  avatar={<Avatar size="large" icon={<DatabaseOutlined />} />}
+                  title={
+                    <Space>
+                      {model.name}
+                      <Tag
+                        color={getStatusColor(model.status)}
+                        icon={getStatusIcon(model.status)}
+                      >
+                        {model.status}
+                      </Tag>
+                    </Space>
+                  }
+                  description={
                     <div>
-                      <Text type="secondary">Capabilities: </Text>
-                      <Space wrap>
-                        {model.capabilities.map(capability => (
-                          <Tag key={capability}>{capability}</Tag>
-                        ))}
-                      </Space>
+                      <Text style={{ marginBottom: '8px', display: 'block' }}>
+                        {model.description}
+                      </Text>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text type="secondary">Provider: </Text>
+                        <Text strong>{model.provider}</Text>
+                      </div>
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text type="secondary">Size: </Text>
+                        <Text code>{model.size}</Text>
+                      </div>
+                      <div>
+                        <Text type="secondary">Capabilities: </Text>
+                        <Space wrap>
+                          {model.capabilities.map(capability => (
+                            <Tag key={capability}>{capability}</Tag>
+                          ))}
+                        </Space>
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-            </Card>
-          </List.Item>
-        )}
-      />
+                  }
+                />
+              </Card>
+            </List.Item>
+          )}
+        />
       </div>
     </PageContainer>
   )

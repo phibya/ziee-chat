@@ -1,32 +1,32 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
-  Card,
-  Table,
+  App,
   Button,
-  Switch,
-  Modal,
+  Card,
   Form,
   Input,
-  Space,
+  InputNumber,
+  Modal,
   Popconfirm,
-  Typography,
+  Select,
+  Space,
+  Switch,
+  Table,
   Tag,
   Tooltip,
-  Select,
-  InputNumber,
+  Typography,
 } from 'antd'
 import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  RobotOutlined,
   CodeOutlined,
+  DeleteOutlined,
+  EditOutlined,
   FormOutlined,
+  PlusOutlined,
+  RobotOutlined,
 } from '@ant-design/icons'
 import { ApiClient } from '../../../../api/client'
 import { Assistant } from '../../../../types/api/assistant'
 import { PageContainer } from '../../../common/PageContainer'
-import { App } from 'antd'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -311,213 +311,217 @@ export const AdminAssistantsSettings: React.FC = () => {
   return (
     <PageContainer>
       <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <Title level={3}>Assistants</Title>
-          <Text type="secondary">
-            Manage template assistants. Default assistants are automatically
-            cloned for new users.
-          </Text>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <Title level={3}>Assistants</Title>
+            <Text type="secondary">
+              Manage template assistants. Default assistants are automatically
+              cloned for new users.
+            </Text>
+          </div>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
+            Create Assistant
+          </Button>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Create Assistant
-        </Button>
-      </div>
 
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={assistants}
-          loading={loading}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-        />
-      </Card>
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={assistants}
+            loading={loading}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+          />
+        </Card>
 
-      <Modal
-        title={editingAssistant ? 'Edit Assistant' : 'Create Assistant'}
-        open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false)
-          setEditingAssistant(null)
-          form.resetFields()
-        }}
-        footer={null}
-        width={800}
-        maskClosable={false}
-      >
-        <Form form={form} onFinish={handleCreateEdit} layout="vertical">
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Please enter a name' }]}
-          >
-            <Input placeholder="Enter assistant name" />
-          </Form.Item>
+        <Modal
+          title={editingAssistant ? 'Edit Assistant' : 'Create Assistant'}
+          open={modalVisible}
+          onCancel={() => {
+            setModalVisible(false)
+            setEditingAssistant(null)
+            form.resetFields()
+          }}
+          footer={null}
+          width={800}
+          maskClosable={false}
+        >
+          <Form form={form} onFinish={handleCreateEdit} layout="vertical">
+            <Form.Item
+              name="name"
+              label="Name"
+              rules={[{ required: true, message: 'Please enter a name' }]}
+            >
+              <Input placeholder="Enter assistant name" />
+            </Form.Item>
 
-          <Form.Item name="description" label="Description">
-            <Input.TextArea
-              placeholder="Enter assistant description"
-              rows={2}
-            />
-          </Form.Item>
+            <Form.Item name="description" label="Description">
+              <Input.TextArea
+                placeholder="Enter assistant description"
+                rows={2}
+              />
+            </Form.Item>
 
-          <Form.Item name="instructions" label="Instructions">
-            <TextArea
-              placeholder="Enter assistant instructions (supports markdown)"
-              rows={6}
-            />
-          </Form.Item>
+            <Form.Item name="instructions" label="Instructions">
+              <TextArea
+                placeholder="Enter assistant instructions (supports markdown)"
+                rows={6}
+              />
+            </Form.Item>
 
-          <Form.Item label="Parameters">
-            <div className="mb-3">
-              <Space>
-                <Button
-                  type={parameterMode === 'json' ? 'primary' : 'default'}
-                  size="small"
-                  icon={<CodeOutlined />}
-                  onClick={() => handleParameterModeChange('json')}
+            <Form.Item label="Parameters">
+              <div className="mb-3">
+                <Space>
+                  <Button
+                    type={parameterMode === 'json' ? 'primary' : 'default'}
+                    size="small"
+                    icon={<CodeOutlined />}
+                    onClick={() => handleParameterModeChange('json')}
+                  >
+                    JSON
+                  </Button>
+                  <Button
+                    type={parameterMode === 'form' ? 'primary' : 'default'}
+                    size="small"
+                    icon={<FormOutlined />}
+                    onClick={() => handleParameterModeChange('form')}
+                  >
+                    Form
+                  </Button>
+                </Space>
+              </div>
+
+              {parameterMode === 'json' ? (
+                <Form.Item
+                  name="parameters"
+                  rules={[
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve()
+                        try {
+                          JSON.parse(value)
+                          return Promise.resolve()
+                        } catch {
+                          return Promise.reject('Invalid JSON format')
+                        }
+                      },
+                    },
+                  ]}
                 >
-                  JSON
+                  <TextArea
+                    value={parameterJson}
+                    onChange={e => {
+                      setParameterJson(e.target.value)
+                      form.setFieldsValue({ parameters: e.target.value })
+                    }}
+                    placeholder="Enter parameters as JSON"
+                    rows={8}
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </Form.Item>
+              ) : (
+                <div>
+                  <div className="space-y-3">
+                    {parameterFormFields.map((field, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Input
+                          placeholder="Field name"
+                          value={field.name}
+                          onChange={e =>
+                            handleFormFieldChange(index, 'name', e.target.value)
+                          }
+                          style={{ width: 150 }}
+                        />
+                        <Select
+                          value={field.type}
+                          onChange={value =>
+                            handleFormFieldChange(index, 'type', value)
+                          }
+                          style={{ width: 100 }}
+                        >
+                          <Select.Option value="string">String</Select.Option>
+                          <Select.Option value="number">Number</Select.Option>
+                          <Select.Option value="boolean">Boolean</Select.Option>
+                        </Select>
+                        {field.type === 'boolean' ? (
+                          <Switch
+                            checked={field.value}
+                            onChange={checked =>
+                              handleFormFieldChange(index, 'value', checked)
+                            }
+                          />
+                        ) : field.type === 'number' ? (
+                          <InputNumber
+                            value={field.value}
+                            onChange={value =>
+                              handleFormFieldChange(index, 'value', value || 0)
+                            }
+                            style={{ width: 120 }}
+                          />
+                        ) : (
+                          <Input
+                            value={field.value}
+                            onChange={e =>
+                              handleFormFieldChange(
+                                index,
+                                'value',
+                                e.target.value,
+                              )
+                            }
+                            style={{ width: 120 }}
+                          />
+                        )}
+                        <Button
+                          type="text"
+                          danger
+                          onClick={() => removeFormField(index)}
+                          icon={<DeleteOutlined />}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="dashed"
+                    onClick={addFormField}
+                    className="mt-3"
+                    icon={<PlusOutlined />}
+                  >
+                    Add Field
+                  </Button>
+                </div>
+              )}
+            </Form.Item>
+
+            <Form.Item
+              name="is_default"
+              label="Default"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+
+            <Form.Item name="is_active" label="Active" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  {editingAssistant ? 'Update' : 'Create'}
                 </Button>
                 <Button
-                  type={parameterMode === 'form' ? 'primary' : 'default'}
-                  size="small"
-                  icon={<FormOutlined />}
-                  onClick={() => handleParameterModeChange('form')}
+                  onClick={() => {
+                    setModalVisible(false)
+                    setEditingAssistant(null)
+                    form.resetFields()
+                  }}
                 >
-                  Form
+                  Cancel
                 </Button>
               </Space>
-            </div>
-
-            {parameterMode === 'json' ? (
-              <Form.Item
-                name="parameters"
-                rules={[
-                  {
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve()
-                      try {
-                        JSON.parse(value)
-                        return Promise.resolve()
-                      } catch {
-                        return Promise.reject('Invalid JSON format')
-                      }
-                    },
-                  },
-                ]}
-              >
-                <TextArea
-                  value={parameterJson}
-                  onChange={e => {
-                    setParameterJson(e.target.value)
-                    form.setFieldsValue({ parameters: e.target.value })
-                  }}
-                  placeholder="Enter parameters as JSON"
-                  rows={8}
-                  style={{ fontFamily: 'monospace' }}
-                />
-              </Form.Item>
-            ) : (
-              <div>
-                <div className="space-y-3">
-                  {parameterFormFields.map((field, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <Input
-                        placeholder="Field name"
-                        value={field.name}
-                        onChange={e =>
-                          handleFormFieldChange(index, 'name', e.target.value)
-                        }
-                        style={{ width: 150 }}
-                      />
-                      <Select
-                        value={field.type}
-                        onChange={value =>
-                          handleFormFieldChange(index, 'type', value)
-                        }
-                        style={{ width: 100 }}
-                      >
-                        <Select.Option value="string">String</Select.Option>
-                        <Select.Option value="number">Number</Select.Option>
-                        <Select.Option value="boolean">Boolean</Select.Option>
-                      </Select>
-                      {field.type === 'boolean' ? (
-                        <Switch
-                          checked={field.value}
-                          onChange={checked =>
-                            handleFormFieldChange(index, 'value', checked)
-                          }
-                        />
-                      ) : field.type === 'number' ? (
-                        <InputNumber
-                          value={field.value}
-                          onChange={value =>
-                            handleFormFieldChange(index, 'value', value || 0)
-                          }
-                          style={{ width: 120 }}
-                        />
-                      ) : (
-                        <Input
-                          value={field.value}
-                          onChange={e =>
-                            handleFormFieldChange(
-                              index,
-                              'value',
-                              e.target.value,
-                            )
-                          }
-                          style={{ width: 120 }}
-                        />
-                      )}
-                      <Button
-                        type="text"
-                        danger
-                        onClick={() => removeFormField(index)}
-                        icon={<DeleteOutlined />}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  type="dashed"
-                  onClick={addFormField}
-                  className="mt-3"
-                  icon={<PlusOutlined />}
-                >
-                  Add Field
-                </Button>
-              </div>
-            )}
-          </Form.Item>
-
-          <Form.Item name="is_default" label="Default" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                {editingAssistant ? 'Update' : 'Create'}
-              </Button>
-              <Button
-                onClick={() => {
-                  setModalVisible(false)
-                  setEditingAssistant(null)
-                  form.resetFields()
-                }}
-              >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+            </Form.Item>
+          </Form>
+        </Modal>
       </div>
     </PageContainer>
   )

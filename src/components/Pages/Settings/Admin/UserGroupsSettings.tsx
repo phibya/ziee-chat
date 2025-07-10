@@ -11,12 +11,12 @@ import {
   Modal,
   Popconfirm,
   Result,
+  Select,
   Space,
   Switch,
   Table,
   Tag,
   Typography,
-  Select,
 } from 'antd'
 import {
   DeleteOutlined,
@@ -391,261 +391,265 @@ export function UserGroupsSettings() {
   return (
     <PageContainer>
       <div>
-      <div className="flex justify-between items-center mb-6">
-        <Title level={3}>User Groups</Title>
-        {canCreateGroups && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateModalVisible(true)}
-          >
-            Create Group
-          </Button>
-        )}
-      </div>
+        <div className="flex justify-between items-center mb-6">
+          <Title level={3}>User Groups</Title>
+          {canCreateGroups && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalVisible(true)}
+            >
+              Create Group
+            </Button>
+          )}
+        </div>
 
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={groups}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: total => `Total ${total} groups`,
+        <Card>
+          <Table
+            columns={columns}
+            dataSource={groups}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: total => `Total ${total} groups`,
+            }}
+          />
+        </Card>
+
+        {/* Create Group Modal */}
+        <Modal
+          title="Create User Group"
+          open={createModalVisible}
+          onCancel={() => {
+            setCreateModalVisible(false)
+            createForm.resetFields()
           }}
-        />
-      </Card>
-
-      {/* Create Group Modal */}
-      <Modal
-        title="Create User Group"
-        open={createModalVisible}
-        onCancel={() => {
-          setCreateModalVisible(false)
-          createForm.resetFields()
-        }}
-        footer={null}
-        width={600}
-        maskClosable={false}
-      >
-        <Form form={createForm} layout="vertical" onFinish={handleCreateGroup}>
-          <Form.Item
-            name="name"
-            label="Group Name"
-            rules={[{ required: true, message: 'Please enter group name' }]}
+          footer={null}
+          width={600}
+          maskClosable={false}
+        >
+          <Form
+            form={createForm}
+            layout="vertical"
+            onFinish={handleCreateGroup}
           >
-            <Input placeholder="Enter group name" />
-          </Form.Item>
-          <Form.Item name="description" label="Description">
-            <TextArea rows={3} placeholder="Enter group description" />
-          </Form.Item>
-          <Form.Item
-            name="permissions"
-            label="Permissions (JSON)"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value) return Promise.resolve()
-                  try {
-                    JSON.parse(value)
-                    return Promise.resolve()
-                  } catch {
-                    return Promise.reject('Invalid JSON format')
-                  }
-                },
-              },
-            ]}
-          >
-            <TextArea
-              rows={6}
-              placeholder='{"user_management": true, "chat": true}'
-            />
-          </Form.Item>
-
-          {canManageModelProviders && (
             <Form.Item
-              name="model_provider_ids"
-              label="Model Providers"
-              tooltip="Select which model providers this group can access"
+              name="name"
+              label="Group Name"
+              rules={[{ required: true, message: 'Please enter group name' }]}
             >
-              <Select
-                mode="multiple"
-                placeholder="Select model providers"
-                options={modelProviders.map(provider => ({
-                  value: provider.id,
-                  label: provider.name,
-                  disabled: !provider.enabled,
-                }))}
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
+              <Input placeholder="Enter group name" />
+            </Form.Item>
+            <Form.Item name="description" label="Description">
+              <TextArea rows={3} placeholder="Enter group description" />
+            </Form.Item>
+            <Form.Item
+              name="permissions"
+              label="Permissions (JSON)"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve()
+                    try {
+                      JSON.parse(value)
+                      return Promise.resolve()
+                    } catch {
+                      return Promise.reject('Invalid JSON format')
+                    }
+                  },
+                },
+              ]}
+            >
+              <TextArea
+                rows={6}
+                placeholder='{"user_management": true, "chat": true}'
               />
             </Form.Item>
-          )}
-          <Form.Item className="mb-0">
-            <Space>
-              <Button type="primary" htmlType="submit">
-                Create Group
-              </Button>
-              <Button
-                onClick={() => {
-                  setCreateModalVisible(false)
-                  createForm.resetFields()
-                }}
+
+            {canManageModelProviders && (
+              <Form.Item
+                name="model_provider_ids"
+                label="Model Providers"
+                tooltip="Select which model providers this group can access"
               >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      {/* Edit Group Modal */}
-      <Modal
-        title="Edit User Group"
-        open={editModalVisible}
-        onCancel={() => {
-          setEditModalVisible(false)
-          setSelectedGroup(null)
-          editForm.resetFields()
-        }}
-        footer={null}
-        width={600}
-        maskClosable={false}
-      >
-        <Form form={editForm} layout="vertical" onFinish={handleEditGroup}>
-          <Form.Item
-            name="name"
-            label="Group Name"
-            tooltip={
-              selectedGroup?.is_protected
-                ? 'Protected groups cannot have their name changed'
-                : undefined
-            }
-            rules={[{ required: true, message: 'Please enter group name' }]}
-          >
-            <Input
-              placeholder="Enter group name"
-              disabled={selectedGroup?.is_protected}
-            />
-          </Form.Item>
-          <Form.Item name="description" label="Description">
-            <TextArea rows={3} placeholder="Enter group description" />
-          </Form.Item>
-          <Form.Item
-            name="permissions"
-            label="Permissions (JSON)"
-            tooltip={
-              selectedGroup?.is_protected
-                ? 'Protected groups cannot have their permissions modified'
-                : undefined
-            }
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value) return Promise.resolve()
-                  try {
-                    JSON.parse(value)
-                    return Promise.resolve()
-                  } catch {
-                    return Promise.reject('Invalid JSON format')
+                <Select
+                  mode="multiple"
+                  placeholder="Select model providers"
+                  options={modelProviders.map(provider => ({
+                    value: provider.id,
+                    label: provider.name,
+                    disabled: !provider.enabled,
+                  }))}
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.label ?? '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
                   }
-                },
-              },
-            ]}
-          >
-            <TextArea rows={6} disabled={selectedGroup?.is_protected} />
-          </Form.Item>
+                />
+              </Form.Item>
+            )}
+            <Form.Item className="mb-0">
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  Create Group
+                </Button>
+                <Button
+                  onClick={() => {
+                    setCreateModalVisible(false)
+                    createForm.resetFields()
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
 
-          {canManageModelProviders && (
+        {/* Edit Group Modal */}
+        <Modal
+          title="Edit User Group"
+          open={editModalVisible}
+          onCancel={() => {
+            setEditModalVisible(false)
+            setSelectedGroup(null)
+            editForm.resetFields()
+          }}
+          footer={null}
+          width={600}
+          maskClosable={false}
+        >
+          <Form form={editForm} layout="vertical" onFinish={handleEditGroup}>
             <Form.Item
-              name="model_provider_ids"
-              label="Model Providers"
-              tooltip="Select which model providers this group can access"
+              name="name"
+              label="Group Name"
+              tooltip={
+                selectedGroup?.is_protected
+                  ? 'Protected groups cannot have their name changed'
+                  : undefined
+              }
+              rules={[{ required: true, message: 'Please enter group name' }]}
             >
-              <Select
-                mode="multiple"
-                placeholder="Select model providers"
-                options={modelProviders.map(provider => ({
-                  value: provider.id,
-                  label: provider.name,
-                  disabled: !provider.enabled,
-                }))}
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
+              <Input
+                placeholder="Enter group name"
+                disabled={selectedGroup?.is_protected}
               />
             </Form.Item>
-          )}
+            <Form.Item name="description" label="Description">
+              <TextArea rows={3} placeholder="Enter group description" />
+            </Form.Item>
+            <Form.Item
+              name="permissions"
+              label="Permissions (JSON)"
+              tooltip={
+                selectedGroup?.is_protected
+                  ? 'Protected groups cannot have their permissions modified'
+                  : undefined
+              }
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve()
+                    try {
+                      JSON.parse(value)
+                      return Promise.resolve()
+                    } catch {
+                      return Promise.reject('Invalid JSON format')
+                    }
+                  },
+                },
+              ]}
+            >
+              <TextArea rows={6} disabled={selectedGroup?.is_protected} />
+            </Form.Item>
 
-          <Form.Item
-            name="is_active"
-            label="Active"
-            valuePropName="checked"
-            tooltip={
-              selectedGroup?.is_protected
-                ? 'Protected groups cannot have their active status changed'
-                : undefined
-            }
-          >
-            <Switch disabled={selectedGroup?.is_protected} />
-          </Form.Item>
-          <Form.Item className="mb-0">
-            <Space>
-              <Button type="primary" htmlType="submit">
-                Update Group
-              </Button>
-              <Button
-                onClick={() => {
-                  setEditModalVisible(false)
-                  setSelectedGroup(null)
-                  editForm.resetFields()
-                }}
+            {canManageModelProviders && (
+              <Form.Item
+                name="model_provider_ids"
+                label="Model Providers"
+                tooltip="Select which model providers this group can access"
               >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+                <Select
+                  mode="multiple"
+                  placeholder="Select model providers"
+                  options={modelProviders.map(provider => ({
+                    value: provider.id,
+                    label: provider.name,
+                    disabled: !provider.enabled,
+                  }))}
+                  showSearch
+                  filterOption={(input, option) =>
+                    (option?.label ?? '')
+                      .toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                />
+              </Form.Item>
+            )}
 
-      {/* Group Members Drawer */}
-      <Drawer
-        title={`Members of ${selectedGroup?.name}`}
-        placement="right"
-        onClose={() => setMembersDrawerVisible(false)}
-        open={membersDrawerVisible}
-        width={400}
-      >
-        <List
-          loading={membersLoading}
-          dataSource={groupMembers}
-          renderItem={user => (
-            <List.Item>
-              <List.Item.Meta
-                avatar={<UserOutlined />}
-                title={user.username}
-                description={
-                  <div>
-                    <div>{user.emails[0]?.address}</div>
-                    <Tag color={user.is_active ? 'green' : 'red'}>
-                      {user.is_active ? 'Active' : 'Inactive'}
-                    </Tag>
-                  </div>
-                }
-              />
-            </List.Item>
-          )}
-        />
-      </Drawer>
+            <Form.Item
+              name="is_active"
+              label="Active"
+              valuePropName="checked"
+              tooltip={
+                selectedGroup?.is_protected
+                  ? 'Protected groups cannot have their active status changed'
+                  : undefined
+              }
+            >
+              <Switch disabled={selectedGroup?.is_protected} />
+            </Form.Item>
+            <Form.Item className="mb-0">
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  Update Group
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditModalVisible(false)
+                    setSelectedGroup(null)
+                    editForm.resetFields()
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Group Members Drawer */}
+        <Drawer
+          title={`Members of ${selectedGroup?.name}`}
+          placement="right"
+          onClose={() => setMembersDrawerVisible(false)}
+          open={membersDrawerVisible}
+          width={400}
+        >
+          <List
+            loading={membersLoading}
+            dataSource={groupMembers}
+            renderItem={user => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={<UserOutlined />}
+                  title={user.username}
+                  description={
+                    <div>
+                      <div>{user.emails[0]?.address}</div>
+                      <Tag color={user.is_active ? 'green' : 'red'}>
+                        {user.is_active ? 'Active' : 'Inactive'}
+                      </Tag>
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </Drawer>
       </div>
     </PageContainer>
   )

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Layout } from 'antd'
 import { useUISettings } from '../../store/settings'
 import { LeftPanel } from './LeftPanel'
-import { useTheme } from '../../hooks/useTheme'
 
 const { Sider, Content } = Layout
 
@@ -11,7 +10,6 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const appTheme = useTheme()
   const {
     leftPanelCollapsed,
     leftPanelWidth,
