@@ -270,9 +270,13 @@ export function SettingsPage() {
             padding: isMobile ? '16px' : '24px',
             overflow: 'auto',
             marginTop: isMobile ? 0 : 0,
+            display: 'flex',
+            justifyContent: 'center',
           }}
         >
-          <Outlet />
+          <div style={{ width: '100%', maxWidth: '800px' }}>
+            <Outlet />
+          </div>
         </Content>
       </Layout>
     </Layout>

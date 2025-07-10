@@ -235,9 +235,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       message.error('Authentication required')
       setIsLoading(false)
       setIsStreaming(false)
-      setMessages(prev => prev.filter(msg => 
-        msg.id !== tempUserMessage.id && msg.id !== tempAssistantMessage.id
-      ))
+      setMessages(prev =>
+        prev.filter(
+          msg =>
+            msg.id !== tempUserMessage.id && msg.id !== tempAssistantMessage.id,
+        ),
+      )
       return
     }
 
@@ -258,15 +261,20 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       setMessages(conversationResponse.messages)
       setIsLoading(false)
       setIsStreaming(false)
-
     } catch (error) {
       console.error('Chat error:', error)
-      message.error('Failed to send message: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      message.error(
+        'Failed to send message: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
+      )
       setIsLoading(false)
       setIsStreaming(false)
-      setMessages(prev => prev.filter(msg => 
-        msg.id !== tempUserMessage.id && msg.id !== tempAssistantMessage.id
-      ))
+      setMessages(prev =>
+        prev.filter(
+          msg =>
+            msg.id !== tempUserMessage.id && msg.id !== tempAssistantMessage.id,
+        ),
+      )
     }
   }
 

@@ -59,6 +59,17 @@ import {
   SendMessageRequest,
   EditMessageRequest,
 } from './chat'
+import {
+  Project,
+  ProjectConversation,
+  CreateProjectRequest,
+  UpdateProjectRequest,
+  ProjectListResponse,
+  ProjectDetailResponse,
+  UploadDocumentRequest,
+  UploadDocumentResponse,
+  ProjectListParams,
+} from './projects'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -154,6 +165,19 @@ export const ApiEndpoints = {
   'Chat.switchBranch': 'POST /api/chat/messages/{message_id}/branch/switch',
   'Chat.searchConversations': 'GET /api/chat/conversations/search',
   'Chat.clearAllConversations': 'DELETE /api/chat/conversations/clear-all',
+  // Project endpoints
+  'Projects.list': 'GET /api/projects',
+  'Projects.create': 'POST /api/projects',
+  'Projects.get': 'GET /api/projects/{project_id}',
+  'Projects.update': 'PUT /api/projects/{project_id}',
+  'Projects.delete': 'DELETE /api/projects/{project_id}',
+  'Projects.uploadDocument': 'POST /api/projects/{project_id}/documents',
+  'Projects.deleteDocument':
+    'DELETE /api/projects/{project_id}/documents/{document_id}',
+  'Projects.linkConversation':
+    'POST /api/projects/{project_id}/conversations/{conversation_id}',
+  'Projects.unlinkConversation':
+    'DELETE /api/projects/{project_id}/conversations/{conversation_id}',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -252,6 +276,16 @@ export type ApiEndpointParameters = {
   'Chat.switchBranch': { message_id: string }
   'Chat.searchConversations': { q: string; page?: number; per_page?: number }
   'Chat.clearAllConversations': void
+  // Project endpoints
+  'Projects.list': ProjectListParams
+  'Projects.create': CreateProjectRequest
+  'Projects.get': { project_id: string }
+  'Projects.update': { project_id: string } & UpdateProjectRequest
+  'Projects.delete': { project_id: string }
+  'Projects.uploadDocument': { project_id: string } & UploadDocumentRequest
+  'Projects.deleteDocument': { project_id: string; document_id: string }
+  'Projects.linkConversation': { project_id: string; conversation_id: string }
+  'Projects.unlinkConversation': { project_id: string; conversation_id: string }
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -356,6 +390,16 @@ export type ApiEndpointResponses = {
   'Chat.switchBranch': Message
   'Chat.searchConversations': ConversationListResponse
   'Chat.clearAllConversations': { deleted_count: number; message: string }
+  // Project endpoints
+  'Projects.list': ProjectListResponse
+  'Projects.create': Project
+  'Projects.get': ProjectDetailResponse
+  'Projects.update': Project
+  'Projects.delete': void
+  'Projects.uploadDocument': UploadDocumentResponse
+  'Projects.deleteDocument': void
+  'Projects.linkConversation': ProjectConversation
+  'Projects.unlinkConversation': void
 }
 
 // Type helpers

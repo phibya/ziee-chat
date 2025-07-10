@@ -190,83 +190,85 @@ export const ChatHistoryPage: React.FC = () => {
   )
 
   return (
-    <div className="p-6">
-      <Row gutter={[24, 24]}>
-        <Col span={24}>
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <Title level={2}>Chat History</Title>
-              <Text type="secondary">
-                View and manage all your chat conversations
-              </Text>
-            </div>
-            <Space>
-              <Search
-                placeholder="Search conversations..."
-                allowClear
-                enterButton={<SearchOutlined />}
-                size="middle"
-                onSearch={setSearchText}
-                onChange={e => setSearchText(e.target.value)}
-                style={{ width: 300 }}
-              />
-              {conversations.length > 0 && (
-                <Popconfirm
-                  title="Clear All History"
-                  description="Are you sure you want to delete all chat history? This action cannot be undone."
-                  onConfirm={handleClearAllHistory}
-                  okText="Yes"
-                  cancelText="No"
-                  okType="danger"
-                >
-                  <Button danger icon={<ClearOutlined />} type="default">
-                    Clear All
-                  </Button>
-                </Popconfirm>
-              )}
-            </Space>
-          </div>
-
-          {conversations.length === 0 && !loading ? (
-            <Card>
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  searchText.trim()
-                    ? 'No conversations found matching your search'
-                    : 'No chat history yet'
-                }
-              >
-                {!searchText.trim() && (
-                  <Button type="primary" onClick={() => navigate('/')}>
-                    Start New Chat
-                  </Button>
+    <div className="p-6 flex justify-center">
+      <div className="w-full max-w-6xl">
+        <Row gutter={[24, 24]}>
+          <Col span={24}>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <Title level={2}>Chat History</Title>
+                <Text type="secondary">
+                  View and manage all your chat conversations
+                </Text>
+              </div>
+              <Space>
+                <Search
+                  placeholder="Search conversations..."
+                  allowClear
+                  enterButton={<SearchOutlined />}
+                  size="middle"
+                  onSearch={setSearchText}
+                  onChange={e => setSearchText(e.target.value)}
+                  style={{ width: 300 }}
+                />
+                {conversations.length > 0 && (
+                  <Popconfirm
+                    title="Clear All History"
+                    description="Are you sure you want to delete all chat history? This action cannot be undone."
+                    onConfirm={handleClearAllHistory}
+                    okText="Yes"
+                    cancelText="No"
+                    okType="danger"
+                  >
+                    <Button danger icon={<ClearOutlined />} type="default">
+                      Clear All
+                    </Button>
+                  </Popconfirm>
                 )}
-              </Empty>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <>
-                  {conversations.map(renderConversationCard)}
-                  {conversations.length > 20 && (
-                    <Card className="text-center">
-                      <Text type="secondary">
-                        Showing {Math.min(20, conversations.length)} of{' '}
-                        {conversations.length} conversations
-                      </Text>
-                    </Card>
-                  )}
-                </>
-              )}
+              </Space>
             </div>
-          )}
-        </Col>
-      </Row>
+
+            {conversations.length === 0 && !loading ? (
+              <Card>
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    searchText.trim()
+                      ? 'No conversations found matching your search'
+                      : 'No chat history yet'
+                  }
+                >
+                  {!searchText.trim() && (
+                    <Button type="primary" onClick={() => navigate('/')}>
+                      Start New Chat
+                    </Button>
+                  )}
+                </Empty>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {loading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <>
+                    {conversations.map(renderConversationCard)}
+                    {conversations.length > 20 && (
+                      <Card className="text-center">
+                        <Text type="secondary">
+                          Showing {Math.min(20, conversations.length)} of{' '}
+                          {conversations.length} conversations
+                        </Text>
+                      </Card>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </Col>
+        </Row>
+      </div>
     </div>
   )
 }

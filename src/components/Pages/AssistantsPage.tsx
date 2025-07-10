@@ -334,363 +334,374 @@ export const AssistantsPage: React.FC = () => {
   )
 
   return (
-    <div className="p-6">
-      <Row gutter={[24, 24]}>
-        <Col span={24}>
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <Title level={2}>My Assistants</Title>
-              <Text type="secondary">
-                Create and manage your personal assistants
-              </Text>
-            </div>
-            <Space>
-              <Button
-                type="default"
-                icon={<CopyOutlined />}
-                onClick={handleCloneFromTemplate}
-              >
-                Clone from Template
-              </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreate}
-              >
-                Create New
-              </Button>
-            </Space>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div>Loading assistants...</div>
-            </div>
-          ) : assistants.length === 0 ? (
-            <Card>
-              <div className="text-center py-12">
-                <RobotOutlined className="text-4xl mb-4 text-gray-400" />
-                <Title level={4} type="secondary">
-                  No assistants yet
-                </Title>
+    <div className="p-6 flex justify-center">
+      <div className="w-full max-w-6xl">
+        <Row gutter={[24, 24]}>
+          <Col span={24}>
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <Title level={2}>My Assistants</Title>
                 <Text type="secondary">
-                  Create your first assistant to get started
+                  Create and manage your personal assistants
                 </Text>
               </div>
-            </Card>
-          ) : (
-            <Row gutter={[16, 16]}>
-              {assistants.map(assistant => (
-                <Col xs={24} sm={12} md={8} lg={6} key={assistant.id}>
-                  {renderAssistantCard(assistant)}
-                </Col>
-              ))}
-            </Row>
-          )}
-        </Col>
-      </Row>
-
-      <Modal
-        title={
-          editingAssistant
-            ? 'Edit Assistant'
-            : cloneSource
-              ? 'Clone Assistant'
-              : 'Create Assistant'
-        }
-        open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false)
-          setEditingAssistant(null)
-          setCloneSource(null)
-          form.resetFields()
-        }}
-        footer={null}
-        width={800}
-        maskClosable={false}
-      >
-        <Form form={form} onFinish={handleCreateEdit} layout="vertical">
-          <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Please enter a name' }]}
-          >
-            <Input placeholder="Enter assistant name" />
-          </Form.Item>
-
-          <Form.Item name="description" label="Description">
-            <Input.TextArea
-              placeholder="Enter assistant description"
-              rows={2}
-            />
-          </Form.Item>
-
-          <Form.Item name="instructions" label="Instructions">
-            <TextArea
-              placeholder="Enter assistant instructions (supports markdown)"
-              rows={6}
-            />
-          </Form.Item>
-
-          <Form.Item label="Parameters">
-            <div className="mb-3">
               <Space>
                 <Button
-                  type={parameterMode === 'json' ? 'primary' : 'default'}
-                  size="small"
-                  icon={<CodeOutlined />}
-                  onClick={() => handleParameterModeChange('json')}
+                  type="default"
+                  icon={<CopyOutlined />}
+                  onClick={handleCloneFromTemplate}
                 >
-                  JSON
+                  Clone from Template
                 </Button>
                 <Button
-                  type={parameterMode === 'form' ? 'primary' : 'default'}
-                  size="small"
-                  icon={<FormOutlined />}
-                  onClick={() => handleParameterModeChange('form')}
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleCreate}
                 >
-                  Form
+                  Create New
                 </Button>
               </Space>
             </div>
 
-            {parameterMode === 'json' ? (
-              <Form.Item
-                name="parameters"
-                rules={[
-                  {
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve()
-                      try {
-                        JSON.parse(value)
-                        return Promise.resolve()
-                      } catch {
-                        return Promise.reject('Invalid JSON format')
-                      }
-                    },
-                  },
-                ]}
-              >
-                <TextArea
-                  value={parameterJson}
-                  onChange={e => {
-                    setParameterJson(e.target.value)
-                    form.setFieldsValue({ parameters: e.target.value })
-                  }}
-                  placeholder="Enter parameters as JSON"
-                  rows={8}
-                  style={{ fontFamily: 'monospace' }}
-                />
-              </Form.Item>
-            ) : (
-              <div>
-                <div className="space-y-3">
-                  {parameterFormFields.map((field, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <Input
-                        placeholder="Field name"
-                        value={field.name}
-                        onChange={e =>
-                          handleFormFieldChange(index, 'name', e.target.value)
-                        }
-                        style={{ width: 150 }}
-                      />
-                      <Select
-                        value={field.type}
-                        onChange={value =>
-                          handleFormFieldChange(index, 'type', value)
-                        }
-                        style={{ width: 100 }}
-                      >
-                        <Select.Option value="string">String</Select.Option>
-                        <Select.Option value="number">Number</Select.Option>
-                        <Select.Option value="boolean">Boolean</Select.Option>
-                      </Select>
-                      {field.type === 'boolean' ? (
-                        <Switch
-                          checked={field.value}
-                          onChange={checked =>
-                            handleFormFieldChange(index, 'value', checked)
-                          }
-                        />
-                      ) : field.type === 'number' ? (
-                        <InputNumber
-                          value={field.value}
-                          onChange={value =>
-                            handleFormFieldChange(index, 'value', value || 0)
-                          }
-                          style={{ width: 120 }}
-                        />
-                      ) : (
-                        <Input
-                          value={field.value}
-                          onChange={e =>
-                            handleFormFieldChange(
-                              index,
-                              'value',
-                              e.target.value,
-                            )
-                          }
-                          style={{ width: 120 }}
-                        />
-                      )}
-                      <Button
-                        type="text"
-                        danger
-                        onClick={() => removeFormField(index)}
-                        icon={<DeleteOutlined />}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  type="dashed"
-                  onClick={addFormField}
-                  className="mt-3"
-                  icon={<PlusOutlined />}
-                >
-                  Add Field
-                </Button>
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <div>Loading assistants...</div>
               </div>
+            ) : assistants.length === 0 ? (
+              <Card>
+                <div className="text-center py-12">
+                  <RobotOutlined className="text-4xl mb-4 text-gray-400" />
+                  <Title level={4} type="secondary">
+                    No assistants yet
+                  </Title>
+                  <Text type="secondary">
+                    Create your first assistant to get started
+                  </Text>
+                </div>
+              </Card>
+            ) : (
+              <Row gutter={[16, 16]}>
+                {assistants.map(assistant => (
+                  <Col xs={24} sm={12} md={8} lg={6} key={assistant.id}>
+                    {renderAssistantCard(assistant)}
+                  </Col>
+                ))}
+              </Row>
             )}
-          </Form.Item>
+          </Col>
+        </Row>
 
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
-            <Switch />
-          </Form.Item>
+        <Modal
+          title={
+            editingAssistant
+              ? 'Edit Assistant'
+              : cloneSource
+                ? 'Clone Assistant'
+                : 'Create Assistant'
+          }
+          open={modalVisible}
+          onCancel={() => {
+            setModalVisible(false)
+            setEditingAssistant(null)
+            setCloneSource(null)
+            form.resetFields()
+          }}
+          footer={null}
+          width={800}
+          maskClosable={false}
+        >
+          <Form form={form} onFinish={handleCreateEdit} layout="vertical">
+            <Form.Item
+              name="name"
+              label="Name"
+              rules={[{ required: true, message: 'Please enter a name' }]}
+            >
+              <Input placeholder="Enter assistant name" />
+            </Form.Item>
 
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit">
-                {editingAssistant ? 'Update' : cloneSource ? 'Clone' : 'Create'}
-              </Button>
-              <Button
-                onClick={() => {
-                  setModalVisible(false)
-                  setEditingAssistant(null)
-                  setCloneSource(null)
-                  form.resetFields()
-                }}
-              >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+            <Form.Item name="description" label="Description">
+              <Input.TextArea
+                placeholder="Enter assistant description"
+                rows={2}
+              />
+            </Form.Item>
 
-      {/* Template Assistants Modal */}
-      <Modal
-        title="Clone from Template Assistants"
-        open={templateModalVisible}
-        onCancel={() => setTemplateModalVisible(false)}
-        footer={null}
-        width={900}
-        maskClosable={false}
-      >
-        <div className="mb-4">
-          <Text type="secondary">
-            Select a template assistant to clone and customize for your use
-          </Text>
-        </div>
-        <Table
-          columns={[
-            {
-              title: 'Name',
-              dataIndex: 'name',
-              key: 'name',
-              render: (text: string) => (
+            <Form.Item name="instructions" label="Instructions">
+              <TextArea
+                placeholder="Enter assistant instructions (supports markdown)"
+                rows={6}
+              />
+            </Form.Item>
+
+            <Form.Item label="Parameters">
+              <div className="mb-3">
                 <Space>
-                  <RobotOutlined />
-                  <Text strong>{text}</Text>
-                  <Tag color="blue">Template</Tag>
-                </Space>
-              ),
-            },
-            {
-              title: 'Description',
-              dataIndex: 'description',
-              key: 'description',
-              render: (text: string) => (
-                <Text type="secondary">{text || 'No description'}</Text>
-              ),
-            },
-            {
-              title: 'Instructions Preview',
-              dataIndex: 'instructions',
-              key: 'instructions',
-              render: (text: string) => (
-                <Text type="secondary" ellipsis={{ tooltip: text }}>
-                  {text
-                    ? text.substring(0, 100) + (text.length > 100 ? '...' : '')
-                    : 'No instructions'}
-                </Text>
-              ),
-              width: 200,
-            },
-            {
-              title: 'Actions',
-              key: 'actions',
-              render: (_: any, record: Assistant) => (
-                <Space>
-                  <Tooltip title="Preview Details">
-                    <Button
-                      type="text"
-                      icon={<RobotOutlined />}
-                      onClick={() => {
-                        Modal.info({
-                          title: `Preview: ${record.name}`,
-                          content: (
-                            <div>
-                              <div className="mb-3">
-                                <Text strong>Description:</Text>
-                                <div>
-                                  {record.description || 'No description'}
-                                </div>
-                              </div>
-                              <div className="mb-3">
-                                <Text strong>Instructions:</Text>
-                                <div style={{ whiteSpace: 'pre-wrap' }}>
-                                  {record.instructions || 'No instructions'}
-                                </div>
-                              </div>
-                              <div className="mb-3">
-                                <Text strong>Parameters:</Text>
-                                <pre
-                                  style={{
-                                    backgroundColor: '#f5f5f5',
-                                    padding: '8px',
-                                    borderRadius: '4px',
-                                  }}
-                                >
-                                  {record.parameters
-                                    ? JSON.stringify(record.parameters, null, 2)
-                                    : 'No parameters'}
-                                </pre>
-                              </div>
-                            </div>
-                          ),
-                          width: 600,
-                        })
-                      }}
-                    />
-                  </Tooltip>
                   <Button
-                    type="primary"
-                    icon={<CopyOutlined />}
-                    onClick={() => handleSelectTemplateAssistant(record)}
+                    type={parameterMode === 'json' ? 'primary' : 'default'}
+                    size="small"
+                    icon={<CodeOutlined />}
+                    onClick={() => handleParameterModeChange('json')}
                   >
-                    Clone
+                    JSON
+                  </Button>
+                  <Button
+                    type={parameterMode === 'form' ? 'primary' : 'default'}
+                    size="small"
+                    icon={<FormOutlined />}
+                    onClick={() => handleParameterModeChange('form')}
+                  >
+                    Form
                   </Button>
                 </Space>
-              ),
-            },
-          ]}
-          dataSource={templateAssistants}
-          rowKey="id"
-          pagination={{ pageSize: 5 }}
-        />
-      </Modal>
+              </div>
+
+              {parameterMode === 'json' ? (
+                <Form.Item
+                  name="parameters"
+                  rules={[
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve()
+                        try {
+                          JSON.parse(value)
+                          return Promise.resolve()
+                        } catch {
+                          return Promise.reject('Invalid JSON format')
+                        }
+                      },
+                    },
+                  ]}
+                >
+                  <TextArea
+                    value={parameterJson}
+                    onChange={e => {
+                      setParameterJson(e.target.value)
+                      form.setFieldsValue({ parameters: e.target.value })
+                    }}
+                    placeholder="Enter parameters as JSON"
+                    rows={8}
+                    style={{ fontFamily: 'monospace' }}
+                  />
+                </Form.Item>
+              ) : (
+                <div>
+                  <div className="space-y-3">
+                    {parameterFormFields.map((field, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Input
+                          placeholder="Field name"
+                          value={field.name}
+                          onChange={e =>
+                            handleFormFieldChange(index, 'name', e.target.value)
+                          }
+                          style={{ width: 150 }}
+                        />
+                        <Select
+                          value={field.type}
+                          onChange={value =>
+                            handleFormFieldChange(index, 'type', value)
+                          }
+                          style={{ width: 100 }}
+                        >
+                          <Select.Option value="string">String</Select.Option>
+                          <Select.Option value="number">Number</Select.Option>
+                          <Select.Option value="boolean">Boolean</Select.Option>
+                        </Select>
+                        {field.type === 'boolean' ? (
+                          <Switch
+                            checked={field.value}
+                            onChange={checked =>
+                              handleFormFieldChange(index, 'value', checked)
+                            }
+                          />
+                        ) : field.type === 'number' ? (
+                          <InputNumber
+                            value={field.value}
+                            onChange={value =>
+                              handleFormFieldChange(index, 'value', value || 0)
+                            }
+                            style={{ width: 120 }}
+                          />
+                        ) : (
+                          <Input
+                            value={field.value}
+                            onChange={e =>
+                              handleFormFieldChange(
+                                index,
+                                'value',
+                                e.target.value,
+                              )
+                            }
+                            style={{ width: 120 }}
+                          />
+                        )}
+                        <Button
+                          type="text"
+                          danger
+                          onClick={() => removeFormField(index)}
+                          icon={<DeleteOutlined />}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="dashed"
+                    onClick={addFormField}
+                    className="mt-3"
+                    icon={<PlusOutlined />}
+                  >
+                    Add Field
+                  </Button>
+                </div>
+              )}
+            </Form.Item>
+
+            <Form.Item name="is_active" label="Active" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  {editingAssistant
+                    ? 'Update'
+                    : cloneSource
+                      ? 'Clone'
+                      : 'Create'}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setModalVisible(false)
+                    setEditingAssistant(null)
+                    setCloneSource(null)
+                    form.resetFields()
+                  }}
+                >
+                  Cancel
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Template Assistants Modal */}
+        <Modal
+          title="Clone from Template Assistants"
+          open={templateModalVisible}
+          onCancel={() => setTemplateModalVisible(false)}
+          footer={null}
+          width={900}
+          maskClosable={false}
+        >
+          <div className="mb-4">
+            <Text type="secondary">
+              Select a template assistant to clone and customize for your use
+            </Text>
+          </div>
+          <Table
+            columns={[
+              {
+                title: 'Name',
+                dataIndex: 'name',
+                key: 'name',
+                render: (text: string) => (
+                  <Space>
+                    <RobotOutlined />
+                    <Text strong>{text}</Text>
+                    <Tag color="blue">Template</Tag>
+                  </Space>
+                ),
+              },
+              {
+                title: 'Description',
+                dataIndex: 'description',
+                key: 'description',
+                render: (text: string) => (
+                  <Text type="secondary">{text || 'No description'}</Text>
+                ),
+              },
+              {
+                title: 'Instructions Preview',
+                dataIndex: 'instructions',
+                key: 'instructions',
+                render: (text: string) => (
+                  <Text type="secondary" ellipsis={{ tooltip: text }}>
+                    {text
+                      ? text.substring(0, 100) +
+                        (text.length > 100 ? '...' : '')
+                      : 'No instructions'}
+                  </Text>
+                ),
+                width: 200,
+              },
+              {
+                title: 'Actions',
+                key: 'actions',
+                render: (_: any, record: Assistant) => (
+                  <Space>
+                    <Tooltip title="Preview Details">
+                      <Button
+                        type="text"
+                        icon={<RobotOutlined />}
+                        onClick={() => {
+                          Modal.info({
+                            title: `Preview: ${record.name}`,
+                            content: (
+                              <div>
+                                <div className="mb-3">
+                                  <Text strong>Description:</Text>
+                                  <div>
+                                    {record.description || 'No description'}
+                                  </div>
+                                </div>
+                                <div className="mb-3">
+                                  <Text strong>Instructions:</Text>
+                                  <div style={{ whiteSpace: 'pre-wrap' }}>
+                                    {record.instructions || 'No instructions'}
+                                  </div>
+                                </div>
+                                <div className="mb-3">
+                                  <Text strong>Parameters:</Text>
+                                  <pre
+                                    style={{
+                                      backgroundColor: '#f5f5f5',
+                                      padding: '8px',
+                                      borderRadius: '4px',
+                                    }}
+                                  >
+                                    {record.parameters
+                                      ? JSON.stringify(
+                                          record.parameters,
+                                          null,
+                                          2,
+                                        )
+                                      : 'No parameters'}
+                                  </pre>
+                                </div>
+                              </div>
+                            ),
+                            width: 600,
+                          })
+                        }}
+                      />
+                    </Tooltip>
+                    <Button
+                      type="primary"
+                      icon={<CopyOutlined />}
+                      onClick={() => handleSelectTemplateAssistant(record)}
+                    >
+                      Clone
+                    </Button>
+                  </Space>
+                ),
+              },
+            ]}
+            dataSource={templateAssistants}
+            rowKey="id"
+            pagination={{ pageSize: 5 }}
+          />
+        </Modal>
+      </div>
     </div>
   )
 }

@@ -15,6 +15,8 @@ import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
 import { HubPage } from './components/Pages/HubPage'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { ModelsPage } from './components/Pages/ModelsPage'
+import { ProjectsPage } from './components/Pages/ProjectsPage'
+import { ProjectDetailsPage } from './components/Pages/ProjectDetailsPage'
 import {
   AdminAppearanceSettings,
   AdminAssistantsSettings,
@@ -67,6 +69,11 @@ function App() {
               />
               <Route path="/assistants" element={<AssistantsPage />} />
               <Route path="/chat-history" element={<ChatHistoryPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route
+                path="/projects/:projectId"
+                element={<ProjectDetailsPage />}
+              />
               <Route path="/hub" element={<HubPage />} />
               <Route path="/models" element={<ModelsPage />} />
               <Route path="/settings" element={<SettingsPage />}>

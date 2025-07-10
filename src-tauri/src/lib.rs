@@ -606,6 +606,52 @@ fn create_rest_router() -> Router {
             delete(api::chat::methods::clear_all_conversations)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
+        // Project routes
+        .route(
+            "/api/projects",
+            get(api::projects::methods::list_projects)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects",
+            post(api::projects::methods::create_project)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects/{project_id}",
+            get(api::projects::methods::get_project)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects/{project_id}",
+            put(api::projects::methods::update_project)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects/{project_id}",
+            delete(api::projects::methods::delete_project)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects/{project_id}/documents",
+            post(api::projects::methods::upload_document)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects/{project_id}/documents/{document_id}",
+            delete(api::projects::methods::delete_document)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects/{project_id}/conversations/{conversation_id}",
+            post(api::projects::methods::link_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/projects/{project_id}/conversations/{conversation_id}",
+            delete(api::projects::methods::unlink_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
         .layer(middleware::from_fn(api::middleware::auth_middleware));
 
     // Combine public and protected routes
