@@ -372,7 +372,7 @@ export const AssistantsPage: React.FC = () => {
             ) : assistants.length === 0 ? (
               <Card>
                 <div className="text-center py-12">
-                  <RobotOutlined className="text-4xl mb-4 text-gray-400" />
+                  <RobotOutlined className="text-4xl mb-4" />
                   <Title level={4} type="secondary">
                     No assistants yet
                   </Title>

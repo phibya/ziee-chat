@@ -69,7 +69,7 @@ export const AuthPage: React.FC = () => {
   }
 
   return (
-    <Layout className="min-h-screen bg-gray-50">
+    <Layout className="min-h-screen">
       <Content className="flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">

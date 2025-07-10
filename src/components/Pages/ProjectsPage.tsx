@@ -268,7 +268,7 @@ export const ProjectsPage: React.FC = () => {
                 <div className="flex flex-col h-full">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <FolderOutlined className="text-blue-500" />
+                      <FolderOutlined />
                       <Text strong className="text-base">
                         {project.name}
                       </Text>
@@ -290,13 +290,13 @@ export const ProjectsPage: React.FC = () => {
                   )}
 
                   <div className="mt-auto">
-                    <div className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <CalendarOutlined />
                         <span>Updated {formatTimeAgo(project.updated_at)}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 mt-2">
                       <span>{project.document_count || 0} documents</span>
                       <span>
                         {project.conversation_count || 0} conversations
@@ -312,7 +312,7 @@ export const ProjectsPage: React.FC = () => {
         {/* Empty State */}
         {!loading && projects.length === 0 && (
           <div className="text-center py-12">
-            <FolderOutlined className="text-6xl text-gray-300 mb-4" />
+            <FolderOutlined className="text-6xl mb-4" />
             <Title level={3} type="secondary">
               {searchQuery ? 'No projects found' : 'No projects yet'}
             </Title>

@@ -398,13 +398,13 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     return (
       <div key={msg.id} className="mb-6 group">
-        <div className={`rounded-lg px-4 py-3 ${isUser ? 'bg-gray-50' : ''}`}>
+        <div className="rounded-lg px-4 py-3">
           {/* Message header with avatar */}
           <div className="flex items-center gap-3 mb-2">
             <div className="flex items-center gap-2">
               <Avatar
                 size={32}
-                className={isUser ? 'bg-gray-500' : 'bg-primary'}
+                className={isUser ? '' : 'bg-primary'}
                 icon={isUser ? 'P' : <RobotOutlined />}
               />
             </div>

@@ -1,5 +1,10 @@
--- Complete database initialization with all tables and features
--- This migration creates all required tables and sets up the complete system
+-- CONSOLIDATED MIGRATION: Complete database initialization
+-- This migration consolidates all schema changes and creates the complete database structure
+-- Includes: initial schema, chat tables, branching system, projects, and all enhancements
+
+-- ===============================
+-- 1. UTILITY FUNCTIONS
+-- ===============================
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -9,6 +14,10 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- ===============================
+-- 2. CORE USER SYSTEM
+-- ===============================
 
 -- Create users table (Meteor-like structure with separate tables for arrays)
 CREATE TABLE users (
@@ -73,16 +82,6 @@ CREATE TABLE user_group_memberships (
     UNIQUE(user_id, group_id)
 );
 
--- Create configuration table
-CREATE TABLE configurations (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    value TEXT NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Create user settings table to store personal user preferences
 CREATE TABLE user_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -93,6 +92,24 @@ CREATE TABLE user_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
     UNIQUE(user_id, key)
 );
+
+-- ===============================
+-- 3. CONFIGURATION SYSTEM
+-- ===============================
+
+-- Create configuration table
+CREATE TABLE configurations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    value TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ===============================
+-- 4. MODEL PROVIDER SYSTEM
+-- ===============================
 
 -- Create model providers table
 CREATE TABLE model_providers (
@@ -132,6 +149,7 @@ CREATE TABLE model_provider_models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
+    alias VARCHAR(255) NOT NULL,
     description TEXT,
     path VARCHAR(1024), -- For llama.cpp models
     enabled BOOLEAN DEFAULT TRUE,
@@ -140,8 +158,13 @@ CREATE TABLE model_provider_models (
     capabilities JSONB DEFAULT '{}',
     parameters JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT model_provider_models_alias_not_empty CHECK (alias != '')
 );
+
+-- ===============================
+-- 5. ASSISTANTS SYSTEM
+-- ===============================
 
 -- Create assistants table
 CREATE TABLE assistants (
@@ -158,6 +181,10 @@ CREATE TABLE assistants (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- ===============================
+-- 6. CHAT SYSTEM WITH BRANCHING
+-- ===============================
+
 -- Create conversations table
 CREATE TABLE conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -166,22 +193,110 @@ CREATE TABLE conversations (
     assistant_id UUID REFERENCES assistants(id),
     model_provider_id UUID REFERENCES model_providers(id),
     model_id UUID REFERENCES model_provider_models(id),
+    active_branch_id UUID, -- Will be set after branches table is created
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create messages table
+-- Create branches table for proper branching system
+CREATE TABLE branches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    name VARCHAR(255), -- Optional name for branches (e.g., "main", "alternative 1")
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(conversation_id, name)
+);
+
+-- Add foreign key constraint for active_branch_id
+ALTER TABLE conversations 
+ADD CONSTRAINT fk_conversations_active_branch_id 
+FOREIGN KEY (active_branch_id) REFERENCES branches(id) ON DELETE SET NULL;
+
+-- Create messages table with full branching support
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    parent_message_id UUID REFERENCES messages(id),
+    parent_id UUID REFERENCES messages(id),
     content TEXT NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
+    -- Legacy branching fields (kept for backward compatibility)
     branch_index INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    branch_id UUID NOT NULL DEFAULT gen_random_uuid(),
+    is_active_branch BOOLEAN DEFAULT true,
+    -- New proper branching fields
+    new_branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    originated_from_id UUID, -- Reference to the original message this was edited from
+    edit_count INTEGER DEFAULT 0, -- Number of times this message lineage has been edited
+    -- Additional metadata
+    model_provider_id UUID REFERENCES model_providers(id) ON DELETE SET NULL,
+    model_id UUID,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for better performance
+-- Create message_metadata table for additional information
+CREATE TABLE message_metadata (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    key VARCHAR(255) NOT NULL,
+    value JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(message_id, key)
+);
+
+-- Create conversation_metadata table
+CREATE TABLE conversation_metadata (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    key VARCHAR(255) NOT NULL,
+    value JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(conversation_id, key)
+);
+
+-- ===============================
+-- 7. PROJECTS SYSTEM
+-- ===============================
+
+-- Projects table
+CREATE TABLE projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    is_private BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Project documents table for uploaded files
+CREATE TABLE project_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size BIGINT NOT NULL,
+    mime_type VARCHAR(100),
+    content_text TEXT, -- Extracted text content for search/chat
+    upload_status VARCHAR(50) NOT NULL DEFAULT 'uploaded', -- uploaded, processing, processed, failed
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Project chat conversations (extends the existing conversations table)
+CREATE TABLE project_conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(project_id, conversation_id)
+);
+
+-- ===============================
+-- 8. INDEXES FOR PERFORMANCE
+-- ===============================
+
+-- Users and related tables indexes
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_created_at ON users(created_at);
 CREATE INDEX idx_users_profile ON users USING GIN(profile);
@@ -214,36 +329,97 @@ CREATE INDEX idx_user_group_memberships_assigned_by ON user_group_memberships(as
 CREATE INDEX idx_user_group_model_providers_group_id ON user_group_model_providers(group_id);
 CREATE INDEX idx_user_group_model_providers_provider_id ON user_group_model_providers(provider_id);
 
+-- Configuration indexes
 CREATE INDEX idx_configurations_name ON configurations(name);
 
+-- User settings indexes
 CREATE INDEX idx_user_settings_user_id ON user_settings(user_id);
 CREATE INDEX idx_user_settings_key ON user_settings(key);
 CREATE INDEX idx_user_settings_user_id_key ON user_settings(user_id, key);
 CREATE INDEX idx_user_settings_value ON user_settings USING GIN(value);
 
+-- Model provider indexes
 CREATE INDEX idx_model_providers_provider_type ON model_providers(provider_type);
 CREATE INDEX idx_model_providers_enabled ON model_providers(enabled);
 CREATE INDEX idx_model_providers_proxy_enabled ON model_providers(proxy_enabled);
 CREATE INDEX idx_model_provider_models_provider_id ON model_provider_models(provider_id);
 CREATE INDEX idx_model_provider_models_enabled ON model_provider_models(enabled);
 
+-- Assistant indexes
 CREATE INDEX idx_assistants_created_by ON assistants(created_by);
 CREATE INDEX idx_assistants_is_template ON assistants(is_template);
 CREATE INDEX idx_assistants_is_default ON assistants(is_default);
 CREATE INDEX idx_assistants_is_active ON assistants(is_active);
 CREATE INDEX idx_assistants_name ON assistants(name);
 
+-- Conversation and branching indexes
 CREATE INDEX idx_conversations_user_id ON conversations(user_id);
 CREATE INDEX idx_conversations_assistant_id ON conversations(assistant_id);
 CREATE INDEX idx_conversations_model_provider_id ON conversations(model_provider_id);
 CREATE INDEX idx_conversations_model_id ON conversations(model_id);
+CREATE INDEX idx_conversations_active_branch_id ON conversations(active_branch_id);
 CREATE INDEX idx_conversations_created_at ON conversations(created_at);
 
+CREATE INDEX idx_branches_conversation_id ON branches(conversation_id);
+
+-- Message indexes
 CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
-CREATE INDEX idx_messages_parent_message_id ON messages(parent_message_id);
+CREATE INDEX idx_messages_parent_id ON messages(parent_id);
 CREATE INDEX idx_messages_role ON messages(role);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
 CREATE INDEX idx_messages_branch_index ON messages(branch_index);
+CREATE INDEX idx_messages_branch_id ON messages(branch_id);
+CREATE INDEX idx_messages_new_branch_id ON messages(new_branch_id);
+CREATE INDEX idx_messages_originated_from_id ON messages(originated_from_id);
+CREATE INDEX idx_messages_updated_at ON messages(updated_at);
+
+CREATE INDEX idx_message_metadata_message_id ON message_metadata(message_id);
+CREATE INDEX idx_conversation_metadata_conversation_id ON conversation_metadata(conversation_id);
+
+-- Project indexes
+CREATE INDEX idx_projects_user_id ON projects(user_id);
+CREATE INDEX idx_projects_created_at ON projects(created_at DESC);
+CREATE INDEX idx_projects_updated_at ON projects(updated_at DESC);
+CREATE INDEX idx_project_documents_project_id ON project_documents(project_id);
+CREATE INDEX idx_project_documents_upload_status ON project_documents(upload_status);
+CREATE INDEX idx_project_conversations_project_id ON project_conversations(project_id);
+CREATE INDEX idx_project_conversations_conversation_id ON project_conversations(conversation_id);
+
+-- ===============================
+-- 9. TRIGGERS AND FUNCTIONS
+-- ===============================
+
+-- Function to set default originated_from_id for new messages
+CREATE OR REPLACE FUNCTION set_default_originated_from_id()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- If originated_from_id is not set, set it to the message's own ID
+    IF NEW.originated_from_id IS NULL THEN
+        NEW.originated_from_id = NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update conversation timestamp when messages change
+CREATE OR REPLACE FUNCTION update_conversation_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE conversations 
+    SET updated_at = CURRENT_TIMESTAMP 
+    WHERE id = NEW.conversation_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update projects updated_at timestamp
+CREATE OR REPLACE FUNCTION update_projects_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- Create triggers for updated_at columns
 CREATE TRIGGER update_users_updated_at
@@ -280,6 +456,39 @@ CREATE TRIGGER update_conversations_updated_at
     BEFORE UPDATE ON conversations
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Trigger to automatically set originated_from_id for new messages
+CREATE TRIGGER trigger_set_default_originated_from_id
+    BEFORE INSERT ON messages
+    FOR EACH ROW
+    EXECUTE FUNCTION set_default_originated_from_id();
+
+-- Trigger to update conversation timestamp when messages change
+CREATE TRIGGER update_conversation_on_message
+    AFTER INSERT OR UPDATE ON messages
+    FOR EACH ROW
+    EXECUTE FUNCTION update_conversation_timestamp();
+
+-- Trigger for messages updated_at
+CREATE TRIGGER update_messages_updated_at
+    BEFORE UPDATE ON messages
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Triggers for projects
+CREATE TRIGGER update_projects_updated_at_trigger
+    BEFORE UPDATE ON projects
+    FOR EACH ROW
+    EXECUTE FUNCTION update_projects_updated_at();
+
+CREATE TRIGGER update_project_documents_updated_at_trigger
+    BEFORE UPDATE ON project_documents
+    FOR EACH ROW
+    EXECUTE FUNCTION update_projects_updated_at();
+
+-- ===============================
+-- 10. DEFAULT DATA
+-- ===============================
 
 -- Insert default configuration values
 INSERT INTO configurations (name, value, description) VALUES 
@@ -330,6 +539,10 @@ INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url,
 INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_default, is_active) VALUES 
 ('Default Assistant', 'This is the default assistant.', 'You can use this assistant to chat with the LLM.', '{"stream": true, "temperature": 0.7, "frequency_penalty": 0.7, "presence_penalty": 0.7, "top_p": 0.95, "top_k": 2}', NULL, true, true, true);
 
+-- ===============================
+-- 11. TABLE COMMENTS
+-- ===============================
+
 -- Add comments to document the tables
 COMMENT ON TABLE users IS 'Users table with Meteor-like structure';
 COMMENT ON TABLE user_groups IS 'User groups with AWS-style permissions in array format';
@@ -340,12 +553,18 @@ COMMENT ON TABLE model_provider_models IS 'Individual models within each provide
 COMMENT ON TABLE assistants IS 'Assistants table with template and user-created assistants';
 COMMENT ON TABLE conversations IS 'Chat conversations table';
 COMMENT ON TABLE messages IS 'Chat messages table with branching support';
+COMMENT ON TABLE branches IS 'Proper branching system table - each branch belongs to a conversation';
+COMMENT ON TABLE projects IS 'Projects table for document-based chat contexts';
+COMMENT ON TABLE project_documents IS 'Documents uploaded to projects';
+COMMENT ON TABLE project_conversations IS 'Links conversations to projects';
 
+-- Column comments
 COMMENT ON COLUMN user_groups.permissions IS 'AWS-style permissions stored as JSON array. Supports wildcards like "users::*", "groups::*", and "*"';
 COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g., "appearance.theme", "appearance.fontSize")';
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
 COMMENT ON COLUMN model_providers.provider_type IS 'Type of provider: llama.cpp, openai, anthropic, groq, gemini, mistral, custom';
 COMMENT ON COLUMN model_provider_models.path IS 'File path for llama.cpp models';
+COMMENT ON COLUMN model_provider_models.alias IS 'User-friendly display name for the model';
 COMMENT ON COLUMN model_provider_models.is_active IS 'Whether the model is currently running (for llama.cpp models)';
 COMMENT ON COLUMN model_providers.proxy_enabled IS 'Whether proxy is enabled for this provider';
 COMMENT ON COLUMN model_providers.proxy_url IS 'Proxy URL for this provider';
@@ -363,6 +582,13 @@ COMMENT ON COLUMN assistants.created_by IS 'User who created this assistant (NUL
 COMMENT ON COLUMN conversations.assistant_id IS 'Assistant used in this conversation';
 COMMENT ON COLUMN conversations.model_provider_id IS 'Model provider used in this conversation';
 COMMENT ON COLUMN conversations.model_id IS 'Specific model used in this conversation';
-COMMENT ON COLUMN messages.parent_message_id IS 'Parent message for branching support';
-COMMENT ON COLUMN messages.branch_index IS 'Branch index for message branching';
+COMMENT ON COLUMN conversations.active_branch_id IS 'Currently active branch for this conversation';
+COMMENT ON COLUMN branches.name IS 'Optional name for the branch (e.g., "main", "alternative 1")';
+COMMENT ON COLUMN messages.parent_id IS 'Parent message for branching support';
+COMMENT ON COLUMN messages.new_branch_id IS 'Which branch this message belongs to (new proper branching system)';
+COMMENT ON COLUMN messages.originated_from_id IS 'Original message ID this was edited from (for tracking edit lineage)';
+COMMENT ON COLUMN messages.edit_count IS 'Number of times this message lineage has been edited';
+COMMENT ON COLUMN messages.branch_index IS 'Legacy branch index for message branching';
+COMMENT ON COLUMN messages.branch_id IS 'Legacy branch field (will be deprecated)';
+COMMENT ON COLUMN messages.is_active_branch IS 'Legacy active branch field (will be deprecated in favor of conversation.active_branch_id)';
 COMMENT ON COLUMN messages.role IS 'Message role: user, assistant, or system';

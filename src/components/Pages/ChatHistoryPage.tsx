@@ -153,7 +153,7 @@ export const ChatHistoryPage: React.FC = () => {
         >
           <Tooltip title="Delete">
             <DeleteOutlined
-              className="text-red-500"
+              className=""
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />
           </Tooltip>
@@ -249,7 +249,7 @@ export const ChatHistoryPage: React.FC = () => {
               <div className="space-y-4">
                 {loading ? (
                   <div className="flex justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
                   </div>
                 ) : (
                   <>

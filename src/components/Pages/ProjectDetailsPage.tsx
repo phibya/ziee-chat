@@ -174,26 +174,26 @@ export const ProjectDetailsPage: React.FC = () => {
 
   if (loading || !project) {
     return (
-      <div className="p-6 flex justify-center bg-gray-50 min-h-screen">
+      <div className="p-6 flex justify-center min-h-screen">
         <div className="w-full max-w-7xl">
-          <div>Loading...</div>
+          <Text>Loading...</Text>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="p-6 flex justify-center bg-gray-50 min-h-screen">
+    <div className="p-6 flex justify-center min-h-screen">
       <div className="w-full max-w-7xl flex">
         {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col bg-white">
+        <div className="flex-1 flex flex-col">
           {/* Header */}
           <div className="border-b px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Title level={4} className="!mb-0">
                 {project.name}
               </Title>
-              <Button icon={<StarOutlined />} type="text" size="small" />
+              <Button icon={<StarOutlined />} type="text" className="text-xs" />
               <Tag color="default">
                 {project.is_private ? 'Private' : 'Public'}
               </Tag>
@@ -228,16 +228,12 @@ export const ProjectDetailsPage: React.FC = () => {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-2xl px-4 py-3 rounded-lg ${
-                      msg.role === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
+                    className="max-w-2xl px-4 py-3 rounded-lg"
                   >
                     <div className="whitespace-pre-wrap">{msg.content}</div>
-                    <div className="text-xs opacity-70 mt-1">
+                    <Text type="secondary" className="text-xs mt-1">
                       {new Date(msg.timestamp).toLocaleTimeString()}
-                    </div>
+                    </Text>
                   </div>
                 </div>
               ))}
@@ -248,9 +244,9 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="border-t px-6 py-4">
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center gap-2 mb-3">
-                <Button icon={<PlusOutlined />} type="text" size="small" />
-                <Button icon={<PaperClipOutlined />} type="text" size="small" />
-                <Button icon={<SearchOutlined />} type="text" size="small">
+                <Button icon={<PlusOutlined />} type="text" className="text-xs" />
+                <Button icon={<PaperClipOutlined />} type="text" className="text-xs" />
+                <Button icon={<SearchOutlined />} type="text" className="text-xs">
                   Research
                 </Button>
                 <div className="ml-auto flex items-center gap-2">
@@ -258,7 +254,7 @@ export const ProjectDetailsPage: React.FC = () => {
                     value={selectedAssistant}
                     onChange={setSelectedAssistant}
                     style={{ width: 150 }}
-                    size="small"
+                    className="text-xs"
                     options={[
                       { label: 'Claude Sonnet 4', value: 'Claude Sonnet 4' },
                       { label: 'GPT-4', value: 'GPT-4' },
@@ -268,7 +264,7 @@ export const ProjectDetailsPage: React.FC = () => {
                   <Button
                     type="primary"
                     icon={<ArrowUpOutlined />}
-                    size="small"
+                    className="text-xs"
                     onClick={handleSendMessage}
                     disabled={!chatInput.trim()}
                   />
@@ -293,13 +289,13 @@ export const ProjectDetailsPage: React.FC = () => {
         </div>
 
         {/* Project Knowledge Sidebar */}
-        <div className="w-80 border-l bg-gray-50 flex flex-col">
-          <div className="p-4 border-b bg-white">
+        <div className="w-80 flex flex-col">
+          <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <Text strong style={{ fontSize: '15px' }}>
                 Project knowledge
               </Text>
-              <Button icon={<PlusOutlined />} type="text" size="small" />
+              <Button icon={<PlusOutlined />} type="text" className="text-xs" />
             </div>
 
             {/* Project Description */}
@@ -318,11 +314,11 @@ export const ProjectDetailsPage: React.FC = () => {
                     />
                   </Form.Item>
                   <div className="flex gap-2">
-                    <Button size="small" htmlType="submit" type="primary">
+                    <Button className="text-xs" htmlType="submit" type="primary">
                       Save
                     </Button>
                     <Button
-                      size="small"
+                      className="text-xs"
                       onClick={() => setEditingDescription(false)}
                     >
                       Cancel
@@ -331,17 +327,16 @@ export const ProjectDetailsPage: React.FC = () => {
                 </Form>
               ) : (
                 <div
-                  className="text-sm text-gray-600 cursor-pointer p-2 rounded hover:bg-gray-100"
+                  className="cursor-pointer p-2 rounded"
                   onClick={() => setEditingDescription(true)}
                 >
-                  <Text className="text-sm">
+                  <Text>
                     {project.description ||
                       '"This project is to response to reviewer comment for the..."'}
                   </Text>
                   <Button
                     type="link"
-                    size="small"
-                    className="!p-0 !h-auto !ml-1"
+                    className="text-xs !p-0 !h-auto !ml-1"
                   >
                     Edit
                   </Button>
@@ -354,7 +349,7 @@ export const ProjectDetailsPage: React.FC = () => {
               <Progress
                 percent={3}
                 showInfo={false}
-                size="small"
+                className="text-xs"
                 strokeColor="#1890ff"
                 trailColor="#e0e0e0"
               />
@@ -378,7 +373,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 >
                   <Button
                     icon={<UploadOutlined />}
-                    size="small"
+                    className="text-xs"
                     loading={uploading}
                   >
                     Upload
@@ -390,23 +385,22 @@ export const ProjectDetailsPage: React.FC = () => {
                 {documents.map(doc => (
                   <Card
                     key={doc.id}
-                    size="small"
-                    className="cursor-pointer hover:shadow-sm"
+                    className="text-xs cursor-pointer hover:shadow-sm"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2 flex-1">
-                        <FileTextOutlined className="text-gray-500" />
+                        <FileTextOutlined />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">
                             {doc.file_name}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <Text type="secondary" className="text-xs">
                             {formatFileSize(doc.file_size)} •{' '}
                             {doc.upload_status.toLowerCase()}
-                          </div>
+                          </Text>
                         </div>
                       </div>
-                      <Tag color="default" className="text-xs uppercase">
+                      <Tag color="default" className="uppercase">
                         {doc.file_name.split('.').pop() || 'FILE'}
                       </Tag>
                     </div>
@@ -416,7 +410,7 @@ export const ProjectDetailsPage: React.FC = () => {
 
               {documents.length === 0 && (
                 <div className="text-center py-8">
-                  <FileTextOutlined className="text-3xl text-gray-300 mb-2" />
+                  <FileTextOutlined className="text-3xl mb-2" />
                   <Text type="secondary" className="block text-sm">
                     No documents uploaded yet
                   </Text>
@@ -427,7 +421,7 @@ export const ProjectDetailsPage: React.FC = () => {
                     }}
                     showUploadList={false}
                   >
-                    <Button size="small" className="mt-2">
+                    <Button className="text-xs mt-2">
                       Upload first document
                     </Button>
                   </Upload>
@@ -439,7 +433,7 @@ export const ProjectDetailsPage: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <Text strong>Recent conversations</Text>
-                <Button type="link" size="small" className="!p-0">
+                <Button type="link" className="text-xs !p-0">
                   View all
                 </Button>
               </div>
