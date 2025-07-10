@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons'
 import { ApiClient } from '../../../../api/client'
 import { Assistant } from '../../../../types/api/assistant'
+import { PageContainer } from '../../../common/PageContainer'
 import { App } from 'antd'
 
 const { Title, Text } = Typography
@@ -308,7 +309,8 @@ export const AdminAssistantsSettings: React.FC = () => {
   ]
 
   return (
-    <div>
+    <PageContainer>
+      <div>
       <div className="flex justify-between items-center mb-6">
         <div>
           <Title level={3}>Assistants</Title>
@@ -516,6 +518,7 @@ export const AdminAssistantsSettings: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+      </div>
+    </PageContainer>
   )
 }

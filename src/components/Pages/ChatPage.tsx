@@ -1,14 +1,15 @@
 import { useParams } from 'react-router-dom'
 import { ChatInterface } from '../Chat/ChatInterface'
+import { PageContainer } from '../common/PageContainer'
 
 export function ChatPage() {
   const { conversationId } = useParams<{ conversationId?: string }>()
 
   return (
-    <div className="flex justify-center h-full">
-      <div className="w-full max-w-4xl">
+    <PageContainer>
+      <div className="h-full">
         <ChatInterface conversationId={conversationId || null} />
       </div>
-    </div>
+    </PageContainer>
   )
 }

@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom'
 import { ApiClient } from '../../api/client'
 import { ConversationSummary } from '../../types/api/chat'
 import { App } from 'antd'
+import { PageContainer } from '../common/PageContainer'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -190,8 +191,7 @@ export const ChatHistoryPage: React.FC = () => {
   )
 
   return (
-    <div className="p-6 flex justify-center">
-      <div className="w-full max-w-6xl">
+    <PageContainer>
         <Row gutter={[24, 24]}>
           <Col span={24}>
             <div className="flex justify-between items-center mb-6">
@@ -268,7 +268,6 @@ export const ChatHistoryPage: React.FC = () => {
             )}
           </Col>
         </Row>
-      </div>
-    </div>
+    </PageContainer>
   )
 }

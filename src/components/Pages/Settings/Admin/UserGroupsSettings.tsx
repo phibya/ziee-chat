@@ -37,6 +37,7 @@ import {
 import { ModelProvider } from '../../../../types/api/modelProvider'
 import { ApiClient } from '../../../../api/client.ts'
 import { Permission, usePermissions } from '../../../../permissions'
+import { PageContainer } from '../../../common/PageContainer'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -388,7 +389,8 @@ export function UserGroupsSettings() {
   }
 
   return (
-    <div>
+    <PageContainer>
+      <div>
       <div className="flex justify-between items-center mb-6">
         <Title level={3}>User Groups</Title>
         {canCreateGroups && (
@@ -644,6 +646,7 @@ export function UserGroupsSettings() {
           )}
         />
       </Drawer>
-    </div>
+      </div>
+    </PageContainer>
   )
 }

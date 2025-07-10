@@ -30,6 +30,8 @@ import {
 import { ApiClient } from '../../api/client'
 import { Assistant } from '../../types/api/assistant'
 import { App } from 'antd'
+import { useTranslation } from 'react-i18next'
+import { PageContainer } from '../common/PageContainer'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -49,6 +51,7 @@ interface ParameterFormField {
 }
 
 export const AssistantsPage: React.FC = () => {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const [assistants, setAssistants] = useState<Assistant[]>([])
   const [templateAssistants, setTemplateAssistants] = useState<Assistant[]>([])
@@ -315,8 +318,8 @@ export const AssistantsPage: React.FC = () => {
         title={
           <div className="flex items-center gap-2">
             <Text strong>{assistant.name}</Text>
-            <Tag color="green">Personal</Tag>
-            {!assistant.is_active && <Tag color="red">Inactive</Tag>}
+            <Tag color="green">{t('assistants.personal')}</Tag>
+            {!assistant.is_active && <Tag color="red">{t('assistants.inactive')}</Tag>}
           </div>
         }
         description={
@@ -334,15 +337,14 @@ export const AssistantsPage: React.FC = () => {
   )
 
   return (
-    <div className="p-6 flex justify-center">
-      <div className="w-full max-w-6xl">
+    <PageContainer>
         <Row gutter={[24, 24]}>
           <Col span={24}>
             <div className="flex justify-between items-center mb-6">
               <div>
-                <Title level={2}>My Assistants</Title>
+                <Title level={2}>{t('assistants.title')}</Title>
                 <Text type="secondary">
-                  Create and manage your personal assistants
+                  {t('assistants.subtitle')}
                 </Text>
               </div>
               <Space>
@@ -701,7 +703,6 @@ export const AssistantsPage: React.FC = () => {
             pagination={{ pageSize: 5 }}
           />
         </Modal>
-      </div>
-    </div>
+    </PageContainer>
   )
 }

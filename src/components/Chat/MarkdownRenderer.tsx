@@ -3,10 +3,10 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeRaw from 'rehype-raw'
-import { Typography } from 'antd'
+import { Typography, Divider } from 'antd'
 import 'prismjs/themes/prism-tomorrow.css'
 
-const { Text } = Typography
+const { Text, Title, Link } = Typography
 
 interface MarkdownRendererProps {
   content: string
@@ -23,16 +23,9 @@ export function MarkdownRenderer({
         remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[rehypeHighlight, rehypeRaw]}
         components={{
-          // Custom components for better styling
+          // Custom components using Ant Design theme and Tailwind
           p: ({ children }) => (
-            <Text
-              style={{
-                color: 'inherit',
-                display: 'block',
-                marginBottom: '0.75em',
-                lineHeight: '1.6',
-              }}
-            >
+            <Text className="block mb-3 leading-relaxed">
               {children}
             </Text>
           ),
@@ -40,15 +33,7 @@ export function MarkdownRenderer({
             if (inline) {
               return (
                 <code
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    fontSize: '0.875em',
-                    fontFamily:
-                      'ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                    color: '#f8f8f2',
-                  }}
+                  className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm font-mono"
                   {...props}
                 >
                   {children}
@@ -56,16 +41,7 @@ export function MarkdownRenderer({
               )
             }
             return (
-              <pre
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.4)',
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  overflow: 'auto',
-                  margin: '0.75em 0',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-              >
+              <pre className="bg-gray-900 dark:bg-gray-800 p-4 rounded-lg overflow-auto my-3 border border-gray-200 dark:border-gray-700">
                 <code className={className} {...props}>
                   {children}
                 </code>
@@ -73,170 +49,70 @@ export function MarkdownRenderer({
             )
           },
           blockquote: ({ children }) => (
-            <blockquote
-              style={{
-                borderLeft: '4px solid #f97316',
-                paddingLeft: '1rem',
-                margin: '1rem 0',
-                fontStyle: 'italic',
-                color: 'rgba(255, 255, 255, 0.8)',
-                backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                padding: '0.5rem 1rem',
-                borderRadius: '0 8px 8px 0',
-              }}
-            >
-              {children}
+            <blockquote className="border-l-4 border-primary pl-4 my-4 italic bg-primary bg-opacity-5 py-2 pr-4 rounded-r-lg">
+              <Text type="secondary">{children}</Text>
             </blockquote>
           ),
           h1: ({ children }) => (
-            <h1
-              style={{
-                color: 'rgba(255, 255, 255, 0.95)',
-                marginTop: '1.5rem',
-                marginBottom: '1rem',
-                fontSize: '1.5rem',
-                fontWeight: 600,
-              }}
-            >
+            <Title level={2} className="mt-6 mb-4">
               {children}
-            </h1>
+            </Title>
           ),
           h2: ({ children }) => (
-            <h2
-              style={{
-                color: 'rgba(255, 255, 255, 0.95)',
-                marginTop: '1.25rem',
-                marginBottom: '0.75rem',
-                fontSize: '1.25rem',
-                fontWeight: 600,
-              }}
-            >
+            <Title level={3} className="mt-5 mb-3">
               {children}
-            </h2>
+            </Title>
           ),
           h3: ({ children }) => (
-            <h3
-              style={{
-                color: 'rgba(255, 255, 255, 0.95)',
-                marginTop: '1rem',
-                marginBottom: '0.5rem',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-              }}
-            >
+            <Title level={4} className="mt-4 mb-2">
               {children}
-            </h3>
+            </Title>
           ),
           ul: ({ children }) => (
-            <ul
-              style={{
-                paddingLeft: '1.5rem',
-                margin: '0.5rem 0',
-              }}
-            >
+            <ul className="pl-6 my-2 space-y-1">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol
-              style={{
-                paddingLeft: '1.5rem',
-                margin: '0.5rem 0',
-              }}
-            >
+            <ol className="pl-6 my-2 space-y-1">
               {children}
             </ol>
           ),
           li: ({ children }) => (
-            <li
-              style={{
-                color: 'rgba(255, 255, 255, 0.9)',
-                marginBottom: '0.25rem',
-                lineHeight: '1.6',
-              }}
-            >
-              {children}
+            <li className="leading-relaxed">
+              <Text>{children}</Text>
             </li>
           ),
           strong: ({ children }) => (
-            <strong
-              style={{
-                color: 'rgba(255, 255, 255, 0.95)',
-                fontWeight: 600,
-              }}
-            >
-              {children}
-            </strong>
+            <Text strong>{children}</Text>
           ),
           em: ({ children }) => (
-            <em
-              style={{
-                color: 'rgba(255, 255, 255, 0.9)',
-                fontStyle: 'italic',
-              }}
-            >
-              {children}
-            </em>
+            <Text italic>{children}</Text>
           ),
           a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: '#f97316',
-                textDecoration: 'underline',
-              }}
-            >
+            <Link href={href} target="_blank" rel="noopener noreferrer">
               {children}
-            </a>
+            </Link>
           ),
           table: ({ children }) => (
-            <div style={{ overflowX: 'auto', margin: '1rem 0' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                }}
-              >
+            <div className="overflow-x-auto my-4">
+              <table className="w-full border-collapse border border-gray-200 dark:border-gray-700">
                 {children}
               </table>
             </div>
           ),
           th: ({ children }) => (
-            <th
-              style={{
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '0.75rem',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: 'rgba(255, 255, 255, 0.95)',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              {children}
+            <th className="border border-gray-200 dark:border-gray-700 p-3 bg-gray-50 dark:bg-gray-800 text-left">
+              <Text strong>{children}</Text>
             </th>
           ),
           td: ({ children }) => (
-            <td
-              style={{
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '0.75rem',
-                color: 'rgba(255, 255, 255, 0.9)',
-              }}
-            >
-              {children}
+            <td className="border border-gray-200 dark:border-gray-700 p-3">
+              <Text>{children}</Text>
             </td>
           ),
           hr: () => (
-            <hr
-              style={{
-                border: 'none',
-                borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                margin: '1.5rem 0',
-              }}
-            />
+            <Divider className="my-6" />
           ),
         }}
       >

@@ -15,9 +15,10 @@ import {
 } from '@ant-design/icons'
 import { isDesktopApp } from '../../api/core'
 import { Permission, usePermissions } from '../../permissions'
+import { PageContainer } from '../common/PageContainer.tsx'
 
 const { Title } = Typography
-const { Sider, Content } = Layout
+const { Sider } = Layout
 
 export function SettingsPage() {
   const navigate = useNavigate()
@@ -265,19 +266,9 @@ export function SettingsPage() {
 
       {/* Main Content */}
       <Layout>
-        <Content
-          style={{
-            padding: isMobile ? '16px' : '24px',
-            overflow: 'auto',
-            marginTop: isMobile ? 0 : 0,
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-        >
-          <div style={{ width: '100%', maxWidth: '800px' }}>
-            <Outlet />
-          </div>
-        </Content>
+        <PageContainer>
+          <Outlet />
+        </PageContainer>
       </Layout>
     </Layout>
   )

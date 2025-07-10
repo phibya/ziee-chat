@@ -29,6 +29,7 @@ import {
   UpdateProjectRequest,
 } from '../../types/api/projects'
 import { App } from 'antd'
+import { PageContainer } from '../common/PageContainer'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -203,8 +204,7 @@ export const ProjectsPage: React.FC = () => {
   ]
 
   return (
-    <div className="p-6 flex justify-center">
-      <div className="w-full max-w-6xl">
+    <PageContainer>
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <Title level={2} className="!mb-0">
@@ -434,7 +434,6 @@ export const ProjectsPage: React.FC = () => {
             </div>
           </Form>
         </Modal>
-      </div>
-    </div>
+    </PageContainer>
   )
 }

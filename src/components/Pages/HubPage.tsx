@@ -9,6 +9,8 @@ import {
   Row,
   Col,
 } from 'antd'
+import { useTranslation } from 'react-i18next'
+import { PageContainer } from '../common/PageContainer'
 import {
   DownloadOutlined,
   SearchOutlined,
@@ -130,6 +132,7 @@ const mockModels = [
 ]
 
 export function HubPage() {
+  const { t } = useTranslation()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('popular')
@@ -189,30 +192,24 @@ export function HubPage() {
   }, [searchTerm, selectedCategory, sortBy])
 
   return (
-    <div style={{ padding: '24px', height: '100%', overflow: 'auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2} style={{ marginBottom: '8px' }}>
-          Model Hub
-        </Title>
-        <Text type="secondary">
-          Discover and download AI models for your local deployment
-        </Text>
-      </div>
+    <PageContainer>
+      <div style={{ height: '100%', overflow: 'auto' }}>
+        {/* Header */}
+        <div className="mb-6">
+          <Title level={2} className="mb-2">
+            {t('hub.title')}
+          </Title>
+          <Text type="secondary">
+            {t('hub.description')}
+          </Text>
+        </div>
 
       {/* Search and Filters */}
-      <div
-        style={{
-          marginBottom: '24px',
-          background: '#fafafa',
-          padding: '16px',
-          borderRadius: '8px',
-        }}
-      >
+      <div className="mb-6 bg-gray-50 p-4 rounded-lg">
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={24} md={12} lg={8}>
             <Input
-              placeholder="Search models..."
+              placeholder={t('hub.searchPlaceholder')}
               prefix={<SearchOutlined />}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -226,7 +223,7 @@ export function HubPage() {
               onChange={setSelectedCategory}
               style={{ width: '100%' }}
             >
-              <Select.Option value="all">All</Select.Option>
+              <Select.Option value="all">{t('hub.all')}</Select.Option>
               <Select.Option value="embedding">Embedding</Select.Option>
               <Select.Option value="vision">Vision</Select.Option>
               <Select.Option value="tools">Tools</Select.Option>
@@ -240,9 +237,9 @@ export function HubPage() {
               onChange={setSortBy}
               style={{ width: '100%' }}
             >
-              <Select.Option value="popular">Popular</Select.Option>
-              <Select.Option value="name">Name</Select.Option>
-              <Select.Option value="updated">Recently Updated</Select.Option>
+              <Select.Option value="popular">{t('hub.popular')}</Select.Option>
+              <Select.Option value="name">{t('hub.name')}</Select.Option>
+              <Select.Option value="updated">{t('hub.recentlyUpdated')}</Select.Option>
             </Select>
           </Col>
         </Row>
@@ -347,7 +344,7 @@ export function HubPage() {
                 onClick={() => handleDownload(model.id)}
                 style={{ marginTop: 'auto' }}
               >
-                Pull Model
+                {t('hub.pullModel')}
               </Button>
             </Card>
           </Col>
@@ -355,10 +352,11 @@ export function HubPage() {
       </Row>
 
       {filteredModels.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '48px' }}>
-          <Text type="secondary">No models found matching your criteria.</Text>
+        <div className="text-center py-12">
+          <Text type="secondary">{t('hub.noModels')}</Text>
         </div>
       )}
-    </div>
+      </div>
+    </PageContainer>
   )
 }

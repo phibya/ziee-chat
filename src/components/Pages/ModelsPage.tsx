@@ -14,6 +14,7 @@ import {
   DownloadOutlined,
   LoadingOutlined,
 } from '@ant-design/icons'
+import { PageContainer } from '../common/PageContainer'
 
 const { Title, Text } = Typography
 
@@ -139,7 +140,8 @@ export function ModelsPage() {
   }
 
   return (
-    <div style={{ padding: '24px', height: '100%', overflow: 'auto' }}>
+    <PageContainer>
+      <div style={{ height: '100%', overflow: 'auto' }}>
       <div style={{ marginBottom: '24px' }}>
         <Title level={2}>
           <DatabaseOutlined style={{ marginRight: '8px' }} />
@@ -209,6 +211,7 @@ export function ModelsPage() {
           </List.Item>
         )}
       />
-    </div>
+      </div>
+    </PageContainer>
   )
 }

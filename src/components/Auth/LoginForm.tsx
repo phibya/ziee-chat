@@ -1,6 +1,7 @@
 import React from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/auth'
 import type { LoginRequest } from '../../types'
 
@@ -11,6 +12,7 @@ interface LoginFormProps {
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const { login, isLoading, error, clearError, isDesktop } = useAuthStore()
 
@@ -27,9 +29,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   return (
     <Card className="w-full max-w-md mx-auto">
       <div className="text-center mb-6">
-        <Title level={3}>Sign In</Title>
+        <Title level={3}>{t('auth.signIn')}</Title>
         {isDesktop && (
-          <Text type="secondary">Desktop App - Auto Authentication</Text>
+          <Text type="secondary">{t('auth.desktopAutoAuth')}</Text>
         )}
       </div>
 
@@ -53,27 +55,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
         autoComplete="off"
       >
         <Form.Item
-          label="Username or Email"
+          label={t('auth.usernameOrEmail')}
           name="username_or_email"
           rules={[
-            { required: true, message: 'Please input your username or email!' },
+            { required: true, message: t('auth.usernameOrEmailRequired') },
           ]}
         >
           <Input
             prefix={<UserOutlined />}
-            placeholder="Enter username or email"
+            placeholder={t('auth.usernameOrEmailPlaceholder')}
             autoComplete="username"
           />
         </Form.Item>
 
         <Form.Item
-          label="Password"
+          label={t('auth.password')}
           name="password"
-          rules={[{ required: true, message: 'Please input your password!' }]}
+          rules={[{ required: true, message: t('auth.passwordRequired') }]}
         >
           <Input.Password
             prefix={<LockOutlined />}
-            placeholder="Enter password"
+            placeholder={t('auth.passwordPlaceholder')}
             autoComplete="current-password"
           />
         </Form.Item>
@@ -85,16 +87,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             loading={isLoading}
             className="w-full"
           >
-            Sign In
+            {t('auth.signIn')}
           </Button>
         </Form.Item>
 
         {!isDesktop && onSwitchToRegister && (
           <div className="text-center">
             <Text type="secondary">
-              Don't have an account?{' '}
+              {t('auth.dontHaveAccount')}{' '}
               <Button type="link" onClick={onSwitchToRegister} className="p-0">
-                Sign Up
+                {t('auth.signUp')}
               </Button>
             </Text>
           </div>

@@ -173,11 +173,17 @@ export const ProjectDetailsPage: React.FC = () => {
   }
 
   if (loading || !project) {
-    return <div className="p-6">Loading...</div>
+    return (
+      <div className="p-6 flex justify-center bg-gray-50 min-h-screen">
+        <div className="w-full max-w-7xl">
+          <div>Loading...</div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex justify-center bg-gray-50 min-h-screen">
+    <div className="p-6 flex justify-center bg-gray-50 min-h-screen">
       <div className="w-full max-w-7xl flex">
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col bg-white">

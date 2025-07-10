@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Input, Space, Spin, Typography, Select, Row, Col } from 'antd'
+import { Button, Input, Space, Spin, Typography, Select, Row, Col, Avatar } from 'antd'
+import { useTranslation } from 'react-i18next'
 import {
   LoadingOutlined,
   MessageOutlined,
@@ -34,6 +35,7 @@ interface ChatInterfaceProps {
 }
 
 export function ChatInterface({ conversationId }: ChatInterfaceProps) {
+  const { t } = useTranslation()
   const appTheme = useTheme()
   const { message } = App.useApp()
   const navigate = useNavigate()
@@ -154,7 +156,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
   const createNewConversation = async () => {
     if (!selectedAssistant || !selectedModel) {
-      message.error('Please select an assistant and model')
+      message.error(t('chat.noAssistantSelected'))
       return null
     }
 
@@ -396,24 +398,15 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
 
     return (
       <div key={msg.id} className="mb-6 group">
-        <div
-          className="rounded-lg px-4 py-3"
-          style={{
-            backgroundColor: isUser ? 'rgba(255,255,255,0.05)' : 'transparent',
-          }}
-        >
+        <div className={`rounded-lg px-4 py-3 ${isUser ? 'bg-gray-50' : ''}`}>
           {/* Message header with avatar */}
           <div className="flex items-center gap-3 mb-2">
             <div className="flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-                style={{
-                  backgroundColor: isUser ? '#666' : '#f97316',
-                  color: 'white',
-                }}
-              >
-                {isUser ? 'P' : <RobotOutlined />}
-              </div>
+              <Avatar
+                size={32}
+                className={isUser ? 'bg-gray-500' : 'bg-primary'}
+                icon={isUser ? 'P' : <RobotOutlined />}
+              />
             </div>
           </div>
 
@@ -426,11 +419,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   onChange={e => setEditValue(e.target.value)}
                   autoSize={{ minRows: 2, maxRows: 8 }}
                   className="w-full"
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    color: 'inherit',
-                  }}
                 />
                 <div className="flex gap-2">
                   <Button
@@ -439,14 +427,14 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     icon={<SaveOutlined />}
                     onClick={handleSaveEdit}
                   >
-                    Save
+                    {t('chat.save')}
                   </Button>
                   <Button
                     size="small"
                     icon={<CloseOutlined />}
                     onClick={handleCancelEdit}
                   >
-                    Cancel
+                    {t('chat.cancel')}
                   </Button>
                 </div>
               </div>
@@ -485,7 +473,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       color: 'rgba(255,255,255,0.8)',
                     }}
                   >
-                    Edit
+                    {t('chat.edit')}
                   </Button>
 
                   {!branchInfo.hasBranches && !branchInfo.isLoading && (
@@ -585,7 +573,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
           <Row gutter={16} align="middle">
             <Col xs={24} sm={12} md={8}>
               <div className="mb-2">
-                <Text strong>My Assistant</Text>
+                <Text strong>{t('chat.selectAssistant')}</Text>
               </div>
               <Select
                 value={selectedAssistant}
@@ -607,7 +595,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             </Col>
             <Col xs={24} sm={12} md={8}>
               <div className="mb-2">
-                <Text strong>Model</Text>
+                <Text strong>{t('chat.selectModel')}</Text>
               </div>
               <Select
                 value={selectedModel}
@@ -641,7 +629,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               className="text-3xl font-light mb-4"
               style={{ color: 'rgba(255,255,255,0.9)' }}
             >
-              What can I help with?
+              {t('chat.placeholderWelcome')}
             </div>
           </div>
 
@@ -652,7 +640,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   value={inputValue}
                   onChange={e => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Message Claude..."
+                  placeholder={t('chat.placeholder')}
                   autoSize={{ minRows: 1, maxRows: 6 }}
                   disabled={!selectedAssistant || !selectedModel}
                   style={{
@@ -673,29 +661,16 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 disabled={
                   !inputValue.trim() || !selectedAssistant || !selectedModel
                 }
-                style={{
-                  backgroundColor:
-                    !inputValue.trim() || !selectedAssistant || !selectedModel
-                      ? 'rgba(255,255,255,0.1)'
-                      : '#f97316',
-                  borderColor:
-                    !inputValue.trim() || !selectedAssistant || !selectedModel
-                      ? 'rgba(255,255,255,0.2)'
-                      : '#f97316',
-                  borderRadius: '8px',
-                  height: '40px',
-                }}
+                className="h-10 rounded-lg"
               >
-                Send
+                {t('chat.send')}
               </Button>
             </div>
 
             {(!selectedAssistant || !selectedModel) && (
               <div className="mt-4">
-                <Text
-                  style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}
-                >
-                  Please select an assistant and model to start chatting
+                <Text type="secondary" className="text-sm">
+                  {t('chat.noAssistantSelected')}
                 </Text>
               </div>
             )}
@@ -792,7 +767,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                         }
                       />
                       <span>
-                        {isStreaming ? 'Generating...' : 'Thinking...'}
+                        {isStreaming ? t('chat.generating') : t('chat.thinking')}
                       </span>
                     </div>
                   </div>
@@ -839,7 +814,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                     borderRadius: '8px',
                   }}
                 >
-                  Stop
+                  {t('chat.stop')}
                 </Button>
               )}
               <Button
@@ -859,7 +834,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   borderRadius: '8px',
                 }}
               >
-                Send
+                {t('chat.send')}
               </Button>
             </div>
           </div>

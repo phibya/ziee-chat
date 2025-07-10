@@ -38,6 +38,7 @@ import {
 } from '../../../../types'
 import { ApiClient } from '../../../../api/client.ts'
 import { Permission, usePermissions } from '../../../../permissions'
+import { PageContainer } from '../../../common/PageContainer'
 import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
 const { Title, Text } = Typography
@@ -382,7 +383,8 @@ export function UsersSettings() {
   }
 
   return (
-    <div>
+    <PageContainer>
+      <div>
       <div className="flex justify-between items-center mb-6">
         <Title level={3}>Users</Title>
       </div>
@@ -652,6 +654,7 @@ export function UsersSettings() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+      </div>
+    </PageContainer>
   )
 }

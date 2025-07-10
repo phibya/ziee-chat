@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { App, Card, Form, Switch, Typography } from 'antd'
 import { ApiClient } from '../../../../api/client.ts'
 import { Permission, usePermissions } from '../../../../permissions'
+import { PageContainer } from '../../../common/PageContainer'
 
 const { Text } = Typography
 
@@ -73,7 +74,8 @@ export function UserRegistrationSettings() {
   }
 
   return (
-    <Card title="User Registration" className="mb-6">
+    <PageContainer>
+      <Card title="User Registration" className="mb-6">
       <Form
         form={form}
         onValuesChange={handleFormChange}
@@ -93,6 +95,7 @@ export function UserRegistrationSettings() {
           </Form.Item>
         </div>
       </Form>
-    </Card>
+      </Card>
+    </PageContainer>
   )
 }
