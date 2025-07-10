@@ -153,7 +153,8 @@ export const ApiEndpoints = {
   'Chat.getMessageBranches': 'GET /api/chat/messages/{message_id}/branches',
   'Chat.switchBranch':
     'POST /api/chat/conversations/{conversation_id}/branches/{branch_id}',
-  'Chat.searchConversations': 'GET /api/chat/search',
+  'Chat.searchConversations': 'GET /api/chat/conversations/search',
+  'Chat.clearAllConversations': 'DELETE /api/chat/conversations/clear-all',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -251,6 +252,7 @@ export type ApiEndpointParameters = {
   'Chat.getMessageBranches': { message_id: string }
   'Chat.switchBranch': { conversation_id: string; branch_id: string }
   'Chat.searchConversations': { q: string; page?: number; per_page?: number }
+  'Chat.clearAllConversations': void
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -354,6 +356,7 @@ export type ApiEndpointResponses = {
   'Chat.getMessageBranches': any
   'Chat.switchBranch': void
   'Chat.searchConversations': ConversationListResponse
+  'Chat.clearAllConversations': { deleted_count: number; message: string }
 }
 
 // Type helpers

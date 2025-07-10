@@ -215,7 +215,24 @@ pub async fn send_message_stream(
         }
     }
 
-    // Add the user's message
+    // Get conversation history and add it to messages
+    match chat::get_conversation_messages(request.conversation_id, auth_user.user.id).await {
+        Ok(conversation_messages) => {
+            // Add each message from the conversation history
+            for msg in conversation_messages {
+                messages.push(ChatMessage {
+                    role: msg.role,
+                    content: msg.content,
+                });
+            }
+        }
+        Err(e) => {
+            eprintln!("Warning: Could not load conversation history: {}", e);
+            // Continue without history rather than failing completely
+        }
+    }
+
+    // Add the current user's message
     messages.push(ChatMessage {
         role: "user".to_string(),
         content: request.content.clone(),
@@ -350,11 +367,22 @@ pub async fn send_message_stream(
             };
 
             match chat::send_message(assistant_message_req, auth_user.user.id).await {
-                Ok(_assistant_message) => Ok(Json(serde_json::json!({
-                    "content": response.content,
-                    "finish_reason": response.finish_reason,
-                    "usage": response.usage
-                }))),
+                Ok(_assistant_message) => {
+                    // Update conversation title if it's still "New Conversation"
+                    if conversation.title == "New Conversation" {
+                        let _ = chat::auto_update_conversation_title(
+                            request.conversation_id,
+                            auth_user.user.id,
+                        )
+                        .await;
+                    }
+                    
+                    Ok(Json(serde_json::json!({
+                        "content": response.content,
+                        "finish_reason": response.finish_reason,
+                        "usage": response.usage
+                    })))
+                }
                 Err(e) => {
                     eprintln!("Error saving assistant message: {}", e);
                     Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -403,4 +431,37 @@ pub async fn get_message_branches(
         "message_id": message_id,
         "branches": []
     })))
+}
+
+/// Search conversations
+pub async fn search_conversations(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Query(params): Query<SearchQuery>,
+) -> Result<Json<ConversationListResponse>, StatusCode> {
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20);
+
+    match chat::search_conversations(auth_user.user.id, &params.q, page, per_page).await {
+        Ok(response) => Ok(Json(response)),
+        Err(e) => {
+            eprintln!("Error searching conversations: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Clear all chat history for the authenticated user
+pub async fn clear_all_conversations(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    match chat::delete_all_conversations(auth_user.user.id).await {
+        Ok(deleted_count) => Ok(Json(serde_json::json!({
+            "deleted_count": deleted_count,
+            "message": "All conversations deleted successfully"
+        }))),
+        Err(e) => {
+            eprintln!("Error clearing all conversations: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }

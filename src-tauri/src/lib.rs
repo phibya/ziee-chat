@@ -596,6 +596,16 @@ fn create_rest_router() -> Router {
             post(api::chat::methods::switch_branch)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
+        .route(
+            "/api/chat/conversations/search",
+            get(api::chat::methods::search_conversations)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/clear-all",
+            delete(api::chat::methods::clear_all_conversations)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
         .layer(middleware::from_fn(api::middleware::auth_middleware));
 
     // Combine public and protected routes

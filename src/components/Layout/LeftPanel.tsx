@@ -16,10 +16,10 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { useAppStore } from '../../store'
 import { useUISettings } from '../../store/settings'
 import { useAuthStore } from '../../store/auth'
 import { useTheme } from '../../hooks/useTheme'
+import { RecentConversations } from '../Chat/RecentConversations'
 
 const { Text } = Typography
 
@@ -40,20 +40,11 @@ export function LeftPanel({
   const navigate = useNavigate()
   const location = useLocation()
   const appTheme = useTheme()
-  const { threads, currentThreadId, setCurrentThreadId, createThread } =
-    useAppStore()
   const { leftPanelCollapsed, setLeftPanelCollapsed } = useUISettings()
   const { user, logout, isDesktop } = useAuthStore()
 
   const handleNewChat = () => {
-    const threadId = createThread(t('thread.newChat'))
-    setCurrentThreadId(threadId)
-    navigate('/')
-    onItemClick?.()
-  }
-
-  const handleThreadClick = (threadId: string) => {
-    setCurrentThreadId(threadId)
+    // Navigate to chat without a conversation ID to start a new conversation
     navigate('/')
     onItemClick?.()
   }
@@ -237,90 +228,12 @@ export function LeftPanel({
       )}
 
       {/* Recent Conversations */}
-      <div className="flex-1 overflow-auto">
-        {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) ? (
-          threads.length === 0 ? (
-            <div
-              className="py-8 px-4 text-center"
-              style={{ color: appTheme.sidebarTextSecondary }}
-            >
-              <MessageOutlined
-                className="text-2xl mb-2"
-                style={{ color: appTheme.sidebarTextSecondary }}
-              />
-              <div className="text-sm">No conversations yet</div>
-            </div>
-          ) : (
-            threads.slice(0, 20).map(thread => (
-              <div
-                key={thread.id}
-                onClick={() => handleThreadClick(thread.id)}
-                className={`px-3 py-2 mb-0.5 rounded-lg cursor-pointer text-sm overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-200 border`}
-                style={{
-                  backgroundColor:
-                    currentThreadId === thread.id
-                      ? appTheme.sidebarItemActive
-                      : 'transparent',
-                  color:
-                    currentThreadId === thread.id
-                      ? appTheme.primary
-                      : appTheme.sidebarText,
-                  borderColor:
-                    currentThreadId === thread.id
-                      ? appTheme.primary + '4D'
-                      : 'transparent',
-                }}
-                onMouseEnter={e => {
-                  if (currentThreadId !== thread.id) {
-                    e.currentTarget.style.backgroundColor =
-                      'rgba(255,255,255,0.05)'
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (currentThreadId !== thread.id) {
-                    e.currentTarget.style.backgroundColor = 'transparent'
-                  }
-                }}
-              >
-                {thread.title}
-              </div>
-            ))
-          )
-        ) : (
-          // Collapsed state - show dots for threads
-          threads.slice(0, 10).map(thread => (
-            <Tooltip
-              key={thread.id}
-              title={thread.title}
-              placement="right"
-              mouseEnterDelay={0.5}
-            >
-              <div
-                onClick={() => handleThreadClick(thread.id)}
-                className={`w-2 h-2 rounded-full mx-auto my-1.5 cursor-pointer transition-all duration-200`}
-                style={{
-                  backgroundColor:
-                    currentThreadId === thread.id
-                      ? appTheme.primary
-                      : appTheme.sidebarTextSecondary,
-                }}
-                onMouseEnter={e => {
-                  if (currentThreadId !== thread.id) {
-                    e.currentTarget.style.backgroundColor =
-                      'rgba(255,255,255,0.6)'
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (currentThreadId !== thread.id) {
-                    e.currentTarget.style.backgroundColor =
-                      'rgba(255,255,255,0.3)'
-                  }
-                }}
-              />
-            </Tooltip>
-          ))
-        )}
-      </div>
+      <RecentConversations
+        collapsed={leftPanelCollapsed}
+        isMobile={isMobile}
+        mobileOverlayOpen={mobileOverlayOpen}
+        onConversationClick={onItemClick}
+      />
 
       {/* Bottom Navigation */}
       <div

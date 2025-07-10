@@ -32,9 +32,6 @@ export const ChatHistoryPage: React.FC = () => {
   const { message } = App.useApp()
   const navigate = useNavigate()
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
-  const [filteredConversations, setFilteredConversations] = useState<
-    ConversationSummary[]
-  >([])
   const [loading, setLoading] = useState(false)
   const [searchText, setSearchText] = useState('')
 
@@ -44,18 +41,15 @@ export const ChatHistoryPage: React.FC = () => {
 
   useEffect(() => {
     if (searchText.trim()) {
-      const filtered = conversations.filter(
-        conversation =>
-          conversation.title.toLowerCase().includes(searchText.toLowerCase()) ||
-          conversation.last_message
-            ?.toLowerCase()
-            .includes(searchText.toLowerCase()),
-      )
-      setFilteredConversations(filtered)
+      const timeoutId = setTimeout(() => {
+        searchConversations(searchText)
+      }, 500) // Debounce search for 500ms
+      
+      return () => clearTimeout(timeoutId)
     } else {
-      setFilteredConversations(conversations)
+      fetchConversations()
     }
-  }, [searchText, conversations])
+  }, [searchText])
 
   const fetchConversations = async () => {
     try {
@@ -65,9 +59,24 @@ export const ChatHistoryPage: React.FC = () => {
         per_page: 100,
       })
       setConversations(response.conversations)
-      setFilteredConversations(response.conversations)
     } catch (error) {
       message.error('Failed to fetch chat history')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const searchConversations = async (query: string) => {
+    try {
+      setLoading(true)
+      const response = await ApiClient.Chat.searchConversations({
+        q: query,
+        page: 1,
+        per_page: 100,
+      })
+      setConversations(response.conversations)
+    } catch (error) {
+      message.error('Failed to search conversations')
     } finally {
       setLoading(false)
     }
@@ -87,15 +96,8 @@ export const ChatHistoryPage: React.FC = () => {
 
   const handleClearAllHistory = async () => {
     try {
-      // Delete all conversations one by one
-      await Promise.all(
-        conversations.map(conversation =>
-          ApiClient.Chat.deleteConversation({
-            conversation_id: conversation.id,
-          }),
-        ),
-      )
-      message.success('All chat history cleared successfully')
+      const response = await ApiClient.Chat.clearAllConversations()
+      message.success(`${response.deleted_count} conversations deleted successfully`)
       fetchConversations()
     } catch (error) {
       message.error('Failed to clear chat history')
@@ -217,7 +219,7 @@ export const ChatHistoryPage: React.FC = () => {
           </div>
 
           <Card>
-            {filteredConversations.length === 0 && !loading ? (
+            {conversations.length === 0 && !loading ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
@@ -235,7 +237,7 @@ export const ChatHistoryPage: React.FC = () => {
             ) : (
               <Table
                 columns={columns}
-                dataSource={filteredConversations}
+                dataSource={conversations}
                 loading={loading}
                 rowKey="id"
                 pagination={{
