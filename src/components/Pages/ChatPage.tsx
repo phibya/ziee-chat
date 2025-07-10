@@ -1,8 +1,8 @@
-import { useAppStore } from '../../store'
+import { useParams } from 'react-router-dom'
 import { ChatInterface } from '../Chat/ChatInterface'
 
 export function ChatPage() {
-  const { currentThreadId } = useAppStore()
+  const { conversationId } = useParams<{ conversationId?: string }>()
 
-  return <ChatInterface threadId={currentThreadId} />
+  return <ChatInterface conversationId={conversationId || null} />
 }

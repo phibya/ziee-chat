@@ -615,6 +615,13 @@ pub struct EditMessageRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EditMessageResponse {
+    pub message: Message,
+    pub content_changed: bool,
+    pub conversation_history: Vec<Message>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamChunk {
     pub delta: String,
     pub finish_reason: Option<String>,

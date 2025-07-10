@@ -1,7 +1,7 @@
 use super::get_database_pool;
 use crate::database::models::{
     Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, Message, SendMessageRequest, UpdateConversationRequest,
+    EditMessageRequest, EditMessageResponse, Message, SendMessageRequest, UpdateConversationRequest,
 };
 use sqlx::{Error, Row};
 use uuid::Uuid;
@@ -382,27 +382,207 @@ pub async fn get_conversation_messages(
     Ok(messages)
 }
 
-/// Edit a message
+/// Get conversation history up to (but not including) a specific message timestamp
+/// This is used when editing a message to get the context before that message
+pub async fn get_conversation_history_before(
+    conversation_id: Uuid,
+    before_timestamp: chrono::DateTime<chrono::Utc>,
+    user_id: Uuid,
+) -> Result<Vec<Message>, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
+    // Verify user owns this conversation
+    let conversation = sqlx::query(
+        "SELECT user_id FROM conversations WHERE id = $1"
+    )
+    .bind(conversation_id)
+    .fetch_optional(pool)
+    .await?;
+    
+    let conv_user_id: Uuid = match conversation {
+        Some(row) => row.get("user_id"),
+        None => return Ok(vec![]),
+    };
+    
+    if conv_user_id != user_id {
+        return Ok(vec![]);
+    }
+    
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            id, conversation_id, parent_id, role, content, 
+            branch_id, is_active_branch, model_provider_id, model_id,
+            created_at, updated_at
+        FROM messages 
+        WHERE conversation_id = $1 AND is_active_branch = true AND created_at < $2
+        ORDER BY created_at ASC
+        "#,
+    )
+    .bind(conversation_id)
+    .bind(before_timestamp)
+    .fetch_all(pool)
+    .await?;
+    
+    // Convert rows to Message structs
+    let messages = rows
+        .into_iter()
+        .map(|row| Message {
+            id: row.get("id"),
+            conversation_id: row.get("conversation_id"),
+            parent_id: row.get("parent_id"),
+            role: row.get("role"),
+            content: row.get("content"),
+            branch_id: row.get("branch_id"),
+            is_active_branch: row.get("is_active_branch"),
+            model_provider_id: row.get("model_provider_id"),
+            model_id: row.get("model_id"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+            branches: None,
+            metadata: None,
+        })
+        .collect();
+    
+    Ok(messages)
+}
+
+/// Edit a message and create a new branch
 pub async fn edit_message(
     message_id: Uuid,
     request: EditMessageRequest,
     user_id: Uuid,
-) -> Result<Option<Message>, Error> {
-    // Placeholder - return dummy message
-    Ok(Some(Message {
-        id: message_id,
-        conversation_id: Uuid::new_v4(),
-        parent_id: None,
-        role: "user".to_string(),
+) -> Result<Option<EditMessageResponse>, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
+    // Get the original message to verify ownership and get conversation details
+    let original_message = sqlx::query(
+        r#"
+        SELECT m.*, c.user_id as conversation_user_id
+        FROM messages m
+        JOIN conversations c ON m.conversation_id = c.id
+        WHERE m.id = $1
+        "#,
+    )
+    .bind(message_id)
+    .fetch_optional(pool)
+    .await?;
+    
+    let original = match original_message {
+        Some(row) => row,
+        None => return Ok(None),
+    };
+    
+    let conversation_user_id: Uuid = original.get("conversation_user_id");
+    if conversation_user_id != user_id {
+        return Ok(None); // User doesn't own this conversation
+    }
+    
+    let conversation_id: Uuid = original.get("conversation_id");
+    let parent_id: Option<Uuid> = original.get("parent_id");
+    let role: String = original.get("role");
+    let original_content: String = original.get("content");
+    let original_created_at: chrono::DateTime<chrono::Utc> = original.get("created_at");
+    
+    // Only allow editing user messages
+    if role != "user" {
+        return Ok(None);
+    }
+    
+    // Check if content actually changed
+    let content_changed = original_content.trim() != request.content.trim();
+    
+    // Get conversation history before this message for AI context
+    let conversation_history = if content_changed {
+        get_conversation_history_before(conversation_id, original_created_at, user_id).await?
+    } else {
+        vec![]
+    };
+    
+    let new_branch_id = Uuid::new_v4();
+    let now = chrono::Utc::now();
+    
+    // Start a transaction
+    let mut tx = pool.begin().await?;
+    
+    // 1. Deactivate all messages in the current branch that come after this message (chronologically)
+    sqlx::query(
+        r#"
+        UPDATE messages 
+        SET is_active_branch = false 
+        WHERE conversation_id = $1 
+        AND created_at > $2 
+        AND is_active_branch = true
+        "#,
+    )
+    .bind(conversation_id)
+    .bind(original_created_at)
+    .execute(&mut *tx)
+    .await?;
+    
+    // 2. Deactivate the original message
+    sqlx::query(
+        r#"
+        UPDATE messages 
+        SET is_active_branch = false 
+        WHERE id = $1
+        "#,
+    )
+    .bind(message_id)
+    .execute(&mut *tx)
+    .await?;
+    
+    // 3. Create the edited message with new content and new branch
+    let new_message_id = Uuid::new_v4();
+    sqlx::query(
+        r#"
+        INSERT INTO messages (
+            id, conversation_id, parent_id, role, content, 
+            branch_id, is_active_branch, model_provider_id, model_id,
+            created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        "#,
+    )
+    .bind(new_message_id)
+    .bind(conversation_id)
+    .bind(parent_id)
+    .bind(&role)
+    .bind(&request.content)
+    .bind(new_branch_id)
+    .bind(true) // is_active_branch
+    .bind(original.get::<Option<Uuid>, _>("model_provider_id"))
+    .bind(original.get::<Option<Uuid>, _>("model_id"))
+    .bind(original_created_at) // Keep the same creation time for proper ordering
+    .bind(now)
+    .execute(&mut *tx)
+    .await?;
+    
+    // Commit the transaction
+    tx.commit().await?;
+    
+    // Return the edit response with the new message and context
+    let message = Message {
+        id: new_message_id,
+        conversation_id,
+        parent_id,
+        role,
         content: request.content,
-        branch_id: Uuid::new_v4(),
+        branch_id: new_branch_id,
         is_active_branch: true,
-        model_provider_id: None,
-        model_id: None,
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        model_provider_id: original.get("model_provider_id"),
+        model_id: original.get("model_id"),
+        created_at: original_created_at,
+        updated_at: now,
         branches: None,
         metadata: None,
+    };
+    
+    Ok(Some(EditMessageResponse {
+        message,
+        content_changed,
+        conversation_history,
     }))
 }
 
@@ -574,4 +754,168 @@ pub async fn auto_update_conversation_title(
     };
     
     update_conversation(conversation_id, request, user_id).await
+}
+
+/// Get all branches for a message at a specific position in the conversation
+pub async fn get_message_branches(
+    conversation_id: Uuid,
+    created_at: chrono::DateTime<chrono::Utc>,
+    user_id: Uuid,
+) -> Result<Vec<Message>, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
+    // Verify user owns the conversation
+    let conversation = sqlx::query(
+        "SELECT user_id FROM conversations WHERE id = $1"
+    )
+    .bind(conversation_id)
+    .fetch_optional(pool)
+    .await?;
+    
+    if let Some(row) = conversation {
+        let conversation_user_id: Uuid = row.get("user_id");
+        if conversation_user_id != user_id {
+            return Ok(vec![]);
+        }
+    } else {
+        return Ok(vec![]);
+    }
+    
+    // Get all messages at this time position (different branches)
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            id, conversation_id, parent_id, role, content, 
+            branch_id, is_active_branch, model_provider_id, model_id,
+            created_at, updated_at
+        FROM messages 
+        WHERE conversation_id = $1 
+        AND created_at = $2
+        ORDER BY is_active_branch DESC, created_at ASC
+        "#,
+    )
+    .bind(conversation_id)
+    .bind(created_at)
+    .fetch_all(pool)
+    .await?;
+    
+    let messages = rows
+        .into_iter()
+        .map(|row| Message {
+            id: row.get("id"),
+            conversation_id: row.get("conversation_id"),
+            parent_id: row.get("parent_id"),
+            role: row.get("role"),
+            content: row.get("content"),
+            branch_id: row.get("branch_id"),
+            is_active_branch: row.get("is_active_branch"),
+            model_provider_id: row.get("model_provider_id"),
+            model_id: row.get("model_id"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+            branches: None,
+            metadata: None,
+        })
+        .collect();
+    
+    Ok(messages)
+}
+
+/// Switch to a different branch by making a message active
+pub async fn switch_message_branch(
+    message_id: Uuid,
+    user_id: Uuid,
+) -> Result<Option<Message>, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
+    // Get the message and verify ownership
+    let message_row = sqlx::query(
+        r#"
+        SELECT m.*, c.user_id as conversation_user_id
+        FROM messages m
+        JOIN conversations c ON m.conversation_id = c.id
+        WHERE m.id = $1
+        "#,
+    )
+    .bind(message_id)
+    .fetch_optional(pool)
+    .await?;
+    
+    let message = match message_row {
+        Some(row) => row,
+        None => return Ok(None),
+    };
+    
+    let conversation_user_id: Uuid = message.get("conversation_user_id");
+    if conversation_user_id != user_id {
+        return Ok(None);
+    }
+    
+    let conversation_id: Uuid = message.get("conversation_id");
+    let created_at: chrono::DateTime<chrono::Utc> = message.get("created_at");
+    
+    // Start transaction
+    let mut tx = pool.begin().await?;
+    
+    // 1. Deactivate all messages at this time position
+    sqlx::query(
+        r#"
+        UPDATE messages 
+        SET is_active_branch = false 
+        WHERE conversation_id = $1 AND created_at = $2
+        "#,
+    )
+    .bind(conversation_id)
+    .bind(created_at)
+    .execute(&mut *tx)
+    .await?;
+    
+    // 2. Activate the selected message
+    sqlx::query(
+        r#"
+        UPDATE messages 
+        SET is_active_branch = true, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        "#,
+    )
+    .bind(message_id)
+    .execute(&mut *tx)
+    .await?;
+    
+    // 3. Deactivate all messages that come after this time in the conversation
+    sqlx::query(
+        r#"
+        UPDATE messages 
+        SET is_active_branch = false 
+        WHERE conversation_id = $1 
+        AND created_at > $2 
+        AND is_active_branch = true
+        "#,
+    )
+    .bind(conversation_id)
+    .bind(created_at)
+    .execute(&mut *tx)
+    .await?;
+    
+    // Commit transaction
+    tx.commit().await?;
+    
+    // Return the updated message
+    Ok(Some(Message {
+        id: message.get("id"),
+        conversation_id: message.get("conversation_id"),
+        parent_id: message.get("parent_id"),
+        role: message.get("role"),
+        content: message.get("content"),
+        branch_id: message.get("branch_id"),
+        is_active_branch: true,
+        model_provider_id: message.get("model_provider_id"),
+        model_id: message.get("model_id"),
+        created_at: message.get("created_at"),
+        updated_at: chrono::Utc::now(),
+        branches: None,
+        metadata: None,
+    }))
 }

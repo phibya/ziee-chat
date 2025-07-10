@@ -61,6 +61,10 @@ function App() {
           <AppLayout>
             <Routes>
               <Route path="/" element={<ChatPage />} />
+              <Route
+                path="/conversation/:conversationId"
+                element={<ChatPage />}
+              />
               <Route path="/assistants" element={<AssistantsPage />} />
               <Route path="/chat-history" element={<ChatHistoryPage />} />
               <Route path="/hub" element={<HubPage />} />

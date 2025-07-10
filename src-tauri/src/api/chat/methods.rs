@@ -396,14 +396,182 @@ pub async fn send_message_stream(
     }
 }
 
+/// Helper function to get AI response for an edited message
+async fn get_ai_response_for_edited_message(
+    conversation_history: Vec<Message>,
+    edited_content: String,
+    conversation: Conversation,
+    provider_id: Uuid,
+    model_id: Uuid,
+    user_id: Uuid,
+) -> Result<(), StatusCode> {
+    // Get the model provider configuration
+    let provider = match get_model_provider_by_id(provider_id).await {
+        Ok(Some(provider)) => provider,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    // Get the model
+    let model = match get_model_by_id(model_id).await {
+        Ok(Some(model)) => model,
+        Ok(None) => return Err(StatusCode::NOT_FOUND),
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    // Build chat messages for AI provider
+    let mut messages = Vec::new();
+
+    // Add system message from assistant if available
+    if let Some(assistant_id) = conversation.assistant_id {
+        if let Ok(Some(assistant)) = get_assistant_by_id(assistant_id, Some(user_id)).await {
+            if let Some(instructions) = assistant.instructions {
+                if !instructions.trim().is_empty() {
+                    messages.push(ChatMessage {
+                        role: "system".to_string(),
+                        content: instructions,
+                    });
+                }
+            }
+        }
+    }
+
+    // Add conversation history
+    for msg in conversation_history {
+        messages.push(ChatMessage {
+            role: msg.role,
+            content: msg.content,
+        });
+    }
+
+    // Add the edited user message
+    messages.push(ChatMessage {
+        role: "user".to_string(),
+        content: edited_content,
+    });
+
+    // Create AI provider instance
+    let ai_provider_result: Result<Box<dyn AIProvider>, _> = match provider.provider_type.as_str() {
+        "openai" => {
+            let proxy_config = provider.proxy_settings.as_ref().map(|proxy_settings| {
+                ProxyConfig {
+                    enabled: proxy_settings.enabled,
+                    url: proxy_settings.url.clone(),
+                    username: Some(proxy_settings.username.clone()),
+                    password: Some(proxy_settings.password.clone()),
+                    no_proxy: proxy_settings.no_proxy
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .collect(),
+                    ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
+                }
+            });
+
+            OpenAIProvider::new(
+                provider.api_key.unwrap_or_default(),
+                provider.base_url,
+                proxy_config,
+            ).map(|p| Box::new(p) as Box<dyn AIProvider>)
+        }
+        "anthropic" => {
+            let proxy_config = provider.proxy_settings.as_ref().map(|proxy_settings| {
+                ProxyConfig {
+                    enabled: proxy_settings.enabled,
+                    url: proxy_settings.url.clone(),
+                    username: Some(proxy_settings.username.clone()),
+                    password: Some(proxy_settings.password.clone()),
+                    no_proxy: proxy_settings.no_proxy
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .collect(),
+                    ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
+                }
+            });
+
+            AnthropicProvider::new(
+                provider.api_key.unwrap_or_default(),
+                provider.base_url,
+                proxy_config,
+            ).map(|p| Box::new(p) as Box<dyn AIProvider>)
+        }
+        _ => return Err(StatusCode::BAD_REQUEST),
+    };
+
+    let ai_provider = ai_provider_result.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Create chat request
+    let chat_request = ChatRequest {
+        messages,
+        model: model.name.clone(),
+        stream: true,
+        temperature: Some(0.7),
+        max_tokens: Some(4096),
+        top_p: Some(0.95),
+        frequency_penalty: None,
+        presence_penalty: None,
+    };
+
+    // Call AI provider and get response
+    match ai_provider.chat(chat_request).await {
+        Ok(response) => {
+            // Store only the assistant response (user message already stored by edit_message)
+            let assistant_message_req = SendMessageRequest {
+                conversation_id: conversation.id,
+                content: response.content,
+                role: "assistant".to_string(),
+                parent_id: None,
+                model_provider_id: provider_id,
+                model_id: model_id,
+            };
+
+            if let Err(e) = chat::send_message(assistant_message_req, user_id).await {
+                eprintln!("Error saving assistant message: {}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Error calling AI provider: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
 /// Edit a message (creates a new branch)
 pub async fn edit_message(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
     Json(request): Json<EditMessageRequest>,
 ) -> Result<Json<Message>, StatusCode> {
-    match chat::edit_message(message_id, request, auth_user.user.id).await {
-        Ok(Some(message)) => Ok(Json(message)),
+    match chat::edit_message(message_id, request.clone(), auth_user.user.id).await {
+        Ok(Some(edit_response)) => {
+            // If content changed, automatically send the edited message to AI and get response
+            if edit_response.content_changed {
+                // Get conversation details to get the model provider and model IDs
+                if let Ok(Some(conversation)) = chat::get_conversation_by_id(
+                    edit_response.message.conversation_id, 
+                    auth_user.user.id
+                ).await {
+                    // Only proceed if the conversation has model provider and model configured
+                    if let (Some(provider_id), Some(model_id)) = (conversation.model_provider_id, conversation.model_id) {
+                        // Get AI response for the edited message (don't store user message again)
+                        if let Err(e) = get_ai_response_for_edited_message(
+                            edit_response.conversation_history,
+                            edit_response.message.content.clone(),
+                            conversation,
+                            provider_id,
+                            model_id,
+                            auth_user.user.id
+                        ).await {
+                            eprintln!("Warning: Failed to get AI response for edited message: {:?}", e);
+                        }
+                    }
+                }
+            }
+
+            Ok(Json(edit_response.message))
+        },
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Error editing message: {}", e);
@@ -412,25 +580,39 @@ pub async fn edit_message(
     }
 }
 
-/// Switch to a different branch (placeholder)
+/// Switch to a different branch
 pub async fn switch_branch(
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Path((conversation_id, branch_id)): Path<(Uuid, Uuid)>,
-) -> Result<StatusCode, StatusCode> {
-    // Placeholder implementation
-    Ok(StatusCode::NO_CONTENT)
+    Path(message_id): Path<Uuid>,
+) -> Result<Json<Message>, StatusCode> {
+    match chat::switch_message_branch(message_id, auth_user.user.id).await {
+        Ok(Some(message)) => Ok(Json(message)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            eprintln!("Error switching branch: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
-/// Get message with branches (placeholder)
+/// Get message branches for a specific conversation position
 pub async fn get_message_branches(
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Path(message_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-    // Placeholder implementation
-    Ok(Json(serde_json::json!({
-        "message_id": message_id,
-        "branches": []
-    })))
+    Path((conversation_id, timestamp)): Path<(Uuid, String)>,
+) -> Result<Json<Vec<Message>>, StatusCode> {
+    // Parse the timestamp
+    let created_at = match chrono::DateTime::parse_from_rfc3339(&timestamp) {
+        Ok(dt) => dt.with_timezone(&chrono::Utc),
+        Err(_) => return Err(StatusCode::BAD_REQUEST),
+    };
+    
+    match chat::get_message_branches(conversation_id, created_at, auth_user.user.id).await {
+        Ok(branches) => Ok(Json(branches)),
+        Err(e) => {
+            eprintln!("Error getting message branches: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
 /// Search conversations

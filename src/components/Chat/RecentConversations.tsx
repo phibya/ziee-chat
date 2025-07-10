@@ -58,7 +58,7 @@ export function RecentConversations({
   }
 
   const handleConversationClick = (conversationId: string) => {
-    navigate(`/?conversation=${conversationId}`)
+    navigate(`/conversation/${conversationId}`)
     onConversationClick?.()
   }
 
@@ -75,16 +75,16 @@ export function RecentConversations({
         conversation_id: editingId,
         title: editingTitle.trim(),
       })
-      
+
       // Update local state
       setConversations(prevConversations =>
         prevConversations.map(conv =>
           conv.id === editingId
             ? { ...conv, title: editingTitle.trim() }
-            : conv
-        )
+            : conv,
+        ),
       )
-      
+
       setEditingId(null)
       setEditingTitle('')
       message.success('Conversation renamed successfully')
@@ -112,12 +112,12 @@ export function RecentConversations({
           await ApiClient.Chat.deleteConversation({
             conversation_id: conversation.id,
           })
-          
+
           // Remove from local state
           setConversations(prevConversations =>
-            prevConversations.filter(conv => conv.id !== conversation.id)
+            prevConversations.filter(conv => conv.id !== conversation.id),
           )
-          
+
           message.success('Conversation deleted successfully')
         } catch (error) {
           console.error('Failed to delete conversation:', error)
@@ -148,7 +148,8 @@ export function RecentConversations({
                 e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.6)'
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = appTheme.sidebarTextSecondary
+                e.currentTarget.style.backgroundColor =
+                  appTheme.sidebarTextSecondary
               }}
             />
           </Tooltip>
@@ -222,7 +223,7 @@ export function RecentConversations({
                 >
                   {conversation.title}
                 </div>
-                
+
                 {/* Last message preview */}
                 {conversation.last_message && (
                   <div
@@ -233,7 +234,7 @@ export function RecentConversations({
                     {conversation.last_message.length > 50 ? '...' : ''}
                   </div>
                 )}
-                
+
                 {/* Action buttons - only visible on hover */}
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
                   <Tooltip title="Rename">

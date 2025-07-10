@@ -1,32 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  Avatar,
-  Button,
-  Card,
-  Input,
-  Space,
-  Spin,
-  Typography,
-  Select,
-  Row,
-  Col,
-  Tooltip,
-  Divider,
-} from 'antd'
+import { Button, Input, Space, Spin, Typography, Select, Row, Col } from 'antd'
 import {
   LoadingOutlined,
   MessageOutlined,
   RobotOutlined,
   SendOutlined,
-  UserOutlined,
   StopOutlined,
-  EditOutlined,
   SaveOutlined,
   CloseOutlined,
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { ApiClient } from '../../api/client'
 import { useTheme } from '../../hooks/useTheme'
 import {
@@ -45,13 +30,13 @@ const { Text } = Typography
 const { Option } = Select
 
 interface ChatInterfaceProps {
-  threadId: string | null
+  conversationId: string | null
 }
 
-export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
+export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const appTheme = useTheme()
   const { message } = App.useApp()
-  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [conversation, setConversation] = useState<Conversation | null>(null)
@@ -66,6 +51,12 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
   const [editingMessage, setEditingMessage] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+  const [messageBranches, setMessageBranches] = useState<{
+    [key: string]: Message[]
+  }>({})
+  const [loadingBranches, setLoadingBranches] = useState<{
+    [key: string]: boolean
+  }>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -73,11 +64,10 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
   }, [])
 
   useEffect(() => {
-    const conversationId = searchParams.get('conversation')
     if (conversationId) {
       loadConversation(conversationId)
     }
-  }, [searchParams])
+  }, [conversationId])
 
   useEffect(() => {
     scrollToBottom()
@@ -167,6 +157,8 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
       const newConversation = await ApiClient.Chat.createConversation(request)
       setConversation(newConversation)
       setMessages([])
+      // Navigate to the new conversation URL
+      navigate(`/conversation/${newConversation.id}`)
       return newConversation
     } catch (error) {
       message.error('Failed to create conversation')
@@ -237,12 +229,19 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
     if (!editingMessage || !editValue.trim()) return
 
     try {
+      const originalMessage = messages.find(m => m.id === editingMessage)
+      const contentChanged =
+        originalMessage && originalMessage.content.trim() !== editValue.trim()
+
       await ApiClient.Chat.editMessage({
         message_id: editingMessage,
         content: editValue.trim(),
       })
 
-      // Reload conversation to show the updated branch
+      setEditingMessage(null)
+      setEditValue('')
+
+      // Immediately reload conversation to show the updated branch
       if (conversation) {
         const conversationResponse = await ApiClient.Chat.getConversation({
           conversation_id: conversation.id,
@@ -250,9 +249,11 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
         setMessages(conversationResponse.messages)
       }
 
-      setEditingMessage(null)
-      setEditValue('')
-      message.success('Message updated successfully')
+      if (contentChanged) {
+        message.success('Message updated and sent to AI for response')
+      } else {
+        message.success('Message updated successfully')
+      }
     } catch (error) {
       message.error('Failed to update message')
     }
@@ -263,124 +264,242 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
     setEditValue('')
   }
 
+  const loadMessageBranches = async (msg: Message) => {
+    if (!conversation) return
+
+    const branchKey = `${msg.created_at}`
+
+    setLoadingBranches(prev => ({ ...prev, [branchKey]: true }))
+
+    try {
+      const timestamp = new Date(msg.created_at).toISOString()
+      const branches = await ApiClient.Chat.getMessageBranches({
+        conversation_id: conversation.id,
+        timestamp: timestamp,
+      })
+
+      setMessageBranches(prev => ({ ...prev, [branchKey]: branches }))
+    } catch (error) {
+      message.error('Failed to load message branches')
+    } finally {
+      setLoadingBranches(prev => ({ ...prev, [branchKey]: false }))
+    }
+  }
+
+  const handleSwitchBranch = async (messageId: string) => {
+    try {
+      await ApiClient.Chat.switchBranch({ message_id: messageId })
+
+      // Reload conversation to show the new active branch
+      if (conversation) {
+        const conversationResponse = await ApiClient.Chat.getConversation({
+          conversation_id: conversation.id,
+        })
+        setMessages(conversationResponse.messages)
+
+        // Clear message branches cache to force reload of branch info
+        setMessageBranches({})
+        setLoadingBranches({})
+      }
+
+      message.success('Switched to selected branch')
+    } catch (error) {
+      message.error('Failed to switch branch')
+    }
+  }
+
+  const getBranchInfo = (msg: Message) => {
+    const branchKey = `${msg.created_at}`
+    const branches = messageBranches[branchKey] || []
+    const currentIndex = branches.findIndex(b => b.is_active_branch)
+
+    return {
+      branches,
+      currentIndex,
+      hasBranches: branches.length > 1,
+      isLoading: loadingBranches[branchKey] || false,
+    }
+  }
+
   const renderMessage = (msg: Message) => {
     const isUser = msg.role === 'user'
     const isEditing = editingMessage === msg.id
 
     return (
-      <div
-        key={msg.id}
-        className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 gap-3 group`}
-      >
-        {!isUser && (
-          <Avatar
-            size="small"
-            icon={<RobotOutlined />}
-            className="flex-shrink-0"
-            style={{ backgroundColor: appTheme.success }}
-          />
-        )}
+      <div key={msg.id} className="mb-6 group">
+        <div
+          className="rounded-lg px-4 py-3"
+          style={{
+            backgroundColor: isUser ? 'rgba(255,255,255,0.05)' : 'transparent',
+          }}
+        >
+          {/* Message header with avatar */}
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                style={{
+                  backgroundColor: isUser ? '#666' : '#f97316',
+                  color: 'white',
+                }}
+              >
+                {isUser ? 'P' : <RobotOutlined />}
+              </div>
+            </div>
+          </div>
 
-        <div className="max-w-[85%] sm:max-w-[70%] relative">
-          {isEditing ? (
-            <Card
-              size="small"
-              className="border-none rounded-xl"
-              style={{
-                backgroundColor: appTheme.chatMessageUser,
-                color: appTheme.chatMessageUserText,
-              }}
-              bodyStyle={{ padding: '8px 12px' }}
-            >
-              <TextArea
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                autoSize={{ minRows: 2, maxRows: 8 }}
-                className="mb-2"
-              />
-              <Space>
-                <Button
-                  size="small"
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  onClick={handleSaveEdit}
-                >
-                  Save
-                </Button>
-                <Button
-                  size="small"
-                  icon={<CloseOutlined />}
-                  onClick={handleCancelEdit}
-                >
-                  Cancel
-                </Button>
-              </Space>
-            </Card>
-          ) : (
-            <Card
-              size="small"
-              className="border-none rounded-xl"
-              style={{
-                backgroundColor: isUser
-                  ? appTheme.chatMessageUser
-                  : appTheme.chatMessageAssistant,
-                color: isUser
-                  ? appTheme.chatMessageUserText
-                  : appTheme.chatMessageAssistantText,
-              }}
-              bodyStyle={{
-                padding: '8px 12px',
-                wordBreak: 'break-word',
-              }}
-            >
-              {isUser ? (
-                <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-              ) : (
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
-              )}
-            </Card>
-          )}
-
-          {/* Edit button for user messages */}
-          {isUser && !isEditing && (
-            <div className="absolute -right-8 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Tooltip title="Edit message">
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<EditOutlined />}
-                  onClick={() => handleEditMessage(msg.id, msg.content)}
+          {/* Message content */}
+          <div className="ml-11">
+            {isEditing ? (
+              <div className="space-y-3">
+                <TextArea
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  autoSize={{ minRows: 2, maxRows: 8 }}
+                  className="w-full"
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: 'inherit',
+                  }}
                 />
-              </Tooltip>
-            </div>
-          )}
+                <div className="flex gap-2">
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={handleSaveEdit}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<CloseOutlined />}
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="text-base leading-relaxed"
+                style={{
+                  color: 'rgba(255,255,255,0.9)',
+                  whiteSpace: isUser ? 'pre-wrap' : 'normal',
+                }}
+              >
+                {isUser ? (
+                  msg.content
+                ) : (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                )}
+              </div>
+            )}
+          </div>
 
-          {/* Branch navigation (if message has multiple branches) */}
-          {msg.branches && msg.branches.length > 1 && (
-            <div className="flex items-center gap-2 mt-2">
-              <Button size="small" type="text" icon={<LeftOutlined />} />
-              <Text type="secondary" className="text-xs">
-                1 / {msg.branches.length}
-              </Text>
-              <Button size="small" type="text" icon={<RightOutlined />} />
-            </div>
-          )}
+          {/* Tools/Actions at the bottom for user messages */}
+          {isUser &&
+            !isEditing &&
+            (() => {
+              const branchInfo = getBranchInfo(msg)
+              return (
+                <div className="ml-11 mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    size="small"
+                    type="text"
+                    onClick={() => handleEditMessage(msg.id, msg.content)}
+                    className="text-xs px-2 h-6"
+                    style={{
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'rgba(255,255,255,0.8)',
+                    }}
+                  >
+                    Edit
+                  </Button>
+
+                  {!branchInfo.hasBranches && !branchInfo.isLoading && (
+                    <Button
+                      size="small"
+                      type="text"
+                      onClick={() => loadMessageBranches(msg)}
+                      className="w-6 h-6 min-w-0 p-0"
+                      style={{
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        color: 'rgba(255,255,255,0.8)',
+                      }}
+                    >
+                      <LeftOutlined />
+                    </Button>
+                  )}
+
+                  {branchInfo.isLoading && <Spin size="small" />}
+
+                  {branchInfo.hasBranches && (
+                    <>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<LeftOutlined />}
+                        disabled={branchInfo.currentIndex <= 0}
+                        onClick={() => {
+                          const prevBranch =
+                            branchInfo.branches[branchInfo.currentIndex - 1]
+                          if (prevBranch) handleSwitchBranch(prevBranch.id)
+                        }}
+                        className="w-6 h-6 min-w-0 p-0"
+                        style={{
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          color: 'rgba(255,255,255,0.8)',
+                        }}
+                      />
+                      <div
+                        className="text-xs px-2 h-6 flex items-center"
+                        style={{
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          color: 'rgba(255,255,255,0.8)',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        {branchInfo.currentIndex + 1} /{' '}
+                        {branchInfo.branches.length}
+                      </div>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<RightOutlined />}
+                        disabled={
+                          branchInfo.currentIndex >=
+                          branchInfo.branches.length - 1
+                        }
+                        onClick={() => {
+                          const nextBranch =
+                            branchInfo.branches[branchInfo.currentIndex + 1]
+                          if (nextBranch) handleSwitchBranch(nextBranch.id)
+                        }}
+                        className="w-6 h-6 min-w-0 p-0"
+                        style={{
+                          backgroundColor: 'rgba(255,255,255,0.1)',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          color: 'rgba(255,255,255,0.8)',
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })()}
         </div>
-
-        {isUser && (
-          <Avatar
-            size="small"
-            icon={<UserOutlined />}
-            className="flex-shrink-0"
-            style={{ backgroundColor: appTheme.chatMessageUser }}
-          />
-        )}
       </div>
     )
   }
 
   // Empty state (no conversation loaded)
-  if (!conversation && !searchParams.get('conversation')) {
+  if (!conversation && !conversationId) {
     return (
       <div
         className="flex flex-col h-full"
@@ -450,63 +569,67 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
         <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
           <div className="mb-8">
             <div
-              className="text-2xl font-bold mb-2"
-              style={{ color: appTheme.primary }}
+              className="text-3xl font-light mb-4"
+              style={{ color: 'rgba(255,255,255,0.9)' }}
             >
-              🌟 Welcome to Chat
+              What can I help with?
             </div>
-            <Text type="secondary">
-              Select an assistant and model to start chatting
-            </Text>
           </div>
 
-          <div
-            className="w-full max-w-2xl p-4 sm:p-6 rounded-xl border"
-            style={{
-              backgroundColor: appTheme.surfaceElevated,
-              borderColor: appTheme.borderLight,
-            }}
-          >
-            <TextArea
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="How can I help you today?"
-              className="w-full text-base bg-transparent border-none outline-none"
-              style={{ color: appTheme.textPrimary }}
-              autoSize={{ minRows: 1, maxRows: 4 }}
-              disabled={!selectedAssistant || !selectedModel}
-            />
+          <div className="w-full max-w-2xl">
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <TextArea
+                  value={inputValue}
+                  onChange={e => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Message Claude..."
+                  autoSize={{ minRows: 1, maxRows: 6 }}
+                  disabled={!selectedAssistant || !selectedModel}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '12px',
+                    color: 'inherit',
+                    padding: '12px 16px',
+                    fontSize: '16px',
+                  }}
+                  className="resize-none"
+                />
+              </div>
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSend}
+                disabled={
+                  !inputValue.trim() || !selectedAssistant || !selectedModel
+                }
+                style={{
+                  backgroundColor:
+                    !inputValue.trim() || !selectedAssistant || !selectedModel
+                      ? 'rgba(255,255,255,0.1)'
+                      : '#f97316',
+                  borderColor:
+                    !inputValue.trim() || !selectedAssistant || !selectedModel
+                      ? 'rgba(255,255,255,0.2)'
+                      : '#f97316',
+                  borderRadius: '8px',
+                  height: '40px',
+                }}
+              >
+                Send
+              </Button>
+            </div>
 
-            <Divider style={{ margin: '16px 0' }} />
-
-            <div className="flex justify-between items-center">
-              <div className="flex gap-2">
-                <Text type="secondary" className="text-sm">
-                  {selectedAssistant && selectedModel
-                    ? 'Ready to chat'
-                    : 'Select assistant and model'}
+            {(!selectedAssistant || !selectedModel) && (
+              <div className="mt-4">
+                <Text
+                  style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}
+                >
+                  Please select an assistant and model to start chatting
                 </Text>
               </div>
-
-              <div className="flex items-center gap-2">
-                {selectedModel && (
-                  <Text type="secondary" className="text-sm">
-                    {selectedModel.split(':')[1]}
-                  </Text>
-                )}
-                <Button
-                  type="primary"
-                  icon={<SendOutlined />}
-                  onClick={handleSend}
-                  disabled={
-                    !inputValue.trim() || !selectedAssistant || !selectedModel
-                  }
-                >
-                  Send
-                </Button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -519,124 +642,157 @@ export function ChatInterface({ threadId: _ }: ChatInterfaceProps) {
       style={{ backgroundColor: appTheme.chatBackground }}
     >
       {/* Header with conversation title and controls */}
-      <div
-        className="px-4 sm:px-6 py-4 border-b"
-        style={{
-          backgroundColor: appTheme.surface,
-          borderColor: appTheme.borderSecondary,
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <RobotOutlined
-              className="text-xl"
-              style={{ color: appTheme.primary }}
-            />
-            <Text strong className="text-base">
-              {conversation?.title || 'Chat'}
-            </Text>
-          </div>
+      <div className="px-4 sm:px-6 py-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Text
+                strong
+                className="text-lg"
+                style={{ color: 'rgba(255,255,255,0.9)' }}
+              >
+                {conversation?.title || 'Claude'}
+              </Text>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Text type="secondary" className="text-sm">
-              {selectedAssistant &&
-                assistants.find(a => a.id === selectedAssistant)?.name}
-            </Text>
-            <Text type="secondary" className="text-sm">
-              •
-            </Text>
-            <Text type="secondary" className="text-sm">
-              {selectedModel?.split(':')[1]}
-            </Text>
+            <div
+              className="flex items-center gap-2 text-sm"
+              style={{ color: 'rgba(255,255,255,0.6)' }}
+            >
+              <span>
+                {selectedAssistant &&
+                  assistants.find(a => a.id === selectedAssistant)?.name}
+              </span>
+              <span>•</span>
+              <span>
+                {selectedModel &&
+                  (() => {
+                    const [providerId, modelId] = selectedModel.split(':')
+                    const provider = modelProviders.find(
+                      p => p.id === providerId,
+                    )
+                    const model = provider?.models.find(m => m.id === modelId)
+                    return model?.alias || modelId
+                  })()}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-auto px-4 sm:px-6 py-4 flex flex-col">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <MessageOutlined
-              className="text-5xl mb-4"
-              style={{ color: appTheme.textTertiary }}
-            />
-            <Text
-              className="text-base"
-              style={{ color: appTheme.textSecondary }}
-            >
-              Start your conversation
-            </Text>
-          </div>
-        ) : (
-          <>
-            {messages.map(renderMessage)}
-            {(isLoading || isStreaming) && (
-              <div className="flex items-center gap-3 mb-4">
-                <Avatar
-                  size="small"
-                  icon={<RobotOutlined />}
-                  className="flex-shrink-0"
-                  style={{ backgroundColor: appTheme.success }}
-                />
-                <Card
-                  size="small"
-                  className="border-none rounded-xl"
-                  style={{ backgroundColor: appTheme.chatMessageAssistant }}
-                  bodyStyle={{ padding: '8px 12px' }}
-                >
-                  <Spin
-                    indicator={
-                      <LoadingOutlined style={{ fontSize: 16 }} spin />
-                    }
-                  />
-                  <Text type="secondary" className="ml-2">
-                    {isStreaming ? 'Generating...' : 'Thinking...'}
-                  </Text>
-                </Card>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </>
-        )}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-20">
+              <MessageOutlined
+                className="text-5xl mb-4"
+                style={{ color: 'rgba(255,255,255,0.3)' }}
+              />
+              <Text
+                className="text-lg"
+                style={{ color: 'rgba(255,255,255,0.6)' }}
+              >
+                Start your conversation
+              </Text>
+            </div>
+          ) : (
+            <>
+              {messages.map(renderMessage)}
+              {(isLoading || isStreaming) && (
+                <div className="mb-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                      style={{
+                        backgroundColor: '#f97316',
+                        color: 'white',
+                      }}
+                    >
+                      <RobotOutlined />
+                    </div>
+                  </div>
+                  <div className="ml-11">
+                    <div
+                      className="flex items-center gap-2 text-base"
+                      style={{ color: 'rgba(255,255,255,0.7)' }}
+                    >
+                      <Spin
+                        indicator={
+                          <LoadingOutlined style={{ fontSize: 16 }} spin />
+                        }
+                      />
+                      <span>
+                        {isStreaming ? 'Generating...' : 'Thinking...'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Input */}
-      <div
-        className="px-4 sm:px-6 py-4 border-t"
-        style={{
-          backgroundColor: appTheme.surface,
-          borderColor: appTheme.borderSecondary,
-        }}
-      >
-        <div className="flex items-end gap-2">
-          <TextArea
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            className="flex-1"
-            disabled={isLoading || isStreaming}
-          />
-          <div className="flex gap-2">
-            {(isLoading || isStreaming) && (
+      <div className="px-4 sm:px-6 py-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <TextArea
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Message Claude..."
+                autoSize={{ minRows: 1, maxRows: 6 }}
+                disabled={isLoading || isStreaming}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '12px',
+                  color: 'inherit',
+                  padding: '12px 16px',
+                }}
+                className="resize-none"
+              />
+            </div>
+            <div className="flex gap-2">
+              {(isLoading || isStreaming) && (
+                <Button
+                  type="text"
+                  icon={<StopOutlined />}
+                  onClick={handleStopGeneration}
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.8)',
+                    borderRadius: '8px',
+                  }}
+                >
+                  Stop
+                </Button>
+              )}
               <Button
-                type="text"
-                icon={<StopOutlined />}
-                onClick={handleStopGeneration}
-                danger
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSend}
+                disabled={!inputValue.trim() || isLoading || isStreaming}
+                style={{
+                  backgroundColor:
+                    !inputValue.trim() || isLoading || isStreaming
+                      ? 'rgba(255,255,255,0.1)'
+                      : '#f97316',
+                  borderColor:
+                    !inputValue.trim() || isLoading || isStreaming
+                      ? 'rgba(255,255,255,0.2)'
+                      : '#f97316',
+                  borderRadius: '8px',
+                }}
               >
-                Stop
+                Send
               </Button>
-            )}
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading || isStreaming}
-            >
-              Send
-            </Button>
+            </div>
           </div>
         </div>
       </div>

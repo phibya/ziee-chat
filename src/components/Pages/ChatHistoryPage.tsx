@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import {
   Card,
-  Table,
   Button,
   Input,
   Space,
@@ -44,7 +43,7 @@ export const ChatHistoryPage: React.FC = () => {
       const timeoutId = setTimeout(() => {
         searchConversations(searchText)
       }, 500) // Debounce search for 500ms
-      
+
       return () => clearTimeout(timeoutId)
     } else {
       fetchConversations()
@@ -97,7 +96,9 @@ export const ChatHistoryPage: React.FC = () => {
   const handleClearAllHistory = async () => {
     try {
       const response = await ApiClient.Chat.clearAllConversations()
-      message.success(`${response.deleted_count} conversations deleted successfully`)
+      message.success(
+        `${response.deleted_count} conversations deleted successfully`,
+      )
       fetchConversations()
     } catch (error) {
       message.error('Failed to clear chat history')
@@ -106,79 +107,87 @@ export const ChatHistoryPage: React.FC = () => {
 
   const handleViewConversation = (conversation: ConversationSummary) => {
     // Navigate to chat page with this conversation
-    navigate(`/?conversation=${conversation.id}`)
+    navigate(`/conversation/${conversation.id}`)
   }
 
-  const columns = [
-    {
-      title: 'Title',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text: string, record: ConversationSummary) => (
-        <Space>
-          <MessageOutlined />
-          <Text strong>{text}</Text>
-          {record.message_count > 0 && (
-            <Tag color="blue">{record.message_count} messages</Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: 'Last Message',
-      dataIndex: 'last_message',
-      key: 'last_message',
-      render: (text: string) => (
-        <Text type="secondary" ellipsis={{ tooltip: true }}>
-          {text || 'No messages'}
-        </Text>
-      ),
-      ellipsis: true,
-    },
-    {
-      title: 'Created At',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString(),
-      sorter: (a: ConversationSummary, b: ConversationSummary) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-      defaultSortOrder: 'descend' as const,
-    },
-    {
-      title: 'Updated At',
-      dataIndex: 'updated_at',
-      key: 'updated_at',
-      render: (date: string) => new Date(date).toLocaleDateString(),
-      sorter: (a: ConversationSummary, b: ConversationSummary) =>
-        new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime(),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_: any, record: ConversationSummary) => (
-        <Space>
-          <Tooltip title="View Conversation">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewConversation(record)}
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffTime = Math.abs(now.getTime() - date.getTime())
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    } else if (diffDays === 1) {
+      return 'Yesterday'
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`
+    } else {
+      return date.toLocaleDateString()
+    }
+  }
+
+  const renderConversationCard = (conversation: ConversationSummary) => (
+    <Card
+      key={conversation.id}
+      className="mb-4 hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => handleViewConversation(conversation)}
+      hoverable
+      actions={[
+        <Tooltip title="View Conversation" key="view">
+          <EyeOutlined
+            onClick={e => {
+              e.stopPropagation()
+              handleViewConversation(conversation)
+            }}
+          />
+        </Tooltip>,
+        <Popconfirm
+          key="delete"
+          title="Delete Conversation"
+          description="Are you sure you want to delete this conversation?"
+          onConfirm={() => handleDeleteConversation(conversation.id)}
+          okText="Yes"
+          cancelText="No"
+        >
+          <Tooltip title="Delete">
+            <DeleteOutlined
+              className="text-red-500"
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />
           </Tooltip>
-          <Popconfirm
-            title="Delete Conversation"
-            description="Are you sure you want to delete this conversation?"
-            onConfirm={() => handleDeleteConversation(record.id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Tooltip title="Delete">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ]
+        </Popconfirm>,
+      ]}
+    >
+      <Card.Meta
+        avatar={<MessageOutlined className="text-lg" />}
+        title={
+          <div className="flex items-center justify-between">
+            <Text strong className="text-base" ellipsis={{ tooltip: true }}>
+              {conversation.title}
+            </Text>
+            <div className="flex items-center gap-2 ml-2">
+              {conversation.message_count > 0 && (
+                <Tag color="blue" className="text-xs">
+                  {conversation.message_count} messages
+                </Tag>
+              )}
+              <Text type="secondary" className="text-xs whitespace-nowrap">
+                {formatDate(conversation.updated_at)}
+              </Text>
+            </div>
+          </div>
+        }
+        description={
+          <div className="mt-2">
+            <Text type="secondary" ellipsis={{ tooltip: true }}>
+              {conversation.last_message || 'No messages yet'}
+            </Text>
+          </div>
+        }
+      />
+    </Card>
+  )
 
   return (
     <div className="p-6">
@@ -218,8 +227,8 @@ export const ChatHistoryPage: React.FC = () => {
             </Space>
           </div>
 
-          <Card>
-            {conversations.length === 0 && !loading ? (
+          {conversations.length === 0 && !loading ? (
+            <Card>
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
@@ -234,22 +243,28 @@ export const ChatHistoryPage: React.FC = () => {
                   </Button>
                 )}
               </Empty>
-            ) : (
-              <Table
-                columns={columns}
-                dataSource={conversations}
-                loading={loading}
-                rowKey="id"
-                pagination={{
-                  pageSize: 20,
-                  showSizeChanger: true,
-                  showQuickJumper: true,
-                  showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} conversations`,
-                }}
-              />
-            )}
-          </Card>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <>
+                  {conversations.map(renderConversationCard)}
+                  {conversations.length > 20 && (
+                    <Card className="text-center">
+                      <Text type="secondary">
+                        Showing {Math.min(20, conversations.length)} of{' '}
+                        {conversations.length} conversations
+                      </Text>
+                    </Card>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </Col>
       </Row>
     </div>

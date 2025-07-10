@@ -150,9 +150,9 @@ export const ApiEndpoints = {
   'Chat.deleteConversation': 'DELETE /api/chat/conversations/{conversation_id}',
   'Chat.sendMessage': 'POST /api/chat/messages/stream',
   'Chat.editMessage': 'PUT /api/chat/messages/{message_id}',
-  'Chat.getMessageBranches': 'GET /api/chat/messages/{message_id}/branches',
-  'Chat.switchBranch':
-    'POST /api/chat/conversations/{conversation_id}/branches/{branch_id}',
+  'Chat.getMessageBranches':
+    'GET /api/chat/conversations/{conversation_id}/branches/{timestamp}',
+  'Chat.switchBranch': 'POST /api/chat/messages/{message_id}/branch/switch',
   'Chat.searchConversations': 'GET /api/chat/conversations/search',
   'Chat.clearAllConversations': 'DELETE /api/chat/conversations/clear-all',
 } as const
@@ -249,8 +249,8 @@ export type ApiEndpointParameters = {
   'Chat.deleteConversation': { conversation_id: string }
   'Chat.sendMessage': SendMessageRequest
   'Chat.editMessage': { message_id: string } & EditMessageRequest
-  'Chat.getMessageBranches': { message_id: string }
-  'Chat.switchBranch': { conversation_id: string; branch_id: string }
+  'Chat.getMessageBranches': { conversation_id: string; timestamp: string }
+  'Chat.switchBranch': { message_id: string }
   'Chat.searchConversations': { q: string; page?: number; per_page?: number }
   'Chat.clearAllConversations': void
 }
@@ -353,8 +353,8 @@ export type ApiEndpointResponses = {
   'Chat.deleteConversation': void
   'Chat.sendMessage': any // Streaming response
   'Chat.editMessage': Message
-  'Chat.getMessageBranches': any
-  'Chat.switchBranch': void
+  'Chat.getMessageBranches': Message[]
+  'Chat.switchBranch': Message
   'Chat.searchConversations': ConversationListResponse
   'Chat.clearAllConversations': { deleted_count: number; message: string }
 }
