@@ -7,6 +7,7 @@ export {
   useUISettings,
   initializeUserSettings,
 } from './settings'
+export { useConversationsStore } from './conversations'
 
 interface Thread {
   id: string

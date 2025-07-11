@@ -31,19 +31,23 @@ pub async fn list_model_providers(
     let per_page = params.per_page.unwrap_or(20);
 
     // Get model providers based on user permissions
-    let user_providers = match user_group_model_providers::get_model_providers_for_user(auth_user.user.id).await {
-        Ok(providers) => providers,
-        Err(e) => {
-            eprintln!("Failed to get model providers for user {}: {}", auth_user.user.id, e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    let user_providers =
+        match user_group_model_providers::get_model_providers_for_user(auth_user.user.id).await {
+            Ok(providers) => providers,
+            Err(e) => {
+                eprintln!(
+                    "Failed to get model providers for user {}: {}",
+                    auth_user.user.id, e
+                );
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
 
     // Calculate pagination
     let total = user_providers.len() as i64;
     let start = ((page - 1) * per_page) as usize;
     let end = (start + per_page as usize).min(user_providers.len());
-    
+
     let paginated_providers = if start < user_providers.len() {
         user_providers[start..end].to_vec()
     } else {
@@ -317,7 +321,9 @@ pub async fn test_model_provider_proxy_connection(
     }
 }
 
-async fn test_proxy_connectivity_for_provider(proxy_config: &TestModelProviderProxyRequest) -> Result<(), String> {
+async fn test_proxy_connectivity_for_provider(
+    proxy_config: &TestModelProviderProxyRequest,
+) -> Result<(), String> {
     // Validate proxy URL format
     if proxy_config.url.trim().is_empty() {
         return Err("Proxy URL is empty".to_string());
@@ -339,7 +345,7 @@ async fn test_proxy_connectivity_for_provider(proxy_config: &TestModelProviderPr
     // Build the client with proxy and SSL settings
     let mut client_builder = reqwest::Client::builder()
         .proxy(proxy_builder)
-        .timeout(std::time::Duration::from_secs(30))  // Increased timeout for proxy connections
+        .timeout(std::time::Duration::from_secs(30)) // Increased timeout for proxy connections
         .no_proxy(); // Disable system proxy to ensure we only use our configured proxy
 
     // Configure SSL verification based on settings
@@ -354,7 +360,7 @@ async fn test_proxy_connectivity_for_provider(proxy_config: &TestModelProviderPr
     // Test the proxy by making a request to a reliable endpoint
     // Using httpbin.org as it's a simple testing service that returns IP info
     let test_url = "https://httpbin.org/ip";
-    
+
     match client.get(test_url).send().await {
         Ok(response) => {
             if response.status().is_success() {
@@ -385,7 +391,10 @@ async fn test_proxy_connectivity_for_provider(proxy_config: &TestModelProviderPr
             } else if error_msg.contains("timeout") {
                 Err("Proxy connection timed out".to_string())
             } else if error_msg.contains("dns") {
-                Err(format!("DNS resolution failed (check proxy settings): {}", e))
+                Err(format!(
+                    "DNS resolution failed (check proxy settings): {}",
+                    e
+                ))
             } else {
                 Err(format!("Network request failed: {}", e))
             }
@@ -406,4 +415,3 @@ pub async fn get_provider_groups(
         }
     }
 }
-

@@ -120,7 +120,8 @@ pub async fn update_assistant(
     Path(assistant_id): Path<Uuid>,
     Json(request): Json<UpdateAssistantRequest>,
 ) -> Result<Json<Assistant>, StatusCode> {
-    match assistants::update_assistant(assistant_id, request, Some(auth_user.user.id), false).await {
+    match assistants::update_assistant(assistant_id, request, Some(auth_user.user.id), false).await
+    {
         Ok(Some(assistant)) => Ok(Json(assistant)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {

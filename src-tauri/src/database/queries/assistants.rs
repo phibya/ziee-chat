@@ -2,7 +2,10 @@ use uuid::Uuid;
 
 use crate::database::{
     get_database_pool,
-    models::{Assistant, AssistantDb, AssistantListResponse, CreateAssistantRequest, UpdateAssistantRequest},
+    models::{
+        Assistant, AssistantDb, AssistantListResponse, CreateAssistantRequest,
+        UpdateAssistantRequest,
+    },
 };
 
 /// Create a new assistant
@@ -123,9 +126,7 @@ pub async fn list_assistants(
 
     // Get total count
     let total_row: (i64,) = if admin_view {
-        sqlx::query_as(count_query)
-            .fetch_one(pool)
-            .await?
+        sqlx::query_as(count_query).fetch_one(pool).await?
     } else {
         sqlx::query_as(count_query)
             .bind(requesting_user_id)

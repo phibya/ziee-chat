@@ -497,8 +497,10 @@ export function ModelProvidersSettings() {
 
       // If disabling a model, check if this was the last enabled model
       if (!enabled) {
-        const remainingEnabledModels = updatedModels.filter(m => m.enabled !== false)
-        
+        const remainingEnabledModels = updatedModels.filter(
+          m => m.enabled !== false,
+        )
+
         // If no models are enabled and provider is currently enabled, disable the provider
         if (remainingEnabledModels.length === 0 && currentProvider.enabled) {
           try {

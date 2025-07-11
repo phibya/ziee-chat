@@ -1,38 +1,32 @@
 import { memo } from 'react'
-import { Button, Col, Input, Row, Select, Space, Typography } from 'antd'
+import { Col, Row, Select, Space, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { RobotOutlined, SendOutlined } from '@ant-design/icons'
+import { RobotOutlined } from '@ant-design/icons'
 import { Assistant } from '../../types/api/assistant'
 import { ModelProvider } from '../../types/api/modelProvider'
+import { ChatInput } from './ChatInput'
 
-const { TextArea } = Input
 const { Text } = Typography
 const { Option } = Select
 
 interface ChatWelcomeProps {
-  inputValue: string
   selectedAssistant: string | null
   selectedModel: string | null
   assistants: Assistant[]
   modelProviders: ModelProvider[]
-  onInputChange: (value: string) => void
   onAssistantChange: (assistantId: string) => void
   onModelChange: (modelId: string) => void
-  onSend: () => void
-  onKeyPress: (e: React.KeyboardEvent) => void
+  onSend: (message: string) => void | Promise<void>
 }
 
 export const ChatWelcome = memo(function ChatWelcome({
-  inputValue,
   selectedAssistant,
   selectedModel,
   assistants,
   modelProviders,
-  onInputChange,
   onAssistantChange,
   onModelChange,
   onSend,
-  onKeyPress,
 }: ChatWelcomeProps) {
   const { t } = useTranslation()
 
@@ -95,30 +89,11 @@ export const ChatWelcome = memo(function ChatWelcome({
         </div>
 
         <div className="w-full max-w-2xl">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <TextArea
-                value={inputValue}
-                onChange={e => onInputChange(e.target.value)}
-                onKeyPress={onKeyPress}
-                placeholder={t('chat.placeholder')}
-                autoSize={{ minRows: 1, maxRows: 6 }}
-                disabled={!selectedAssistant || !selectedModel}
-                className="resize-none"
-              />
-            </div>
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={onSend}
-              disabled={
-                !inputValue.trim() || !selectedAssistant || !selectedModel
-              }
-              className="h-10 rounded-lg"
-            >
-              {t('chat.send')}
-            </Button>
-          </div>
+          <ChatInput
+            onSend={onSend}
+            placeholder={t('chat.placeholder')}
+            disabled={!selectedAssistant || !selectedModel}
+          />
 
           {(!selectedAssistant || !selectedModel) && (
             <div className="mt-4">

@@ -1,13 +1,15 @@
 use uuid::Uuid;
 
+use crate::database::queries::{
+    model_providers::get_model_provider_by_id, user_groups::get_user_group_by_id,
+};
 use crate::database::{
     get_database_pool,
     models::{
-        AssignModelProviderToGroupRequest, ModelProvider, UserGroup, UserGroupModelProviderDb, 
+        AssignModelProviderToGroupRequest, ModelProvider, UserGroup, UserGroupModelProviderDb,
         UserGroupModelProviderResponse,
     },
 };
-use crate::database::queries::{model_providers::get_model_provider_by_id, user_groups::get_user_group_by_id};
 
 /// Assign a model provider to a user group
 pub async fn assign_model_provider_to_group(
@@ -17,13 +19,15 @@ pub async fn assign_model_provider_to_group(
     let pool = pool.as_ref();
 
     // First validate that both the provider and group exist before inserting
-    let provider = get_model_provider_by_id(request.provider_id).await?
+    let provider = get_model_provider_by_id(request.provider_id)
+        .await?
         .ok_or_else(|| {
             eprintln!("Model provider not found: {}", request.provider_id);
             sqlx::Error::RowNotFound
         })?;
-    
-    let group = get_user_group_by_id(request.group_id).await?
+
+    let group = get_user_group_by_id(request.group_id)
+        .await?
         .ok_or_else(|| {
             eprintln!("User group not found: {}", request.group_id);
             sqlx::Error::RowNotFound
@@ -31,7 +35,7 @@ pub async fn assign_model_provider_to_group(
 
     // Check if the relationship already exists
     let existing_relationship: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM user_group_model_providers WHERE group_id = $1 AND provider_id = $2"
+        "SELECT id FROM user_group_model_providers WHERE group_id = $1 AND provider_id = $2",
     )
     .bind(request.group_id)
     .bind(request.provider_id)
@@ -39,7 +43,10 @@ pub async fn assign_model_provider_to_group(
     .await?;
 
     if existing_relationship.is_some() {
-        eprintln!("Relationship already exists between group {} and provider {}", request.group_id, request.provider_id);
+        eprintln!(
+            "Relationship already exists between group {} and provider {}",
+            request.group_id, request.provider_id
+        );
         return Err(sqlx::Error::RowNotFound); // Use a simpler error
     }
 
@@ -47,7 +54,7 @@ pub async fn assign_model_provider_to_group(
     let relationship_row: UserGroupModelProviderDb = sqlx::query_as(
         "INSERT INTO user_group_model_providers (id, group_id, provider_id) 
          VALUES ($1, $2, $3) 
-         RETURNING id, group_id, provider_id, assigned_at"
+         RETURNING id, group_id, provider_id, assigned_at",
     )
     .bind(relationship_id)
     .bind(request.group_id)
@@ -75,7 +82,7 @@ pub async fn remove_model_provider_from_group(
 
     let result = sqlx::query(
         "DELETE FROM user_group_model_providers 
-         WHERE group_id = $1 AND provider_id = $2"
+         WHERE group_id = $1 AND provider_id = $2",
     )
     .bind(group_id)
     .bind(provider_id)
@@ -86,18 +93,15 @@ pub async fn remove_model_provider_from_group(
 }
 
 /// Get model provider IDs assigned to a user group
-pub async fn get_model_provider_ids_for_group(
-    group_id: Uuid,
-) -> Result<Vec<Uuid>, sqlx::Error> {
+pub async fn get_model_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
-        "SELECT provider_id FROM user_group_model_providers WHERE group_id = $1"
-    )
-    .bind(group_id)
-    .fetch_all(pool)
-    .await?;
+    let provider_ids: Vec<(Uuid,)> =
+        sqlx::query_as("SELECT provider_id FROM user_group_model_providers WHERE group_id = $1")
+            .bind(group_id)
+            .fetch_all(pool)
+            .await?;
 
     Ok(provider_ids.into_iter().map(|(id,)| id).collect())
 }
@@ -109,12 +113,11 @@ pub async fn get_model_providers_for_group(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
-        "SELECT provider_id FROM user_group_model_providers WHERE group_id = $1"
-    )
-    .bind(group_id)
-    .fetch_all(pool)
-    .await?;
+    let provider_ids: Vec<(Uuid,)> =
+        sqlx::query_as("SELECT provider_id FROM user_group_model_providers WHERE group_id = $1")
+            .bind(group_id)
+            .fetch_all(pool)
+            .await?;
 
     let mut providers = Vec::new();
     for (provider_id,) in provider_ids {
@@ -133,12 +136,11 @@ pub async fn get_groups_for_model_provider(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let group_ids: Vec<(Uuid,)> = sqlx::query_as(
-        "SELECT group_id FROM user_group_model_providers WHERE provider_id = $1"
-    )
-    .bind(provider_id)
-    .fetch_all(pool)
-    .await?;
+    let group_ids: Vec<(Uuid,)> =
+        sqlx::query_as("SELECT group_id FROM user_group_model_providers WHERE provider_id = $1")
+            .bind(provider_id)
+            .fetch_all(pool)
+            .await?;
 
     let mut groups = Vec::new();
     for (group_id,) in group_ids {
@@ -160,7 +162,7 @@ pub async fn get_model_providers_for_user(
 
     // First check if the user has config::model-providers::read permission
     let has_read_permission = check_user_model_providers_read_permission(user_id).await?;
-    
+
     if has_read_permission {
         // User has read permission, return all model providers (enabled and disabled)
         return get_all_model_providers().await;
@@ -172,7 +174,7 @@ pub async fn get_model_providers_for_user(
          FROM user_group_model_providers ugmp
          JOIN user_group_memberships ugm ON ugmp.group_id = ugm.group_id
          JOIN user_groups ug ON ugm.group_id = ug.id
-         WHERE ugm.user_id = $1 AND ug.is_active = true"
+         WHERE ugm.user_id = $1 AND ug.is_active = true",
     )
     .bind(user_id)
     .fetch_all(pool)
@@ -205,7 +207,7 @@ async fn check_user_model_providers_read_permission(user_id: Uuid) -> Result<boo
              ug.permissions @> $3::jsonb OR 
              ug.permissions @> $4::jsonb
          )
-         LIMIT 1"
+         LIMIT 1",
     )
     .bind(user_id)
     .bind(serde_json::json!(["config::model-providers::read"]))
@@ -222,11 +224,10 @@ async fn get_all_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM model_providers ORDER BY is_default DESC, created_at ASC"
-    )
-    .fetch_all(pool)
-    .await?;
+    let provider_ids: Vec<(Uuid,)> =
+        sqlx::query_as("SELECT id FROM model_providers ORDER BY is_default DESC, created_at ASC")
+            .fetch_all(pool)
+            .await?;
 
     let mut providers = Vec::new();
     for (provider_id,) in provider_ids {
@@ -243,11 +244,10 @@ async fn get_all_enabled_model_providers() -> Result<Vec<ModelProvider>, sqlx::E
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM model_providers WHERE enabled = true"
-    )
-    .fetch_all(pool)
-    .await?;
+    let provider_ids: Vec<(Uuid,)> =
+        sqlx::query_as("SELECT id FROM model_providers WHERE enabled = true")
+            .fetch_all(pool)
+            .await?;
 
     let mut providers = Vec::new();
     for (provider_id,) in provider_ids {
@@ -268,7 +268,7 @@ pub async fn list_user_group_model_provider_relationships(
     let relationships: Vec<UserGroupModelProviderDb> = sqlx::query_as(
         "SELECT id, group_id, provider_id, assigned_at 
          FROM user_group_model_providers 
-         ORDER BY assigned_at DESC"
+         ORDER BY assigned_at DESC",
     )
     .fetch_all(pool)
     .await?;

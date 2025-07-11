@@ -22,7 +22,6 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   useEffect(() => {
     // If we have a token, fetch the current user
     if (token) {
-      console.log('Fetching current user with token:', token)
       getCurrentUser()
     }
   }, [token])

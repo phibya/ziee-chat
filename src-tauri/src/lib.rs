@@ -458,9 +458,9 @@ fn create_rest_router() -> Router {
         )
         .route(
             "/api/admin/model-providers/{provider_id}/test-proxy",
-            post(api::model_providers::methods::test_model_provider_proxy_connection).layer(middleware::from_fn(
-                api::middleware::model_providers_read_middleware,
-            )),
+            post(api::model_providers::methods::test_model_provider_proxy_connection).layer(
+                middleware::from_fn(api::middleware::model_providers_read_middleware),
+            ),
         )
         .route(
             "/api/admin/model-providers/{provider_id}/groups",
@@ -532,8 +532,9 @@ fn create_rest_router() -> Router {
         )
         .route(
             "/api/admin/assistants",
-            post(api::assistants::methods::create_template_assistant)
-                .layer(middleware::from_fn(api::middleware::groups_create_middleware)),
+            post(api::assistants::methods::create_template_assistant).layer(middleware::from_fn(
+                api::middleware::groups_create_middleware,
+            )),
         )
         .route(
             "/api/admin/assistants/{assistant_id}",
@@ -547,8 +548,9 @@ fn create_rest_router() -> Router {
         )
         .route(
             "/api/admin/assistants/{assistant_id}",
-            delete(api::assistants::methods::delete_assistant_admin)
-                .layer(middleware::from_fn(api::middleware::groups_delete_middleware)),
+            delete(api::assistants::methods::delete_assistant_admin).layer(middleware::from_fn(
+                api::middleware::groups_delete_middleware,
+            )),
         )
         // Chat routes
         .route(

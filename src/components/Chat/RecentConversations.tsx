@@ -9,6 +9,8 @@ import {
 } from '@ant-design/icons'
 import { ApiClient } from '../../api/client'
 import { ConversationSummary } from '../../types/api/chat'
+import { useConversationsStore } from '../../store'
+import { useShallow } from 'zustand/react/shallow'
 
 const { confirm } = Modal
 
@@ -27,32 +29,33 @@ export function RecentConversations({
 }: RecentConversationsProps) {
   const navigate = useNavigate()
   const { message } = App.useApp()
-  const [conversations, setConversations] = useState<ConversationSummary[]>([])
-  const [loading, setLoading] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+
+  const {
+    conversations,
+    isLoading,
+    loadConversations,
+    updateConversation,
+    removeConversation,
+  } = useConversationsStore(
+    useShallow(state => ({
+      conversations: state.conversations,
+      isLoading: state.isLoading,
+      loadConversations: state.loadConversations,
+      updateConversation: state.updateConversation,
+      removeConversation: state.removeConversation,
+    })),
+  )
 
   const isExpanded = isMobile ? mobileOverlayOpen : !collapsed
 
   useEffect(() => {
-    loadConversations()
-  }, [])
-
-  const loadConversations = async () => {
-    setLoading(true)
-    try {
-      const response = await ApiClient.Chat.listConversations({
-        page: 1,
-        per_page: 20, // Show recent 20 conversations
-      })
-      setConversations(response.conversations)
-    } catch (error) {
-      console.error('Failed to load conversations:', error)
-      message.error('Failed to load recent conversations')
-    } finally {
-      setLoading(false)
+    // Only load if we don't have conversations yet
+    if (conversations.length === 0) {
+      loadConversations()
     }
-  }
+  }, [])
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/conversation/${conversationId}`)
@@ -73,14 +76,8 @@ export function RecentConversations({
         title: editingTitle.trim(),
       })
 
-      // Update local state
-      setConversations(prevConversations =>
-        prevConversations.map(conv =>
-          conv.id === editingId
-            ? { ...conv, title: editingTitle.trim() }
-            : conv,
-        ),
-      )
+      // Update store
+      updateConversation(editingId, { title: editingTitle.trim() })
 
       setEditingId(null)
       setEditingTitle('')
@@ -110,10 +107,8 @@ export function RecentConversations({
             conversation_id: conversation.id,
           })
 
-          // Remove from local state
-          setConversations(prevConversations =>
-            prevConversations.filter(conv => conv.id !== conversation.id),
-          )
+          // Remove from store
+          removeConversation(conversation.id)
 
           message.success('Conversation deleted successfully')
         } catch (error) {
@@ -147,7 +142,7 @@ export function RecentConversations({
 
   return (
     <div className="flex-1 overflow-auto max-w-42 pl-2">
-      {loading ? (
+      {isLoading ? (
         <div className="text-center">
           <div>Loading...</div>
         </div>

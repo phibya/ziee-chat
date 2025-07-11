@@ -1,7 +1,8 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
     Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, EditMessageResponse, Message, SendMessageRequest, UpdateConversationRequest,
+    EditMessageRequest, EditMessageResponse, Message, SendMessageRequest,
+    UpdateConversationRequest,
 };
 use sqlx::{Error, Row};
 use uuid::Uuid;
@@ -17,15 +18,18 @@ pub async fn create_conversation(
 ) -> Result<Conversation, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     let conversation_id = Uuid::new_v4();
     let now = chrono::Utc::now();
-    
-    println!("DEBUG: create_conversation - user_id: {}, conversation_id: {}, title: {}", user_id, conversation_id, request.title);
-    
+
+    println!(
+        "DEBUG: create_conversation - user_id: {}, conversation_id: {}, title: {}",
+        user_id, conversation_id, request.title
+    );
+
     // Start transaction for atomic conversation + branch creation
     let mut tx = pool.begin().await?;
-    
+
     // 1. Insert the conversation first (without active_branch_id)
     sqlx::query(
         r#"
@@ -33,7 +37,7 @@ pub async fn create_conversation(
             id, user_id, title, assistant_id, model_provider_id, model_id,
             created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        "#
+        "#,
     )
     .bind(conversation_id)
     .bind(user_id)
@@ -45,24 +49,23 @@ pub async fn create_conversation(
     .bind(now)
     .execute(&mut *tx)
     .await?;
-    
+
     // 2. Create the main branch for this conversation
-    let main_branch = branches::create_branch_tx(&mut tx, conversation_id, Some("main".to_string())).await?;
-    
+    let main_branch =
+        branches::create_branch_tx(&mut tx, conversation_id, Some("main".to_string())).await?;
+
     // 3. Update the conversation to set the active branch
-    sqlx::query(
-        "UPDATE conversations SET active_branch_id = $1 WHERE id = $2"
-    )
-    .bind(main_branch.id)
-    .bind(conversation_id)
-    .execute(&mut *tx)
-    .await?;
-    
+    sqlx::query("UPDATE conversations SET active_branch_id = $1 WHERE id = $2")
+        .bind(main_branch.id)
+        .bind(conversation_id)
+        .execute(&mut *tx)
+        .await?;
+
     // Commit transaction
     tx.commit().await?;
-    
+
     println!("DEBUG: create_conversation - conversation and main branch created successfully");
-    
+
     Ok(Conversation {
         id: conversation_id,
         user_id,
@@ -83,7 +86,7 @@ pub async fn get_conversation_by_id(
 ) -> Result<Option<Conversation>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     let row = sqlx::query(
         r#"
         SELECT 
@@ -97,21 +100,19 @@ pub async fn get_conversation_by_id(
     .bind(user_id)
     .fetch_optional(pool)
     .await?;
-    
+
     match row {
-        Some(row) => {
-            Ok(Some(Conversation {
-                id: row.get("id"),
-                user_id: row.get("user_id"),
-                title: row.get("title"),
-                assistant_id: row.get("assistant_id"),
-                model_provider_id: row.get("model_provider_id"),
-                model_id: row.get("model_id"),
-                active_branch_id: row.get("active_branch_id"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-            }))
-        }
+        Some(row) => Ok(Some(Conversation {
+            id: row.get("id"),
+            user_id: row.get("user_id"),
+            title: row.get("title"),
+            assistant_id: row.get("assistant_id"),
+            model_provider_id: row.get("model_provider_id"),
+            model_id: row.get("model_id"),
+            active_branch_id: row.get("active_branch_id"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+        })),
         None => Ok(None),
     }
 }
@@ -124,18 +125,21 @@ pub async fn list_conversations(
 ) -> Result<ConversationListResponse, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     let offset = (page - 1) * per_page;
-    
+
     // Get total count
     let total_row = sqlx::query("SELECT COUNT(*) as count FROM conversations WHERE user_id = $1")
         .bind(user_id)
         .fetch_one(pool)
         .await?;
     let total: i64 = total_row.get("count");
-    
-    println!("DEBUG: list_conversations - user_id: {}, total: {}", user_id, total);
-    
+
+    println!(
+        "DEBUG: list_conversations - user_id: {}, total: {}",
+        user_id, total
+    );
+
     // Get conversations with last message info
     let rows = sqlx::query(
         r#"
@@ -162,7 +166,7 @@ pub async fn list_conversations(
     .bind(offset)
     .fetch_all(pool)
     .await?;
-    
+
     let conversations = rows
         .into_iter()
         .map(|row| ConversationSummary {
@@ -178,7 +182,7 @@ pub async fn list_conversations(
             message_count: row.get::<i64, _>("message_count"),
         })
         .collect();
-    
+
     Ok(ConversationListResponse {
         conversations,
         total,
@@ -195,13 +199,13 @@ pub async fn update_conversation(
 ) -> Result<Option<Conversation>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     let now = chrono::Utc::now();
-    
+
     // Build update query dynamically based on provided fields
     let mut updates = Vec::new();
     let mut bind_index = 1;
-    
+
     if request.title.is_some() {
         updates.push(format!("title = ${}", bind_index));
         bind_index += 1;
@@ -218,15 +222,15 @@ pub async fn update_conversation(
         updates.push(format!("model_id = ${}", bind_index));
         bind_index += 1;
     }
-    
+
     if updates.is_empty() {
         // No updates provided, just return the existing conversation
         return get_conversation_by_id(conversation_id, user_id).await;
     }
-    
+
     updates.push(format!("updated_at = ${}", bind_index));
     let update_clause = updates.join(", ");
-    
+
     let query = format!(
         r#"
         UPDATE conversations 
@@ -238,9 +242,9 @@ pub async fn update_conversation(
         bind_index + 1,
         bind_index + 2
     );
-    
+
     let mut query_builder = sqlx::query(&query);
-    
+
     // Bind parameters in the same order as the updates
     if let Some(title) = request.title {
         query_builder = query_builder.bind(title);
@@ -254,14 +258,11 @@ pub async fn update_conversation(
     if let Some(model_id) = request.model_id {
         query_builder = query_builder.bind(model_id);
     }
-    
-    query_builder = query_builder
-        .bind(now)
-        .bind(conversation_id)
-        .bind(user_id);
-    
+
+    query_builder = query_builder.bind(now).bind(conversation_id).bind(user_id);
+
     let row = query_builder.fetch_optional(pool).await?;
-    
+
     match row {
         Some(row) => Ok(Some(Conversation {
             id: row.get("id"),
@@ -279,26 +280,23 @@ pub async fn update_conversation(
 }
 
 /// Delete a conversation
-pub async fn delete_conversation(
-    conversation_id: Uuid,
-    user_id: Uuid,
-) -> Result<bool, Error> {
+pub async fn delete_conversation(conversation_id: Uuid, user_id: Uuid) -> Result<bool, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Delete all messages first (due to foreign key constraints)
     sqlx::query("DELETE FROM messages WHERE conversation_id = $1")
         .bind(conversation_id)
         .execute(pool)
         .await?;
-    
+
     // Delete the conversation
     let result = sqlx::query("DELETE FROM conversations WHERE id = $1 AND user_id = $2")
         .bind(conversation_id)
         .bind(user_id)
         .execute(pool)
         .await?;
-    
+
     Ok(result.rows_affected() > 0)
 }
 
@@ -308,28 +306,29 @@ pub async fn delete_conversation(
 /// - Assign the chat item to the active branch
 /// - originated_from_id should be the same as id for new messages
 /// - edit_count should be 0 for new messages
-pub async fn send_message(
-    request: SendMessageRequest,
-    user_id: Uuid,
-) -> Result<Message, Error> {
+pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<Message, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Get the conversation to find the active branch
     let conversation = match get_conversation_by_id(request.conversation_id, user_id).await? {
         Some(conv) => conv,
         None => return Err(Error::RowNotFound),
     };
-    
+
     // Ensure we have an active branch
     let active_branch_id = match conversation.active_branch_id {
         Some(branch_id) => branch_id,
-        None => return Err(Error::Configuration("Conversation has no active branch".into())),
+        None => {
+            return Err(Error::Configuration(
+                "Conversation has no active branch".into(),
+            ))
+        }
     };
-    
+
     let message_id = Uuid::new_v4();
     let now = chrono::Utc::now();
-    
+
     // Insert the message with proper branching fields
     sqlx::query(
         r#"
@@ -340,7 +339,7 @@ pub async fn send_message(
             model_provider_id, model_id,
             created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        "#
+        "#,
     )
     .bind(message_id)
     .bind(request.conversation_id)
@@ -358,7 +357,7 @@ pub async fn send_message(
     .bind(now)
     .execute(pool)
     .await?;
-    
+
     // Return the created message
     Ok(Message {
         id: message_id,
@@ -380,6 +379,41 @@ pub async fn send_message(
     })
 }
 
+/// Count messages for a conversation's active branch
+pub async fn count_conversation_messages(
+    conversation_id: Uuid,
+    user_id: Uuid,
+) -> Result<i64, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    // Get the conversation to find active branch
+    let conversation = match get_conversation_by_id(conversation_id, user_id).await? {
+        Some(conv) => conv,
+        None => return Ok(0),
+    };
+
+    // Get the active branch ID
+    let active_branch_id = match conversation.active_branch_id {
+        Some(branch_id) => branch_id,
+        None => return Ok(0), // No active branch means no messages
+    };
+
+    // Count messages for the active branch
+    let row = sqlx::query(
+        r#"
+        SELECT COUNT(*) as count
+        FROM messages 
+        WHERE new_branch_id = $1
+        "#,
+    )
+    .bind(active_branch_id)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(row.get("count"))
+}
+
 /// Get messages for a conversation's active branch
 /// According to CLAUDE.md: Messages belong to branches, not conversations
 pub async fn get_conversation_messages(
@@ -388,19 +422,19 @@ pub async fn get_conversation_messages(
 ) -> Result<Vec<Message>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Get the conversation to find active branch
     let conversation = match get_conversation_by_id(conversation_id, user_id).await? {
         Some(conv) => conv,
         None => return Ok(vec![]),
     };
-    
+
     // Get the active branch ID
     let active_branch_id = match conversation.active_branch_id {
         Some(branch_id) => branch_id,
         None => return Ok(vec![]), // No active branch means no messages
     };
-    
+
     // Get messages for the active branch
     let rows = sqlx::query(
         r#"
@@ -418,7 +452,7 @@ pub async fn get_conversation_messages(
     .bind(active_branch_id)
     .fetch_all(pool)
     .await?;
-    
+
     // Convert rows to Message structs
     let messages = rows
         .into_iter()
@@ -441,7 +475,7 @@ pub async fn get_conversation_messages(
             metadata: None,
         })
         .collect();
-    
+
     Ok(messages)
 }
 
@@ -454,18 +488,18 @@ pub async fn get_conversation_history_before(
 ) -> Result<Vec<Message>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Get the conversation to verify ownership and get active branch
     let conversation = match get_conversation_by_id(conversation_id, user_id).await? {
         Some(conv) => conv,
         None => return Ok(vec![]),
     };
-    
+
     let active_branch_id = match conversation.active_branch_id {
         Some(branch_id) => branch_id,
         None => return Ok(vec![]),
     };
-    
+
     let rows = sqlx::query(
         r#"
         SELECT 
@@ -483,7 +517,7 @@ pub async fn get_conversation_history_before(
     .bind(before_timestamp)
     .fetch_all(pool)
     .await?;
-    
+
     // Convert rows to Message structs
     let messages = rows
         .into_iter()
@@ -506,7 +540,7 @@ pub async fn get_conversation_history_before(
             metadata: None,
         })
         .collect();
-    
+
     Ok(messages)
 }
 
@@ -524,10 +558,10 @@ pub async fn edit_message(
 ) -> Result<Option<EditMessageResponse>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Start transaction for atomic operation
     let mut tx = pool.begin().await?;
-    
+
     // 1. Get the original message and verify ownership
     let original_row = sqlx::query(
         r#"
@@ -535,22 +569,22 @@ pub async fn edit_message(
         FROM messages m
         JOIN conversations c ON m.conversation_id = c.id
         WHERE m.id = $1
-        "#
+        "#,
     )
     .bind(message_id)
     .fetch_optional(&mut *tx)
     .await?;
-    
+
     let original = match original_row {
         Some(row) => row,
         None => return Ok(None),
     };
-    
+
     let conversation_user_id: Uuid = original.get("conversation_user_id");
     if conversation_user_id != user_id {
         return Ok(None); // User doesn't own this conversation
     }
-    
+
     let conversation_id: Uuid = original.get("conversation_id");
     let role: String = original.get("role");
     let original_content: String = original.get("content");
@@ -558,22 +592,22 @@ pub async fn edit_message(
     let original_edit_count: Option<i32> = original.get("edit_count");
     let original_created_at: chrono::DateTime<chrono::Utc> = original.get("created_at");
     let current_branch_id: Option<Uuid> = original.get("new_branch_id");
-    
+
     // Handle legacy messages without originated_from_id
     let originated_from_id = original_originated_from_id.unwrap_or(message_id);
     let edit_count = original_edit_count.unwrap_or(0);
-    
+
     // Only allow editing user messages
     if role != "user" {
         return Ok(None);
     }
-    
+
     // Check if content actually changed
     let content_changed = original_content.trim() != request.content.trim();
-    
+
     // 2. Create a new branch for this edit
     let new_branch = branches::create_branch_tx(&mut tx, conversation_id, None).await?;
-    
+
     // 3. Clone all messages from current branch up to (but not including) the edited message
     if let Some(current_branch) = current_branch_id {
         sqlx::query(
@@ -595,7 +629,7 @@ pub async fn edit_message(
             WHERE new_branch_id = $2 
             AND created_at < $3
             ORDER BY created_at ASC
-            "#
+            "#,
         )
         .bind(new_branch.id)
         .bind(current_branch)
@@ -603,11 +637,11 @@ pub async fn edit_message(
         .execute(&mut *tx)
         .await?;
     }
-    
+
     // 4. Create the edited message in the new branch
     let new_message_id = Uuid::new_v4();
     let now = chrono::Utc::now();
-    
+
     sqlx::query(
         r#"
         INSERT INTO messages (
@@ -617,7 +651,7 @@ pub async fn edit_message(
             model_provider_id, model_id,
             created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-        "#
+        "#,
     )
     .bind(new_message_id)
     .bind(conversation_id)
@@ -635,28 +669,26 @@ pub async fn edit_message(
     .bind(now)
     .execute(&mut *tx)
     .await?;
-    
+
     // 5. Set the new branch as the active branch for the conversation
-    sqlx::query(
-        "UPDATE conversations SET active_branch_id = $1 WHERE id = $2"
-    )
-    .bind(new_branch.id)
-    .bind(conversation_id)
-    .execute(&mut *tx)
-    .await?;
-    
+    sqlx::query("UPDATE conversations SET active_branch_id = $1 WHERE id = $2")
+        .bind(new_branch.id)
+        .bind(conversation_id)
+        .execute(&mut *tx)
+        .await?;
+
     // 6. Find all messages with the same originated_from_id and increment their edit_count
     sqlx::query(
         r#"
         UPDATE messages 
         SET edit_count = COALESCE(edit_count, 0) + 1
         WHERE originated_from_id = $1
-        "#
+        "#,
     )
     .bind(originated_from_id)
     .execute(&mut *tx)
     .await?;
-    
+
     // 7. Get conversation history for the response
     let history_rows = sqlx::query(
         r#"
@@ -669,13 +701,13 @@ pub async fn edit_message(
         FROM messages 
         WHERE new_branch_id = $1 AND created_at < $2
         ORDER BY created_at ASC
-        "#
+        "#,
     )
     .bind(new_branch.id)
     .bind(original_created_at)
     .fetch_all(&mut *tx)
     .await?;
-    
+
     let conversation_history: Vec<Message> = history_rows
         .into_iter()
         .map(|row| Message {
@@ -697,10 +729,10 @@ pub async fn edit_message(
             metadata: None,
         })
         .collect();
-    
+
     // Commit transaction
     tx.commit().await?;
-    
+
     // Return the response
     let message = Message {
         id: new_message_id,
@@ -720,7 +752,7 @@ pub async fn edit_message(
         branches: None,
         metadata: None,
     };
-    
+
     Ok(Some(EditMessageResponse {
         message,
         content_changed,
@@ -737,10 +769,10 @@ pub async fn search_conversations(
 ) -> Result<ConversationListResponse, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     let offset = (page - 1) * per_page;
     let search_pattern = format!("%{}%", query);
-    
+
     // Get total count for search results
     let total_row = sqlx::query(
         r#"
@@ -756,7 +788,7 @@ pub async fn search_conversations(
     .fetch_one(pool)
     .await?;
     let total: i64 = total_row.get("count");
-    
+
     // Get conversations that match search with last message info
     let rows = sqlx::query(
         r#"
@@ -786,7 +818,7 @@ pub async fn search_conversations(
     .bind(offset)
     .fetch_all(pool)
     .await?;
-    
+
     let conversations = rows
         .into_iter()
         .map(|row| ConversationSummary {
@@ -802,7 +834,7 @@ pub async fn search_conversations(
             message_count: row.get::<i64, _>("message_count"),
         })
         .collect();
-    
+
     Ok(ConversationListResponse {
         conversations,
         total,
@@ -815,7 +847,7 @@ pub async fn search_conversations(
 pub async fn delete_all_conversations(user_id: Uuid) -> Result<i64, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Delete all messages for user's conversations first
     let result = sqlx::query(
         r#"
@@ -828,13 +860,13 @@ pub async fn delete_all_conversations(user_id: Uuid) -> Result<i64, Error> {
     .bind(user_id)
     .execute(pool)
     .await?;
-    
+
     // Delete all conversations for the user
     let result = sqlx::query("DELETE FROM conversations WHERE user_id = $1")
         .bind(user_id)
         .execute(pool)
         .await?;
-    
+
     Ok(result.rows_affected() as i64)
 }
 
@@ -842,7 +874,7 @@ pub async fn delete_all_conversations(user_id: Uuid) -> Result<i64, Error> {
 pub async fn generate_conversation_title(conversation_id: Uuid) -> Result<String, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Get the first user message from the conversation
     let row = sqlx::query(
         r#"
@@ -856,7 +888,7 @@ pub async fn generate_conversation_title(conversation_id: Uuid) -> Result<String
     .bind(conversation_id)
     .fetch_optional(pool)
     .await?;
-    
+
     match row {
         Some(row) => {
             let content: String = row.get("content");
@@ -868,13 +900,13 @@ pub async fn generate_conversation_title(conversation_id: Uuid) -> Result<String
                 .chars()
                 .take(50)
                 .collect::<String>();
-            
+
             let title = if title.len() == 50 && content.len() > 50 {
                 format!("{}...", title)
             } else {
                 title
             };
-            
+
             Ok(title)
         }
         None => Ok("New Conversation".to_string()),
@@ -887,14 +919,14 @@ pub async fn auto_update_conversation_title(
     user_id: Uuid,
 ) -> Result<Option<Conversation>, Error> {
     let title = generate_conversation_title(conversation_id).await?;
-    
+
     let request = UpdateConversationRequest {
         title: Some(title),
         assistant_id: None,
         model_provider_id: None,
         model_id: None,
     };
-    
+
     update_conversation(conversation_id, request, user_id).await
 }
 
@@ -907,13 +939,13 @@ pub async fn get_message_branches(
 ) -> Result<Vec<Message>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Verify user owns the conversation
     let conversation = match get_conversation_by_id(conversation_id, user_id).await? {
         Some(conv) => conv,
         None => return Ok(vec![]),
     };
-    
+
     // First, get the message at this timestamp to find its originated_from_id
     let original_message = sqlx::query(
         r#"
@@ -921,13 +953,13 @@ pub async fn get_message_branches(
         FROM messages 
         WHERE conversation_id = $1 AND created_at = $2
         LIMIT 1
-        "#
+        "#,
     )
     .bind(conversation_id)
     .bind(created_at)
     .fetch_optional(pool)
     .await?;
-    
+
     let originated_from_id = match original_message {
         Some(row) => {
             let id: Option<Uuid> = row.get("originated_from_id");
@@ -935,10 +967,10 @@ pub async fn get_message_branches(
                 Some(id) => id,
                 None => return Ok(vec![]), // Legacy message without originated_from_id
             }
-        },
+        }
         None => return Ok(vec![]),
     };
-    
+
     // Get all messages with the same originated_from_id (all branches)
     let rows = sqlx::query(
         r#"
@@ -958,9 +990,9 @@ pub async fn get_message_branches(
     .bind(originated_from_id)
     .fetch_all(pool)
     .await?;
-    
+
     let active_branch_id = conversation.active_branch_id;
-    
+
     let messages = rows
         .into_iter()
         .map(|row| {
@@ -969,7 +1001,7 @@ pub async fn get_message_branches(
                 (Some(active), Some(branch)) => active == branch,
                 _ => row.get("is_active_branch"), // Fallback to legacy field
             };
-            
+
             Message {
                 id: row.get("id"),
                 conversation_id: row.get("conversation_id"),
@@ -990,7 +1022,7 @@ pub async fn get_message_branches(
             }
         })
         .collect();
-    
+
     Ok(messages)
 }
 
@@ -1003,7 +1035,7 @@ pub async fn switch_message_branch(
 ) -> Result<Option<Message>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     // Get the message and verify ownership
     let message_row = sqlx::query(
         r#"
@@ -1016,33 +1048,33 @@ pub async fn switch_message_branch(
     .bind(message_id)
     .fetch_optional(pool)
     .await?;
-    
+
     let message = match message_row {
         Some(row) => row,
         None => return Ok(None),
     };
-    
+
     let conversation_user_id: Uuid = message.get("conversation_user_id");
     if conversation_user_id != user_id {
         return Ok(None);
     }
-    
+
     let conversation_id: Uuid = message.get("conversation_id");
     let new_branch_id: Option<Uuid> = message.get("new_branch_id");
-    
+
     // Make sure the message belongs to a proper branch
     let branch_id = match new_branch_id {
         Some(id) => id,
         None => return Ok(None), // Legacy message without proper branch
     };
-    
+
     // Update the conversation's active branch
     let updated = branches::set_active_branch(conversation_id, branch_id).await?;
-    
+
     if !updated {
         return Ok(None);
     }
-    
+
     // Return the updated message
     Ok(Some(Message {
         id: message.get("id"),

@@ -523,11 +523,11 @@ pub struct MessageDb {
     pub parent_id: Option<Uuid>,
     pub role: String,
     pub content: String,
-    pub branch_id: Uuid, // Old branch system - will be deprecated
+    pub branch_id: Uuid,             // Old branch system - will be deprecated
     pub new_branch_id: Option<Uuid>, // New proper branch system
-    pub is_active_branch: bool, // Will be deprecated in favor of conversation.active_branch_id
+    pub is_active_branch: bool,      // Will be deprecated in favor of conversation.active_branch_id
     pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
-    pub edit_count: Option<i32>, // Number of times this message lineage has been edited
+    pub edit_count: Option<i32>,     // Number of times this message lineage has been edited
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
@@ -581,11 +581,11 @@ pub struct Message {
     pub parent_id: Option<Uuid>,
     pub role: String,
     pub content: String,
-    pub branch_id: Uuid, // Legacy field - will be deprecated
-    pub new_branch_id: Option<Uuid>, // New proper branch system
-    pub is_active_branch: bool, // Legacy field - will be deprecated
+    pub branch_id: Uuid,                  // Legacy field - will be deprecated
+    pub new_branch_id: Option<Uuid>,      // New proper branch system
+    pub is_active_branch: bool,           // Legacy field - will be deprecated
     pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
-    pub edit_count: Option<i32>, // Number of times this message lineage has been edited
+    pub edit_count: Option<i32>,          // Number of times this message lineage has been edited
     pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
@@ -941,7 +941,11 @@ pub struct UploadDocumentResponse {
 }
 
 impl Project {
-    pub fn from_db(project_db: ProjectDb, document_count: Option<i64>, conversation_count: Option<i64>) -> Self {
+    pub fn from_db(
+        project_db: ProjectDb,
+        document_count: Option<i64>,
+        conversation_count: Option<i64>,
+    ) -> Self {
         Self {
             id: project_db.id,
             user_id: project_db.user_id,

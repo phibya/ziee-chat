@@ -1,7 +1,7 @@
 use async_trait::async_trait;
+use futures_util::Stream;
 use serde::{Deserialize, Serialize};
 use std::pin::Pin;
-use futures_util::Stream;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
@@ -41,7 +41,8 @@ pub struct StreamingChunk {
     pub finish_reason: Option<String>,
 }
 
-pub type StreamingResponse = Pin<Box<dyn Stream<Item = Result<StreamingChunk, reqwest::Error>> + Send>>;
+pub type StreamingResponse =
+    Pin<Box<dyn Stream<Item = Result<StreamingChunk, reqwest::Error>> + Send>>;
 
 #[derive(Debug, Clone)]
 pub struct ProxyConfig {
@@ -55,12 +56,18 @@ pub struct ProxyConfig {
 
 #[async_trait]
 pub trait AIProvider: Send + Sync {
-    async fn chat(&self, request: ChatRequest) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>>;
-    
-    async fn chat_stream(&self, request: ChatRequest) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>>;
-    
+    async fn chat(
+        &self,
+        request: ChatRequest,
+    ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>>;
+
+    async fn chat_stream(
+        &self,
+        request: ChatRequest,
+    ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>>;
+
     fn provider_name(&self) -> &'static str;
-    
+
     fn supports_streaming(&self) -> bool {
         true
     }

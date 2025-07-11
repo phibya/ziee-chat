@@ -97,7 +97,10 @@ pub async fn create_user(
 
     // Clone default assistants for new user
     if let Err(e) = clone_default_assistants_for_user(user.id).await {
-        eprintln!("Warning: Failed to clone default assistants for user: {}", e);
+        eprintln!(
+            "Warning: Failed to clone default assistants for user: {}",
+            e
+        );
     }
 
     Ok(user)
@@ -107,14 +110,20 @@ pub async fn create_user(
 async fn clone_default_assistants_for_user(user_id: Uuid) -> Result<(), sqlx::Error> {
     // Get all default assistants
     let default_assistants = crate::database::queries::assistants::get_default_assistants().await?;
-    
+
     // Clone each default assistant for the user
     for assistant in default_assistants {
-        if let Err(e) = crate::database::queries::assistants::clone_assistant_for_user(assistant.id, user_id).await {
-            eprintln!("Warning: Failed to clone assistant '{}' for user: {}", assistant.name, e);
+        if let Err(e) =
+            crate::database::queries::assistants::clone_assistant_for_user(assistant.id, user_id)
+                .await
+        {
+            eprintln!(
+                "Warning: Failed to clone assistant '{}' for user: {}",
+                assistant.name, e
+            );
         }
     }
-    
+
     Ok(())
 }
 
@@ -553,24 +562,25 @@ pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
 
     // Check if user is protected
-    let user_info: Option<(bool, bool)> = sqlx::query_as(
-        "SELECT is_active, is_protected FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_optional(&*pool)
-    .await?;
+    let user_info: Option<(bool, bool)> =
+        sqlx::query_as("SELECT is_active, is_protected FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&*pool)
+            .await?;
 
     if let Some((is_active, is_protected)) = user_info {
         // If user is protected and currently active, prevent deactivation
         if is_protected && is_active {
             return Err(sqlx::Error::RowNotFound); // Return error to prevent deactivation
         }
-        
+
         // Allow toggle if user is not protected, or if protected user is being reactivated
-        let result = sqlx::query("UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active")
-            .bind(user_id)
-            .fetch_optional(&*pool)
-            .await?;
+        let result = sqlx::query(
+            "UPDATE users SET is_active = NOT is_active WHERE id = $1 RETURNING is_active",
+        )
+        .bind(user_id)
+        .fetch_optional(&*pool)
+        .await?;
 
         Ok(result.map_or(false, |r| r.get("is_active")))
     } else {

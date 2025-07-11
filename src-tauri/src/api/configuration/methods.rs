@@ -271,7 +271,7 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
     // Build the client with proxy and SSL settings
     let mut client_builder = reqwest::Client::builder()
         .proxy(proxy_builder)
-        .timeout(std::time::Duration::from_secs(30))  // Increased timeout for proxy connections
+        .timeout(std::time::Duration::from_secs(30)) // Increased timeout for proxy connections
         .no_proxy(); // Disable system proxy to ensure we only use our configured proxy
 
     // Configure SSL verification based on settings
@@ -286,7 +286,7 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
     // Test the proxy by making a request to a reliable endpoint
     // Using httpbin.org as it's a simple testing service that returns IP info
     let test_url = "https://httpbin.org/ip";
-    
+
     match client.get(test_url).send().await {
         Ok(response) => {
             if response.status().is_success() {
@@ -317,7 +317,10 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
             } else if error_msg.contains("timeout") {
                 Err("Proxy connection timed out".to_string())
             } else if error_msg.contains("dns") {
-                Err(format!("DNS resolution failed (check proxy settings): {}", e))
+                Err(format!(
+                    "DNS resolution failed (check proxy settings): {}",
+                    e
+                ))
             } else {
                 Err(format!("Network request failed: {}", e))
             }

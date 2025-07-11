@@ -90,14 +90,15 @@ pub async fn get_project(
     };
 
     // Get conversations
-    let conversations = match projects::list_project_conversations(&pool, project_id, user.user_id).await {
-        Ok(Some(convs)) => convs,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            eprintln!("Failed to get project conversations: {:?}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    let conversations =
+        match projects::list_project_conversations(&pool, project_id, user.user_id).await {
+            Ok(Some(convs)) => convs,
+            Ok(None) => return Err(StatusCode::NOT_FOUND),
+            Err(e) => {
+                eprintln!("Failed to get project conversations: {:?}", e);
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        };
 
     let response = ProjectDetailResponse {
         project,
@@ -164,7 +165,9 @@ pub async fn upload_document(
     // For now, use a simple file path - in production this would handle actual file upload
     let file_path = format!("/projects/{}/{}", project_id, request.file_name);
 
-    match projects::create_project_document(&pool, project_id, user.user_id, &request, file_path).await {
+    match projects::create_project_document(&pool, project_id, user.user_id, &request, file_path)
+        .await
+    {
         Ok(Some(document)) => {
             let response = UploadDocumentResponse {
                 document,
@@ -204,7 +207,9 @@ pub async fn link_conversation(
 ) -> Result<Json<crate::database::models::ProjectConversation>, StatusCode> {
     let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    match projects::link_conversation_to_project(&pool, project_id, conversation_id, user.user_id).await {
+    match projects::link_conversation_to_project(&pool, project_id, conversation_id, user.user_id)
+        .await
+    {
         Ok(Some(project_conversation)) => Ok(Json(project_conversation)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -221,7 +226,14 @@ pub async fn unlink_conversation(
 ) -> Result<StatusCode, StatusCode> {
     let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    match projects::unlink_conversation_from_project(&pool, project_id, conversation_id, user.user_id).await {
+    match projects::unlink_conversation_from_project(
+        &pool,
+        project_id,
+        conversation_id,
+        user.user_id,
+    )
+    .await
+    {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {

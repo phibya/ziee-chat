@@ -26,8 +26,10 @@ pub async fn create_user_group(
     .await?;
 
     let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
-    
+    let model_provider_ids = get_model_provider_ids_for_group(group_id)
+        .await
+        .unwrap_or_default();
+
     Ok(UserGroup {
         id: group_id,
         name: row.get("name"),
@@ -54,8 +56,10 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
     };
 
     let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
-    
+    let model_provider_ids = get_model_provider_ids_for_group(group_id)
+        .await
+        .unwrap_or_default();
+
     Ok(Some(UserGroup {
         id: group_id,
         name: row.get("name"),
@@ -82,8 +86,10 @@ pub async fn get_user_group_by_name(name: &str) -> Result<Option<UserGroup>, sql
     };
 
     let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
-    
+    let model_provider_ids = get_model_provider_ids_for_group(group_id)
+        .await
+        .unwrap_or_default();
+
     Ok(Some(UserGroup {
         id: group_id,
         name: row.get("name"),
@@ -120,8 +126,10 @@ pub async fn list_user_groups(
     let mut groups = Vec::new();
     for row in rows {
         let group_id: Uuid = row.get("id");
-        let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
-        
+        let model_provider_ids = get_model_provider_ids_for_group(group_id)
+            .await
+            .unwrap_or_default();
+
         groups.push(UserGroup {
             id: group_id,
             name: row.get("name"),
@@ -195,7 +203,7 @@ pub async fn update_user_group(
 
     // Always update the updated_at field
     updates.push(" updated_at = CURRENT_TIMESTAMP".to_string());
-    
+
     query.push_str(&updates.join(","));
     query.push_str(&format!(" WHERE id = ${} RETURNING *", param_index));
 
@@ -223,8 +231,10 @@ pub async fn update_user_group(
     };
 
     let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id).await.unwrap_or_default();
-    
+    let model_provider_ids = get_model_provider_ids_for_group(group_id)
+        .await
+        .unwrap_or_default();
+
     Ok(Some(UserGroup {
         id: group_id,
         name: row.get("name"),
@@ -281,12 +291,11 @@ pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<boo
     let pool = get_database_pool()?;
 
     // Check if user is protected
-    let user_protected: Option<(bool,)> = sqlx::query_as(
-        "SELECT is_protected FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_optional(&*pool)
-    .await?;
+    let user_protected: Option<(bool,)> =
+        sqlx::query_as("SELECT is_protected FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&*pool)
+            .await?;
 
     if let Some((is_protected,)) = user_protected {
         if is_protected {
