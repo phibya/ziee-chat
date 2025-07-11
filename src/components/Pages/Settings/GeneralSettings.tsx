@@ -10,6 +10,7 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../permissions'
 import { isDesktopApp } from '../../../api/core'
@@ -17,6 +18,7 @@ import { isDesktopApp } from '../../../api/core'
 const { Title, Text } = Typography
 
 export function GeneralSettings() {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
@@ -74,7 +76,7 @@ export function GeneralSettings() {
 
   return (
     <Flex className={'flex-col gap-3 h-full pb-2'}>
-      <Title level={3}>General</Title>
+      <Title level={3}>{t('pages.general')}</Title>
 
       <Card title="Application">
         <Flex className="flex-col gap-3">
@@ -85,7 +87,7 @@ export function GeneralSettings() {
             gap={isMobile ? 'small' : 0}
           >
             <div>
-              <Text strong>App Version</Text>
+              <Text strong>{t('labels.appVersion')}</Text>
               <div>
                 <Text type="secondary">v0.6.4</Text>
               </div>
@@ -102,7 +104,7 @@ export function GeneralSettings() {
                 gap={isMobile ? 'small' : 0}
               >
                 <div>
-                  <Text strong>Check for Updates</Text>
+                  <Text strong>{t('labels.checkForUpdates')}</Text>
                   <div>
                     <Text type="secondary">
                       Check if a newer version of Jan is available.
@@ -133,7 +135,7 @@ export function GeneralSettings() {
           >
             <Flex justify="space-between" align="center">
               <div>
-                <Text strong>Experimental Features</Text>
+                <Text strong>{t('labels.experimentalFeatures')}</Text>
                 <div>
                   <Text type="secondary">
                     Enable experimental features. They may be unstable or change
@@ -166,7 +168,7 @@ export function GeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>App Data</Text>
+                <Text strong>{t('labels.appData')}</Text>
                 <div>
                   <Text type="secondary">
                     Default location for messages and other user data.

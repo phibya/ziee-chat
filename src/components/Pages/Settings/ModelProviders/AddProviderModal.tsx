@@ -16,9 +16,9 @@ import {
   ModelProviderType,
 } from '../../../../types/api/modelProvider'
 import {
-  SUPPORTED_PROVIDERS,
-  PROVIDER_DEFAULTS,
   KV_CACHE_TYPE_OPTIONS,
+  PROVIDER_DEFAULTS,
+  SUPPORTED_PROVIDERS,
 } from '../../../../constants/modelProviders'
 
 interface AddProviderModalProps {

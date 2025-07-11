@@ -2,9 +2,9 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import {
+  CreateModelProviderRequest,
   ModelProvider,
   ModelProviderModel,
-  CreateModelProviderRequest,
 } from '../types/api/modelProvider'
 
 // Type alias for compatibility

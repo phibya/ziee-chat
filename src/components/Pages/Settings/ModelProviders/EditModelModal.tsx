@@ -98,25 +98,25 @@ export function EditModelModal({
       <Title level={5}>{t('modelProviders.parameters')}</Title>
 
       <Form.Item
-        label="Context Size"
+        label={t('modelProviders.contextSize')}
         name={['parameters', 'contextSize']}
-help={t('modelProviders.contextSizeHelp')}
+        help={t('modelProviders.contextSizeHelp')}
       >
         <InputNumber placeholder="8192" style={{ width: '100%' }} min={0} />
       </Form.Item>
 
       <Form.Item
-        label="GPU Layers"
+        label={t('modelProviders.gpuLayers')}
         name={['parameters', 'gpuLayers']}
-help={t('modelProviders.nglHelp')}
+        help={t('modelProviders.nglHelp')}
       >
         <InputNumber placeholder="100" style={{ width: '100%' }} min={-1} />
       </Form.Item>
 
       <Form.Item
-        label="Temperature"
+        label={t('modelProviders.temperature')}
         name={['parameters', 'temperature']}
-help={t('modelProviders.temperatureHelp')}
+        help={t('modelProviders.temperatureHelp')}
       >
         <InputNumber
           placeholder="0.6"
@@ -128,17 +128,17 @@ help={t('modelProviders.temperatureHelp')}
       </Form.Item>
 
       <Form.Item
-        label="Top K"
+        label={t('modelProviders.topK')}
         name={['parameters', 'topK']}
-help={t('modelProviders.topKHelp')}
+        help={t('modelProviders.topKHelp')}
       >
         <InputNumber placeholder="40" style={{ width: '100%' }} min={0} />
       </Form.Item>
 
       <Form.Item
-        label="Top P"
+        label={t('modelProviders.topP')}
         name={['parameters', 'topP']}
-help={t('modelProviders.topPHelp')}
+        help={t('modelProviders.topPHelp')}
       >
         <InputNumber
           placeholder="0.9"
@@ -150,9 +150,9 @@ help={t('modelProviders.topPHelp')}
       </Form.Item>
 
       <Form.Item
-        label="Min P"
+        label={t('modelProviders.minP')}
         name={['parameters', 'minP']}
-help={t('modelProviders.minPHelp')}
+        help={t('modelProviders.minPHelp')}
       >
         <InputNumber
           placeholder="0.1"
@@ -164,17 +164,17 @@ help={t('modelProviders.minPHelp')}
       </Form.Item>
 
       <Form.Item
-        label="Repeat Last N"
+        label={t('modelProviders.repeatLastN')}
         name={['parameters', 'repeatLastN']}
-help={t('modelProviders.repeatLastNHelp')}
+        help={t('modelProviders.repeatLastNHelp')}
       >
         <InputNumber placeholder="64" style={{ width: '100%' }} min={-1} />
       </Form.Item>
 
       <Form.Item
-        label="Repeat Penalty"
+        label={t('modelProviders.repeatPenalty')}
         name={['parameters', 'repeatPenalty']}
-help={t('modelProviders.repeatPenaltyHelp')}
+        help={t('modelProviders.repeatPenaltyHelp')}
       >
         <InputNumber
           placeholder="1.0"
@@ -186,9 +186,9 @@ help={t('modelProviders.repeatPenaltyHelp')}
       </Form.Item>
 
       <Form.Item
-        label="Presence Penalty"
+        label={t('modelProviders.presencePenalty')}
         name={['parameters', 'presencePenalty']}
-help={t('modelProviders.presencePenaltyHelp')}
+        help={t('modelProviders.presencePenaltyHelp')}
       >
         <InputNumber
           placeholder="0.0"
@@ -200,9 +200,9 @@ help={t('modelProviders.presencePenaltyHelp')}
       </Form.Item>
 
       <Form.Item
-        label="Frequency Penalty"
+        label={t('modelProviders.frequencyPenalty')}
         name={['parameters', 'frequencyPenalty']}
-help={t('modelProviders.frequencyPenaltyHelp')}
+        help={t('modelProviders.frequencyPenaltyHelp')}
       >
         <InputNumber
           placeholder="0.0"
@@ -217,12 +217,12 @@ help={t('modelProviders.frequencyPenaltyHelp')}
 
   return (
     <Modal
-      title="Edit Model"
+      title={t('modelProviders.editModel')}
       open={open}
       onCancel={onClose}
       footer={[
         <Button key="cancel" onClick={onClose}>
-          Cancel
+          {t('buttons.cancel')}
         </Button>,
         <Button
           key="submit"
@@ -230,7 +230,7 @@ help={t('modelProviders.frequencyPenaltyHelp')}
           loading={loading}
           onClick={handleSubmit}
         >
-          Save Changes
+          {t('buttons.saveChanges')}
         </Button>,
       ]}
       width={600}
@@ -239,34 +239,46 @@ help={t('modelProviders.frequencyPenaltyHelp')}
       <Form form={form} layout="vertical">
         <Form.Item
           name="name"
-          label="Model ID"
-          rules={[{ required: true, message: 'Please enter a model ID' }]}
-help={t('modelProviders.modelIdHelp')}
+          label={t('modelProviders.modelId')}
+          rules={[
+            { required: true, message: t('modelProviders.enterModelId') },
+          ]}
+          help={t('modelProviders.modelIdHelp')}
         >
-          <Input placeholder="Enter model ID (e.g., claude-3-sonnet-20240229)" />
+          <Input placeholder={t('modelProviders.modelIdPlaceholder')} />
         </Form.Item>
 
         <Form.Item
           name="alias"
-          label="Display Name"
-          rules={[{ required: true, message: 'Please enter a display name' }]}
-help={t('modelProviders.displayNameHelp')}
+          label={t('modelProviders.displayName')}
+          rules={[
+            { required: true, message: t('modelProviders.enterDisplayName') },
+          ]}
+          help={t('modelProviders.displayNameHelp')}
         >
-          <Input placeholder="Enter display name (e.g., Claude 3 Sonnet)" />
+          <Input placeholder={t('modelProviders.displayNamePlaceholder')} />
         </Form.Item>
 
-        <Form.Item name="description" label="Description">
-          <TextArea placeholder="Enter model description" rows={3} />
+        <Form.Item name="description" label={t('modelProviders.description')}>
+          <TextArea
+            placeholder={t('modelProviders.descriptionPlaceholder')}
+            rows={3}
+          />
         </Form.Item>
 
         {providerType === 'llama.cpp' && (
           <Form.Item
             name="path"
-            label="Model Path"
-            rules={[{ required: true, message: 'Please select a model file' }]}
+            label={t('modelProviders.modelPath')}
+            rules={[
+              {
+                required: true,
+                message: t('modelProviders.selectModelFileRequired'),
+              },
+            ]}
           >
             <Input
-              placeholder="Select model file"
+              placeholder={t('modelProviders.selectModelFile')}
               addonAfter={
                 <Upload
                   showUploadList={false}
@@ -274,7 +286,7 @@ help={t('modelProviders.displayNameHelp')}
                   onChange={handleFileSelect}
                 >
                   <Button icon={<UploadOutlined />} size="small">
-                    Browse
+                    {t('modelProviders.browse')}
                   </Button>
                 </Upload>
               }
@@ -282,7 +294,7 @@ help={t('modelProviders.displayNameHelp')}
           </Form.Item>
         )}
 
-        <Title level={5}>Capabilities</Title>
+        <Title level={5}>{t('modelProviders.capabilities')}</Title>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div
             style={{
@@ -291,7 +303,7 @@ help={t('modelProviders.displayNameHelp')}
               alignItems: 'center',
             }}
           >
-            <span>Vision</span>
+            <span>{t('modelProviders.vision')}</span>
             <Form.Item
               name="vision"
               valuePropName="checked"
@@ -307,7 +319,7 @@ help={t('modelProviders.displayNameHelp')}
               alignItems: 'center',
             }}
           >
-            <span>Audio</span>
+            <span>{t('modelProviders.audio')}</span>
             <Form.Item
               name="audio"
               valuePropName="checked"
@@ -323,7 +335,7 @@ help={t('modelProviders.displayNameHelp')}
               alignItems: 'center',
             }}
           >
-            <span>Tools</span>
+            <span>{t('modelProviders.tools')}</span>
             <Form.Item
               name="tools"
               valuePropName="checked"
@@ -339,7 +351,7 @@ help={t('modelProviders.displayNameHelp')}
               alignItems: 'center',
             }}
           >
-            <span>Code Interpreter</span>
+            <span>{t('modelProviders.codeInterpreter')}</span>
             <Form.Item
               name="codeInterpreter"
               valuePropName="checked"

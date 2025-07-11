@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { Assistant } from '../types/api/assistant'
-import { User, UserGroup, CreateUserGroupRequest } from '../types/api/user'
+import { CreateUserGroupRequest, User, UserGroup } from '../types/api/user'
 
 // Using API types now - User and UserGroup imported above
 

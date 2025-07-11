@@ -221,7 +221,7 @@ export const ChatHistoryPage: React.FC = () => {
             </div>
             <Space>
               <Search
-placeholder={t('forms.searchConversations')}
+                placeholder={t('forms.searchConversations')}
                 allowClear
                 enterButton={<SearchOutlined />}
                 size="middle"

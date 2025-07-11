@@ -23,6 +23,7 @@ import {
   SearchOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { Project } from '../../types/api/projects'
 import { PageContainer } from '../common/PageContainer'
@@ -39,6 +40,7 @@ interface ProjectFormData {
 }
 
 export const ProjectsPage: React.FC = () => {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const navigate = useNavigate()
 
@@ -241,7 +243,7 @@ export const ProjectsPage: React.FC = () => {
       {/* Search and Sort */}
       <div className="flex justify-between items-center mb-6">
         <Search
-          placeholder="Search projects..."
+          placeholder={t('forms.searchProjects')}
           prefix={<SearchOutlined />}
           style={{ width: 400 }}
           value={searchQuery}
@@ -369,12 +371,12 @@ export const ProjectsPage: React.FC = () => {
             name="name"
             rules={[{ required: true, message: 'Please enter a project name' }]}
           >
-            <Input placeholder="Name your project" size="large" />
+            <Input placeholder={t('forms.nameYourProject')} size="large" />
           </Form.Item>
 
           <Form.Item label="What are you trying to achieve?" name="description">
             <TextArea
-              placeholder="Describe your project, goals, subject, etc..."
+              placeholder={t('forms.describeYourProject')}
               rows={4}
               size="large"
             />
@@ -414,12 +416,12 @@ export const ProjectsPage: React.FC = () => {
             name="name"
             rules={[{ required: true, message: 'Please enter a project name' }]}
           >
-            <Input placeholder="Name your project" size="large" />
+            <Input placeholder={t('forms.nameYourProject')} size="large" />
           </Form.Item>
 
           <Form.Item label="Description" name="description">
             <TextArea
-              placeholder="Describe your project, goals, subject, etc..."
+              placeholder={t('forms.describeYourProject')}
               rows={4}
               size="large"
             />

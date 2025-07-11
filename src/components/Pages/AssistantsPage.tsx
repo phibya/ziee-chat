@@ -434,19 +434,19 @@ export const AssistantsPage: React.FC = () => {
             label="Name"
             rules={[{ required: true, message: 'Please enter a name' }]}
           >
-            <Input placeholder="Enter assistant name" />
+            <Input placeholder={t('forms.enterAssistantName')} />
           </Form.Item>
 
           <Form.Item name="description" label="Description">
             <Input.TextArea
-              placeholder="Enter assistant description"
+              placeholder={t('forms.enterAssistantDescription')}
               rows={2}
             />
           </Form.Item>
 
           <Form.Item name="instructions" label="Instructions">
             <TextArea
-              placeholder="Enter assistant instructions (supports markdown)"
+              placeholder={t('forms.enterAssistantInstructions')}
               rows={6}
             />
           </Form.Item>
@@ -496,7 +496,7 @@ export const AssistantsPage: React.FC = () => {
                     setParameterJson(e.target.value)
                     form.setFieldsValue({ parameters: e.target.value })
                   }}
-                  placeholder="Enter parameters as JSON"
+                  placeholder={t('forms.enterParametersJson')}
                   rows={8}
                   style={{ fontFamily: 'monospace' }}
                 />
@@ -507,7 +507,7 @@ export const AssistantsPage: React.FC = () => {
                   {parameterFormFields.map((field, index) => (
                     <div key={index} className="flex gap-2 items-center">
                       <Input
-                        placeholder="Field name"
+                        placeholder={t('forms.fieldName')}
                         value={field.name}
                         onChange={e =>
                           handleFormFieldChange(index, 'name', e.target.value)
@@ -667,19 +667,19 @@ export const AssistantsPage: React.FC = () => {
                           content: (
                             <div>
                               <div className="mb-3">
-                                <Text strong>Description:</Text>
+                                <Text strong>{t('labels.description')}</Text>
                                 <div>
                                   {record.description || 'No description'}
                                 </div>
                               </div>
                               <div className="mb-3">
-                                <Text strong>Instructions:</Text>
+                                <Text strong>{t('labels.instructions')}</Text>
                                 <div style={{ whiteSpace: 'pre-wrap' }}>
                                   {record.instructions || 'No instructions'}
                                 </div>
                               </div>
                               <div className="mb-3">
-                                <Text strong>Parameters:</Text>
+                                <Text strong>{t('labels.parameters')}</Text>
                                 <pre
                                   style={{
                                     backgroundColor: '#f5f5f5',
