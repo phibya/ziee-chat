@@ -406,30 +406,25 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     const isEditing = editingMessage === msg.id
 
     return (
-      <div key={msg.id} className="mb-6 group">
-        <div className="rounded-lg px-4 py-3">
+      <div key={msg.id} className="group">
+        <div>
           {/* Message header with avatar */}
-          <div className="flex items-center gap-3 mb-2">
-            <div className="flex items-center gap-2">
-              <Avatar
-                size={32}
-                className={isUser ? '' : 'bg-primary'}
-                icon={isUser ? 'P' : <RobotOutlined />}
-              />
+          <div className="flex items-center">
+            <div className="flex items-center">
+              <Avatar size={32} icon={isUser ? 'P' : <RobotOutlined />} />
             </div>
           </div>
 
           {/* Message content */}
-          <div className="ml-11">
+          <div>
             {isEditing ? (
-              <div className="space-y-3">
+              <div>
                 <TextArea
                   value={editValue}
                   onChange={e => setEditValue(e.target.value)}
                   autoSize={{ minRows: 2, maxRows: 8 }}
-                  className="w-full"
                 />
-                <div className="flex gap-2">
+                <div className="flex">
                   <Button
                     size="small"
                     type="primary"
@@ -449,9 +444,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               </div>
             ) : (
               <div
-                className="text-base leading-relaxed"
                 style={{
-                  color: 'rgba(255,255,255,0.9)',
                   whiteSpace: isUser ? 'pre-wrap' : 'normal',
                 }}
               >
@@ -470,17 +463,11 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
             (() => {
               const branchInfo = getBranchInfo(msg)
               return (
-                <div className="ml-11 mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center opacity-0 group-hover:opacity-100">
                   <Button
                     size="small"
                     type="text"
                     onClick={() => handleEditMessage(msg.id, msg.content)}
-                    className="text-xs px-2 h-6"
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'rgba(255,255,255,0.8)',
-                    }}
                   >
                     {t('chat.edit')}
                   </Button>
@@ -490,7 +477,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       size="small"
                       type="text"
                       onClick={() => loadMessageBranches(msg)}
-                      className="w-6 h-6 min-w-0 p-0"
                       style={{
                         backgroundColor: 'rgba(255,255,255,0.1)',
                         border: '1px solid rgba(255,255,255,0.2)',
@@ -515,7 +501,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             branchInfo.branches[branchInfo.currentIndex - 1]
                           if (prevBranch) handleSwitchBranch(prevBranch.id)
                         }}
-                        className="w-6 h-6 min-w-0 p-0"
                         style={{
                           backgroundColor: 'rgba(255,255,255,0.1)',
                           border: '1px solid rgba(255,255,255,0.2)',
@@ -523,7 +508,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                         }}
                       />
                       <div
-                        className="text-xs px-2 h-6 flex items-center"
+                        className="flex items-center"
                         style={{
                           backgroundColor: 'rgba(255,255,255,0.1)',
                           border: '1px solid rgba(255,255,255,0.2)',
@@ -547,7 +532,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             branchInfo.branches[branchInfo.currentIndex + 1]
                           if (nextBranch) handleSwitchBranch(nextBranch.id)
                         }}
-                        className="w-6 h-6 min-w-0 p-0"
                         style={{
                           backgroundColor: 'rgba(255,255,255,0.1)',
                           border: '1px solid rgba(255,255,255,0.2)',

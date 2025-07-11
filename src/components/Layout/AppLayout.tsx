@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Layout } from 'antd'
-import { useUISettings } from '../../store/settings'
+import { useEffect, useState } from 'react'
+import { Button, Layout } from 'antd'
+import { MenuUnfoldOutlined } from '@ant-design/icons'
+import { useUISettings } from '../../store'
 import { LeftPanel } from './LeftPanel'
 
 const { Sider, Content } = Layout
@@ -10,51 +11,9 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const {
-    leftPanelCollapsed,
-    leftPanelWidth,
-    setLeftPanelCollapsed,
-    setLeftPanelWidth,
-  } = useUISettings()
-  const [isResizing, setIsResizing] = useState(false)
+  const { leftPanelCollapsed, setLeftPanelCollapsed } = useUISettings()
   const [isMobile, setIsMobile] = useState(false)
   const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false)
-
-  const MIN_WIDTH = 180
-  const MAX_WIDTH = 400
-  const COLLAPSE_THRESHOLD = 120
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsResizing(true)
-  }, [])
-
-  const handleMouseMove = useCallback(
-    // eslint-disable-next-line no-undef
-    (e: MouseEvent) => {
-      if (!isResizing) return
-
-      // eslint-disable-next-line no-undef
-      requestAnimationFrame(() => {
-        const newWidth = e.clientX
-        if (newWidth < COLLAPSE_THRESHOLD) {
-          setLeftPanelCollapsed(true)
-        } else {
-          setLeftPanelCollapsed(false)
-          const clampedWidth = Math.min(
-            Math.max(newWidth, MIN_WIDTH),
-            MAX_WIDTH,
-          )
-          setLeftPanelWidth(clampedWidth)
-        }
-      })
-    },
-    [isResizing, setLeftPanelCollapsed, setLeftPanelWidth],
-  )
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false)
-  }, [])
 
   // Check if screen is mobile size
   useEffect(() => {
@@ -82,102 +41,97 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [isMobile, leftPanelCollapsed, setLeftPanelCollapsed])
 
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = 'col-resize'
-      document.body.style.userSelect = 'none'
-
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-        document.body.style.cursor = ''
-        document.body.style.userSelect = ''
-      }
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp])
-
   return (
-    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
-      {/* Desktop Sidebar */}
-      <Sider
-        width={
-          isMobile
-            ? mobileOverlayOpen
-              ? leftPanelWidth
-              : 60
-            : leftPanelCollapsed
-              ? 60
-              : leftPanelWidth
-        }
-        collapsible
-        collapsed={false}
-        trigger={null}
-        breakpoint="lg"
-        collapsedWidth={60}
-        style={{
-          overflow: 'auto',
-          height: '100vh',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: isMobile && mobileOverlayOpen ? 1050 : 1000,
-          transition: isResizing ? 'none' : 'width 0.2s ease',
-          boxShadow:
-            isMobile && mobileOverlayOpen
-              ? '0 4px 12px rgba(0, 0, 0, 0.15)'
-              : 'none',
-        }}
-        className="block"
-      >
-        <LeftPanel
-          onItemClick={() => {
-            if (isMobile) {
-              setMobileOverlayOpen(false)
-            }
-          }}
-          isMobile={isMobile}
-          mobileOverlayOpen={mobileOverlayOpen}
-          setMobileOverlayOpen={setMobileOverlayOpen}
-        />
-      </Sider>
+    <Layout className={'h-screen overflow-hidden'}>
+      {/* Left Panel - Only show when not collapsed on desktop or when overlay is open on mobile */}
+      {(!isMobile && !leftPanelCollapsed) || (isMobile && mobileOverlayOpen) ? (
+        <Sider
+          width={'fit-content'}
+          collapsible
+          collapsed={false}
+          trigger={null}
+          breakpoint="lg"
+          collapsedWidth={0}
+          className={`overflow-auto h-screen fixed top-0 left-0 bottom-0 z-1000 ${
+            isMobile ? 'z-[1050]' : ''
+          }`}
+        >
+          <LeftPanel
+            onItemClick={() => {
+              if (isMobile) {
+                setMobileOverlayOpen(false)
+              }
+            }}
+            isMobile={isMobile}
+            mobileOverlayOpen={mobileOverlayOpen}
+            setMobileOverlayOpen={setMobileOverlayOpen}
+          />
+        </Sider>
+      ) : null}
+
+      {/* Floating Toggle Button - Only show when panel is collapsed on desktop */}
+      {!isMobile && leftPanelCollapsed && (
+        <div className="fixed top-4 left-4 z-[1060]">
+          <Button
+            type="default"
+            icon={<MenuUnfoldOutlined />}
+            onClick={() => setLeftPanelCollapsed(false)}
+          />
+        </div>
+      )}
+
+      {/* Mobile Toggle Button - Show when panel is not open on mobile */}
+      {isMobile && !mobileOverlayOpen && (
+        <div className="fixed top-4 left-4 z-[1060]">
+          <button
+            onClick={() => setMobileOverlayOpen(true)}
+            className="bg-white border border-gray-300 rounded-md p-2 shadow-md hover:bg-gray-50 transition-colors"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '40px',
+              height: '40px',
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 12h18M3 6h18M3 18h18" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Mobile Overlay Backdrop */}
       {isMobile && mobileOverlayOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-[1040]"
+          className="fixed inset-0 z-[1040]"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           onClick={() => setMobileOverlayOpen(false)}
-        />
-      )}
-
-      {/* Resize Handle */}
-      {!leftPanelCollapsed && !isMobile && (
-        <div
-          className="fixed top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 transition-colors duration-200 z-[1001]"
-          style={{
-            left: `${leftPanelWidth - 2}px`,
-          }}
-          onMouseDown={handleMouseDown}
         />
       )}
 
       {/* Main Content */}
       <Layout
         style={{
-          marginLeft: isMobile
-            ? mobileOverlayOpen
-              ? 0
-              : 60
-            : leftPanelCollapsed
-              ? 60
-              : leftPanelWidth,
-          transition: isResizing ? 'none' : 'margin-left 0.2s',
+          marginLeft:
+            (!isMobile && !leftPanelCollapsed) ||
+            (isMobile && mobileOverlayOpen)
+              ? isMobile
+                ? 0
+                : 240
+              : 0,
         }}
-        className="transition-all duration-200"
       >
-        <Content className="m-0 p-0 min-h-72 flex flex-col">{children}</Content>
+        <Content className="flex flex-col">{children}</Content>
       </Layout>
     </Layout>
   )

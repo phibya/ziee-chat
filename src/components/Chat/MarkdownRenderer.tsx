@@ -23,23 +23,14 @@ export function MarkdownRenderer({
         remarkPlugins={[remarkGfm, remarkBreaks]}
         rehypePlugins={[rehypeHighlight, rehypeRaw]}
         components={{
-          // Custom components using Ant Design theme and Tailwind
-          p: ({ children }) => (
-            <Text className="block mb-3 leading-relaxed">{children}</Text>
-          ),
+          // Custom components using Ant Design theme
+          p: ({ children }) => <Text>{children}</Text>,
           code: ({ inline, className, children, ...props }: any) => {
             if (inline) {
-              return (
-                <code
-                  className="px-2 py-1 rounded text-sm font-mono"
-                  {...props}
-                >
-                  {children}
-                </code>
-              )
+              return <code {...props}>{children}</code>
             }
             return (
-              <pre className="p-4 rounded-lg overflow-auto my-3">
+              <pre className="overflow-auto">
                 <code className={className} {...props}>
                   {children}
                 </code>
@@ -47,33 +38,19 @@ export function MarkdownRenderer({
             )
           },
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 pl-4 my-4 italic py-2 pr-4 rounded-r-lg">
-              <Text type="secondary">{children}</Text>
+            <blockquote>
+              <Text type="secondary" italic>
+                {children}
+              </Text>
             </blockquote>
           ),
-          h1: ({ children }) => (
-            <Title level={2} className="mt-6 mb-4">
-              {children}
-            </Title>
-          ),
-          h2: ({ children }) => (
-            <Title level={3} className="mt-5 mb-3">
-              {children}
-            </Title>
-          ),
-          h3: ({ children }) => (
-            <Title level={4} className="mt-4 mb-2">
-              {children}
-            </Title>
-          ),
-          ul: ({ children }) => (
-            <ul className="pl-6 my-2 space-y-1">{children}</ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="pl-6 my-2 space-y-1">{children}</ol>
-          ),
+          h1: ({ children }) => <Title level={2}>{children}</Title>,
+          h2: ({ children }) => <Title level={3}>{children}</Title>,
+          h3: ({ children }) => <Title level={4}>{children}</Title>,
+          ul: ({ children }) => <ul>{children}</ul>,
+          ol: ({ children }) => <ol>{children}</ol>,
           li: ({ children }) => (
-            <li className="leading-relaxed">
+            <li>
               <Text>{children}</Text>
             </li>
           ),
@@ -85,21 +62,21 @@ export function MarkdownRenderer({
             </Link>
           ),
           table: ({ children }) => (
-            <div className="overflow-x-auto my-4">
-              <table className="w-full border-collapse">{children}</table>
+            <div className="overflow-x-auto">
+              <table>{children}</table>
             </div>
           ),
           th: ({ children }) => (
-            <th className="p-3 text-left">
+            <th>
               <Text strong>{children}</Text>
             </th>
           ),
           td: ({ children }) => (
-            <td className="p-3">
+            <td>
               <Text>{children}</Text>
             </td>
           ),
-          hr: () => <Divider className="my-6" />,
+          hr: () => <Divider />,
         }}
       >
         {content}

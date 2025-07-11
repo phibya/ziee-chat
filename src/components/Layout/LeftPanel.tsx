@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Button, Dropdown, Tooltip, Typography } from 'antd'
+import { Button, Divider, Dropdown, Tooltip, Typography } from 'antd'
 import {
   AppstoreOutlined,
   BlockOutlined,
@@ -9,17 +9,13 @@ import {
   HistoryOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  MessageOutlined,
   PlusOutlined,
   RobotOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import { useAuthStore, useUISettings } from '../../store'
-import { RecentConversations } from '../Chat/RecentConversations'
-
-const { Text } = Typography
+import { RecentConversations } from '../Chat/RecentConversations.tsx'
 
 interface LeftPanelProps {
   onItemClick?: () => void
@@ -55,16 +51,9 @@ export function LeftPanel({
       type: 'primary',
     },
     {
-      key: 'chats',
-      icon: <MessageOutlined />,
-      label: 'Chats',
-      onClick: () => navigate('/'),
-      active: location.pathname === '/',
-    },
-    {
       key: 'chat-history',
       icon: <HistoryOutlined />,
-      label: 'Chat History',
+      label: 'Chats',
       onClick: () => navigate('/chat-history'),
       active: location.pathname === '/chat-history',
     },
@@ -116,90 +105,51 @@ export function LeftPanel({
   ]
 
   return (
-    <div className="h-screen flex flex-col p-3 transition-all duration-200">
-      {/* Collapse Toggle */}
-      <div
-        className={`mb-3 flex ${(isMobile ? !mobileOverlayOpen : leftPanelCollapsed) ? 'justify-center' : 'justify-end'}`}
-      >
+    <div className="h-screen flex flex-col p-1 min-w-fit">
+      {/* Collapse Toggle - Only show when panel is open */}
+      <div className="flex justify-end">
         <Tooltip
-          title={
-            isMobile
-              ? mobileOverlayOpen
-                ? 'Close sidebar'
-                : 'Open sidebar'
-              : leftPanelCollapsed
-                ? 'Expand sidebar'
-                : 'Collapse sidebar'
-          }
+          title={isMobile ? 'Close sidebar' : 'Collapse sidebar'}
           placement="right"
         >
           <Button
             type="text"
-            icon={
-              isMobile ? (
-                mobileOverlayOpen ? (
-                  <MenuFoldOutlined />
-                ) : (
-                  <MenuUnfoldOutlined />
-                )
-              ) : leftPanelCollapsed ? (
-                <MenuUnfoldOutlined />
-              ) : (
-                <MenuFoldOutlined />
-              )
-            }
+            icon={<MenuFoldOutlined />}
             onClick={() => {
               if (isMobile && setMobileOverlayOpen) {
-                setMobileOverlayOpen(!mobileOverlayOpen)
+                setMobileOverlayOpen(false)
               } else {
-                setLeftPanelCollapsed(!leftPanelCollapsed)
+                setLeftPanelCollapsed(true)
               }
             }}
-            className="border-none px-2 py-1"
           />
         </Tooltip>
       </div>
 
       {/* Navigation Items */}
-      <div className="mb-4">
+      <div className={'flex-col flex'}>
         {navigationItems.map(item => (
-          <Tooltip
-            key={item.key}
-            title={
-              (isMobile ? !mobileOverlayOpen : leftPanelCollapsed)
-                ? item.label
-                : ''
-            }
-            placement="right"
-            mouseEnterDelay={0.5}
+          <Button
+            type={item.type === 'primary' ? 'primary' : 'text'}
+            onClick={() => {
+              item.onClick()
+              onItemClick?.()
+            }}
           >
-            <Button
-              type={item.type === 'primary' ? 'primary' : 'text'}
-              onClick={() => {
-                item.onClick()
-                onItemClick?.()
-              }}
-              className={`mb-1 w-full ${leftPanelCollapsed ? 'justify-center' : 'justify-start text-left'} h-9 border-none rounded-lg overflow-hidden`}
-            >
-              <div>{item.icon}</div>
-              {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
-                <div className={'flex-1 text-left pl-1'}>{item.label}</div>
-              )}
-            </Button>
-          </Tooltip>
+            <div>{item.icon}</div>
+            <div className={'flex-1 text-left pl-1'}>{item.label}</div>
+          </Button>
         ))}
       </div>
 
-      {/* Recents Section */}
-      {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
-        <div className="mb-4">
-          <Text className="text-xs font-semibold uppercase tracking-wider mb-2 block">
-            Recents
-          </Text>
-        </div>
-      )}
+      <Divider size={'small'} />
 
-      {/* Recent Conversations */}
+      {/* Recents Section */}
+      <Typography.Text type="secondary" className={'p-2 pt-1'}>
+        Recents
+      </Typography.Text>
+
+      {/*/!* Recent Conversations *!/*/}
       <RecentConversations
         collapsed={leftPanelCollapsed}
         isMobile={isMobile}
@@ -207,8 +157,10 @@ export function LeftPanel({
         onConversationClick={onItemClick}
       />
 
+      <Divider size={'small'} />
+
       {/* Bottom Navigation */}
-      <div className="border-t pt-3 mt-3">
+      <div className={'flex-col flex'}>
         {bottomNavigationItems.map(item => (
           <Tooltip
             key={item.key}
@@ -226,90 +178,58 @@ export function LeftPanel({
                 item.onClick()
                 onItemClick?.()
               }}
-              className={`mb-1 w-full ${leftPanelCollapsed ? 'justify-center' : 'justify-start text-left'} h-9 border-none rounded-lg overflow-hidden`}
+              className={`${leftPanelCollapsed ? 'justify-center' : 'justify-start'}`}
+              block
             >
               <div>{item.icon}</div>
-              {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) && (
-                <div className="text-sm text-left flex-1 pl-1">
-                  {item.label}
-                </div>
-              )}
+              <div className="flex-1 text-left pl-1">{item.label}</div>
             </Button>
           </Tooltip>
         ))}
       </div>
 
       {/* User Profile Section */}
-      {user && (
-        <div className="border-t pt-3 mt-3">
-          {(isMobile ? mobileOverlayOpen : !leftPanelCollapsed) ? (
-            <Dropdown
-              menu={{
-                items: [
-                  {
-                    key: 'profile',
-                    icon: <UserOutlined />,
-                    label: 'Profile',
-                    onClick: () => {
-                      // Navigate to profile page or open profile modal
-                      console.log('Profile clicked')
-                    },
+      {user && !isDesktop && (
+        <>
+          <Divider size={'small'} />
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'profile',
+                  icon: <UserOutlined />,
+                  label: 'Profile',
+                  onClick: () => {
+                    // Navigate to profile page or open profile modal
+                    console.log('Profile clicked')
                   },
-                  ...(!isDesktop
-                    ? [
-                        {
-                          type: 'divider' as const,
-                        },
-                        {
-                          key: 'logout',
-                          icon: <LogoutOutlined />,
-                          label: 'Logout',
-                          onClick: async () => {
-                            await logout()
-                            onItemClick?.()
-                          },
-                        },
-                      ]
-                    : []),
-                ],
-              }}
-              placement="topLeft"
-              trigger={['click']}
-            >
-              <Button
-                type="text"
-                className="w-full justify-start text-left h-10 border-none rounded-lg overflow-hidden"
-              >
-                <div className="flex items-center w-full">
-                  <div className="flex-shrink-0">
-                    <UserOutlined />
-                  </div>
-                  <div className="flex-1 text-left pl-2 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {user.username}
-                    </div>
-                    <div className="text-xs truncate">
-                      {user.emails[0]?.address}
-                    </div>
-                  </div>
-                </div>
-              </Button>
-            </Dropdown>
-          ) : (
-            <Tooltip
-              title={`${user.username} (${user.emails[0]?.address})`}
-              placement="right"
-              mouseEnterDelay={0.5}
-            >
-              <Button
-                type="text"
-                className="w-full justify-center h-10 border-none rounded-lg"
-              >
+                },
+                {
+                  key: 'logout',
+                  icon: <LogoutOutlined />,
+                  label: 'Logout',
+                  onClick: async () => {
+                    await logout()
+                    onItemClick?.()
+                  },
+                },
+              ],
+            }}
+            placement="topLeft"
+            trigger={['click']}
+          >
+            <Button type="text" className="flex items-start text-left w-full">
+              <div>
                 <UserOutlined />
-              </Button>
-            </Tooltip>
-          )}
-        </div>
+              </div>
+              <div className="flex-1 text-left pl-1">
+                <Typography.Text strong ellipsis>
+                  {user.username}
+                </Typography.Text>
+              </div>
+            </Button>
+          </Dropdown>
+        </>
       )}
     </div>
   )

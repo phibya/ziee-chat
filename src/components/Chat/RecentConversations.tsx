@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { App, Button, Input, Modal, Tooltip } from 'antd'
+import { App, Button, Input, Modal, Tooltip, Typography } from 'antd'
 import {
   DeleteOutlined,
   EditOutlined,
@@ -137,7 +137,7 @@ export function RecentConversations({
           >
             <div
               onClick={() => handleConversationClick(conversation.id)}
-              className="w-2 h-2 rounded-full mx-auto my-1.5 cursor-pointer transition-all duration-200"
+              className="cursor-pointer"
             />
           </Tooltip>
         ))}
@@ -148,22 +148,19 @@ export function RecentConversations({
   return (
     <div className="flex-1 overflow-auto">
       {loading ? (
-        <div className="py-8 px-4 text-center">
-          <div className="text-sm">Loading...</div>
+        <div className="text-center">
+          <div>Loading...</div>
         </div>
       ) : conversations.length === 0 ? (
-        <div className="py-8 px-4 text-center">
-          <MessageOutlined className="text-2xl mb-2" />
-          <div className="text-sm">No conversations yet</div>
+        <div className="text-center">
+          <MessageOutlined />
+          <div>No conversations yet</div>
         </div>
       ) : (
         conversations.map(conversation => (
-          <div
-            key={conversation.id}
-            className="group px-3 py-2 mb-0.5 rounded-lg transition-all duration-200 border relative"
-          >
+          <div key={conversation.id} className="group relative">
             {editingId === conversation.id ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center">
                 <Input
                   value={editingTitle}
                   onChange={e => setEditingTitle(e.target.value)}
@@ -171,7 +168,6 @@ export function RecentConversations({
                   onBlur={handleSaveTitle}
                   autoFocus
                   size="small"
-                  className="flex-1"
                 />
                 <Button size="small" type="text" onClick={handleCancelEdit}>
                   ×
@@ -181,21 +177,23 @@ export function RecentConversations({
               <>
                 <div
                   onClick={() => handleConversationClick(conversation.id)}
-                  className="cursor-pointer text-sm overflow-hidden text-ellipsis whitespace-nowrap pr-16"
+                  className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {conversation.title}
                 </div>
 
                 {/* Last message preview */}
                 {conversation.last_message && (
-                  <div className="text-xs mt-1 opacity-60 overflow-hidden text-ellipsis whitespace-nowrap pr-16">
-                    {conversation.last_message.substring(0, 50)}
-                    {conversation.last_message.length > 50 ? '...' : ''}
+                  <div className="overflow-hidden text-ellipsis whitespace-nowrap">
+                    <Typography.Text type="secondary">
+                      {conversation.last_message.substring(0, 50)}
+                      {conversation.last_message.length > 50 ? '...' : ''}
+                    </Typography.Text>
                   </div>
                 )}
 
                 {/* Action buttons - only visible on hover */}
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 flex">
                   <Tooltip title="Rename">
                     <Button
                       size="small"
@@ -205,7 +203,6 @@ export function RecentConversations({
                         e.stopPropagation()
                         handleEditTitle(conversation)
                       }}
-                      className="p-1"
                     />
                   </Tooltip>
                   <Tooltip title="Delete">
@@ -217,7 +214,6 @@ export function RecentConversations({
                         e.stopPropagation()
                         handleDeleteConversation(conversation)
                       }}
-                      className="p-1"
                     />
                   </Tooltip>
                 </div>
