@@ -6,7 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::api::app::methods::is_desktop_app;
+use crate::api::app::is_desktop_app;
 use crate::api::permissions::{check_permission, permissions};
 use crate::auth::AuthService;
 use crate::database::models::User;
@@ -65,45 +65,12 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
     }
 }
 
-/// Check if the authenticated user has a specific permission
-/// This function is now deprecated - use crate::api::permissions::check_permission instead
-#[deprecated(note = "Use crate::api::permissions::check_permission instead")]
-pub fn check_permission_legacy(user: &User, permission: &str) -> bool {
-    check_permission(user, permission)
-}
-
 /// Extract authenticated user from request extensions
 pub fn get_authenticated_user(req: &Request) -> Result<&User, StatusCode> {
     req.extensions()
         .get::<AuthenticatedUser>()
         .map(|auth_user| &auth_user.user)
         .ok_or(StatusCode::UNAUTHORIZED)
-}
-
-/// Middleware that checks for user_management permission (legacy - removed)
-/// Use specific permission middleware instead
-#[deprecated(note = "Use specific permission middleware instead")]
-pub async fn user_management_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::USERS_READ) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for group_management permission (legacy - removed)
-/// Use specific permission middleware instead
-#[deprecated(note = "Use specific permission middleware instead")]
-pub async fn group_management_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::GROUPS_READ) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
 }
 
 /// Middleware that checks for users::read permission
@@ -216,118 +183,6 @@ pub async fn config_user_registration_edit_middleware(
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::CONFIG_USER_REGISTRATION_EDIT) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::updates::read permission
-pub async fn config_updates_read_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_UPDATES_READ) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::updates::edit permission
-pub async fn config_updates_edit_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_UPDATES_EDIT) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::experimental::read permission
-pub async fn config_experimental_read_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_EXPERIMENTAL_READ) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::experimental::edit permission
-pub async fn config_experimental_edit_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_EXPERIMENTAL_EDIT) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::data-folder::read permission
-pub async fn config_data_folder_read_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_DATA_FOLDER_READ) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::data-folder::edit permission
-pub async fn config_data_folder_edit_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_DATA_FOLDER_EDIT) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::factory-reset::read permission
-pub async fn config_factory_reset_read_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_FACTORY_RESET_READ) {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Middleware that checks for config::factory-reset::edit permission
-pub async fn config_factory_reset_edit_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
-    let user = get_authenticated_user(&req)?;
-
-    if !check_permission(user, permissions::CONFIG_FACTORY_RESET_EDIT) {
         return Err(StatusCode::FORBIDDEN);
     }
 

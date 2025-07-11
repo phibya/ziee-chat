@@ -4,75 +4,10 @@ use crate::database::{
     get_database_pool,
     models::{
         CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderDb,
-        ModelProviderListResponse, ModelProviderModel, ModelProviderModelDb,
+        ModelProviderModel, ModelProviderModelDb,
         ModelProviderProxySettings, UpdateModelProviderRequest, UpdateModelRequest,
     },
 };
-
-// Model Provider queries
-pub async fn list_model_providers(
-    page: i32,
-    per_page: i32,
-) -> Result<ModelProviderListResponse, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-    let offset = (page - 1) * per_page;
-
-    // Get total count
-    let total_row: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM model_providers")
-        .fetch_one(pool)
-        .await?;
-    let total = total_row.0;
-
-    // Get providers with their models
-    let provider_rows: Vec<ModelProviderDb> = sqlx::query_as(
-        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at 
-         FROM model_providers 
-         ORDER BY is_default DESC, created_at ASC 
-         LIMIT $1 OFFSET $2"
-    )
-    .bind(per_page)
-    .bind(offset)
-    .fetch_all(pool)
-    .await?;
-
-    let mut providers = Vec::new();
-    for provider_db in provider_rows {
-        let models = get_models_for_provider(provider_db.id).await?;
-        providers.push(ModelProvider {
-            id: provider_db.id,
-            name: provider_db.name,
-            provider_type: provider_db.provider_type,
-            enabled: provider_db.enabled,
-            api_key: provider_db.api_key,
-            base_url: provider_db.base_url,
-            models,
-            settings: Some(provider_db.settings),
-            proxy_settings: Some(ModelProviderProxySettings {
-                enabled: provider_db.proxy_enabled,
-                url: provider_db.proxy_url,
-                username: provider_db.proxy_username,
-                password: provider_db.proxy_password,
-                no_proxy: provider_db.proxy_no_proxy,
-                ignore_ssl_certificates: provider_db.proxy_ignore_ssl_certificates,
-                proxy_ssl: provider_db.proxy_ssl,
-                proxy_host_ssl: provider_db.proxy_host_ssl,
-                peer_ssl: provider_db.proxy_peer_ssl,
-                host_ssl: provider_db.proxy_host_ssl_verify,
-            }),
-            is_default: provider_db.is_default,
-            created_at: provider_db.created_at,
-            updated_at: provider_db.updated_at,
-        });
-    }
-
-    Ok(ModelProviderListResponse {
-        providers,
-        total,
-        page,
-        per_page,
-    })
-}
 
 pub async fn get_model_provider_by_id(
     provider_id: Uuid,

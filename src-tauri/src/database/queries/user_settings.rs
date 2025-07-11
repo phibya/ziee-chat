@@ -69,39 +69,3 @@ pub async fn delete_all_user_settings(user_id: &Uuid) -> Result<u64, sqlx::Error
     Ok(result.rows_affected())
 }
 
-// Helper functions for common settings with proper types
-pub async fn get_user_appearance_theme(user_id: &Uuid) -> Result<Option<String>, sqlx::Error> {
-    if let Some(setting) = get_user_setting(user_id, "appearance.theme").await? {
-        if let Some(theme) = setting.value.as_str() {
-            return Ok(Some(theme.to_string()));
-        }
-    }
-    Ok(None)
-}
-
-pub async fn set_user_appearance_theme(
-    user_id: &Uuid,
-    theme: &str,
-) -> Result<UserSettingDb, sqlx::Error> {
-    let value = serde_json::Value::String(theme.to_string());
-    set_user_setting(user_id, "appearance.theme", &value).await
-}
-
-pub async fn get_user_appearance_component_size(
-    user_id: &Uuid,
-) -> Result<Option<String>, sqlx::Error> {
-    if let Some(setting) = get_user_setting(user_id, "appearance.componentSize").await? {
-        if let Some(size) = setting.value.as_str() {
-            return Ok(Some(size.to_string()));
-        }
-    }
-    Ok(None)
-}
-
-pub async fn set_user_appearance_component_size(
-    user_id: &Uuid,
-    component_size: &str,
-) -> Result<UserSettingDb, sqlx::Error> {
-    let value = serde_json::Value::String(component_size.to_string());
-    set_user_setting(user_id, "appearance.componentSize", &value).await
-}

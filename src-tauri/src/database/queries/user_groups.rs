@@ -73,35 +73,6 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
     }))
 }
 
-pub async fn get_user_group_by_name(name: &str) -> Result<Option<UserGroup>, sqlx::Error> {
-    let pool = get_database_pool()?;
-
-    let row = sqlx::query("SELECT * FROM user_groups WHERE name = $1")
-        .bind(name)
-        .fetch_optional(&*pool)
-        .await?;
-
-    let Some(row) = row else {
-        return Ok(None);
-    };
-
-    let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id)
-        .await
-        .unwrap_or_default();
-
-    Ok(Some(UserGroup {
-        id: group_id,
-        name: row.get("name"),
-        description: row.get("description"),
-        permissions: row.get("permissions"),
-        model_provider_ids,
-        is_protected: row.get("is_protected"),
-        is_active: row.get("is_active"),
-        created_at: row.get("created_at"),
-        updated_at: row.get("updated_at"),
-    }))
-}
 
 pub async fn list_user_groups(
     page: i32,

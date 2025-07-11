@@ -1,13 +1,11 @@
 use async_trait::async_trait;
-use futures_util::{Stream, StreamExt};
+use futures_util::StreamExt;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
-use std::pin::Pin;
-use tokio_tungstenite::tungstenite::Message;
 
 use super::providers::{
-    AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
+    AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
     StreamingResponse, Usage,
 };
 
@@ -16,6 +14,7 @@ pub struct OpenAIProvider {
     client: Client,
     api_key: String,
     base_url: String,
+    #[allow(dead_code)] // Stored for debugging and potential future use
     proxy_config: Option<ProxyConfig>,
 }
 
@@ -70,13 +69,26 @@ impl OpenAIProvider {
         // Configure proxy if provided
         if let Some(proxy) = &proxy_config {
             if proxy.enabled && !proxy.url.is_empty() {
-                let mut proxy_builder = reqwest::Proxy::all(&proxy.url)?;
+                // Check if the base URL should bypass proxy based on no_proxy list
+                let should_use_proxy = if let Ok(url) = reqwest::Url::parse(&base_url.clone().unwrap_or_else(|| "https://api.openai.com/v1".to_string())) {
+                    !proxy.no_proxy.iter().any(|no_proxy_host| {
+                        url.host_str()
+                            .map(|host| host.contains(no_proxy_host) || no_proxy_host.contains(host))
+                            .unwrap_or(false)
+                    })
+                } else {
+                    true // If URL parsing fails, use proxy by default
+                };
 
-                if let (Some(username), Some(password)) = (&proxy.username, &proxy.password) {
-                    proxy_builder = proxy_builder.basic_auth(username, password);
+                if should_use_proxy {
+                    let mut proxy_builder = reqwest::Proxy::all(&proxy.url)?;
+
+                    if let (Some(username), Some(password)) = (&proxy.username, &proxy.password) {
+                        proxy_builder = proxy_builder.basic_auth(username, password);
+                    }
+
+                    client_builder = client_builder.proxy(proxy_builder);
                 }
-
-                client_builder = client_builder.proxy(proxy_builder);
             }
 
             if proxy.ignore_ssl_certificates {

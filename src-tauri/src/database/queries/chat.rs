@@ -479,70 +479,6 @@ pub async fn get_conversation_messages(
     Ok(messages)
 }
 
-/// Get conversation history up to (but not including) a specific message timestamp
-/// This is used when editing a message to get the context before that message
-pub async fn get_conversation_history_before(
-    conversation_id: Uuid,
-    before_timestamp: chrono::DateTime<chrono::Utc>,
-    user_id: Uuid,
-) -> Result<Vec<Message>, Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    // Get the conversation to verify ownership and get active branch
-    let conversation = match get_conversation_by_id(conversation_id, user_id).await? {
-        Some(conv) => conv,
-        None => return Ok(vec![]),
-    };
-
-    let active_branch_id = match conversation.active_branch_id {
-        Some(branch_id) => branch_id,
-        None => return Ok(vec![]),
-    };
-
-    let rows = sqlx::query(
-        r#"
-        SELECT 
-            id, conversation_id, parent_id, role, content, 
-            branch_id, new_branch_id, is_active_branch, 
-            originated_from_id, edit_count,
-            model_provider_id, model_id,
-            created_at, updated_at
-        FROM messages 
-        WHERE new_branch_id = $1 AND created_at < $2
-        ORDER BY created_at ASC
-        "#,
-    )
-    .bind(active_branch_id)
-    .bind(before_timestamp)
-    .fetch_all(pool)
-    .await?;
-
-    // Convert rows to Message structs
-    let messages = rows
-        .into_iter()
-        .map(|row| Message {
-            id: row.get("id"),
-            conversation_id: row.get("conversation_id"),
-            parent_id: row.get("parent_id"),
-            role: row.get("role"),
-            content: row.get("content"),
-            branch_id: row.get("branch_id"),
-            new_branch_id: row.get("new_branch_id"),
-            is_active_branch: row.get("is_active_branch"),
-            originated_from_id: row.get("originated_from_id"),
-            edit_count: row.get("edit_count"),
-            model_provider_id: row.get("model_provider_id"),
-            model_id: row.get("model_id"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            branches: None,
-            metadata: None,
-        })
-        .collect();
-
-    Ok(messages)
-}
 
 /// Edit a message and create a new branch according to CLAUDE.md:
 /// - Create a new branch with a unique ID
@@ -849,7 +785,7 @@ pub async fn delete_all_conversations(user_id: Uuid) -> Result<i64, Error> {
     let pool = pool.as_ref();
 
     // Delete all messages for user's conversations first
-    let result = sqlx::query(
+    let _result = sqlx::query(
         r#"
         DELETE FROM messages 
         WHERE conversation_id IN (

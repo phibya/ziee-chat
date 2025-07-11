@@ -3,7 +3,7 @@ mod api;
 mod auth;
 mod database;
 
-use crate::api::app::methods::get_http_port;
+use crate::api::app::get_http_port;
 use axum::{
     body::Body,
     http::Request,
@@ -236,422 +236,434 @@ pub fn get_available_port() -> u16 {
 fn create_rest_router() -> Router {
     // Public routes (no authentication required)
     let public_routes = Router::new()
-        .route("/api/auth/init", get(api::auth::methods::check_init_status))
-        .route("/api/auth/setup", post(api::auth::methods::init_app))
-        .route("/api/auth/login", post(api::auth::methods::login))
-        .route("/api/auth/register", post(api::auth::methods::register))
+        .route("/api/auth/init", get(api::auth::check_init_status))
+        .route("/api/auth/setup", post(api::auth::init_app))
+        .route("/api/auth/login", post(api::auth::login))
+        .route("/api/auth/register", post(api::auth::register))
         .route(
             "/api/config/user-registration",
-            get(api::configuration::methods::get_user_registration_status),
+            get(api::configuration::get_user_registration_status),
         )
         .route(
             "/api/config/default-language",
-            get(api::configuration::methods::get_default_language_public),
+            get(api::configuration::get_default_language_public),
         )
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }));
 
     // Protected routes requiring authentication (permission checks handled in endpoint functions)
     let protected_routes = Router::new()
-        .route("/api/user/greet", post(api::user::methods::greet))
-        .route("/api/auth/logout", post(api::auth::methods::logout))
-        .route("/api/auth/me", get(api::auth::methods::me))
+        .route("/api/user/greet", post(api::user::greet))
+        .route("/api/auth/logout", post(api::auth::logout))
+        .route("/api/auth/me", get(api::auth::me))
         // Admin user management routes with AWS-style permissions
         .route(
             "/api/admin/users",
-            get(api::user::methods::list_users)
+            get(api::user::list_users)
                 .layer(middleware::from_fn(api::middleware::users_read_middleware)),
         )
         .route(
             "/api/admin/users/{user_id}",
-            get(api::user::methods::get_user)
+            get(api::user::get_user)
                 .layer(middleware::from_fn(api::middleware::users_read_middleware)),
         )
         .route(
             "/api/admin/users/{user_id}",
-            put(api::user::methods::update_user)
+            put(api::user::update_user)
                 .layer(middleware::from_fn(api::middleware::users_edit_middleware)),
         )
         .route(
             "/api/admin/users/{user_id}/toggle-active",
-            post(api::user::methods::toggle_user_active)
+            post(api::user::toggle_user_active)
                 .layer(middleware::from_fn(api::middleware::users_edit_middleware)),
         )
         .route(
             "/api/admin/users/reset-password",
-            post(api::user::methods::reset_user_password)
+            post(api::user::reset_user_password)
                 .layer(middleware::from_fn(api::middleware::users_edit_middleware)),
+        )
+        .route(
+            "/api/admin/users",
+            post(api::user::create_user).layer(middleware::from_fn(
+                api::middleware::users_create_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/users/{user_id}",
+            delete(api::user::delete_user).layer(middleware::from_fn(
+                api::middleware::users_delete_middleware,
+            )),
         )
         // Admin user group management routes with AWS-style permissions
         .route(
             "/api/admin/groups",
-            get(api::user_groups::methods::list_user_groups)
+            get(api::user_groups::list_user_groups)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         .route(
             "/api/admin/groups",
-            post(api::user_groups::methods::create_user_group).layer(middleware::from_fn(
+            post(api::user_groups::create_user_group).layer(middleware::from_fn(
                 api::middleware::groups_create_middleware,
             )),
         )
         .route(
             "/api/admin/groups/{group_id}",
-            get(api::user_groups::methods::get_user_group)
+            get(api::user_groups::get_user_group)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         .route(
             "/api/admin/groups/{group_id}",
-            put(api::user_groups::methods::update_user_group)
+            put(api::user_groups::update_user_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         .route(
             "/api/admin/groups/{group_id}",
-            delete(api::user_groups::methods::delete_user_group).layer(middleware::from_fn(
+            delete(api::user_groups::delete_user_group).layer(middleware::from_fn(
                 api::middleware::groups_delete_middleware,
             )),
         )
         .route(
             "/api/admin/groups/{group_id}/members",
-            get(api::user_groups::methods::get_group_members)
+            get(api::user_groups::get_group_members)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         .route(
             "/api/admin/groups/assign",
-            post(api::user_groups::methods::assign_user_to_group)
+            post(api::user_groups::assign_user_to_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         .route(
             "/api/admin/groups/{user_id}/{group_id}/remove",
-            delete(api::user_groups::methods::remove_user_from_group)
+            delete(api::user_groups::remove_user_from_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         // User Group Model Provider relationship routes
         .route(
             "/api/admin/groups/{group_id}/model-providers",
-            get(api::user_groups::methods::get_group_model_providers)
+            get(api::user_groups::get_group_model_providers)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         .route(
             "/api/admin/groups/assign-model-provider",
-            post(api::user_groups::methods::assign_model_provider_to_group)
+            post(api::user_groups::assign_model_provider_to_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         .route(
             "/api/admin/groups/{group_id}/model-providers/{provider_id}",
-            delete(api::user_groups::methods::remove_model_provider_from_group)
+            delete(api::user_groups::remove_model_provider_from_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         .route(
             "/api/admin/user-group-model-provider-relationships",
-            get(api::user_groups::methods::list_user_group_model_provider_relationships)
+            get(api::user_groups::list_user_group_model_provider_relationships)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         // Admin configuration routes with fine-grained permissions
         .route(
             "/api/admin/config/user-registration",
-            get(api::configuration::methods::get_user_registration_status_admin).layer(
-                middleware::from_fn(api::middleware::config_user_registration_read_middleware),
-            ),
+            get(api::configuration::get_user_registration_status_admin).layer(middleware::from_fn(
+                api::middleware::config_user_registration_read_middleware,
+            )),
         )
         .route(
             "/api/admin/config/user-registration",
-            put(api::configuration::methods::update_user_registration_status).layer(
-                middleware::from_fn(api::middleware::config_user_registration_edit_middleware),
-            ),
+            put(api::configuration::update_user_registration_status).layer(middleware::from_fn(
+                api::middleware::config_user_registration_edit_middleware,
+            )),
         )
         .route(
             "/api/admin/config/default-language",
-            get(api::configuration::methods::get_default_language_admin).layer(
-                middleware::from_fn(api::middleware::config_appearance_read_middleware),
-            ),
+            get(api::configuration::get_default_language_admin).layer(middleware::from_fn(
+                api::middleware::config_appearance_read_middleware,
+            )),
         )
         .route(
             "/api/admin/config/default-language",
-            put(api::configuration::methods::update_default_language).layer(middleware::from_fn(
+            put(api::configuration::update_default_language).layer(middleware::from_fn(
                 api::middleware::config_appearance_edit_middleware,
             )),
         )
         .route(
             "/api/admin/config/proxy",
-            get(api::configuration::methods::get_proxy_settings).layer(middleware::from_fn(
+            get(api::configuration::get_proxy_settings).layer(middleware::from_fn(
                 api::middleware::config_proxy_read_middleware,
             )),
         )
         .route(
             "/api/admin/config/proxy",
-            put(api::configuration::methods::update_proxy_settings).layer(middleware::from_fn(
+            put(api::configuration::update_proxy_settings).layer(middleware::from_fn(
                 api::middleware::config_proxy_edit_middleware,
             )),
         )
         .route(
             "/api/admin/config/proxy/test",
-            post(api::configuration::methods::test_proxy_connection).layer(middleware::from_fn(
+            post(api::configuration::test_proxy_connection).layer(middleware::from_fn(
                 api::middleware::config_proxy_read_middleware,
             )),
         )
         // User settings routes
         .route(
             "/api/user/settings",
-            get(api::user_settings::methods::get_user_settings).layer(middleware::from_fn(
+            get(api::user_settings::get_user_settings).layer(middleware::from_fn(
                 api::middleware::settings_read_middleware,
             )),
         )
         .route(
             "/api/user/settings",
-            post(api::user_settings::methods::set_user_setting).layer(middleware::from_fn(
+            post(api::user_settings::set_user_setting).layer(middleware::from_fn(
                 api::middleware::settings_edit_middleware,
             )),
         )
         .route(
             "/api/user/settings/{key}",
-            get(api::user_settings::methods::get_user_setting).layer(middleware::from_fn(
+            get(api::user_settings::get_user_setting).layer(middleware::from_fn(
                 api::middleware::settings_read_middleware,
             )),
         )
         .route(
             "/api/user/settings/{key}",
-            delete(api::user_settings::methods::delete_user_setting).layer(middleware::from_fn(
+            delete(api::user_settings::delete_user_setting).layer(middleware::from_fn(
                 api::middleware::settings_delete_middleware,
             )),
         )
         .route(
             "/api/user/settings/all",
-            delete(api::user_settings::methods::delete_all_user_settings).layer(
-                middleware::from_fn(api::middleware::settings_delete_middleware),
-            ),
+            delete(api::user_settings::delete_all_user_settings).layer(middleware::from_fn(
+                api::middleware::settings_delete_middleware,
+            )),
         )
         // Model provider routes
         .route(
             "/api/admin/model-providers",
-            get(api::model_providers::methods::list_model_providers).layer(middleware::from_fn(
+            get(api::model_providers::list_model_providers).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
         )
         .route(
             "/api/admin/model-providers",
-            post(api::model_providers::methods::create_model_provider).layer(middleware::from_fn(
+            post(api::model_providers::create_model_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_create_middleware,
             )),
         )
         .route(
             "/api/admin/model-providers/{provider_id}",
-            get(api::model_providers::methods::get_model_provider).layer(middleware::from_fn(
+            get(api::model_providers::get_model_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
         )
         .route(
             "/api/admin/model-providers/{provider_id}",
-            put(api::model_providers::methods::update_model_provider).layer(middleware::from_fn(
+            put(api::model_providers::update_model_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_edit_middleware,
             )),
         )
         .route(
             "/api/admin/model-providers/{provider_id}",
-            delete(api::model_providers::methods::delete_model_provider).layer(
-                middleware::from_fn(api::middleware::model_providers_delete_middleware),
-            ),
+            delete(api::model_providers::delete_model_provider).layer(middleware::from_fn(
+                api::middleware::model_providers_delete_middleware,
+            )),
         )
         .route(
             "/api/admin/model-providers/{provider_id}/clone",
-            post(api::model_providers::methods::clone_model_provider).layer(middleware::from_fn(
+            post(api::model_providers::clone_model_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_create_middleware,
             )),
         )
         .route(
             "/api/admin/model-providers/{provider_id}/test-proxy",
-            post(api::model_providers::methods::test_model_provider_proxy_connection).layer(
+            post(api::model_providers::test_model_provider_proxy_connection).layer(
                 middleware::from_fn(api::middleware::model_providers_read_middleware),
             ),
         )
         .route(
             "/api/admin/model-providers/{provider_id}/groups",
-            get(api::model_providers::methods::get_provider_groups).layer(middleware::from_fn(
+            get(api::model_providers::get_provider_groups).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
         )
         // Model routes
         .route(
             "/api/admin/model-providers/{provider_id}/models",
-            post(api::model_providers::methods::create_model).layer(middleware::from_fn(
+            post(api::model_providers::create_model).layer(middleware::from_fn(
                 api::middleware::model_providers_edit_middleware,
             )),
         )
         .route(
             "/api/admin/models/{model_id}",
-            get(api::model_providers::methods::get_model).layer(middleware::from_fn(
+            get(api::model_providers::get_model).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
         )
         .route(
             "/api/admin/models/{model_id}",
-            put(api::model_providers::methods::update_model).layer(middleware::from_fn(
+            put(api::model_providers::update_model).layer(middleware::from_fn(
                 api::middleware::model_providers_edit_middleware,
             )),
         )
         .route(
             "/api/admin/models/{model_id}",
-            delete(api::model_providers::methods::delete_model).layer(middleware::from_fn(
+            delete(api::model_providers::delete_model).layer(middleware::from_fn(
                 api::middleware::model_providers_delete_middleware,
             )),
         )
         // Assistant routes - User endpoints
         .route(
             "/api/assistants",
-            get(api::assistants::methods::list_assistants)
+            get(api::assistants::list_assistants)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/assistants",
-            post(api::assistants::methods::create_assistant)
+            post(api::assistants::create_assistant)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/assistants/{assistant_id}",
-            get(api::assistants::methods::get_assistant)
+            get(api::assistants::get_assistant)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/assistants/{assistant_id}",
-            put(api::assistants::methods::update_assistant)
+            put(api::assistants::update_assistant)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/assistants/{assistant_id}",
-            delete(api::assistants::methods::delete_assistant)
+            delete(api::assistants::delete_assistant)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/assistants/default",
-            get(api::assistants::methods::get_default_assistant)
+            get(api::assistants::get_default_assistant)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         // Assistant routes - Admin endpoints
         .route(
             "/api/admin/assistants",
-            get(api::assistants::methods::list_assistants_admin)
+            get(api::assistants::list_assistants_admin)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         .route(
             "/api/admin/assistants",
-            post(api::assistants::methods::create_template_assistant).layer(middleware::from_fn(
+            post(api::assistants::create_template_assistant).layer(middleware::from_fn(
                 api::middleware::groups_create_middleware,
             )),
         )
         .route(
             "/api/admin/assistants/{assistant_id}",
-            get(api::assistants::methods::get_assistant_admin)
+            get(api::assistants::get_assistant_admin)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         .route(
             "/api/admin/assistants/{assistant_id}",
-            put(api::assistants::methods::update_assistant_admin)
+            put(api::assistants::update_assistant_admin)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         .route(
             "/api/admin/assistants/{assistant_id}",
-            delete(api::assistants::methods::delete_assistant_admin).layer(middleware::from_fn(
+            delete(api::assistants::delete_assistant_admin).layer(middleware::from_fn(
                 api::middleware::groups_delete_middleware,
             )),
         )
         // Chat routes
         .route(
             "/api/chat/conversations",
-            get(api::chat::methods::list_conversations)
+            get(api::chat::list_conversations)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/conversations",
-            post(api::chat::methods::create_conversation)
+            post(api::chat::create_conversation)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/conversations/{conversation_id}",
-            get(api::chat::methods::get_conversation)
+            get(api::chat::get_conversation)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/conversations/{conversation_id}",
-            put(api::chat::methods::update_conversation)
+            put(api::chat::update_conversation)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/conversations/{conversation_id}",
-            delete(api::chat::methods::delete_conversation)
+            delete(api::chat::delete_conversation)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/messages/stream",
-            post(api::chat::methods::send_message_stream)
+            post(api::chat::send_message_stream)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/messages/{message_id}",
-            put(api::chat::methods::edit_message)
+            put(api::chat::edit_message)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/messages/{message_id}/branches",
-            get(api::chat::methods::get_message_branches)
+            get(api::chat::get_message_branches)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/messages/{message_id}/branch/switch",
-            post(api::chat::methods::switch_branch)
+            post(api::chat::switch_branch)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/conversations/search",
-            get(api::chat::methods::search_conversations)
+            get(api::chat::search_conversations)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/chat/conversations/clear-all",
-            delete(api::chat::methods::clear_all_conversations)
+            delete(api::chat::clear_all_conversations)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         // Project routes
         .route(
             "/api/projects",
-            get(api::projects::methods::list_projects)
+            get(api::projects::list_projects)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects",
-            post(api::projects::methods::create_project)
+            post(api::projects::create_project)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects/{project_id}",
-            get(api::projects::methods::get_project)
+            get(api::projects::get_project)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects/{project_id}",
-            put(api::projects::methods::update_project)
+            put(api::projects::update_project)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects/{project_id}",
-            delete(api::projects::methods::delete_project)
+            delete(api::projects::delete_project)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects/{project_id}/documents",
-            post(api::projects::methods::upload_document)
+            post(api::projects::upload_document)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects/{project_id}/documents/{document_id}",
-            delete(api::projects::methods::delete_document)
+            delete(api::projects::delete_document)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects/{project_id}/conversations/{conversation_id}",
-            post(api::projects::methods::link_conversation)
+            post(api::projects::link_conversation)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
             "/api/projects/{project_id}/conversations/{conversation_id}",
-            delete(api::projects::methods::unlink_conversation)
+            delete(api::projects::unlink_conversation)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .layer(middleware::from_fn(api::middleware::auth_middleware));

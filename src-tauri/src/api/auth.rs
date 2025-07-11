@@ -7,7 +7,7 @@ use axum::{
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::api::app::methods::is_desktop_app;
+use crate::api::app::is_desktop_app;
 use crate::auth::AuthService;
 use crate::database::models::*;
 use crate::database::queries::users;

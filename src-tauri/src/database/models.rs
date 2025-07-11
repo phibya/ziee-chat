@@ -683,66 +683,8 @@ pub struct ChatResponse {
 
 // Helper functions for working with the Meteor-like structure
 impl User {
-    pub fn new(username: String, email: String) -> Self {
-        let now = Utc::now();
-        Self {
-            id: Uuid::new_v4(),
-            username,
-            emails: vec![UserEmail {
-                address: email,
-                verified: false,
-            }],
-            created_at: now,
-            profile: None,
-            services: UserServices::default(),
-            is_active: true,
-            is_protected: false,
-            last_login_at: None,
-            updated_at: now,
-            groups: vec![],
-        }
-    }
-
     pub fn get_primary_email(&self) -> Option<String> {
         self.emails.first().map(|e| e.address.clone())
-    }
-
-    pub fn add_email(&mut self, email: String, verified: bool) {
-        self.emails.push(UserEmail {
-            address: email,
-            verified,
-        });
-    }
-
-    pub fn verify_email(&mut self, email: &str) -> bool {
-        for email_obj in &mut self.emails {
-            if email_obj.address == email {
-                email_obj.verified = true;
-                return true;
-            }
-        }
-        false
-    }
-
-    pub fn set_password(&mut self, password_hash: String) {
-        self.services.password = Some(PasswordService {
-            bcrypt: password_hash,
-        });
-    }
-
-    pub fn add_login_token(&mut self, token: String) {
-        let login_token = LoginToken {
-            token,
-            when: Utc::now().timestamp_millis(),
-        };
-
-        if let Some(resume) = &mut self.services.resume {
-            resume.login_tokens.push(login_token);
-        } else {
-            self.services.resume = Some(ResumeService {
-                login_tokens: vec![login_token],
-            });
-        }
     }
 
     // Convert from database structures to Meteor-like User

@@ -1,5 +1,4 @@
-use chrono::{DateTime, Utc};
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::database::models::{

@@ -66,8 +66,13 @@ pub trait AIProvider: Send + Sync {
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>>;
 
+    /// Returns the name of the provider for logging and debugging
+    #[allow(dead_code)]
     fn provider_name(&self) -> &'static str;
 
+    /// Indicates whether this provider supports streaming responses
+    /// Default is true, but providers can override if they don't support streaming
+    #[allow(dead_code)]
     fn supports_streaming(&self) -> bool {
         true
     }

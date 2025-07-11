@@ -239,25 +239,6 @@ async fn get_all_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
     Ok(providers)
 }
 
-/// Get all enabled model providers
-async fn get_all_enabled_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let provider_ids: Vec<(Uuid,)> =
-        sqlx::query_as("SELECT id FROM model_providers WHERE enabled = true")
-            .fetch_all(pool)
-            .await?;
-
-    let mut providers = Vec::new();
-    for (provider_id,) in provider_ids {
-        if let Some(provider) = get_model_provider_by_id(provider_id).await? {
-            providers.push(provider);
-        }
-    }
-
-    Ok(providers)
-}
 
 /// Get all relationships between user groups and model providers
 pub async fn list_user_group_model_provider_relationships(

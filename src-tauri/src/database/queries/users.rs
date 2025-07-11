@@ -259,35 +259,6 @@ pub async fn get_user_by_username_or_email(
     get_user_by_email(username_or_email).await
 }
 
-// Add email to user
-pub async fn add_email_to_user(
-    user_id: Uuid,
-    email: String,
-    verified: bool,
-) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    sqlx::query("INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3)")
-        .bind(user_id)
-        .bind(email)
-        .bind(verified)
-        .execute(&*pool)
-        .await?;
-
-    Ok(())
-}
-
-// Verify email
-pub async fn verify_email(user_id: Uuid, email: &str) -> Result<bool, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let result =
-        sqlx::query("UPDATE user_emails SET verified = TRUE WHERE user_id = $1 AND address = $2")
-            .bind(user_id)
-            .bind(email)
-            .execute(&*pool)
-            .await?;
-
-    Ok(result.rows_affected() > 0)
-}
 
 // Add login token
 pub async fn add_login_token(
@@ -309,21 +280,6 @@ pub async fn add_login_token(
 }
 
 // Get user by login token
-pub async fn get_user_by_login_token(token: &str) -> Result<Option<User>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let token_row = sqlx::query("SELECT * FROM user_login_tokens WHERE token = $1 AND (expires_at IS NULL OR expires_at > NOW())")
-    .bind(token)
-    .fetch_optional(&*pool)
-    .await?;
-
-    let Some(token_row) = token_row else {
-        return Ok(None);
-    };
-
-    let user_id: Uuid = token_row.get("user_id");
-    get_user_by_id(user_id).await
-}
-
 // Remove login token
 pub async fn remove_login_token(token: &str) -> Result<(), sqlx::Error> {
     let pool = get_database_pool()?;
@@ -335,84 +291,7 @@ pub async fn remove_login_token(token: &str) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-// Update user profile
-pub async fn update_user_profile(
-    user_id: Uuid,
-    profile: serde_json::Value,
-) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    sqlx::query("UPDATE users SET profile = $1 WHERE id = $2")
-        .bind(profile)
-        .bind(user_id)
-        .execute(&*pool)
-        .await?;
-
-    Ok(())
-}
-
-// Add or update service
-pub async fn add_or_update_service(
-    user_id: Uuid,
-    service_name: String,
-    service_data: serde_json::Value,
-) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    sqlx::query(
-        r#"
-            INSERT INTO user_services (user_id, service_name, service_data)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (user_id, service_name)
-            DO UPDATE SET service_data = $3
-            "#,
-    )
-    .bind(user_id)
-    .bind(service_name)
-    .bind(service_data)
-    .execute(&*pool)
-    .await?;
-
-    Ok(())
-}
-
-// Remove service
-pub async fn remove_service(user_id: Uuid, service_name: &str) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    sqlx::query("DELETE FROM user_services WHERE user_id = $1 AND service_name = $2")
-        .bind(user_id)
-        .bind(service_name)
-        .execute(&*pool)
-        .await?;
-
-    Ok(())
-}
-
 // Clean up expired login tokens
-pub async fn cleanup_expired_tokens() -> Result<u64, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let result = sqlx::query(
-        "DELETE FROM user_login_tokens WHERE expires_at IS NOT NULL AND expires_at < NOW()",
-    )
-    .execute(&*pool)
-    .await?;
-
-    Ok(result.rows_affected())
-}
-
-// Get root users
-pub async fn get_root_user() -> Result<Option<User>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let user_row = sqlx::query("SELECT * FROM users WHERE username = $1 LIMIT 1")
-        .bind("root")
-        .fetch_optional(&*pool)
-        .await?;
-
-    let Some(user_row) = user_row else {
-        return Ok(None);
-    };
-
-    let user_id: Uuid = user_row.get("id");
-    get_user_by_id(user_id).await
-}
 
 // List users with pagination
 pub async fn list_users(page: i32, per_page: i32) -> Result<UserListResponse, sqlx::Error> {
@@ -546,17 +425,6 @@ pub async fn reset_user_password(
 }
 
 // Update last login time
-pub async fn update_last_login(user_id: Uuid) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-
-    sqlx::query("UPDATE users SET last_login_at = NOW() WHERE id = $1")
-        .bind(user_id)
-        .execute(&*pool)
-        .await?;
-
-    Ok(())
-}
-
 // Toggle user active status
 pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -587,4 +455,28 @@ pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
         // User not found
         Ok(false)
     }
+}
+
+// Delete a user
+pub async fn delete_user(user_id: Uuid) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+
+    // Check if user is protected
+    let is_protected: Option<bool> = 
+        sqlx::query_scalar("SELECT is_protected FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&*pool)
+            .await?;
+
+    if is_protected == Some(true) {
+        // Cannot delete protected users
+        return Ok(false);
+    }
+
+    let result = sqlx::query("DELETE FROM users WHERE id = $1 AND is_protected = false")
+        .bind(user_id)
+        .execute(&*pool)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
 }

@@ -356,22 +356,49 @@ pub async fn send_message_stream(
             return;
         }
 
-        // Call AI provider
-        match ai_provider.chat(chat_request).await {
-            Ok(response) => {
-                // Stream the content back to the client
-                let _ = tx.send(Ok(Event::default().event("chunk").data(
-                    &serde_json::to_string(&StreamChunkData {
-                        delta: response.content.clone(),
-                        message_id: None,
-                    })
-                    .unwrap_or_default(),
-                )));
+        // Call AI provider with streaming
+        match ai_provider.chat_stream(chat_request).await {
+            Ok(mut stream) => {
+                let mut full_content = String::new();
+                
+                // Process the stream
+                while let Some(chunk_result) = stream.next().await {
+                    match chunk_result {
+                        Ok(chunk) => {
+                            if let Some(content) = chunk.content {
+                                full_content.push_str(&content);
+                                
+                                // Send chunk to client
+                                let _ = tx.send(Ok(Event::default().event("chunk").data(
+                                    &serde_json::to_string(&StreamChunkData {
+                                        delta: content,
+                                        message_id: None,
+                                    })
+                                    .unwrap_or_default(),
+                                )));
+                            }
+                            
+                            // Check if streaming is complete
+                            if chunk.finish_reason.is_some() {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Ok(Event::default().event("error").data(
+                                &serde_json::to_string(&StreamErrorData {
+                                    error: format!("Streaming error: {}", e),
+                                })
+                                .unwrap_or_default(),
+                            )));
+                            return;
+                        }
+                    }
+                }
 
-                // Save the assistant message
+                // Save the complete assistant message
                 let assistant_message_req = SendMessageRequest {
                     conversation_id: request.conversation_id,
-                    content: response.content.clone(),
+                    content: full_content.clone(),
                     role: "assistant".to_string(),
                     parent_id: None,
                     model_provider_id: request.model_provider_id,
@@ -407,10 +434,7 @@ pub async fn send_message_stream(
                             &serde_json::to_string(&StreamCompleteData {
                                 message_id: assistant_message.id.to_string(),
                                 conversation_id: request.conversation_id.to_string(),
-                                total_tokens: response
-                                    .usage
-                                    .and_then(|u| u.total_tokens)
-                                    .map(|t| t as i32),
+                                total_tokens: None, // Token usage not available in streaming mode
                             })
                             .unwrap_or_default(),
                         )));
@@ -497,7 +521,8 @@ async fn get_ai_response_for_edited_message(
     });
 
     // Create AI provider instance
-    let ai_provider = create_ai_provider(&provider).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let ai_provider =
+        create_ai_provider(&provider).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Create chat request
     let chat_request = ChatRequest {
@@ -709,8 +734,11 @@ fn create_proxy_config(
 fn create_ai_provider(
     provider: &crate::database::models::ModelProvider,
 ) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
-    let proxy_config = provider.proxy_settings.as_ref().and_then(create_proxy_config);
-    
+    let proxy_config = provider
+        .proxy_settings
+        .as_ref()
+        .and_then(create_proxy_config);
+
     match provider.provider_type.as_str() {
         "openai" => {
             let openai_provider = OpenAIProvider::new(

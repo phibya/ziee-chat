@@ -1,12 +1,11 @@
 use async_trait::async_trait;
-use futures_util::{Stream, StreamExt};
+use futures_util::StreamExt;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
-use std::pin::Pin;
 
 use super::providers::{
-    AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
+    AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
     StreamingResponse, Usage,
 };
 
@@ -15,6 +14,7 @@ pub struct AnthropicProvider {
     client: Client,
     api_key: String,
     base_url: String,
+    #[allow(dead_code)] // Stored for debugging and potential future use
     proxy_config: Option<ProxyConfig>,
 }
 
@@ -65,13 +65,26 @@ impl AnthropicProvider {
         // Configure proxy if provided
         if let Some(proxy) = &proxy_config {
             if proxy.enabled && !proxy.url.is_empty() {
-                let mut proxy_builder = reqwest::Proxy::all(&proxy.url)?;
+                // Check if the base URL should bypass proxy based on no_proxy list
+                let should_use_proxy = if let Ok(url) = reqwest::Url::parse(&base_url.clone().unwrap_or_else(|| "https://api.anthropic.com".to_string())) {
+                    !proxy.no_proxy.iter().any(|no_proxy_host| {
+                        url.host_str()
+                            .map(|host| host.contains(no_proxy_host) || no_proxy_host.contains(host))
+                            .unwrap_or(false)
+                    })
+                } else {
+                    true // If URL parsing fails, use proxy by default
+                };
 
-                if let (Some(username), Some(password)) = (&proxy.username, &proxy.password) {
-                    proxy_builder = proxy_builder.basic_auth(username, password);
+                if should_use_proxy {
+                    let mut proxy_builder = reqwest::Proxy::all(&proxy.url)?;
+
+                    if let (Some(username), Some(password)) = (&proxy.username, &proxy.password) {
+                        proxy_builder = proxy_builder.basic_auth(username, password);
+                    }
+
+                    client_builder = client_builder.proxy(proxy_builder);
                 }
-
-                client_builder = client_builder.proxy(proxy_builder);
             }
 
             if proxy.ignore_ssl_certificates {
@@ -223,12 +236,23 @@ impl AIProvider for AnthropicProvider {
                         if let Ok(chunk) = serde_json::from_str::<AnthropicStreamResponse>(json_str)
                         {
                             match chunk.event_type.as_str() {
+                                "content_block_start" => {
+                                    // Handle initial content block if needed
+                                    if let Some(content_block) = chunk.content_block {
+                                        if content_block.content_type == "text" {
+                                            return Ok(StreamingChunk {
+                                                content: content_block.text,
+                                                finish_reason: None,
+                                            });
+                                        }
+                                    }
+                                }
                                 "content_block_delta" => {
                                     if let Some(delta) = chunk.delta {
                                         if delta.delta_type == "text_delta" {
                                             return Ok(StreamingChunk {
                                                 content: delta.text,
-                                                finish_reason: None,
+                                                finish_reason: delta.stop_reason,
                                             });
                                         }
                                     }

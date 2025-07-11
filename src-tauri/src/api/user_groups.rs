@@ -23,7 +23,7 @@ pub struct PaginationQuery {
 
 // Create user group
 pub async fn create_user_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateUserGroupRequest>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
     match user_groups::create_user_group(request.name, request.description, request.permissions)
@@ -66,7 +66,7 @@ pub async fn create_user_group(
 
 // Get user group by ID
 pub async fn get_user_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
     match user_groups::get_user_group_by_id(group_id).await {
@@ -81,7 +81,7 @@ pub async fn get_user_group(
 
 // List user groups with pagination
 pub async fn list_user_groups(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<crate::database::models::UserGroupListResponse>, StatusCode> {
     let page = params.page.unwrap_or(1);
@@ -98,7 +98,7 @@ pub async fn list_user_groups(
 
 // Update user group
 pub async fn update_user_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
     Json(request): Json<UpdateUserGroupRequest>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
@@ -163,7 +163,7 @@ pub async fn update_user_group(
 
 // Delete user group
 pub async fn delete_user_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
 ) -> Result<StatusCode, StatusCode> {
     match user_groups::delete_user_group(group_id).await {
@@ -181,7 +181,7 @@ pub async fn delete_user_group(
 
 // Assign user to group
 pub async fn assign_user_to_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<AssignUserToGroupRequest>,
 ) -> Result<StatusCode, StatusCode> {
     match user_groups::assign_user_to_group(request.user_id, request.group_id, None).await {
@@ -195,7 +195,7 @@ pub async fn assign_user_to_group(
 
 // Remove user from group
 pub async fn remove_user_from_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path((user_id, group_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, StatusCode> {
     match user_groups::remove_user_from_group(user_id, group_id).await {
@@ -210,7 +210,7 @@ pub async fn remove_user_from_group(
 
 // Get group members
 pub async fn get_group_members(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<crate::database::models::UserListResponse>, StatusCode> {
@@ -228,7 +228,7 @@ pub async fn get_group_members(
 
 // Get model providers for a group
 pub async fn get_group_model_providers(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
 ) -> Result<Json<Vec<crate::database::models::ModelProvider>>, StatusCode> {
     match user_group_model_providers::get_model_providers_for_group(group_id).await {
@@ -242,7 +242,7 @@ pub async fn get_group_model_providers(
 
 // Assign model provider to group
 pub async fn assign_model_provider_to_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<AssignModelProviderToGroupRequest>,
 ) -> Result<Json<UserGroupModelProviderResponse>, StatusCode> {
     match user_group_model_providers::assign_model_provider_to_group(request).await {
@@ -262,7 +262,7 @@ pub async fn assign_model_provider_to_group(
 
 // Remove model provider from group
 pub async fn remove_model_provider_from_group(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path((group_id, provider_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, StatusCode> {
     match user_group_model_providers::remove_model_provider_from_group(group_id, provider_id).await
@@ -278,7 +278,7 @@ pub async fn remove_model_provider_from_group(
 
 // List all user group model provider relationships
 pub async fn list_user_group_model_provider_relationships(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Vec<UserGroupModelProviderResponse>>, StatusCode> {
     match user_group_model_providers::list_user_group_model_provider_relationships().await {
         Ok(relationships) => Ok(Json(relationships)),

@@ -38,7 +38,7 @@ pub async fn greet(Json(payload): Json<UserHello>) -> (StatusCode, String) {
 
 // List users with pagination
 pub async fn list_users(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<crate::database::models::UserListResponse>, StatusCode> {
     let page = params.page.unwrap_or(1);
@@ -55,7 +55,7 @@ pub async fn list_users(
 
 // Get user by ID
 pub async fn get_user(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<crate::database::models::User>, StatusCode> {
     match users::get_user_by_id(user_id).await {
@@ -70,7 +70,7 @@ pub async fn get_user(
 
 // Update user
 pub async fn update_user(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
     Json(request): Json<UpdateUserRequest>,
 ) -> Result<Json<crate::database::models::User>, StatusCode> {
@@ -94,7 +94,7 @@ pub async fn update_user(
 
 // Reset user password
 pub async fn reset_user_password(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<ResetPasswordRequest>,
 ) -> Result<StatusCode, StatusCode> {
     // Hash the password
@@ -118,13 +118,55 @@ pub async fn reset_user_password(
 
 // Toggle user active status
 pub async fn toggle_user_active(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     match users::toggle_user_active(user_id).await {
         Ok(is_active) => Ok(Json(serde_json::json!({ "is_active": is_active }))),
         Err(e) => {
             eprintln!("Error toggling user active status: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+// Create a new user (admin only)
+pub async fn create_user(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Json(request): Json<crate::database::models::CreateUserRequest>,
+) -> Result<Json<crate::database::models::User>, StatusCode> {
+    // Hash the password
+    let password_hash = match bcrypt::hash(&request.password, bcrypt::DEFAULT_COST) {
+        Ok(hash) => hash,
+        Err(e) => {
+            eprintln!("Error hashing password: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    match users::create_user(request.username.clone(), request.email.clone(), Some(password_hash), None).await {
+        Ok(user) => Ok(Json(user)),
+        Err(e) => {
+            eprintln!("Error creating user: {}", e);
+            if e.to_string().contains("duplicate key") {
+                Err(StatusCode::CONFLICT)
+            } else {
+                Err(StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+    }
+}
+
+// Delete a user (admin only)
+pub async fn delete_user(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(user_id): Path<Uuid>,
+) -> Result<StatusCode, StatusCode> {
+    match users::delete_user(user_id).await {
+        Ok(true) => Ok(StatusCode::NO_CONTENT),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            eprintln!("Error deleting user: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }

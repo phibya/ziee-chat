@@ -7,7 +7,6 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::api::middleware::AuthenticatedUser;
-use crate::api::permissions;
 use crate::database::{
     models::{Assistant, AssistantListResponse, CreateAssistantRequest, UpdateAssistantRequest},
     queries::assistants,
@@ -67,7 +66,7 @@ pub async fn get_assistant(
 
 /// Get assistant by ID (admin view)
 pub async fn get_assistant_admin(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
 ) -> Result<Json<Assistant>, StatusCode> {
     match assistants::get_assistant_by_id(assistant_id, None).await {
@@ -99,7 +98,7 @@ pub async fn list_assistants(
 
 /// List all assistants (admin view)
 pub async fn list_assistants_admin(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
 ) -> Result<Json<AssistantListResponse>, StatusCode> {
     let page = params.page.unwrap_or(1);
@@ -133,7 +132,7 @@ pub async fn update_assistant(
 
 /// Update assistant (admin view)
 pub async fn update_assistant_admin(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
     Json(request): Json<UpdateAssistantRequest>,
 ) -> Result<Json<Assistant>, StatusCode> {
@@ -164,7 +163,7 @@ pub async fn delete_assistant(
 
 /// Delete assistant (admin view)
 pub async fn delete_assistant_admin(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
 ) -> Result<StatusCode, StatusCode> {
     match assistants::delete_assistant(assistant_id, None, true).await {
@@ -179,7 +178,7 @@ pub async fn delete_assistant_admin(
 
 /// Get default assistant
 pub async fn get_default_assistant(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Assistant>, StatusCode> {
     match assistants::get_default_assistant().await {
         Ok(Some(assistant)) => Ok(Json(assistant)),

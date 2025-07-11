@@ -404,7 +404,7 @@ async fn test_proxy_connectivity_for_provider(
 
 // Get groups that have access to a model provider
 pub async fn get_provider_groups(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
 ) -> Result<Json<Vec<UserGroup>>, StatusCode> {
     match user_group_model_providers::get_groups_for_model_provider(provider_id).await {
