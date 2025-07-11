@@ -12,7 +12,6 @@ import 'katex/dist/katex.min.css'
 // Import highlight.js theme
 import 'highlight.js/styles/github.css'
 // Import custom markdown styles
-import './markdown.css'
 import { useUserSettingsStore } from '../../store'
 
 interface EnhancedMarkdownRendererProps {

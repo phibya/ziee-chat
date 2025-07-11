@@ -129,16 +129,16 @@ export const AssistantsPage: React.FC = () => {
 
       if (editingAssistant) {
         await updateAssistant(editingAssistant.id, requestData)
-        message.success('Assistant updated successfully')
+        message.success(t('assistants.assistantUpdated'))
       } else if (cloneSource) {
         await createAssistant({
           ...requestData,
           // Note: clone_from is not supported by the API yet
         })
-        message.success('Assistant cloned successfully')
+        message.success(t('assistants.assistantCloned'))
       } else {
         await createAssistant(requestData)
-        message.success('Assistant created successfully')
+        message.success(t('assistants.assistantCreated'))
       }
 
       setModalVisible(false)
@@ -154,7 +154,7 @@ export const AssistantsPage: React.FC = () => {
   const handleDelete = async (assistant: Assistant) => {
     try {
       await deleteAssistant(assistant.id)
-      message.success('Assistant deleted successfully')
+      message.success(t('assistants.assistantDeleted'))
     } catch (error) {
       // Error is already handled by the store
       console.error('Failed to delete assistant:', error)
@@ -305,19 +305,19 @@ export const AssistantsPage: React.FC = () => {
       key={assistant.id}
       hoverable
       actions={[
-        <Tooltip title="Edit" key="edit">
+        <Tooltip title={t('buttons.edit')} key="edit">
           <EditOutlined onClick={() => handleEdit(assistant)} />
         </Tooltip>,
         <Popconfirm
-          title="Delete Assistant"
-          description="Are you sure you want to delete this assistant?"
+          title={t('assistants.deleteAssistant')}
+          description={t('assistants.deleteConfirm')}
           onConfirm={() => handleDelete(assistant)}
           okText="Yes"
           cancelText="No"
           key="delete"
           okButtonProps={{ loading: deleting }}
         >
-          <Tooltip title="Delete">
+          <Tooltip title={t('buttons.delete')}>
             <DeleteOutlined />
           </Tooltip>
         </Popconfirm>,
@@ -431,27 +431,27 @@ export const AssistantsPage: React.FC = () => {
         <Form form={form} onFinish={handleCreateEdit} layout="vertical">
           <Form.Item
             name="name"
-            label="Name"
+            label={t('labels.name')}
             rules={[{ required: true, message: 'Please enter a name' }]}
           >
             <Input placeholder={t('forms.enterAssistantName')} />
           </Form.Item>
 
-          <Form.Item name="description" label="Description">
+          <Form.Item name="description" label={t('labels.description')}>
             <Input.TextArea
               placeholder={t('forms.enterAssistantDescription')}
               rows={2}
             />
           </Form.Item>
 
-          <Form.Item name="instructions" label="Instructions">
+          <Form.Item name="instructions" label={t('labels.instructions')}>
             <TextArea
               placeholder={t('forms.enterAssistantInstructions')}
               rows={6}
             />
           </Form.Item>
 
-          <Form.Item label="Parameters">
+          <Form.Item label={t('labels.parameters')}>
             <div className="mb-3">
               <Space>
                 <Button
@@ -574,7 +574,11 @@ export const AssistantsPage: React.FC = () => {
             )}
           </Form.Item>
 
-          <Form.Item name="is_active" label="Active" valuePropName="checked">
+          <Form.Item
+            name="is_active"
+            label={t('labels.active')}
+            valuePropName="checked"
+          >
             <Switch />
           </Form.Item>
 
@@ -605,7 +609,7 @@ export const AssistantsPage: React.FC = () => {
 
       {/* Template Assistants Modal */}
       <Modal
-        title="Clone from Template Assistants"
+        title={t('assistants.cloneFromTemplateAssistants')}
         open={templateModalVisible}
         onCancel={() => setTemplateModalVisible(false)}
         footer={null}
@@ -620,7 +624,7 @@ export const AssistantsPage: React.FC = () => {
         <Table
           columns={[
             {
-              title: 'Name',
+              title: t('labels.name'),
               dataIndex: 'name',
               key: 'name',
               render: (text: string) => (
@@ -632,7 +636,7 @@ export const AssistantsPage: React.FC = () => {
               ),
             },
             {
-              title: 'Description',
+              title: t('labels.description'),
               dataIndex: 'description',
               key: 'description',
               render: (text: string) => (
@@ -640,7 +644,7 @@ export const AssistantsPage: React.FC = () => {
               ),
             },
             {
-              title: 'Instructions Preview',
+              title: t('assistants.instructionsPreview'),
               dataIndex: 'instructions',
               key: 'instructions',
               render: (text: string) => (
@@ -653,11 +657,11 @@ export const AssistantsPage: React.FC = () => {
               width: 200,
             },
             {
-              title: 'Actions',
+              title: t('labels.actions'),
               key: 'actions',
               render: (_: any, record: Assistant) => (
                 <Space>
-                  <Tooltip title="Preview Details">
+                  <Tooltip title={t('assistants.previewDetails')}>
                     <Button
                       type="text"
                       icon={<RobotOutlined />}

@@ -39,7 +39,7 @@ export const ChatWelcome = memo(function ChatWelcome({
             <Select
               value={selectedAssistant}
               onChange={onAssistantChange}
-              placeholder="Select your assistant"
+              placeholder={t('chat.selectAssistant')}
               className="w-full"
               showSearch
               optionFilterProp="children"
@@ -58,7 +58,7 @@ export const ChatWelcome = memo(function ChatWelcome({
             <Select
               value={selectedModel}
               onChange={onModelChange}
-              placeholder="Select a model"
+              placeholder={t('chat.selectModel')}
               className="w-full"
               showSearch
               optionFilterProp="children"

@@ -106,7 +106,7 @@ export const ChatHistoryPage: React.FC = () => {
   const handleDeleteConversation = async (conversationId: string) => {
     try {
       await deleteConversation(conversationId)
-      message.success('Conversation deleted successfully')
+      message.success(t('conversations.conversationDeleted'))
     } catch (error) {
       // Error is handled by the store
       console.error('Failed to delete conversation:', error)
@@ -116,7 +116,7 @@ export const ChatHistoryPage: React.FC = () => {
   const handleClearAllHistory = async () => {
     try {
       await clearAllConversations()
-      message.success('All conversations deleted successfully')
+      message.success(t('conversations.allConversationsDeleted'))
     } catch (error) {
       // Error is handled by the store
       console.error('Failed to clear chat history:', error)
@@ -152,7 +152,7 @@ export const ChatHistoryPage: React.FC = () => {
       onClick={() => handleViewConversation(conversation)}
       hoverable
       actions={[
-        <Tooltip title="View Conversation" key="view">
+        <Tooltip title={t('conversations.viewConversation')} key="view">
           <EyeOutlined
             onClick={e => {
               e.stopPropagation()
@@ -162,14 +162,14 @@ export const ChatHistoryPage: React.FC = () => {
         </Tooltip>,
         <Popconfirm
           key="delete"
-          title="Delete Conversation"
-          description="Are you sure you want to delete this conversation?"
+          title={t('conversations.deleteConversation')}
+          description={t('history.deleteConfirm')}
           onConfirm={() => handleDeleteConversation(conversation.id)}
           okText="Yes"
           cancelText="No"
           okButtonProps={{ loading: deleting }}
         >
-          <Tooltip title="Delete">
+          <Tooltip title={t('buttons.delete')}>
             <DeleteOutlined
               className=""
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -231,8 +231,8 @@ export const ChatHistoryPage: React.FC = () => {
               />
               {conversations.length > 0 && (
                 <Popconfirm
-                  title="Clear All History"
-                  description="Are you sure you want to delete all chat history? This action cannot be undone."
+                  title={t('conversations.clearAllHistory')}
+                  description={t('history.clearAllConfirm')}
                   onConfirm={handleClearAllHistory}
                   okText="Yes"
                   cancelText="No"

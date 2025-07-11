@@ -132,7 +132,7 @@ export function NewChatInterface() {
       // Add to conversations store immediately
       addConversation({
         id: conversationId,
-        title: 'New Conversation',
+        title: 'New Conversation', // This will be updated by the backend
         user_id: user?.id || '',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

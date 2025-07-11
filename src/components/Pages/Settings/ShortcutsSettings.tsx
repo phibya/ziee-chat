@@ -1,14 +1,16 @@
 import { Card, Space, Typography } from 'antd'
+import { useTranslation } from 'react-i18next'
 
 const { Title, Text } = Typography
 
 export function ShortcutsSettings() {
+  const { t } = useTranslation()
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Title level={3}>Shortcuts</Title>
-      <Card title="Keyboard Shortcuts">
+      <Title level={3}>{t('pages.shortcuts')}</Title>
+      <Card title={t('settings.keyboardShortcuts')}>
         <Text type="secondary">
-          Keyboard shortcuts settings will be implemented here.
+          {t('settings.keyboardShortcutsDescription')}
         </Text>
       </Card>
     </Space>

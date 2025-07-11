@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   App,
   Button,
@@ -48,6 +49,7 @@ interface ParameterFormField {
 }
 
 export const AdminAssistantsSettings: React.FC = () => {
+  const { t } = useTranslation()
   const { message } = App.useApp()
 
   // Admin store
@@ -262,7 +264,7 @@ export const AdminAssistantsSettings: React.FC = () => {
 
   const columns = [
     {
-      title: 'Name',
+      title: t('labels.name'),
       dataIndex: 'name',
       key: 'name',
       render: (text: string, record: Assistant) => (
@@ -275,7 +277,7 @@ export const AdminAssistantsSettings: React.FC = () => {
       ),
     },
     {
-      title: 'Description',
+      title: t('labels.description'),
       dataIndex: 'description',
       key: 'description',
       render: (text: string) => (
@@ -283,7 +285,7 @@ export const AdminAssistantsSettings: React.FC = () => {
       ),
     },
     {
-      title: 'Created By',
+      title: t('admin.assistants.createdBy'),
       dataIndex: 'created_by',
       key: 'created_by',
       render: (userId: string) => (
@@ -291,17 +293,17 @@ export const AdminAssistantsSettings: React.FC = () => {
       ),
     },
     {
-      title: 'Created At',
+      title: t('labels.created'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: 'Actions',
+      title: t('labels.actions'),
       key: 'actions',
       render: (_: any, record: Assistant) => (
         <Space>
-          <Tooltip title="Edit">
+          <Tooltip title={t('buttons.edit')}>
             <Button
               type="text"
               icon={<EditOutlined />}
@@ -309,13 +311,13 @@ export const AdminAssistantsSettings: React.FC = () => {
             />
           </Tooltip>
           <Popconfirm
-            title="Delete Assistant"
-            description="Are you sure you want to delete this assistant?"
+            title={t('assistants.deleteAssistant')}
+            description={t('assistants.deleteConfirm')}
             onConfirm={() => handleDelete(record)}
             okText="Yes"
             cancelText="No"
           >
-            <Tooltip title="Delete">
+            <Tooltip title={t('buttons.delete')}>
               <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
@@ -365,27 +367,27 @@ export const AdminAssistantsSettings: React.FC = () => {
           <Form form={form} onFinish={handleCreateEdit} layout="vertical">
             <Form.Item
               name="name"
-              label="Name"
+              label={t('labels.name')}
               rules={[{ required: true, message: 'Please enter a name' }]}
             >
-              <Input placeholder="Enter assistant name" />
+              <Input placeholder={t('forms.enterAssistantName')} />
             </Form.Item>
 
-            <Form.Item name="description" label="Description">
+            <Form.Item name="description" label={t('labels.description')}>
               <Input.TextArea
-                placeholder="Enter assistant description"
+                placeholder={t('forms.enterAssistantDescription')}
                 rows={2}
               />
             </Form.Item>
 
-            <Form.Item name="instructions" label="Instructions">
+            <Form.Item name="instructions" label={t('labels.instructions')}>
               <TextArea
-                placeholder="Enter assistant instructions (supports markdown)"
+                placeholder={t('forms.enterAssistantInstructions')}
                 rows={6}
               />
             </Form.Item>
 
-            <Form.Item label="Parameters">
+            <Form.Item label={t('labels.parameters')}>
               <div className="mb-3">
                 <Space>
                   <Button
@@ -430,7 +432,7 @@ export const AdminAssistantsSettings: React.FC = () => {
                       setParameterJson(e.target.value)
                       form.setFieldsValue({ parameters: e.target.value })
                     }}
-                    placeholder="Enter parameters as JSON"
+                    placeholder={t('forms.enterParametersJson')}
                     rows={8}
                     style={{ fontFamily: 'monospace' }}
                   />

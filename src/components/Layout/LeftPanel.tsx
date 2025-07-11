@@ -111,7 +111,7 @@ export function LeftPanel({
           {
             key: 'chat-history',
             icon: <HistoryOutlined />,
-            label: 'Chats',
+            label: t('navigation.chats'),
             onClick: () => {
               navigate('/chat-history')
               onItemClick?.()
@@ -120,7 +120,7 @@ export function LeftPanel({
           {
             key: 'projects',
             icon: <FolderOutlined />,
-            label: 'Projects',
+            label: t('navigation.projects'),
             onClick: () => {
               navigate('/projects')
               onItemClick?.()
@@ -129,7 +129,7 @@ export function LeftPanel({
           {
             key: 'artifacts',
             icon: <BlockOutlined />,
-            label: 'Artifacts',
+            label: t('navigation.artifacts'),
             onClick: () => {
               navigate('/artifacts')
               onItemClick?.()
@@ -172,7 +172,7 @@ export function LeftPanel({
           {
             key: 'assistants',
             icon: <RobotOutlined />,
-            label: 'Assistants',
+            label: t('navigation.assistants'),
             onClick: () => {
               navigate('/assistants')
               onItemClick?.()
@@ -181,7 +181,7 @@ export function LeftPanel({
           {
             key: 'models',
             icon: <DatabaseOutlined />,
-            label: 'Models',
+            label: t('navigation.models'),
             onClick: () => {
               navigate('/models')
               onItemClick?.()
@@ -210,7 +210,7 @@ export function LeftPanel({
                 {
                   key: 'profile',
                   icon: <UserOutlined />,
-                  label: 'Profile',
+                  label: t('navigation.profile'),
                   onClick: () => {
                     // Navigate to profile page or open profile modal
                     console.log('Profile clicked')
@@ -219,7 +219,7 @@ export function LeftPanel({
                 {
                   key: 'logout',
                   icon: <LogoutOutlined />,
-                  label: 'Logout',
+                  label: t('navigation.logout'),
                   onClick: async () => {
                     await logout()
                     onItemClick?.()

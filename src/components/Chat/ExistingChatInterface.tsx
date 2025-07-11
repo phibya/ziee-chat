@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { App, Flex } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ChatHeader } from './ChatHeader'
 import { ChatMessageList } from './ChatMessageList'
@@ -16,6 +17,7 @@ interface ExistingChatInterfaceProps {
 export function ExistingChatInterface({
   conversationId,
 }: ExistingChatInterfaceProps) {
+  const { t } = useTranslation()
   const { message } = App.useApp()
 
   // Chat store
@@ -108,7 +110,7 @@ export function ExistingChatInterface({
     try {
       await Promise.all([loadAssistants(), loadProviders()])
     } catch (error: any) {
-      message.error(error?.message || 'Failed to load data')
+      message.error(error?.message || t('common.failedToLoadData'))
     }
   }
 
@@ -185,9 +187,9 @@ export function ExistingChatInterface({
       setEditValue('')
 
       if (contentChanged) {
-        message.success('Message updated and sent to AI for response')
+        message.success(t('chat.messageUpdatedAndSent'))
       } else {
-        message.success('Message updated successfully')
+        message.success(t('chat.messageUpdated'))
       }
     } catch (error) {
       // Error is already handled by the store
@@ -222,7 +224,7 @@ export function ExistingChatInterface({
       // Clear message branches cache to force reload of branch info
       setMessageBranches({})
 
-      message.success('Switched to selected branch')
+      message.success(t('chat.switchedToBranch'))
     } catch (error) {
       // Error is already handled by the store
       console.error('Failed to switch branch:', error)

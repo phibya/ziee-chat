@@ -216,7 +216,7 @@ export function HubPage() {
             </Col>
             <Col xs={12} sm={12} md={6} lg={4}>
               <Select
-                placeholder="Category"
+                placeholder={t('hub.category')}
                 value={selectedCategory}
                 onChange={setSelectedCategory}
                 style={{ width: '100%' }}
@@ -230,7 +230,7 @@ export function HubPage() {
             </Col>
             <Col xs={12} sm={12} md={6} lg={4}>
               <Select
-                placeholder="Sort by"
+                placeholder={t('hub.sortBy')}
                 value={sortBy}
                 onChange={setSortBy}
                 style={{ width: '100%' }}

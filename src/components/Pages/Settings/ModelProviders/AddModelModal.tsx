@@ -83,7 +83,7 @@ export function AddModelModal({
         name={['parameters', 'contextSize']}
         help={t('modelProviders.contextSizeHelp')}
       >
-        <InputNumber placeholder="8192" style={{ width: '100%' }} min={0} />
+        <InputNumber placeholder={t('modelProviders.contextSizePlaceholder')} style={{ width: '100%' }} min={0} />
       </Form.Item>
 
       <Form.Item
@@ -91,7 +91,7 @@ export function AddModelModal({
         name={['parameters', 'gpuLayers']}
         help={t('modelProviders.nglHelp')}
       >
-        <InputNumber placeholder="100" style={{ width: '100%' }} min={-1} />
+        <InputNumber placeholder={t('modelProviders.gpuLayersPlaceholder')} style={{ width: '100%' }} min={-1} />
       </Form.Item>
 
       <Form.Item
@@ -100,7 +100,7 @@ export function AddModelModal({
         help={t('modelProviders.temperatureHelp')}
       >
         <InputNumber
-          placeholder="0.6"
+          placeholder={t('modelProviders.temperaturePlaceholder')}
           style={{ width: '100%' }}
           min={0}
           max={2}
@@ -113,7 +113,7 @@ export function AddModelModal({
         name={['parameters', 'topK']}
         help={t('modelProviders.topKHelp')}
       >
-        <InputNumber placeholder="40" style={{ width: '100%' }} min={0} />
+        <InputNumber placeholder={t('modelProviders.topKPlaceholder')} style={{ width: '100%' }} min={0} />
       </Form.Item>
 
       <Form.Item
@@ -122,7 +122,7 @@ export function AddModelModal({
         help={t('modelProviders.topPHelp')}
       >
         <InputNumber
-          placeholder="0.9"
+          placeholder={t('modelProviders.topPPlaceholder')}
           style={{ width: '100%' }}
           min={0}
           max={1}
@@ -136,7 +136,7 @@ export function AddModelModal({
         help={t('modelProviders.minPHelp')}
       >
         <InputNumber
-          placeholder="0.1"
+          placeholder={t('modelProviders.minPPlaceholder')}
           style={{ width: '100%' }}
           min={0}
           max={1}
@@ -149,7 +149,7 @@ export function AddModelModal({
         name={['parameters', 'repeatLastN']}
         help={t('modelProviders.repeatLastNHelp')}
       >
-        <InputNumber placeholder="64" style={{ width: '100%' }} min={-1} />
+        <InputNumber placeholder={t('modelProviders.repeatLastNPlaceholder')} style={{ width: '100%' }} min={-1} />
       </Form.Item>
 
       <Form.Item
@@ -158,7 +158,7 @@ export function AddModelModal({
         help={t('modelProviders.repeatPenaltyHelp')}
       >
         <InputNumber
-          placeholder="1.0"
+          placeholder={t('modelProviders.repeatPenaltyPlaceholder')}
           style={{ width: '100%' }}
           min={0}
           max={2}
@@ -172,7 +172,7 @@ export function AddModelModal({
         help={t('modelProviders.presencePenaltyHelp')}
       >
         <InputNumber
-          placeholder="0.0"
+          placeholder={t('modelProviders.presencePenaltyPlaceholder')}
           style={{ width: '100%' }}
           min={0}
           max={2}
@@ -186,7 +186,7 @@ export function AddModelModal({
         help={t('modelProviders.frequencyPenaltyHelp')}
       >
         <InputNumber
-          placeholder="0.0"
+          placeholder={t('modelProviders.frequencyPenaltyPlaceholder')}
           style={{ width: '100%' }}
           min={0}
           max={2}

@@ -1,6 +1,7 @@
 import { Button, Drawer, Layout, Menu, theme, Typography } from 'antd'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   ExperimentOutlined,
   EyeOutlined,
@@ -21,6 +22,7 @@ const { Title } = Typography
 const { Sider } = Layout
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [isMobile, setIsMobile] = useState(false)
@@ -47,17 +49,17 @@ export function SettingsPage() {
     {
       key: 'general',
       icon: <UserOutlined />,
-      label: 'General',
+      label: t('settings.general'),
     },
     {
       key: 'appearance',
       icon: <EyeOutlined />,
-      label: 'Appearance',
+      label: t('settings.appearance'),
     },
     {
       key: 'privacy',
       icon: <LockOutlined />,
-      label: 'Privacy',
+      label: t('settings.privacy'),
     },
     // Model Providers only shows in main menu for desktop apps
     ...(isDesktopApp
@@ -65,24 +67,24 @@ export function SettingsPage() {
           {
             key: 'model-providers',
             icon: <ToolOutlined />,
-            label: 'Model Providers',
+            label: t('settings.modelProviders'),
           },
         ]
       : []),
     {
       key: 'shortcuts',
       icon: <SlidersOutlined />,
-      label: 'Shortcuts',
+      label: t('settings.shortcuts'),
     },
     {
       key: 'hardware',
       icon: <ToolOutlined />,
-      label: 'Hardware',
+      label: t('settings.hardware'),
     },
     {
       key: 'local-api-server',
       icon: <ToolOutlined />,
-      label: 'Local API Server',
+      label: t('settings.localApiServer'),
     },
     // HTTPS Proxy only shows in main menu for desktop apps
     ...(isDesktopApp
@@ -90,14 +92,14 @@ export function SettingsPage() {
           {
             key: 'https-proxy',
             icon: <ToolOutlined />,
-            label: 'HTTPS Proxy',
+            label: t('settings.httpsProxy'),
           },
         ]
       : []),
     {
       key: 'extensions',
       icon: <ExperimentOutlined />,
-      label: 'Extensions',
+      label: t('settings.extensions'),
     },
   ]
 
@@ -134,7 +136,7 @@ export function SettingsPage() {
           items.push({
             key: 'admin',
             icon: <SettingOutlined />,
-            label: 'Admin',
+            label: t('settings.admin'),
             type: 'group' as const,
           })
 
@@ -142,7 +144,7 @@ export function SettingsPage() {
             items.push({
               key: 'admin-general',
               icon: <UserOutlined />,
-              label: 'General',
+              label: t('settings.general'),
             })
           }
 
@@ -150,7 +152,7 @@ export function SettingsPage() {
             items.push({
               key: 'admin-appearance',
               icon: <EyeOutlined />,
-              label: 'Appearance',
+              label: t('settings.appearance'),
             })
           }
 
@@ -158,7 +160,7 @@ export function SettingsPage() {
             items.push({
               key: 'model-providers',
               icon: <ToolOutlined />,
-              label: 'Model Providers',
+              label: t('settings.modelProviders'),
             })
           }
 
@@ -166,7 +168,7 @@ export function SettingsPage() {
             items.push({
               key: 'https-proxy',
               icon: <ToolOutlined />,
-              label: 'HTTPS Proxy',
+              label: t('settings.httpsProxy'),
             })
           }
 
@@ -174,7 +176,7 @@ export function SettingsPage() {
             items.push({
               key: 'admin-assistants',
               icon: <RobotOutlined />,
-              label: 'Assistants',
+              label: t('settings.assistants'),
             })
           }
 
@@ -182,7 +184,7 @@ export function SettingsPage() {
             items.push({
               key: 'users',
               icon: <UserOutlined />,
-              label: 'Users',
+              label: t('settings.users'),
             })
           }
 
@@ -190,7 +192,7 @@ export function SettingsPage() {
             items.push({
               key: 'user-groups',
               icon: <TeamOutlined />,
-              label: 'User Groups',
+              label: t('settings.userGroups'),
             })
           }
         }

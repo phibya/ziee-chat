@@ -21,6 +21,7 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -60,6 +61,7 @@ const PROVIDER_ICONS: Record<ModelProviderType, string> = {
 }
 
 export function ModelProvidersSettings() {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
 
@@ -213,7 +215,7 @@ export function ModelProvidersSettings() {
 
   const handleProviderToggle = async (providerId: string, enabled: boolean) => {
     if (!canEditProviders) {
-      message.error('You do not have permission to modify provider settings')
+      message.error(t('modelProviders.noPermissionModify'))
       return
     }
 
@@ -307,7 +309,7 @@ export function ModelProvidersSettings() {
 
       setHasUnsavedChanges(false)
       setPendingSettings(null)
-      message.success('Settings saved successfully')
+      message.success(t('modelProviders.settingsSaved'))
     } catch (error) {
       console.error('Failed to save settings:', error)
       // Error is handled by the store
@@ -321,7 +323,7 @@ export function ModelProvidersSettings() {
       await updateProvider(currentProvider.id, {
         proxy_settings: proxySettings,
       })
-      message.success('Proxy settings saved successfully')
+      message.success(t('modelProviders.proxySettingsSaved'))
     } catch (error) {
       console.error('Failed to save proxy settings:', error)
       // Error is handled by the store
@@ -330,7 +332,7 @@ export function ModelProvidersSettings() {
 
   const handleDeleteProvider = async (providerId: string) => {
     if (!canEditProviders) {
-      message.error('You do not have permission to delete providers')
+      message.error(t('modelProviders.noPermissionDelete'))
       return
     }
 
@@ -338,7 +340,7 @@ export function ModelProvidersSettings() {
     if (!provider) return
 
     Modal.confirm({
-      title: 'Delete Model Provider',
+      title: t('modelProviders.deleteModelProvider'),
       content: `Are you sure you want to delete "${provider.name}"? This action cannot be undone.`,
       okText: 'Delete',
       okType: 'danger',
@@ -354,7 +356,7 @@ export function ModelProvidersSettings() {
               remainingProviders.length > 0 ? remainingProviders[0].id : '',
             )
           }
-          message.success('Provider deleted')
+          message.success(t('modelProviders.providerDeleted'))
         } catch (error: any) {
           console.error('Failed to delete provider:', error)
           // Error is handled by the store
@@ -365,7 +367,7 @@ export function ModelProvidersSettings() {
 
   const handleCloneProvider = async (providerId: string) => {
     if (!canEditProviders) {
-      message.error('You do not have permission to clone providers')
+      message.error(t('modelProviders.noPermissionClone'))
       return
     }
 
@@ -374,7 +376,7 @@ export function ModelProvidersSettings() {
         providerId,
         `${providers.find(p => p.id === providerId)?.name} (Clone)`,
       )
-      message.success('Provider cloned successfully')
+      message.success(t('modelProviders.providerCloned'))
     } catch (error) {
       console.error('Failed to clone provider:', error)
       // Error is handled by the store
@@ -385,7 +387,7 @@ export function ModelProvidersSettings() {
     try {
       await createProvider(providerData)
       setIsAddModalOpen(false)
-      message.success('Provider added successfully')
+      message.success(t('modelProviders.providerAdded'))
     } catch (error: any) {
       console.error('Failed to add provider:', error)
       // Error is handled by the store
@@ -398,7 +400,7 @@ export function ModelProvidersSettings() {
     try {
       await addModel(currentProvider.id, modelData)
       setIsAddModelModalOpen(false)
-      message.success('Model added successfully')
+      message.success(t('modelProviders.modelAdded'))
     } catch (error) {
       console.error('Failed to add model:', error)
       // Error is handled by the store
@@ -411,7 +413,7 @@ export function ModelProvidersSettings() {
     try {
       await updateModel(modelData.id, modelData)
       setIsEditModelModalOpen(false)
-      message.success('Model updated successfully')
+      message.success(t('modelProviders.modelUpdated'))
     } catch (error) {
       console.error('Failed to update model:', error)
       // Error is handled by the store
@@ -423,7 +425,7 @@ export function ModelProvidersSettings() {
 
     try {
       await deleteModel(modelId)
-      message.success('Model deleted successfully')
+      message.success(t('modelProviders.modelDeleted'))
     } catch (error) {
       console.error('Failed to delete model:', error)
       // Error is handled by the store
@@ -498,9 +500,9 @@ export function ModelProvidersSettings() {
   const copyToClipboard = (text: string) => {
     if (typeof window !== 'undefined' && window.navigator?.clipboard) {
       window.navigator.clipboard.writeText(text)
-      message.success('Copied to clipboard')
+      message.success(t('modelProviders.copiedToClipboard'))
     } else {
-      message.error('Clipboard not available')
+      message.error(t('modelProviders.clipboardNotAvailable'))
     }
   }
 
@@ -520,14 +522,14 @@ export function ModelProvidersSettings() {
       actions.push({
         key: 'clone',
         icon: <CopyOutlined />,
-        label: 'Clone',
+        label: t('buttons.clone'),
         onClick: () => handleCloneProvider(provider.id),
       })
 
       actions.push({
         key: 'delete',
         icon: <DeleteOutlined />,
-        label: 'Delete',
+        label: t('buttons.delete'),
         onClick: () => handleDeleteProvider(provider.id),
         disabled: provider.is_default,
       })
@@ -622,7 +624,7 @@ export function ModelProvidersSettings() {
     if (!currentProvider) {
       return (
         <Empty
-          description="No provider selected"
+          description={t('modelProviders.noProviderSelected')}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       )
@@ -694,7 +696,7 @@ export function ModelProvidersSettings() {
             >
               <Form.Item
                 name="name"
-                label="Provider Name"
+                label={t('modelProviders.providerName')}
                 style={{ margin: 0 }}
               >
                 <Input
@@ -750,7 +752,7 @@ export function ModelProvidersSettings() {
             onValuesChange={handleFormChange}
           >
             <Card
-              title="API Configuration"
+              title={t('modelProviders.apiConfiguration')}
               extra={
                 canEditProviders && (
                   <Button
@@ -777,7 +779,7 @@ export function ModelProvidersSettings() {
                     style={{ marginBottom: 0, marginTop: 16 }}
                   >
                     <Input.Password
-                      placeholder="Insert API Key"
+                      placeholder={t('modelProviders.insertApiKey')}
                       disabled={!canEditProviders}
                       iconRender={visible =>
                         visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
@@ -815,7 +817,7 @@ export function ModelProvidersSettings() {
                     style={{ marginBottom: 0, marginTop: 16 }}
                   >
                     <Input
-                      placeholder="Base URL"
+                      placeholder={t('modelProviders.baseUrl')}
                       disabled={!canEditProviders}
                     />
                   </Form.Item>
@@ -827,7 +829,7 @@ export function ModelProvidersSettings() {
 
         {/* Models Section */}
         <Card
-          title="Models"
+          title={t('modelProviders.models')}
           extra={
             canEditProviders && (
               <Button
@@ -971,7 +973,7 @@ export function ModelProvidersSettings() {
             onValuesChange={handleSettingsChange}
           >
             <Card
-              title="Configuration"
+              title={t('modelProviders.configuration')}
               extra={
                 canEditProviders && (
                   <Button
@@ -990,8 +992,8 @@ export function ModelProvidersSettings() {
                 style={{ width: '100%' }}
               >
                 <ResponsiveConfigItem
-                  title="Auto-Unload Old Models"
-                  description="Automatically unloads models that are not in use to free up memory. Ensure only one model is loaded at a time."
+                  title={t('modelProviders.autoUnloadOldModels')}
+                  description={t('modelProviders.autoUnloadDescription')}
                 >
                   <Form.Item
                     name="autoUnloadOldModels"
@@ -1005,8 +1007,8 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="Context Shift"
-                  description="Automatically shifts the context window when the model is unable to process the entire prompt, ensuring that the most relevant information is always included."
+                  title={t('modelProviders.contextShift')}
+                  description={t('modelProviders.contextShiftDescription')}
                 >
                   <Form.Item
                     name="contextShift"
@@ -1020,8 +1022,10 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="Continuous Batching"
-                  description="Allows processing prompts in parallel with text generation, which usually improves performance."
+                  title={t('modelProviders.continuousBatching')}
+                  description={t(
+                    'modelProviders.continuousBatchingDescription',
+                  )}
                 >
                   <Form.Item
                     name="continuousBatching"
@@ -1035,8 +1039,10 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="Parallel Operations"
-                  description="Number of prompts that can be processed simultaneously by the model."
+                  title={t('modelProviders.parallelOperations')}
+                  description={t(
+                    'modelProviders.parallelOperationsDescription',
+                  )}
                 >
                   <Form.Item
                     name="parallelOperations"
@@ -1054,15 +1060,15 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="CPU Threads"
-                  description="Number of CPU cores used for model processing when running without GPU."
+                  title={t('modelProviders.cpuThreads')}
+                  description={t('modelProviders.cpuThreadsDescription')}
                 >
                   <Form.Item
                     name="cpuThreads"
                     style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                   >
                     <InputNumber
-                      placeholder="-1 (auto)"
+                      placeholder={t('modelProviders.autoPlaceholder')}
                       style={{ width: '100%' }}
                       disabled={!canEditProviders}
                     />
@@ -1072,15 +1078,15 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="Threads (Batch)"
-                  description="Number of threads for batch and prompt processing (default: same as Threads)."
+                  title={t('modelProviders.threadsBatch')}
+                  description={t('modelProviders.threadsBatchDescription')}
                 >
                   <Form.Item
                     name="threadsBatch"
                     style={{ margin: 0, width: isMobile ? '100%' : 100 }}
                   >
                     <InputNumber
-                      placeholder="-1 (same as Threads)"
+                      placeholder={t('modelProviders.sameAsThreadsPlaceholder')}
                       style={{ width: '100%' }}
                       disabled={!canEditProviders}
                     />
@@ -1090,8 +1096,8 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="Flash Attention"
-                  description="Optimizes memory usage and speeds up model inference using an efficient attention implementation."
+                  title={t('modelProviders.flashAttention')}
+                  description={t('modelProviders.flashAttentionDescription')}
                 >
                   <Form.Item
                     name="flashAttention"
@@ -1105,8 +1111,8 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="Caching"
-                  description="Stores recent prompts and responses to improve speed when similar questions are asked."
+                  title={t('modelProviders.caching')}
+                  description={t('modelProviders.cachingDescription')}
                 >
                   <Form.Item
                     name="caching"
@@ -1120,8 +1126,8 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="KV Cache Type"
-                  description="Controls memory usage and precision trade-off."
+                  title={t('modelProviders.kvCacheType')}
+                  description={t('modelProviders.kvCacheTypeDescription')}
                 >
                   <Form.Item
                     name="kvCacheType"
@@ -1144,8 +1150,8 @@ export function ModelProvidersSettings() {
                 <Divider style={{ margin: 0 }} />
 
                 <ResponsiveConfigItem
-                  title="mmap"
-                  description="Loads model files more efficiently by mapping them to memory, reducing RAM usage."
+                  title={t('modelProviders.mmap')}
+                  description={t('modelProviders.mmapDescription')}
                 >
                   <Form.Item
                     name="mmap"
@@ -1173,7 +1179,9 @@ export function ModelProvidersSettings() {
                     style={{ marginTop: 8, marginBottom: 0 }}
                   >
                     <Input.Password
-                      placeholder="hf_*****************************"
+                      placeholder={t(
+                        'modelProviders.huggingfaceTokenPlaceholder',
+                      )}
                       style={{ width: '100%' }}
                       disabled={!canEditProviders}
                     />

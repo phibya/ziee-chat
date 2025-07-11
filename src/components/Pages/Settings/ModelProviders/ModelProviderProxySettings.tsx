@@ -11,6 +11,7 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ModelProviderProxySettings } from '../../../../types/api/modelProvider'
 import { useModelProvidersStore } from '../../../../store/modelProviders'
@@ -32,6 +33,7 @@ export function ModelProviderProxySettingsForm({
   loading = false,
   disabled = false,
 }: ModelProviderProxySettingsProps) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [lastTestedConfig, setLastTestedConfig] = useState<string | null>(null)
   const [isProxyTested, setIsProxyTested] = useState(false)
@@ -172,7 +174,7 @@ export function ModelProviderProxySettingsForm({
   }
 
   return (
-    <Card title="Proxy Settings">
+    <Card title={t('proxy.title')}>
       <Form form={form} layout="vertical">
         <Form.Item
           noStyle
@@ -263,7 +265,7 @@ export function ModelProviderProxySettingsForm({
               ]}
             >
               <Input
-                placeholder="http://<user>:<password>@<domain or IP>:<port>"
+                placeholder={t('proxy.proxyUrlPlaceholder')}
                 disabled={disabled}
               />
             </Form.Item>
@@ -277,12 +279,12 @@ export function ModelProviderProxySettingsForm({
             <Row gutter={8} style={{ marginTop: 8 }}>
               <Col span={12}>
                 <Form.Item name="username">
-                  <Input placeholder="Username" disabled={disabled} />
+                  <Input placeholder={t('proxy.usernamePlaceholder')} disabled={disabled} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="password">
-                  <Input.Password placeholder="Password" disabled={disabled} />
+                  <Input.Password placeholder={t('proxy.passwordPlaceholder')} disabled={disabled} />
                 </Form.Item>
               </Col>
             </Row>
@@ -294,7 +296,7 @@ export function ModelProviderProxySettingsForm({
               A comma-separated list of hosts to bypass the proxy.
             </Text>
             <Form.Item name="no_proxy" style={{ marginTop: 8 }}>
-              <Input placeholder="localhost, 127.0.0.1" disabled={disabled} />
+              <Input placeholder={t('proxy.noProxyPlaceholder')} disabled={disabled} />
             </Form.Item>
           </div>
 

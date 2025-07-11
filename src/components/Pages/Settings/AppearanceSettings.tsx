@@ -43,15 +43,15 @@ export function AppearanceSettings() {
     try {
       if ('theme' in changedValues) {
         await setTheme(changedValues.theme)
-        message.success('Theme updated successfully')
+        message.success(t('appearance.themeUpdated'))
       }
       if ('componentSize' in changedValues) {
         await setComponentSize(changedValues.componentSize)
-        message.success('Component size updated successfully')
+        message.success(t('appearance.componentSizeUpdated'))
       }
       if ('language' in changedValues) {
         await setLanguage(changedValues.language)
-        message.success('Language updated successfully')
+        message.success(t('appearance.languageUpdated'))
       }
     } catch (error: any) {
       message.error(error?.message || 'Failed to update settings')
@@ -67,7 +67,7 @@ export function AppearanceSettings() {
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Title level={3}>{t('pages.appearance')}</Title>
 
-      <Card title="Theme & Display">
+      <Card title={t('appearance.themeAndDisplay')}>
         <Form
           form={form}
           onValuesChange={handleFormChange}
@@ -97,9 +97,9 @@ export function AppearanceSettings() {
                   loading={loading}
                   style={{ minWidth: 120 }}
                   options={[
-                    { value: 'light', label: 'Light' },
-                    { value: 'dark', label: 'Dark' },
-                    { value: 'system', label: 'System' },
+                    { value: 'light', label: t('appearance.light') },
+                    { value: 'dark', label: t('appearance.dark') },
+                    { value: 'system', label: t('appearance.system') },
                   ]}
                 />
               </Form.Item>
@@ -124,9 +124,9 @@ export function AppearanceSettings() {
                   loading={loading}
                   style={{ minWidth: 120 }}
                   options={[
-                    { value: 'small', label: 'Small' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'large', label: 'Large' },
+                    { value: 'small', label: t('appearance.small') },
+                    { value: 'medium', label: t('appearance.medium') },
+                    { value: 'large', label: t('appearance.large') },
                   ]}
                 />
               </Form.Item>
@@ -151,8 +151,8 @@ export function AppearanceSettings() {
                   loading={loading}
                   style={{ minWidth: 120 }}
                   options={[
-                    { value: 'en', label: 'English' },
-                    { value: 'vi', label: 'Tiếng Việt' },
+                    { value: 'en', label: t('appearance.english') },
+                    { value: 'vi', label: t('appearance.vietnamese') },
                   ]}
                 />
               </Form.Item>

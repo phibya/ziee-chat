@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { App, Card, Form, Switch, Typography } from 'antd'
 import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
@@ -8,6 +9,7 @@ import { useAdminStore } from '../../../../store/admin'
 const { Text } = Typography
 
 export function UserRegistrationSettings() {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const { hasPermission } = usePermissions()
@@ -55,7 +57,7 @@ export function UserRegistrationSettings() {
 
   const handleFormChange = async (changedValues: any) => {
     if (!canEdit) {
-      message.error('You do not have permission to edit this setting')
+      message.error(t('admin.noPermissionEditSetting'))
       return
     }
     if ('enabled' in changedValues) {
@@ -79,7 +81,7 @@ export function UserRegistrationSettings() {
 
   return (
     <PageContainer>
-      <Card title="User Registration" className="mb-6">
+      <Card title={t('admin.userRegistration')} className="mb-6">
         <Form
           form={form}
           onValuesChange={handleFormChange}

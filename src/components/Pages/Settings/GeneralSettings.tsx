@@ -49,24 +49,24 @@ export function GeneralSettings() {
       if ('experimentalFeatures' in changedValues) {
         if (!hasPermission(Permission.config.experimental.edit)) {
           message.error(
-            'You do not have permission to change experimental features',
+            t('admin.noPermissionExperimental'),
           )
           form.setFieldsValue({ experimentalFeatures })
           return
         }
         setExperimentalFeatures(changedValues.experimentalFeatures)
         message.success(
-          `Experimental features ${changedValues.experimentalFeatures ? 'enabled' : 'disabled'}`,
+          changedValues.experimentalFeatures ? t('admin.experimentalEnabled') : t('admin.experimentalDisabled'),
         )
       }
       if ('spellCheck' in changedValues) {
         setSpellCheck(changedValues.spellCheck)
         message.success(
-          `Spell check ${changedValues.spellCheck ? 'enabled' : 'disabled'}`,
+          changedValues.spellCheck ? t('general.spellCheckEnabled') : t('general.spellCheckDisabled'),
         )
       }
     } catch (error: any) {
-      message.error(error?.message || 'Failed to update settings')
+      message.error(error?.message || t('common.failedToUpdate'))
       form.setFieldsValue({
         experimentalFeatures,
         spellCheck,
@@ -78,7 +78,7 @@ export function GeneralSettings() {
     <Flex className={'flex-col gap-3 h-full pb-2'}>
       <Title level={3}>{t('pages.general')}</Title>
 
-      <Card title="Application">
+      <Card title={t('general.application')}>
         <Flex className="flex-col gap-3">
           <Flex
             justify="space-between"
@@ -107,7 +107,7 @@ export function GeneralSettings() {
                   <Text strong>{t('labels.checkForUpdates')}</Text>
                   <div>
                     <Text type="secondary">
-                      Check if a newer version of Jan is available.
+                      {t('general.checkForUpdatesDescription')}
                     </Text>
                   </div>
                 </div>
@@ -115,7 +115,7 @@ export function GeneralSettings() {
                   type="default"
                   disabled={!hasPermission(Permission.config.updates.edit)}
                 >
-                  Check for Updates
+                  {t('buttons.checkForUpdates')}
                 </Button>
               </Flex>
             </>
@@ -124,7 +124,7 @@ export function GeneralSettings() {
       </Card>
 
       {isDesktopApp && hasPermission(Permission.config.experimental.read) && (
-        <Card title="Advanced">
+        <Card title={t('general.advanced')}>
           <Form
             form={form}
             onValuesChange={handleFormChange}
@@ -138,8 +138,7 @@ export function GeneralSettings() {
                 <Text strong>{t('labels.experimentalFeatures')}</Text>
                 <div>
                   <Text type="secondary">
-                    Enable experimental features. They may be unstable or change
-                    at any time.
+                    {t('general.experimentalFeaturesDescription')}
                   </Text>
                 </div>
               </div>
@@ -159,7 +158,7 @@ export function GeneralSettings() {
       )}
 
       {isDesktopApp && hasPermission(Permission.config.dataFolder.read) && (
-        <Card title="Data Folder">
+        <Card title={t('general.dataFolder')}>
           <Flex className="flex-col gap-3">
             <Flex
               justify="space-between"
@@ -171,7 +170,7 @@ export function GeneralSettings() {
                 <Text strong>{t('labels.appData')}</Text>
                 <div>
                   <Text type="secondary">
-                    Default location for messages and other user data.
+                    {t('general.appDataDescription')}
                   </Text>
                 </div>
                 <div>
@@ -185,7 +184,7 @@ export function GeneralSettings() {
                 icon={<FolderOpenOutlined />}
                 disabled={!hasPermission(Permission.config.dataFolder.edit)}
               >
-                Change Location
+                {t('buttons.changeLocation')}
               </Button>
             </Flex>
             <Divider style={{ margin: 0 }} />
@@ -196,9 +195,9 @@ export function GeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>App Logs</Text>
+                <Text strong>{t('general.appLogs')}</Text>
                 <div>
-                  <Text type="secondary">View detailed logs of the App.</Text>
+                  <Text type="secondary">{t('general.appLogsDescription')}</Text>
                 </div>
               </div>
               <Space
@@ -211,7 +210,7 @@ export function GeneralSettings() {
                   block={isMobile}
                   disabled={!hasPermission(Permission.config.dataFolder.edit)}
                 >
-                  Open Logs
+                  {t('buttons.openLogs')}
                 </Button>
                 <Button
                   type="default"
@@ -219,7 +218,7 @@ export function GeneralSettings() {
                   block={isMobile}
                   disabled={!hasPermission(Permission.config.dataFolder.edit)}
                 >
-                  Show in Finder
+                  {t('buttons.showInFinder')}
                 </Button>
               </Space>
             </Flex>
@@ -227,7 +226,7 @@ export function GeneralSettings() {
         </Card>
       )}
 
-      <Card title="Other">
+      <Card title={t('general.other')}>
         <Flex className="flex-col gap-3">
           <Form
             form={form}
@@ -244,10 +243,10 @@ export function GeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>Spell Check</Text>
+                <Text strong>{t('general.spellCheck')}</Text>
                 <div>
                   <Text type="secondary">
-                    Enable spell check for your threads.
+                    {t('general.spellCheckDescription')}
                   </Text>
                 </div>
               </div>
@@ -269,12 +268,10 @@ export function GeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>Reset To Factory Settings</Text>
+                <Text strong>{t('general.resetToFactorySettings')}</Text>
                 <div>
                   <Text type="secondary">
-                    Restore application to its initial state, erasing all models
-                    and chat history. This action is irreversible and
-                    recommended only if the application is corrupted.
+                    {t('general.resetToFactorySettingsDescription')}
                   </Text>
                 </div>
               </div>
@@ -283,14 +280,14 @@ export function GeneralSettings() {
                 danger
                 disabled={!hasPermission(Permission.config.factoryReset.edit)}
               >
-                Reset
+                {t('buttons.reset')}
               </Button>
             </Flex>
           )}
         </Flex>
       </Card>
 
-      <Card title="Resources">
+      <Card title={t('general.resources')}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Flex
             justify="space-between"
@@ -299,14 +296,14 @@ export function GeneralSettings() {
             gap={isMobile ? 'small' : 0}
           >
             <div>
-              <Text strong>Documentation</Text>
+              <Text strong>{t('general.documentation')}</Text>
               <div>
                 <Text type="secondary">
-                  Learn how to use Jan and explore its features.
+                  {t('general.documentationDescription')}
                 </Text>
               </div>
             </div>
-            <Button type="link">View Docs</Button>
+            <Button type="link">{t('buttons.viewDocs')}</Button>
           </Flex>
           <Divider style={{ margin: 0 }} />
           <Flex
@@ -316,19 +313,19 @@ export function GeneralSettings() {
             gap={isMobile ? 'small' : 0}
           >
             <div>
-              <Text strong>Release Notes</Text>
+              <Text strong>{t('general.releaseNotes')}</Text>
               <div>
                 <Text type="secondary">
-                  See what's new in the latest version of Jan.
+                  {t('general.releaseNotesDescription')}
                 </Text>
               </div>
             </div>
-            <Button type="link">View Releases</Button>
+            <Button type="link">{t('buttons.viewReleases')}</Button>
           </Flex>
         </Space>
       </Card>
 
-      <Card title="Community">
+      <Card title={t('general.community')}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Flex
             justify="space-between"
@@ -337,9 +334,9 @@ export function GeneralSettings() {
             gap={isMobile ? 'small' : 0}
           >
             <div>
-              <Text strong>GitHub</Text>
+              <Text strong>{t('general.github')}</Text>
               <div>
-                <Text type="secondary">Contribute to Jan's development.</Text>
+                <Text type="secondary">{t('general.githubDescription')}</Text>
               </div>
             </div>
             <Button type="text">
@@ -361,10 +358,10 @@ export function GeneralSettings() {
             gap={isMobile ? 'small' : 0}
           >
             <div>
-              <Text strong>Discord</Text>
+              <Text strong>{t('general.discord')}</Text>
               <div>
                 <Text type="secondary">
-                  Join our community for support and discussions.
+                  {t('general.discordDescription')}
                 </Text>
               </div>
             </div>
@@ -382,17 +379,17 @@ export function GeneralSettings() {
         </Space>
       </Card>
 
-      <Card title="Support">
+      <Card title={t('general.support')}>
         <Flex justify="space-between" align="center">
           <div>
-            <Text strong>Report an Issue</Text>
+            <Text strong>{t('general.reportAnIssue')}</Text>
             <div>
               <Text type="secondary">
-                Found a bug? Help us out by filing an issue on GitHub.
+                {t('general.reportAnIssueDescription')}
               </Text>
             </div>
           </div>
-          <Button type="link">Report Issue</Button>
+          <Button type="link">{t('buttons.reportIssue')}</Button>
         </Flex>
       </Card>
     </Flex>

@@ -1,5 +1,6 @@
 import { App, Card, Flex, Form, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useUserSettingsStore } from '../../../../store'
 import { useAdminStore } from '../../../../store/admin'
@@ -9,6 +10,7 @@ import { Permission, usePermissions } from '../../../../permissions'
 const { Title, Text } = Typography
 
 export function AdminAppearanceSettings() {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
@@ -46,7 +48,7 @@ export function AdminAppearanceSettings() {
   const handleFormChange = async (changedValues: any) => {
     if ('language' in changedValues) {
       if (!canEditAppearance) {
-        message.error('You do not have permission to change system settings')
+        message.error(t('admin.noPermissionSystemSettings'))
         form.setFieldsValue({ language: globalDefaultLanguage })
         return
       }
@@ -83,9 +85,9 @@ export function AdminAppearanceSettings() {
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Title level={3}>Admin Appearance Settings</Title>
+      <Title level={3}>{t('admin.appearanceSettings')}</Title>
 
-      <Card title="Default System Settings">
+      <Card title={t('admin.defaultSystemSettings')}>
         <Form
           form={form}
           onValuesChange={handleFormChange}
@@ -115,8 +117,8 @@ export function AdminAppearanceSettings() {
                   disabled={!canEditAppearance}
                   style={{ minWidth: 120 }}
                   options={[
-                    { value: 'en', label: 'English' },
-                    { value: 'vi', label: 'Tiếng Việt' },
+                    { value: 'en', label: t('appearance.english') },
+                    { value: 'vi', label: t('appearance.vietnamese') },
                   ]}
                 />
               </Form.Item>

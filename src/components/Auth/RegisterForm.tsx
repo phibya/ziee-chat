@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
+import { useTranslation } from 'react-i18next'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
 import { useShallow } from 'zustand/react/shallow'
 import { useAuthStore } from '../../store/auth'
@@ -17,6 +18,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   onSwitchToLogin,
   isSetup = false,
 }) => {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [checkingRegistration, setCheckingRegistration] = useState(false)
   const { register, setupApp, isLoading, error, clearError, isDesktop } =
@@ -129,7 +131,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         autoComplete="off"
       >
         <Form.Item
-          label="Username"
+          label={t('auth.username')}
           name="username"
           rules={[
             { required: true, message: 'Please input your username!' },
@@ -138,13 +140,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         >
           <Input
             prefix={<UserOutlined />}
-            placeholder="Enter username"
+            placeholder={t('auth.enterUsername')}
             autoComplete="username"
           />
         </Form.Item>
 
         <Form.Item
-          label="Email"
+          label={t('auth.email')}
           name="email"
           rules={[
             { required: true, message: 'Please input your email!' },
@@ -153,13 +155,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         >
           <Input
             prefix={<MailOutlined />}
-            placeholder="Enter email address"
+            placeholder={t('auth.enterEmailAddress')}
             autoComplete="email"
           />
         </Form.Item>
 
         <Form.Item
-          label="Password"
+          label={t('auth.password')}
           name="password"
           rules={[
             { required: true, message: 'Please input your password!' },
@@ -168,13 +170,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         >
           <Input.Password
             prefix={<LockOutlined />}
-            placeholder="Enter password"
+            placeholder={t('auth.enterPassword')}
             autoComplete="new-password"
           />
         </Form.Item>
 
         <Form.Item
-          label="Confirm Password"
+          label={t('auth.confirmPassword')}
           name="confirmPassword"
           dependencies={['password']}
           rules={[
@@ -191,7 +193,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         >
           <Input.Password
             prefix={<LockOutlined />}
-            placeholder="Confirm password"
+            placeholder={t('auth.confirmPasswordPlaceholder')}
             autoComplete="new-password"
           />
         </Form.Item>

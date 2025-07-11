@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   App,
   Badge,
@@ -45,6 +46,7 @@ const { Title, Text } = Typography
 const { Option } = Select
 
 export function UsersSettings() {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
 
@@ -227,7 +229,7 @@ export function UsersSettings() {
 
   const columns: ColumnsType<User> = [
     {
-      title: 'User',
+      title: t('admin.users.columns.user'),
       key: 'user',
       render: (_, record: User) => (
         <Space>
@@ -249,7 +251,7 @@ export function UsersSettings() {
       ),
     },
     {
-      title: 'Status',
+      title: t('admin.users.columns.status'),
       dataIndex: 'is_active',
       key: 'is_active',
       render: (active: boolean) => (
@@ -260,7 +262,7 @@ export function UsersSettings() {
       ),
     },
     {
-      title: 'Groups',
+      title: t('admin.users.columns.groups'),
       dataIndex: 'groups',
       key: 'groups',
       render: (groups: UserGroup[]) => (
@@ -275,7 +277,7 @@ export function UsersSettings() {
       ),
     },
     {
-      title: 'Last Login',
+      title: t('admin.users.columns.lastLogin'),
       dataIndex: 'last_login_at',
       key: 'last_login_at',
       render: (date: string) =>
@@ -286,13 +288,13 @@ export function UsersSettings() {
         ),
     },
     {
-      title: 'Created',
+      title: t('admin.users.columns.created'),
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: 'Actions',
+      title: t('admin.users.columns.actions'),
       key: 'actions',
       render: (_, record: User) => (
         <Space>
@@ -357,8 +359,8 @@ export function UsersSettings() {
     return (
       <Result
         icon={<ExclamationCircleOutlined />}
-        title="Access Denied"
-        subTitle={`You do not have permission to access user management. Contact your administrator to request ${Permission.users.read} permission.`}
+        title={t('admin.users.accessDenied')}
+        subTitle={t('admin.users.accessDeniedMessage', { permission: Permission.users.read })}
         extra={
           <Button type="primary" onClick={() => window.history.back()}>
             Go Back
@@ -396,7 +398,7 @@ export function UsersSettings() {
 
         {/* Edit User Modal */}
         <Modal
-          title="Edit User"
+          title={t('admin.users.editUser')}
           open={editModalVisible}
           onCancel={() => {
             setEditModalVisible(false)
@@ -410,14 +412,14 @@ export function UsersSettings() {
           <Form form={editForm} layout="vertical" onFinish={handleEditUser}>
             <Form.Item
               name="username"
-              label="Username"
+              label={t('admin.users.forms.username')}
               rules={[{ required: true, message: 'Please enter username' }]}
             >
-              <Input placeholder="Enter username" />
+              <Input placeholder={t('admin.users.forms.enterUsername')} />
             </Form.Item>
             <Form.Item
               name="email"
-              label="Email"
+              label={t('admin.users.forms.email')}
               rules={[
                 {
                   required: true,
@@ -426,14 +428,14 @@ export function UsersSettings() {
                 },
               ]}
             >
-              <Input placeholder="Enter email" />
+              <Input placeholder={t('admin.users.forms.enterEmail')} />
             </Form.Item>
-            <Form.Item name="is_active" label="Active" valuePropName="checked">
+            <Form.Item name="is_active" label={t('admin.users.forms.active')} valuePropName="checked">
               <Switch />
             </Form.Item>
             <Form.Item
               name="profile"
-              label="Profile (JSON)"
+              label={t('admin.users.forms.profile')}
               rules={[
                 {
                   validator: (_, value) => {
@@ -471,7 +473,7 @@ export function UsersSettings() {
 
         {/* Reset Password Modal */}
         <Modal
-          title="Reset Password"
+          title={t('admin.users.resetPassword')}
           open={passwordModalVisible}
           onCancel={() => {
             setPasswordModalVisible(false)
@@ -488,17 +490,17 @@ export function UsersSettings() {
           >
             <Form.Item
               name="new_password"
-              label="New Password"
+              label={t('admin.users.forms.newPassword')}
               rules={[
                 { required: true, message: 'Please enter new password' },
                 { min: 6, message: 'Password must be at least 6 characters' },
               ]}
             >
-              <Input.Password placeholder="Enter new password" />
+              <Input.Password placeholder={t('admin.users.forms.enterNewPassword')} />
             </Form.Item>
             <Form.Item
               name="confirm_password"
-              label="Confirm Password"
+              label={t('admin.users.forms.confirmPassword')}
               dependencies={['new_password']}
               rules={[
                 { required: true, message: 'Please confirm password' },
@@ -512,7 +514,7 @@ export function UsersSettings() {
                 }),
               ]}
             >
-              <Input.Password placeholder="Confirm new password" />
+              <Input.Password placeholder={t('admin.users.forms.confirmNewPassword')} />
             </Form.Item>
             <Form.Item className="mb-0">
               <Space>
@@ -564,7 +566,7 @@ export function UsersSettings() {
                   canEditUsers && !selectedUser?.is_protected && (
                     <Popconfirm
                       key="remove"
-                      title="Remove user from this group?"
+                      title={t('admin.users.removeFromGroupConfirm')}
                       onConfirm={() =>
                         handleRemoveFromGroup(selectedUser!.id, group.id)
                       }
@@ -590,7 +592,7 @@ export function UsersSettings() {
 
         {/* Assign Group Modal */}
         <Modal
-          title="Assign User to Group"
+          title={t('admin.users.assignToGroup')}
           open={assignGroupModalVisible}
           onCancel={() => {
             setAssignGroupModalVisible(false)
@@ -607,10 +609,10 @@ export function UsersSettings() {
           >
             <Form.Item
               name="group_id"
-              label="Select Group"
-              rules={[{ required: true, message: 'Please select a group' }]}
+              label={t('admin.users.forms.selectGroup')}
+              rules={[{ required: true, message: t('admin.users.forms.pleaseSelectGroup') }]}
             >
-              <Select placeholder="Select a group to assign">
+              <Select placeholder={t('admin.users.forms.selectGroupToAssign')}>
                 {groups
                   .filter(
                     group =>

@@ -139,7 +139,7 @@ export const ProjectsPage: React.FC = () => {
       })
       setNewProjectModalVisible(false)
       form.resetFields()
-      message.success('Project created successfully')
+      message.success(t('projects.projectCreated'))
     } catch (error) {
       // Error is handled by the store
       console.error('Failed to create project:', error)
@@ -157,7 +157,7 @@ export const ProjectsPage: React.FC = () => {
       setEditProjectModalVisible(false)
       setEditingProject(null)
       form.resetFields()
-      message.success('Project updated successfully')
+      message.success(t('projects.projectUpdated'))
     } catch (error) {
       // Error is handled by the store
       console.error('Failed to update project:', error)
@@ -167,7 +167,7 @@ export const ProjectsPage: React.FC = () => {
   const handleDeleteProject = async (project: Project) => {
     try {
       await deleteProject(project.id)
-      message.success('Project deleted successfully')
+      message.success(t('projects.projectDeleted'))
     } catch (error) {
       // Error is handled by the store
       console.error('Failed to delete project:', error)
@@ -204,17 +204,17 @@ export const ProjectsPage: React.FC = () => {
     {
       key: 'edit',
       icon: <EditOutlined />,
-      label: 'Edit',
+      label: t('buttons.edit'),
       onClick: () => openEditModal(project),
     },
     {
       key: 'delete',
       icon: <DeleteOutlined />,
-      label: 'Delete',
+      label: t('buttons.delete'),
       danger: true,
       onClick: () => {
         Modal.confirm({
-          title: 'Delete Project',
+          title: t('projects.deleteProject'),
           content: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
           okText: 'Delete',
           okType: 'danger',
@@ -257,9 +257,9 @@ export const ProjectsPage: React.FC = () => {
             onChange={setSortBy}
             style={{ width: 120 }}
             options={[
-              { label: 'Activity', value: 'activity' },
-              { label: 'Name', value: 'name' },
-              { label: 'Created', value: 'created' },
+              { label: t('labels.activity'), value: 'activity' },
+              { label: t('labels.name'), value: 'name' },
+              { label: t('labels.created'), value: 'created' },
             ]}
           />
         </div>
@@ -351,7 +351,7 @@ export const ProjectsPage: React.FC = () => {
 
       {/* New Project Modal */}
       <Modal
-        title="Create a personal project"
+        title={t('projects.createPersonalProject')}
         open={newProjectModalVisible}
         onCancel={() => {
           setNewProjectModalVisible(false)
@@ -367,14 +367,17 @@ export const ProjectsPage: React.FC = () => {
           initialValues={{ is_private: true }}
         >
           <Form.Item
-            label="What are you working on?"
+            label={t('projects.whatAreYouWorkingOn')}
             name="name"
             rules={[{ required: true, message: 'Please enter a project name' }]}
           >
             <Input placeholder={t('forms.nameYourProject')} size="large" />
           </Form.Item>
 
-          <Form.Item label="What are you trying to achieve?" name="description">
+          <Form.Item
+            label={t('projects.whatAreYouTryingToAchieve')}
+            name="description"
+          >
             <TextArea
               placeholder={t('forms.describeYourProject')}
               rows={4}
@@ -400,7 +403,7 @@ export const ProjectsPage: React.FC = () => {
 
       {/* Edit Project Modal */}
       <Modal
-        title="Edit Project"
+        title={t('projects.editProject')}
         open={editProjectModalVisible}
         onCancel={() => {
           setEditProjectModalVisible(false)
@@ -412,14 +415,14 @@ export const ProjectsPage: React.FC = () => {
       >
         <Form form={form} layout="vertical" onFinish={handleEditProject}>
           <Form.Item
-            label="Project Name"
+            label={t('projects.projectName')}
             name="name"
             rules={[{ required: true, message: 'Please enter a project name' }]}
           >
             <Input placeholder={t('forms.nameYourProject')} size="large" />
           </Form.Item>
 
-          <Form.Item label="Description" name="description">
+          <Form.Item label={t('labels.description')} name="description">
             <TextArea
               placeholder={t('forms.describeYourProject')}
               rows={4}
