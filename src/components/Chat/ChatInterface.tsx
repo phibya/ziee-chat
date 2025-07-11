@@ -1,28 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import {
-  App,
-  Avatar,
-  Button,
-  Col,
-  Input,
-  Row,
-  Select,
-  Space,
-  Spin,
-  Typography,
-} from 'antd'
+import { useEffect, useState } from 'react'
+import { App, Flex } from 'antd'
 import { useTranslation } from 'react-i18next'
-import {
-  CloseOutlined,
-  LeftOutlined,
-  LoadingOutlined,
-  MessageOutlined,
-  RightOutlined,
-  RobotOutlined,
-  SaveOutlined,
-  SendOutlined,
-  StopOutlined,
-} from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { ApiClient } from '../../api/client'
 import {
@@ -33,11 +11,10 @@ import {
 import { Assistant } from '../../types/api/assistant'
 import { ModelProvider } from '../../types/api/modelProvider'
 import { User } from '../../types/api/user'
-import { MarkdownRenderer } from './MarkdownRenderer'
-
-const { TextArea } = Input
-const { Text } = Typography
-const { Option } = Select
+import { ChatHeader } from './ChatHeader'
+import { ChatWelcome } from './ChatWelcome'
+import { ChatMessageList } from './ChatMessageList'
+import { ChatInput } from './ChatInput'
 
 interface ChatInterfaceProps {
   conversationId: string | null
@@ -67,7 +44,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
   const [loadingBranches, setLoadingBranches] = useState<{
     [key: string]: boolean
   }>({})
-  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const getAuthToken = () => {
     if (typeof window === 'undefined') return null
@@ -93,10 +69,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
       loadConversation(conversationId)
     }
   }, [conversationId])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
 
   const initializeData = async () => {
     try {
@@ -157,10 +129,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     } catch (error) {
       message.error('Failed to load conversation')
     }
-  }
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   const createNewConversation = async () => {
@@ -388,353 +356,70 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     }
   }
 
-  const getBranchInfo = (msg: Message) => {
-    const branchKey = `${msg.id}`
-    const branches = messageBranches[branchKey] || []
-    const currentIndex = branches.findIndex(b => b.is_active_branch)
-
-    return {
-      branches,
-      currentIndex,
-      hasBranches: branches.length > 1,
-      isLoading: loadingBranches[branchKey] || false,
-    }
-  }
-
-  const renderMessage = (msg: Message) => {
-    const isUser = msg.role === 'user'
-    const isEditing = editingMessage === msg.id
-
-    return (
-      <div key={msg.id} className="group">
-        <div>
-          {/* Message header with avatar */}
-          <div className="flex items-center">
-            <div className="flex items-center">
-              <Avatar size={32} icon={isUser ? 'P' : <RobotOutlined />} />
-            </div>
-          </div>
-
-          {/* Message content */}
-          <div>
-            {isEditing ? (
-              <div>
-                <TextArea
-                  value={editValue}
-                  onChange={e => setEditValue(e.target.value)}
-                  autoSize={{ minRows: 2, maxRows: 8 }}
-                />
-                <div className="flex">
-                  <Button
-                    size="small"
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={handleSaveEdit}
-                  >
-                    {t('chat.save')}
-                  </Button>
-                  <Button
-                    size="small"
-                    icon={<CloseOutlined />}
-                    onClick={handleCancelEdit}
-                  >
-                    {t('chat.cancel')}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  whiteSpace: isUser ? 'pre-wrap' : 'normal',
-                }}
-              >
-                {isUser ? (
-                  msg.content
-                ) : (
-                  <MarkdownRenderer content={msg.content} />
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Tools/Actions at the bottom for user messages */}
-          {isUser &&
-            !isEditing &&
-            (() => {
-              const branchInfo = getBranchInfo(msg)
-              return (
-                <div className="flex items-center opacity-0 group-hover:opacity-100">
-                  <Button
-                    size="small"
-                    type="text"
-                    onClick={() => handleEditMessage(msg.id, msg.content)}
-                  >
-                    {t('chat.edit')}
-                  </Button>
-
-                  {!branchInfo.hasBranches && !branchInfo.isLoading && (
-                    <Button
-                      size="small"
-                      type="text"
-                      onClick={() => loadMessageBranches(msg)}
-                    >
-                      <LeftOutlined />
-                    </Button>
-                  )}
-
-                  {branchInfo.isLoading && <Spin size="small" />}
-
-                  {branchInfo.hasBranches && (
-                    <>
-                      <Button
-                        size="small"
-                        type="text"
-                        icon={<LeftOutlined />}
-                        disabled={branchInfo.currentIndex <= 0}
-                        onClick={() => {
-                          const prevBranch =
-                            branchInfo.branches[branchInfo.currentIndex - 1]
-                          if (prevBranch) handleSwitchBranch(prevBranch.id)
-                        }}
-                      />
-                      <div className="flex items-center">
-                        {branchInfo.currentIndex + 1} /{' '}
-                        {branchInfo.branches.length}
-                      </div>
-                      <Button
-                        size="small"
-                        type="text"
-                        icon={<RightOutlined />}
-                        disabled={
-                          branchInfo.currentIndex >=
-                          branchInfo.branches.length - 1
-                        }
-                        onClick={() => {
-                          const nextBranch =
-                            branchInfo.branches[branchInfo.currentIndex + 1]
-                          if (nextBranch) handleSwitchBranch(nextBranch.id)
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              )
-            })()}
-        </div>
-      </div>
-    )
-  }
-
   // Empty state (no conversation loaded)
   if (!conversation && !conversationId) {
     return (
-      <div className="flex flex-col h-full">
-        {/* Header with model selection */}
-        <div className="px-4 sm:px-6 py-4">
-          <Row gutter={16} align="middle">
-            <Col xs={24} sm={12} md={8}>
-              <Select
-                value={selectedAssistant}
-                onChange={setSelectedAssistant}
-                placeholder="Select your assistant"
-                className="w-full"
-                showSearch
-                optionFilterProp="children"
-              >
-                {assistants.map(assistant => (
-                  <Option key={assistant.id} value={assistant.id}>
-                    <Space>
-                      <RobotOutlined />
-                      {assistant.name}
-                    </Space>
-                  </Option>
-                ))}
-              </Select>
-            </Col>
-            <Col xs={24} sm={12} md={8}>
-              <Select
-                value={selectedModel}
-                onChange={setSelectedModel}
-                placeholder="Select a model"
-                className="w-full"
-                showSearch
-                optionFilterProp="children"
-              >
-                {modelProviders.map(provider => (
-                  <Select.OptGroup key={provider.id} label={provider.name}>
-                    {provider.models.map(model => (
-                      <Option
-                        key={`${provider.id}:${model.id}`}
-                        value={`${provider.id}:${model.id}`}
-                      >
-                        {model.alias}
-                      </Option>
-                    ))}
-                  </Select.OptGroup>
-                ))}
-              </Select>
-            </Col>
-          </Row>
-        </div>
-
-        {/* Welcome message */}
-        <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
-          <div className="mb-8">
-            <div className="text-3xl font-light mb-4">
-              {t('chat.placeholderWelcome')}
-            </div>
-          </div>
-
-          <div className="w-full max-w-2xl">
-            <div className="flex items-end gap-3">
-              <div className="flex-1">
-                <TextArea
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder={t('chat.placeholder')}
-                  autoSize={{ minRows: 1, maxRows: 6 }}
-                  disabled={!selectedAssistant || !selectedModel}
-                  className="resize-none"
-                />
-              </div>
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={handleSend}
-                disabled={
-                  !inputValue.trim() || !selectedAssistant || !selectedModel
-                }
-                className="h-10 rounded-lg"
-              >
-                {t('chat.send')}
-              </Button>
-            </div>
-
-            {(!selectedAssistant || !selectedModel) && (
-              <div className="mt-4">
-                <Text type="secondary" className="text-sm">
-                  {t('chat.noAssistantSelected')}
-                </Text>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <ChatWelcome
+        inputValue={inputValue}
+        selectedAssistant={selectedAssistant}
+        selectedModel={selectedModel}
+        assistants={assistants}
+        modelProviders={modelProviders}
+        onInputChange={setInputValue}
+        onAssistantChange={setSelectedAssistant}
+        onModelChange={setSelectedModel}
+        onSend={handleSend}
+        onKeyPress={handleKeyPress}
+      />
     )
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header with conversation title and controls */}
-      <div className="px-4 sm:px-6 py-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Text strong className="text-lg">
-                {conversation?.title || 'Claude'}
-              </Text>
-            </div>
-
-            <div className="flex items-center gap-2 text-sm">
-              <span>
-                {selectedAssistant &&
-                  assistants.find(a => a.id === selectedAssistant)?.name}
-              </span>
-              <span>•</span>
-              <span>
-                {selectedModel &&
-                  (() => {
-                    const [providerId, modelId] = selectedModel.split(':')
-                    const provider = modelProviders.find(
-                      p => p.id === providerId,
-                    )
-                    const model = provider?.models.find(m => m.id === modelId)
-                    return model?.alias || modelId
-                  })()}
-              </span>
-            </div>
-          </div>
+    <Flex className="flex-col h-dvh gap-3 relative">
+      <div className={'absolute top-0 left-0 w-full z-10 backdrop-blur-2xl'}>
+        <ChatHeader
+          conversation={conversation}
+          selectedAssistant={selectedAssistant}
+          selectedModel={selectedModel}
+          assistants={assistants}
+          modelProviders={modelProviders}
+        />
+      </div>
+      <Flex
+        className={
+          'max-w-4xl self-center w-full flex-1 h-full overflow-auto !pt-20 !mb-10'
+        }
+      >
+        <ChatMessageList
+          messages={messages}
+          isLoading={isLoading}
+          isStreaming={isStreaming}
+          editingMessage={editingMessage}
+          editValue={editValue}
+          messageBranches={messageBranches}
+          loadingBranches={loadingBranches}
+          onEditMessage={handleEditMessage}
+          onSaveEdit={handleSaveEdit}
+          onCancelEdit={handleCancelEdit}
+          onEditValueChange={setEditValue}
+          onLoadBranches={loadMessageBranches}
+          onSwitchBranch={handleSwitchBranch}
+        />
+      </Flex>
+      <div className={'absolute bottom-0 w-full pb-2 justify-items-center'}>
+        <div className={'max-w-4xl w-full'}>
+          <ChatInput
+            value={inputValue}
+            onChange={setInputValue}
+            onSend={handleSend}
+            onStop={handleStopGeneration}
+            onKeyPress={handleKeyPress}
+            disabled={isLoading || isStreaming}
+            isLoading={isLoading}
+            isStreaming={isStreaming}
+          />
         </div>
       </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center py-20">
-              <MessageOutlined className="text-5xl mb-4" />
-              <Text className="text-lg">Start your conversation</Text>
-            </div>
-          ) : (
-            <>
-              {messages.map(renderMessage)}
-              {(isLoading || isStreaming) && (
-                <div className="mb-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium">
-                      <RobotOutlined />
-                    </div>
-                  </div>
-                  <div className="ml-11">
-                    <div className="flex items-center gap-2 text-base">
-                      <Spin
-                        indicator={
-                          <LoadingOutlined style={{ fontSize: 16 }} spin />
-                        }
-                      />
-                      <span>
-                        {isStreaming
-                          ? t('chat.generating')
-                          : t('chat.thinking')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Input */}
-      <div className="px-4 sm:px-6 py-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <TextArea
-                value={inputValue}
-                onChange={e => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Message Claude..."
-                autoSize={{ minRows: 1, maxRows: 6 }}
-                disabled={isLoading || isStreaming}
-                className="resize-none"
-              />
-            </div>
-            <div className="flex gap-2">
-              {(isLoading || isStreaming) && (
-                <Button
-                  type="text"
-                  icon={<StopOutlined />}
-                  onClick={handleStopGeneration}
-                >
-                  {t('chat.stop')}
-                </Button>
-              )}
-              <Button
-                type="primary"
-                icon={<SendOutlined />}
-                onClick={handleSend}
-                disabled={!inputValue.trim() || isLoading || isStreaming}
-              >
-                {t('chat.send')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Flex>
   )
 }

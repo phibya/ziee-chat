@@ -146,7 +146,7 @@ export function RecentConversations({
   }
 
   return (
-    <div className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto max-w-42 pl-2">
       {loading ? (
         <div className="text-center">
           <div>Loading...</div>
@@ -175,21 +175,19 @@ export function RecentConversations({
               </div>
             ) : (
               <>
-                <div
+                <Typography.Text
+                  ellipsis
                   onClick={() => handleConversationClick(conversation.id)}
-                  className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap"
                 >
                   {conversation.title}
-                </div>
+                </Typography.Text>
 
                 {/* Last message preview */}
                 {conversation.last_message && (
-                  <div className="overflow-hidden text-ellipsis whitespace-nowrap">
-                    <Typography.Text type="secondary">
-                      {conversation.last_message.substring(0, 50)}
-                      {conversation.last_message.length > 50 ? '...' : ''}
-                    </Typography.Text>
-                  </div>
+                  <Typography.Text type="secondary" ellipsis>
+                    {conversation.last_message.substring(0, 50)}
+                    {conversation.last_message.length > 50 ? '...' : ''}
+                  </Typography.Text>
                 )}
 
                 {/* Action buttons - only visible on hover */}

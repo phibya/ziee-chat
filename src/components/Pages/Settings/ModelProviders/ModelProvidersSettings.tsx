@@ -490,17 +490,46 @@ export function ModelProvidersSettings() {
         m.id === modelId ? updatedModel : m,
       )
 
-      const updatedProvider = {
+      let updatedProvider = {
         ...currentProvider,
         models: updatedModels,
       }
 
+      // If disabling a model, check if this was the last enabled model
+      if (!enabled) {
+        const remainingEnabledModels = updatedModels.filter(m => m.enabled !== false)
+        
+        // If no models are enabled and provider is currently enabled, disable the provider
+        if (remainingEnabledModels.length === 0 && currentProvider.enabled) {
+          try {
+            const disabledProvider = await ApiClient.ModelProviders.update({
+              provider_id: currentProvider.id,
+              enabled: false,
+            })
+            updatedProvider = disabledProvider
+            message.success(
+              `${updatedModel.name} disabled. ${currentProvider.name} provider disabled as no models remain active.`,
+            )
+          } catch (providerError) {
+            console.error('Failed to disable provider:', providerError)
+            // Still update the model but show warning about provider
+            message.warning(
+              `${updatedModel.name} disabled, but failed to disable provider automatically`,
+            )
+          }
+        } else {
+          message.success(
+            `${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`,
+          )
+        }
+      } else {
+        message.success(
+          `${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`,
+        )
+      }
+
       setProviders(prev =>
         prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
-
-      message.success(
-        `${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`,
       )
     } catch (error) {
       console.error('Failed to toggle model:', error)
