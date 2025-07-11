@@ -8,6 +8,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::api::app::is_desktop_app;
+use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::auth::AuthService;
 use crate::database::models::*;
 use crate::database::queries::users;
@@ -27,14 +28,9 @@ pub struct AuthResponse {
     pub expires_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorResponse {
-    pub error: String,
-}
-
 /// Check if the app needs initial setup (not initialized)
 #[debug_handler]
-pub async fn check_init_status() -> Result<Json<InitResponse>, (StatusCode, Json<ErrorResponse>)> {
+pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
     let needs_setup = match crate::database::queries::configuration::is_app_initialized().await {
         Ok(is_initialized) => !is_initialized,
         Err(_) => true,
@@ -50,15 +46,10 @@ pub async fn check_init_status() -> Result<Json<InitResponse>, (StatusCode, Json
 #[debug_handler]
 pub async fn init_app(
     Json(payload): Json<CreateUserRequest>,
-) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> ApiResult<Json<AuthResponse>> {
     // Check if app is already initialized
     if let Ok(true) = crate::database::queries::configuration::is_app_initialized().await {
-        return Err((
-            StatusCode::CONFLICT,
-            Json(ErrorResponse {
-                error: "App already initialized".to_string(),
-            }),
-        ));
+        return Err(AppError::app_already_initialized());
     }
 
     let mut root_request = payload;
@@ -82,16 +73,11 @@ pub async fn init_app(
                     let login_token = AUTH_SERVICE.generate_login_token();
                     let when_created = chrono::Utc::now().timestamp_millis();
 
-                    if let Err(_) =
+                    if let Err(e) =
                         users::add_login_token(user.id, login_token, when_created, Some(expires_at))
                             .await
                     {
-                        return Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(ErrorResponse {
-                                error: "Failed to store login token".to_string(),
-                            }),
-                        ));
+                        return Err(AppError::from_error(ErrorCode::AuthTokenStorageFailed, e));
                     }
 
                     // Mark app as initialized
@@ -107,20 +93,10 @@ pub async fn init_app(
                         expires_at,
                     }))
                 }
-                Err(_) => Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        error: "Failed to generate token".to_string(),
-                    }),
-                )),
+                Err(e) => Err(AppError::from_error(ErrorCode::AuthTokenGenerationFailed, e)),
             }
         }
-        Err(e) => Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                error: format!("Failed to create root user: {}", e),
-            }),
-        )),
+        Err(e) => Err(AppError::from_string(ErrorCode::UserRootCreationFailed, e)),
     }
 }
 
@@ -128,7 +104,7 @@ pub async fn init_app(
 #[debug_handler]
 pub async fn login(
     Json(payload): Json<LoginRequest>,
-) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> ApiResult<Json<AuthResponse>> {
     // For desktop app, always auto-login with default admin
     if is_desktop_app() {
         match AUTH_SERVICE.auto_login_desktop().await {
@@ -140,12 +116,7 @@ pub async fn login(
                 }));
             }
             Err(e) => {
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        error: format!("Desktop auto-login failed: {}", e),
-                    }),
-                ));
+                return Err(AppError::from_string(ErrorCode::AuthenticationFailed, e));
             }
         }
     }
@@ -160,24 +131,14 @@ pub async fn login(
             user: login_response.user,
             expires_at: login_response.expires_at,
         })),
-        Ok(None) => Err((
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse {
-                error: "Invalid credentials".to_string(),
-            }),
-        )),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: format!("Authentication failed: {}", e),
-            }),
-        )),
+        Ok(None) => Err(AppError::invalid_credentials()),
+        Err(e) => Err(AppError::from_string(ErrorCode::AuthenticationFailed, e)),
     }
 }
 
 /// Logout endpoint
 #[debug_handler]
-pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+pub async fn logout(req: Request) -> ApiResult<StatusCode> {
     // Extract token from Authorization header
     let auth_header = req
         .headers()
@@ -186,12 +147,7 @@ pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorR
         .and_then(|h| h.strip_prefix("Bearer "));
 
     let Some(token) = auth_header else {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse {
-                error: "Missing or invalid authorization header".to_string(),
-            }),
-        ));
+        return Err(AppError::missing_auth_header());
     };
 
     // For desktop app, don't actually logout (just return success)
@@ -201,12 +157,7 @@ pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorR
 
     // For web app, remove the login token
     if let Err(e) = AUTH_SERVICE.logout_user(token).await {
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: format!("Logout failed: {}", e),
-            }),
-        ));
+        return Err(AppError::from_string(ErrorCode::AuthLogoutFailed, e));
     }
 
     Ok(StatusCode::OK)
@@ -216,7 +167,7 @@ pub async fn logout(req: Request) -> Result<StatusCode, (StatusCode, Json<ErrorR
 #[debug_handler]
 pub async fn me(
     axum::Extension(auth_user): axum::Extension<crate::api::middleware::AuthenticatedUser>,
-) -> Result<Json<User>, (StatusCode, Json<ErrorResponse>)> {
+) -> ApiResult<Json<User>> {
     Ok(Json(auth_user.user))
 }
 
@@ -224,36 +175,21 @@ pub async fn me(
 #[debug_handler]
 pub async fn register(
     Json(payload): Json<CreateUserRequest>,
-) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
+) -> ApiResult<Json<AuthResponse>> {
     // Desktop app doesn't support registration
     if is_desktop_app() {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                error: "Registration not supported in desktop mode".to_string(),
-            }),
-        ));
+        return Err(AppError::desktop_mode_restriction());
     }
 
     // Check if app is initialized
     if let Ok(false) = crate::database::queries::configuration::is_app_initialized().await {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                error: "App not initialized. Please initialize the app first".to_string(),
-            }),
-        ));
+        return Err(AppError::app_not_initialized());
     }
 
     // Check if user registration is enabled
     if let Ok(false) = crate::database::queries::configuration::is_user_registration_enabled().await
     {
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse {
-                error: "User registration is currently disabled".to_string(),
-            }),
-        ));
+        return Err(AppError::registration_disabled());
     }
 
     // Create new user
@@ -268,16 +204,11 @@ pub async fn register(
                     let login_token = AUTH_SERVICE.generate_login_token();
                     let when_created = chrono::Utc::now().timestamp_millis();
 
-                    if let Err(_) =
+                    if let Err(e) =
                         users::add_login_token(user.id, login_token, when_created, Some(expires_at))
                             .await
                     {
-                        return Err((
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            Json(ErrorResponse {
-                                error: "Failed to store login token".to_string(),
-                            }),
-                        ));
+                        return Err(AppError::from_error(ErrorCode::AuthTokenStorageFailed, e));
                     }
 
                     Ok(Json(AuthResponse {
@@ -286,19 +217,9 @@ pub async fn register(
                         expires_at,
                     }))
                 }
-                Err(_) => Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(ErrorResponse {
-                        error: "Failed to generate token".to_string(),
-                    }),
-                )),
+                Err(e) => Err(AppError::from_error(ErrorCode::AuthTokenGenerationFailed, e)),
             }
         }
-        Err(e) => Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse {
-                error: format!("Failed to create user: {}", e),
-            }),
-        )),
+        Err(e) => Err(AppError::from_string(ErrorCode::UserCreationFailed, e)),
     }
 }

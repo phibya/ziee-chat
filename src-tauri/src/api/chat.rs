@@ -16,6 +16,7 @@ use crate::ai::{
     openai::OpenAIProvider,
     providers::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
 };
+use crate::api::errors::ErrorCode;
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
@@ -73,6 +74,7 @@ pub struct StreamCompleteData {
 #[derive(Debug, Serialize)]
 pub struct StreamErrorData {
     pub error: String,
+    pub code: String,
 }
 
 /// Create a new conversation
@@ -191,6 +193,7 @@ pub async fn send_message_stream(
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
                         error: "Provider not found".to_string(),
+                        code: ErrorCode::ResourceProviderNotFound.as_str().to_string(),
                     })
                     .unwrap_or_default(),
                 )));
@@ -200,6 +203,7 @@ pub async fn send_message_stream(
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
                         error: format!("Error getting model provider: {}", e),
+                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
                     })
                     .unwrap_or_default(),
                 )));
@@ -212,6 +216,7 @@ pub async fn send_message_stream(
             let _ = tx.send(Ok(Event::default().event("error").data(
                 &serde_json::to_string(&StreamErrorData {
                     error: "Provider is disabled".to_string(),
+                    code: ErrorCode::ResourceProviderDisabled.as_str().to_string(),
                 })
                 .unwrap_or_default(),
             )));
@@ -228,6 +233,7 @@ pub async fn send_message_stream(
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
                         error: "Model not found".to_string(),
+                        code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
                     })
                     .unwrap_or_default(),
                 )));
@@ -237,6 +243,7 @@ pub async fn send_message_stream(
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
                         error: format!("Error getting model: {}", e),
+                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
                     })
                     .unwrap_or_default(),
                 )));
@@ -252,6 +259,7 @@ pub async fn send_message_stream(
                     let _ = tx.send(Ok(Event::default().event("error").data(
                         &serde_json::to_string(&StreamErrorData {
                             error: "Conversation not found".to_string(),
+                            code: ErrorCode::ResourceConversationNotFound.as_str().to_string(),
                         })
                         .unwrap_or_default(),
                     )));
@@ -261,6 +269,7 @@ pub async fn send_message_stream(
                     let _ = tx.send(Ok(Event::default().event("error").data(
                         &serde_json::to_string(&StreamErrorData {
                             error: format!("Error getting conversation: {}", e),
+                            code: ErrorCode::SystemDatabaseError.as_str().to_string(),
                         })
                         .unwrap_or_default(),
                     )));
@@ -317,6 +326,7 @@ pub async fn send_message_stream(
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
                         error: format!("Error creating AI provider: {}", e),
+                        code: ErrorCode::SystemInternalError.as_str().to_string(),
                     })
                     .unwrap_or_default(),
                 )));
@@ -350,6 +360,7 @@ pub async fn send_message_stream(
             let _ = tx.send(Ok(Event::default().event("error").data(
                 &serde_json::to_string(&StreamErrorData {
                     error: format!("Error saving user message: {}", e),
+                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
                 })
                 .unwrap_or_default(),
             )));
@@ -360,14 +371,14 @@ pub async fn send_message_stream(
         match ai_provider.chat_stream(chat_request).await {
             Ok(mut stream) => {
                 let mut full_content = String::new();
-                
+
                 // Process the stream
                 while let Some(chunk_result) = stream.next().await {
                     match chunk_result {
                         Ok(chunk) => {
                             if let Some(content) = chunk.content {
                                 full_content.push_str(&content);
-                                
+
                                 // Send chunk to client
                                 let _ = tx.send(Ok(Event::default().event("chunk").data(
                                     &serde_json::to_string(&StreamChunkData {
@@ -377,7 +388,7 @@ pub async fn send_message_stream(
                                     .unwrap_or_default(),
                                 )));
                             }
-                            
+
                             // Check if streaming is complete
                             if chunk.finish_reason.is_some() {
                                 break;
@@ -387,6 +398,7 @@ pub async fn send_message_stream(
                             let _ = tx.send(Ok(Event::default().event("error").data(
                                 &serde_json::to_string(&StreamErrorData {
                                     error: format!("Streaming error: {}", e),
+                                    code: ErrorCode::SystemStreamingError.as_str().to_string(),
                                 })
                                 .unwrap_or_default(),
                             )));
@@ -443,6 +455,7 @@ pub async fn send_message_stream(
                         let _ = tx.send(Ok(Event::default().event("error").data(
                             &serde_json::to_string(&StreamErrorData {
                                 error: format!("Error saving assistant message: {}", e),
+                                code: ErrorCode::SystemDatabaseError.as_str().to_string(),
                             })
                             .unwrap_or_default(),
                         )));
@@ -453,6 +466,7 @@ pub async fn send_message_stream(
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
                         error: format!("Error calling AI provider: {}", e),
+                        code: ErrorCode::SystemExternalServiceError.as_str().to_string(),
                     })
                     .unwrap_or_default(),
                 )));

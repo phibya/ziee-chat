@@ -6,6 +6,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
@@ -26,7 +27,7 @@ pub struct PaginationQuery {
 pub async fn list_model_providers(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> Result<Json<ModelProviderListResponse>, StatusCode> {
+) -> ApiResult<Json<ModelProviderListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -39,7 +40,7 @@ pub async fn list_model_providers(
                     "Failed to get model providers for user {}: {}",
                     auth_user.user.id, e
                 );
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                return Err(e.into());
             }
         };
 
@@ -65,13 +66,13 @@ pub async fn list_model_providers(
 pub async fn get_model_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> Result<Json<ModelProvider>, StatusCode> {
+) -> ApiResult<Json<ModelProvider>> {
     match model_providers::get_model_provider_by_id(provider_id).await {
         Ok(Some(provider)) => Ok(Json(provider)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
             eprintln!("Failed to get model provider {}: {}", provider_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -79,7 +80,7 @@ pub async fn get_model_provider(
 pub async fn create_model_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(mut request): Json<CreateModelProviderRequest>,
-) -> Result<Json<ModelProvider>, StatusCode> {
+) -> ApiResult<Json<ModelProvider>> {
     // Validate provider type
     let valid_types = [
         "llama.cpp",
@@ -91,7 +92,7 @@ pub async fn create_model_provider(
         "custom",
     ];
     if !valid_types.contains(&request.provider_type.as_str()) {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid request"));
     }
 
     // Validate requirements for enabling non-llama.cpp providers
@@ -100,19 +101,19 @@ pub async fn create_model_provider(
             // Check API key
             if request.api_key.is_none() || request.api_key.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: API key is required");
-                return Err(StatusCode::BAD_REQUEST);
+                return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid request"));
             }
 
             // Check base URL
             if request.base_url.is_none() || request.base_url.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: Base URL is required");
-                return Err(StatusCode::BAD_REQUEST);
+                return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid request"));
             }
 
             // Validate URL format
             if !is_valid_url(request.base_url.as_ref().unwrap()) {
                 eprintln!("Cannot create enabled provider: Invalid base URL format");
-                return Err(StatusCode::BAD_REQUEST);
+                return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid request"));
             }
         } else {
             // Llama.cpp providers must start disabled (no models yet)
@@ -124,7 +125,7 @@ pub async fn create_model_provider(
         Ok(provider) => Ok(Json(provider)),
         Err(e) => {
             eprintln!("Failed to create model provider: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -137,7 +138,7 @@ pub async fn update_model_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
     Json(request): Json<UpdateModelProviderRequest>,
-) -> Result<Json<ModelProvider>, StatusCode> {
+) -> ApiResult<Json<ModelProvider>> {
     // If trying to enable the provider, validate requirements
     if let Some(true) = request.enabled {
         // Get the current provider to check its state
@@ -155,7 +156,7 @@ pub async fn update_model_provider(
                             "Cannot enable provider {}: API key is required",
                             provider_id
                         );
-                        return Err(StatusCode::BAD_REQUEST);
+                        return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid operation"));
                     }
 
                     // Check base URL
@@ -168,7 +169,7 @@ pub async fn update_model_provider(
                             "Cannot enable provider {}: Base URL is required",
                             provider_id
                         );
-                        return Err(StatusCode::BAD_REQUEST);
+                        return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid operation"));
                     }
 
                     // Validate URL format
@@ -177,7 +178,7 @@ pub async fn update_model_provider(
                             "Cannot enable provider {}: Invalid base URL format",
                             provider_id
                         );
-                        return Err(StatusCode::BAD_REQUEST);
+                        return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid operation"));
                     }
                 }
 
@@ -187,23 +188,23 @@ pub async fn update_model_provider(
                         "Cannot enable provider {}: No models available",
                         provider_id
                     );
-                    return Err(StatusCode::BAD_REQUEST);
+                    return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid operation"));
                 }
             }
-            Ok(None) => return Err(StatusCode::NOT_FOUND),
+            Ok(None) => return Err(AppError::not_found("Resource")),
             Err(e) => {
                 eprintln!("Failed to get model provider {}: {}", provider_id, e);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                return Err(e.into());
             }
         }
     }
 
     match model_providers::update_model_provider(provider_id, request).await {
         Ok(Some(provider)) => Ok(Json(provider)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
             eprintln!("Failed to update model provider {}: {}", provider_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -211,21 +212,21 @@ pub async fn update_model_provider(
 pub async fn delete_model_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
+) -> ApiResult<StatusCode> {
     match model_providers::delete_model_provider(provider_id).await {
         Ok(Ok(true)) => Ok(StatusCode::NO_CONTENT),
-        Ok(Ok(false)) => Err(StatusCode::NOT_FOUND),
+        Ok(Ok(false)) => Err(AppError::not_found("Resource")),
         Ok(Err(error_message)) => {
             eprintln!(
                 "Cannot delete model provider {}: {}",
                 provider_id, error_message
             );
             // Return a JSON response with the error message for better UX
-            Err(StatusCode::BAD_REQUEST)
+            Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Cannot delete model provider"))
         }
         Err(e) => {
             eprintln!("Failed to delete model provider {}: {}", provider_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -233,13 +234,13 @@ pub async fn delete_model_provider(
 pub async fn clone_model_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> Result<Json<ModelProvider>, StatusCode> {
+) -> ApiResult<Json<ModelProvider>> {
     match model_providers::clone_model_provider(provider_id).await {
         Ok(Some(provider)) => Ok(Json(provider)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
             eprintln!("Failed to clone model provider {}: {}", provider_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -249,12 +250,12 @@ pub async fn create_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
     Json(request): Json<CreateModelRequest>,
-) -> Result<Json<ModelProviderModel>, StatusCode> {
+) -> ApiResult<Json<ModelProviderModel>> {
     match model_providers::create_model(provider_id, request).await {
         Ok(model) => Ok(Json(model)),
         Err(e) => {
             eprintln!("Failed to create model for provider {}: {}", provider_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -263,13 +264,13 @@ pub async fn update_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateModelRequest>,
-) -> Result<Json<ModelProviderModel>, StatusCode> {
+) -> ApiResult<Json<ModelProviderModel>> {
     match model_providers::update_model(model_id, request).await {
         Ok(Some(model)) => Ok(Json(model)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
             eprintln!("Failed to update model {}: {}", model_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -277,13 +278,13 @@ pub async fn update_model(
 pub async fn delete_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
+) -> ApiResult<StatusCode> {
     match model_providers::delete_model(model_id).await {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Ok(false) => Err(AppError::not_found("Resource")),
         Err(e) => {
             eprintln!("Failed to delete model {}: {}", model_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -291,13 +292,13 @@ pub async fn delete_model(
 pub async fn get_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> Result<Json<ModelProviderModel>, StatusCode> {
+) -> ApiResult<Json<ModelProviderModel>> {
     match model_providers::get_model_by_id(model_id).await {
         Ok(Some(model)) => Ok(Json(model)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
             eprintln!("Failed to get model {}: {}", model_id, e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }
@@ -307,7 +308,7 @@ pub async fn test_model_provider_proxy_connection(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(_provider_id): Path<Uuid>,
     Json(request): Json<TestModelProviderProxyRequest>,
-) -> Result<Json<TestModelProviderProxyResponse>, StatusCode> {
+) -> ApiResult<Json<TestModelProviderProxyResponse>> {
     // Test the proxy connection by making a simple HTTP request through the proxy
     match test_proxy_connectivity_for_provider(&request).await {
         Ok(()) => Ok(Json(TestModelProviderProxyResponse {
@@ -323,19 +324,19 @@ pub async fn test_model_provider_proxy_connection(
 
 async fn test_proxy_connectivity_for_provider(
     proxy_config: &TestModelProviderProxyRequest,
-) -> Result<(), String> {
+) -> ApiResult<()> {
     // Validate proxy URL format
     if proxy_config.url.trim().is_empty() {
-        return Err("Proxy URL is empty".to_string());
+        return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Proxy URL is empty"));
     }
 
     // Parse and validate the proxy URL
     let _proxy_url = reqwest::Url::parse(&proxy_config.url)
-        .map_err(|e| format!("Invalid proxy URL format: {}", e))?;
+        .map_err(|e| AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, format!("Invalid proxy URL format: {}", e)))?;
 
     // Create a reqwest client with proxy configuration
     let mut proxy_builder = reqwest::Proxy::all(&proxy_config.url)
-        .map_err(|e| format!("Failed to create proxy: {}", e))?;
+        .map_err(|e| AppError::new(crate::api::errors::ErrorCode::SystemInternalError, format!("Failed to create proxy: {}", e)))?;
 
     // Add authentication if provided
     if !proxy_config.username.is_empty() {
@@ -355,7 +356,7 @@ async fn test_proxy_connectivity_for_provider(
 
     let client = client_builder
         .build()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+        .map_err(|e| AppError::new(crate::api::errors::ErrorCode::SystemInternalError, format!("Failed to create HTTP client: {}", e)))?;
 
     // Test the proxy by making a request to a reliable endpoint
     // Using httpbin.org as it's a simple testing service that returns IP info
@@ -371,32 +372,32 @@ async fn test_proxy_connectivity_for_provider(
                         if body.contains("origin") {
                             Ok(())
                         } else {
-                            Err(format!("Unexpected response format: {}", body))
+                            Err(AppError::new(crate::api::errors::ErrorCode::SystemExternalServiceError, format!("Unexpected response format: {}", body)))
                         }
                     }
-                    Err(e) => Err(format!("Failed to read response body: {}", e)),
+                    Err(e) => Err(AppError::new(crate::api::errors::ErrorCode::SystemExternalServiceError, format!("Failed to read response body: {}", e))),
                 }
             } else {
-                Err(format!(
+                Err(AppError::new(crate::api::errors::ErrorCode::SystemExternalServiceError, format!(
                     "HTTP request failed with status: {}",
                     response.status()
-                ))
+                )))
             }
         }
         Err(e) => {
             // Check if it's a proxy-related error
             let error_msg = e.to_string();
             if error_msg.contains("proxy") || error_msg.contains("CONNECT") {
-                Err(format!("Proxy connection failed: {}", e))
+                Err(AppError::new(crate::api::errors::ErrorCode::SystemExternalServiceError, format!("Proxy connection failed: {}", e)))
             } else if error_msg.contains("timeout") {
-                Err("Proxy connection timed out".to_string())
+                Err(AppError::new(crate::api::errors::ErrorCode::SystemExternalServiceError, "Proxy connection timed out"))
             } else if error_msg.contains("dns") {
-                Err(format!(
+                Err(AppError::new(crate::api::errors::ErrorCode::SystemExternalServiceError, format!(
                     "DNS resolution failed (check proxy settings): {}",
                     e
-                ))
+                )))
             } else {
-                Err(format!("Network request failed: {}", e))
+                Err(AppError::new(crate::api::errors::ErrorCode::SystemExternalServiceError, format!("Network request failed: {}", e)))
             }
         }
     }
@@ -406,12 +407,12 @@ async fn test_proxy_connectivity_for_provider(
 pub async fn get_provider_groups(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> Result<Json<Vec<UserGroup>>, StatusCode> {
+) -> ApiResult<Json<Vec<UserGroup>>> {
     match user_group_model_providers::get_groups_for_model_provider(provider_id).await {
         Ok(groups) => Ok(Json(groups)),
         Err(e) => {
             eprintln!("Error getting groups for model provider: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::internal_error("Database operation failed"))
         }
     }
 }

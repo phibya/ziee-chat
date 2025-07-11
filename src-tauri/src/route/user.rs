@@ -1,5 +1,5 @@
 use crate::api;
-use axum::routing::{delete, get, post};
+use axum::routing::{delete, get, post, put};
 use axum::{middleware, Router};
 
 pub fn user_routes() -> Router {

@@ -3,6 +3,7 @@ pub mod assistants;
 pub mod auth;
 pub mod chat;
 pub mod configuration;
+pub mod errors;
 pub mod middleware;
 pub mod model_providers;
 pub mod permissions;

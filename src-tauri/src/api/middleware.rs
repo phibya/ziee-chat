@@ -4,7 +4,6 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::api::app::is_desktop_app;
 use crate::api::permissions::{check_permission, permissions};
@@ -15,11 +14,6 @@ use crate::database::models::User;
 pub struct AuthenticatedUser {
     pub user_id: uuid::Uuid,
     pub user: User,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ErrorResponse {
-    pub error: String,
 }
 
 /// Authentication middleware that validates JWT token and adds user to request extensions
