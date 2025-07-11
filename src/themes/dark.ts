@@ -3,7 +3,7 @@ import { AppThemeConfig } from './light.ts'
 import { ComponentOverrides, TokenOverrides } from './override.ts'
 
 export const darkTheme: AppThemeConfig = {
-  algorithm: [theme.compactAlgorithm, theme.darkAlgorithm],
+  algorithm: [theme.darkAlgorithm, theme.compactAlgorithm],
   token: {
     ...TokenOverrides,
   },

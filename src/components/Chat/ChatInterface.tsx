@@ -477,11 +477,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                       size="small"
                       type="text"
                       onClick={() => loadMessageBranches(msg)}
-                      style={{
-                        backgroundColor: 'rgba(255,255,255,0.1)',
-                        border: '1px solid rgba(255,255,255,0.2)',
-                        color: 'rgba(255,255,255,0.8)',
-                      }}
                     >
                       <LeftOutlined />
                     </Button>
@@ -501,21 +496,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                             branchInfo.branches[branchInfo.currentIndex - 1]
                           if (prevBranch) handleSwitchBranch(prevBranch.id)
                         }}
-                        style={{
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          color: 'rgba(255,255,255,0.8)',
-                        }}
                       />
-                      <div
-                        className="flex items-center"
-                        style={{
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          color: 'rgba(255,255,255,0.8)',
-                          borderRadius: '6px',
-                        }}
-                      >
+                      <div className="flex items-center">
                         {branchInfo.currentIndex + 1} /{' '}
                         {branchInfo.branches.length}
                       </div>
@@ -531,11 +513,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                           const nextBranch =
                             branchInfo.branches[branchInfo.currentIndex + 1]
                           if (nextBranch) handleSwitchBranch(nextBranch.id)
-                        }}
-                        style={{
-                          backgroundColor: 'rgba(255,255,255,0.1)',
-                          border: '1px solid rgba(255,255,255,0.2)',
-                          color: 'rgba(255,255,255,0.8)',
                         }}
                       />
                     </>
@@ -553,12 +530,9 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
     return (
       <div className="flex flex-col h-full">
         {/* Header with model selection */}
-        <div className="px-4 sm:px-6 py-4 border-b">
+        <div className="px-4 sm:px-6 py-4">
           <Row gutter={16} align="middle">
             <Col xs={24} sm={12} md={8}>
-              <div className="mb-2">
-                <Text strong>{t('chat.selectAssistant')}</Text>
-              </div>
               <Select
                 value={selectedAssistant}
                 onChange={setSelectedAssistant}
@@ -578,9 +552,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               </Select>
             </Col>
             <Col xs={24} sm={12} md={8}>
-              <div className="mb-2">
-                <Text strong>{t('chat.selectModel')}</Text>
-              </div>
               <Select
                 value={selectedModel}
                 onChange={setSelectedModel}
@@ -609,10 +580,7 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         {/* Welcome message */}
         <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
           <div className="mb-8">
-            <div
-              className="text-3xl font-light mb-4"
-              style={{ color: 'rgba(255,255,255,0.9)' }}
-            >
+            <div className="text-3xl font-light mb-4">
               {t('chat.placeholderWelcome')}
             </div>
           </div>
@@ -627,14 +595,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   placeholder={t('chat.placeholder')}
                   autoSize={{ minRows: 1, maxRows: 6 }}
                   disabled={!selectedAssistant || !selectedModel}
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px',
-                    color: 'inherit',
-                    padding: '12px 16px',
-                    fontSize: '16px',
-                  }}
                   className="resize-none"
                 />
               </div>
@@ -671,19 +631,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Text
-                strong
-                className="text-lg"
-                style={{ color: 'rgba(255,255,255,0.9)' }}
-              >
+              <Text strong className="text-lg">
                 {conversation?.title || 'Claude'}
               </Text>
             </div>
 
-            <div
-              className="flex items-center gap-2 text-sm"
-              style={{ color: 'rgba(255,255,255,0.6)' }}
-            >
+            <div className="flex items-center gap-2 text-sm">
               <span>
                 {selectedAssistant &&
                   assistants.find(a => a.id === selectedAssistant)?.name}
@@ -710,16 +663,8 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-20">
-              <MessageOutlined
-                className="text-5xl mb-4"
-                style={{ color: 'rgba(255,255,255,0.3)' }}
-              />
-              <Text
-                className="text-lg"
-                style={{ color: 'rgba(255,255,255,0.6)' }}
-              >
-                Start your conversation
-              </Text>
+              <MessageOutlined className="text-5xl mb-4" />
+              <Text className="text-lg">Start your conversation</Text>
             </div>
           ) : (
             <>
@@ -727,21 +672,12 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
               {(isLoading || isStreaming) && (
                 <div className="mb-6">
                   <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
-                      style={{
-                        backgroundColor: '#f97316',
-                        color: 'white',
-                      }}
-                    >
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium">
                       <RobotOutlined />
                     </div>
                   </div>
                   <div className="ml-11">
-                    <div
-                      className="flex items-center gap-2 text-base"
-                      style={{ color: 'rgba(255,255,255,0.7)' }}
-                    >
+                    <div className="flex items-center gap-2 text-base">
                       <Spin
                         indicator={
                           <LoadingOutlined style={{ fontSize: 16 }} spin />
@@ -774,13 +710,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 placeholder="Message Claude..."
                 autoSize={{ minRows: 1, maxRows: 6 }}
                 disabled={isLoading || isStreaming}
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  color: 'inherit',
-                  padding: '12px 16px',
-                }}
                 className="resize-none"
               />
             </div>
@@ -790,12 +719,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                   type="text"
                   icon={<StopOutlined />}
                   onClick={handleStopGeneration}
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    color: 'rgba(255,255,255,0.8)',
-                    borderRadius: '8px',
-                  }}
                 >
                   {t('chat.stop')}
                 </Button>
@@ -805,17 +728,6 @@ export function ChatInterface({ conversationId }: ChatInterfaceProps) {
                 icon={<SendOutlined />}
                 onClick={handleSend}
                 disabled={!inputValue.trim() || isLoading || isStreaming}
-                style={{
-                  backgroundColor:
-                    !inputValue.trim() || isLoading || isStreaming
-                      ? 'rgba(255,255,255,0.1)'
-                      : '#f97316',
-                  borderColor:
-                    !inputValue.trim() || isLoading || isStreaming
-                      ? 'rgba(255,255,255,0.2)'
-                      : '#f97316',
-                  borderRadius: '8px',
-                }}
               >
                 {t('chat.send')}
               </Button>

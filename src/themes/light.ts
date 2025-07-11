@@ -1,18 +1,14 @@
 import { theme, ThemeConfig } from 'antd'
-import { ComponentTokens, GlobalTokens } from './tokens.ts'
 import { ComponentOverrides, TokenOverrides } from './override.ts'
 
 const baseTheme = {
-  algorithm: [theme.compactAlgorithm, theme.defaultAlgorithm],
+  algorithm: [theme.defaultAlgorithm, theme.compactAlgorithm],
   token: {
-    ...GlobalTokens,
     ...TokenOverrides,
   },
   components: {
-    ...ComponentTokens,
     ...ComponentOverrides,
     Button: {
-      ...ComponentTokens.Button,
       ...ComponentOverrides.Button,
       // Override button tokens for light theme
     },
