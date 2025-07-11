@@ -1,4 +1,4 @@
-import { Button, Drawer, Layout, Menu, Typography } from 'antd'
+import { Button, Drawer, Layout, Menu, theme, Typography } from 'antd'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import {
@@ -26,6 +26,7 @@ export function SettingsPage() {
   const [isMobile, setIsMobile] = useState(false)
   const [drawerVisible, setDrawerVisible] = useState(false)
   const { hasPermission } = usePermissions()
+  const { token } = theme.useToken()
 
   // Extract the current settings section from the URL
   const currentSection = location.pathname.split('/').pop() || 'general'
@@ -209,14 +210,17 @@ export function SettingsPage() {
 
   const SettingsMenu = () => (
     <>
-      <div style={{ padding: '16px' }}>
+      <div className={'p-2.5'}>
         <Title level={4} style={{ margin: 0 }}>
           <SettingOutlined style={{ marginRight: 8 }} />
           Settings
         </Title>
       </div>
       <Menu
-        mode="inline"
+        className={'w-fit'}
+        style={{
+          lineHeight: 1,
+        }}
         selectedKeys={[currentSection]}
         items={menuItems}
         onClick={({ key }) => handleMenuClick(key)}
@@ -225,13 +229,10 @@ export function SettingsPage() {
   )
 
   return (
-    <Layout style={{ height: '100%' }}>
+    <Layout className="h-screen w-full">
       {/* Mobile Header */}
       {isMobile && (
-        <div
-          className="flex items-center justify-between p-4"
-          style={{ borderColor: '#f0f0f0' }}
-        >
+        <div className="flex items-center justify-between p-4">
           <Button
             type="text"
             icon={<MenuOutlined />}
@@ -247,7 +248,14 @@ export function SettingsPage() {
 
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <Sider width={200} theme="light">
+        <Sider
+          theme={'light'}
+          className={'h-screen overflow-auto w-fit px-1'}
+          width={'fit-content'}
+          style={{
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
+          }}
+        >
           <SettingsMenu />
         </Sider>
       )}

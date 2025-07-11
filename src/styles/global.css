@@ -1,1 +1,10 @@
 @import 'tailwindcss';
+
+.ant-menu-vertical {
+    border-inline-end: none !important;
+
+    .ant-menu-item {
+        height: 1.75rem;
+        line-height: 2.35;
+    }
+}

@@ -73,11 +73,11 @@ export function GeneralSettings() {
   }
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex className={'flex-col gap-3 h-full pb-2'}>
       <Title level={3}>General</Title>
 
       <Card title="Application">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex className="flex-col gap-3">
           <Flex
             justify="space-between"
             align={isMobile ? 'flex-start' : 'center'}
@@ -118,7 +118,7 @@ export function GeneralSettings() {
               </Flex>
             </>
           )}
-        </Space>
+        </Flex>
       </Card>
 
       {isDesktopApp && hasPermission(Permission.config.experimental.read) && (
@@ -158,7 +158,7 @@ export function GeneralSettings() {
 
       {isDesktopApp && hasPermission(Permission.config.dataFolder.read) && (
         <Card title="Data Folder">
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Flex className="flex-col gap-3">
             <Flex
               justify="space-between"
               align={isMobile ? 'flex-start' : 'center'}
@@ -221,12 +221,12 @@ export function GeneralSettings() {
                 </Button>
               </Space>
             </Flex>
-          </Space>
+          </Flex>
         </Card>
       )}
 
       <Card title="Other">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex className="flex-col gap-3">
           <Form
             form={form}
             onValuesChange={handleFormChange}
@@ -285,7 +285,7 @@ export function GeneralSettings() {
               </Button>
             </Flex>
           )}
-        </Space>
+        </Flex>
       </Card>
 
       <Card title="Resources">
@@ -393,6 +393,6 @@ export function GeneralSettings() {
           <Button type="link">Report Issue</Button>
         </Flex>
       </Card>
-    </Space>
+    </Flex>
   )
 }

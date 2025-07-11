@@ -55,6 +55,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           className={`overflow-auto h-screen fixed top-0 left-0 bottom-0 z-1000 ${
             isMobile ? 'z-[1050]' : ''
           }`}
+          theme={'light'}
         >
           <LeftPanel
             onItemClick={() => {
@@ -120,19 +121,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       )}
 
       {/* Main Content */}
-      <Layout
-        style={{
-          marginLeft:
-            (!isMobile && !leftPanelCollapsed) ||
-            (isMobile && mobileOverlayOpen)
-              ? isMobile
-                ? 0
-                : 240
-              : 0,
-        }}
-      >
-        <Content className="flex flex-col">{children}</Content>
-      </Layout>
+      <Content className="w-full h-screen overflow-hidden">{children}</Content>
     </Layout>
   )
 }

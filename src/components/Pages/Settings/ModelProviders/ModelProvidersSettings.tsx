@@ -552,14 +552,14 @@ export function ModelProvidersSettings() {
     const actions: any[] = []
 
     if (canEditProviders) {
-      actions.push({
-        key: 'edit',
-        icon: <EditOutlined />,
-        label: 'Edit',
-        onClick: () => {
-          setSelectedProvider(provider.id)
-        },
-      })
+      // actions.push({
+      //   key: 'edit',
+      //   icon: <EditOutlined />,
+      //   label: 'Edit',
+      //   onClick: () => {
+      //     setSelectedProvider(provider.id)
+      //   },
+      // })
 
       actions.push({
         key: 'clone',
@@ -582,12 +582,12 @@ export function ModelProvidersSettings() {
 
   const menuItems = providers.map(provider => ({
     key: provider.id,
-    icon: (
-      <span style={{ fontSize: '16px' }}>{PROVIDER_ICONS[provider.type]}</span>
-    ),
     label: (
-      <Flex justify="space-between" align="center">
-        <span>{provider.name}</span>
+      <Flex className={'flex-row gap-2 items-center'}>
+        <span className={'text-lg'}>{PROVIDER_ICONS[provider.type]}</span>
+        <div className={'flex-1'}>
+          <Typography.Text>{provider.name}</Typography.Text>
+        </div>
         {canEditProviders && (
           <Dropdown
             menu={{ items: getProviderActions(provider) }}
@@ -603,17 +603,14 @@ export function ModelProvidersSettings() {
         )}
       </Flex>
     ),
-    style: {
-      backgroundColor: provider.id === selectedProvider ? '#f0f0f0' : undefined,
-    },
   }))
 
   if (canEditProviders) {
     menuItems.push({
       key: 'add-provider',
+      //@ts-ignore
       icon: <PlusOutlined />,
-      label: <span>Add Provider</span>,
-      style: { backgroundColor: undefined },
+      label: <Typography.Text>Add Provider</Typography.Text>,
     })
   }
 
@@ -644,7 +641,6 @@ export function ModelProvidersSettings() {
 
   const ProviderMenu = () => (
     <Menu
-      mode="inline"
       selectedKeys={[selectedProvider]}
       items={menuItems}
       onClick={({ key }) => {
@@ -654,7 +650,7 @@ export function ModelProvidersSettings() {
           setSelectedProvider(key)
         }
       }}
-      style={{ border: 'none' }}
+      className={'!bg-transparent'}
     />
   )
 
@@ -677,7 +673,7 @@ export function ModelProvidersSettings() {
     }
 
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Flex className={'flex-col gap-3'}>
         {/* Provider Header - Hide on mobile since it's shown in dropdown */}
         {!isMobile && (
           <Flex justify="space-between" align="center">
@@ -733,7 +729,7 @@ export function ModelProvidersSettings() {
 
         {/* Mobile Provider Header */}
         {isMobile && (
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Flex className={'flex-col gap-2'}>
             <Form
               form={nameForm}
               layout="vertical"
@@ -783,7 +779,7 @@ export function ModelProvidersSettings() {
                 return switchElement
               })()}
             </Flex>
-          </Space>
+          </Flex>
         )}
 
         {/* API Configuration */}
@@ -811,11 +807,7 @@ export function ModelProvidersSettings() {
                 )
               }
             >
-              <Space
-                direction="vertical"
-                size="large"
-                style={{ width: '100%' }}
-              >
+              <Flex className={'flex-col gap-2'}>
                 <div>
                   <Title level={5}>API Key</Title>
                   <Text type="secondary">
@@ -872,7 +864,7 @@ export function ModelProvidersSettings() {
                     />
                   </Form.Item>
                 </div>
-              </Space>
+              </Flex>
             </Card>
           </Form>
         )}
@@ -1235,12 +1227,12 @@ export function ModelProvidersSettings() {
             </Card>
           </Form>
         )}
-      </Space>
+      </Flex>
     )
   }
 
   return (
-    <Layout style={{ height: '100%', backgroundColor: 'transparent' }}>
+    <Layout>
       {/* Desktop Sidebar */}
       {!isMobile && (
         <Sider
@@ -1248,24 +1240,16 @@ export function ModelProvidersSettings() {
           theme="light"
           style={{ backgroundColor: 'transparent' }}
         >
-          <div style={{ padding: '16px 0' }}>
-            <Title level={4} style={{ margin: '0 16px 16px' }}>
-              <SettingOutlined style={{ marginRight: 8 }} />
-              Model Providers
-            </Title>
+          <div>
+            <Title level={3}>Model Providers</Title>
             <ProviderMenu />
           </div>
         </Sider>
       )}
 
       {/* Main Content */}
-      <Layout style={{ backgroundColor: 'transparent' }}>
-        <Content
-          style={{
-            padding: isMobile ? '16px' : '24px',
-            overflow: 'auto',
-          }}
-        >
+      <Layout className={'px-2'}>
+        <Content>
           {/* Mobile Header with Provider Selector */}
           {isMobile && (
             <div style={{ marginBottom: '24px' }}>
