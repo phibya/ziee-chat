@@ -1,38 +1,57 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { App, Card, Form, Switch, Typography } from 'antd'
-import { ApiClient } from '../../../../api/client.ts'
+import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
 import { PageContainer } from '../../../common/PageContainer'
+import { useAdminStore } from '../../../../store/admin'
 
 const { Text } = Typography
 
 export function UserRegistrationSettings() {
   const { message } = App.useApp()
   const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
-  const [registrationEnabled, setRegistrationEnabled] = useState(true)
   const { hasPermission } = usePermissions()
+
+  // Admin store
+  const {
+    registrationEnabled,
+    loading,
+    error,
+    loadUserRegistrationSettings,
+    updateUserRegistrationSettings,
+    clearError,
+  } = useAdminStore(
+    useShallow(state => ({
+      registrationEnabled: state.userRegistrationEnabled,
+      loading: state.loading,
+      error: state.error,
+      loadUserRegistrationSettings: state.loadUserRegistrationSettings,
+      updateUserRegistrationSettings: state.updateUserRegistrationSettings,
+      clearError: state.clearError,
+    })),
+  )
 
   const canRead = hasPermission(Permission.config.userRegistration.read)
   const canEdit = hasPermission(Permission.config.userRegistration.edit)
 
   useEffect(() => {
-    fetchRegistrationStatus()
-  }, [])
-
-  const fetchRegistrationStatus = async () => {
-    try {
-      const { enabled } = await ApiClient.Admin.getUserRegistrationStatus()
-      setRegistrationEnabled(enabled)
-      form.setFieldsValue({ enabled })
-    } catch (error) {
-      message.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to fetch registration status',
-      )
+    if (canRead) {
+      loadUserRegistrationSettings()
     }
-  }
+  }, [canRead, loadUserRegistrationSettings])
+
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
+    }
+  }, [error, message, clearError])
+
+  // Update form when registration status changes
+  useEffect(() => {
+    form.setFieldsValue({ enabled: registrationEnabled })
+  }, [registrationEnabled, form])
 
   const handleFormChange = async (changedValues: any) => {
     if (!canEdit) {
@@ -42,29 +61,14 @@ export function UserRegistrationSettings() {
     if ('enabled' in changedValues) {
       const newValue = changedValues.enabled
 
-      // Optimistic update - assume success
-      setRegistrationEnabled(newValue)
-      setLoading(true)
-
       try {
-        await ApiClient.Admin.updateUserRegistrationStatus({
-          enabled: newValue,
-        })
+        await updateUserRegistrationSettings(newValue)
         message.success(
           `User registration ${newValue ? 'enabled' : 'disabled'} successfully`,
         )
       } catch (error) {
-        // Revert on error
-        setRegistrationEnabled(!newValue)
-        form.setFieldsValue({ enabled: !newValue })
-
-        message.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to update registration status',
-        )
-      } finally {
-        setLoading(false)
+        console.error('Failed to update registration status:', error)
+        // Error is handled by the store
       }
     }
   }

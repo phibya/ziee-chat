@@ -28,16 +28,16 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../../api/core.ts'
 import {
-  AssignUserToGroupRequest,
   ResetPasswordRequest,
   UpdateUserRequest,
   User,
   UserGroup,
 } from '../../../../types'
-import { ApiClient } from '../../../../api/client.ts'
 import { Permission, usePermissions } from '../../../../permissions'
+import { useAdminStore } from '../../../../store/admin'
 import { PageContainer } from '../../../common/PageContainer'
 import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
@@ -47,9 +47,39 @@ const { Option } = Select
 export function UsersSettings() {
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
-  const [users, setUsers] = useState<User[]>([])
-  const [groups, setGroups] = useState<UserGroup[]>([])
-  const [loading, setLoading] = useState(false)
+
+  // Admin store
+  const {
+    users,
+    groups,
+    loading,
+    error,
+    loadUsers,
+    loadGroups,
+    updateUser,
+    resetUserPassword,
+    toggleUserActive,
+    assignUserToGroup,
+    removeUserFromGroup,
+    clearError,
+  } = useAdminStore(
+    useShallow(state => ({
+      users: state.users,
+      groups: state.groups,
+      loading: state.loading,
+      updating: state.updating,
+      error: state.error,
+      loadUsers: state.loadUsers,
+      loadGroups: state.loadGroups,
+      updateUser: state.updateUser,
+      resetUserPassword: state.resetUserPassword,
+      toggleUserActive: state.toggleUserActive,
+      assignUserToGroup: state.assignUserToGroup,
+      removeUserFromGroup: state.removeUserFromGroup,
+      clearError: state.clearError,
+    })),
+  )
+
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [passwordModalVisible, setPasswordModalVisible] = useState(false)
   const [groupsDrawerVisible, setGroupsDrawerVisible] = useState(false)
@@ -76,41 +106,17 @@ export function UsersSettings() {
       message.warning('You do not have permission to access user management')
       return
     }
-    fetchUsers()
-    fetchGroups()
-  }, [canAccessUsers])
+    loadUsers()
+    loadGroups()
+  }, [canAccessUsers, loadUsers, loadGroups])
 
-  const fetchUsers = async () => {
-    setLoading(true)
-    try {
-      const { users } = await ApiClient.Admin.listUsers({
-        page: 1,
-        per_page: 100,
-      })
-      setUsers(users)
-    } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to fetch users',
-      )
-    } finally {
-      setLoading(false)
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
     }
-  }
-
-  const fetchGroups = async () => {
-    try {
-      const { groups } = await ApiClient.Admin.listGroups({
-        page: 1,
-        per_page: 100,
-      })
-
-      setGroups(groups.filter(g => g.is_active))
-    } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to fetch groups',
-      )
-    }
-  }
+  }, [error, message, clearError])
 
   const handleEditUser = async (values: any) => {
     if (!selectedUser) return
@@ -124,17 +130,15 @@ export function UsersSettings() {
         profile: values.profile ? JSON.parse(values.profile) : undefined,
       }
 
-      await ApiClient.Admin.updateUser(updateData)
+      await updateUser(selectedUser.id, updateData)
 
       message.success('User updated successfully')
       setEditModalVisible(false)
       setSelectedUser(null)
       editForm.resetFields()
-      fetchUsers()
     } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to update user',
-      )
+      console.error('Failed to update user:', error)
+      // Error is handled by the store
     }
   }
 
@@ -147,28 +151,25 @@ export function UsersSettings() {
         new_password: values.new_password,
       }
 
-      await ApiClient.Admin.resetPassword(resetData)
+      await resetUserPassword(selectedUser.id, resetData.new_password)
 
       message.success('Password reset successfully')
       setPasswordModalVisible(false)
       setSelectedUser(null)
       passwordForm.resetFields()
     } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to reset password',
-      )
+      console.error('Failed to reset password:', error)
+      // Error is handled by the store
     }
   }
 
   const handleToggleActive = async (userId: string) => {
     try {
-      await ApiClient.Admin.toggleUserActive({ user_id: userId })
+      await toggleUserActive(userId)
       message.success('User status updated successfully')
-      fetchUsers()
     } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to update user status',
-      )
+      console.error('Failed to update user status:', error)
+      // Error is handled by the store
     }
   }
 
@@ -176,40 +177,25 @@ export function UsersSettings() {
     if (!selectedUser) return
 
     try {
-      const assignData: AssignUserToGroupRequest = {
-        user_id: selectedUser.id,
-        group_id: values.group_id,
-      }
-      await ApiClient.Admin.assignUserToGroup(assignData)
+      await assignUserToGroup(selectedUser.id, values.group_id)
       message.success('User assigned to group successfully')
       setAssignGroupModalVisible(false)
       setSelectedUser(null)
       assignGroupForm.resetFields()
-      fetchUsers()
     } catch (error) {
-      message.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to assign user to group',
-      )
+      console.error('Failed to assign user to group:', error)
+      // Error is handled by the store
     }
   }
 
   const handleRemoveFromGroup = async (userId: string, groupId: string) => {
     try {
-      await ApiClient.Admin.removeUserFromGroup({
-        user_id: userId,
-        group_id: groupId,
-      })
+      await removeUserFromGroup(userId, groupId)
 
       message.success('User removed from group successfully')
-      fetchUsers()
     } catch (error) {
-      message.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to remove user from group',
-      )
+      console.error('Failed to remove user from group:', error)
+      // Error is handled by the store
     }
   }
 

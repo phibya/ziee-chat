@@ -12,70 +12,77 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
-import { ApiClient } from '../../../api/client'
+import { useShallow } from 'zustand/react/shallow'
+import { useAdminStore } from '../../../store/admin'
 
 const { Title, Text } = Typography
 
-interface ProxySettings {
-  enabled: boolean
-  url: string
-  username: string
-  password: string
-  no_proxy: string
-  ignore_ssl_certificates: boolean
-  proxy_ssl: boolean
-  proxy_host_ssl: boolean
-  peer_ssl: boolean
-  host_ssl: boolean
-}
+// interface ProxySettings {
+//   enabled: boolean
+//   url: string
+//   username: string
+//   password: string
+//   no_proxy: string
+//   ignore_ssl_certificates: boolean
+//   proxy_ssl: boolean
+//   proxy_host_ssl: boolean
+//   peer_ssl: boolean
+//   host_ssl: boolean
+// }
 
 export function HttpsProxySettings() {
   const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
-  const [testingProxy, setTestingProxy] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(true)
   const [lastTestedConfig, setLastTestedConfig] = useState<string | null>(null)
   const [isProxyTested, setIsProxyTested] = useState(false)
-  const [settings, setSettings] = useState<ProxySettings>({
-    enabled: false,
-    url: '',
-    username: '',
-    password: '',
-    no_proxy: '',
-    ignore_ssl_certificates: false,
-    proxy_ssl: false,
-    proxy_host_ssl: false,
-    peer_ssl: false,
-    host_ssl: false,
-  })
+
+  // Admin store
+  const {
+    proxySettings,
+    loading,
+    testingProxy,
+    error,
+    loadProxySettings,
+    updateProxySettings,
+    testProxyConnection,
+    clearError,
+  } = useAdminStore(
+    useShallow(state => ({
+      proxySettings: state.proxySettings,
+      loading: state.loading,
+      testingProxy: state.testingProxy,
+      updating: state.updating,
+      error: state.error,
+      loadProxySettings: state.loadProxySettings,
+      updateProxySettings: state.updateProxySettings,
+      testProxyConnection: state.testProxyConnection,
+      clearError: state.clearError,
+    })),
+  )
 
   useEffect(() => {
-    loadSettings()
-  }, [])
+    loadProxySettings()
+  }, [loadProxySettings])
 
-  const loadSettings = async () => {
-    try {
-      setInitialLoading(true)
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
+    }
+  }, [error, clearError])
 
-      // Always load from admin config for both desktop and web app
-      const proxySettings = await ApiClient.Admin.getProxySettings()
-      setSettings(proxySettings)
+  // Update form when proxy settings change
+  useEffect(() => {
+    if (proxySettings) {
       form.setFieldsValue(proxySettings)
-
       // Reset test status when loading settings
       setIsProxyTested(false)
       setLastTestedConfig(null)
-    } catch (error) {
-      console.error('Failed to load proxy settings:', error)
-      message.error('Failed to load proxy settings')
-    } finally {
-      setInitialLoading(false)
     }
-  }
+  }, [proxySettings, form])
 
   const handleSave = async () => {
     try {
-      setLoading(true)
       const values = await form.validateFields()
 
       // Check if proxy settings have changed and if enabling without testing
@@ -103,10 +110,7 @@ export function HttpsProxySettings() {
         )
       }
 
-      // Always save to admin config for both desktop and web app
-      await ApiClient.Admin.updateProxySettings(values)
-
-      setSettings(values)
+      await updateProxySettings(values)
       form.setFieldsValue(values) // Update form with potentially modified enabled state
 
       // Reset test status if config changed
@@ -118,19 +122,18 @@ export function HttpsProxySettings() {
       message.success('Proxy settings saved successfully')
     } catch (error) {
       console.error('Failed to save proxy settings:', error)
-      message.error('Failed to save proxy settings')
-    } finally {
-      setLoading(false)
+      // Error is handled by the store
     }
   }
 
   const handleReset = () => {
-    form.setFieldsValue(settings)
+    if (proxySettings) {
+      form.setFieldsValue(proxySettings)
+    }
   }
 
   const handleTestProxy = async () => {
     try {
-      setTestingProxy(true)
       const values = form.getFieldsValue()
 
       // Only test if URL is provided (no need to be enabled)
@@ -139,31 +142,35 @@ export function HttpsProxySettings() {
         return
       }
 
-      await ApiClient.Admin.testProxyConnection(values)
+      const success = await testProxyConnection()
 
-      // Store the tested configuration
-      const currentConfig = JSON.stringify({
-        url: values.url,
-        username: values.username,
-        password: values.password,
-        no_proxy: values.no_proxy,
-        ignore_ssl_certificates: values.ignore_ssl_certificates,
-        proxy_ssl: values.proxy_ssl,
-        proxy_host_ssl: values.proxy_host_ssl,
-        peer_ssl: values.peer_ssl,
-        host_ssl: values.host_ssl,
-      })
+      if (success) {
+        // Store the tested configuration
+        const currentConfig = JSON.stringify({
+          url: values.url,
+          username: values.username,
+          password: values.password,
+          no_proxy: values.no_proxy,
+          ignore_ssl_certificates: values.ignore_ssl_certificates,
+          proxy_ssl: values.proxy_ssl,
+          proxy_host_ssl: values.proxy_host_ssl,
+          peer_ssl: values.peer_ssl,
+          host_ssl: values.host_ssl,
+        })
 
-      setLastTestedConfig(currentConfig)
-      setIsProxyTested(true)
-      message.success('Proxy connection test successful')
+        setLastTestedConfig(currentConfig)
+        setIsProxyTested(true)
+        message.success('Proxy connection test successful')
+      } else {
+        setIsProxyTested(false)
+        setLastTestedConfig(null)
+        message.error('Proxy connection test failed')
+      }
     } catch (error) {
       console.error('Proxy test failed:', error)
-      message.error('Proxy connection test failed')
       setIsProxyTested(false)
       setLastTestedConfig(null)
-    } finally {
-      setTestingProxy(false)
+      // Error is handled by the store
     }
   }
 
@@ -205,7 +212,7 @@ export function HttpsProxySettings() {
     return isProxyTested && currentConfig === lastTestedConfig
   }
 
-  if (initialLoading) {
+  if (loading) {
     return (
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Title level={3}>HTTP Proxy</Title>

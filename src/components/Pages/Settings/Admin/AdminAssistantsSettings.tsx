@@ -24,9 +24,10 @@ import {
   PlusOutlined,
   RobotOutlined,
 } from '@ant-design/icons'
-import { ApiClient } from '../../../../api/client'
+import { useShallow } from 'zustand/react/shallow'
 import { Assistant } from '../../../../types/api/assistant'
 import { PageContainer } from '../../../common/PageContainer'
+import { useAdminStore } from '../../../../store/admin'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -48,8 +49,33 @@ interface ParameterFormField {
 
 export const AdminAssistantsSettings: React.FC = () => {
   const { message } = App.useApp()
-  const [assistants, setAssistants] = useState<Assistant[]>([])
-  const [loading, setLoading] = useState(false)
+
+  // Admin store
+  const {
+    assistants,
+    loading,
+    error,
+    loadAssistants,
+    createAssistant,
+    updateAssistant,
+    deleteAssistant,
+    clearError,
+  } = useAdminStore(
+    useShallow(state => ({
+      assistants: state.assistants,
+      loading: state.loading,
+      creating: state.creating,
+      updating: state.updating,
+      deleting: state.deleting,
+      error: state.error,
+      loadAssistants: state.loadAssistants,
+      createAssistant: state.createAssistant,
+      updateAssistant: state.updateAssistant,
+      deleteAssistant: state.deleteAssistant,
+      clearError: state.clearError,
+    })),
+  )
+
   const [modalVisible, setModalVisible] = useState(false)
   const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(
     null,
@@ -62,23 +88,16 @@ export const AdminAssistantsSettings: React.FC = () => {
   const [parameterJson, setParameterJson] = useState('')
 
   useEffect(() => {
-    fetchAssistants()
-  }, [])
+    loadAssistants()
+  }, [loadAssistants])
 
-  const fetchAssistants = async () => {
-    try {
-      setLoading(true)
-      const response = await ApiClient.Admin.listAssistants({
-        page: 1,
-        per_page: 100,
-      })
-      setAssistants(response.assistants)
-    } catch (error) {
-      message.error('Failed to fetch assistants')
-    } finally {
-      setLoading(false)
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
     }
-  }
+  }, [error, message, clearError])
 
   const handleCreateEdit = async (values: AssistantFormData) => {
     try {
@@ -99,22 +118,19 @@ export const AdminAssistantsSettings: React.FC = () => {
       }
 
       if (editingAssistant) {
-        await ApiClient.Admin.updateAssistant({
-          assistant_id: editingAssistant.id,
-          ...requestData,
-        })
+        await updateAssistant(editingAssistant.id, requestData)
         message.success('Assistant updated successfully')
       } else {
-        await ApiClient.Admin.createAssistant(requestData)
+        await createAssistant(requestData)
         message.success('Assistant created successfully')
       }
 
       setModalVisible(false)
       setEditingAssistant(null)
       form.resetFields()
-      fetchAssistants()
     } catch (error) {
-      message.error('Failed to save assistant')
+      console.error('Failed to save assistant:', error)
+      // Error is handled by the store
     }
   }
 
@@ -139,7 +155,7 @@ export const AdminAssistantsSettings: React.FC = () => {
         }),
       )
       setParameterFormFields(fields)
-    } catch (error) {
+    } catch {
       setParameterFormFields([])
     }
   }
@@ -191,11 +207,11 @@ export const AdminAssistantsSettings: React.FC = () => {
 
   const handleDelete = async (assistant: Assistant) => {
     try {
-      await ApiClient.Admin.deleteAssistant({ assistant_id: assistant.id })
+      await deleteAssistant(assistant.id)
       message.success('Assistant deleted successfully')
-      fetchAssistants()
     } catch (error) {
-      message.error('Failed to delete assistant')
+      console.error('Failed to delete assistant:', error)
+      // Error is handled by the store
     }
   }
 

@@ -28,10 +28,11 @@ import {
   PlusOutlined,
   RobotOutlined,
 } from '@ant-design/icons'
-import { ApiClient } from '../../api/client'
+import { useShallow } from 'zustand/react/shallow'
 import { Assistant } from '../../types/api/assistant'
 import { useTranslation } from 'react-i18next'
 import { PageContainer } from '../common/PageContainer'
+import { useAssistantsStore } from '../../store/assistants'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -53,9 +54,38 @@ interface ParameterFormField {
 export const AssistantsPage: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const [assistants, setAssistants] = useState<Assistant[]>([])
-  const [templateAssistants, setTemplateAssistants] = useState<Assistant[]>([])
-  const [loading, setLoading] = useState(false)
+
+  // Assistants store
+  const {
+    assistants,
+    adminAssistants: templateAssistants,
+    loading,
+    creating,
+    updating,
+    deleting,
+    error,
+    loadAssistants,
+    createAssistant,
+    updateAssistant,
+    deleteAssistant,
+    clearError,
+  } = useAssistantsStore(
+    useShallow(state => ({
+      assistants: state.assistants,
+      adminAssistants: state.adminAssistants,
+      loading: state.loading,
+      creating: state.creating,
+      updating: state.updating,
+      deleting: state.deleting,
+      error: state.error,
+      loadAssistants: state.loadAssistants,
+      createAssistant: state.createAssistant,
+      updateAssistant: state.updateAssistant,
+      deleteAssistant: state.deleteAssistant,
+      clearError: state.clearError,
+    })),
+  )
+
   const [modalVisible, setModalVisible] = useState(false)
   const [templateModalVisible, setTemplateModalVisible] = useState(false)
   const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(
@@ -70,28 +100,16 @@ export const AssistantsPage: React.FC = () => {
   const [parameterJson, setParameterJson] = useState('')
 
   useEffect(() => {
-    fetchAssistants()
-  }, [])
+    loadAssistants()
+  }, [loadAssistants])
 
-  const fetchAssistants = async () => {
-    try {
-      setLoading(true)
-      const response = await ApiClient.Assistant.list({
-        page: 1,
-        per_page: 100,
-      })
-      // Filter out template assistants for user view
-      const userAssistants = response.assistants.filter(a => !a.is_template)
-      const templateAssistants = response.assistants.filter(a => a.is_template)
-
-      setAssistants(userAssistants)
-      setTemplateAssistants(templateAssistants)
-    } catch (error) {
-      message.error('Failed to fetch assistants')
-    } finally {
-      setLoading(false)
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
     }
-  }
+  }, [error, message, clearError])
 
   const handleCreateEdit = async (values: AssistantFormData) => {
     try {
@@ -103,26 +121,23 @@ export const AssistantsPage: React.FC = () => {
 
       const requestData = {
         name: values.name,
-        description: values.description,
-        instructions: values.instructions,
-        parameters: parametersString ? JSON.parse(parametersString) : undefined,
-        is_active: values.is_active,
+        description: values.description || '',
+        instructions: values.instructions || '',
+        parameters: parametersString ? JSON.parse(parametersString) : {},
+        is_enabled: values.is_active ?? true,
       }
 
       if (editingAssistant) {
-        await ApiClient.Assistant.update({
-          assistant_id: editingAssistant.id,
-          ...requestData,
-        })
+        await updateAssistant(editingAssistant.id, requestData)
         message.success('Assistant updated successfully')
       } else if (cloneSource) {
-        await ApiClient.Assistant.create({
+        await createAssistant({
           ...requestData,
           // Note: clone_from is not supported by the API yet
         })
         message.success('Assistant cloned successfully')
       } else {
-        await ApiClient.Assistant.create(requestData)
+        await createAssistant(requestData)
         message.success('Assistant created successfully')
       }
 
@@ -130,19 +145,19 @@ export const AssistantsPage: React.FC = () => {
       setEditingAssistant(null)
       setCloneSource(null)
       form.resetFields()
-      fetchAssistants()
     } catch (error) {
-      message.error('Failed to save assistant')
+      // Error is already handled by the store
+      console.error('Failed to save assistant:', error)
     }
   }
 
   const handleDelete = async (assistant: Assistant) => {
     try {
-      await ApiClient.Assistant.delete({ assistant_id: assistant.id })
+      await deleteAssistant(assistant.id)
       message.success('Assistant deleted successfully')
-      fetchAssistants()
     } catch (error) {
-      message.error('Failed to delete assistant')
+      // Error is already handled by the store
+      console.error('Failed to delete assistant:', error)
     }
   }
 
@@ -235,7 +250,7 @@ export const AssistantsPage: React.FC = () => {
         }),
       )
       setParameterFormFields(fields)
-    } catch (error) {
+    } catch {
       setParameterFormFields([])
     }
   }
@@ -300,6 +315,7 @@ export const AssistantsPage: React.FC = () => {
           okText="Yes"
           cancelText="No"
           key="delete"
+          okButtonProps={{ loading: deleting }}
         >
           <Tooltip title="Delete">
             <DeleteOutlined />
@@ -564,7 +580,11 @@ export const AssistantsPage: React.FC = () => {
 
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit">
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={creating || updating}
+              >
                 {editingAssistant ? 'Update' : cloneSource ? 'Clone' : 'Create'}
               </Button>
               <Button
@@ -574,6 +594,7 @@ export const AssistantsPage: React.FC = () => {
                   setCloneSource(null)
                   form.resetFields()
                 }}
+                disabled={creating || updating}
               >
                 Cancel
               </Button>

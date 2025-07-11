@@ -1,9 +1,10 @@
 import { App, Card, Flex, Form, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useUserSettingsStore } from '../../../../store'
+import { useAdminStore } from '../../../../store/admin'
 import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
-import { ApiClient } from '../../../../api/client'
 
 const { Title, Text } = Typography
 
@@ -11,9 +12,16 @@ export function AdminAppearanceSettings() {
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
-  const [loading, setLoading] = useState(false)
   const { hasPermission } = usePermissions()
   const { globalDefaultLanguage } = useUserSettingsStore()
+
+  // Admin store
+  const { updating, updateDefaultLanguage } = useAdminStore(
+    useShallow(state => ({
+      updating: state.updating,
+      updateDefaultLanguage: state.updateDefaultLanguage,
+    })),
+  )
 
   // Check permissions - using a general config permission for appearance settings
   const canEditAppearance = hasPermission(Permission.config.experimental.edit)
@@ -43,12 +51,9 @@ export function AdminAppearanceSettings() {
         return
       }
 
-      setLoading(true)
       try {
-        // Update global default language via admin API
-        await ApiClient.Admin.updateDefaultLanguage({
-          language: changedValues.language,
-        })
+        // Update global default language via admin store
+        await updateDefaultLanguage(changedValues.language)
 
         // Update the store's global language
         const store = useUserSettingsStore.getState()
@@ -56,10 +61,9 @@ export function AdminAppearanceSettings() {
 
         message.success('Default language updated successfully')
       } catch {
-        message.error('Failed to update default language')
+        console.error('Failed to update default language')
+        // Error is handled by the store
         form.setFieldsValue({ language: globalDefaultLanguage })
-      } finally {
-        setLoading(false)
       }
     }
   }
@@ -107,7 +111,7 @@ export function AdminAppearanceSettings() {
               </div>
               <Form.Item name="language" style={{ margin: 0 }}>
                 <Select
-                  loading={loading}
+                  loading={updating}
                   disabled={!canEditAppearance}
                   style={{ minWidth: 120 }}
                   options={[

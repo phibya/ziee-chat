@@ -63,8 +63,8 @@ export function GeneralSettings() {
           `Spell check ${changedValues.spellCheck ? 'enabled' : 'disabled'}`,
         )
       }
-    } catch {
-      message.error('Failed to update settings')
+    } catch (error: any) {
+      message.error(error?.message || 'Failed to update settings')
       form.setFieldsValue({
         experimentalFeatures,
         spellCheck,

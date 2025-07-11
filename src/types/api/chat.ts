@@ -9,6 +9,7 @@ export interface Conversation {
   assistant_id?: string
   model_provider_id?: string
   model_id?: string
+  active_branch_id?: string
   created_at: string
   updated_at: string
 }

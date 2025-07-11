@@ -21,9 +21,10 @@ import {
   SearchOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { ApiClient } from '../../api/client'
+import { useShallow } from 'zustand/react/shallow'
 import { ConversationSummary } from '../../types/api/chat'
 import { PageContainer } from '../common/PageContainer'
+import { useChatHistoryStore } from '../../store/chatHistory'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -31,13 +32,53 @@ const { Search } = Input
 export const ChatHistoryPage: React.FC = () => {
   const { message } = App.useApp()
   const navigate = useNavigate()
-  const [conversations, setConversations] = useState<ConversationSummary[]>([])
-  const [loading, setLoading] = useState(false)
+
+  // Chat history store
+  const {
+    conversations,
+    searchResults,
+    isSearching,
+    loading,
+    deleting,
+    clearing,
+    error,
+    loadConversations,
+    searchConversations,
+    deleteConversation,
+    clearAllConversations,
+    clearSearch,
+    clearError,
+  } = useChatHistoryStore(
+    useShallow(state => ({
+      conversations: state.conversations,
+      searchResults: state.searchResults,
+      isSearching: state.isSearching,
+      loading: state.loading,
+      deleting: state.deleting,
+      clearing: state.clearing,
+      error: state.error,
+      loadConversations: state.loadConversations,
+      searchConversations: state.searchConversations,
+      deleteConversation: state.deleteConversation,
+      clearAllConversations: state.clearAllConversations,
+      clearSearch: state.clearSearch,
+      clearError: state.clearError,
+    })),
+  )
+
   const [searchText, setSearchText] = useState('')
 
   useEffect(() => {
-    fetchConversations()
-  }, [])
+    loadConversations()
+  }, [loadConversations])
+
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
+    }
+  }, [error, message, clearError])
 
   useEffect(() => {
     if (searchText.trim()) {
@@ -47,62 +88,36 @@ export const ChatHistoryPage: React.FC = () => {
 
       return () => clearTimeout(timeoutId)
     } else {
-      fetchConversations()
+      clearSearch()
+      if (conversations.length === 0) {
+        loadConversations()
+      }
     }
-  }, [searchText])
-
-  const fetchConversations = async () => {
-    try {
-      setLoading(true)
-      const response = await ApiClient.Chat.listConversations({
-        page: 1,
-        per_page: 100,
-      })
-      setConversations(response.conversations)
-    } catch (error) {
-      message.error('Failed to fetch chat history')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const searchConversations = async (query: string) => {
-    try {
-      setLoading(true)
-      const response = await ApiClient.Chat.searchConversations({
-        q: query,
-        page: 1,
-        per_page: 100,
-      })
-      setConversations(response.conversations)
-    } catch (error) {
-      message.error('Failed to search conversations')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [
+    searchText,
+    searchConversations,
+    clearSearch,
+    loadConversations,
+    conversations.length,
+  ])
 
   const handleDeleteConversation = async (conversationId: string) => {
     try {
-      await ApiClient.Chat.deleteConversation({
-        conversation_id: conversationId,
-      })
+      await deleteConversation(conversationId)
       message.success('Conversation deleted successfully')
-      fetchConversations()
     } catch (error) {
-      message.error('Failed to delete conversation')
+      // Error is handled by the store
+      console.error('Failed to delete conversation:', error)
     }
   }
 
   const handleClearAllHistory = async () => {
     try {
-      const response = await ApiClient.Chat.clearAllConversations()
-      message.success(
-        `${response.deleted_count} conversations deleted successfully`,
-      )
-      fetchConversations()
+      await clearAllConversations()
+      message.success('All conversations deleted successfully')
     } catch (error) {
-      message.error('Failed to clear chat history')
+      // Error is handled by the store
+      console.error('Failed to clear chat history:', error)
     }
   }
 
@@ -150,6 +165,7 @@ export const ChatHistoryPage: React.FC = () => {
           onConfirm={() => handleDeleteConversation(conversation.id)}
           okText="Yes"
           cancelText="No"
+          okButtonProps={{ loading: deleting }}
         >
           <Tooltip title="Delete">
             <DeleteOutlined
@@ -219,8 +235,14 @@ export const ChatHistoryPage: React.FC = () => {
                   okText="Yes"
                   cancelText="No"
                   okType="danger"
+                  okButtonProps={{ loading: clearing }}
                 >
-                  <Button danger icon={<ClearOutlined />} type="default">
+                  <Button
+                    danger
+                    icon={<ClearOutlined />}
+                    type="default"
+                    loading={clearing}
+                  >
                     Clear All
                   </Button>
                 </Popconfirm>
@@ -228,7 +250,9 @@ export const ChatHistoryPage: React.FC = () => {
             </Space>
           </div>
 
-          {conversations.length === 0 && !loading ? (
+          {(searchText.trim() ? searchResults : conversations).length === 0 &&
+          !loading &&
+          !isSearching ? (
             <Card>
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -247,18 +271,31 @@ export const ChatHistoryPage: React.FC = () => {
             </Card>
           ) : (
             <div className="space-y-4">
-              {loading ? (
+              {loading || isSearching ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
                 </div>
               ) : (
                 <>
-                  {conversations.map(renderConversationCard)}
-                  {conversations.length > 20 && (
+                  {(searchText.trim() ? searchResults : conversations).map(
+                    renderConversationCard,
+                  )}
+                  {(searchText.trim() ? searchResults : conversations).length >
+                    20 && (
                     <Card className="text-center">
                       <Text type="secondary">
-                        Showing {Math.min(20, conversations.length)} of{' '}
-                        {conversations.length} conversations
+                        Showing{' '}
+                        {Math.min(
+                          20,
+                          (searchText.trim() ? searchResults : conversations)
+                            .length,
+                        )}{' '}
+                        of{' '}
+                        {
+                          (searchText.trim() ? searchResults : conversations)
+                            .length
+                        }{' '}
+                        conversations
                       </Text>
                     </Card>
                   )}

@@ -2,23 +2,66 @@ import { useEffect, useState } from 'react'
 import { App } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ApiClient } from '../../api/client'
-import { CreateConversationRequest } from '../../types/api/chat'
-import { Assistant } from '../../types/api/assistant'
-import { ModelProvider } from '../../types/api/modelProvider'
-import { User } from '../../types/api/user'
+import { useShallow } from 'zustand/react/shallow'
 import { ChatWelcome } from './ChatWelcome'
+import { useChatStore } from '../../store/chat'
+import { useAssistantsStore } from '../../store/assistants'
+import { useModelProvidersStore } from '../../store/modelProviders'
 import { useConversationsStore } from '../../store'
+import { useAuthStore } from '../../store/auth'
 
 export function NewChatInterface() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const navigate = useNavigate()
+
+  // Auth store
+  const { user } = useAuthStore()
+
+  // Chat store
+  const {
+    createConversation,
+    sendMessage,
+    error: chatError,
+    clearError: clearChatError,
+  } = useChatStore(
+    useShallow(state => ({
+      createConversation: state.createConversation,
+      sendMessage: state.sendMessage,
+      error: state.error,
+      clearError: state.clearError,
+    })),
+  )
+
+  // Assistants store
+  const {
+    assistants,
+    loading: assistantsLoading,
+    loadAssistants,
+  } = useAssistantsStore(
+    useShallow(state => ({
+      assistants: state.assistants,
+      loading: state.loading,
+      loadAssistants: state.loadAssistants,
+    })),
+  )
+
+  // Model providers store
+  const {
+    providers: modelProviders,
+    loading: providersLoading,
+    loadProviders,
+  } = useModelProvidersStore(
+    useShallow(state => ({
+      providers: state.providers,
+      loading: state.loading,
+      loadProviders: state.loadProviders,
+    })),
+  )
+
+  // Conversations store
   const { addConversation } = useConversationsStore()
 
-  const [assistants, setAssistants] = useState<Assistant[]>([])
-  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
-  const [_currentUser, setCurrentUser] = useState<User | null>(null)
   const [selectedAssistant, setSelectedAssistant] = useState<string | null>(
     null,
   )
@@ -28,42 +71,48 @@ export function NewChatInterface() {
     initializeData()
   }, [])
 
+  // Show errors
+  useEffect(() => {
+    if (chatError) {
+      message.error(chatError)
+      clearChatError()
+    }
+  }, [chatError, message, clearChatError])
+
   const initializeData = async () => {
     try {
-      const [assistantsResponse, providersResponse, userResponse] =
-        await Promise.all([
-          ApiClient.Assistant.list({ page: 1, per_page: 100 }),
-          ApiClient.ModelProviders.list({ page: 1, per_page: 100 }),
-          ApiClient.Auth.me(),
-        ])
+      await Promise.all([loadAssistants(), loadProviders()])
+    } catch (error: any) {
+      message.error(error?.message || 'Failed to load data')
+    }
+  }
 
-      // Filter to only show user's own assistants in chat (not template ones)
-      const userAssistants = assistantsResponse.assistants.filter(
-        a => !a.is_template,
-      )
-      setAssistants(userAssistants)
-      setCurrentUser(userResponse)
-
-      // The backend already filters model providers based on permissions
-      const availableProviders = providersResponse.providers.filter(
-        p => p.enabled,
-      )
-      setModelProviders(availableProviders)
-
-      // Set default selections
+  // Set default selections when data loads
+  useEffect(() => {
+    if (assistants.length > 0 && !selectedAssistant) {
+      // Filter to only show user's own assistants in chat (not admin templates)
+      const userAssistants = assistants.filter(a => !a.is_template)
       if (userAssistants.length > 0) {
         setSelectedAssistant(userAssistants[0].id)
       }
-      if (availableProviders.length > 0) {
-        const firstProvider = availableProviders[0]
+    }
+  }, [assistants, selectedAssistant])
+
+  useEffect(() => {
+    if (modelProviders.length > 0 && !selectedModel) {
+      // Filter to only show enabled providers
+      const enabledProviders = modelProviders.filter(p => p.enabled)
+      if (enabledProviders.length > 0) {
+        const firstProvider = enabledProviders[0]
         if (firstProvider && firstProvider.models.length > 0) {
-          setSelectedModel(`${firstProvider.id}:${firstProvider.models[0].id}`)
+          const enabledModels = firstProvider.models.filter(m => m.enabled)
+          if (enabledModels.length > 0) {
+            setSelectedModel(`${firstProvider.id}:${enabledModels[0].id}`)
+          }
         }
       }
-    } catch (error) {
-      message.error('Failed to load data')
     }
-  }
+  }, [modelProviders, selectedModel])
 
   const createNewConversation = async () => {
     if (!selectedAssistant || !selectedModel) {
@@ -74,34 +123,29 @@ export function NewChatInterface() {
     const [providerId, modelId] = selectedModel.split(':')
 
     try {
-      const request: CreateConversationRequest = {
-        title: 'New Conversation',
-        assistant_id: selectedAssistant,
-        model_provider_id: providerId,
-        model_id: modelId,
-      }
+      const conversationId = await createConversation(
+        selectedAssistant,
+        providerId,
+        modelId,
+      )
 
-      const newConversation = await ApiClient.Chat.createConversation(request)
-
-      // Add to store immediately with basic info
+      // Add to conversations store immediately
       addConversation({
-        id: newConversation.id,
-        title: newConversation.title,
-        user_id: newConversation.user_id,
-        assistant_id: newConversation.assistant_id,
-        model_provider_id: newConversation.model_provider_id,
-        model_id: newConversation.model_id,
-        created_at: newConversation.created_at,
-        updated_at: newConversation.updated_at,
+        id: conversationId,
+        title: 'New Conversation',
+        user_id: user?.id || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         last_message: undefined,
         message_count: 0,
       })
 
       // Navigate to the new conversation URL
-      navigate(`/conversation/${newConversation.id}`)
-      return newConversation
+      navigate(`/conversation/${conversationId}`)
+      return conversationId
     } catch (error) {
-      message.error('Failed to create conversation')
+      // Error is already handled by the store
+      console.error('Failed to create conversation:', error)
       return null
     }
   }
@@ -110,31 +154,41 @@ export function NewChatInterface() {
     if (!inputValue.trim() || !selectedAssistant || !selectedModel) return
 
     // Create new conversation and send first message
-    const conversation = await createNewConversation()
-    if (!conversation) return
+    const conversationId = await createNewConversation()
+    if (!conversationId) return
 
     const [providerId, modelId] = selectedModel.split(':')
 
     try {
       // Send the first message
-      await ApiClient.Chat.sendMessage({
-        conversation_id: conversation.id,
-        content: inputValue.trim(),
-        model_provider_id: providerId,
-        model_id: modelId,
-      })
+      await sendMessage(
+        inputValue.trim(),
+        selectedAssistant,
+        providerId,
+        modelId,
+      )
     } catch (error) {
+      // Error is already handled by the store
       console.error('Failed to send first message:', error)
-      message.error('Failed to send message')
     }
   }
+
+  if (assistantsLoading || providersLoading) {
+    return <div>Loading...</div>
+  }
+
+  // Filter to only show user's own assistants in chat (not admin templates)
+  const userAssistants = assistants.filter(a => !a.is_template)
+
+  // Filter to only show enabled providers
+  const enabledProviders = modelProviders.filter(p => p.enabled)
 
   return (
     <ChatWelcome
       selectedAssistant={selectedAssistant}
       selectedModel={selectedModel}
-      assistants={assistants}
-      modelProviders={modelProviders}
+      assistants={userAssistants}
+      modelProviders={enabledProviders}
       onAssistantChange={setSelectedAssistant}
       onModelChange={setSelectedModel}
       onSend={handleSend}

@@ -26,14 +26,9 @@ import {
   UploadOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ApiClient } from '../../api/client'
-import {
-  Project,
-  ProjectConversation,
-  ProjectDetailResponse,
-  ProjectDocument,
-  UploadDocumentRequest,
-} from '../../types/api/projects'
+import { useShallow } from 'zustand/react/shallow'
+// import { Project } from '../../types/api/projects' // Unused but may be needed later
+import { useProjectsStore } from '../../store/projects'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -50,11 +45,33 @@ export const ProjectDetailsPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
 
-  const [project, setProject] = useState<Project | null>(null)
-  const [documents, setDocuments] = useState<ProjectDocument[]>([])
-  const [conversations, setConversations] = useState<ProjectConversation[]>([])
-  const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
+  // Projects store
+  const {
+    currentProject,
+    documents,
+    conversations,
+    loading,
+    uploading,
+    error,
+    loadProjectDetails,
+    updateProject,
+    uploadDocument,
+    clearError,
+  } = useProjectsStore(
+    useShallow(state => ({
+      currentProject: state.currentProject,
+      documents: state.documents,
+      conversations: state.conversations,
+      loading: state.loading,
+      uploading: state.uploading,
+      updating: state.updating,
+      error: state.error,
+      loadProjectDetails: state.loadProjectDetails,
+      updateProject: state.updateProject,
+      uploadDocument: state.uploadDocument,
+      clearError: state.clearError,
+    })),
+  )
 
   // Chat state
   const [chatInput, setChatInput] = useState('')
@@ -74,29 +91,20 @@ export const ProjectDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (projectId) {
-      fetchProjectDetails()
-    }
-  }, [projectId])
-
-  const fetchProjectDetails = async () => {
-    if (!projectId) return
-
-    try {
-      setLoading(true)
-      const response: ProjectDetailResponse = await ApiClient.Projects.get({
-        project_id: projectId,
+      loadProjectDetails(projectId).catch((error: any) => {
+        message.error(error?.message || 'Failed to fetch project details')
+        navigate('/projects')
       })
-
-      setProject(response.project)
-      setDocuments(response.documents)
-      setConversations(response.conversations)
-    } catch (_error) {
-      message.error('Failed to fetch project details')
-      navigate('/projects')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [projectId, loadProjectDetails])
+
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
+    }
+  }, [error, message, clearError])
 
   const handleSendMessage = () => {
     if (!chatInput.trim()) return
@@ -124,43 +132,29 @@ export const ProjectDetailsPage: React.FC = () => {
   }
 
   const handleFileUpload = async (file: any) => {
-    if (!project) return
+    if (!currentProject) return
 
     try {
-      setUploading(true)
-      const uploadRequest: UploadDocumentRequest = {
-        file_name: file.name,
-        file_size: file.size,
-        mime_type: file.type,
-      }
-
-      const response = await ApiClient.Projects.uploadDocument({
-        project_id: project.id,
-        ...uploadRequest,
-      })
-
-      setDocuments([response.document, ...documents])
+      await uploadDocument(currentProject.id, file)
       message.success('Document uploaded successfully')
-    } catch (_error) {
-      message.error('Failed to upload document')
-    } finally {
-      setUploading(false)
+    } catch (error) {
+      console.error('Failed to upload document:', error)
+      // Error is handled by the store
     }
   }
 
   const handleUpdateDescription = async (values: { description: string }) => {
-    if (!project) return
+    if (!currentProject) return
 
     try {
-      const updatedProject = await ApiClient.Projects.update({
-        project_id: project.id,
+      await updateProject(currentProject.id, {
         description: values.description,
       })
-      setProject(updatedProject)
       setEditingDescription(false)
       message.success('Description updated successfully')
-    } catch (_error) {
-      message.error('Failed to update description')
+    } catch (error) {
+      console.error('Failed to update description:', error)
+      // Error is handled by the store
     }
   }
 
@@ -172,7 +166,7 @@ export const ProjectDetailsPage: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  if (loading || !project) {
+  if (loading || !currentProject) {
     return (
       <div className="p-6 flex justify-center min-h-screen">
         <div className="w-full max-w-7xl">
@@ -191,11 +185,11 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="border-b px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Title level={4} className="!mb-0">
-                {project.name}
+                {currentProject.name}
               </Title>
               <Button icon={<StarOutlined />} type="text" className="text-xs" />
               <Tag color="default">
-                {project.is_private ? 'Private' : 'Public'}
+                {currentProject.is_private ? 'Private' : 'Public'}
               </Tag>
             </div>
             <Dropdown
@@ -314,7 +308,9 @@ export const ProjectDetailsPage: React.FC = () => {
                 <Form
                   form={descriptionForm}
                   onFinish={handleUpdateDescription}
-                  initialValues={{ description: project.description || '' }}
+                  initialValues={{
+                    description: currentProject.description || '',
+                  }}
                 >
                   <Form.Item name="description" className="!mb-2">
                     <TextArea
@@ -345,7 +341,7 @@ export const ProjectDetailsPage: React.FC = () => {
                   onClick={() => setEditingDescription(true)}
                 >
                   <Text>
-                    {project.description ||
+                    {currentProject.description ||
                       '"This project is to response to reviewer comment for the..."'}
                   </Text>
                   <Button type="link" className="text-xs !p-0 !h-auto !ml-1">

@@ -11,8 +11,9 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { ModelProviderProxySettings } from '../../../../types/api/modelProvider'
-import { ApiClient } from '../../../../api/client'
+import { useModelProvidersStore } from '../../../../store/modelProviders'
 
 const { Title, Text } = Typography
 
@@ -32,9 +33,16 @@ export function ModelProviderProxySettingsForm({
   disabled = false,
 }: ModelProviderProxySettingsProps) {
   const [form] = Form.useForm()
-  const [testingProxy, setTestingProxy] = useState(false)
   const [lastTestedConfig, setLastTestedConfig] = useState<string | null>(null)
   const [isProxyTested, setIsProxyTested] = useState(false)
+
+  // Model providers store
+  const { testingProxy, testProxy } = useModelProvidersStore(
+    useShallow(state => ({
+      testingProxy: state.testingProxy,
+      testProxy: state.testProxy,
+    })),
+  )
 
   useEffect(() => {
     form.setFieldsValue(initialSettings)
@@ -45,7 +53,6 @@ export function ModelProviderProxySettingsForm({
 
   const handleTestProxy = async () => {
     try {
-      setTestingProxy(true)
       const values = form.getFieldsValue()
 
       // Only test if URL is provided
@@ -53,19 +60,7 @@ export function ModelProviderProxySettingsForm({
         return
       }
 
-      await ApiClient.ModelProviders.testProxy({
-        provider_id: providerId,
-        enabled: values.enabled,
-        url: values.url,
-        username: values.username,
-        password: values.password,
-        no_proxy: values.no_proxy,
-        ignore_ssl_certificates: values.ignore_ssl_certificates,
-        proxy_ssl: values.proxy_ssl,
-        proxy_host_ssl: values.proxy_host_ssl,
-        peer_ssl: values.peer_ssl,
-        host_ssl: values.host_ssl,
-      })
+      const success = await testProxy(providerId)
 
       // Store the tested configuration
       const currentConfig = JSON.stringify({
@@ -80,15 +75,17 @@ export function ModelProviderProxySettingsForm({
         host_ssl: values.host_ssl,
       })
 
-      setLastTestedConfig(currentConfig)
-      setIsProxyTested(true)
+      if (success) {
+        setLastTestedConfig(currentConfig)
+        setIsProxyTested(true)
+      } else {
+        setIsProxyTested(false)
+        setLastTestedConfig(null)
+      }
     } catch (error) {
       console.error('Proxy test failed:', error)
       setIsProxyTested(false)
       setLastTestedConfig(null)
-      throw error
-    } finally {
-      setTestingProxy(false)
     }
   }
 

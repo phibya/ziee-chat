@@ -14,6 +14,11 @@ import {
   CreateModelProviderRequest,
   ModelProviderType,
 } from '../../../../types/api/modelProvider'
+import {
+  SUPPORTED_PROVIDERS,
+  PROVIDER_DEFAULTS,
+  KV_CACHE_TYPE_OPTIONS,
+} from '../../../../constants/modelProviders'
 
 interface AddProviderModalProps {
   open: boolean
@@ -52,49 +57,8 @@ export function AddProviderModal({
   }
 
   const getDefaultValues = (type: ModelProviderType) => {
-    switch (type) {
-      case 'openai':
-        return { base_url: 'https://api.openai.com/v1' }
-      case 'anthropic':
-        return { base_url: 'https://api.anthropic.com/v1' }
-      case 'groq':
-        return { base_url: 'https://api.groq.com/openai/v1' }
-      case 'gemini':
-        return {
-          base_url: 'https://generativelanguage.googleapis.com/v1beta/openai',
-        }
-      case 'mistral':
-        return { base_url: 'https://api.mistral.ai' }
-      case 'llama.cpp':
-        return {
-          settings: {
-            autoUnloadOldModels: true,
-            contextShift: false,
-            continuousBatching: false,
-            parallelOperations: 1,
-            cpuThreads: -1,
-            threadsBatch: -1,
-            flashAttention: true,
-            caching: true,
-            kvCacheType: 'q8_0',
-            mmap: true,
-            huggingFaceAccessToken: '',
-          },
-        }
-      default:
-        return {}
-    }
+    return PROVIDER_DEFAULTS[type] || {}
   }
-
-  const providerTypeOptions = [
-    { value: 'llama.cpp', label: 'Llama.cpp' },
-    { value: 'openai', label: 'OpenAI' },
-    { value: 'anthropic', label: 'Anthropic' },
-    { value: 'groq', label: 'Groq' },
-    { value: 'gemini', label: 'Gemini' },
-    { value: 'mistral', label: 'Mistral' },
-    { value: 'custom', label: 'Custom' },
-  ]
 
   return (
     <Modal
@@ -130,7 +94,7 @@ export function AddProviderModal({
           rules={[{ required: true, message: 'Please select provider type' }]}
         >
           <Select
-            options={providerTypeOptions}
+            options={SUPPORTED_PROVIDERS}
             onChange={handleTypeChange}
             placeholder="Select provider type"
           />
@@ -240,15 +204,7 @@ export function AddProviderModal({
                 name={['settings', 'kvCacheType']}
                 label="KV Cache Type"
               >
-                <Select
-                  options={[
-                    { value: 'q8_0', label: 'q8_0' },
-                    { value: 'q4_0', label: 'q4_0' },
-                    { value: 'q4_1', label: 'q4_1' },
-                    { value: 'q5_0', label: 'q5_0' },
-                    { value: 'q5_1', label: 'q5_1' },
-                  ]}
-                />
+                <Select options={KV_CACHE_TYPE_OPTIONS} />
               </Form.Item>
 
               <Form.Item

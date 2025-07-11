@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuthStore } from '../../store/auth'
+import { useAdminStore } from '../../store/admin'
 import type { CreateUserRequest } from '../../types'
-import { ApiClient } from '../../api/client'
 
 const { Title, Text } = Typography
 
@@ -17,10 +18,17 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   isSetup = false,
 }) => {
   const [form] = Form.useForm()
-  const [registrationEnabled, setRegistrationEnabled] = useState(true)
   const [checkingRegistration, setCheckingRegistration] = useState(false)
   const { register, setupApp, isLoading, error, clearError, isDesktop } =
     useAuthStore()
+
+  // Get registration status from admin store
+  const { registrationEnabled, loadUserRegistrationSettings } = useAdminStore(
+    useShallow(state => ({
+      registrationEnabled: state.userRegistrationEnabled,
+      loadUserRegistrationSettings: state.loadUserRegistrationSettings,
+    })),
+  )
 
   // Check registration status for web app (except for setup mode)
   useEffect(() => {
@@ -28,11 +36,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       const checkRegistrationStatus = async () => {
         setCheckingRegistration(true)
         try {
-          const response = await ApiClient.Config.getUserRegistrationStatus()
-          setRegistrationEnabled(response.enabled)
+          await loadUserRegistrationSettings()
         } catch {
-          // If we can't check status, assume registration is enabled
-          setRegistrationEnabled(true)
+          // If we can't check status, registration status will remain default
+          console.warn('Failed to load registration status')
         } finally {
           setCheckingRegistration(false)
         }
@@ -40,7 +47,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
       checkRegistrationStatus()
     }
-  }, [isSetup, isDesktop])
+  }, [isSetup, isDesktop, loadUserRegistrationSettings])
 
   const onFinish = async (values: CreateUserRequest) => {
     try {

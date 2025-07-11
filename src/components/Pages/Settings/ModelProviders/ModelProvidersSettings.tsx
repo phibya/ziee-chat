@@ -32,6 +32,7 @@ import {
   PlusOutlined,
   SettingOutlined,
 } from '@ant-design/icons'
+import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
 import {
@@ -43,7 +44,7 @@ import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
 import { ModelProviderProxySettingsForm } from './ModelProviderProxySettings'
-import { ApiClient } from '../../../../api/client'
+import { useModelProvidersStore } from '../../../../store/modelProviders'
 
 const { Title, Text } = Typography
 const { Sider, Content } = Layout
@@ -61,12 +62,49 @@ const PROVIDER_ICONS: Record<ModelProviderType, string> = {
 export function ModelProvidersSettings() {
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
-  const [providers, setProviders] = useState<ModelProvider[]>([])
+
+  // Model providers store
+  const {
+    providers,
+    loading,
+    error,
+    loadProviders,
+    createProvider,
+    updateProvider,
+    deleteProvider,
+    cloneProvider,
+    addModel,
+    updateModel,
+    deleteModel,
+    startModel,
+    stopModel,
+    clearError,
+  } = useModelProvidersStore(
+    useShallow(state => ({
+      providers: state.providers,
+      loading: state.loading,
+      creating: state.creating,
+      updating: state.updating,
+      deleting: state.deleting,
+      error: state.error,
+      loadProviders: state.loadProviders,
+      createProvider: state.createProvider,
+      updateProvider: state.updateProvider,
+      deleteProvider: state.deleteProvider,
+      cloneProvider: state.cloneProvider,
+      addModel: state.addModel,
+      updateModel: state.updateModel,
+      deleteModel: state.deleteModel,
+      startModel: state.startModel,
+      stopModel: state.stopModel,
+      clearError: state.clearError,
+    })),
+  )
+
   const [selectedProvider, setSelectedProvider] = useState<string>('')
   const [form] = Form.useForm()
   const [nameForm] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isAddModelModalOpen, setIsAddModelModalOpen] = useState(false)
   const [isEditModelModalOpen, setIsEditModelModalOpen] = useState(false)
@@ -140,7 +178,22 @@ export function ModelProvidersSettings() {
 
   useEffect(() => {
     loadProviders()
-  }, [])
+  }, [loadProviders])
+
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
+    }
+  }, [error, message, clearError])
+
+  // Set first provider as selected when providers load
+  useEffect(() => {
+    if (providers.length > 0 && !selectedProvider) {
+      setSelectedProvider(providers[0].id)
+    }
+  }, [providers, selectedProvider])
 
   useEffect(() => {
     if (currentProvider) {
@@ -158,22 +211,6 @@ export function ModelProvidersSettings() {
     }
   }, [currentProvider, form, nameForm])
 
-  const loadProviders = async () => {
-    try {
-      setLoading(true)
-      const response = await ApiClient.ModelProviders.list({})
-      setProviders(response.providers)
-      if (response.providers.length > 0) {
-        setSelectedProvider(response.providers[0].id)
-      }
-    } catch (error) {
-      console.error('Failed to load providers:', error)
-      message.error('Failed to load model providers')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleProviderToggle = async (providerId: string, enabled: boolean) => {
     if (!canEditProviders) {
       message.error('You do not have permission to modify provider settings')
@@ -181,14 +218,9 @@ export function ModelProvidersSettings() {
     }
 
     try {
-      const updatedProvider = await ApiClient.ModelProviders.update({
-        provider_id: providerId,
-        enabled,
+      const updatedProvider = await updateProvider(providerId, {
+        enabled: enabled,
       })
-
-      setProviders(prev =>
-        prev.map(p => (p.id === providerId ? updatedProvider : p)),
-      )
       message.success(
         `${updatedProvider.name} ${enabled ? 'enabled' : 'disabled'}`,
       )
@@ -221,10 +253,10 @@ export function ModelProvidersSettings() {
             )
           }
         } else {
-          message.error('Failed to update provider')
+          message.error(error?.message || 'Failed to update provider')
         }
       } else {
-        message.error('Failed to update provider')
+        message.error(error?.message || 'Failed to update provider')
       }
     }
   }
@@ -240,17 +272,10 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !canEditProviders) return
 
     try {
-      const updatedProvider = await ApiClient.ModelProviders.update({
-        provider_id: currentProvider.id,
-        name: changedValues.name,
-      })
-
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
+      await updateProvider(currentProvider.id, { name: changedValues.name })
     } catch (error) {
       console.error('Failed to update provider:', error)
-      message.error('Failed to update provider')
+      // Error is handled by the store
     }
   }
 
@@ -268,28 +293,24 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !canEditProviders || !pendingSettings) return
 
     try {
-      const updatedProvider = await ApiClient.ModelProviders.update({
-        provider_id: currentProvider.id,
-        ...pendingSettings,
-      })
+      await updateProvider(currentProvider.id, pendingSettings)
 
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
-
-      // Update form with the new values
-      form.setFieldsValue({
-        api_key: updatedProvider.api_key,
-        base_url: updatedProvider.base_url,
-        settings: updatedProvider.settings,
-      })
+      // Update form with the new values from updated provider
+      const updatedProvider = providers.find(p => p.id === currentProvider.id)
+      if (updatedProvider) {
+        form.setFieldsValue({
+          api_key: updatedProvider.api_key,
+          base_url: updatedProvider.base_url,
+          settings: updatedProvider.settings,
+        })
+      }
 
       setHasUnsavedChanges(false)
       setPendingSettings(null)
       message.success('Settings saved successfully')
     } catch (error) {
       console.error('Failed to save settings:', error)
-      message.error('Failed to save settings')
+      // Error is handled by the store
     }
   }
 
@@ -297,19 +318,13 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !canEditProviders) return
 
     try {
-      const updatedProvider = await ApiClient.ModelProviders.update({
-        provider_id: currentProvider.id,
+      await updateProvider(currentProvider.id, {
         proxy_settings: proxySettings,
       })
-
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
-
       message.success('Proxy settings saved successfully')
     } catch (error) {
       console.error('Failed to save proxy settings:', error)
-      message.error('Failed to save proxy settings')
+      // Error is handled by the store
     }
   }
 
@@ -330,9 +345,7 @@ export function ModelProvidersSettings() {
       cancelText: 'Cancel',
       onOk: async () => {
         try {
-          await ApiClient.ModelProviders.delete({ provider_id: providerId })
-
-          setProviders(prev => prev.filter(p => p.id !== providerId))
+          await deleteProvider(providerId)
           if (selectedProvider === providerId) {
             const remainingProviders = providers.filter(
               p => p.id !== providerId,
@@ -344,19 +357,7 @@ export function ModelProvidersSettings() {
           message.success('Provider deleted')
         } catch (error: any) {
           console.error('Failed to delete provider:', error)
-          if (error.response?.status === 400) {
-            message.error(
-              `Cannot delete "${provider.name}" - default model providers cannot be deleted`,
-            )
-          } else if (error.response?.status === 403) {
-            message.error(
-              'You do not have permission to delete model providers',
-            )
-          } else if (error.response?.status === 404) {
-            message.error('Provider not found')
-          } else {
-            message.error('Failed to delete provider')
-          }
+          // Error is handled by the store
         }
       },
     })
@@ -369,34 +370,25 @@ export function ModelProvidersSettings() {
     }
 
     try {
-      const clonedProvider = await ApiClient.ModelProviders.clone({
-        provider_id: providerId,
-      })
-
-      setProviders(prev => [...prev, clonedProvider])
+      await cloneProvider(
+        providerId,
+        `${providers.find(p => p.id === providerId)?.name} (Clone)`,
+      )
       message.success('Provider cloned successfully')
     } catch (error) {
       console.error('Failed to clone provider:', error)
-      message.error('Failed to clone provider')
+      // Error is handled by the store
     }
   }
 
   const handleAddProvider = async (providerData: any) => {
     try {
-      const newProvider = await ApiClient.ModelProviders.create(providerData)
-
-      setProviders(prev => [...prev, newProvider])
+      await createProvider(providerData)
       setIsAddModalOpen(false)
       message.success('Provider added successfully')
     } catch (error: any) {
       console.error('Failed to add provider:', error)
-      if (error.response?.status === 400) {
-        message.error(
-          'Failed to add provider - Please check API key and base URL are provided and valid',
-        )
-      } else {
-        message.error('Failed to add provider')
-      }
+      // Error is handled by the store
     }
   }
 
@@ -404,24 +396,12 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      const newModel = await ApiClient.ModelProviders.addModel({
-        provider_id: currentProvider.id,
-        ...modelData,
-      })
-
-      const updatedProvider = {
-        ...currentProvider,
-        models: [...(currentProvider.models || []), newModel],
-      }
-
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
+      await addModel(currentProvider.id, modelData)
       setIsAddModelModalOpen(false)
       message.success('Model added successfully')
     } catch (error) {
       console.error('Failed to add model:', error)
-      message.error('Failed to add model')
+      // Error is handled by the store
     }
   }
 
@@ -429,28 +409,12 @@ export function ModelProvidersSettings() {
     if (!currentProvider || !selectedModel) return
 
     try {
-      const updatedModel = await ApiClient.Models.update({
-        model_id: modelData.id,
-        ...modelData,
-      })
-
-      const updatedModels = currentProvider.models.map(m =>
-        m.id === modelData.id ? updatedModel : m,
-      )
-
-      const updatedProvider = {
-        ...currentProvider,
-        models: updatedModels,
-      }
-
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
+      await updateModel(modelData.id, modelData)
       setIsEditModelModalOpen(false)
       message.success('Model updated successfully')
     } catch (error) {
       console.error('Failed to update model:', error)
-      message.error('Failed to update model')
+      // Error is handled by the store
     }
   }
 
@@ -458,22 +422,11 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      await ApiClient.Models.delete({ model_id: modelId })
-
-      const updatedModels = currentProvider.models.filter(m => m.id !== modelId)
-
-      const updatedProvider = {
-        ...currentProvider,
-        models: updatedModels,
-      }
-
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
+      await deleteModel(modelId)
       message.success('Model deleted successfully')
     } catch (error) {
       console.error('Failed to delete model:', error)
-      message.error('Failed to delete model')
+      // Error is handled by the store
     }
   }
 
@@ -481,61 +434,45 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      const updatedModel = await ApiClient.Models.update({
-        model_id: modelId,
-        enabled,
-      })
+      await updateModel(modelId, { enabled })
 
-      const updatedModels = currentProvider.models.map(m =>
-        m.id === modelId ? updatedModel : m,
-      )
-
-      let updatedProvider = {
-        ...currentProvider,
-        models: updatedModels,
-      }
-
-      // If disabling a model, check if this was the last enabled model
+      // Check if this was the last enabled model being disabled
       if (!enabled) {
-        const remainingEnabledModels = updatedModels.filter(
-          m => m.enabled !== false,
+        const currentModels = currentProvider.models
+        const remainingEnabledModels = currentModels.filter(
+          m => m.id !== modelId && m.enabled !== false,
         )
 
-        // If no models are enabled and provider is currently enabled, disable the provider
+        // If no models remain enabled and provider is currently enabled, disable the provider
         if (remainingEnabledModels.length === 0 && currentProvider.enabled) {
           try {
-            const disabledProvider = await ApiClient.ModelProviders.update({
-              provider_id: currentProvider.id,
-              enabled: false,
-            })
-            updatedProvider = disabledProvider
+            await updateProvider(currentProvider.id, { enabled: false })
+            const modelName =
+              currentModels.find(m => m.id === modelId)?.name || 'Model'
             message.success(
-              `${updatedModel.name} disabled. ${currentProvider.name} provider disabled as no models remain active.`,
+              `${modelName} disabled. ${currentProvider.name} provider disabled as no models remain active.`,
             )
           } catch (providerError) {
             console.error('Failed to disable provider:', providerError)
-            // Still update the model but show warning about provider
+            const modelName =
+              currentModels.find(m => m.id === modelId)?.name || 'Model'
             message.warning(
-              `${updatedModel.name} disabled, but failed to disable provider automatically`,
+              `${modelName} disabled, but failed to disable provider automatically`,
             )
           }
         } else {
-          message.success(
-            `${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`,
-          )
+          const modelName =
+            currentModels.find(m => m.id === modelId)?.name || 'Model'
+          message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
         }
       } else {
-        message.success(
-          `${updatedModel.name} ${enabled ? 'enabled' : 'disabled'}`,
-        )
+        const modelName =
+          currentProvider.models.find(m => m.id === modelId)?.name || 'Model'
+        message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
       }
-
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
     } catch (error) {
       console.error('Failed to toggle model:', error)
-      message.error('Failed to toggle model')
+      // Error is handled by the store
     }
   }
 
@@ -543,30 +480,18 @@ export function ModelProvidersSettings() {
     if (!currentProvider || currentProvider.type !== 'llama.cpp') return
 
     try {
-      const updatedModel = await ApiClient.Models.update({
-        model_id: modelId,
-        isActive,
-      })
-
-      const updatedModels = currentProvider.models.map(m =>
-        m.id === modelId ? updatedModel : m,
-      )
-
-      const updatedProvider = {
-        ...currentProvider,
-        models: updatedModels,
+      if (isActive) {
+        await startModel(modelId)
+      } else {
+        await stopModel(modelId)
       }
 
-      setProviders(prev =>
-        prev.map(p => (p.id === currentProvider.id ? updatedProvider : p)),
-      )
-
-      message.success(
-        `${updatedModel.name} ${isActive ? 'started' : 'stopped'}`,
-      )
+      const modelName =
+        currentProvider.models.find(m => m.id === modelId)?.name || 'Model'
+      message.success(`${modelName} ${isActive ? 'started' : 'stopped'}`)
     } catch (error) {
       console.error('Failed to start/stop model:', error)
-      message.error('Failed to start/stop model')
+      // Error is handled by the store
     }
   }
 

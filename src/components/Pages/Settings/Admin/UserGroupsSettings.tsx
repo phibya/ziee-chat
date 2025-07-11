@@ -27,17 +27,17 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../../api/core.ts'
 import {
   CreateUserGroupRequest,
   UpdateUserGroupRequest,
-  User,
   UserGroup,
 } from '../../../../types'
-import { ModelProvider } from '../../../../types/api/modelProvider'
-import { ApiClient } from '../../../../api/client.ts'
 import { Permission, usePermissions } from '../../../../permissions'
 import { PageContainer } from '../../../common/PageContainer'
+import { useAdminStore } from '../../../../store/admin'
+import { useModelProvidersStore } from '../../../../store/modelProviders'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -45,15 +45,51 @@ const { TextArea } = Input
 export function UserGroupsSettings() {
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
-  const [groups, setGroups] = useState<UserGroup[]>([])
-  const [loading, setLoading] = useState(false)
+
+  // Admin store
+  const {
+    groups,
+    groupMembers,
+    loading,
+    membersLoading,
+    error,
+    loadGroups,
+    createGroup,
+    updateGroup,
+    deleteGroup,
+    loadGroupMembers,
+    clearError,
+  } = useAdminStore(
+    useShallow(state => ({
+      groups: state.groups,
+      groupMembers: state.currentGroupMembers,
+      loading: state.loadingGroups,
+      membersLoading: state.loadingGroupMembers,
+      creating: state.creating,
+      updating: state.updating,
+      deleting: state.deleting,
+      error: state.error,
+      loadGroups: state.loadGroups,
+      createGroup: state.createGroup,
+      updateGroup: state.updateGroup,
+      deleteGroup: state.deleteGroup,
+      loadGroupMembers: state.loadGroupMembers,
+      clearError: state.clearError,
+    })),
+  )
+
+  // Model providers store
+  const { providers: modelProviders, loadProviders } = useModelProvidersStore(
+    useShallow(state => ({
+      providers: state.providers,
+      loadProviders: state.loadProviders,
+    })),
+  )
+
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [membersDrawerVisible, setMembersDrawerVisible] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null)
-  const [groupMembers, setGroupMembers] = useState<User[]>([])
-  const [membersLoading, setMembersLoading] = useState(false)
-  const [modelProviders, setModelProviders] = useState<ModelProvider[]>([])
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
 
@@ -76,42 +112,17 @@ export function UserGroupsSettings() {
       message.warning('You do not have permission to view user groups')
       return
     }
-    fetchGroups()
-    fetchModelProviders()
-  }, [canReadGroups])
+    loadGroups()
+    loadProviders()
+  }, [canReadGroups, loadGroups, loadProviders])
 
-  const fetchGroups = async () => {
-    setLoading(true)
-    try {
-      const { groups } = await ApiClient.Admin.listGroups({
-        page: 1,
-        per_page: 100,
-      })
-      setGroups(groups)
-    } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to fetch user groups',
-      )
-    } finally {
-      setLoading(false)
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
     }
-  }
-
-  const fetchModelProviders = async () => {
-    try {
-      const response = await ApiClient.ModelProviders.list({
-        page: 1,
-        per_page: 100,
-      })
-      setModelProviders(response.providers)
-    } catch (error) {
-      message.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to fetch model providers',
-      )
-    }
-  }
+  }, [error, message, clearError])
 
   const handleCreateGroup = async (values: any) => {
     if (!canCreateGroups) {
@@ -138,15 +149,13 @@ export function UserGroupsSettings() {
         permissions: values.permissions ? JSON.parse(values.permissions) : {},
         model_provider_ids: values.model_provider_ids || [],
       }
-      await ApiClient.Admin.createGroup(groupData)
+      await createGroup(groupData)
       message.success('User group created successfully')
       setCreateModalVisible(false)
       createForm.resetFields()
-      fetchGroups()
     } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to create user group',
-      )
+      console.error('Failed to create user group:', error)
+      // Error is handled by the store
     }
   }
 
@@ -184,16 +193,14 @@ export function UserGroupsSettings() {
         model_provider_ids: values.model_provider_ids || [],
         is_active: selectedGroup.is_protected ? undefined : values.is_active,
       }
-      await ApiClient.Admin.updateGroup(updateData)
+      await updateGroup(selectedGroup.id, updateData)
       message.success('User group updated successfully')
       setEditModalVisible(false)
       setSelectedGroup(null)
       editForm.resetFields()
-      fetchGroups()
     } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to update user group',
-      )
+      console.error('Failed to update user group:', error)
+      // Error is handled by the store
     }
   }
 
@@ -203,35 +210,23 @@ export function UserGroupsSettings() {
       return
     }
     try {
-      await ApiClient.Admin.deleteGroup({ group_id: groupId })
+      await deleteGroup(groupId)
       message.success('User group deleted successfully')
-      fetchGroups()
     } catch (error) {
-      message.error(
-        error instanceof Error ? error.message : 'Failed to delete user group',
-      )
+      console.error('Failed to delete user group:', error)
+      // Error is handled by the store
     }
   }
 
   const handleViewMembers = async (group: UserGroup) => {
     setSelectedGroup(group)
     setMembersDrawerVisible(true)
-    setMembersLoading(true)
+
     try {
-      const { users } = await ApiClient.Admin.getGroupMembers({
-        group_id: group.id,
-        page: 1,
-        per_page: 100,
-      })
-      setGroupMembers(users)
+      await loadGroupMembers(group.id)
     } catch (error) {
-      message.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to fetch group members',
-      )
-    } finally {
-      setMembersLoading(false)
+      console.error('Failed to fetch group members:', error)
+      // Error is handled by the store
     }
   }
 
@@ -639,7 +634,7 @@ export function UserGroupsSettings() {
                   title={user.username}
                   description={
                     <div>
-                      <div>{user.emails[0]?.address}</div>
+                      <div>{user.email}</div>
                       <Tag color={user.is_active ? 'green' : 'red'}>
                         {user.is_active ? 'Active' : 'Inactive'}
                       </Tag>

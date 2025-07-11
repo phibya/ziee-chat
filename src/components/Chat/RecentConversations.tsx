@@ -7,7 +7,6 @@ import {
   ExclamationCircleOutlined,
   MessageOutlined,
 } from '@ant-design/icons'
-import { ApiClient } from '../../api/client'
 import { ConversationSummary } from '../../types/api/chat'
 import { useConversationsStore } from '../../store'
 import { useShallow } from 'zustand/react/shallow'
@@ -71,20 +70,15 @@ export function RecentConversations({
     if (!editingId || !editingTitle.trim()) return
 
     try {
-      await ApiClient.Chat.updateConversation({
-        conversation_id: editingId,
-        title: editingTitle.trim(),
-      })
-
-      // Update store
-      updateConversation(editingId, { title: editingTitle.trim() })
+      // Use store method that handles API call
+      await updateConversation(editingId, { title: editingTitle.trim() })
 
       setEditingId(null)
       setEditingTitle('')
       message.success('Conversation renamed successfully')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update conversation:', error)
-      message.error('Failed to rename conversation')
+      message.error(error?.message || 'Failed to rename conversation')
     }
   }
 
@@ -103,17 +97,13 @@ export function RecentConversations({
       cancelText: 'Cancel',
       onOk: async () => {
         try {
-          await ApiClient.Chat.deleteConversation({
-            conversation_id: conversation.id,
-          })
-
-          // Remove from store
-          removeConversation(conversation.id)
+          // Use store method that handles API call
+          await removeConversation(conversation.id)
 
           message.success('Conversation deleted successfully')
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to delete conversation:', error)
-          message.error('Failed to delete conversation')
+          message.error(error?.message || 'Failed to delete conversation')
         }
       },
     })

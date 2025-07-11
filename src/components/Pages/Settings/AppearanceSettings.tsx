@@ -51,8 +51,8 @@ export function AppearanceSettings() {
         await setLanguage(changedValues.language)
         message.success('Language updated successfully')
       }
-    } catch {
-      message.error('Failed to update settings')
+    } catch (error: any) {
+      message.error(error?.message || 'Failed to update settings')
       form.setFieldsValue({
         theme,
         componentSize,

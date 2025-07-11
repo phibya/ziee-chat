@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Layout, Spin, Typography } from 'antd'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuthStore } from '../../store/auth'
+import { useAdminStore } from '../../store/admin'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
-import { ApiClient } from '../../api/client'
 
 const { Content } = Layout
 const { Title } = Typography
@@ -12,9 +13,17 @@ type AuthMode = 'login' | 'register' | 'setup'
 
 export const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login')
-  const [registrationEnabled, setRegistrationEnabled] = useState(true)
-  const [checkingRegistration, setCheckingRegistration] = useState(false)
   const { isLoading, needsSetup, isDesktop, isAuthenticated } = useAuthStore()
+
+  // Get registration status from admin store
+  const { registrationEnabled, loadUserRegistrationSettings } = useAdminStore(
+    useShallow(state => ({
+      registrationEnabled: state.userRegistrationEnabled,
+      loadUserRegistrationSettings: state.loadUserRegistrationSettings,
+    })),
+  )
+
+  const [checkingRegistration, setCheckingRegistration] = useState(false)
 
   // Check registration status for web app
   useEffect(() => {
@@ -22,11 +31,10 @@ export const AuthPage: React.FC = () => {
       if (!needsSetup && !isDesktop) {
         setCheckingRegistration(true)
         try {
-          const response = await ApiClient.Config.getUserRegistrationStatus()
-          setRegistrationEnabled(response.enabled)
+          await loadUserRegistrationSettings()
         } catch {
-          // If we can't check status, assume registration is enabled
-          setRegistrationEnabled(true)
+          // If we can't check status, registration status will remain default
+          console.warn('Failed to load registration status')
         } finally {
           setCheckingRegistration(false)
         }
@@ -34,7 +42,7 @@ export const AuthPage: React.FC = () => {
     }
 
     checkRegistrationStatus()
-  }, [needsSetup, isDesktop])
+  }, [needsSetup, isDesktop, loadUserRegistrationSettings])
 
   useEffect(() => {
     if (needsSetup) {

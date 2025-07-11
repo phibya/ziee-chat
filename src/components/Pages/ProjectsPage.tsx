@@ -23,13 +23,10 @@ import {
   SearchOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { ApiClient } from '../../api/client'
-import {
-  CreateProjectRequest,
-  Project,
-  UpdateProjectRequest,
-} from '../../types/api/projects'
+import { useShallow } from 'zustand/react/shallow'
+import { Project } from '../../types/api/projects'
 import { PageContainer } from '../common/PageContainer'
+import { useProjectsStore } from '../../store/projects'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -44,8 +41,35 @@ interface ProjectFormData {
 export const ProjectsPage: React.FC = () => {
   const { message } = App.useApp()
   const navigate = useNavigate()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(false)
+
+  // Projects store
+  const {
+    projects,
+    loading,
+    creating,
+    updating,
+    error,
+    loadProjects,
+    createProject,
+    updateProject,
+    deleteProject,
+    clearError,
+  } = useProjectsStore(
+    useShallow(state => ({
+      projects: state.projects,
+      loading: state.loading,
+      creating: state.creating,
+      updating: state.updating,
+      deleting: state.deleting,
+      error: state.error,
+      loadProjects: state.loadProjects,
+      createProject: state.createProject,
+      updateProject: state.updateProject,
+      deleteProject: state.deleteProject,
+      clearError: state.clearError,
+    })),
+  )
+
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'activity' | 'name' | 'created'>(
     'activity',
@@ -56,63 +80,67 @@ export const ProjectsPage: React.FC = () => {
   const [form] = Form.useForm<ProjectFormData>()
 
   useEffect(() => {
-    fetchProjects()
-  }, [searchQuery, sortBy])
+    loadProjects()
+  }, [loadProjects])
 
-  const fetchProjects = async () => {
-    try {
-      setLoading(true)
-      const response = await ApiClient.Projects.list({
-        page: 1,
-        per_page: 100,
-        search: searchQuery || undefined,
-      })
-
-      // Sort projects based on sortBy selection
-      let sortedProjects = [...response.projects]
-      switch (sortBy) {
-        case 'activity':
-          sortedProjects.sort(
-            (a, b) =>
-              new Date(b.updated_at).getTime() -
-              new Date(a.updated_at).getTime(),
-          )
-          break
-        case 'name':
-          sortedProjects.sort((a, b) => a.name.localeCompare(b.name))
-          break
-        case 'created':
-          sortedProjects.sort(
-            (a, b) =>
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime(),
-          )
-          break
-      }
-
-      setProjects(sortedProjects)
-    } catch (error) {
-      message.error('Failed to fetch projects')
-    } finally {
-      setLoading(false)
+  // Show errors
+  useEffect(() => {
+    if (error) {
+      message.error(error)
+      clearError()
     }
+  }, [error, message, clearError])
+
+  // Get filtered and sorted projects
+  const getFilteredAndSortedProjects = () => {
+    let filteredProjects = projects
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filteredProjects = projects.filter(
+        project =>
+          project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          project.description
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+      )
+    }
+
+    // Sort projects based on sortBy selection
+    let sortedProjects = [...filteredProjects]
+    switch (sortBy) {
+      case 'activity':
+        sortedProjects.sort(
+          (a, b) =>
+            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+        )
+        break
+      case 'name':
+        sortedProjects.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case 'created':
+        sortedProjects.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        )
+        break
+    }
+
+    return sortedProjects
   }
 
   const handleCreateProject = async (values: ProjectFormData) => {
     try {
-      const request: CreateProjectRequest = {
+      await createProject({
         name: values.name,
-        description: values.description,
-        is_private: values.is_private ?? true,
-      }
-
-      const newProject = await ApiClient.Projects.create(request)
-      setProjects([newProject, ...projects])
+        description: values.description || '',
+      })
       setNewProjectModalVisible(false)
       form.resetFields()
       message.success('Project created successfully')
     } catch (error) {
-      message.error('Failed to create project')
+      // Error is handled by the store
+      console.error('Failed to create project:', error)
     }
   }
 
@@ -120,36 +148,27 @@ export const ProjectsPage: React.FC = () => {
     if (!editingProject) return
 
     try {
-      const request: UpdateProjectRequest = {
+      await updateProject(editingProject.id, {
         name: values.name,
         description: values.description,
-        is_private: values.is_private,
-      }
-
-      const updatedProject = await ApiClient.Projects.update({
-        project_id: editingProject.id,
-        ...request,
       })
-
-      setProjects(
-        projects.map(p => (p.id === editingProject.id ? updatedProject : p)),
-      )
       setEditProjectModalVisible(false)
       setEditingProject(null)
       form.resetFields()
       message.success('Project updated successfully')
     } catch (error) {
-      message.error('Failed to update project')
+      // Error is handled by the store
+      console.error('Failed to update project:', error)
     }
   }
 
   const handleDeleteProject = async (project: Project) => {
     try {
-      await ApiClient.Projects.delete({ project_id: project.id })
-      setProjects(projects.filter(p => p.id !== project.id))
+      await deleteProject(project.id)
       message.success('Project deleted successfully')
     } catch (error) {
-      message.error('Failed to delete project')
+      // Error is handled by the store
+      console.error('Failed to delete project:', error)
     }
   }
 
@@ -246,7 +265,7 @@ export const ProjectsPage: React.FC = () => {
 
       {/* Projects Grid */}
       <Row gutter={[16, 16]}>
-        {projects.map(project => (
+        {getFilteredAndSortedProjects().map(project => (
           <Col xs={24} sm={12} lg={8} xl={6} key={project.id}>
             <Card
               hoverable
@@ -305,7 +324,7 @@ export const ProjectsPage: React.FC = () => {
       </Row>
 
       {/* Empty State */}
-      {!loading && projects.length === 0 && (
+      {!loading && getFilteredAndSortedProjects().length === 0 && (
         <div className="text-center py-12">
           <FolderOutlined className="text-6xl mb-4" />
           <Title level={3} type="secondary">
@@ -370,7 +389,7 @@ export const ProjectsPage: React.FC = () => {
             >
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" loading={creating}>
               Create project
             </Button>
           </div>
@@ -416,7 +435,7 @@ export const ProjectsPage: React.FC = () => {
             >
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit">
+            <Button type="primary" htmlType="submit" loading={updating}>
               Update project
             </Button>
           </div>
