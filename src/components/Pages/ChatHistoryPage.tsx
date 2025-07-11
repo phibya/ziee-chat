@@ -21,6 +21,7 @@ import {
   SearchOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ConversationSummary } from '../../types/api/chat'
 import { PageContainer } from '../common/PageContainer'
@@ -30,6 +31,7 @@ const { Title, Text } = Typography
 const { Search } = Input
 
 export const ChatHistoryPage: React.FC = () => {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const navigate = useNavigate()
 
@@ -212,14 +214,14 @@ export const ChatHistoryPage: React.FC = () => {
         <Col span={24}>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <Title level={2}>Chat History</Title>
+              <Title level={2}>{t('pages.chatHistory')}</Title>
               <Text type="secondary">
                 View and manage all your chat conversations
               </Text>
             </div>
             <Space>
               <Search
-                placeholder="Search conversations..."
+placeholder={t('forms.searchConversations')}
                 allowClear
                 enterButton={<SearchOutlined />}
                 size="middle"

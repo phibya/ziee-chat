@@ -26,6 +26,7 @@ import {
   UploadOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 // import { Project } from '../../types/api/projects' // Unused but may be needed later
 import { useProjectsStore } from '../../store/projects'
@@ -41,6 +42,7 @@ interface ChatMessage {
 }
 
 export const ProjectDetailsPage: React.FC = () => {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
@@ -79,7 +81,7 @@ export const ProjectDetailsPage: React.FC = () => {
     {
       id: '1',
       role: 'assistant',
-      content: 'How can I help you today?',
+      content: t('projectDetails.howCanIHelp'),
       timestamp: new Date().toISOString(),
     },
   ])
@@ -92,7 +94,7 @@ export const ProjectDetailsPage: React.FC = () => {
   useEffect(() => {
     if (projectId) {
       loadProjectDetails(projectId).catch((error: any) => {
-        message.error(error?.message || 'Failed to fetch project details')
+        message.error(error?.message || t('common.failedToUpdate'))
         navigate('/projects')
       })
     }
@@ -136,7 +138,7 @@ export const ProjectDetailsPage: React.FC = () => {
 
     try {
       await uploadDocument(currentProject.id, file)
-      message.success('Document uploaded successfully')
+      message.success(t('projectDetails.documentUploaded'))
     } catch (error) {
       console.error('Failed to upload document:', error)
       // Error is handled by the store
@@ -151,7 +153,7 @@ export const ProjectDetailsPage: React.FC = () => {
         description: values.description,
       })
       setEditingDescription(false)
-      message.success('Description updated successfully')
+      message.success(t('projectDetails.descriptionUpdated'))
     } catch (error) {
       console.error('Failed to update description:', error)
       // Error is handled by the store
@@ -170,7 +172,7 @@ export const ProjectDetailsPage: React.FC = () => {
     return (
       <div className="p-6 flex justify-center min-h-screen">
         <div className="w-full max-w-7xl">
-          <Text>Loading...</Text>
+          <Text>{t('projectDetails.loading')}</Text>
         </div>
       </div>
     )
@@ -189,7 +191,9 @@ export const ProjectDetailsPage: React.FC = () => {
               </Title>
               <Button icon={<StarOutlined />} type="text" className="text-xs" />
               <Tag color="default">
-                {currentProject.is_private ? 'Private' : 'Public'}
+                {currentProject.is_private
+                  ? t('projects.private')
+                  : t('projects.public')}
               </Tag>
             </div>
             <Dropdown
@@ -198,12 +202,12 @@ export const ProjectDetailsPage: React.FC = () => {
                   {
                     key: 'edit',
                     icon: <EditOutlined />,
-                    label: 'Edit project',
+                    label: t('projectDetails.editProject'),
                   },
                   {
                     key: 'delete',
                     icon: <DeleteOutlined />,
-                    label: 'Delete project',
+                    label: t('projectDetails.deleteProject'),
                     danger: true,
                   },
                 ],
@@ -251,7 +255,7 @@ export const ProjectDetailsPage: React.FC = () => {
                   type="text"
                   className="text-xs"
                 >
-                  Research
+                  {t('projectDetails.research')}
                 </Button>
                 <div className="ml-auto flex items-center gap-2">
                   <Select
@@ -277,7 +281,7 @@ export const ProjectDetailsPage: React.FC = () => {
               <TextArea
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
-                placeholder="How can I help you today?"
+                placeholder={t('projectDetails.howCanIHelp')}
                 autoSize={{ minRows: 1, maxRows: 4 }}
                 onPressEnter={e => {
                   if (!e.shiftKey) {
@@ -297,7 +301,7 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <Text strong style={{ fontSize: '15px' }}>
-                Project knowledge
+                {t('projectDetails.projectKnowledge')}
               </Text>
               <Button icon={<PlusOutlined />} type="text" className="text-xs" />
             </div>
@@ -315,7 +319,9 @@ export const ProjectDetailsPage: React.FC = () => {
                   <Form.Item name="description" className="!mb-2">
                     <TextArea
                       rows={3}
-                      placeholder="Describe your project..."
+                      placeholder={
+                        t('projects.description') || 'Describe your project...'
+                      }
                       autoFocus
                     />
                   </Form.Item>
@@ -325,13 +331,13 @@ export const ProjectDetailsPage: React.FC = () => {
                       htmlType="submit"
                       type="primary"
                     >
-                      Save
+                      {t('common.save')}
                     </Button>
                     <Button
                       className="text-xs"
                       onClick={() => setEditingDescription(false)}
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </Form>
@@ -345,7 +351,7 @@ export const ProjectDetailsPage: React.FC = () => {
                       '"This project is to response to reviewer comment for the..."'}
                   </Text>
                   <Button type="link" className="text-xs !p-0 !h-auto !ml-1">
-                    Edit
+                    {t('projectDetails.edit')}
                   </Button>
                 </div>
               )}
@@ -361,7 +367,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 trailColor="#e0e0e0"
               />
               <Text type="secondary" className="text-xs">
-                3% of project capacity used
+                3{t('projectDetails.capacityUsed')}
               </Text>
             </div>
           </div>
@@ -370,7 +376,7 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4">
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <Text strong>Documents</Text>
+                <Text strong>{t('projectDetails.documents')}</Text>
                 <Upload
                   beforeUpload={file => {
                     handleFileUpload(file)
@@ -383,7 +389,7 @@ export const ProjectDetailsPage: React.FC = () => {
                     className="text-xs"
                     loading={uploading}
                   >
-                    Upload
+                    {t('projectDetails.upload')}
                   </Button>
                 </Upload>
               </div>
@@ -419,7 +425,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 <div className="text-center py-8">
                   <FileTextOutlined className="text-3xl mb-2" />
                   <Text type="secondary" className="block text-sm">
-                    No documents uploaded yet
+                    {t('projectDetails.noDocuments')}
                   </Text>
                   <Upload
                     beforeUpload={file => {
@@ -429,7 +435,7 @@ export const ProjectDetailsPage: React.FC = () => {
                     showUploadList={false}
                   >
                     <Button className="text-xs mt-2">
-                      Upload first document
+                      {t('projectDetails.uploadFirst')}
                     </Button>
                   </Upload>
                 </div>
@@ -439,9 +445,9 @@ export const ProjectDetailsPage: React.FC = () => {
             {/* Recent Conversations */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Text strong>Recent conversations</Text>
+                <Text strong>{t('projectDetails.recentConversations')}</Text>
                 <Button type="link" className="text-xs !p-0">
-                  View all
+                  {t('projectDetails.viewAll')}
                 </Button>
               </div>
 
@@ -516,7 +522,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 <div className="text-center py-4">
                   <MessageOutlined className="text-xl text-gray-300 mb-2" />
                   <Text type="secondary" className="block text-sm">
-                    No conversations yet
+                    {t('projectDetails.noConversations')}
                   </Text>
                 </div>
               )}

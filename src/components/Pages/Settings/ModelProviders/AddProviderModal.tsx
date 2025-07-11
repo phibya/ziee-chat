@@ -9,6 +9,7 @@ import {
   Switch,
 } from 'antd'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import {
   CreateModelProviderRequest,
@@ -33,6 +34,7 @@ export function AddProviderModal({
   onSubmit,
   loading,
 }: AddProviderModalProps) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [providerType, setProviderType] =
     useState<ModelProviderType>('llama.cpp')
@@ -62,7 +64,7 @@ export function AddProviderModal({
 
   return (
     <Modal
-      title="Add Model Provider"
+      title={t('modelProviders.addProviderTitle')}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
@@ -82,39 +84,58 @@ export function AddProviderModal({
       >
         <Form.Item
           name="name"
-          label="Provider Name"
-          rules={[{ required: true, message: 'Please enter provider name' }]}
+          label={t('modelProviders.providerName')}
+          rules={[
+            {
+              required: true,
+              message: t('modelProviders.providerNameRequired'),
+            },
+          ]}
         >
-          <Input placeholder="Enter provider name" />
+          <Input placeholder={t('modelProviders.providerNamePlaceholder')} />
         </Form.Item>
 
         <Form.Item
           name="type"
-          label="Provider Type"
-          rules={[{ required: true, message: 'Please select provider type' }]}
+          label={t('modelProviders.providerType')}
+          rules={[
+            {
+              required: true,
+              message: t('modelProviders.providerTypeRequired'),
+            },
+          ]}
         >
           <Select
             options={SUPPORTED_PROVIDERS}
             onChange={handleTypeChange}
-            placeholder="Select provider type"
+            placeholder={t('modelProviders.providerTypePlaceholder')}
           />
         </Form.Item>
 
-        <Form.Item name="enabled" label="Enabled" valuePropName="checked">
+        <Form.Item
+          name="enabled"
+          label={t('modelProviders.enabled')}
+          valuePropName="checked"
+        >
           <Switch />
         </Form.Item>
 
         {/* API Configuration for non-llama.cpp providers */}
         {providerType !== 'llama.cpp' && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small" title="API Configuration">
+            <Card size="small" title={t('modelProviders.apiConfiguration')}>
               <Form.Item
                 name="api_key"
-                label="API Key"
-                rules={[{ required: true, message: 'Please enter API key' }]}
+                label={t('modelProviders.apiKey')}
+                rules={[
+                  {
+                    required: true,
+                    message: t('modelProviders.apiKeyRequired'),
+                  },
+                ]}
               >
                 <Input.Password
-                  placeholder="Insert API Key"
+                  placeholder={t('modelProviders.apiKeyPlaceholder')}
                   iconRender={visible =>
                     visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                   }
@@ -123,10 +144,15 @@ export function AddProviderModal({
 
               <Form.Item
                 name="base_url"
-                label="Base URL"
-                rules={[{ required: true, message: 'Please enter base URL' }]}
+                label={t('modelProviders.baseUrl')}
+                rules={[
+                  {
+                    required: true,
+                    message: t('modelProviders.baseUrlRequired'),
+                  },
+                ]}
               >
-                <Input placeholder="Base URL" />
+                <Input placeholder={t('modelProviders.baseUrlPlaceholder')} />
               </Form.Item>
             </Card>
           </Space>
@@ -134,11 +160,11 @@ export function AddProviderModal({
 
         {/* Llama.cpp Configuration */}
         {providerType === 'llama.cpp' && (
-          <Card size="small" title="Llama.cpp Configuration">
+          <Card size="small" title={t('modelProviders.llamaCppConfiguration')}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Form.Item
                 name={['settings', 'autoUnloadOldModels']}
-                label="Auto-Unload Old Models"
+                label={t('modelProviders.autoUnloadOldModels')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -146,7 +172,7 @@ export function AddProviderModal({
 
               <Form.Item
                 name={['settings', 'contextShift']}
-                label="Context Shift"
+                label={t('modelProviders.contextShift')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -154,7 +180,7 @@ export function AddProviderModal({
 
               <Form.Item
                 name={['settings', 'continuousBatching']}
-                label="Continuous Batching"
+                label={t('modelProviders.continuousBatching')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -162,31 +188,34 @@ export function AddProviderModal({
 
               <Form.Item
                 name={['settings', 'parallelOperations']}
-                label="Parallel Operations"
+                label={t('modelProviders.parallelOperations')}
               >
                 <InputNumber min={1} max={16} style={{ width: '100%' }} />
               </Form.Item>
 
-              <Form.Item name={['settings', 'cpuThreads']} label="CPU Threads">
+              <Form.Item
+                name={['settings', 'cpuThreads']}
+                label={t('modelProviders.cpuThreads')}
+              >
                 <InputNumber
-                  placeholder="-1 (auto)"
+                  placeholder={t('modelProviders.cpuThreadsPlaceholder')}
                   style={{ width: '100%' }}
                 />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'threadsBatch']}
-                label="Threads (Batch)"
+                label={t('modelProviders.threadsBatch')}
               >
                 <InputNumber
-                  placeholder="-1 (same as Threads)"
+                  placeholder={t('modelProviders.threadsBatchPlaceholder')}
                   style={{ width: '100%' }}
                 />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'flashAttention']}
-                label="Flash Attention"
+                label={t('modelProviders.flashAttention')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -194,7 +223,7 @@ export function AddProviderModal({
 
               <Form.Item
                 name={['settings', 'caching']}
-                label="Caching"
+                label={t('modelProviders.caching')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -202,14 +231,14 @@ export function AddProviderModal({
 
               <Form.Item
                 name={['settings', 'kvCacheType']}
-                label="KV Cache Type"
+                label={t('modelProviders.kvCacheType')}
               >
                 <Select options={KV_CACHE_TYPE_OPTIONS} />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'mmap']}
-                label="mmap"
+                label={t('modelProviders.mmap')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -217,9 +246,11 @@ export function AddProviderModal({
 
               <Form.Item
                 name={['settings', 'huggingFaceAccessToken']}
-                label="Hugging Face Access Token"
+                label={t('modelProviders.huggingFaceAccessToken')}
               >
-                <Input.Password placeholder="hf_*****************************" />
+                <Input.Password
+                  placeholder={t('modelProviders.huggingFaceTokenPlaceholder')}
+                />
               </Form.Item>
             </Space>
           </Card>

@@ -11,6 +11,7 @@ import {
   Upload,
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { UploadOutlined } from '@ant-design/icons'
 import {
   ModelProviderModel,
@@ -35,6 +36,7 @@ export function EditModelModal({
   onClose,
   onSubmit,
 }: EditModelModalProps) {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
@@ -93,12 +95,12 @@ export function EditModelModal({
 
   const renderLlamaCppParameters = () => (
     <>
-      <Title level={5}>Parameters</Title>
+      <Title level={5}>{t('modelProviders.parameters')}</Title>
 
       <Form.Item
         label="Context Size"
         name={['parameters', 'contextSize']}
-        help="Size of the prompt context (0 = loaded from model)"
+help={t('modelProviders.contextSizeHelp')}
       >
         <InputNumber placeholder="8192" style={{ width: '100%' }} min={0} />
       </Form.Item>
@@ -106,7 +108,7 @@ export function EditModelModal({
       <Form.Item
         label="GPU Layers"
         name={['parameters', 'gpuLayers']}
-        help="Number of model layers to offload to the GPU (-1 for all layers, 0 for CPU only)"
+help={t('modelProviders.nglHelp')}
       >
         <InputNumber placeholder="100" style={{ width: '100%' }} min={-1} />
       </Form.Item>
@@ -114,7 +116,7 @@ export function EditModelModal({
       <Form.Item
         label="Temperature"
         name={['parameters', 'temperature']}
-        help="Temperature for sampling (higher = more random)"
+help={t('modelProviders.temperatureHelp')}
       >
         <InputNumber
           placeholder="0.6"
@@ -128,7 +130,7 @@ export function EditModelModal({
       <Form.Item
         label="Top K"
         name={['parameters', 'topK']}
-        help="Top-K sampling (0 = disabled)"
+help={t('modelProviders.topKHelp')}
       >
         <InputNumber placeholder="40" style={{ width: '100%' }} min={0} />
       </Form.Item>
@@ -136,7 +138,7 @@ export function EditModelModal({
       <Form.Item
         label="Top P"
         name={['parameters', 'topP']}
-        help="Top-P sampling (1.0 = disabled)"
+help={t('modelProviders.topPHelp')}
       >
         <InputNumber
           placeholder="0.9"
@@ -150,7 +152,7 @@ export function EditModelModal({
       <Form.Item
         label="Min P"
         name={['parameters', 'minP']}
-        help="Min-P sampling (0.0 = disabled)"
+help={t('modelProviders.minPHelp')}
       >
         <InputNumber
           placeholder="0.1"
@@ -164,7 +166,7 @@ export function EditModelModal({
       <Form.Item
         label="Repeat Last N"
         name={['parameters', 'repeatLastN']}
-        help="Number of tokens to consider for repeat penalty (0 = disabled, -1 = ctx_size)"
+help={t('modelProviders.repeatLastNHelp')}
       >
         <InputNumber placeholder="64" style={{ width: '100%' }} min={-1} />
       </Form.Item>
@@ -172,7 +174,7 @@ export function EditModelModal({
       <Form.Item
         label="Repeat Penalty"
         name={['parameters', 'repeatPenalty']}
-        help="Penalize repeating token sequences (1.0 = disabled)"
+help={t('modelProviders.repeatPenaltyHelp')}
       >
         <InputNumber
           placeholder="1.0"
@@ -186,7 +188,7 @@ export function EditModelModal({
       <Form.Item
         label="Presence Penalty"
         name={['parameters', 'presencePenalty']}
-        help="Repeat alpha presence penalty (0.0 = disabled)"
+help={t('modelProviders.presencePenaltyHelp')}
       >
         <InputNumber
           placeholder="0.0"
@@ -200,7 +202,7 @@ export function EditModelModal({
       <Form.Item
         label="Frequency Penalty"
         name={['parameters', 'frequencyPenalty']}
-        help="Repeat alpha frequency penalty (0.0 = disabled)"
+help={t('modelProviders.frequencyPenaltyHelp')}
       >
         <InputNumber
           placeholder="0.0"
@@ -239,7 +241,7 @@ export function EditModelModal({
           name="name"
           label="Model ID"
           rules={[{ required: true, message: 'Please enter a model ID' }]}
-          help="The technical model identifier used by the provider (e.g., 'claude-3-sonnet-20240229', 'gpt-4')"
+help={t('modelProviders.modelIdHelp')}
         >
           <Input placeholder="Enter model ID (e.g., claude-3-sonnet-20240229)" />
         </Form.Item>
@@ -248,7 +250,7 @@ export function EditModelModal({
           name="alias"
           label="Display Name"
           rules={[{ required: true, message: 'Please enter a display name' }]}
-          help="User-friendly name shown in the interface"
+help={t('modelProviders.displayNameHelp')}
         >
           <Input placeholder="Enter display name (e.g., Claude 3 Sonnet)" />
         </Form.Item>

@@ -10,6 +10,7 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
@@ -17,6 +18,7 @@ import { isDesktopApp } from '../../../../api/core'
 const { Title, Text } = Typography
 
 export function AdminGeneralSettings() {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
@@ -44,19 +46,19 @@ export function AdminGeneralSettings() {
     try {
       if ('experimentalFeatures' in changedValues) {
         if (!hasPermission(Permission.config.experimental.edit)) {
-          message.error(
-            'You do not have permission to change experimental features',
-          )
+          message.error(t('admin.noPermissionExperimental'))
           form.setFieldsValue({ experimentalFeatures })
           return
         }
         setExperimentalFeatures(changedValues.experimentalFeatures)
         message.success(
-          `Experimental features ${changedValues.experimentalFeatures ? 'enabled' : 'disabled'}`,
+          changedValues.experimentalFeatures
+            ? t('admin.experimentalEnabled')
+            : t('admin.experimentalDisabled'),
         )
       }
     } catch (error: any) {
-      message.error(error?.message || 'Failed to update settings')
+      message.error(error?.message || t('common.failedToUpdate'))
       form.setFieldsValue({
         experimentalFeatures,
       })
@@ -67,11 +69,9 @@ export function AdminGeneralSettings() {
   if (isDesktopApp) {
     return (
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Title level={3}>Admin General</Title>
+        <Title level={3}>{t('admin.title')}</Title>
         <Card>
-          <Text type="secondary">
-            Admin General settings are not available in desktop mode.
-          </Text>
+          <Text type="secondary">{t('admin.notAvailableDesktop')}</Text>
         </Card>
       </Space>
     )
@@ -79,9 +79,9 @@ export function AdminGeneralSettings() {
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Title level={3}>Admin General</Title>
+      <Title level={3}>{t('admin.title')}</Title>
 
-      <Card title="Application">
+      <Card title={t('admin.application')}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <Flex
             justify="space-between"
@@ -90,7 +90,7 @@ export function AdminGeneralSettings() {
             gap={isMobile ? 'small' : 0}
           >
             <div>
-              <Text strong>App Version</Text>
+              <Text strong>{t('admin.appVersion')}</Text>
               <div>
                 <Text type="secondary">v0.6.4</Text>
               </div>
@@ -106,18 +106,16 @@ export function AdminGeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>Check for Updates</Text>
+                <Text strong>{t('admin.checkForUpdates')}</Text>
                 <div>
-                  <Text type="secondary">
-                    Check if a newer version of the application is available.
-                  </Text>
+                  <Text type="secondary">{t('admin.checkForUpdatesDesc')}</Text>
                 </div>
               </div>
               <Button
                 type="default"
                 disabled={!hasPermission(Permission.config.updates.edit)}
               >
-                Check for Updates
+                {t('admin.checkForUpdates')}
               </Button>
             </Flex>
           )}
@@ -125,7 +123,7 @@ export function AdminGeneralSettings() {
       </Card>
 
       {hasPermission(Permission.config.experimental.read) && (
-        <Card title="Advanced">
+        <Card title={t('admin.advanced')}>
           <Form
             form={form}
             onValuesChange={handleFormChange}
@@ -135,11 +133,10 @@ export function AdminGeneralSettings() {
           >
             <Flex justify="space-between" align="center">
               <div>
-                <Text strong>Experimental Features</Text>
+                <Text strong>{t('admin.experimentalFeatures')}</Text>
                 <div>
                   <Text type="secondary">
-                    Enable experimental features. They may be unstable or change
-                    at any time.
+                    {t('admin.experimentalFeaturesDesc')}
                   </Text>
                 </div>
               </div>
@@ -159,7 +156,7 @@ export function AdminGeneralSettings() {
       )}
 
       {hasPermission(Permission.config.dataFolder.read) && (
-        <Card title="Data Folder">
+        <Card title={t('admin.dataFolder')}>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Flex
               justify="space-between"
@@ -168,11 +165,9 @@ export function AdminGeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>App Data</Text>
+                <Text strong>{t('admin.appData')}</Text>
                 <div>
-                  <Text type="secondary">
-                    Default location for messages and other user data.
-                  </Text>
+                  <Text type="secondary">{t('admin.appDataDesc')}</Text>
                 </div>
                 <div>
                   <Text type="secondary" style={{ fontSize: '12px' }}>
@@ -185,7 +180,7 @@ export function AdminGeneralSettings() {
                 icon={<FolderOpenOutlined />}
                 disabled={!hasPermission(Permission.config.dataFolder.edit)}
               >
-                Change Location
+                {t('admin.changeLocation')}
               </Button>
             </Flex>
             <Divider style={{ margin: 0 }} />
@@ -196,9 +191,9 @@ export function AdminGeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>App Logs</Text>
+                <Text strong>{t('admin.appLogs')}</Text>
                 <div>
-                  <Text type="secondary">View detailed logs of the App.</Text>
+                  <Text type="secondary">{t('admin.appLogsDesc')}</Text>
                 </div>
               </div>
               <Space
@@ -211,7 +206,7 @@ export function AdminGeneralSettings() {
                   block={isMobile}
                   disabled={!hasPermission(Permission.config.dataFolder.edit)}
                 >
-                  Open Logs
+                  {t('admin.openLogs')}
                 </Button>
                 <Button
                   type="default"
@@ -219,7 +214,7 @@ export function AdminGeneralSettings() {
                   block={isMobile}
                   disabled={!hasPermission(Permission.config.dataFolder.edit)}
                 >
-                  Show in Finder
+                  {t('admin.showInFinder')}
                 </Button>
               </Space>
             </Flex>

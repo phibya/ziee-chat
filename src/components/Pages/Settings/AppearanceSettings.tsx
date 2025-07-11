@@ -1,10 +1,12 @@
 import { App, Card, Divider, Flex, Form, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppearanceSettings } from '../../../store'
 
 const { Title, Text } = Typography
 
 export function AppearanceSettings() {
+  const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
@@ -63,7 +65,7 @@ export function AppearanceSettings() {
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Title level={3}>Appearance</Title>
+      <Title level={3}>{t('pages.appearance')}</Title>
 
       <Card title="Theme & Display">
         <Form
@@ -83,7 +85,7 @@ export function AppearanceSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>Theme</Text>
+                <Text strong>{t('labels.theme')}</Text>
                 <div>
                   <Text type="secondary">
                     Choose your preferred theme or match the OS theme.
@@ -110,7 +112,7 @@ export function AppearanceSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>Component Size</Text>
+                <Text strong>{t('labels.componentSize')}</Text>
                 <div>
                   <Text type="secondary">
                     Adjust the size of UI components throughout the app.
@@ -137,7 +139,7 @@ export function AppearanceSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>Language</Text>
+                <Text strong>{t('labels.language')}</Text>
                 <div>
                   <Text type="secondary">
                     Choose your preferred language for the interface.

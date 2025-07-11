@@ -7,6 +7,7 @@ import {
   ExclamationCircleOutlined,
   MessageOutlined,
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { ConversationSummary } from '../../types/api/chat'
 import { useConversationsStore } from '../../store'
 import { useShallow } from 'zustand/react/shallow'
@@ -26,6 +27,7 @@ export function RecentConversations({
   mobileOverlayOpen = false,
   onConversationClick,
 }: RecentConversationsProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { message } = App.useApp()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -75,10 +77,10 @@ export function RecentConversations({
 
       setEditingId(null)
       setEditingTitle('')
-      message.success('Conversation renamed successfully')
+      message.success(t('conversations.renamed'))
     } catch (error: any) {
       console.error('Failed to update conversation:', error)
-      message.error(error?.message || 'Failed to rename conversation')
+      message.error(error?.message || t('common.failedToRename'))
     }
   }
 
@@ -89,21 +91,21 @@ export function RecentConversations({
 
   const handleDeleteConversation = (conversation: ConversationSummary) => {
     confirm({
-      title: 'Delete Conversation',
+      title: t('conversations.deleteTitle'),
       icon: <ExclamationCircleOutlined />,
-      content: `Are you sure you want to delete "${conversation.title}"? This action cannot be undone.`,
-      okText: 'Delete',
+      content: t('conversations.deleteConfirm', { title: conversation.title }),
+      okText: t('common.delete'),
       okType: 'danger',
-      cancelText: 'Cancel',
+      cancelText: t('common.cancel'),
       onOk: async () => {
         try {
           // Use store method that handles API call
           await removeConversation(conversation.id)
 
-          message.success('Conversation deleted successfully')
+          message.success(t('conversations.deleted'))
         } catch (error: any) {
           console.error('Failed to delete conversation:', error)
-          message.error(error?.message || 'Failed to delete conversation')
+          message.error(error?.message || t('common.failedToDelete'))
         }
       },
     })
@@ -134,12 +136,12 @@ export function RecentConversations({
     <div className="flex-1 overflow-auto max-w-42 pl-2">
       {isLoading ? (
         <div className="text-center">
-          <div>Loading...</div>
+          <div>{t('common.loading')}</div>
         </div>
       ) : conversations.length === 0 ? (
         <div className="text-center">
           <MessageOutlined />
-          <div>No conversations yet</div>
+          <div>{t('conversations.noConversations')}</div>
         </div>
       ) : (
         conversations.map(conversation => (
@@ -177,7 +179,7 @@ export function RecentConversations({
 
                 {/* Action buttons - only visible on hover */}
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 flex">
-                  <Tooltip title="Rename">
+                  <Tooltip title={t('conversations.rename')}>
                     <Button
                       size="small"
                       type="text"
@@ -188,7 +190,7 @@ export function RecentConversations({
                       }}
                     />
                   </Tooltip>
-                  <Tooltip title="Delete">
+                  <Tooltip title={t('conversations.delete')}>
                     <Button
                       size="small"
                       type="text"

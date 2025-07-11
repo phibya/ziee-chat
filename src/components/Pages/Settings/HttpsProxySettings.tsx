@@ -12,6 +12,7 @@ import {
   Typography,
 } from 'antd'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useAdminStore } from '../../../store/admin'
 
@@ -31,6 +32,7 @@ const { Title, Text } = Typography
 // }
 
 export function HttpsProxySettings() {
+  const { t } = useTranslation()
   const [form] = Form.useForm()
   const [lastTestedConfig, setLastTestedConfig] = useState<string | null>(null)
   const [isProxyTested, setIsProxyTested] = useState(false)
@@ -105,9 +107,7 @@ export function HttpsProxySettings() {
       ) {
         // Force disable proxy and inform user
         values.enabled = false
-        message.warning(
-          'Proxy has been disabled because it must be tested before enabling. Please test the proxy connection first.',
-        )
+        message.warning(t('proxy.disabledTestRequired'))
       }
 
       await updateProxySettings(values)
@@ -119,7 +119,7 @@ export function HttpsProxySettings() {
         setLastTestedConfig(null)
       }
 
-      message.success('Proxy settings saved successfully')
+      message.success(t('proxy.settingsSaved'))
     } catch (error) {
       console.error('Failed to save proxy settings:', error)
       // Error is handled by the store
@@ -138,7 +138,7 @@ export function HttpsProxySettings() {
 
       // Only test if URL is provided (no need to be enabled)
       if (!values.url || values.url.trim() === '') {
-        message.warning('Please enter a valid proxy URL to test')
+        message.warning(t('proxy.enterValidUrl'))
         return
       }
 
@@ -160,11 +160,11 @@ export function HttpsProxySettings() {
 
         setLastTestedConfig(currentConfig)
         setIsProxyTested(true)
-        message.success('Proxy connection test successful')
+        message.success(t('proxy.testSuccessful'))
       } else {
         setIsProxyTested(false)
         setLastTestedConfig(null)
-        message.error('Proxy connection test failed')
+        message.error(t('proxy.testFailed'))
       }
     } catch (error) {
       console.error('Proxy test failed:', error)
@@ -215,9 +215,9 @@ export function HttpsProxySettings() {
   if (loading) {
     return (
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
-        <Title level={3}>HTTP Proxy</Title>
+        <Title level={3}>{t('proxy.title')}</Title>
         <Card>
-          <Text type="secondary">Loading proxy settings...</Text>
+          <Text type="secondary">{t('proxy.loadingSettings')}</Text>
         </Card>
       </Space>
     )
@@ -225,7 +225,7 @@ export function HttpsProxySettings() {
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Title level={3}>HTTP Proxy</Title>
+      <Title level={3}>{t('proxy.title')}</Title>
       <Card>
         <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item
@@ -252,7 +252,7 @@ export function HttpsProxySettings() {
                 <Flex className={'w-full'}>
                   <div className={'flex-1'}>
                     <Title level={5} style={{ margin: 0 }}>
-                      Proxy
+                      {t('proxy.proxy')}
                     </Title>
                     {values.enabled && !canEnable && (
                       <Text
@@ -263,7 +263,7 @@ export function HttpsProxySettings() {
                           marginTop: '4px',
                         }}
                       >
-                        ⚠️ Proxy must be tested before enabling
+                        {t('proxy.proxyMustBeTested')}
                       </Text>
                     )}
                   </div>
@@ -285,10 +285,8 @@ export function HttpsProxySettings() {
             style={{ width: '100%', marginTop: 24 }}
           >
             <div>
-              <Title level={5}>Proxy URL</Title>
-              <Text type="secondary">
-                The URL and port of your proxy server.
-              </Text>
+              <Title level={5}>{t('proxy.proxyUrl')}</Title>
+              <Text type="secondary">{t('proxy.proxyUrlDesc')}</Text>
               <Form.Item
                 noStyle
                 shouldUpdate={(prevValues, currentValues) =>
@@ -305,14 +303,14 @@ export function HttpsProxySettings() {
                           ? [
                               {
                                 required: true,
-                                message: 'Please enter proxy URL',
+                                message: t('proxy.enterProxyUrl'),
                               },
                             ]
                           : []
                       }
                       style={{ marginTop: 8 }}
                     >
-                      <Input placeholder="http://<user>:<password>@<domain or IP>:<port>" />
+                      <Input placeholder={t('proxy.proxyUrlPlaceholder')} />
                     </Form.Item>
                   )
                 }}
@@ -320,43 +318,41 @@ export function HttpsProxySettings() {
             </div>
 
             <div>
-              <Title level={5}>Authentication</Title>
-              <Text type="secondary">
-                Credentials for the proxy server, if required.
-              </Text>
+              <Title level={5}>{t('proxy.authentication')}</Title>
+              <Text type="secondary">{t('proxy.authDesc')}</Text>
               <Row gutter={8} style={{ marginTop: 8 }}>
                 <Col span={12}>
                   <Form.Item name="username">
-                    <Input placeholder="Username" />
+                    <Input placeholder={t('proxy.usernamePlaceholder')} />
                   </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item name="password">
-                    <Input.Password placeholder="Password" />
+                    <Input.Password
+                      placeholder={t('proxy.passwordPlaceholder')}
+                    />
                   </Form.Item>
                 </Col>
               </Row>
             </div>
 
             <div>
-              <Title level={5}>No Proxy</Title>
-              <Text type="secondary">
-                A comma-separated list of hosts to bypass the proxy.
-              </Text>
+              <Title level={5}>{t('proxy.noProxy')}</Title>
+              <Text type="secondary">{t('proxy.noProxyDesc')}</Text>
               <Form.Item name="no_proxy" style={{ marginTop: 8 }}>
-                <Input placeholder="localhost, 127.0.0.1" />
+                <Input placeholder={t('proxy.noProxyPlaceholder')} />
               </Form.Item>
             </div>
 
             <div>
               <Title level={4} style={{ marginTop: 32, marginBottom: 16 }}>
-                SSL Verification
+                {t('proxy.sslVerification')}
               </Title>
 
               <div>
                 <div style={{ marginBottom: 24 }}>
                   <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
-                    Ignore SSL Certificates
+                    {t('proxy.ignoreSslCerts')}
                   </Title>
                   <div
                     style={{
@@ -366,9 +362,7 @@ export function HttpsProxySettings() {
                     }}
                   >
                     <Text type="secondary" style={{ flex: 1, marginRight: 16 }}>
-                      Allow self-signed or unverified certificates. This may be
-                      required for some proxies but reduces security. Only
-                      enable if you trust your proxy.
+                      {t('proxy.ignoreSslCertsDesc')}
                     </Text>
                     <Form.Item
                       name="ignore_ssl_certificates"
@@ -382,7 +376,7 @@ export function HttpsProxySettings() {
 
                 <div style={{ marginBottom: 24 }}>
                   <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
-                    Proxy SSL
+                    {t('proxy.proxySsl')}
                   </Title>
                   <div
                     style={{
@@ -392,7 +386,7 @@ export function HttpsProxySettings() {
                     }}
                   >
                     <Text type="secondary" style={{ flex: 1, marginRight: 16 }}>
-                      Validate the SSL certificate when connecting to the proxy.
+                      {t('proxy.proxySslDesc')}
                     </Text>
                     <Form.Item
                       name="proxy_ssl"
@@ -406,7 +400,7 @@ export function HttpsProxySettings() {
 
                 <div style={{ marginBottom: 24 }}>
                   <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
-                    Proxy Host SSL
+                    {t('proxy.proxyHostSsl')}
                   </Title>
                   <div
                     style={{
@@ -416,7 +410,7 @@ export function HttpsProxySettings() {
                     }}
                   >
                     <Text type="secondary" style={{ flex: 1, marginRight: 16 }}>
-                      Validate the SSL certificate of the proxy's host.
+                      {t('proxy.proxyHostSslDesc')}
                     </Text>
                     <Form.Item
                       name="proxy_host_ssl"
@@ -430,7 +424,7 @@ export function HttpsProxySettings() {
 
                 <div style={{ marginBottom: 24 }}>
                   <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
-                    Peer SSL
+                    {t('proxy.peerSsl')}
                   </Title>
                   <div
                     style={{
@@ -440,7 +434,7 @@ export function HttpsProxySettings() {
                     }}
                   >
                     <Text type="secondary" style={{ flex: 1, marginRight: 16 }}>
-                      Validate the SSL certificates of peer connections.
+                      {t('proxy.peerSslDesc')}
                     </Text>
                     <Form.Item
                       name="peer_ssl"
@@ -454,7 +448,7 @@ export function HttpsProxySettings() {
 
                 <div>
                   <Title level={5} style={{ margin: 0, marginBottom: 4 }}>
-                    Host SSL
+                    {t('proxy.hostSsl')}
                   </Title>
                   <div
                     style={{
@@ -464,7 +458,7 @@ export function HttpsProxySettings() {
                     }}
                   >
                     <Text type="secondary" style={{ flex: 1, marginRight: 16 }}>
-                      Validate the SSL certificates of destination hosts.
+                      {t('proxy.hostSslDesc')}
                     </Text>
                     <Form.Item
                       name="host_ssl"
@@ -481,7 +475,7 @@ export function HttpsProxySettings() {
 
           <div style={{ marginTop: 24, textAlign: 'right' }}>
             <Space>
-              <Button onClick={handleReset}>Reset</Button>
+              <Button onClick={handleReset}>{t('proxy.reset')}</Button>
               <Form.Item
                 noStyle
                 shouldUpdate={(prevValues, currentValues) =>
@@ -503,7 +497,7 @@ export function HttpsProxySettings() {
                         loading={testingProxy}
                         disabled={!canTest}
                       >
-                        Test Proxy
+                        {t('proxy.testProxy')}
                       </Button>
                       <Button
                         type="primary"
@@ -511,11 +505,11 @@ export function HttpsProxySettings() {
                         loading={loading}
                         disabled={!canSave}
                       >
-                        Save
+                        {t('common.save')}
                       </Button>
                       {enabledButNotTested && (
                         <Text type="warning" style={{ fontSize: '12px' }}>
-                          ⚠️ Proxy will be disabled on save - test required
+                          {t('proxy.willBeDisabled')}
                         </Text>
                       )}
                     </Space>
