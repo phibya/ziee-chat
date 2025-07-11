@@ -1,0 +1,62 @@
+use crate::api;
+use axum::routing::{delete, get, post, put};
+use axum::{middleware, Router};
+
+pub fn chat_routes() -> Router {
+    Router::new()
+        .route(
+            "/api/chat/conversations",
+            get(api::chat::list_conversations)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations",
+            post(api::chat::create_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}",
+            get(api::chat::get_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}",
+            put(api::chat::update_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}",
+            delete(api::chat::delete_conversation)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/messages/stream",
+            post(api::chat::send_message_stream)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/messages/{message_id}",
+            put(api::chat::edit_message)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/messages/{message_id}/branches",
+            get(api::chat::get_message_branches)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/messages/{message_id}/branch/switch",
+            post(api::chat::switch_branch)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/search",
+            get(api::chat::search_conversations)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/clear-all",
+            delete(api::chat::clear_all_conversations)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+}
