@@ -213,7 +213,6 @@ FOREIGN KEY (active_branch_id) REFERENCES branches(id) ON DELETE SET NULL;
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    parent_id UUID REFERENCES messages(id),
     content TEXT NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     originated_from_id UUID, -- Reference to the original message this was edited from
@@ -361,7 +360,6 @@ CREATE INDEX idx_branches_conversation_id ON branches(conversation_id);
 
 -- Message indexes
 CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
-CREATE INDEX idx_messages_parent_id ON messages(parent_id);
 CREATE INDEX idx_messages_role ON messages(role);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
 CREATE INDEX idx_messages_originated_from_id ON messages(originated_from_id);
@@ -583,7 +581,6 @@ COMMENT ON COLUMN assistants.created_by IS 'User who created this assistant (NUL
 COMMENT ON COLUMN conversations.assistant_id IS 'Assistant used in this conversation';
 COMMENT ON COLUMN conversations.model_id IS 'Specific model used in this conversation';
 COMMENT ON COLUMN conversations.active_branch_id IS 'Currently active branch for this conversation';
-COMMENT ON COLUMN messages.parent_id IS 'Parent message for branching support';
 COMMENT ON COLUMN messages.originated_from_id IS 'Original message ID this was edited from (for tracking edit lineage)';
 COMMENT ON COLUMN messages.edit_count IS 'Number of times this message lineage has been edited';
 COMMENT ON COLUMN messages.role IS 'Message role: user, assistant, or system';

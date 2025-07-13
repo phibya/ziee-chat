@@ -51,12 +51,12 @@ import {
   UpdateAssistantRequest,
 } from './assistant'
 import {
-  Branch,
   Conversation,
   ConversationListResponse,
   CreateConversationRequest,
   EditMessageRequest,
   Message,
+  MessageBranch,
   SendMessageRequest,
   SwitchBranchRequest,
   UpdateConversationRequest,
@@ -394,7 +394,7 @@ export type ApiEndpointResponses = {
   'Chat.deleteConversation': void
   'Chat.sendMessage': any // Streaming response
   'Chat.editMessage': Message
-  'Chat.getMessageBranches': Branch[]
+  'Chat.getMessageBranches': MessageBranch[]
   'Chat.getConversationMessages': Message[]
   'Chat.switchConversationBranch': { success: boolean; message: string }
   'Chat.searchConversations': ConversationListResponse

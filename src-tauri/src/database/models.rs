@@ -519,7 +519,6 @@ pub struct ConversationDb {
 pub struct MessageDb {
     pub id: Uuid,
     pub conversation_id: Uuid,
-    pub parent_id: Option<Uuid>,
     pub role: String,
     pub content: String,
     pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
@@ -587,6 +586,15 @@ pub struct Branch {
     pub created_at: DateTime<Utc>,
 }
 
+// MessageBranch API model that includes is_clone information from branch_messages
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageBranch {
+    pub id: Uuid,
+    pub conversation_id: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub is_clone: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageMetadata {
     pub key: String,
@@ -612,7 +620,6 @@ pub struct SendMessageRequest {
     pub conversation_id: Uuid,
     pub content: String,
     pub role: String,
-    pub parent_id: Option<Uuid>,
     pub model_id: Uuid,
 }
 

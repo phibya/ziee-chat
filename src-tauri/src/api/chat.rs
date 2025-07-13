@@ -47,7 +47,6 @@ pub struct SearchQuery {
 pub struct ChatMessageRequest {
     pub conversation_id: Uuid,
     pub content: String,
-    pub parent_id: Option<Uuid>,
     pub model_id: Uuid,
 }
 
@@ -364,7 +363,6 @@ pub async fn send_message_stream(
             conversation_id: request.conversation_id,
             content: request.content.clone(),
             role: "user".to_string(),
-            parent_id: request.parent_id,
             model_id: request.model_id,
         };
 
@@ -424,7 +422,6 @@ pub async fn send_message_stream(
                     conversation_id: request.conversation_id,
                     content: full_content.clone(),
                     role: "assistant".to_string(),
-                    parent_id: None,
                     model_id: request.model_id,
                 };
 
@@ -569,7 +566,6 @@ async fn get_ai_response_for_edited_message(
                 conversation_id: conversation.id,
                 content: response.content,
                 role: "assistant".to_string(),
-                parent_id: None,
                 model_id: model_id,
             };
 
@@ -684,7 +680,7 @@ pub async fn switch_conversation_branch(
 pub async fn get_message_branches(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
-) -> Result<Json<Vec<crate::database::models::Branch>>, StatusCode> {
+) -> Result<Json<Vec<crate::database::models::MessageBranch>>, StatusCode> {
     match chat::get_message_branches(message_id, auth_user.user.id).await {
         Ok(branches) => Ok(Json(branches)),
         Err(e) => {

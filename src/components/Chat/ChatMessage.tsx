@@ -2,7 +2,7 @@ import { memo, useState } from 'react'
 import { Avatar, Button, Flex, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { LeftOutlined, RightOutlined, UserOutlined } from '@ant-design/icons'
-import { Branch, Message } from '../../types/api/chat'
+import { Message, MessageBranch } from '../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { MessageEditor } from './MessageEditor'
 import { useShallow } from 'zustand/react/shallow'
@@ -21,7 +21,7 @@ interface ChatMessageProps {
 }
 
 interface BranchInfo {
-  branches: Branch[]
+  branches: MessageBranch[]
   currentIndex: number
   hasBranches: boolean
   isLoading: boolean
@@ -63,23 +63,31 @@ export const ChatMessage = memo(function ChatMessage({
     ) {
       setBranchInfo(prev => ({ ...prev, isLoading: true }))
 
-      let branches = await loadMessageBranches(message.id)
-
       const currentConversation = useChatStore.getState().currentConversation!
 
+      let branches = await loadMessageBranches(message.id)
+      let currentIndex = 0
+      for (let i = 0; i < branches.length; i++) {
+        if (branches[i].id === currentConversation.active_branch_id) {
+          break
+        }
+        if (!branches[i].is_clone) {
+          currentIndex = i + 1
+        }
+      }
+
+      branches = branches.filter(b => !b.is_clone)
+
       console.log({
+        message_id: message.id,
         branches,
         currentConversation,
-        index: branches.findIndex(
-          b => b.id === currentConversation.active_branch_id,
-        ),
+        currentIndex,
       })
 
       setBranchInfo({
         branches,
-        currentIndex: branches.findIndex(
-          b => b.id === currentConversation.active_branch_id,
-        ),
+        currentIndex,
         hasBranches: branches.length > 1,
         isLoading: false,
       })
@@ -163,7 +171,13 @@ export const ChatMessage = memo(function ChatMessage({
               onClick={() => {
                 const prevBranch =
                   branchInfo.branches[branchInfo.currentIndex - 1]
-                if (prevBranch) onSwitchBranch(prevBranch.id)
+                if (prevBranch) {
+                  onSwitchBranch(prevBranch.id)
+                  setBranchInfo({
+                    ...branchInfo,
+                    currentIndex: branchInfo.currentIndex - 1,
+                  })
+                }
               }}
             />
             <Typography.Text>
@@ -179,7 +193,13 @@ export const ChatMessage = memo(function ChatMessage({
               onClick={() => {
                 const nextBranch =
                   branchInfo.branches[branchInfo.currentIndex + 1]
-                if (nextBranch) onSwitchBranch(nextBranch.id)
+                if (nextBranch) {
+                  onSwitchBranch(nextBranch.id)
+                  setBranchInfo({
+                    ...branchInfo,
+                    currentIndex: branchInfo.currentIndex + 1,
+                  })
+                }
               }}
             />
           </Flex>

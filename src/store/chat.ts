@@ -1,19 +1,13 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import { Conversation, Message } from '../types/api/chat'
-
-export interface Branch {
-  id: string
-  conversation_id: string
-  created_at: string
-}
+import { Conversation, Message, MessageBranch } from '../types/api/chat'
 
 export interface ChatState {
   // Current conversation state
   currentConversation: Conversation | null
   currentMessages: Message[]
-  currentBranches: Branch[]
+  currentBranches: MessageBranch[]
   activeBranchId: string | null
 
   // Loading states
@@ -37,7 +31,7 @@ export interface ChatState {
     modelId: string,
   ) => Promise<void>
   editMessage: (messageId: string, newContent: string) => Promise<void>
-  loadMessageBranches: (messageId: string) => Promise<Branch[]>
+  loadMessageBranches: (messageId: string) => Promise<MessageBranch[]>
   switchBranch: (conversationId: string, branchId: string) => Promise<void>
   stopStreaming: () => void
   clearError: () => void
@@ -246,13 +240,6 @@ export const useChatStore = create<ChatState>()(
             message_id: messageId,
           })
 
-          const currentBranches = get().currentBranches
-          // If branches already loaded, merge them
-          const existingBranchIds = new Set(currentBranches.map(b => b.id))
-          branches = branches.filter(b => !existingBranchIds.has(b.id))
-          // Append new branches to current branches
-          branches = [...currentBranches, ...branches]
-
           set({
             currentBranches: branches,
             loadingBranches: false,
@@ -273,7 +260,7 @@ export const useChatStore = create<ChatState>()(
 
       switchBranch: async (conversationId: string, branchId: string) => {
         try {
-          set({ loading: true, error: null })
+          set({ error: null })
 
           await ApiClient.Chat.switchConversationBranch({
             conversation_id: conversationId,
@@ -294,7 +281,6 @@ export const useChatStore = create<ChatState>()(
             currentConversation: conversation,
             currentMessages: messages,
             activeBranchId: branchId,
-            loading: false,
           })
         } catch (error) {
           set({

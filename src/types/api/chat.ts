@@ -34,6 +34,13 @@ export interface Branch {
   created_at: string
 }
 
+export interface MessageBranch {
+  id: string
+  conversation_id: string
+  created_at: string
+  is_clone: boolean
+}
+
 export interface CreateConversationRequest {
   title: string
   assistant_id?: string
@@ -49,7 +56,6 @@ export interface UpdateConversationRequest {
 export interface SendMessageRequest {
   conversation_id: string
   content: string
-  parent_id?: string
   model_id: string
 }
 

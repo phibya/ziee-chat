@@ -1,7 +1,7 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
-    Branch, Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, EditMessageResponse, Message, SendMessageRequest,
+    Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
+    EditMessageRequest, EditMessageResponse, Message, MessageBranch, SendMessageRequest,
     UpdateConversationRequest,
 };
 use sqlx::{Error, Row};
@@ -325,15 +325,14 @@ pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<
     sqlx::query(
         r#"
         INSERT INTO messages (
-            id, conversation_id, parent_id, role, content,
+            id, conversation_id, role, content,
             originated_from_id, edit_count,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
     )
     .bind(message_id)
     .bind(request.conversation_id)
-    .bind(request.parent_id)
     .bind(&request.role)
     .bind(&request.content)
     .bind(message_id) // originated_from_id - same as id for new messages
@@ -435,7 +434,7 @@ pub async fn get_conversation_messages(
     let rows = sqlx::query(
         r#"
         SELECT
-            m.id, m.conversation_id, m.parent_id, m.role, m.content,
+            m.id, m.conversation_id, m.role, m.content,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at
         FROM messages m
@@ -499,7 +498,7 @@ pub async fn get_conversation_messages_by_branch(
     let rows = sqlx::query(
         r#"
         SELECT
-            m.id, m.conversation_id, m.parent_id, m.role, m.content,
+            m.id, m.conversation_id, m.role, m.content,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at
         FROM messages m
@@ -615,20 +614,6 @@ pub async fn edit_message(
         .bind(original_created_at)
         .execute(&mut *tx)
         .await?;
-
-        // Also update the original branch_messages to mark them as clones
-        sqlx::query(
-            r#"
-            UPDATE branch_messages
-            SET is_clone = true
-            WHERE branch_id = $1
-            AND created_at < $2
-            "#,
-        )
-        .bind(current_branch)
-        .bind(original_created_at)
-        .execute(&mut *tx)
-        .await?;
     }
 
     // 4. Create the edited message in the new branch
@@ -639,20 +624,19 @@ pub async fn edit_message(
     sqlx::query(
         r#"
         INSERT INTO messages (
-            id, conversation_id, parent_id, role, content,
+            id, conversation_id, role, content,
             originated_from_id, edit_count,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
     )
     .bind(new_message_id)
     .bind(conversation_id)
-    .bind(original.get::<Option<Uuid>, _>("parent_id"))
     .bind(&role)
     .bind(&request.content)
     .bind(originated_from_id) // Copy originated_from_id from original
     .bind(edit_count) // Copy edit_count from original
-    .bind(original_created_at) // Preserve original creation time for ordering
+    .bind(now)
     .bind(now)
     .execute(&mut *tx)
     .await?;
@@ -662,11 +646,12 @@ pub async fn edit_message(
     sqlx::query(
         r#"
         INSERT INTO branch_messages (branch_id, message_id, created_at, is_clone)
-        VALUES ($1, $2, CURRENT_TIMESTAMP, $3)
+        VALUES ($1, $2, $3, $4)
         "#,
     )
     .bind(new_branch.id)
     .bind(new_message_id)
+    .bind(now)
     .bind(false) // Edited message is unique to this branch
     .execute(&mut *tx)
     .await?;
@@ -694,7 +679,7 @@ pub async fn edit_message(
     let history_rows = sqlx::query(
         r#"
         SELECT
-            m.id, m.conversation_id, m.parent_id, m.role, m.content,
+            m.id, m.conversation_id, m.role, m.content,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at
         FROM messages m
@@ -916,7 +901,7 @@ pub async fn auto_update_conversation_title(
 
 /// Get all branches for a message (all branches containing messages with same originated_from_id)
 /// According to CLAUDE.md: Find all items with the same originated_from_id, order by created_at
-pub async fn get_message_branches(message_id: Uuid, user_id: Uuid) -> Result<Vec<Branch>, Error> {
+pub async fn get_message_branches(message_id: Uuid, user_id: Uuid) -> Result<Vec<MessageBranch>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -950,11 +935,11 @@ pub async fn get_message_branches(message_id: Uuid, user_id: Uuid) -> Result<Vec
     let rows = sqlx::query(
         r#"
         SELECT DISTINCT
-            b.id, b.conversation_id, b.created_at
+            b.id, b.conversation_id, b.created_at, bm.is_clone
         FROM branches b
         INNER JOIN branch_messages bm ON b.id = bm.branch_id
         INNER JOIN messages m ON bm.message_id = m.id
-        WHERE m.originated_from_id = $1 and bm.is_clone = false
+        WHERE m.originated_from_id = $1
         ORDER BY b.created_at ASC
         "#,
     )
@@ -964,10 +949,11 @@ pub async fn get_message_branches(message_id: Uuid, user_id: Uuid) -> Result<Vec
 
     let branches = rows
         .into_iter()
-        .map(|row| Branch {
+        .map(|row| MessageBranch {
             id: row.get("id"),
             conversation_id: row.get("conversation_id"),
             created_at: row.get("created_at"),
+            is_clone: row.get("is_clone"),
         })
         .collect();
 
