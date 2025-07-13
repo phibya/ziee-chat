@@ -360,7 +360,9 @@ export function UsersSettings() {
       <Result
         icon={<ExclamationCircleOutlined />}
         title={t('admin.users.accessDenied')}
-        subTitle={t('admin.users.accessDeniedMessage', { permission: Permission.users.read })}
+        subTitle={t('admin.users.accessDeniedMessage', {
+          permission: Permission.users.read,
+        })}
         extra={
           <Button type="primary" onClick={() => window.history.back()}>
             Go Back
@@ -430,7 +432,11 @@ export function UsersSettings() {
             >
               <Input placeholder={t('admin.users.forms.enterEmail')} />
             </Form.Item>
-            <Form.Item name="is_active" label={t('admin.users.forms.active')} valuePropName="checked">
+            <Form.Item
+              name="is_active"
+              label={t('admin.users.forms.active')}
+              valuePropName="checked"
+            >
               <Switch />
             </Form.Item>
             <Form.Item
@@ -496,7 +502,9 @@ export function UsersSettings() {
                 { min: 6, message: 'Password must be at least 6 characters' },
               ]}
             >
-              <Input.Password placeholder={t('admin.users.forms.enterNewPassword')} />
+              <Input.Password
+                placeholder={t('admin.users.forms.enterNewPassword')}
+              />
             </Form.Item>
             <Form.Item
               name="confirm_password"
@@ -514,7 +522,9 @@ export function UsersSettings() {
                 }),
               ]}
             >
-              <Input.Password placeholder={t('admin.users.forms.confirmNewPassword')} />
+              <Input.Password
+                placeholder={t('admin.users.forms.confirmNewPassword')}
+              />
             </Form.Item>
             <Form.Item className="mb-0">
               <Space>
@@ -610,7 +620,12 @@ export function UsersSettings() {
             <Form.Item
               name="group_id"
               label={t('admin.users.forms.selectGroup')}
-              rules={[{ required: true, message: t('admin.users.forms.pleaseSelectGroup') }]}
+              rules={[
+                {
+                  required: true,
+                  message: t('admin.users.forms.pleaseSelectGroup'),
+                },
+              ]}
             >
               <Select placeholder={t('admin.users.forms.selectGroupToAssign')}>
                 {groups

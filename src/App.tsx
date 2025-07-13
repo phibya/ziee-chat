@@ -62,7 +62,7 @@ function App() {
         <Router>
           <AppLayout>
             <Routes>
-              <Route path="/" element={<ChatPage />} />
+              {/*<Route path="/" element={<ChatPage />} />*/}
               <Route
                 path="/conversation/:conversationId"
                 element={<ChatPage />}

@@ -90,13 +90,14 @@ export function ExistingChatInterface({
 
   useEffect(() => {
     initializeData()
+    return () => {}
   }, [])
 
   useEffect(() => {
     if (conversationId) {
       loadConversation(conversationId)
     }
-  }, [conversationId, loadConversation])
+  }, [conversationId])
 
   // Show errors
   useEffect(() => {
@@ -120,29 +121,25 @@ export function ExistingChatInterface({
       if (currentConversation.assistant_id) {
         setSelectedAssistant(currentConversation.assistant_id)
       }
-      if (
-        currentConversation.model_provider_id &&
-        currentConversation.model_id
-      ) {
-        setSelectedModel(
-          `${currentConversation.model_provider_id}:${currentConversation.model_id}`,
+      if (currentConversation.model_id) {
+        // Find the provider that contains this model
+        const provider = modelProviders.find(p =>
+          p.models?.some(m => m.id === currentConversation.model_id),
         )
+        if (provider) {
+          setSelectedModel(`${provider.id}:${currentConversation.model_id}`)
+        }
       }
     }
-  }, [currentConversation])
+  }, [currentConversation, modelProviders])
 
   const handleSendMessage = async (inputValue: string) => {
     if (!currentConversation || !selectedAssistant || !selectedModel) return
 
-    const [providerId, modelId] = selectedModel.split(':')
+    const [, modelId] = selectedModel.split(':')
 
     try {
-      await sendMessage(
-        inputValue.trim(),
-        selectedAssistant,
-        providerId,
-        modelId,
-      )
+      await sendMessage(inputValue.trim(), selectedAssistant, modelId)
 
       // Update conversation in store with new title and last message if it changed
       if (currentConversation && currentMessages.length > 0) {
@@ -216,10 +213,10 @@ export function ExistingChatInterface({
     }
   }
 
-  const handleSwitchBranch = async (messageId: string) => {
+  const handleSwitchBranch = async (branchId: string) => {
     if (!currentConversation) return
     try {
-      await switchBranch(currentConversation.id, messageId)
+      await switchBranch(currentConversation.id, branchId)
 
       // Clear message branches cache to force reload of branch info
       setMessageBranches({})

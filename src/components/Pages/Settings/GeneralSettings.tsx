@@ -48,21 +48,23 @@ export function GeneralSettings() {
     try {
       if ('experimentalFeatures' in changedValues) {
         if (!hasPermission(Permission.config.experimental.edit)) {
-          message.error(
-            t('admin.noPermissionExperimental'),
-          )
+          message.error(t('admin.noPermissionExperimental'))
           form.setFieldsValue({ experimentalFeatures })
           return
         }
         setExperimentalFeatures(changedValues.experimentalFeatures)
         message.success(
-          changedValues.experimentalFeatures ? t('admin.experimentalEnabled') : t('admin.experimentalDisabled'),
+          changedValues.experimentalFeatures
+            ? t('admin.experimentalEnabled')
+            : t('admin.experimentalDisabled'),
         )
       }
       if ('spellCheck' in changedValues) {
         setSpellCheck(changedValues.spellCheck)
         message.success(
-          changedValues.spellCheck ? t('general.spellCheckEnabled') : t('general.spellCheckDisabled'),
+          changedValues.spellCheck
+            ? t('general.spellCheckEnabled')
+            : t('general.spellCheckDisabled'),
         )
       }
     } catch (error: any) {
@@ -197,7 +199,9 @@ export function GeneralSettings() {
               <div>
                 <Text strong>{t('general.appLogs')}</Text>
                 <div>
-                  <Text type="secondary">{t('general.appLogsDescription')}</Text>
+                  <Text type="secondary">
+                    {t('general.appLogsDescription')}
+                  </Text>
                 </div>
               </div>
               <Space
@@ -360,9 +364,7 @@ export function GeneralSettings() {
             <div>
               <Text strong>{t('general.discord')}</Text>
               <div>
-                <Text type="secondary">
-                  {t('general.discordDescription')}
-                </Text>
+                <Text type="secondary">{t('general.discordDescription')}</Text>
               </div>
             </div>
             <Button type="text">

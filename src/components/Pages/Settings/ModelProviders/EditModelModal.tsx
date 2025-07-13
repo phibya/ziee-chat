@@ -102,7 +102,11 @@ export function EditModelModal({
         name={['parameters', 'contextSize']}
         help={t('modelProviders.contextSizeHelp')}
       >
-        <InputNumber placeholder={t('modelProviders.contextSizePlaceholder')} style={{ width: '100%' }} min={0} />
+        <InputNumber
+          placeholder={t('modelProviders.contextSizePlaceholder')}
+          style={{ width: '100%' }}
+          min={0}
+        />
       </Form.Item>
 
       <Form.Item
@@ -110,7 +114,11 @@ export function EditModelModal({
         name={['parameters', 'gpuLayers']}
         help={t('modelProviders.nglHelp')}
       >
-        <InputNumber placeholder={t('modelProviders.gpuLayersPlaceholder')} style={{ width: '100%' }} min={-1} />
+        <InputNumber
+          placeholder={t('modelProviders.gpuLayersPlaceholder')}
+          style={{ width: '100%' }}
+          min={-1}
+        />
       </Form.Item>
 
       <Form.Item
@@ -132,7 +140,11 @@ export function EditModelModal({
         name={['parameters', 'topK']}
         help={t('modelProviders.topKHelp')}
       >
-        <InputNumber placeholder={t('modelProviders.topKPlaceholder')} style={{ width: '100%' }} min={0} />
+        <InputNumber
+          placeholder={t('modelProviders.topKPlaceholder')}
+          style={{ width: '100%' }}
+          min={0}
+        />
       </Form.Item>
 
       <Form.Item
@@ -168,7 +180,11 @@ export function EditModelModal({
         name={['parameters', 'repeatLastN']}
         help={t('modelProviders.repeatLastNHelp')}
       >
-        <InputNumber placeholder={t('modelProviders.repeatLastNPlaceholder')} style={{ width: '100%' }} min={-1} />
+        <InputNumber
+          placeholder={t('modelProviders.repeatLastNPlaceholder')}
+          style={{ width: '100%' }}
+          min={-1}
+        />
       </Form.Item>
 
       <Form.Item

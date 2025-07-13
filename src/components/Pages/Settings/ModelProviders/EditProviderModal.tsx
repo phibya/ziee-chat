@@ -75,12 +75,21 @@ export function EditProviderModal({
         <Form.Item
           name="name"
           label={t('modelProviders.providerName')}
-          rules={[{ required: true, message: t('modelProviders.providerNameRequired') }]}
+          rules={[
+            {
+              required: true,
+              message: t('modelProviders.providerNameRequired'),
+            },
+          ]}
         >
           <Input placeholder={t('modelProviders.providerNamePlaceholder')} />
         </Form.Item>
 
-        <Form.Item name="enabled" label={t('modelProviders.enabled')} valuePropName="checked">
+        <Form.Item
+          name="enabled"
+          label={t('modelProviders.enabled')}
+          valuePropName="checked"
+        >
           <Switch />
         </Form.Item>
 
@@ -91,7 +100,12 @@ export function EditProviderModal({
               <Form.Item
                 name="api_key"
                 label={t('modelProviders.apiKey')}
-                rules={[{ required: true, message: t('modelProviders.apiKeyRequired') }]}
+                rules={[
+                  {
+                    required: true,
+                    message: t('modelProviders.apiKeyRequired'),
+                  },
+                ]}
               >
                 <Input.Password
                   placeholder={t('modelProviders.apiKeyPlaceholder')}
@@ -104,7 +118,12 @@ export function EditProviderModal({
               <Form.Item
                 name="base_url"
                 label={t('modelProviders.baseUrl')}
-                rules={[{ required: true, message: t('modelProviders.baseUrlRequired') }]}
+                rules={[
+                  {
+                    required: true,
+                    message: t('modelProviders.baseUrlRequired'),
+                  },
+                ]}
               >
                 <Input placeholder={t('modelProviders.baseUrlPlaceholder')} />
               </Form.Item>
@@ -147,7 +166,10 @@ export function EditProviderModal({
                 <InputNumber min={1} max={16} style={{ width: '100%' }} />
               </Form.Item>
 
-              <Form.Item name={['settings', 'cpuThreads']} label={t('modelProviders.cpuThreads')}>
+              <Form.Item
+                name={['settings', 'cpuThreads']}
+                label={t('modelProviders.cpuThreads')}
+              >
                 <InputNumber
                   placeholder={t('modelProviders.cpuThreadsPlaceholder')}
                   style={{ width: '100%' }}
@@ -207,7 +229,9 @@ export function EditProviderModal({
                 name={['settings', 'huggingFaceAccessToken']}
                 label={t('modelProviders.huggingFaceAccessToken')}
               >
-                <Input.Password placeholder={t('modelProviders.huggingFaceTokenPlaceholder')} />
+                <Input.Password
+                  placeholder={t('modelProviders.huggingFaceTokenPlaceholder')}
+                />
               </Form.Item>
             </Space>
           </Card>

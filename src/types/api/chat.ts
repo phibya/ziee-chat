@@ -6,10 +6,9 @@ export interface Conversation {
   id: string
   user_id: string
   title: string
-  assistant_id?: string
-  model_provider_id?: string
-  model_id?: string
-  active_branch_id?: string
+  assistant_id: string
+  model_id: string
+  active_branch_id: string
   created_at: string
   updated_at: string
 }
@@ -17,35 +16,33 @@ export interface Conversation {
 export interface Message {
   id: string
   conversation_id: string
-  parent_id?: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  branch_id: string
-  is_active_branch: boolean
   originated_from_id?: string
   edit_count: number
-  model_provider_id?: string
-  model_id?: string
   created_at: string
   updated_at: string
-  branches?: Message[]
   metadata?: Array<{
     key: string
     value: any
   }>
 }
 
+export interface Branch {
+  id: string
+  conversation_id: string
+  created_at: string
+}
+
 export interface CreateConversationRequest {
   title: string
   assistant_id?: string
-  model_provider_id?: string
   model_id?: string
 }
 
 export interface UpdateConversationRequest {
   title?: string
   assistant_id?: string
-  model_provider_id?: string
   model_id?: string
 }
 
@@ -53,8 +50,11 @@ export interface SendMessageRequest {
   conversation_id: string
   content: string
   parent_id?: string
-  model_provider_id: string
   model_id: string
+}
+
+export interface SwitchBranchRequest {
+  branch_id: string
 }
 
 export interface EditMessageRequest {
@@ -73,7 +73,6 @@ export interface ConversationSummary {
   title: string
   user_id: string
   assistant_id?: string
-  model_provider_id?: string
   model_id?: string
   created_at: string
   updated_at: string

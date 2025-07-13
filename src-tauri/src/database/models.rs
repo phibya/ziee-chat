@@ -509,7 +509,6 @@ pub struct ConversationDb {
     pub user_id: Uuid,
     pub title: String,
     pub assistant_id: Option<Uuid>,
-    pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub active_branch_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
@@ -523,13 +522,8 @@ pub struct MessageDb {
     pub parent_id: Option<Uuid>,
     pub role: String,
     pub content: String,
-    pub branch_id: Uuid,             // Old branch system - will be deprecated
-    pub new_branch_id: Option<Uuid>, // New proper branch system
-    pub is_active_branch: bool,      // Will be deprecated in favor of conversation.active_branch_id
     pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
     pub edit_count: Option<i32>,     // Number of times this message lineage has been edited
-    pub model_provider_id: Option<Uuid>,
-    pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -539,7 +533,6 @@ pub struct MessageDb {
 pub struct BranchDb {
     pub id: Uuid,
     pub conversation_id: Uuid,
-    pub name: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -567,7 +560,6 @@ pub struct Conversation {
     pub user_id: Uuid,
     pub title: String,
     pub assistant_id: Option<Uuid>,
-    pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub active_branch_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
@@ -578,19 +570,12 @@ pub struct Conversation {
 pub struct Message {
     pub id: Uuid,
     pub conversation_id: Uuid,
-    pub parent_id: Option<Uuid>,
     pub role: String,
     pub content: String,
-    pub branch_id: Uuid,                  // Legacy field - will be deprecated
-    pub new_branch_id: Option<Uuid>,      // New proper branch system
-    pub is_active_branch: bool,           // Legacy field - will be deprecated
     pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
     pub edit_count: Option<i32>,          // Number of times this message lineage has been edited
-    pub model_provider_id: Option<Uuid>,
-    pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub branches: Option<Vec<Message>>, // Available branches for this message position
     pub metadata: Option<Vec<MessageMetadata>>,
 }
 
@@ -599,7 +584,6 @@ pub struct Message {
 pub struct Branch {
     pub id: Uuid,
     pub conversation_id: Uuid,
-    pub name: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -613,7 +597,6 @@ pub struct MessageMetadata {
 pub struct CreateConversationRequest {
     pub title: String,
     pub assistant_id: Option<Uuid>,
-    pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
 }
 
@@ -621,7 +604,6 @@ pub struct CreateConversationRequest {
 pub struct UpdateConversationRequest {
     pub title: Option<String>,
     pub assistant_id: Option<Uuid>,
-    pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
 }
 
@@ -631,7 +613,6 @@ pub struct SendMessageRequest {
     pub content: String,
     pub role: String,
     pub parent_id: Option<Uuid>,
-    pub model_provider_id: Uuid,
     pub model_id: Uuid,
 }
 
@@ -667,7 +648,6 @@ pub struct ConversationSummary {
     pub title: String,
     pub user_id: Uuid,
     pub assistant_id: Option<Uuid>,
-    pub model_provider_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

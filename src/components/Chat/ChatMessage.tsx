@@ -1,22 +1,17 @@
-import { memo } from 'react'
-import { Avatar, Button, Flex, theme } from 'antd'
+import { memo, useState } from 'react'
+import { Avatar, Button, Flex, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { UserOutlined } from '@ant-design/icons'
-import { Message } from '../../types/api/chat'
+import { LeftOutlined, RightOutlined, UserOutlined } from '@ant-design/icons'
+import { Branch, Message } from '../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
-import { MessageBranches } from './MessageBranches'
 import { MessageEditor } from './MessageEditor'
+import { useShallow } from 'zustand/react/shallow'
+import { useChatStore } from '../../store/chat.ts'
 
 interface ChatMessageProps {
   message: Message
   isEditing: boolean
   editValue: string
-  branchInfo: {
-    branches: Message[]
-    currentIndex: number
-    hasBranches: boolean
-    isLoading: boolean
-  }
   onEdit: (messageId: string, content: string) => void
   onSaveEdit: () => void
   onCancelEdit: () => void
@@ -25,29 +20,86 @@ interface ChatMessageProps {
   onSwitchBranch: (messageId: string) => void
 }
 
+interface BranchInfo {
+  branches: Branch[]
+  currentIndex: number
+  hasBranches: boolean
+  isLoading: boolean
+}
+
 export const ChatMessage = memo(function ChatMessage({
   message,
   isEditing,
   editValue,
-  branchInfo,
   onEdit,
   onSaveEdit,
   onCancelEdit,
   onEditValueChange,
-  onLoadBranches,
   onSwitchBranch,
 }: ChatMessageProps) {
   const { t } = useTranslation()
   const isUser = message.role === 'user'
   const { token } = theme.useToken()
+  const [showToolBox, setShowToolBox] = useState(false)
+
+  const { loadMessageBranches } = useChatStore(
+    useShallow(state => ({
+      loadMessageBranches: state.loadMessageBranches,
+    })),
+  )
+
+  const [branchInfo, setBranchInfo] = useState<BranchInfo>({
+    branches: [],
+    currentIndex: 0,
+    hasBranches: false,
+    isLoading: false,
+  })
+  const handleMouseOverOrClick = async (isClicked: boolean = false) => {
+    setShowToolBox(!isClicked ? true : !showToolBox)
+    if (
+      message.edit_count > 0 &&
+      !branchInfo.isLoading &&
+      !branchInfo.branches.length
+    ) {
+      setBranchInfo(prev => ({ ...prev, isLoading: true }))
+
+      let branches = await loadMessageBranches(message.id)
+
+      const currentConversation = useChatStore.getState().currentConversation!
+
+      console.log({
+        branches,
+        currentConversation,
+        index: branches.findIndex(
+          b => b.id === currentConversation.active_branch_id,
+        ),
+      })
+
+      setBranchInfo({
+        branches,
+        currentIndex: branches.findIndex(
+          b => b.id === currentConversation.active_branch_id,
+        ),
+        hasBranches: branches.length > 1,
+        isLoading: false,
+      })
+    }
+  }
+
+  const handleMouseLeave = () => {
+    setShowToolBox(false)
+  }
 
   return (
     <Flex
       key={message.id}
-      className={`flex gap-2 !p-2 rounded-lg`}
+      className={`flex gap-2 !p-2 rounded-lg relative w-fit min-w-36 ${isEditing ? 'w-full' : ''}`}
       style={{
-        backgroundColor: isUser ? token.colorBgElevated : 'transparent',
+        backgroundColor: isUser ? token.colorBgContainer : 'transparent',
       }}
+      onMouseOver={() => handleMouseOverOrClick()}
+      onClick={() => handleMouseOverOrClick(true)}
+      onMouseLeave={handleMouseLeave}
     >
       <div className={`flex items-center mb-2 ${!isUser ? 'hidden' : ''}`}>
         <div className="flex items-center">
@@ -56,7 +108,7 @@ export const ChatMessage = memo(function ChatMessage({
       </div>
 
       {/* Message content */}
-      <Flex className={`${isUser ? '!pt-0.5' : ''}`}>
+      <Flex className={`${isUser ? '!pt-0.5' : ''} w-full`}>
         {isEditing ? (
           <MessageEditor
             value={editValue}
@@ -66,6 +118,7 @@ export const ChatMessage = memo(function ChatMessage({
           />
         ) : (
           <div
+            className={'w-full'}
             style={{
               whiteSpace: isUser ? 'pre-wrap' : 'normal',
             }}
@@ -81,22 +134,55 @@ export const ChatMessage = memo(function ChatMessage({
 
       {/* Tools/Actions at the bottom for user messages */}
       {isUser && !isEditing && (
-        <div className="ml-11 mt-2">
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div
+          className="flex items-center absolute -bottom-2.5 right-2 border rounded-md backdrop-blur-2xl"
+          style={{
+            borderColor: token.colorBorderSecondary,
+            display: showToolBox ? 'flex' : 'none',
+          }}
+        >
+          <Button
+            size="small"
+            type="text"
+            onClick={() => onEdit(message.id, message.content)}
+          >
+            {t('chat.edit')}
+          </Button>
+
+          <Flex
+            className={'gap-0'}
+            style={{
+              display: branchInfo.hasBranches ? 'flex' : 'none',
+            }}
+          >
             <Button
               size="small"
               type="text"
-              onClick={() => onEdit(message.id, message.content)}
-            >
-              {t('chat.edit')}
-            </Button>
-
-            <MessageBranches
-              branchInfo={branchInfo}
-              onLoadBranches={() => onLoadBranches(message)}
-              onSwitchBranch={onSwitchBranch}
+              icon={<LeftOutlined />}
+              disabled={branchInfo.currentIndex <= 0}
+              onClick={() => {
+                const prevBranch =
+                  branchInfo.branches[branchInfo.currentIndex - 1]
+                if (prevBranch) onSwitchBranch(prevBranch.id)
+              }}
             />
-          </div>
+            <Typography.Text>
+              {branchInfo.currentIndex + 1} / {branchInfo.branches.length}
+            </Typography.Text>
+            <Button
+              size="small"
+              type="text"
+              icon={<RightOutlined />}
+              disabled={
+                branchInfo.currentIndex >= branchInfo.branches.length - 1
+              }
+              onClick={() => {
+                const nextBranch =
+                  branchInfo.branches[branchInfo.currentIndex + 1]
+                if (nextBranch) onSwitchBranch(nextBranch.id)
+              }}
+            />
+          </Flex>
         </div>
       )}
     </Flex>

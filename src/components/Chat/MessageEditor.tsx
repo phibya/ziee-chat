@@ -21,14 +21,14 @@ export const MessageEditor = memo(function MessageEditor({
   const { t } = useTranslation()
 
   return (
-    <div>
+    <div className={'flex flex-col gap-1 w-full'}>
       <TextArea
         value={value}
         onChange={e => onChange(e.target.value)}
         autoSize={{ minRows: 2, maxRows: 8 }}
-        className="mb-2"
+        className="mb-2 w-full"
       />
-      <div className="flex gap-2">
+      <div className="flex gap-1">
         <Button
           size="small"
           type="primary"

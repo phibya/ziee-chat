@@ -1,6 +1,6 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
-    Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
+    Branch, Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
     EditMessageRequest, EditMessageResponse, Message, SendMessageRequest,
     UpdateConversationRequest,
 };
@@ -34,16 +34,15 @@ pub async fn create_conversation(
     sqlx::query(
         r#"
         INSERT INTO conversations (
-            id, user_id, title, assistant_id, model_provider_id, model_id,
+            id, user_id, title, assistant_id, model_id,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         "#,
     )
     .bind(conversation_id)
     .bind(user_id)
     .bind(&request.title)
     .bind(request.assistant_id)
-    .bind(request.model_provider_id)
     .bind(request.model_id)
     .bind(now)
     .bind(now)
@@ -51,8 +50,7 @@ pub async fn create_conversation(
     .await?;
 
     // 2. Create the main branch for this conversation
-    let main_branch =
-        branches::create_branch_tx(&mut tx, conversation_id, Some("main".to_string())).await?;
+    let main_branch = branches::create_branch_tx(&mut tx, conversation_id, None).await?;
 
     // 3. Update the conversation to set the active branch
     sqlx::query("UPDATE conversations SET active_branch_id = $1 WHERE id = $2")
@@ -71,7 +69,6 @@ pub async fn create_conversation(
         user_id,
         title: request.title,
         assistant_id: request.assistant_id,
-        model_provider_id: request.model_provider_id,
         model_id: request.model_id,
         active_branch_id: Some(main_branch.id),
         created_at: now,
@@ -89,10 +86,10 @@ pub async fn get_conversation_by_id(
 
     let row = sqlx::query(
         r#"
-        SELECT 
-            id, user_id, title, assistant_id, model_provider_id, model_id,
+        SELECT
+            id, user_id, title, assistant_id, model_id,
             active_branch_id, created_at, updated_at
-        FROM conversations 
+        FROM conversations
         WHERE id = $1 AND user_id = $2
         "#,
     )
@@ -107,7 +104,6 @@ pub async fn get_conversation_by_id(
             user_id: row.get("user_id"),
             title: row.get("title"),
             assistant_id: row.get("assistant_id"),
-            model_provider_id: row.get("model_provider_id"),
             model_id: row.get("model_id"),
             active_branch_id: row.get("active_branch_id"),
             created_at: row.get("created_at"),
@@ -143,17 +139,17 @@ pub async fn list_conversations(
     // Get conversations with last message info
     let rows = sqlx::query(
         r#"
-        SELECT 
-            c.id, c.title, c.user_id, c.assistant_id, c.model_provider_id, c.model_id,
+        SELECT
+            c.id, c.title, c.user_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
             m.content as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
         FROM conversations c
         LEFT JOIN (
-            SELECT DISTINCT ON (conversation_id) 
+            SELECT DISTINCT ON (conversation_id)
                 conversation_id, content
-            FROM messages 
-            WHERE role = 'assistant' AND is_active_branch = true
+            FROM messages
+            WHERE role = 'assistant'
             ORDER BY conversation_id, created_at DESC
         ) m ON c.id = m.conversation_id
         WHERE c.user_id = $1
@@ -174,7 +170,6 @@ pub async fn list_conversations(
             title: row.get("title"),
             user_id: row.get("user_id"),
             assistant_id: row.get("assistant_id"),
-            model_provider_id: row.get("model_provider_id"),
             model_id: row.get("model_id"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
@@ -214,10 +209,6 @@ pub async fn update_conversation(
         updates.push(format!("assistant_id = ${}", bind_index));
         bind_index += 1;
     }
-    if request.model_provider_id.is_some() {
-        updates.push(format!("model_provider_id = ${}", bind_index));
-        bind_index += 1;
-    }
     if request.model_id.is_some() {
         updates.push(format!("model_id = ${}", bind_index));
         bind_index += 1;
@@ -233,10 +224,10 @@ pub async fn update_conversation(
 
     let query = format!(
         r#"
-        UPDATE conversations 
+        UPDATE conversations
         SET {}
         WHERE id = ${} AND user_id = ${}
-        RETURNING id, user_id, title, assistant_id, model_provider_id, model_id, active_branch_id, created_at, updated_at
+        RETURNING id, user_id, title, assistant_id, model_id, active_branch_id, created_at, updated_at
         "#,
         update_clause,
         bind_index + 1,
@@ -252,9 +243,6 @@ pub async fn update_conversation(
     if let Some(assistant_id) = request.assistant_id {
         query_builder = query_builder.bind(assistant_id);
     }
-    if let Some(model_provider_id) = request.model_provider_id {
-        query_builder = query_builder.bind(model_provider_id);
-    }
     if let Some(model_id) = request.model_id {
         query_builder = query_builder.bind(model_id);
     }
@@ -269,7 +257,6 @@ pub async fn update_conversation(
             user_id: row.get("user_id"),
             title: row.get("title"),
             assistant_id: row.get("assistant_id"),
-            model_provider_id: row.get("model_provider_id"),
             model_id: row.get("model_id"),
             active_branch_id: row.get("active_branch_id"),
             created_at: row.get("created_at"),
@@ -329,16 +316,19 @@ pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<
     let message_id = Uuid::new_v4();
     let now = chrono::Utc::now();
 
-    // Insert the message with proper branching fields
+    // Note: provider_id is no longer stored in messages, derived from model_id relationship when needed
+
+    // Start transaction for atomic message + branch_message creation
+    let mut tx = pool.begin().await?;
+
+    // Insert the message without branch_id
     sqlx::query(
         r#"
         INSERT INTO messages (
-            id, conversation_id, parent_id, role, content, 
-            branch_id, new_branch_id, is_active_branch, 
+            id, conversation_id, parent_id, role, content,
             originated_from_id, edit_count,
-            model_provider_id, model_id,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
     )
     .bind(message_id)
@@ -346,35 +336,41 @@ pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<
     .bind(request.parent_id)
     .bind(&request.role)
     .bind(&request.content)
-    .bind(Uuid::new_v4()) // Legacy branch_id - generate for compatibility
-    .bind(active_branch_id) // new_branch_id - the actual branch this belongs to
-    .bind(true) // is_active_branch - legacy field
     .bind(message_id) // originated_from_id - same as id for new messages
     .bind(0) // edit_count - 0 for new messages
-    .bind(request.model_provider_id)
-    .bind(request.model_id)
     .bind(now)
     .bind(now)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+
+    // Insert the branch_message relationship (new messages are not clones)
+    sqlx::query(
+        r#"
+        INSERT INTO branch_messages (
+            branch_id, message_id, created_at, is_clone
+        ) VALUES ($1, $2, $3, $4)
+        "#,
+    )
+    .bind(active_branch_id)
+    .bind(message_id)
+    .bind(now)
+    .bind(false) // New messages are not clones
+    .execute(&mut *tx)
+    .await?;
+
+    // Commit transaction
+    tx.commit().await?;
 
     // Return the created message
     Ok(Message {
         id: message_id,
         conversation_id: request.conversation_id,
-        parent_id: request.parent_id,
         role: request.role.to_string(),
         content: request.content.to_string(),
-        branch_id: Uuid::new_v4(), // Legacy field
-        new_branch_id: Some(active_branch_id),
-        is_active_branch: true, // Legacy field
         originated_from_id: Some(message_id),
         edit_count: Some(0),
-        model_provider_id: Some(request.model_provider_id),
-        model_id: Some(request.model_id),
         created_at: now,
         updated_at: now,
-        branches: None,
         metadata: None,
     })
 }
@@ -399,12 +395,12 @@ pub async fn count_conversation_messages(
         None => return Ok(0), // No active branch means no messages
     };
 
-    // Count messages for the active branch
+    // Count messages for the active branch using branch_messages relationship
     let row = sqlx::query(
         r#"
         SELECT COUNT(*) as count
-        FROM messages 
-        WHERE new_branch_id = $1
+        FROM branch_messages
+        WHERE branch_id = $1
         "#,
     )
     .bind(active_branch_id)
@@ -435,18 +431,17 @@ pub async fn get_conversation_messages(
         None => return Ok(vec![]), // No active branch means no messages
     };
 
-    // Get messages for the active branch
+    // Get messages for the active branch using the branch_messages relationship
     let rows = sqlx::query(
         r#"
-        SELECT 
-            id, conversation_id, parent_id, role, content, 
-            branch_id, new_branch_id, is_active_branch, 
-            originated_from_id, edit_count,
-            model_provider_id, model_id,
-            created_at, updated_at
-        FROM messages 
-        WHERE new_branch_id = $1
-        ORDER BY created_at ASC
+        SELECT
+            m.id, m.conversation_id, m.parent_id, m.role, m.content,
+            m.originated_from_id, m.edit_count,
+            m.created_at, m.updated_at
+        FROM messages m
+        INNER JOIN branch_messages bm ON m.id = bm.message_id
+        WHERE bm.branch_id = $1
+        ORDER BY m.created_at ASC
         "#,
     )
     .bind(active_branch_id)
@@ -459,19 +454,12 @@ pub async fn get_conversation_messages(
         .map(|row| Message {
             id: row.get("id"),
             conversation_id: row.get("conversation_id"),
-            parent_id: row.get("parent_id"),
             role: row.get("role"),
             content: row.get("content"),
-            branch_id: row.get("branch_id"),
-            new_branch_id: row.get("new_branch_id"),
-            is_active_branch: row.get("is_active_branch"),
             originated_from_id: row.get("originated_from_id"),
             edit_count: row.get("edit_count"),
-            model_provider_id: row.get("model_provider_id"),
-            model_id: row.get("model_id"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
-            branches: None,
             metadata: None,
         })
         .collect();
@@ -479,6 +467,69 @@ pub async fn get_conversation_messages(
     Ok(messages)
 }
 
+/// Get messages for a specific branch in a conversation
+pub async fn get_conversation_messages_by_branch(
+    conversation_id: Uuid,
+    branch_id: Uuid,
+    user_id: Uuid,
+) -> Result<Vec<Message>, Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    // First verify that the conversation belongs to the user
+    let _conversation = match get_conversation_by_id(conversation_id, user_id).await? {
+        Some(conv) => conv,
+        None => return Ok(vec![]), // Conversation not found or doesn't belong to user
+    };
+
+    // Verify that the branch belongs to this conversation
+    let branch_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM branches WHERE id = $1 AND conversation_id = $2)",
+    )
+    .bind(branch_id)
+    .bind(conversation_id)
+    .fetch_one(pool)
+    .await?;
+
+    if !branch_exists {
+        return Ok(vec![]); // Branch doesn't exist for this conversation
+    }
+
+    // Get messages for the specified branch using the branch_messages relationship
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            m.id, m.conversation_id, m.parent_id, m.role, m.content,
+            m.originated_from_id, m.edit_count,
+            m.created_at, m.updated_at
+        FROM messages m
+        INNER JOIN branch_messages bm ON m.id = bm.message_id
+        WHERE bm.branch_id = $1
+        ORDER BY m.created_at ASC
+        "#,
+    )
+    .bind(branch_id)
+    .fetch_all(pool)
+    .await?;
+
+    // Convert rows to Message structs
+    let messages = rows
+        .into_iter()
+        .map(|row| Message {
+            id: row.get("id"),
+            conversation_id: row.get("conversation_id"),
+            role: row.get("role"),
+            content: row.get("content"),
+            originated_from_id: row.get("originated_from_id"),
+            edit_count: row.get("edit_count"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+            metadata: None,
+        })
+        .collect();
+
+    Ok(messages)
+}
 
 /// Edit a message and create a new branch according to CLAUDE.md:
 /// - Create a new branch with a unique ID
@@ -498,12 +549,14 @@ pub async fn edit_message(
     // Start transaction for atomic operation
     let mut tx = pool.begin().await?;
 
-    // 1. Get the original message and verify ownership
+    // 1. Get the original message and verify ownership, also find its current branch
     let original_row = sqlx::query(
         r#"
-        SELECT m.*, c.user_id as conversation_user_id, c.active_branch_id
+        SELECT m.*, c.user_id as conversation_user_id, c.active_branch_id,
+               bm.branch_id as current_branch_id
         FROM messages m
         JOIN conversations c ON m.conversation_id = c.id
+        LEFT JOIN branch_messages bm ON m.id = bm.message_id
         WHERE m.id = $1
         "#,
     )
@@ -527,7 +580,7 @@ pub async fn edit_message(
     let original_originated_from_id: Option<Uuid> = original.get("originated_from_id");
     let original_edit_count: Option<i32> = original.get("edit_count");
     let original_created_at: chrono::DateTime<chrono::Utc> = original.get("created_at");
-    let current_branch_id: Option<Uuid> = original.get("new_branch_id");
+    let current_branch_id: Option<Uuid> = original.get("current_branch_id");
 
     // Handle legacy messages without originated_from_id
     let originated_from_id = original_originated_from_id.unwrap_or(message_id);
@@ -546,28 +599,32 @@ pub async fn edit_message(
 
     // 3. Clone all messages from current branch up to (but not including) the edited message
     if let Some(current_branch) = current_branch_id {
+        // Clone the branch_messages relationships to the new branch in a single query
+        // These messages are clones since they now belong to multiple branches
         sqlx::query(
             r#"
-            INSERT INTO messages (
-                id, conversation_id, parent_id, role, content,
-                branch_id, new_branch_id, is_active_branch,
-                originated_from_id, edit_count,
-                model_provider_id, model_id,
-                created_at, updated_at
-            )
-            SELECT 
-                gen_random_uuid(), conversation_id, parent_id, role, content,
-                branch_id, $1, is_active_branch,
-                originated_from_id, edit_count,
-                model_provider_id, model_id,
-                created_at, CURRENT_TIMESTAMP
-            FROM messages
-            WHERE new_branch_id = $2 
+            INSERT INTO branch_messages (branch_id, message_id, created_at, is_clone)
+            SELECT $1, message_id, created_at, true
+            FROM branch_messages
+            WHERE branch_id = $2
             AND created_at < $3
-            ORDER BY created_at ASC
             "#,
         )
         .bind(new_branch.id)
+        .bind(current_branch)
+        .bind(original_created_at)
+        .execute(&mut *tx)
+        .await?;
+
+        // Also update the original branch_messages to mark them as clones
+        sqlx::query(
+            r#"
+            UPDATE branch_messages
+            SET is_clone = true
+            WHERE branch_id = $1
+            AND created_at < $2
+            "#,
+        )
         .bind(current_branch)
         .bind(original_created_at)
         .execute(&mut *tx)
@@ -578,15 +635,14 @@ pub async fn edit_message(
     let new_message_id = Uuid::new_v4();
     let now = chrono::Utc::now();
 
+    // Insert the edited message
     sqlx::query(
         r#"
         INSERT INTO messages (
             id, conversation_id, parent_id, role, content,
-            branch_id, new_branch_id, is_active_branch,
             originated_from_id, edit_count,
-            model_provider_id, model_id,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
     )
     .bind(new_message_id)
@@ -594,15 +650,24 @@ pub async fn edit_message(
     .bind(original.get::<Option<Uuid>, _>("parent_id"))
     .bind(&role)
     .bind(&request.content)
-    .bind(Uuid::new_v4()) // Legacy branch_id
-    .bind(new_branch.id) // new_branch_id
-    .bind(true) // is_active_branch (legacy)
     .bind(originated_from_id) // Copy originated_from_id from original
     .bind(edit_count) // Copy edit_count from original
-    .bind(original.get::<Option<Uuid>, _>("model_provider_id"))
-    .bind(original.get::<Option<Uuid>, _>("model_id"))
     .bind(original_created_at) // Preserve original creation time for ordering
     .bind(now)
+    .execute(&mut *tx)
+    .await?;
+
+    // Insert the branch_message relationship for the edited message
+    // The edited message is not a clone since it only belongs to the new branch
+    sqlx::query(
+        r#"
+        INSERT INTO branch_messages (branch_id, message_id, created_at, is_clone)
+        VALUES ($1, $2, CURRENT_TIMESTAMP, $3)
+        "#,
+    )
+    .bind(new_branch.id)
+    .bind(new_message_id)
+    .bind(false) // Edited message is unique to this branch
     .execute(&mut *tx)
     .await?;
 
@@ -616,7 +681,7 @@ pub async fn edit_message(
     // 6. Find all messages with the same originated_from_id and increment their edit_count
     sqlx::query(
         r#"
-        UPDATE messages 
+        UPDATE messages
         SET edit_count = COALESCE(edit_count, 0) + 1
         WHERE originated_from_id = $1
         "#,
@@ -628,15 +693,14 @@ pub async fn edit_message(
     // 7. Get conversation history for the response
     let history_rows = sqlx::query(
         r#"
-        SELECT 
-            id, conversation_id, parent_id, role, content,
-            branch_id, new_branch_id, is_active_branch,
-            originated_from_id, edit_count,
-            model_provider_id, model_id,
-            created_at, updated_at
-        FROM messages 
-        WHERE new_branch_id = $1 AND created_at < $2
-        ORDER BY created_at ASC
+        SELECT
+            m.id, m.conversation_id, m.parent_id, m.role, m.content,
+            m.originated_from_id, m.edit_count,
+            m.created_at, m.updated_at
+        FROM messages m
+        INNER JOIN branch_messages bm ON m.id = bm.message_id
+        WHERE bm.branch_id = $1 AND m.created_at < $2
+        ORDER BY m.created_at ASC
         "#,
     )
     .bind(new_branch.id)
@@ -649,19 +713,12 @@ pub async fn edit_message(
         .map(|row| Message {
             id: row.get("id"),
             conversation_id: row.get("conversation_id"),
-            parent_id: row.get("parent_id"),
             role: row.get("role"),
             content: row.get("content"),
-            branch_id: row.get("branch_id"),
-            new_branch_id: row.get("new_branch_id"),
-            is_active_branch: row.get("is_active_branch"),
             originated_from_id: row.get("originated_from_id"),
             edit_count: row.get("edit_count"),
-            model_provider_id: row.get("model_provider_id"),
-            model_id: row.get("model_id"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
-            branches: None,
             metadata: None,
         })
         .collect();
@@ -673,19 +730,12 @@ pub async fn edit_message(
     let message = Message {
         id: new_message_id,
         conversation_id,
-        parent_id: original.get("parent_id"),
         role,
         content: request.content,
-        branch_id: Uuid::new_v4(), // Legacy field
-        new_branch_id: Some(new_branch.id),
-        is_active_branch: true, // Legacy field
         originated_from_id: Some(originated_from_id),
         edit_count: Some(edit_count + 1), // Incremented count
-        model_provider_id: original.get("model_provider_id"),
-        model_id: original.get("model_id"),
         created_at: original_created_at,
         updated_at: now,
-        branches: None,
         metadata: None,
     };
 
@@ -712,10 +762,10 @@ pub async fn search_conversations(
     // Get total count for search results
     let total_row = sqlx::query(
         r#"
-        SELECT COUNT(DISTINCT c.id) as count 
+        SELECT COUNT(DISTINCT c.id) as count
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
-        WHERE c.user_id = $1 
+        WHERE c.user_id = $1
         AND (c.title ILIKE $2 OR m.content ILIKE $2)
         "#,
     )
@@ -736,13 +786,13 @@ pub async fn search_conversations(
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
         LEFT JOIN (
-            SELECT DISTINCT ON (conversation_id) 
+            SELECT DISTINCT ON (conversation_id)
                 conversation_id, content
-            FROM messages 
+            FROM messages
             WHERE role = 'assistant' AND is_active_branch = true
             ORDER BY conversation_id, created_at DESC
         ) latest_msg ON c.id = latest_msg.conversation_id
-        WHERE c.user_id = $1 
+        WHERE c.user_id = $1
         AND (c.title ILIKE $2 OR m.content ILIKE $2)
         ORDER BY c.id, c.updated_at DESC
         LIMIT $3 OFFSET $4
@@ -762,7 +812,6 @@ pub async fn search_conversations(
             title: row.get("title"),
             user_id: row.get("user_id"),
             assistant_id: row.get("assistant_id"),
-            model_provider_id: row.get("model_provider_id"),
             model_id: row.get("model_id"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
@@ -787,7 +836,7 @@ pub async fn delete_all_conversations(user_id: Uuid) -> Result<i64, Error> {
     // Delete all messages for user's conversations first
     let _result = sqlx::query(
         r#"
-        DELETE FROM messages 
+        DELETE FROM messages
         WHERE conversation_id IN (
             SELECT id FROM conversations WHERE user_id = $1
         )
@@ -814,8 +863,8 @@ pub async fn generate_conversation_title(conversation_id: Uuid) -> Result<String
     // Get the first user message from the conversation
     let row = sqlx::query(
         r#"
-        SELECT content 
-        FROM messages 
+        SELECT content
+        FROM messages
         WHERE conversation_id = $1 AND role = 'user' AND is_active_branch = true
         ORDER BY created_at ASC
         LIMIT 1
@@ -859,40 +908,30 @@ pub async fn auto_update_conversation_title(
     let request = UpdateConversationRequest {
         title: Some(title),
         assistant_id: None,
-        model_provider_id: None,
         model_id: None,
     };
 
     update_conversation(conversation_id, request, user_id).await
 }
 
-/// Get all branches for a message (all messages with same originated_from_id)
+/// Get all branches for a message (all branches containing messages with same originated_from_id)
 /// According to CLAUDE.md: Find all items with the same originated_from_id, order by created_at
-pub async fn get_message_branches(
-    conversation_id: Uuid,
-    created_at: chrono::DateTime<chrono::Utc>,
-    user_id: Uuid,
-) -> Result<Vec<Message>, Error> {
+pub async fn get_message_branches(message_id: Uuid, user_id: Uuid) -> Result<Vec<Branch>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-
-    // Verify user owns the conversation
-    let conversation = match get_conversation_by_id(conversation_id, user_id).await? {
-        Some(conv) => conv,
-        None => return Ok(vec![]),
-    };
 
     // First, get the message at this timestamp to find its originated_from_id
     let original_message = sqlx::query(
         r#"
-        SELECT originated_from_id 
-        FROM messages 
-        WHERE conversation_id = $1 AND created_at = $2
+        SELECT m.originated_from_id
+        FROM messages m
+        INNER JOIN conversations c ON m.conversation_id = c.id
+        WHERE m.id = $1 AND c.user_id = $2
         LIMIT 1
         "#,
     )
-    .bind(conversation_id)
-    .bind(created_at)
+    .bind(message_id)
+    .bind(user_id)
     .fetch_optional(pool)
     .await?;
 
@@ -907,127 +946,85 @@ pub async fn get_message_branches(
         None => return Ok(vec![]),
     };
 
-    // Get all messages with the same originated_from_id (all branches)
+    // Get all branches that contain messages with the same originated_from_id
     let rows = sqlx::query(
         r#"
-        SELECT 
-            m.id, m.conversation_id, m.parent_id, m.role, m.content, 
-            m.branch_id, m.new_branch_id, m.is_active_branch, 
-            m.originated_from_id, m.edit_count,
-            m.model_provider_id, m.model_id,
-            m.created_at, m.updated_at,
-            c.active_branch_id
-        FROM messages m
-        JOIN conversations c ON m.conversation_id = c.id
-        WHERE m.originated_from_id = $1 
-        ORDER BY m.created_at ASC
+        SELECT DISTINCT
+            b.id, b.conversation_id, b.created_at
+        FROM branches b
+        INNER JOIN branch_messages bm ON b.id = bm.branch_id
+        INNER JOIN messages m ON bm.message_id = m.id
+        WHERE m.originated_from_id = $1 and bm.is_clone = false
+        ORDER BY b.created_at ASC
         "#,
     )
     .bind(originated_from_id)
     .fetch_all(pool)
     .await?;
 
-    let active_branch_id = conversation.active_branch_id;
-
-    let messages = rows
+    let branches = rows
         .into_iter()
-        .map(|row| {
-            let new_branch_id: Option<Uuid> = row.get("new_branch_id");
-            let is_active = match (active_branch_id, new_branch_id) {
-                (Some(active), Some(branch)) => active == branch,
-                _ => row.get("is_active_branch"), // Fallback to legacy field
-            };
-
-            Message {
-                id: row.get("id"),
-                conversation_id: row.get("conversation_id"),
-                parent_id: row.get("parent_id"),
-                role: row.get("role"),
-                content: row.get("content"),
-                branch_id: row.get("branch_id"),
-                new_branch_id: row.get("new_branch_id"),
-                is_active_branch: is_active,
-                originated_from_id: row.get("originated_from_id"),
-                edit_count: row.get("edit_count"),
-                model_provider_id: row.get("model_provider_id"),
-                model_id: row.get("model_id"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-                branches: None,
-                metadata: None,
-            }
+        .map(|row| Branch {
+            id: row.get("id"),
+            conversation_id: row.get("conversation_id"),
+            created_at: row.get("created_at"),
         })
         .collect();
 
-    Ok(messages)
+    Ok(branches)
 }
 
-/// Switch to a different branch by making a message active
-/// According to CLAUDE.md: Switch to the branch that contains the selected message
-/// This updates the conversation's active_branch_id to the branch containing the message
-pub async fn switch_message_branch(
-    message_id: Uuid,
+/// Switch conversation to a different branch
+/// Updates the conversation's active_branch_id to switch the entire conversation context
+pub async fn switch_conversation_branch(
+    conversation_id: Uuid,
+    branch_id: Uuid,
     user_id: Uuid,
-) -> Result<Option<Message>, Error> {
+) -> Result<bool, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    // Get the message and verify ownership
-    let message_row = sqlx::query(
+    // Verify user owns the conversation
+    let _conversation = match get_conversation_by_id(conversation_id, user_id).await? {
+        Some(conv) => conv,
+        None => return Ok(false),
+    };
+
+    println!(
+        "DEBUG: switch_conversation_branch - user_id: {}, conversation_id: {}, branch_id: {}",
+        user_id, conversation_id, branch_id
+    );
+
+    // Verify the branch exists for this conversation
+    let branch_exists = sqlx::query(
         r#"
-        SELECT m.*, c.user_id as conversation_user_id
-        FROM messages m
-        JOIN conversations c ON m.conversation_id = c.id
-        WHERE m.id = $1
+        SELECT id 
+        FROM branches 
+        WHERE id = $1 AND conversation_id = $2
         "#,
     )
-    .bind(message_id)
+    .bind(branch_id)
+    .bind(conversation_id)
     .fetch_optional(pool)
     .await?;
 
-    let message = match message_row {
-        Some(row) => row,
-        None => return Ok(None),
-    };
-
-    let conversation_user_id: Uuid = message.get("conversation_user_id");
-    if conversation_user_id != user_id {
-        return Ok(None);
+    if branch_exists.is_none() {
+        return Ok(false);
     }
-
-    let conversation_id: Uuid = message.get("conversation_id");
-    let new_branch_id: Option<Uuid> = message.get("new_branch_id");
-
-    // Make sure the message belongs to a proper branch
-    let branch_id = match new_branch_id {
-        Some(id) => id,
-        None => return Ok(None), // Legacy message without proper branch
-    };
 
     // Update the conversation's active branch
-    let updated = branches::set_active_branch(conversation_id, branch_id).await?;
+    let result = sqlx::query(
+        r#"
+        UPDATE conversations 
+        SET active_branch_id = $1, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $2 AND user_id = $3
+        "#,
+    )
+    .bind(branch_id)
+    .bind(conversation_id)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
 
-    if !updated {
-        return Ok(None);
-    }
-
-    // Return the updated message
-    Ok(Some(Message {
-        id: message.get("id"),
-        conversation_id: message.get("conversation_id"),
-        parent_id: message.get("parent_id"),
-        role: message.get("role"),
-        content: message.get("content"),
-        branch_id: message.get("branch_id"),
-        new_branch_id: message.get("new_branch_id"),
-        is_active_branch: true, // Now active since we switched to its branch
-        originated_from_id: message.get("originated_from_id"),
-        edit_count: message.get("edit_count"),
-        model_provider_id: message.get("model_provider_id"),
-        model_id: message.get("model_id"),
-        created_at: message.get("created_at"),
-        updated_at: chrono::Utc::now(),
-        branches: None,
-        metadata: None,
-    }))
+    Ok(result.rows_affected() > 0)
 }

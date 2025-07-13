@@ -45,8 +45,13 @@ pub fn chat_routes() -> Router {
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
-            "/api/chat/messages/{message_id}/branch/switch",
-            post(api::chat::switch_branch)
+            "/api/chat/conversations/{conversation_id}/branch/switch",
+            put(api::chat::switch_conversation_branch)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/chat/conversations/{conversation_id}/messages/{branch_id}",
+            get(api::chat::get_conversation_messages_by_branch)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(

@@ -279,12 +279,18 @@ export function ModelProviderProxySettingsForm({
             <Row gutter={8} style={{ marginTop: 8 }}>
               <Col span={12}>
                 <Form.Item name="username">
-                  <Input placeholder={t('proxy.usernamePlaceholder')} disabled={disabled} />
+                  <Input
+                    placeholder={t('proxy.usernamePlaceholder')}
+                    disabled={disabled}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="password">
-                  <Input.Password placeholder={t('proxy.passwordPlaceholder')} disabled={disabled} />
+                  <Input.Password
+                    placeholder={t('proxy.passwordPlaceholder')}
+                    disabled={disabled}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -296,7 +302,10 @@ export function ModelProviderProxySettingsForm({
               A comma-separated list of hosts to bypass the proxy.
             </Text>
             <Form.Item name="no_proxy" style={{ marginTop: 8 }}>
-              <Input placeholder={t('proxy.noProxyPlaceholder')} disabled={disabled} />
+              <Input
+                placeholder={t('proxy.noProxyPlaceholder')}
+                disabled={disabled}
+              />
             </Form.Item>
           </div>
 

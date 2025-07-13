@@ -191,7 +191,6 @@ CREATE TABLE conversations (
     title VARCHAR(255) NOT NULL,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     assistant_id UUID REFERENCES assistants(id),
-    model_provider_id UUID REFERENCES model_providers(id),
     model_id UUID REFERENCES model_provider_models(id),
     active_branch_id UUID, -- Will be set after branches table is created
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -202,9 +201,7 @@ CREATE TABLE conversations (
 CREATE TABLE branches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    name VARCHAR(255), -- Optional name for branches (e.g., "main", "alternative 1")
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(conversation_id, name)
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Add foreign key constraint for active_branch_id
@@ -212,26 +209,27 @@ ALTER TABLE conversations
 ADD CONSTRAINT fk_conversations_active_branch_id 
 FOREIGN KEY (active_branch_id) REFERENCES branches(id) ON DELETE SET NULL;
 
--- Create messages table with full branching support
+-- Create messages table without branch relationship
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     parent_id UUID REFERENCES messages(id),
     content TEXT NOT NULL,
     role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
-    -- Legacy branching fields (kept for backward compatibility)
-    branch_index INTEGER DEFAULT 0,
-    branch_id UUID NOT NULL DEFAULT gen_random_uuid(),
-    is_active_branch BOOLEAN DEFAULT true,
-    -- New proper branching fields
-    new_branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
     originated_from_id UUID, -- Reference to the original message this was edited from
     edit_count INTEGER DEFAULT 0, -- Number of times this message lineage has been edited
-    -- Additional metadata
-    model_provider_id UUID REFERENCES model_providers(id) ON DELETE SET NULL,
-    model_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create branch_messages table to manage branch-message relationships
+CREATE TABLE branch_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    branch_id UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    message_id UUID NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    is_clone BOOLEAN NOT NULL DEFAULT FALSE,
+    UNIQUE(branch_id, message_id)
 );
 
 -- Create message_metadata table for additional information
@@ -355,7 +353,6 @@ CREATE INDEX idx_assistants_name ON assistants(name);
 -- Conversation and branching indexes
 CREATE INDEX idx_conversations_user_id ON conversations(user_id);
 CREATE INDEX idx_conversations_assistant_id ON conversations(assistant_id);
-CREATE INDEX idx_conversations_model_provider_id ON conversations(model_provider_id);
 CREATE INDEX idx_conversations_model_id ON conversations(model_id);
 CREATE INDEX idx_conversations_active_branch_id ON conversations(active_branch_id);
 CREATE INDEX idx_conversations_created_at ON conversations(created_at);
@@ -367,11 +364,14 @@ CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
 CREATE INDEX idx_messages_parent_id ON messages(parent_id);
 CREATE INDEX idx_messages_role ON messages(role);
 CREATE INDEX idx_messages_created_at ON messages(created_at);
-CREATE INDEX idx_messages_branch_index ON messages(branch_index);
-CREATE INDEX idx_messages_branch_id ON messages(branch_id);
-CREATE INDEX idx_messages_new_branch_id ON messages(new_branch_id);
 CREATE INDEX idx_messages_originated_from_id ON messages(originated_from_id);
 CREATE INDEX idx_messages_updated_at ON messages(updated_at);
+
+-- Branch-message relationship indexes
+CREATE INDEX idx_branch_messages_branch_id ON branch_messages(branch_id);
+CREATE INDEX idx_branch_messages_message_id ON branch_messages(message_id);
+CREATE INDEX idx_branch_messages_created_at ON branch_messages(branch_id, created_at);
+CREATE INDEX idx_branch_messages_is_clone ON branch_messages(is_clone);
 
 CREATE INDEX idx_message_metadata_message_id ON message_metadata(message_id);
 CREATE INDEX idx_conversation_metadata_conversation_id ON conversation_metadata(conversation_id);
@@ -552,8 +552,9 @@ COMMENT ON TABLE model_providers IS 'Model providers table for managing AI model
 COMMENT ON TABLE model_provider_models IS 'Individual models within each provider';
 COMMENT ON TABLE assistants IS 'Assistants table with template and user-created assistants';
 COMMENT ON TABLE conversations IS 'Chat conversations table';
-COMMENT ON TABLE messages IS 'Chat messages table with branching support';
+COMMENT ON TABLE messages IS 'Chat messages table without direct branch relationship';
 COMMENT ON TABLE branches IS 'Proper branching system table - each branch belongs to a conversation';
+COMMENT ON TABLE branch_messages IS 'Many-to-many relationship table between branches and messages with ordering';
 COMMENT ON TABLE projects IS 'Projects table for document-based chat contexts';
 COMMENT ON TABLE project_documents IS 'Documents uploaded to projects';
 COMMENT ON TABLE project_conversations IS 'Links conversations to projects';
@@ -580,15 +581,12 @@ COMMENT ON COLUMN assistants.is_template IS 'Whether this assistant is a templat
 COMMENT ON COLUMN assistants.is_default IS 'Whether this template assistant is automatically cloned for new users';
 COMMENT ON COLUMN assistants.created_by IS 'User who created this assistant (NULL for system/template assistants)';
 COMMENT ON COLUMN conversations.assistant_id IS 'Assistant used in this conversation';
-COMMENT ON COLUMN conversations.model_provider_id IS 'Model provider used in this conversation';
 COMMENT ON COLUMN conversations.model_id IS 'Specific model used in this conversation';
 COMMENT ON COLUMN conversations.active_branch_id IS 'Currently active branch for this conversation';
-COMMENT ON COLUMN branches.name IS 'Optional name for the branch (e.g., "main", "alternative 1")';
 COMMENT ON COLUMN messages.parent_id IS 'Parent message for branching support';
-COMMENT ON COLUMN messages.new_branch_id IS 'Which branch this message belongs to (new proper branching system)';
 COMMENT ON COLUMN messages.originated_from_id IS 'Original message ID this was edited from (for tracking edit lineage)';
 COMMENT ON COLUMN messages.edit_count IS 'Number of times this message lineage has been edited';
-COMMENT ON COLUMN messages.branch_index IS 'Legacy branch index for message branching';
-COMMENT ON COLUMN messages.branch_id IS 'Legacy branch field (will be deprecated)';
-COMMENT ON COLUMN messages.is_active_branch IS 'Legacy active branch field (will be deprecated in favor of conversation.active_branch_id)';
 COMMENT ON COLUMN messages.role IS 'Message role: user, assistant, or system';
+COMMENT ON COLUMN branch_messages.branch_id IS 'Reference to the branch containing this message';
+COMMENT ON COLUMN branch_messages.message_id IS 'Reference to the message in this branch';
+COMMENT ON COLUMN branch_messages.is_clone IS 'Indicates whether this message is a clone (belongs to multiple branches) or is unique to this branch';

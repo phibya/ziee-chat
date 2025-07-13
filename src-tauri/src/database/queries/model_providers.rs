@@ -1,4 +1,5 @@
 use uuid::Uuid;
+use sqlx::Row;
 
 use crate::database::{
     get_database_pool,
@@ -447,6 +448,22 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<ModelProviderModel
             capabilities: Some(model_db.capabilities),
             parameters: Some(model_db.parameters),
         })),
+        None => Ok(None),
+    }
+}
+
+/// Get the provider_id for a given model_id
+pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let row = sqlx::query("SELECT provider_id FROM model_provider_models WHERE id = $1")
+        .bind(model_id)
+        .fetch_optional(pool)
+        .await?;
+
+    match row {
+        Some(row) => Ok(Some(row.get("provider_id"))),
         None => Ok(None),
     }
 }

@@ -33,8 +33,6 @@ export const ChatMessageList = memo(function ChatMessageList({
   isStreaming,
   editingMessage,
   editValue,
-  messageBranches,
-  loadingBranches,
   onEditMessage,
   onSaveEdit,
   onCancelEdit,
@@ -49,19 +47,6 @@ export const ChatMessageList = memo(function ChatMessageList({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const getBranchInfo = (msg: Message) => {
-    const branchKey = `${msg.id}`
-    const branches = messageBranches[branchKey] || []
-    const currentIndex = branches.findIndex(b => b.is_active_branch)
-
-    return {
-      branches,
-      currentIndex,
-      hasBranches: branches.length > 1,
-      isLoading: loadingBranches[branchKey] || false,
-    }
-  }
-
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center py-20">
@@ -72,14 +57,13 @@ export const ChatMessageList = memo(function ChatMessageList({
   }
 
   return (
-    <Flex className={'flex-col gap-3'}>
+    <Flex className={'flex-col gap-3 w-full'}>
       {messages.map(message => (
         <ChatMessage
           key={message.id}
           message={message}
           isEditing={editingMessage === message.id}
           editValue={editValue}
-          branchInfo={getBranchInfo(message)}
           onEdit={onEditMessage}
           onSaveEdit={onSaveEdit}
           onCancelEdit={onCancelEdit}

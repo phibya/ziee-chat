@@ -51,12 +51,14 @@ import {
   UpdateAssistantRequest,
 } from './assistant'
 import {
+  Branch,
   Conversation,
   ConversationListResponse,
   CreateConversationRequest,
   EditMessageRequest,
   Message,
   SendMessageRequest,
+  SwitchBranchRequest,
   UpdateConversationRequest,
 } from './chat'
 import {
@@ -162,7 +164,10 @@ export const ApiEndpoints = {
   'Chat.sendMessage': 'POST /api/chat/messages/stream',
   'Chat.editMessage': 'PUT /api/chat/messages/{message_id}',
   'Chat.getMessageBranches': 'GET /api/chat/messages/{message_id}/branches',
-  'Chat.switchBranch': 'POST /api/chat/messages/{message_id}/branch/switch',
+  'Chat.getConversationMessages':
+    'GET /api/chat/conversations/{conversation_id}/messages/{branch_id}',
+  'Chat.switchConversationBranch':
+    'PUT /api/chat/conversations/{conversation_id}/branch/switch',
   'Chat.searchConversations': 'GET /api/chat/conversations/search',
   'Chat.clearAllConversations': 'DELETE /api/chat/conversations/clear-all',
   // Project endpoints
@@ -273,7 +278,13 @@ export type ApiEndpointParameters = {
   'Chat.sendMessage': SendMessageRequest
   'Chat.editMessage': { message_id: string } & EditMessageRequest
   'Chat.getMessageBranches': { message_id: string }
-  'Chat.switchBranch': { message_id: string }
+  'Chat.getConversationMessages': {
+    conversation_id: string
+    branch_id: string
+  }
+  'Chat.switchConversationBranch': {
+    conversation_id: string
+  } & SwitchBranchRequest
   'Chat.searchConversations': { q: string; page?: number; per_page?: number }
   'Chat.clearAllConversations': void
   // Project endpoints
@@ -378,16 +389,14 @@ export type ApiEndpointResponses = {
   // Chat endpoints
   'Chat.listConversations': ConversationListResponse
   'Chat.createConversation': Conversation
-  'Chat.getConversation': {
-    conversation: Conversation
-    messages: Message[]
-  }
+  'Chat.getConversation': Conversation
   'Chat.updateConversation': Conversation
   'Chat.deleteConversation': void
   'Chat.sendMessage': any // Streaming response
   'Chat.editMessage': Message
-  'Chat.getMessageBranches': Message[]
-  'Chat.switchBranch': Message
+  'Chat.getMessageBranches': Branch[]
+  'Chat.getConversationMessages': Message[]
+  'Chat.switchConversationBranch': { success: boolean; message: string }
   'Chat.searchConversations': ConversationListResponse
   'Chat.clearAllConversations': { deleted_count: number; message: string }
   // Project endpoints

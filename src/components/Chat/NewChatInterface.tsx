@@ -120,12 +120,11 @@ export function NewChatInterface() {
       return null
     }
 
-    const [providerId, modelId] = selectedModel.split(':')
+    const [, modelId] = selectedModel.split(':')
 
     try {
       const conversationId = await createConversation(
         selectedAssistant,
-        providerId,
         modelId,
       )
 
@@ -157,16 +156,11 @@ export function NewChatInterface() {
     const conversationId = await createNewConversation()
     if (!conversationId) return
 
-    const [providerId, modelId] = selectedModel.split(':')
+    const [, modelId] = selectedModel.split(':')
 
     try {
       // Send the first message
-      await sendMessage(
-        inputValue.trim(),
-        selectedAssistant,
-        providerId,
-        modelId,
-      )
+      await sendMessage(inputValue.trim(), selectedAssistant, modelId)
     } catch (error) {
       // Error is already handled by the store
       console.error('Failed to send first message:', error)

@@ -1,18 +1,12 @@
 {
   "app": {
-    "title": "Jan Chat",
-    "welcome": "Welcome to Jan Chat",
+    "title": "Ziee Chat",
+    "welcome": "Welcome to Ziee Chat",
     "welcomeDescription": "Start a new conversation or select an existing thread from the sidebar."
-  },
-  "navigation": {
-    "newChat": "New Chat",
-    "assistants": "Assistants",
-    "hub": "Hub",
-    "settings": "Settings"
   },
   "chat": {
     "title": "Chat",
-    "placeholder": "Message Claude...",
+    "placeholder": "Message...",
     "placeholderWelcome": "What can I help with?",
     "send": "Send",
     "thinking": "Thinking...",
@@ -28,7 +22,10 @@
     "recent": "RECENT",
     "noThreads": "No threads found",
     "selectAssistant": "My Assistant",
-    "selectModel": "Model"
+    "selectModel": "Model",
+    "messageUpdatedAndSent": "Message updated and sent to AI for response",
+    "messageUpdated": "Message updated successfully",
+    "switchedToBranch": "Switched to selected branch"
   },
   "thread": {
     "newChat": "New Chat",
@@ -66,7 +63,16 @@
     "createFirst": "Create your first assistant to get started",
     "personal": "Personal",
     "template": "Template",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "createdBy": "Created By",
+    "assistantUpdated": "Assistant updated successfully",
+    "assistantCloned": "Assistant cloned successfully",
+    "assistantCreated": "Assistant created successfully",
+    "assistantDeleted": "Assistant deleted successfully",
+    "deleteAssistant": "Delete Assistant",
+    "cloneFromTemplateAssistants": "Clone from Template Assistants",
+    "instructionsPreview": "Instructions Preview",
+    "previewDetails": "Preview Details"
   },
   "hub": {
     "title": "Model Hub",
@@ -162,7 +168,16 @@
     "createFirst": "Create your first project to get started",
     "documents": "documents",
     "conversations": "conversations",
-    "updated": "Updated"
+    "updated": "Updated",
+    "projectCreated": "Project created successfully",
+    "projectUpdated": "Project updated successfully",
+    "projectDeleted": "Project deleted successfully",
+    "deleteProject": "Delete Project",
+    "createPersonalProject": "Create a personal project",
+    "editProject": "Edit Project",
+    "projectName": "Project Name",
+    "whatAreYouWorkingOn": "What are you working on?",
+    "whatAreYouTryingToAchieve": "What are you trying to achieve?"
   },
   "history": {
     "title": "Chat History",
@@ -199,7 +214,11 @@
     "desktopAutoAuth": "Desktop App - Auto Authentication",
     "registrationDisabled": "Registration Disabled",
     "registrationDisabledMessage": "User registration is currently disabled by the administrator.",
-    "createFirstAdmin": "Create the first admin account to get started"
+    "createFirstAdmin": "Create the first admin account to get started",
+    "enterUsername": "Enter username",
+    "enterEmailAddress": "Enter email address",
+    "enterPassword": "Enter password",
+    "confirmPasswordPlaceholder": "Confirm password"
   },
   "admin": {
     "title": "Admin General",
@@ -227,9 +246,6 @@
     "defaultSystemSettings": "Default System Settings",
     "noPermissionEditSetting": "You do not have permission to edit this setting",
     "userRegistration": "User Registration",
-    "assistants": {
-      "createdBy": "Created By"
-    },
     "users": {
       "title": "Users",
       "accessDenied": "Access Denied",
@@ -397,7 +413,6 @@
     "selectModelFile": "Select model file",
     "modelId": "Model ID",
     "displayName": "Display Name",
-    "modelPath": "Model Path",
     "contextSize": "Context Size",
     "gpuLayers": "GPU Layers",
     "temperature": "Temperature",
@@ -409,12 +424,6 @@
     "presencePenalty": "Presence Penalty",
     "frequencyPenalty": "Frequency Penalty",
     "browse": "Browse",
-    "editModel": "Edit Model",
-    "addModel": "Add Model",
-    "vision": "Vision",
-    "audio": "Audio",
-    "tools": "Tools",
-    "codeInterpreter": "Code Interpreter",
     "enterModelId": "Please enter a model ID",
     "enterDisplayName": "Please enter a display name",
     "selectModelFileRequired": "Please select a model file",
@@ -434,33 +443,19 @@
     "clipboardNotAvailable": "Clipboard not available",
     "deleteModelProvider": "Delete Model Provider",
     "noProviderSelected": "No provider selected",
-    "providerName": "Provider Name",
-    "apiConfiguration": "API Configuration",
     "insertApiKey": "Insert API Key",
-    "baseUrl": "Base URL",
-    "models": "Models",
     "configuration": "Configuration",
-    "autoUnloadOldModels": "Auto-Unload Old Models",
     "autoUnloadDescription": "Automatically unloads models that are not in use to free up memory. Ensure only one model is loaded at a time.",
-    "contextShift": "Context Shift",
     "contextShiftDescription": "Automatically shifts the context window when the model is unable to process the entire prompt, ensuring that the most relevant information is always included.",
-    "continuousBatching": "Continuous Batching",
     "continuousBatchingDescription": "Allows processing prompts in parallel with text generation, which usually improves performance.",
-    "parallelOperations": "Parallel Operations",
     "parallelOperationsDescription": "Number of prompts that can be processed simultaneously by the model.",
-    "cpuThreads": "CPU Threads",
     "cpuThreadsDescription": "Number of CPU cores used for model processing when running without GPU.",
     "autoPlaceholder": "-1 (auto)",
-    "threadsBatch": "Threads (Batch)",
     "threadsBatchDescription": "Number of threads for batch and prompt processing (default: same as Threads).",
     "sameAsThreadsPlaceholder": "-1 (same as Threads)",
-    "flashAttention": "Flash Attention",
     "flashAttentionDescription": "Optimizes memory usage and speeds up model inference using an efficient attention implementation.",
-    "caching": "Caching",
     "cachingDescription": "Stores recent prompts and responses to improve speed when similar questions are asked.",
-    "kvCacheType": "KV Cache Type",
     "kvCacheTypeDescription": "Controls memory usage and precision trade-off.",
-    "mmap": "mmap",
     "mmapDescription": "Loads model files more efficiently by mapping them to memory, reducing RAM usage.",
     "huggingfaceTokenPlaceholder": "hf_*****************************",
     "contextSizePlaceholder": "8192",
@@ -504,7 +499,12 @@
     "deleteConfirm": "Are you sure you want to delete \"{title}\"? This action cannot be undone.",
     "renamed": "Conversation renamed successfully",
     "deleted": "Conversation deleted successfully",
-    "noConversations": "No conversations yet"
+    "noConversations": "No conversations yet",
+    "conversationDeleted": "Conversation deleted successfully",
+    "allConversationsDeleted": "All conversations deleted successfully",
+    "viewConversation": "View Conversation",
+    "deleteConversation": "Delete Conversation",
+    "clearAllHistory": "Clear All History"
   },
   "pages": {
     "chatHistory": "Chat History",
@@ -547,7 +547,12 @@
     "experimentalFeatures": "Experimental Features",
     "appData": "App Data",
     "apiKey": "API Key",
-    "baseUrl": "Base URL"
+    "baseUrl": "Base URL",
+    "name": "Name",
+    "active": "Active",
+    "actions": "Actions",
+    "activity": "Activity",
+    "created": "Created"
   },
   "common": {
     "cancel": "Cancel",
@@ -606,93 +611,17 @@
     "viewReleases": "View Releases",
     "reportIssue": "Report Issue"
   },
-  "projects": {
-    "projectCreated": "Project created successfully",
-    "projectUpdated": "Project updated successfully", 
-    "projectDeleted": "Project deleted successfully",
-    "deleteProject": "Delete Project",
-    "createPersonalProject": "Create a personal project",
-    "editProject": "Edit Project",
-    "projectName": "Project Name",
-    "whatAreYouWorkingOn": "What are you working on?",
-    "whatAreYouTryingToAchieve": "What are you trying to achieve?"
-  },
-  "assistants": {
-    "assistantUpdated": "Assistant updated successfully",
-    "assistantCloned": "Assistant cloned successfully",
-    "assistantCreated": "Assistant created successfully",
-    "assistantDeleted": "Assistant deleted successfully",
-    "deleteAssistant": "Delete Assistant",
-    "cloneFromTemplateAssistants": "Clone from Template Assistants",
-    "instructionsPreview": "Instructions Preview",
-    "previewDetails": "Preview Details",
-    "title": "Assistants",
-    "subtitle": "Create and manage your AI assistants",
-    "personal": "Personal",
-    "inactive": "Inactive"
-  },
-  "labels": {
-    "name": "Name",
-    "description": "Description", 
-    "instructions": "Instructions",
-    "parameters": "Parameters",
-    "active": "Active",
-    "actions": "Actions",
-    "activity": "Activity",
-    "created": "Created",
-    "appVersion": "App Version",
-    "checkForUpdates": "Check for Updates",
-    "experimentalFeatures": "Experimental Features",
-    "appData": "App Data"
-  },
-  "conversations": {
-    "conversationDeleted": "Conversation deleted successfully",
-    "allConversationsDeleted": "All conversations deleted successfully",
-    "viewConversation": "View Conversation",
-    "deleteConversation": "Delete Conversation", 
-    "clearAllHistory": "Clear All History"
-  },
-  "settings": {
-    "general": "General",
-    "appearance": "Appearance", 
-    "privacy": "Privacy",
-    "modelProviders": "Model Providers",
-    "shortcuts": "Shortcuts",
-    "hardware": "Hardware",
-    "localApiServer": "Local API Server",
-    "httpsProxy": "HTTPS Proxy",
-    "extensions": "Extensions",
-    "admin": "Admin",
-    "assistants": "Assistants",
-    "users": "Users",
-    "userGroups": "User Groups",
-    "keyboardShortcuts": "Keyboard Shortcuts",
-    "keyboardShortcutsDescription": "Keyboard shortcuts settings will be implemented here.",
-    "serverConfiguration": "Server Configuration",
-    "extensionManagement": "Extension Management",
-    "hardwareConfiguration": "Hardware Configuration",
-    "hardwareConfigurationDescription": "Hardware configuration settings will be implemented here.",
-    "privacyControls": "Privacy Controls",
-    "privacySettingsDescription": "Privacy settings will be implemented here."
-  },
   "navigation": {
     "chats": "Chats",
-    "projects": "Projects", 
+    "projects": "Projects",
     "artifacts": "Artifacts",
     "assistants": "Assistants",
     "models": "Models",
     "profile": "Profile",
-    "logout": "Logout"
-  },
-  "auth": {
-    "username": "Username",
-    "email": "Email",
-    "password": "Password", 
-    "confirmPassword": "Confirm Password",
-    "enterUsername": "Enter username",
-    "enterEmailAddress": "Enter email address",
-    "enterPassword": "Enter password",
-    "confirmPasswordPlaceholder": "Confirm password"
+    "logout": "Logout",
+    "newChat": "New Chat",
+    "hub": "Hub",
+    "settings": "Settings"
   },
   "appearance": {
     "themeUpdated": "Theme updated successfully",
@@ -707,11 +636,6 @@
     "large": "Large",
     "english": "English",
     "vietnamese": "Tiếng Việt"
-  },
-  "chat": {
-    "messageUpdatedAndSent": "Message updated and sent to AI for response",
-    "messageUpdated": "Message updated successfully",
-    "switchedToBranch": "Switched to selected branch"
   },
   "general": {
     "application": "Application",
