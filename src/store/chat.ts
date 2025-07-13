@@ -172,25 +172,40 @@ export const useChatStore = create<ChatState>()(
           }))
 
           // Send message with streaming
-          const response = await ApiClient.Chat.sendMessage({
-            conversation_id: currentConversation.id,
-            content,
-            model_id: modelId,
-          })
-
-          // Update with actual response
-          set(state => ({
-            currentMessages: state.currentMessages.map(msg =>
-              msg.id === assistantMessage.id
-                ? { ...msg, ...response.assistant_message }
-                : msg.id === userMessage.id
-                  ? { ...msg, ...response.user_message }
-                  : msg,
-            ),
-            sending: false,
-            isStreaming: false,
-            streamingMessage: '',
-          }))
+          await ApiClient.Chat.sendMessage(
+            {
+              conversation_id: currentConversation.id,
+              content,
+              model_id: modelId,
+            },
+            {
+              onChunk(data: { delta: string }) {
+                set(state => ({
+                  streamingMessage: state.streamingMessage + data.delta,
+                }))
+              },
+              onComplete(data: Omit<Message, 'content'>) {
+                // set(state => ({
+                //   isStreaming: false,
+                //   sending: false,
+                //   streamingMessage: '',
+                //   currentMessages: state.currentMessages.map(msg =>
+                //     msg.id === assistantMessage.id
+                //       ? { ...msg, ...data, content: state.streamingMessage }
+                //       : msg,
+                //   ),
+                // }))
+              },
+              onError() {
+                set({
+                  error: 'Streaming failed',
+                  sending: false,
+                  isStreaming: false,
+                  streamingMessage: '',
+                })
+              },
+            },
+          )
         } catch (error) {
           set({
             error:

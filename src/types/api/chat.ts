@@ -90,3 +90,14 @@ export interface ChatResponse {
   message: Message
   conversation: Conversation
 }
+
+export interface StreamCompleteData {
+  message_id: string
+  conversation_id: string
+  role: string
+  originated_from_id?: string
+  edit_count?: number
+  created_at: string
+  updated_at: string
+  total_tokens?: number
+}

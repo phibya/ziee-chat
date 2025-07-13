@@ -1,4 +1,4 @@
-import { callAsync } from './core'
+import { callAsync, SSECallbacks } from './core'
 import {
   ApiEndpoint,
   ApiEndpointParameters,
@@ -27,6 +27,7 @@ type ResolveResponse<K extends ApiEndpoint> =
 type NamespaceMethods<N extends Namespaces> = Evaluate<{
   [K in ApiEndpoint as K extends `${N}.${infer M}` ? M : never]: (
     params: ResolveParams<K>,
+    sseCallbacks?: SSECallbacks,
   ) => Promise<ResolveResponse<K>>
 }>
 
@@ -49,8 +50,11 @@ function createApiClient(): ApiClientType {
     }
 
     // Create the method that calls callAsync with proper typing
-    client[namespace][method] = async (params: any) => {
-      return callAsync(ApiEndpoints[endpointKey], params)
+    client[namespace][method] = async (
+      params: any,
+      sseCallbacks?: SSECallbacks,
+    ) => {
+      return callAsync(ApiEndpoints[endpointKey], params, sseCallbacks)
     }
   })
 

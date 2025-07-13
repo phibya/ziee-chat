@@ -20,7 +20,7 @@ export const ChatInput = memo(function ChatInput({
   disabled = false,
   isLoading = false,
   isStreaming = false,
-  placeholder = 'Message Claude...',
+  placeholder = 'Message AI...',
 }: ChatInputProps) {
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState('')

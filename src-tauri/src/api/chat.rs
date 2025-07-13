@@ -71,6 +71,11 @@ pub struct StreamChunkData {
 pub struct StreamCompleteData {
     pub message_id: String,
     pub conversation_id: String,
+    pub role: String,
+    pub originated_from_id: Option<String>,
+    pub edit_count: Option<i32>,
+    pub created_at: String,
+    pub updated_at: String,
     pub total_tokens: Option<i32>,
 }
 
@@ -454,6 +459,11 @@ pub async fn send_message_stream(
                             &serde_json::to_string(&StreamCompleteData {
                                 message_id: assistant_message.id.to_string(),
                                 conversation_id: request.conversation_id.to_string(),
+                                role: assistant_message.role.clone(),
+                                originated_from_id: assistant_message.originated_from_id.map(|id| id.to_string()),
+                                edit_count: assistant_message.edit_count,
+                                created_at: assistant_message.created_at.to_rfc3339(),
+                                updated_at: assistant_message.updated_at.to_rfc3339(),
                                 total_tokens: None, // Token usage not available in streaming mode
                             })
                             .unwrap_or_default(),

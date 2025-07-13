@@ -41,10 +41,18 @@ const getBaseUrl = (function () {
   }
 })()
 
+// SSE streaming callback types
+export interface SSECallbacks {
+  onChunk?: (data: any) => void
+  onComplete?: (data: any) => void
+  onError?: (error: string) => void
+}
+
 // Type-safe callAsync function that maps URL to exact parameter and response types
 export const callAsync = async <U extends ApiEndpointUrl>(
   endpointUrl: U,
   params: ParameterByUrl<U>,
+  sseCallbacks?: SSECallbacks,
 ): Promise<ResponseByUrl<U>> => {
   let bUrl = await getBaseUrl()
 
@@ -90,6 +98,88 @@ export const callAsync = async <U extends ApiEndpointUrl>(
           ? JSON.stringify(params)
           : undefined,
     })
+
+    // Handle SSE streaming if callbacks are provided and response is text/event-stream
+    if (
+      sseCallbacks &&
+      response.headers.get('Content-Type')?.includes('text/event-stream')
+    ) {
+      if (!response.ok) {
+        const errorMessage = `HTTP error! status: ${response.status}`
+        sseCallbacks.onError?.(errorMessage)
+        throw new Error(errorMessage)
+      }
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        const error = 'No response body reader available'
+        sseCallbacks.onError?.(error)
+        throw new Error(error)
+      }
+
+      const decoder = new globalThis.TextDecoder()
+      let buffer = ''
+
+      try {
+        let currentEvent = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || '' // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.trim() === '') {
+              // Empty line indicates end of event, reset current event
+              currentEvent = ''
+              continue
+            }
+
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7).trim()
+            } else if (line.startsWith('data: ')) {
+              const data = line.slice(6)
+
+              // Handle special cases
+              if (data === 'start') {
+                continue // Skip start signal
+              }
+              if (data === '[DONE]') {
+                break
+              }
+
+              try {
+                const parsed = JSON.parse(data)
+
+                // Handle based on current event type
+                if (currentEvent === 'chunk') {
+                  sseCallbacks.onChunk?.(parsed)
+                } else if (currentEvent === 'complete') {
+                  sseCallbacks.onComplete?.(parsed)
+                } else if (currentEvent === 'error') {
+                  sseCallbacks.onError?.(parsed?.error || 'Stream error')
+                }
+              } catch {
+                console.warn('Failed to parse SSE data:', data)
+              }
+            }
+          }
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Stream reading error'
+        sseCallbacks.onError?.(errorMessage)
+        throw error
+      } finally {
+        reader.releaseLock()
+      }
+
+      // For SSE streaming, return empty response since data is handled via callbacks
+      return {} as ResponseByUrl<U>
+    }
 
     // Parse the response as JSON
     if (!response.ok) {
