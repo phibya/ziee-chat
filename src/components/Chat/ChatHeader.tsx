@@ -1,39 +1,45 @@
 import { memo } from 'react'
 import { Flex, theme, Typography } from 'antd'
-import { Conversation } from '../../types/api/chat'
-import { Assistant } from '../../types/api/assistant'
-import { ModelProvider } from '../../types/api/modelProvider'
+import { useShallow } from 'zustand/react/shallow'
+import { useChatStore } from '../../store/chat'
+import { useAssistantsStore } from '../../store/assistants'
+import { useModelProvidersStore } from '../../store/modelProviders'
 
 const { Text } = Typography
 
-interface ChatHeaderProps {
-  conversation: Conversation | null
-  selectedAssistant: string | null
-  selectedModel: string | null
-  assistants: Assistant[]
-  modelProviders: ModelProvider[]
-}
+export const ChatHeader = memo(function ChatHeader() {
+  const { currentConversation } = useChatStore(
+    useShallow(state => ({
+      currentConversation: state.currentConversation,
+    })),
+  )
 
-export const ChatHeader = memo(function ChatHeader({
-  conversation,
-  selectedAssistant,
-  selectedModel,
-  assistants,
-  modelProviders,
-}: ChatHeaderProps) {
+  const { assistants } = useAssistantsStore(
+    useShallow(state => ({
+      assistants: state.assistants,
+    })),
+  )
+
+  const { providers: modelProviders } = useModelProvidersStore(
+    useShallow(state => ({
+      providers: state.providers,
+    })),
+  )
   const { token } = theme.useToken()
+  
   const getModelDisplayName = () => {
-    if (!selectedModel) return ''
+    if (!currentConversation?.model_id) return ''
 
-    const [providerId, modelId] = selectedModel.split(':')
-    const provider = modelProviders.find(p => p.id === providerId)
-    const model = provider?.models.find(m => m.id === modelId)
-    return model?.alias || modelId
+    const provider = modelProviders.find(p =>
+      p.models?.some(m => m.id === currentConversation.model_id),
+    )
+    const model = provider?.models.find(m => m.id === currentConversation.model_id)
+    return model?.alias || currentConversation.model_id
   }
 
   const getAssistantName = () => {
-    if (!selectedAssistant) return ''
-    return assistants.find(a => a.id === selectedAssistant)?.name || ''
+    if (!currentConversation?.assistant_id) return ''
+    return assistants.find(a => a.id === currentConversation.assistant_id)?.name || ''
   }
 
   return (
@@ -45,7 +51,7 @@ export const ChatHeader = memo(function ChatHeader({
     >
       <div className="flex items-center gap-3">
         <Text strong className="text-lg" ellipsis>
-          {conversation?.title || 'Claude'}
+          {currentConversation?.title || 'Claude'}
         </Text>
       </div>
 

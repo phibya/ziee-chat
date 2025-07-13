@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { App, Flex } from 'antd'
+import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ChatHeader } from './ChatHeader'
@@ -10,13 +11,12 @@ import { useAssistantsStore } from '../../store/assistants'
 import { useModelProvidersStore } from '../../store/modelProviders'
 import { useConversationsStore } from '../../store'
 
-interface ExistingChatInterfaceProps {
-  conversationId: string
-}
-
-export function ExistingChatInterface({
-  conversationId,
-}: ExistingChatInterfaceProps) {
+export function ExistingChatInterface() {
+  const { conversationId } = useParams<{ conversationId?: string }>()
+  
+  if (!conversationId) {
+    return null
+  }
   const { t } = useTranslation()
   const { message } = App.useApp()
 
@@ -29,9 +29,6 @@ export function ExistingChatInterface({
     error: chatError,
     loadConversation,
     sendMessage,
-    editMessage,
-    loadMessageBranches,
-    switchBranch,
     clearError: clearChatError,
   } = useChatStore(
     useShallow(state => ({
@@ -51,12 +48,10 @@ export function ExistingChatInterface({
 
   // Assistants store
   const {
-    assistants,
     loading: assistantsLoading,
     loadAssistants,
   } = useAssistantsStore(
     useShallow(state => ({
-      assistants: state.assistants,
       loading: state.loading,
       loadAssistants: state.loadAssistants,
     })),
@@ -82,11 +77,6 @@ export function ExistingChatInterface({
     null,
   )
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
-  const [editingMessage, setEditingMessage] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
-  const [messageBranches, setMessageBranches] = useState<{
-    [key: string]: any[]
-  }>({})
 
   useEffect(() => {
     initializeData()
@@ -156,77 +146,6 @@ export function ExistingChatInterface({
     }
   }
 
-  const handleEditMessage = (messageId: string, content: string) => {
-    setEditingMessage(messageId)
-    setEditValue(content)
-  }
-
-  const handleSaveEdit = async () => {
-    if (
-      !editingMessage ||
-      !editValue.trim() ||
-      !selectedAssistant ||
-      !selectedModel
-    )
-      return
-
-    // No longer needed after API simplification
-    // const [providerId, modelId] = selectedModel.split(':')
-
-    try {
-      const originalMessage = currentMessages.find(m => m.id === editingMessage)
-      const contentChanged =
-        originalMessage && originalMessage.content.trim() !== editValue.trim()
-
-      await editMessage(editingMessage, editValue.trim())
-
-      setEditingMessage(null)
-      setEditValue('')
-
-      if (contentChanged) {
-        message.success(t('chat.messageUpdatedAndSent'))
-      } else {
-        message.success(t('chat.messageUpdated'))
-      }
-    } catch (error) {
-      // Error is already handled by the store
-      console.error('Failed to update message:', error)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditingMessage(null)
-    setEditValue('')
-  }
-
-  const handleLoadBranches = async (msg: any) => {
-    if (!currentConversation) return
-
-    const branchKey = `${msg.id}`
-
-    try {
-      const branches = await loadMessageBranches(msg.id)
-      setMessageBranches(prev => ({ ...prev, [branchKey]: branches }))
-    } catch (error) {
-      // Error is already handled by the store
-      console.error('Failed to load message branches:', error)
-    }
-  }
-
-  const handleSwitchBranch = async (branchId: string) => {
-    if (!currentConversation) return
-    try {
-      await switchBranch(currentConversation.id, branchId)
-
-      // Clear message branches cache to force reload of branch info
-      setMessageBranches({})
-
-      message.success(t('chat.switchedToBranch'))
-    } catch (error) {
-      // Error is already handled by the store
-      console.error('Failed to switch branch:', error)
-    }
-  }
 
   if (chatLoading || assistantsLoading || providersLoading) {
     return <div>Loading...</div>
@@ -236,43 +155,18 @@ export function ExistingChatInterface({
     return <div>Conversation not found</div>
   }
 
-  // Filter to only show user's own assistants in chat (not admin templates)
-  const userAssistants = assistants.filter(a => !a.is_template)
-
-  // Filter to only show enabled providers
-  const enabledProviders = modelProviders.filter(p => p.enabled)
 
   return (
     <Flex className="flex-col h-dvh gap-3 relative">
       <div className={'absolute top-0 left-0 w-full z-10 backdrop-blur-2xl'}>
-        <ChatHeader
-          conversation={currentConversation}
-          selectedAssistant={selectedAssistant}
-          selectedModel={selectedModel}
-          assistants={userAssistants}
-          modelProviders={enabledProviders}
-        />
+        <ChatHeader />
       </div>
       <Flex
         className={
           'max-w-4xl self-center w-full flex-1 h-full overflow-auto !pt-20 !mb-10'
         }
       >
-        <ChatMessageList
-          messages={currentMessages}
-          isLoading={sending}
-          isStreaming={sending}
-          editingMessage={editingMessage}
-          editValue={editValue}
-          messageBranches={messageBranches}
-          loadingBranches={{}}
-          onEditMessage={handleEditMessage}
-          onSaveEdit={handleSaveEdit}
-          onCancelEdit={handleCancelEdit}
-          onEditValueChange={setEditValue}
-          onLoadBranches={handleLoadBranches}
-          onSwitchBranch={handleSwitchBranch}
-        />
+        <ChatMessageList />
       </Flex>
       <div className={'absolute bottom-0 w-full pb-2 justify-items-center'}>
         <div className={'max-w-4xl w-full'}>

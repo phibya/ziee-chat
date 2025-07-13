@@ -10,14 +10,6 @@ import { useChatStore } from '../../store/chat.ts'
 
 interface ChatMessageProps {
   message: Message
-  isEditing: boolean
-  editValue: string
-  onEdit: (messageId: string, content: string) => void
-  onSaveEdit: () => void
-  onCancelEdit: () => void
-  onEditValueChange: (value: string) => void
-  onLoadBranches: (message: Message) => void
-  onSwitchBranch: (messageId: string) => void
 }
 
 interface BranchInfo {
@@ -29,24 +21,24 @@ interface BranchInfo {
 
 export const ChatMessage = memo(function ChatMessage({
   message,
-  isEditing,
-  editValue,
-  onEdit,
-  onSaveEdit,
-  onCancelEdit,
-  onEditValueChange,
-  onSwitchBranch,
 }: ChatMessageProps) {
   const { t } = useTranslation()
   const isUser = message.role === 'user'
   const { token } = theme.useToken()
   const [showToolBox, setShowToolBox] = useState(false)
 
-  const { loadMessageBranches } = useChatStore(
+  const { loadMessageBranches, editMessage, switchBranch, currentConversation } = useChatStore(
     useShallow(state => ({
       loadMessageBranches: state.loadMessageBranches,
+      editMessage: state.editMessage,
+      switchBranch: state.switchBranch,
+      currentConversation: state.currentConversation,
     })),
   )
+
+  // Local editing state
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(message.content)
 
   const [branchInfo, setBranchInfo] = useState<BranchInfo>({
     branches: [],
@@ -63,7 +55,7 @@ export const ChatMessage = memo(function ChatMessage({
     ) {
       setBranchInfo(prev => ({ ...prev, isLoading: true }))
 
-      const currentConversation = useChatStore.getState().currentConversation!
+      if (!currentConversation) return
 
       let branches = await loadMessageBranches(message.id)
       let currentIndex = 0
@@ -91,6 +83,34 @@ export const ChatMessage = memo(function ChatMessage({
     setShowToolBox(false)
   }
 
+  const handleEdit = () => {
+    setIsEditing(true)
+    setEditValue(message.content)
+  }
+
+  const handleSaveEdit = async () => {
+    try {
+      await editMessage(message.id, editValue)
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Failed to save edit:', error)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditValue(message.content)
+  }
+
+  const handleSwitchBranch = async (branchId: string) => {
+    if (!currentConversation) return
+    try {
+      await switchBranch(currentConversation.id, branchId)
+    } catch (error) {
+      console.error('Failed to switch branch:', error)
+    }
+  }
+
   return (
     <Flex
       key={message.id}
@@ -113,9 +133,9 @@ export const ChatMessage = memo(function ChatMessage({
         {isEditing ? (
           <MessageEditor
             value={editValue}
-            onChange={onEditValueChange}
-            onSave={onSaveEdit}
-            onCancel={onCancelEdit}
+            onChange={setEditValue}
+            onSave={handleSaveEdit}
+            onCancel={handleCancelEdit}
           />
         ) : (
           <div
@@ -145,7 +165,7 @@ export const ChatMessage = memo(function ChatMessage({
           <Button
             size="small"
             type="text"
-            onClick={() => onEdit(message.id, message.content)}
+            onClick={handleEdit}
           >
             {t('chat.edit')}
           </Button>
@@ -165,7 +185,7 @@ export const ChatMessage = memo(function ChatMessage({
                 const prevBranch =
                   branchInfo.branches[branchInfo.currentIndex - 1]
                 if (prevBranch) {
-                  onSwitchBranch(prevBranch.id)
+                  handleSwitchBranch(prevBranch.id)
                   setBranchInfo({
                     ...branchInfo,
                     currentIndex: branchInfo.currentIndex - 1,
@@ -187,7 +207,7 @@ export const ChatMessage = memo(function ChatMessage({
                 const nextBranch =
                   branchInfo.branches[branchInfo.currentIndex + 1]
                 if (nextBranch) {
-                  onSwitchBranch(nextBranch.id)
+                  handleSwitchBranch(nextBranch.id)
                   setBranchInfo({
                     ...branchInfo,
                     currentIndex: branchInfo.currentIndex + 1,

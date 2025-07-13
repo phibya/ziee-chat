@@ -184,7 +184,7 @@ export const useChatStore = create<ChatState>()(
                   streamingMessage: state.streamingMessage + data.delta,
                 }))
               },
-              onComplete(data: Omit<Message, 'content'>) {
+              onComplete(_data: Omit<Message, 'content'>) {
                 // set(state => ({
                 //   isStreaming: false,
                 //   sending: false,
