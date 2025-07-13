@@ -498,63 +498,119 @@ pub async fn send_message_stream(
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
-/// Helper function to get AI response for an edited message
-async fn get_ai_response_for_edited_message(
-    conversation_history: Vec<Message>,
-    edited_content: String,
+// Removed unused build_chat_messages function
+
+/// Common streaming function for AI responses
+async fn stream_ai_response(
+    tx: tokio::sync::mpsc::UnboundedSender<Result<Event, Infallible>>,
     conversation: Conversation,
-    provider_id: Uuid,
+    messages: Vec<ChatMessage>,
     model_id: Uuid,
     user_id: Uuid,
-) -> Result<(), StatusCode> {
+    save_user_message: bool,
+    user_message_content: Option<String>,
+) {
+    // Get provider_id from model_id first
+    let provider_id = match get_provider_id_by_model_id(model_id).await {
+        Ok(Some(id)) => id,
+        Ok(None) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: "Model not found".to_string(),
+                    code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
+        Err(e) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: format!("Error getting provider for model: {}", e),
+                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
+    };
+
     // Get the model provider configuration
     let provider = match get_model_provider_by_id(provider_id).await {
         Ok(Some(provider)) => provider,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(None) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: "Provider not found".to_string(),
+                    code: ErrorCode::ResourceProviderNotFound.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
+        Err(e) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: format!("Error getting model provider: {}", e),
+                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
     };
 
-    // Get the model
+    // Check if provider is enabled
+    if !provider.enabled {
+        let _ = tx.send(Ok(Event::default().event("error").data(
+            &serde_json::to_string(&StreamErrorData {
+                error: "Provider is disabled".to_string(),
+                code: ErrorCode::ResourceProviderDisabled.as_str().to_string(),
+            })
+            .unwrap_or_default(),
+        )));
+        return;
+    }
+
+    // Get the model to get the actual model name
     let model = match get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(None) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: "Model not found".to_string(),
+                    code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
+        Err(e) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: format!("Error getting model: {}", e),
+                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
     };
 
-    // Build chat messages for AI provider
-    let mut messages = Vec::new();
-
-    // Add system message from assistant if available
-    if let Some(assistant_id) = conversation.assistant_id {
-        if let Ok(Some(assistant)) = get_assistant_by_id(assistant_id, Some(user_id)).await {
-            if let Some(instructions) = assistant.instructions {
-                if !instructions.trim().is_empty() {
-                    messages.push(ChatMessage {
-                        role: "system".to_string(),
-                        content: instructions,
-                    });
-                }
-            }
+    // Create AI provider
+    let ai_provider = match create_ai_provider(&provider) {
+        Ok(provider) => provider,
+        Err(e) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: format!("Error creating AI provider: {}", e),
+                    code: ErrorCode::SystemInternalError.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
         }
-    }
-
-    // Add conversation history
-    for msg in conversation_history {
-        messages.push(ChatMessage {
-            role: msg.role,
-            content: msg.content,
-        });
-    }
-
-    // Add the edited user message
-    messages.push(ChatMessage {
-        role: "user".to_string(),
-        content: edited_content,
-    });
-
-    // Create AI provider instance
-    let ai_provider =
-        create_ai_provider(&provider).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    };
 
     // Create chat request
     let chat_request = ChatRequest {
@@ -568,95 +624,260 @@ async fn get_ai_response_for_edited_message(
         presence_penalty: None,
     };
 
-    // Call AI provider and get response
-    match ai_provider.chat(chat_request).await {
-        Ok(response) => {
-            // Store only the assistant response (user message already stored by edit_message)
-            let assistant_message_req = SendMessageRequest {
+    // Save user message if requested
+    if save_user_message {
+        if let Some(content) = user_message_content {
+            let user_message_req = SendMessageRequest {
                 conversation_id: conversation.id,
-                content: response.content,
-                role: "assistant".to_string(),
-                model_id: model_id,
+                content,
+                role: "user".to_string(),
+                model_id,
             };
 
-            if let Err(e) = chat::send_message(assistant_message_req, user_id).await {
-                eprintln!("Error saving assistant message: {}", e);
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            if let Err(e) = chat::send_message(user_message_req, user_id).await {
+                let _ = tx.send(Ok(Event::default().event("error").data(
+                    &serde_json::to_string(&StreamErrorData {
+                        error: format!("Error saving user message: {}", e),
+                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                    })
+                    .unwrap_or_default(),
+                )));
+                return;
+            }
+        }
+    }
+
+    // Call AI provider with streaming
+    match ai_provider.chat_stream(chat_request).await {
+        Ok(mut stream) => {
+            let mut full_content = String::new();
+
+            // Process the stream
+            while let Some(chunk_result) = stream.next().await {
+                match chunk_result {
+                    Ok(chunk) => {
+                        if let Some(content) = chunk.content {
+                            full_content.push_str(&content);
+
+                            // Send chunk to client
+                            let _ = tx.send(Ok(Event::default().event("chunk").data(
+                                &serde_json::to_string(&StreamChunkData {
+                                    delta: content,
+                                    message_id: None,
+                                })
+                                .unwrap_or_default(),
+                            )));
+                        }
+
+                        // Check if streaming is complete
+                        if chunk.finish_reason.is_some() {
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.send(Ok(Event::default().event("error").data(
+                            &serde_json::to_string(&StreamErrorData {
+                                error: format!("Streaming error: {}", e),
+                                code: ErrorCode::SystemStreamingError.as_str().to_string(),
+                            })
+                            .unwrap_or_default(),
+                        )));
+                        return;
+                    }
+                }
             }
 
-            Ok(())
+            // Save the complete assistant message
+            let assistant_message_req = SendMessageRequest {
+                conversation_id: conversation.id,
+                content: full_content.clone(),
+                role: "assistant".to_string(),
+                model_id,
+            };
+
+            match chat::send_message(assistant_message_req, user_id).await {
+                Ok(assistant_message) => {
+                    // Send completion event
+                    let _ = tx.send(Ok(Event::default().event("complete").data(
+                        &serde_json::to_string(&StreamCompleteData {
+                            message_id: assistant_message.id.to_string(),
+                            conversation_id: conversation.id.to_string(),
+                            role: assistant_message.role.clone(),
+                            originated_from_id: assistant_message.originated_from_id.map(|id| id.to_string()),
+                            edit_count: assistant_message.edit_count,
+                            created_at: assistant_message.created_at.to_rfc3339(),
+                            updated_at: assistant_message.updated_at.to_rfc3339(),
+                            total_tokens: None,
+                        })
+                        .unwrap_or_default(),
+                    )));
+                }
+                Err(e) => {
+                    let _ = tx.send(Ok(Event::default().event("error").data(
+                        &serde_json::to_string(&StreamErrorData {
+                            error: format!("Error saving assistant message: {}", e),
+                            code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                        })
+                        .unwrap_or_default(),
+                    )));
+                }
+            }
         }
         Err(e) => {
-            eprintln!("Error calling AI provider: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: format!("Error calling AI provider: {}", e),
+                    code: ErrorCode::SystemExternalServiceError.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
         }
     }
 }
 
-/// Edit a message (creates a new branch)
+/// Edit a message with streaming response (creates a new branch)
+pub async fn edit_message_stream(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(message_id): Path<Uuid>,
+    Json(request): Json<EditMessageRequest>,
+) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+    // Create a channel for streaming events
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+    // Spawn a task to handle the async message editing and AI interaction
+    tokio::spawn(async move {
+        // Send initial event
+        let _ = tx.send(Ok(Event::default().data("start")));
+
+        // Edit the message first
+        match chat::edit_message(message_id, request.clone(), auth_user.user.id).await {
+            Ok(Some(edit_response)) => {
+                // If content changed, get AI response with streaming
+                if edit_response.content_changed {
+                    let conversation_id = edit_response.message.conversation_id;
+                    let message_content = edit_response.message.content.clone();
+                    let conversation_history = edit_response.conversation_history;
+                    let user_id = auth_user.user.id;
+
+                    // Get conversation details
+                    if let Ok(Some(conversation)) =
+                        chat::get_conversation_by_id(conversation_id, user_id).await
+                    {
+                        // Only proceed if the conversation has model configured
+                        if let Some(model_id) = conversation.model_id {
+                            // Build chat messages with assistant instructions
+                            let mut messages = Vec::new();
+
+                            // Add system message from assistant if available
+                            if let Some(assistant_id) = conversation.assistant_id {
+                                if let Ok(Some(assistant)) =
+                                    get_assistant_by_id(assistant_id, Some(user_id)).await
+                                {
+                                    if let Some(instructions) = assistant.instructions {
+                                        if !instructions.trim().is_empty() {
+                                            messages.push(ChatMessage {
+                                                role: "system".to_string(),
+                                                content: instructions,
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Add conversation history
+                            for msg in conversation_history {
+                                messages.push(ChatMessage {
+                                    role: msg.role,
+                                    content: msg.content,
+                                });
+                            }
+
+                            // Add the edited user message
+                            messages.push(ChatMessage {
+                                role: "user".to_string(),
+                                content: message_content,
+                            });
+
+                            // Stream AI response (don't save user message again as it's already saved by edit_message)
+                            stream_ai_response(
+                                tx.clone(),
+                                conversation,
+                                messages,
+                                model_id,
+                                user_id,
+                                false, // Don't save user message again
+                                None,
+                            )
+                            .await;
+                        } else {
+                            let _ = tx.send(Ok(Event::default().event("error").data(
+                                &serde_json::to_string(&StreamErrorData {
+                                    error: "No model configured for conversation".to_string(),
+                                    code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
+                                })
+                                .unwrap_or_default(),
+                            )));
+                        }
+                    } else {
+                        let _ = tx.send(Ok(Event::default().event("error").data(
+                            &serde_json::to_string(&StreamErrorData {
+                                error: "Conversation not found".to_string(),
+                                code: ErrorCode::ResourceConversationNotFound.as_str().to_string(),
+                            })
+                            .unwrap_or_default(),
+                        )));
+                    }
+                } else {
+                    // No content changed, just complete
+                    let _ = tx.send(Ok(Event::default().event("complete").data(
+                        &serde_json::to_string(&StreamCompleteData {
+                            message_id: edit_response.message.id.to_string(),
+                            conversation_id: edit_response.message.conversation_id.to_string(),
+                            role: edit_response.message.role.clone(),
+                            originated_from_id: edit_response.message.originated_from_id.map(|id| id.to_string()),
+                            edit_count: edit_response.message.edit_count,
+                            created_at: edit_response.message.created_at.to_rfc3339(),
+                            updated_at: edit_response.message.updated_at.to_rfc3339(),
+                            total_tokens: None,
+                        })
+                        .unwrap_or_default(),
+                    )));
+                }
+            }
+            Ok(None) => {
+                let _ = tx.send(Ok(Event::default().event("error").data(
+                    &serde_json::to_string(&StreamErrorData {
+                        error: "Message not found".to_string(),
+                        code: ErrorCode::ResourceNotFound.as_str().to_string(),
+                    })
+                    .unwrap_or_default(),
+                )));
+            }
+            Err(e) => {
+                let _ = tx.send(Ok(Event::default().event("error").data(
+                    &serde_json::to_string(&StreamErrorData {
+                        error: format!("Error editing message: {}", e),
+                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                    })
+                    .unwrap_or_default(),
+                )));
+            }
+        }
+    });
+
+    // Convert the receiver to a stream and return as SSE
+    let stream = UnboundedReceiverStream::new(rx);
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+}
+
+/// Edit a message (creates a new branch) - non-streaming version for backward compatibility
 pub async fn edit_message(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
     Json(request): Json<EditMessageRequest>,
 ) -> Result<Json<Message>, StatusCode> {
     match chat::edit_message(message_id, request.clone(), auth_user.user.id).await {
-        Ok(Some(edit_response)) => {
-            let message = edit_response.message.clone();
-
-            // If content changed, spawn a separate task to handle AI response
-            // This prevents runtime conflicts by separating the transaction from AI calls
-            if edit_response.content_changed {
-                let conversation_id = edit_response.message.conversation_id;
-                let message_content = edit_response.message.content.clone();
-                let conversation_history = edit_response.conversation_history;
-                let user_id = auth_user.user.id;
-
-                tokio::spawn(async move {
-                    // Get conversation details to get the model provider and model IDs
-                    if let Ok(Some(conversation)) =
-                        chat::get_conversation_by_id(conversation_id, user_id).await
-                    {
-                        // Only proceed if the conversation has model configured
-                        if let Some(model_id) = conversation.model_id {
-                            // Get provider_id from model_id
-                            let provider_id = match get_provider_id_by_model_id(model_id).await {
-                                Ok(Some(id)) => id,
-                                Ok(None) => {
-                                    eprintln!("Model {} not found", model_id);
-                                    return;
-                                }
-                                Err(e) => {
-                                    eprintln!(
-                                        "Error getting provider ID for model {}: {}",
-                                        model_id, e
-                                    );
-                                    return;
-                                }
-                            };
-
-                            // Get AI response for the edited message (don't store user message again)
-                            if let Err(e) = get_ai_response_for_edited_message(
-                                conversation_history,
-                                message_content,
-                                conversation,
-                                provider_id,
-                                model_id,
-                                user_id,
-                            )
-                            .await
-                            {
-                                eprintln!(
-                                    "Warning: Failed to get AI response for edited message: {:?}",
-                                    e
-                                );
-                            }
-                        }
-                    }
-                });
-            }
-
-            Ok(Json(message))
-        }
+        Ok(Some(edit_response)) => Ok(Json(edit_response.message)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Error editing message: {}", e);

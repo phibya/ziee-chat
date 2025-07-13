@@ -212,38 +212,54 @@ impl AIProvider for OpenAIProvider {
             return Err(format!("OpenAI API error: {}", error_text).into());
         }
 
-        let stream = response.bytes_stream().map(|result| {
+        use std::sync::{Arc, Mutex};
+        
+        // Use a shared buffer to handle partial SSE chunks
+        let buffer = Arc::new(Mutex::new(String::new()));
+        
+        let stream = response.bytes_stream().map(move |result| {
             result.map_err(|e| e.into()).and_then(|bytes| {
                 let text = String::from_utf8_lossy(&bytes);
+                
+                let mut buffer_guard = buffer.lock().unwrap();
+                buffer_guard.push_str(&text);
 
-                // Parse SSE format: "data: {...}"
-                for line in text.lines() {
+                let mut chunks = Vec::new();
+                
+                // Process complete lines from buffer
+                while let Some(line_end) = buffer_guard.find('\n') {
+                    let line = buffer_guard[..line_end].trim().to_string();
+                    buffer_guard.drain(..=line_end);
+
                     if line.starts_with("data: ") {
                         let json_str = line.strip_prefix("data: ").unwrap_or("");
 
                         if json_str == "[DONE]" {
-                            return Ok(StreamingChunk {
+                            chunks.push(StreamingChunk {
                                 content: None,
                                 finish_reason: Some("stop".to_string()),
                             });
+                            break;
                         }
 
                         if let Ok(chunk) = serde_json::from_str::<OpenAIStreamResponse>(json_str) {
                             if let Some(choice) = chunk.choices.into_iter().next() {
-                                return Ok(StreamingChunk {
-                                    content: choice.delta.content,
-                                    finish_reason: choice.finish_reason,
-                                });
+                                if choice.delta.content.is_some() {
+                                    chunks.push(StreamingChunk {
+                                        content: choice.delta.content,
+                                        finish_reason: choice.finish_reason,
+                                    });
+                                }
                             }
                         }
                     }
                 }
 
-                // If we can't parse the chunk, return empty content
-                Ok(StreamingChunk {
+                // Return the first chunk if we have any, otherwise return empty
+                Ok(chunks.into_iter().next().unwrap_or(StreamingChunk {
                     content: None,
                     finish_reason: None,
-                })
+                }))
             })
         });
 

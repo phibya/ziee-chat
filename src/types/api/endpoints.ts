@@ -163,6 +163,7 @@ export const ApiEndpoints = {
   'Chat.deleteConversation': 'DELETE /api/chat/conversations/{conversation_id}',
   'Chat.sendMessage': 'POST /api/chat/messages/stream',
   'Chat.editMessage': 'PUT /api/chat/messages/{message_id}',
+  'Chat.editMessageStream': 'PUT /api/chat/messages/{message_id}/stream',
   'Chat.getMessageBranches': 'GET /api/chat/messages/{message_id}/branches',
   'Chat.getConversationMessages':
     'GET /api/chat/conversations/{conversation_id}/messages/{branch_id}',
@@ -277,6 +278,7 @@ export type ApiEndpointParameters = {
   'Chat.deleteConversation': { conversation_id: string }
   'Chat.sendMessage': SendMessageRequest
   'Chat.editMessage': { message_id: string } & EditMessageRequest
+  'Chat.editMessageStream': { message_id: string } & EditMessageRequest
   'Chat.getMessageBranches': { message_id: string }
   'Chat.getConversationMessages': {
     conversation_id: string
@@ -394,6 +396,7 @@ export type ApiEndpointResponses = {
   'Chat.deleteConversation': void
   'Chat.sendMessage': any // Streaming response
   'Chat.editMessage': Message
+  'Chat.editMessageStream': any // Streaming response
   'Chat.getMessageBranches': MessageBranch[]
   'Chat.getConversationMessages': Message[]
   'Chat.switchConversationBranch': { success: boolean; message: string }

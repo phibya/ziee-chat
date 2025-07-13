@@ -1,38 +1,27 @@
 import { memo, useEffect, useRef } from 'react'
-import { Flex, Spin, Typography } from 'antd'
-import { useTranslation } from 'react-i18next'
+import { Flex, Typography } from 'antd'
 import { useShallow } from 'zustand/react/shallow'
-import {
-  LoadingOutlined,
-  MessageOutlined,
-  RobotOutlined,
-} from '@ant-design/icons'
+import { MessageOutlined } from '@ant-design/icons'
 import { ChatMessage } from './ChatMessage'
 import { useChatStore } from '../../store/chat'
 
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
-  const {
-    currentMessages,
-    sending,
-    isStreaming,
-    streamingMessage,
-  } = useChatStore(
-    useShallow(state => ({
-      currentMessages: state.currentMessages,
-      sending: state.sending,
-      isStreaming: state.isStreaming,
-      streamingMessage: state.streamingMessage,
-    })),
-  )
-  const { t } = useTranslation()
+  const { currentMessages, sending, isStreaming, streamingMessage } =
+    useChatStore(
+      useShallow(state => ({
+        currentMessages: state.currentMessages,
+        sending: state.sending,
+        isStreaming: state.isStreaming,
+        streamingMessage: state.streamingMessage,
+      })),
+    )
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentMessages])
-
 
   if (currentMessages.length === 0) {
     return (
@@ -46,34 +35,22 @@ export const ChatMessageList = memo(function ChatMessageList() {
   return (
     <Flex className={'flex-col gap-3 w-full'}>
       {currentMessages.map(msg => (
-        <ChatMessage
-          key={msg.id}
-          message={msg}
-        />
+        <ChatMessage key={msg.id} message={msg} />
       ))}
 
       {(sending || isStreaming) && (
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium">
-              <RobotOutlined />
-            </div>
-          </div>
-          <div className="ml-11">
-            {isStreaming && streamingMessage ? (
-              <div className="text-base">{streamingMessage}</div>
-            ) : (
-              <div className="flex items-center gap-2 text-base">
-                <Spin
-                  indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />}
-                />
-                <span>
-                  {isStreaming ? t('chat.generating') : t('chat.thinking')}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+        <ChatMessage
+          message={{
+            id: 'streaming-temp',
+            conversation_id: '',
+            content: isStreaming && streamingMessage ? streamingMessage : '',
+            role: 'assistant',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            edit_count: 0,
+            originated_from_id: 'streaming-temp',
+          }}
+        />
       )}
       <div ref={messagesEndRef} />
     </Flex>

@@ -26,20 +26,25 @@ export const ChatHeader = memo(function ChatHeader() {
     })),
   )
   const { token } = theme.useToken()
-  
+
   const getModelDisplayName = () => {
     if (!currentConversation?.model_id) return ''
 
     const provider = modelProviders.find(p =>
       p.models?.some(m => m.id === currentConversation.model_id),
     )
-    const model = provider?.models.find(m => m.id === currentConversation.model_id)
+    const model = provider?.models.find(
+      m => m.id === currentConversation.model_id,
+    )
     return model?.alias || currentConversation.model_id
   }
 
   const getAssistantName = () => {
     if (!currentConversation?.assistant_id) return ''
-    return assistants.find(a => a.id === currentConversation.assistant_id)?.name || ''
+    return (
+      assistants.find(a => a.id === currentConversation.assistant_id)?.name ||
+      ''
+    )
   }
 
   return (

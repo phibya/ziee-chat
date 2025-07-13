@@ -24,7 +24,10 @@ export interface ChatState {
 
   // Actions
   createConversation: (assistantId: string, modelId: string) => Promise<string>
-  loadConversation: (conversationId: string) => Promise<void>
+  loadConversation: (
+    conversationId: string,
+    loadMessages: boolean,
+  ) => Promise<void>
   sendMessage: (
     content: string,
     assistantId: string,
@@ -83,7 +86,10 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      loadConversation: async (conversationId: string) => {
+      loadConversation: async (
+        conversationId: string,
+        loadMessages: boolean = true,
+      ) => {
         try {
           set({ loading: true, error: null })
 
@@ -92,22 +98,28 @@ export const useChatStore = create<ChatState>()(
             conversation_id: conversationId,
           })
 
-          // Get messages for the active branch if it exists
-          let messages: Message[] = []
-          if (conversation.active_branch_id) {
-            messages = await ApiClient.Chat.getConversationMessages({
+          if (loadMessages) {
+            // Load messages only if requested
+            const messages = await ApiClient.Chat.getConversationMessages({
               conversation_id: conversationId,
               branch_id: conversation.active_branch_id,
             })
-          }
 
-          set({
-            currentConversation: conversation,
-            currentMessages: messages,
-            currentBranches: [],
-            activeBranchId: conversation.active_branch_id,
-            loading: false,
-          })
+            set({
+              currentConversation: conversation,
+              currentMessages: messages,
+              currentBranches: [],
+              activeBranchId: conversation.active_branch_id,
+              loading: false,
+            })
+          } else {
+            set({
+              currentConversation: conversation,
+              currentBranches: [],
+              activeBranchId: conversation.active_branch_id,
+              loading: false,
+            })
+          }
         } catch (error) {
           set({
             error:
@@ -184,17 +196,23 @@ export const useChatStore = create<ChatState>()(
                   streamingMessage: state.streamingMessage + data.delta,
                 }))
               },
-              onComplete(_data: Omit<Message, 'content'>) {
-                // set(state => ({
-                //   isStreaming: false,
-                //   sending: false,
-                //   streamingMessage: '',
-                //   currentMessages: state.currentMessages.map(msg =>
-                //     msg.id === assistantMessage.id
-                //       ? { ...msg, ...data, content: state.streamingMessage }
-                //       : msg,
-                //   ),
-                // }))
+              onComplete(
+                _data: Omit<Message, 'content'> & { message_id: string },
+              ) {
+                set(state => ({
+                  isStreaming: false,
+                  sending: false,
+                  streamingMessage: '',
+                  currentMessages: [
+                    ...state.currentMessages,
+                    {
+                      ...assistantMessage,
+                      content: state.streamingMessage,
+                      updated_at: new Date().toISOString(),
+                      id: _data.message_id,
+                    },
+                  ],
+                }))
               },
               onError() {
                 set({
@@ -223,25 +241,108 @@ export const useChatStore = create<ChatState>()(
         if (!currentConversation) return
 
         try {
-          set({ sending: true, error: null })
-
-          const response = await ApiClient.Chat.editMessage({
-            message_id: messageId,
-            content: newContent,
+          set({
+            sending: true,
+            error: null,
+            isStreaming: true,
+            streamingMessage: '',
           })
 
-          // Response is just a Message, not containing messages/new_branch_id
+          const currentMessage = get().currentMessages.find(
+            msg => msg.id === messageId,
+          )
+
+          if (!currentMessage) {
+            throw new Error('Message not found')
+          }
+
+          // Update the user message immediately with the new content
+          set(state => {
+            let currentMessages = state.currentMessages.filter(
+              m =>
+                new Date(m.created_at) <= new Date(currentMessage.created_at),
+            )
+
+            return {
+              currentMessages: currentMessages.map(msg =>
+                msg.id === messageId ? { ...msg, content: newContent } : msg,
+              ),
+            }
+          })
+
+          // Create assistant message placeholder for streaming
+          const assistantMessage: Message = {
+            id: 'streaming-temp',
+            conversation_id: currentConversation.id,
+            content: '',
+            role: 'assistant',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            edit_count: 0,
+            originated_from_id: messageId,
+          }
+
           set(state => ({
-            currentMessages: state.currentMessages.map(msg =>
-              msg.id === messageId ? response : msg,
-            ),
-            sending: false,
+            currentMessages: [...state.currentMessages, assistantMessage],
           }))
+
+          // Use streaming edit endpoint
+          await ApiClient.Chat.editMessageStream(
+            {
+              message_id: messageId,
+              content: newContent,
+            },
+            {
+              onChunk(data: { delta: string }) {
+                set(state => ({
+                  streamingMessage: state.streamingMessage + data.delta,
+                }))
+              },
+              onComplete(
+                data: Omit<Message, 'content'> & { message_id: string },
+              ) {
+                set(state => ({
+                  isStreaming: false,
+                  sending: false,
+                  streamingMessage: '',
+                  currentMessages: [
+                    ...state.currentMessages.filter(
+                      msg => msg.id !== 'streaming-temp',
+                    ),
+                    {
+                      ...assistantMessage,
+                      content: state.streamingMessage,
+                      updated_at: new Date().toISOString(),
+                      id: data.message_id,
+                    },
+                  ],
+                }))
+              },
+              onError() {
+                set({
+                  error: 'Edit streaming failed',
+                  sending: false,
+                  isStreaming: false,
+                  streamingMessage: '',
+                  // Remove the streaming placeholder
+                  currentMessages: get().currentMessages.filter(
+                    msg => msg.id !== 'streaming-temp',
+                  ),
+                })
+              },
+            },
+          )
         } catch (error) {
           set({
             error:
               error instanceof Error ? error.message : 'Failed to edit message',
             sending: false,
+            isStreaming: false,
+            streamingMessage: '',
+            // Remove the streaming placeholder on error
+            currentMessages: get().currentMessages.filter(
+              msg => msg.id !== 'streaming-temp',
+            ),
           })
           throw error
         }

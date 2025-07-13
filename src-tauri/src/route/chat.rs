@@ -40,6 +40,11 @@ pub fn chat_routes() -> Router {
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
+            "/api/chat/messages/{message_id}/stream",
+            put(api::chat::edit_message_stream)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
             "/api/chat/messages/{message_id}/branches",
             get(api::chat::get_message_branches)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),

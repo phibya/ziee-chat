@@ -1,7 +1,12 @@
 import { memo, useState } from 'react'
-import { Avatar, Button, Flex, theme, Typography } from 'antd'
+import { Avatar, Button, Flex, Spin, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { LeftOutlined, RightOutlined, UserOutlined } from '@ant-design/icons'
+import {
+  LeftOutlined,
+  LoadingOutlined,
+  RightOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
 import { Message, MessageBranch } from '../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { MessageEditor } from './MessageEditor'
@@ -27,7 +32,12 @@ export const ChatMessage = memo(function ChatMessage({
   const { token } = theme.useToken()
   const [showToolBox, setShowToolBox] = useState(false)
 
-  const { loadMessageBranches, editMessage, switchBranch, currentConversation } = useChatStore(
+  const {
+    loadMessageBranches,
+    editMessage,
+    switchBranch,
+    currentConversation,
+  } = useChatStore(
     useShallow(state => ({
       loadMessageBranches: state.loadMessageBranches,
       editMessage: state.editMessage,
@@ -90,10 +100,11 @@ export const ChatMessage = memo(function ChatMessage({
 
   const handleSaveEdit = async () => {
     try {
-      await editMessage(message.id, editValue)
       setIsEditing(false)
+      await editMessage(message.id, editValue)
     } catch (error) {
       console.error('Failed to save edit:', error)
+      setIsEditing(false)
     }
   }
 
@@ -109,6 +120,10 @@ export const ChatMessage = memo(function ChatMessage({
     } catch (error) {
       console.error('Failed to switch branch:', error)
     }
+  }
+
+  if (message.content.trim() === '') {
+    return null // Skip rendering empty messages
   }
 
   return (
@@ -146,8 +161,10 @@ export const ChatMessage = memo(function ChatMessage({
           >
             {isUser ? (
               message.content
+            ) : message.id === 'streaming-temp' && !message.content ? (
+              <Spin indicator={<LoadingOutlined spin />} />
             ) : (
-              <MarkdownRenderer content={message.content} />
+              <MarkdownRenderer content={message.content.trim()} />
             )}
           </div>
         )}
@@ -162,11 +179,7 @@ export const ChatMessage = memo(function ChatMessage({
             display: showToolBox ? 'flex' : 'none',
           }}
         >
-          <Button
-            size="small"
-            type="text"
-            onClick={handleEdit}
-          >
+          <Button size="small" type="text" onClick={handleEdit}>
             {t('chat.edit')}
           </Button>
 

@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
-import { App } from 'antd'
+import { App, Col, Row, Select, Space, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { ChatWelcome } from './ChatWelcome'
+import { RobotOutlined } from '@ant-design/icons'
+import { ChatInput } from './ChatInput'
 import { useChatStore } from '../../store/chat'
 import { useAssistantsStore } from '../../store/assistants'
 import { useModelProvidersStore } from '../../store/modelProviders'
 import { useConversationsStore } from '../../store'
 import { useAuthStore } from '../../store/auth'
+
+const { Text } = Typography
+const { Option } = Select
 
 export function NewChatInterface() {
   const { t } = useTranslation()
@@ -21,12 +25,14 @@ export function NewChatInterface() {
   // Chat store
   const {
     createConversation,
+    loadConversation,
     sendMessage,
     error: chatError,
     clearError: clearChatError,
   } = useChatStore(
     useShallow(state => ({
       createConversation: state.createConversation,
+      loadConversation: state.loadConversation,
       sendMessage: state.sendMessage,
       error: state.error,
       clearError: state.clearError,
@@ -161,6 +167,7 @@ export function NewChatInterface() {
     try {
       // Send the first message
       await sendMessage(inputValue.trim(), selectedAssistant, modelId)
+      await loadConversation(conversationId, false)
     } catch (error) {
       // Error is already handled by the store
       console.error('Failed to send first message:', error)
@@ -178,14 +185,79 @@ export function NewChatInterface() {
   const enabledProviders = modelProviders.filter(p => p.enabled)
 
   return (
-    <ChatWelcome
-      selectedAssistant={selectedAssistant}
-      selectedModel={selectedModel}
-      assistants={userAssistants}
-      modelProviders={enabledProviders}
-      onAssistantChange={setSelectedAssistant}
-      onModelChange={setSelectedModel}
-      onSend={handleSend}
-    />
+    <div className="flex flex-col h-full">
+      {/* Header with model selection */}
+      <div className="px-4 sm:px-6 py-4">
+        <Row gutter={16} align="middle">
+          <Col xs={24} sm={12} md={8}>
+            <Select
+              value={selectedAssistant}
+              onChange={setSelectedAssistant}
+              placeholder={t('chat.selectAssistant')}
+              className="w-full"
+              showSearch
+              optionFilterProp="children"
+            >
+              {userAssistants.map(assistant => (
+                <Option key={assistant.id} value={assistant.id}>
+                  <Space>
+                    <RobotOutlined />
+                    {assistant.name}
+                  </Space>
+                </Option>
+              ))}
+            </Select>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Select
+              value={selectedModel}
+              onChange={setSelectedModel}
+              placeholder={t('chat.selectModel')}
+              className="w-full"
+              showSearch
+              optionFilterProp="children"
+            >
+              {enabledProviders.map(provider => (
+                <Select.OptGroup key={provider.id} label={provider.name}>
+                  {provider.models.map(model => (
+                    <Option
+                      key={`${provider.id}:${model.id}`}
+                      value={`${provider.id}:${model.id}`}
+                    >
+                      {model.alias}
+                    </Option>
+                  ))}
+                </Select.OptGroup>
+              ))}
+            </Select>
+          </Col>
+        </Row>
+      </div>
+
+      {/* Welcome message */}
+      <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
+        <div className="mb-8">
+          <div className="text-3xl font-light mb-4">
+            {t('chat.placeholderWelcome')}
+          </div>
+        </div>
+
+        <div className="w-full max-w-2xl">
+          <ChatInput
+            onSend={handleSend}
+            placeholder={t('chat.placeholder')}
+            disabled={!selectedAssistant || !selectedModel}
+          />
+
+          {(!selectedAssistant || !selectedModel) && (
+            <div className="mt-4">
+              <Text type="secondary" className="text-sm">
+                {t('chat.noAssistantSelected')}
+              </Text>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

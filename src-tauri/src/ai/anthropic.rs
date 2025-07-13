@@ -224,12 +224,25 @@ impl AIProvider for AnthropicProvider {
             return Err(format!("Anthropic API error: {}", error_text).into());
         }
 
-        let stream = response.bytes_stream().map(|result| {
+        use std::sync::{Arc, Mutex};
+        
+        // Use a shared buffer to handle partial SSE chunks
+        let buffer = Arc::new(Mutex::new(String::new()));
+        
+        let stream = response.bytes_stream().map(move |result| {
             result.map_err(|e| e.into()).and_then(|bytes| {
                 let text = String::from_utf8_lossy(&bytes);
+                
+                let mut buffer_guard = buffer.lock().unwrap();
+                buffer_guard.push_str(&text);
 
-                // Parse SSE format: "data: {...}"
-                for line in text.lines() {
+                let mut chunks = Vec::new();
+                
+                // Process complete lines from buffer
+                while let Some(line_end) = buffer_guard.find('\n') {
+                    let line = buffer_guard[..line_end].trim().to_string();
+                    buffer_guard.drain(..=line_end);
+
                     if line.starts_with("data: ") {
                         let json_str = line.strip_prefix("data: ").unwrap_or("");
 
@@ -240,28 +253,33 @@ impl AIProvider for AnthropicProvider {
                                     // Handle initial content block if needed
                                     if let Some(content_block) = chunk.content_block {
                                         if content_block.content_type == "text" {
-                                            return Ok(StreamingChunk {
-                                                content: content_block.text,
-                                                finish_reason: None,
-                                            });
+                                            if content_block.text.is_some() {
+                                                chunks.push(StreamingChunk {
+                                                    content: content_block.text,
+                                                    finish_reason: None,
+                                                });
+                                            }
                                         }
                                     }
                                 }
                                 "content_block_delta" => {
                                     if let Some(delta) = chunk.delta {
                                         if delta.delta_type == "text_delta" {
-                                            return Ok(StreamingChunk {
-                                                content: delta.text,
-                                                finish_reason: delta.stop_reason,
-                                            });
+                                            if delta.text.is_some() {
+                                                chunks.push(StreamingChunk {
+                                                    content: delta.text,
+                                                    finish_reason: delta.stop_reason,
+                                                });
+                                            }
                                         }
                                     }
                                 }
                                 "message_stop" => {
-                                    return Ok(StreamingChunk {
+                                    chunks.push(StreamingChunk {
                                         content: None,
                                         finish_reason: Some("stop".to_string()),
                                     });
+                                    break;
                                 }
                                 _ => {}
                             }
@@ -269,11 +287,11 @@ impl AIProvider for AnthropicProvider {
                     }
                 }
 
-                // If we can't parse the chunk, return empty content
-                Ok(StreamingChunk {
+                // Return the first chunk if we have any, otherwise return empty
+                Ok(chunks.into_iter().next().unwrap_or(StreamingChunk {
                     content: None,
                     finish_reason: None,
-                })
+                }))
             })
         });
 
