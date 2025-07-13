@@ -78,13 +78,6 @@ export const ChatMessage = memo(function ChatMessage({
 
       branches = branches.filter(b => !b.is_clone)
 
-      console.log({
-        message_id: message.id,
-        branches,
-        currentConversation,
-        currentIndex,
-      })
-
       setBranchInfo({
         branches,
         currentIndex,
