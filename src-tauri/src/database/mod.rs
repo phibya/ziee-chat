@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use tokio::sync::OnceCell;
 
 pub mod models;
+pub mod model_operations;
 pub mod queries;
 
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();

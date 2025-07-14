@@ -15,8 +15,6 @@ pub struct AnthropicProvider {
     client: Client,
     api_key: String,
     base_url: String,
-    #[allow(dead_code)] // Stored for debugging and potential future use
-    proxy_config: Option<ProxyConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,7 +66,6 @@ impl AnthropicProvider {
             client,
             api_key,
             base_url,
-            proxy_config,
         })
     }
 

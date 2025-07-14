@@ -40,6 +40,25 @@ interface ModelProvidersState {
   deleteModel: (modelId: string) => Promise<void>
   startModel: (modelId: string) => Promise<void> // For Candle
   stopModel: (modelId: string) => Promise<void> // For Candle
+  enableModel: (modelId: string) => Promise<void>
+  disableModel: (modelId: string) => Promise<void>
+
+  // Upload model actions (for Candle)
+  createUploadModel: (
+    providerId: string,
+    name: string,
+    alias: string,
+    description?: string,
+    architecture?: string,
+    fileFormat?: string,
+    metadata?: any,
+  ) => Promise<{ id: string }>
+  uploadModelFile: (modelId: string, file: File) => Promise<void>
+  uploadModelFiles: (
+    modelId: string,
+    files: File[],
+    mainFilename: string,
+  ) => Promise<void>
 
   // Proxy actions
   testProxy: (providerId: string) => Promise<boolean>
@@ -265,14 +284,14 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       try {
         set({ updating: true, error: null })
 
-        await (ApiClient.Models as any).start({ model_id: modelId })
+        await ApiClient.Models.start({ model_id: modelId })
 
         // Update model status to starting
         set(state => ({
           providers: state.providers.map(p => ({
             ...p,
             models: p.models.map(m =>
-              m.id === modelId ? { ...m, status: 'starting' as const } : m,
+              m.id === modelId ? { ...m, isActive: true } : m,
             ),
           })),
           updating: false,
@@ -291,14 +310,14 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       try {
         set({ updating: true, error: null })
 
-        await (ApiClient.Models as any).stop({ model_id: modelId })
+        await ApiClient.Models.stop({ model_id: modelId })
 
         // Update model status to stopping
         set(state => ({
           providers: state.providers.map(p => ({
             ...p,
             models: p.models.map(m =>
-              m.id === modelId ? { ...m, status: 'stopping' as const } : m,
+              m.id === modelId ? { ...m, isActive: false } : m,
             ),
           })),
           updating: false,
@@ -307,6 +326,58 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
         set({
           error:
             error instanceof Error ? error.message : 'Failed to stop model',
+          updating: false,
+        })
+        throw error
+      }
+    },
+
+    enableModel: async (modelId: string) => {
+      try {
+        set({ updating: true, error: null })
+
+        await ApiClient.Models.enable({ model_id: modelId })
+
+        // Update model status to enabled
+        set(state => ({
+          providers: state.providers.map(p => ({
+            ...p,
+            models: p.models.map(m =>
+              m.id === modelId ? { ...m, enabled: true } : m,
+            ),
+          })),
+          updating: false,
+        }))
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : 'Failed to enable model',
+          updating: false,
+        })
+        throw error
+      }
+    },
+
+    disableModel: async (modelId: string) => {
+      try {
+        set({ updating: true, error: null })
+
+        await ApiClient.Models.disable({ model_id: modelId })
+
+        // Update model status to disabled
+        set(state => ({
+          providers: state.providers.map(p => ({
+            ...p,
+            models: p.models.map(m =>
+              m.id === modelId ? { ...m, enabled: false } : m,
+            ),
+          })),
+          updating: false,
+        }))
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : 'Failed to disable model',
           updating: false,
         })
         throw error
@@ -329,6 +400,95 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
           error:
             error instanceof Error ? error.message : 'Failed to test proxy',
           testingProxy: false,
+        })
+        throw error
+      }
+    },
+
+    createUploadModel: async (
+      providerId: string,
+      name: string,
+      alias: string,
+      description?: string,
+      architecture?: string,
+      fileFormat?: string,
+      metadata?: any,
+    ) => {
+      try {
+        set({ creating: true, error: null })
+
+        const response = await ApiClient.ModelUploads.create({
+          provider_id: providerId,
+          name,
+          alias,
+          description,
+          architecture: architecture || 'llama', // Default to llama if not specified
+          file_format: fileFormat,
+          metadata: metadata,
+        })
+
+        set({ creating: false })
+
+        return { id: response.id }
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to create upload model',
+          creating: false,
+        })
+        throw error
+      }
+    },
+
+    uploadModelFile: async (modelId: string, file: File) => {
+      try {
+        set({ updating: true, error: null })
+
+        await ApiClient.ModelUploads.upload({
+          model_id: modelId,
+          file,
+        })
+
+        set({ updating: false })
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to upload model file',
+          updating: false,
+        })
+        throw error
+      }
+    },
+
+    uploadModelFiles: async (
+      modelId: string,
+      files: File[],
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      _mainFilename: string,
+    ) => {
+      try {
+        set({ updating: true, error: null })
+
+        // Upload each file sequentially
+        for (const file of files) {
+          await ApiClient.ModelUploads.upload({
+            model_id: modelId,
+            file,
+          })
+        }
+
+        set({ updating: false })
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to upload model files',
+          updating: false,
         })
         throw error
       }

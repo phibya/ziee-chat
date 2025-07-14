@@ -8,17 +8,20 @@ export interface ProviderOption {
 export interface ProviderDefaults {
   base_url?: string
   settings?: {
+    // Provider-level infrastructure settings
+    device?: string
     autoUnloadOldModels?: boolean
-    contextShift?: boolean
-    continuousBatching?: boolean
     parallelOperations?: number
     cpuThreads?: number
+    huggingFaceAccessToken?: string
+    // Legacy settings that may still be useful for advanced users
+    contextShift?: boolean
+    continuousBatching?: boolean
     threadsBatch?: number
     flashAttention?: boolean
     caching?: boolean
     kvCacheType?: string
     mmap?: boolean
-    huggingFaceAccessToken?: string
   }
 }
 
@@ -50,17 +53,18 @@ export const PROVIDER_DEFAULTS: Record<ModelProviderType, ProviderDefaults> = {
   },
   candle: {
     settings: {
+      device: 'cpu',
       autoUnloadOldModels: true,
-      contextShift: false,
-      continuousBatching: false,
       parallelOperations: 1,
       cpuThreads: -1,
+      huggingFaceAccessToken: '',
+      contextShift: false,
+      continuousBatching: false,
       threadsBatch: -1,
       flashAttention: true,
       caching: true,
       kvCacheType: 'q8_0',
       mmap: true,
-      huggingFaceAccessToken: '',
     },
   },
   custom: {},

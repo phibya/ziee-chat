@@ -219,14 +219,16 @@ export function NewChatInterface() {
             >
               {enabledProviders.map(provider => (
                 <Select.OptGroup key={provider.id} label={provider.name}>
-                  {provider.models.map(model => (
-                    <Option
-                      key={`${provider.id}:${model.id}`}
-                      value={`${provider.id}:${model.id}`}
-                    >
-                      {model.alias}
-                    </Option>
-                  ))}
+                  {provider.models
+                    .filter(model => model.enabled)
+                    .map(model => (
+                      <Option
+                        key={`${provider.id}:${model.id}`}
+                        value={`${provider.id}:${model.id}`}
+                      >
+                        {model.alias}
+                      </Option>
+                    ))}
                 </Select.OptGroup>
               ))}
             </Select>

@@ -98,10 +98,8 @@ impl Default for ModelCapabilities {
 }
 
 /// Model discovery and management
-#[allow(dead_code)]
 pub struct ModelDiscovery;
 
-#[allow(dead_code)]
 impl ModelDiscovery {
     /// Scan a directory for available models
     pub fn scan_models_directory(path: &str) -> Result<Vec<ModelConfig>, std::io::Error> {

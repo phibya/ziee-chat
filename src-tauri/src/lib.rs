@@ -3,6 +3,7 @@ mod api;
 mod auth;
 mod database;
 mod route;
+mod utils;
 
 use crate::api::app::get_http_port;
 use axum::{body::Body, http::Request, response::Response, Router};

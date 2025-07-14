@@ -16,8 +16,6 @@ pub struct OpenAICompatibleProvider {
     api_key: String,
     base_url: String,
     provider_name: &'static str,
-    #[allow(dead_code)] // Stored for debugging and potential future use
-    proxy_config: Option<ProxyConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -106,7 +104,6 @@ impl OpenAICompatibleProvider {
             api_key,
             base_url,
             provider_name,
-            proxy_config,
         })
     }
 

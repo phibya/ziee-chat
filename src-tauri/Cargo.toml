@@ -57,6 +57,7 @@ candle-transformers = "0.8"
 tokenizers = "0.20"
 hf-hub = "0.3"
 thiserror = "2.0"
+sha2 = "0.10"
 
 [features]
 default = []

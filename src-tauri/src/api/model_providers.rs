@@ -416,3 +416,210 @@ pub async fn get_provider_groups(
         }
     }
 }
+
+// Start a Candle model
+pub async fn start_model(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(model_id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    // Get the model from database to get provider_id
+    let pool = crate::database::get_database_pool().map_err(|e| {
+        eprintln!("Failed to get database pool: {}", e);
+        AppError::internal_error("Database operation failed")
+    })?;
+    let pool = pool.as_ref();
+
+    let model_row: Option<crate::database::models::ModelProviderModelDb> = sqlx::query_as(
+        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
+         FROM model_provider_models 
+         WHERE id = $1"
+    )
+    .bind(model_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        eprintln!("Failed to get model {}: {}", model_id, e);
+        AppError::internal_error("Database operation failed")
+    })?;
+
+    match model_row {
+        Some(model) => {
+            // Get the provider to check if it's a Candle provider
+            match model_providers::get_model_provider_by_id(model.provider_id).await {
+                Ok(Some(provider)) => {
+                    if provider.provider_type != "candle" {
+                        return Err(AppError::new(
+                            crate::api::errors::ErrorCode::ValidInvalidInput,
+                            "Only Candle models can be started"
+                        ));
+                    }
+                    
+                    // Check if model can be loaded before starting
+                    let model_path = model.path.unwrap_or_default();
+                    if !model_path.is_empty() {
+                        // Validate that the model exists and can be loaded
+                        if !crate::ai::candle_models::ModelUtils::model_exists(&model_path) {
+                            return Err(AppError::new(
+                                crate::api::errors::ErrorCode::ValidInvalidInput,
+                                "Model files not found or invalid"
+                            ));
+                        }
+                        
+                        // Try to load the model factory to ensure it can be instantiated
+                        let device = candle_core::Device::Cpu;
+                        match crate::ai::candle_models::ModelFactory::create_model("llama", &model_path, &device) {
+                            Ok(_model) => {
+                                println!("Model can be loaded successfully");
+                            }
+                            Err(e) => {
+                                return Err(AppError::new(
+                                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                                    format!("Failed to load model: {}", e)
+                                ));
+                            }
+                        }
+                    }
+                    match model_providers::update_model(model_id, UpdateModelRequest {
+                        name: None,
+                        alias: None,
+                        description: None,
+                        path: None,
+                        parameters: None,
+                        enabled: None,
+                        is_active: Some(true),
+                        capabilities: None,
+                    }).await {
+                        Ok(Some(_)) => Ok(StatusCode::OK),
+                        Ok(None) => Err(AppError::not_found("Model")),
+                        Err(e) => {
+                            eprintln!("Failed to update model status {}: {}", model_id, e);
+                            Err(AppError::internal_error("Database operation failed"))
+                        }
+                    }
+                }
+                Ok(None) => Err(AppError::not_found("Model provider")),
+                Err(e) => {
+                    eprintln!("Failed to get model provider: {}", e);
+                    Err(AppError::internal_error("Database operation failed"))
+                }
+            }
+        }
+        None => Err(AppError::not_found("Model")),
+    }
+}
+
+// Stop a Candle model
+pub async fn stop_model(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(model_id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    // Get the model from database to get provider_id
+    let pool = crate::database::get_database_pool().map_err(|e| {
+        eprintln!("Failed to get database pool: {}", e);
+        AppError::internal_error("Database operation failed")
+    })?;
+    let pool = pool.as_ref();
+
+    let model_row: Option<crate::database::models::ModelProviderModelDb> = sqlx::query_as(
+        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
+         FROM model_provider_models 
+         WHERE id = $1"
+    )
+    .bind(model_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        eprintln!("Failed to get model {}: {}", model_id, e);
+        AppError::internal_error("Database operation failed")
+    })?;
+
+    match model_row {
+        Some(model) => {
+            // Get the provider to check if it's a Candle provider
+            match model_providers::get_model_provider_by_id(model.provider_id).await {
+                Ok(Some(provider)) => {
+                    if provider.provider_type != "candle" {
+                        return Err(AppError::new(
+                            crate::api::errors::ErrorCode::ValidInvalidInput,
+                            "Only Candle models can be stopped"
+                        ));
+                    }
+                    
+                    // TODO: Implement actual model stopping logic
+                    // For now, just update the model's isActive status
+                    match model_providers::update_model(model_id, UpdateModelRequest {
+                        name: None,
+                        alias: None,
+                        description: None,
+                        path: None,
+                        parameters: None,
+                        enabled: None,
+                        is_active: Some(false),
+                        capabilities: None,
+                    }).await {
+                        Ok(Some(_)) => Ok(StatusCode::OK),
+                        Ok(None) => Err(AppError::not_found("Model")),
+                        Err(e) => {
+                            eprintln!("Failed to update model status {}: {}", model_id, e);
+                            Err(AppError::internal_error("Database operation failed"))
+                        }
+                    }
+                }
+                Ok(None) => Err(AppError::not_found("Model provider")),
+                Err(e) => {
+                    eprintln!("Failed to get model provider: {}", e);
+                    Err(AppError::internal_error("Database operation failed"))
+                }
+            }
+        }
+        None => Err(AppError::not_found("Model")),
+    }
+}
+
+// Enable a model
+pub async fn enable_model(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(model_id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    match model_providers::update_model(model_id, UpdateModelRequest {
+        name: None,
+        alias: None,
+        description: None,
+        path: None,
+        parameters: None,
+        enabled: Some(true),
+        is_active: None,
+        capabilities: None,
+    }).await {
+        Ok(Some(_)) => Ok(StatusCode::OK),
+        Ok(None) => Err(AppError::not_found("Model")),
+        Err(e) => {
+            eprintln!("Failed to enable model {}: {}", model_id, e);
+            Err(AppError::internal_error("Database operation failed"))
+        }
+    }
+}
+
+// Disable a model
+pub async fn disable_model(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(model_id): Path<Uuid>,
+) -> ApiResult<StatusCode> {
+    match model_providers::update_model(model_id, UpdateModelRequest {
+        name: None,
+        alias: None,
+        description: None,
+        path: None,
+        parameters: None,
+        enabled: Some(false),
+        is_active: None,
+        capabilities: None,
+    }).await {
+        Ok(Some(_)) => Ok(StatusCode::OK),
+        Ok(None) => Err(AppError::not_found("Model")),
+        Err(e) => {
+            eprintln!("Failed to disable model {}: {}", model_id, e);
+            Err(AppError::internal_error("Database operation failed"))
+        }
+    }
+}

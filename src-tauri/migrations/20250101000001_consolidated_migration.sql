@@ -526,7 +526,7 @@ VALUES (
 
 -- Insert default model providers
 INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url, settings) VALUES
-('Candle', 'candle', false, true, null, '{"autoUnloadOldModels": true, "contextShift": false, "continuousBatching": false, "parallelOperations": 1, "cpuThreads": -1, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true, "huggingFaceAccessToken": ""}'),
+('Candle', 'candle', false, true, null, '{"device": "cpu", "autoUnloadOldModels": true, "parallelOperations": 1, "cpuThreads": -1, "huggingFaceAccessToken": "", "contextShift": false, "continuousBatching": false, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true}'),
 ('OpenAI', 'openai', false, true, 'https://api.openai.com/v1', '{}'),
 ('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1', '{}'),
 ('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1', '{}'),
@@ -587,3 +587,74 @@ COMMENT ON COLUMN messages.role IS 'Message role: user, assistant, or system';
 COMMENT ON COLUMN branch_messages.branch_id IS 'Reference to the branch containing this message';
 COMMENT ON COLUMN branch_messages.message_id IS 'Reference to the message in this branch';
 COMMENT ON COLUMN branch_messages.is_clone IS 'Indicates whether this message is a clone (belongs to multiple branches) or is unique to this branch';
+
+-- ===============================
+-- 12. UPLOADED MODELS SYSTEM
+-- ===============================
+
+-- Create uploaded_models table for Candle models
+CREATE TABLE uploaded_models (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    alias VARCHAR(255) NOT NULL,
+    description TEXT,
+    model_path VARCHAR(1000) NOT NULL,
+    architecture VARCHAR(100) NOT NULL,
+    quantization VARCHAR(50),
+    file_size_bytes BIGINT DEFAULT 0,
+    checksum VARCHAR(64),
+    enabled BOOLEAN DEFAULT FALSE,
+    is_deprecated BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT FALSE,
+    capabilities JSONB NOT NULL DEFAULT '{}',
+    parameters JSONB NOT NULL DEFAULT '{}',
+    validation_status VARCHAR(50) DEFAULT 'pending' CHECK (validation_status IN ('pending', 'valid', 'invalid', 'error')),
+    validation_issues JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(provider_id, alias)
+);
+
+-- Create model_files table for tracking individual files within models
+CREATE TABLE model_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    model_id UUID NOT NULL REFERENCES uploaded_models(id) ON DELETE CASCADE,
+    filename VARCHAR(500) NOT NULL,
+    file_path VARCHAR(1000) NOT NULL,
+    file_size_bytes BIGINT NOT NULL,
+    file_type VARCHAR(50) NOT NULL,
+    checksum VARCHAR(64) NOT NULL,
+    upload_status VARCHAR(50) DEFAULT 'pending' CHECK (upload_status IN ('pending', 'uploading', 'completed', 'failed')),
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(model_id, filename)
+);
+
+-- Create triggers for updated_at columns
+CREATE TRIGGER update_uploaded_models_updated_at 
+    BEFORE UPDATE ON uploaded_models 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create indexes for performance
+CREATE INDEX idx_uploaded_models_provider_id ON uploaded_models(provider_id);
+CREATE INDEX idx_uploaded_models_enabled ON uploaded_models(enabled);
+CREATE INDEX idx_uploaded_models_validation_status ON uploaded_models(validation_status);
+CREATE INDEX idx_model_files_model_id ON model_files(model_id);
+CREATE INDEX idx_model_files_upload_status ON model_files(upload_status);
+
+-- Add comments for uploaded models tables
+COMMENT ON TABLE uploaded_models IS 'Uploaded Candle models with metadata and validation status';
+COMMENT ON TABLE model_files IS 'Individual files that make up uploaded models';
+COMMENT ON COLUMN uploaded_models.provider_id IS 'Reference to the Candle model provider';
+COMMENT ON COLUMN uploaded_models.model_path IS 'Storage path for the model files in the filesystem';
+COMMENT ON COLUMN uploaded_models.architecture IS 'Model architecture type (e.g., llama, mistral, gemma)';
+COMMENT ON COLUMN uploaded_models.quantization IS 'Quantization format (e.g., q4_0, q8_0, fp16, fp32)';
+COMMENT ON COLUMN uploaded_models.file_size_bytes IS 'Total size of all model files in bytes';
+COMMENT ON COLUMN uploaded_models.checksum IS 'SHA-256 checksum of the model files for integrity verification';
+COMMENT ON COLUMN uploaded_models.validation_status IS 'Model validation status: pending, valid, invalid, error';
+COMMENT ON COLUMN uploaded_models.validation_issues IS 'JSON array of validation issues if any';
+COMMENT ON COLUMN model_files.filename IS 'Original filename of the uploaded file';
+COMMENT ON COLUMN model_files.file_path IS 'Storage path of the file in the filesystem';
+COMMENT ON COLUMN model_files.file_type IS 'Type of file (e.g., model, tokenizer, config, safetensors)';
+COMMENT ON COLUMN model_files.checksum IS 'SHA-256 checksum of this specific file';
+COMMENT ON COLUMN model_files.upload_status IS 'Upload status: pending, uploading, completed, failed';

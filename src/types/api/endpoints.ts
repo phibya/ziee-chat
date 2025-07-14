@@ -140,8 +140,18 @@ export const ApiEndpoints = {
   'Models.get': 'GET /api/admin/models/{model_id}',
   'Models.update': 'PUT /api/admin/models/{model_id}',
   'Models.delete': 'DELETE /api/admin/models/{model_id}',
+  'Models.start': 'POST /api/admin/models/{model_id}/start',
+  'Models.stop': 'POST /api/admin/models/{model_id}/stop',
+  'Models.enable': 'POST /api/admin/models/{model_id}/enable',
+  'Models.disable': 'POST /api/admin/models/{model_id}/disable',
   'ModelProviders.testProxy':
     'POST /api/admin/model-providers/{provider_id}/test-proxy',
+  // Model Upload endpoints for Candle
+  'ModelUploads.create': 'POST /api/admin/uploaded-models',
+  'ModelUploads.get': 'GET /api/admin/uploaded-models/{model_id}',
+  'ModelUploads.update': 'PUT /api/admin/uploaded-models/{model_id}',
+  'ModelUploads.delete': 'DELETE /api/admin/uploaded-models/{model_id}',
+  'ModelUploads.upload': 'POST /api/admin/uploaded-models/{model_id}/upload',
   // Assistant endpoints - User
   'Assistant.list': 'GET /api/assistants',
   'Assistant.create': 'POST /api/assistants',
@@ -252,9 +262,31 @@ export type ApiEndpointParameters = {
   'Models.get': { model_id: string }
   'Models.update': { model_id: string } & UpdateModelRequest
   'Models.delete': { model_id: string }
+  'Models.start': { model_id: string }
+  'Models.stop': { model_id: string }
+  'Models.enable': { model_id: string }
+  'Models.disable': { model_id: string }
   'ModelProviders.testProxy': {
     provider_id: string
   } & TestModelProviderProxyRequest
+  // Model Upload parameters
+  'ModelUploads.create': {
+    provider_id: string
+    name: string
+    alias: string
+    description?: string
+    architecture: string
+    file_format?: string
+    metadata?: any
+  }
+  'ModelUploads.get': { model_id: string }
+  'ModelUploads.update': {
+    model_id: string
+    name?: string
+    description?: string
+  }
+  'ModelUploads.delete': { model_id: string }
+  'ModelUploads.upload': { model_id: string; file: File }
   // Assistant endpoints - User
   'Assistant.list': { page?: number; per_page?: number }
   'Assistant.create': CreateAssistantRequest
@@ -374,7 +406,36 @@ export type ApiEndpointResponses = {
   'Models.get': ModelProviderModel
   'Models.update': ModelProviderModel
   'Models.delete': void
+  'Models.start': { success: boolean; message: string }
+  'Models.stop': { success: boolean; message: string }
+  'Models.enable': { success: boolean; message: string }
+  'Models.disable': { success: boolean; message: string }
   'ModelProviders.testProxy': TestModelProviderProxyResponse
+  // Model Upload responses
+  'ModelUploads.create': {
+    id: string
+    provider_id: string
+    name: string
+    alias: string
+    description?: string
+    architecture: string
+    file_format?: string
+  }
+  'ModelUploads.get': {
+    id: string
+    provider_id: string
+    name: string
+    description?: string
+    status: string
+  }
+  'ModelUploads.update': {
+    id: string
+    provider_id: string
+    name: string
+    description?: string
+  }
+  'ModelUploads.delete': void
+  'ModelUploads.upload': { message: string; file_id: string; size: number }
   // Assistant endpoints - User
   'Assistant.list': AssistantListResponse
   'Assistant.create': Assistant

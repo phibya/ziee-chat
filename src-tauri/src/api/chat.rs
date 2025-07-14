@@ -359,6 +359,18 @@ pub async fn send_message_stream(
                 return;
             }
         };
+        
+        // Check if provider supports streaming
+        if !ai_provider.supports_streaming() {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: "Provider does not support streaming responses".to_string(),
+                    code: ErrorCode::SystemInternalError.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
 
         // Create chat request
         let chat_request = ChatRequest {

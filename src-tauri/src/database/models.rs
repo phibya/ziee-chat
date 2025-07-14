@@ -917,3 +917,188 @@ impl ProjectConversation {
         }
     }
 }
+
+// Model upload structures for Candle models
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UploadedModelDb {
+    pub id: Uuid,
+    pub provider_id: Uuid,
+    pub name: String,
+    pub alias: String,
+    pub description: Option<String>,
+    pub model_path: String,
+    pub architecture: String,
+    pub quantization: Option<String>,
+    pub file_size_bytes: i64,
+    pub checksum: Option<String>,
+    pub enabled: bool,
+    pub is_deprecated: bool,
+    pub is_active: bool,
+    pub capabilities: serde_json::Value,
+    pub parameters: serde_json::Value,
+    pub validation_status: String,
+    pub validation_issues: Option<serde_json::Value>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ModelFileDb {
+    pub id: Uuid,
+    pub model_id: Uuid,
+    pub filename: String,
+    pub file_path: String,
+    pub file_size_bytes: i64,
+    pub file_type: String,
+    pub checksum: String,
+    pub upload_status: String,
+    pub uploaded_at: DateTime<Utc>,
+}
+
+// API structures for model uploads
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UploadedModel {
+    pub id: Uuid,
+    pub provider_id: Uuid,
+    pub name: String,
+    pub alias: String,
+    pub description: Option<String>,
+    pub model_path: String,
+    pub architecture: String,
+    pub quantization: Option<String>,
+    pub file_size_bytes: i64,
+    pub checksum: Option<String>,
+    pub enabled: bool,
+    pub is_deprecated: bool,
+    pub is_active: bool,
+    pub capabilities: Option<serde_json::Value>,
+    pub parameters: Option<serde_json::Value>,
+    pub validation_status: String,
+    pub validation_issues: Option<Vec<String>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub files: Vec<ModelFileInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelFileInfo {
+    pub filename: String,
+    pub file_size_bytes: i64,
+    pub file_type: String,
+    pub checksum: Option<String>,
+    pub uploaded_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateUploadedModelRequest {
+    pub provider_id: Uuid,
+    pub name: String,
+    pub alias: String,
+    pub description: Option<String>,
+    pub architecture: String,
+    pub quantization: Option<String>,
+    pub capabilities: Option<serde_json::Value>,
+    pub parameters: Option<serde_json::Value>,
+}
+
+
+#[derive(Debug, Serialize)]
+pub struct ModelUploadResponse {
+    pub model_id: Uuid,
+    pub upload_url: Option<String>,
+    pub chunk_uploaded: bool,
+    pub upload_complete: bool,
+    pub next_chunk_index: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ModelListResponse {
+    pub models: Vec<UploadedModel>,
+    pub total: i64,
+    pub page: i32,
+    pub per_page: i32,
+    pub total_storage_bytes: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ModelDetailsResponse {
+    pub model: UploadedModel,
+    pub files: Vec<ModelFileInfo>,
+    pub storage_size_bytes: u64,
+    pub validation_issues: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUploadedModelRequest {
+    pub name: Option<String>,
+    pub alias: Option<String>,
+    pub description: Option<String>,
+    pub enabled: Option<bool>,
+    pub capabilities: Option<serde_json::Value>,
+    pub parameters: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ModelValidationResult {
+    pub is_valid: bool,
+    pub issues: Vec<String>,
+    pub required_files: Vec<String>,
+    pub present_files: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ModelStorageInfo {
+    pub provider_id: Uuid,
+    pub total_models: i64,
+    pub total_storage_bytes: u64,
+    pub models_by_status: ModelStatusCounts,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ModelStatusCounts {
+    pub active: i64,
+    pub inactive: i64,
+    pub deprecated: i64,
+    pub enabled: i64,
+    pub disabled: i64,
+}
+
+impl UploadedModel {
+    pub fn from_db(model_db: UploadedModelDb, files: Vec<ModelFileDb>) -> Self {
+        let validation_issues = model_db.validation_issues
+            .as_ref()
+            .and_then(|v| serde_json::from_value::<Vec<String>>(v.clone()).ok())
+            .unwrap_or_default();
+
+        let file_infos = files.into_iter().map(|f| ModelFileInfo {
+            filename: f.filename,
+            file_size_bytes: f.file_size_bytes,
+            file_type: f.file_type,
+            checksum: Some(f.checksum),
+            uploaded_at: f.uploaded_at,
+        }).collect();
+
+        Self {
+            id: model_db.id,
+            provider_id: model_db.provider_id,
+            name: model_db.name,
+            alias: model_db.alias,
+            description: model_db.description,
+            model_path: model_db.model_path,
+            architecture: model_db.architecture,
+            quantization: model_db.quantization,
+            file_size_bytes: model_db.file_size_bytes,
+            checksum: model_db.checksum,
+            enabled: model_db.enabled,
+            is_deprecated: model_db.is_deprecated,
+            is_active: model_db.is_active,
+            capabilities: Some(model_db.capabilities),
+            parameters: Some(model_db.parameters),
+            validation_status: model_db.validation_status,
+            validation_issues: Some(validation_issues),
+            created_at: model_db.created_at,
+            updated_at: model_db.updated_at,
+            files: file_infos,
+        }
+    }
+}

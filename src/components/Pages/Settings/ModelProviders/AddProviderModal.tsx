@@ -1,25 +1,15 @@
-import {
-  Card,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Select,
-  Space,
-  Switch,
-} from 'antd'
+import { Form, Input, Modal, Select, Switch } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import {
   CreateModelProviderRequest,
   ModelProviderType,
 } from '../../../../types/api/modelProvider'
 import {
-  KV_CACHE_TYPE_OPTIONS,
   PROVIDER_DEFAULTS,
   SUPPORTED_PROVIDERS,
 } from '../../../../constants/modelProviders'
+import { ApiConfigurationSection, CandleConfigurationSection } from './shared'
 
 interface AddProviderModalProps {
   open: boolean
@@ -120,140 +110,10 @@ export function AddProviderModal({
         </Form.Item>
 
         {/* API Configuration for non-candle providers */}
-        {providerType !== 'candle' && (
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small" title={t('modelProviders.apiConfiguration')}>
-              <Form.Item
-                name="api_key"
-                label={t('modelProviders.apiKey')}
-                rules={[
-                  {
-                    required: true,
-                    message: t('modelProviders.apiKeyRequired'),
-                  },
-                ]}
-              >
-                <Input.Password
-                  placeholder={t('modelProviders.apiKeyPlaceholder')}
-                  iconRender={visible =>
-                    visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
-                  }
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="base_url"
-                label={t('modelProviders.baseUrl')}
-                rules={[
-                  {
-                    required: true,
-                    message: t('modelProviders.baseUrlRequired'),
-                  },
-                ]}
-              >
-                <Input placeholder={t('modelProviders.baseUrlPlaceholder')} />
-              </Form.Item>
-            </Card>
-          </Space>
-        )}
+        {providerType !== 'candle' && <ApiConfigurationSection />}
 
         {/* Candle Configuration */}
-        {providerType === 'candle' && (
-          <Card size="small" title={t('modelProviders.candleConfiguration')}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Form.Item
-                name={['settings', 'autoUnloadOldModels']}
-                label={t('modelProviders.autoUnloadOldModels')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'contextShift']}
-                label={t('modelProviders.contextShift')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'continuousBatching']}
-                label={t('modelProviders.continuousBatching')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'parallelOperations']}
-                label={t('modelProviders.parallelOperations')}
-              >
-                <InputNumber min={1} max={16} style={{ width: '100%' }} />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'cpuThreads']}
-                label={t('modelProviders.cpuThreads')}
-              >
-                <InputNumber
-                  placeholder={t('modelProviders.cpuThreadsPlaceholder')}
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'threadsBatch']}
-                label={t('modelProviders.threadsBatch')}
-              >
-                <InputNumber
-                  placeholder={t('modelProviders.threadsBatchPlaceholder')}
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'flashAttention']}
-                label={t('modelProviders.flashAttention')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'caching']}
-                label={t('modelProviders.caching')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'kvCacheType']}
-                label={t('modelProviders.kvCacheType')}
-              >
-                <Select options={KV_CACHE_TYPE_OPTIONS} />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'mmap']}
-                label={t('modelProviders.mmap')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'huggingFaceAccessToken']}
-                label={t('modelProviders.huggingFaceAccessToken')}
-              >
-                <Input.Password
-                  placeholder={t('modelProviders.huggingFaceTokenPlaceholder')}
-                />
-              </Form.Item>
-            </Space>
-          </Card>
-        )}
+        {providerType === 'candle' && <CandleConfigurationSection />}
       </Form>
     </Modal>
   )

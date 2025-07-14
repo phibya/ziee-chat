@@ -4696,6 +4696,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "syn 2.0.104",
  "tauri",

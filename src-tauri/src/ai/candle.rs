@@ -118,10 +118,11 @@ impl CandleProvider {
             return Ok(()); // Already loaded
         }
 
-        // Load tokenizer
-        let tokenizer_path = format!("{}/tokenizer.json", self.config.model_path);
-        let tokenizer = Tokenizer::from_file(&tokenizer_path)
-            .map_err(|e| CandleError::TokenizerError(format!("Failed to load tokenizer: {}", e)))?;
+        // Load tokenizer using ModelFactory
+        let tokenizer = super::candle_models::ModelFactory::load_tokenizer(
+            &self.config.model_type,
+            &self.config.model_path
+        )?;
 
         // Load model based on type
         let model: Box<dyn CandleModel + Send + Sync> = match self.config.model_type.as_str() {

@@ -223,6 +223,30 @@ pub fn admin_routes() -> Router {
                 api::middleware::model_providers_delete_middleware,
             )),
         )
+        .route(
+            "/api/admin/models/{model_id}/start",
+            post(api::model_providers::start_model).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/models/{model_id}/stop",
+            post(api::model_providers::stop_model).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/models/{model_id}/enable",
+            post(api::model_providers::enable_model).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/models/{model_id}/disable",
+            post(api::model_providers::disable_model).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
         // Assistant routes - Admin endpoints
         .route(
             "/api/admin/assistants",
@@ -249,6 +273,61 @@ pub fn admin_routes() -> Router {
             "/api/admin/assistants/{assistant_id}",
             delete(api::assistants::delete_assistant_admin).layer(middleware::from_fn(
                 api::middleware::groups_delete_middleware,
+            )),
+        )
+        // Model upload routes for Candle models
+        .route(
+            "/api/admin/uploaded-models",
+            post(api::model_uploads::create_model).layer(middleware::from_fn(
+                api::middleware::model_providers_create_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models",
+            get(api::model_uploads::list_models).layer(middleware::from_fn(
+                api::middleware::model_providers_read_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models/{model_id}",
+            get(api::model_uploads::get_model).layer(middleware::from_fn(
+                api::middleware::model_providers_read_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models/{model_id}",
+            put(api::model_uploads::update_model).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models/{model_id}",
+            delete(api::model_uploads::delete_model).layer(middleware::from_fn(
+                api::middleware::model_providers_delete_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models/{model_id}/upload",
+            post(api::model_uploads::upload_model_file).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models/{model_id}/validate",
+            post(api::model_uploads::validate_model).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models/{model_id}/status",
+            put(api::model_uploads::update_model_status).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/uploaded-models/storage-stats",
+            get(api::model_uploads::get_storage_stats).layer(middleware::from_fn(
+                api::middleware::model_providers_read_middleware,
             )),
         )
 }

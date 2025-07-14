@@ -1,65 +1,158 @@
-import {
-  Button,
-  Form,
-  Input,
-  InputNumber,
-  message,
-  Modal,
-  Space,
-  Switch,
-  Typography,
-  Upload,
-} from 'antd'
+import { App, Button, Form, Input, Modal, Radio, Select, Upload } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { UploadOutlined } from '@ant-design/icons'
 import { ModelProviderType } from '../../../../types/api/modelProvider'
-
-const { Title } = Typography
-const { TextArea } = Input
+import { useModelProvidersStore } from '../../../../store/modelProviders'
+import { useShallow } from 'zustand/react/shallow'
+import { UploadOutlined } from '@ant-design/icons'
+import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
+import { ModelParametersSection } from './shared/ModelParametersSection'
+import { BASIC_MODEL_FIELDS, CANDLE_PARAMETERS } from './shared/constants'
+import {
+  CANDLE_ARCHITECTURE_OPTIONS,
+  CANDLE_FILE_TYPE_OPTIONS,
+  DEFAULT_CANDLE_ARCHITECTURE,
+  DEFAULT_CANDLE_FILE_TYPE,
+} from '../../../../constants/candleModelTypes'
 
 interface AddModelModalProps {
   open: boolean
+  providerId: string
   providerType: ModelProviderType
+  provider?: any
   onClose: () => void
   onSubmit: (modelData: any) => void
 }
 
 export function AddModelModal({
   open,
+  providerId,
   providerType,
+  provider,
   onClose,
   onSubmit,
 }: AddModelModalProps) {
   const { t } = useTranslation()
+  const { message } = App.useApp()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [selectedFileFormat, setSelectedFileFormat] = useState(
+    DEFAULT_CANDLE_FILE_TYPE,
+  )
+  const [modelSource, setModelSource] = useState<'upload' | 'huggingface'>(
+    'upload',
+  )
+
+  const { createUploadModel, uploadModelFiles } = useModelProvidersStore(
+    useShallow(state => ({
+      createUploadModel: state.createUploadModel,
+      uploadModelFiles: state.uploadModelFiles,
+    })),
+  )
 
   const handleSubmit = async () => {
     try {
       setLoading(true)
       const values = await form.validateFields()
 
-      const modelData = {
-        id: `model-${Date.now()}`,
-        ...values,
-        enabled: true,
-        capabilities: {
-          vision: values.vision || false,
-          audio: values.audio || false,
-          tools: values.tools || false,
-          codeInterpreter: values.codeInterpreter || false,
-        },
+      if (providerType === 'candle') {
+        if (values.model_source === 'upload') {
+          // For folder upload workflow
+          if (selectedFiles.length === 0) {
+            message.error(t('modelProviders.selectModelFolderRequired'))
+            return
+          }
+
+          if (!values.local_filename) {
+            message.error(t('modelProviders.localFilenameRequired'))
+            return
+          }
+
+          // Validate that the specified main file exists in selected files
+          const mainFile = selectedFiles.find(
+            file => file.name === values.local_filename,
+          )
+          if (!mainFile) {
+            message.error(t('modelProviders.mainFileNotFound'))
+            return
+          }
+
+          // Create the upload model record with folder metadata
+          const uploadResult = await createUploadModel(
+            providerId,
+            values.name,
+            values.alias,
+            values.description,
+            values.architecture,
+            values.file_format,
+            {
+              source: 'local_folder',
+              folder_path: values.local_folder_path,
+              main_filename: values.local_filename,
+              total_files: selectedFiles.length,
+              file_list: selectedFiles.map(f => f.name),
+            },
+          )
+
+          // Upload all the files
+          await uploadModelFiles(
+            uploadResult.id,
+            selectedFiles,
+            values.local_filename,
+          )
+
+          message.success(t('modelProviders.modelFolderUploadedSuccessfully'))
+        } else if (values.model_source === 'huggingface') {
+          // For Hugging Face download workflow
+          // Get HF token from provider settings
+          const hfToken =
+            provider?.settings?.huggingFaceAccessToken || provider?.api_key
+
+          await createUploadModel(
+            providerId,
+            values.name,
+            values.alias,
+            values.description,
+            values.architecture,
+            values.file_format,
+            {
+              source: 'huggingface',
+              hf_repo: values.hf_repo,
+              hf_filename: values.hf_filename,
+              hf_branch: values.hf_branch || 'main',
+              hf_token: hfToken,
+            },
+          )
+
+          message.success(t('modelProviders.modelDownloadStarted'))
+        }
+      } else {
+        // For other providers, use the existing workflow
+        const modelData = {
+          id: `model-${Date.now()}`,
+          ...values,
+          enabled: true,
+          capabilities: {
+            vision: values.vision || false,
+            audio: values.audio || false,
+            tools: values.tools || false,
+            codeInterpreter: values.codeInterpreter || false,
+          },
+        }
+
+        // Remove capability checkboxes from main data
+        delete modelData.vision
+        delete modelData.audio
+        delete modelData.tools
+        delete modelData.codeInterpreter
+
+        await onSubmit(modelData)
       }
 
-      // Remove capability checkboxes from main data
-      delete modelData.vision
-      delete modelData.audio
-      delete modelData.tools
-      delete modelData.codeInterpreter
-
-      await onSubmit(modelData)
       form.resetFields()
+      setSelectedFiles([])
+      onClose()
     } catch (error) {
       console.error('Failed to add model:', error)
     } finally {
@@ -67,150 +160,62 @@ export function AddModelModal({
     }
   }
 
-  const handleFileSelect = (info: any) => {
-    if (info.file.status === 'done') {
-      form.setFieldsValue({ path: info.file.response?.path || info.file.name })
-      message.success(`${info.file.name} file selected successfully`)
+  const handleFolderSelect = (info: any) => {
+    const fileList = info.fileList || []
+    const files = fileList.map(
+      (file: any) => file.originFileObj || file.file || file,
+    )
+
+    if (files.length > 0) {
+      // Get the common folder path from the first file
+      const firstFile = files[0]
+      let folderPath = ''
+
+      if (firstFile.webkitRelativePath) {
+        const pathParts = firstFile.webkitRelativePath.split('/')
+        folderPath = pathParts.slice(0, -1).join('/')
+      } else if (firstFile.path) {
+        const pathParts = firstFile.path.split('/')
+        folderPath = pathParts.slice(0, -1).join('/')
+      }
+
+      setSelectedFiles(files)
+      form.setFieldsValue({
+        local_folder_path: folderPath || 'Selected folder',
+      })
+
+      // Find model files and suggest the main one
+      const modelFiles = files.filter((file: File) => {
+        const name = file.name.toLowerCase()
+        return (
+          name.includes('model') ||
+          name.includes('pytorch') ||
+          name.endsWith('.bin') ||
+          name.endsWith('.safetensors') ||
+          name.endsWith('.gguf')
+        )
+      })
+
+      if (modelFiles.length > 0) {
+        form.setFieldsValue({
+          local_filename: modelFiles[0].name,
+        })
+      }
+
+      message.success(`Selected ${files.length} files from folder`)
     }
   }
 
-  const renderLlamaCppParameters = () => (
-    <>
-      <Title level={5}>{t('modelProviders.parameters')}</Title>
-
-      <Form.Item
-        label={t('modelProviders.contextSize')}
-        name={['parameters', 'contextSize']}
-        help={t('modelProviders.contextSizeHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.contextSizePlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.gpuLayers')}
-        name={['parameters', 'gpuLayers']}
-        help={t('modelProviders.nglHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.gpuLayersPlaceholder')}
-          style={{ width: '100%' }}
-          min={-1}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.temperature')}
-        name={['parameters', 'temperature']}
-        help={t('modelProviders.temperatureHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.temperaturePlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-          max={2}
-          step={0.1}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.topK')}
-        name={['parameters', 'topK']}
-        help={t('modelProviders.topKHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.topKPlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.topP')}
-        name={['parameters', 'topP']}
-        help={t('modelProviders.topPHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.topPPlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-          max={1}
-          step={0.1}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.minP')}
-        name={['parameters', 'minP']}
-        help={t('modelProviders.minPHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.minPPlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-          max={1}
-          step={0.1}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.repeatLastN')}
-        name={['parameters', 'repeatLastN']}
-        help={t('modelProviders.repeatLastNHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.repeatLastNPlaceholder')}
-          style={{ width: '100%' }}
-          min={-1}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.repeatPenalty')}
-        name={['parameters', 'repeatPenalty']}
-        help={t('modelProviders.repeatPenaltyHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.repeatPenaltyPlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-          max={2}
-          step={0.1}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.presencePenalty')}
-        name={['parameters', 'presencePenalty']}
-        help={t('modelProviders.presencePenaltyHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.presencePenaltyPlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-          max={2}
-          step={0.1}
-        />
-      </Form.Item>
-
-      <Form.Item
-        label={t('modelProviders.frequencyPenalty')}
-        name={['parameters', 'frequencyPenalty']}
-        help={t('modelProviders.frequencyPenaltyHelp')}
-      >
-        <InputNumber
-          placeholder={t('modelProviders.frequencyPenaltyPlaceholder')}
-          style={{ width: '100%' }}
-          min={0}
-          max={2}
-          step={0.1}
-        />
-      </Form.Item>
-    </>
-  )
+  const handleFileFormatChange = (value: string) => {
+    setSelectedFileFormat(value)
+    // For now, just update the format - validation can be added later
+    console.log(
+      'File format changed to:',
+      value,
+      'Current format:',
+      selectedFileFormat,
+    )
+  }
 
   return (
     <Modal
@@ -237,146 +242,211 @@ export function AddModelModal({
         form={form}
         layout="vertical"
         initialValues={{
+          architecture: DEFAULT_CANDLE_ARCHITECTURE,
+          file_format: DEFAULT_CANDLE_FILE_TYPE,
+          model_source: 'upload',
+          local_folder_path: '',
+          local_filename: '',
           parameters: {
-            contextSize: 8192,
-            gpuLayers: 100,
-            temperature: 0.6,
-            topK: 40,
-            topP: 0.9,
-            minP: 0.1,
-            repeatLastN: 64,
-            repeatPenalty: 1.0,
-            presencePenalty: 0.0,
-            frequencyPenalty: 0.0,
+            temperature: 0.7,
+            top_p: 0.9,
+            top_k: 50,
+            max_tokens: 512,
+            repeat_penalty: 1.1,
+            repeat_last_n: 64,
           },
         }}
       >
-        <Form.Item
-          name="name"
-          label={t('modelProviders.modelId')}
-          rules={[
-            { required: true, message: t('modelProviders.enterModelId') },
-          ]}
-          help={t('modelProviders.modelIdHelp')}
-        >
-          <Input placeholder={t('modelProviders.modelIdPlaceholder')} />
-        </Form.Item>
-
-        <Form.Item
-          name="alias"
-          label={t('modelProviders.displayName')}
-          rules={[
-            { required: true, message: t('modelProviders.enterDisplayName') },
-          ]}
-          help={t('modelProviders.displayNameHelp')}
-        >
-          <Input placeholder={t('modelProviders.displayNamePlaceholder')} />
-        </Form.Item>
-
-        <Form.Item name="description" label={t('modelProviders.description')}>
-          <TextArea
-            placeholder={t('modelProviders.descriptionPlaceholder')}
-            rows={3}
-          />
-        </Form.Item>
+        <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
 
         {providerType === 'candle' && (
           <Form.Item
-            name="path"
-            label={t('modelProviders.modelPath')}
+            name="architecture"
+            label={t('modelProviders.modelArchitecture')}
             rules={[
               {
                 required: true,
-                message: t('modelProviders.selectModelFileRequired'),
+                message: t('modelProviders.modelArchitectureRequired'),
               },
             ]}
           >
-            <Input
-              placeholder={t('modelProviders.selectModelFile')}
-              addonAfter={
-                <Upload
-                  showUploadList={false}
-                  beforeUpload={() => false}
-                  onChange={handleFileSelect}
-                >
-                  <Button icon={<UploadOutlined />} size="small">
-                    {t('modelProviders.browse')}
-                  </Button>
-                </Upload>
-              }
+            <Select
+              placeholder={t('modelProviders.selectModelArchitecture')}
+              options={CANDLE_ARCHITECTURE_OPTIONS.map(option => ({
+                value: option.value,
+                label: (
+                  <div>
+                    <div>{option.label}</div>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: '#666',
+                        marginTop: '2px',
+                      }}
+                    >
+                      {option.description}
+                    </div>
+                  </div>
+                ),
+              }))}
             />
           </Form.Item>
         )}
 
-        <Title level={5}>{t('modelProviders.capabilities')}</Title>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
+        {providerType === 'candle' && (
+          <Form.Item
+            name="model_source"
+            label={t('modelProviders.modelSource')}
+            rules={[
+              {
+                required: true,
+                message: t('modelProviders.modelSourceRequired'),
+              },
+            ]}
           >
-            <span>{t('modelProviders.vision')}</span>
-            <Form.Item
-              name="vision"
-              valuePropName="checked"
-              style={{ marginBottom: 0 }}
+            <Radio.Group
+              onChange={e => setModelSource(e.target.value)}
+              value={modelSource}
             >
-              <Switch />
-            </Form.Item>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>{t('modelProviders.audio')}</span>
-            <Form.Item
-              name="audio"
-              valuePropName="checked"
-              style={{ marginBottom: 0 }}
-            >
-              <Switch />
-            </Form.Item>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>{t('modelProviders.tools')}</span>
-            <Form.Item
-              name="tools"
-              valuePropName="checked"
-              style={{ marginBottom: 0 }}
-            >
-              <Switch />
-            </Form.Item>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span>{t('modelProviders.codeInterpreter')}</span>
-            <Form.Item
-              name="codeInterpreter"
-              valuePropName="checked"
-              style={{ marginBottom: 0 }}
-            >
-              <Switch />
-            </Form.Item>
-          </div>
-        </Space>
+              <Radio value="upload">{t('modelProviders.uploadFile')}</Radio>
+              <Radio value="huggingface">
+                {t('modelProviders.downloadFromHuggingFace')}
+              </Radio>
+            </Radio.Group>
+          </Form.Item>
+        )}
 
-        {providerType === 'candle' && renderLlamaCppParameters()}
+        {providerType === 'candle' && (
+          <Form.Item
+            name="file_format"
+            label={t('modelProviders.fileFormat')}
+            rules={[
+              {
+                required: true,
+                message: t('modelProviders.fileFormatRequired'),
+              },
+            ]}
+          >
+            <Select
+              placeholder={t('modelProviders.selectFileFormat')}
+              onChange={handleFileFormatChange}
+              options={CANDLE_FILE_TYPE_OPTIONS.map(option => ({
+                value: option.value,
+                label: (
+                  <div>
+                    <div>{option.label}</div>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: '#666',
+                        marginTop: '2px',
+                      }}
+                    >
+                      {option.description}
+                    </div>
+                  </div>
+                ),
+              }))}
+            />
+          </Form.Item>
+        )}
+
+        {providerType === 'candle' && modelSource === 'upload' && (
+          <>
+            <Form.Item
+              name="local_folder_path"
+              label={t('modelProviders.localFolderPath')}
+              rules={[
+                {
+                  required: true,
+                  message: t('modelProviders.selectModelFolderRequired'),
+                },
+              ]}
+            >
+              <Input
+                placeholder={t('modelProviders.selectModelFolder')}
+                addonBefore="📁"
+                addonAfter={
+                  <Upload
+                    showUploadList={false}
+                    beforeUpload={() => false}
+                    onChange={handleFolderSelect}
+                    directory
+                    multiple
+                  >
+                    <Button icon={<UploadOutlined />} size="small">
+                      {t('modelProviders.browse')}
+                    </Button>
+                  </Upload>
+                }
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="local_filename"
+              label={t('modelProviders.localFilename')}
+              rules={[
+                {
+                  required: true,
+                  message: t('modelProviders.localFilenameRequired'),
+                },
+              ]}
+              help={t('modelProviders.localFilenameHelp')}
+            >
+              <Input placeholder="pytorch_model.bin" />
+            </Form.Item>
+          </>
+        )}
+
+        {providerType === 'candle' && modelSource === 'huggingface' && (
+          <>
+            <Form.Item
+              name="hf_repo"
+              label={t('modelProviders.huggingFaceRepo')}
+              rules={[
+                {
+                  required: true,
+                  message: t('modelProviders.huggingFaceRepoRequired'),
+                },
+                {
+                  pattern: /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+$/,
+                  message: t('modelProviders.huggingFaceRepoFormat'),
+                },
+              ]}
+            >
+              <Input placeholder="microsoft/DialoGPT-medium" addonBefore="🤗" />
+            </Form.Item>
+
+            <Form.Item
+              name="hf_filename"
+              label={t('modelProviders.huggingFaceFilename')}
+              rules={[
+                {
+                  required: true,
+                  message: t('modelProviders.huggingFaceFilenameRequired'),
+                },
+              ]}
+            >
+              <Input placeholder="pytorch_model.bin" />
+            </Form.Item>
+
+            <Form.Item
+              name="hf_branch"
+              label={t('modelProviders.huggingFaceBranch')}
+            >
+              <Input placeholder="main" />
+            </Form.Item>
+          </>
+        )}
+
+        <ModelCapabilitiesSection />
+
+        {providerType === 'candle' && (
+          <ModelParametersSection
+            title={t('modelProviders.parameters')}
+            parameters={CANDLE_PARAMETERS}
+          />
+        )}
       </Form>
     </Modal>
   )

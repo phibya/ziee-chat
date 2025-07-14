@@ -8,12 +8,10 @@ import {
   Flex,
   Form,
   Input,
-  InputNumber,
   Layout,
   List,
   Menu,
   Modal,
-  Select,
   Space,
   Spin,
   Switch,
@@ -45,6 +43,7 @@ import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
 import { ModelProviderProxySettingsForm } from './ModelProviderProxySettings'
+import { CandleConfigurationSection } from './shared/CandleConfigurationSection'
 import { useModelProvidersStore } from '../../../../store/modelProviders'
 
 const { Title, Text } = Typography
@@ -80,6 +79,8 @@ export function ModelProvidersSettings() {
     deleteModel,
     startModel,
     stopModel,
+    enableModel,
+    disableModel,
     clearError,
   } = useModelProvidersStore(
     useShallow(state => ({
@@ -99,6 +100,8 @@ export function ModelProvidersSettings() {
       deleteModel: state.deleteModel,
       startModel: state.startModel,
       stopModel: state.stopModel,
+      enableModel: state.enableModel,
+      disableModel: state.disableModel,
       clearError: state.clearError,
     })),
   )
@@ -436,7 +439,11 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      await updateModel(modelId, { enabled })
+      if (enabled) {
+        await enableModel(modelId)
+      } else {
+        await disableModel(modelId)
+      }
 
       // Check if this was the last enabled model being disabled
       if (!enabled) {
@@ -571,31 +578,6 @@ export function ModelProvidersSettings() {
       label: <Typography.Text>Add Provider</Typography.Text>,
     })
   }
-
-  const ResponsiveConfigItem = ({
-    title,
-    description,
-    children,
-  }: {
-    title: string
-    description: string
-    children: React.ReactNode
-  }) => (
-    <Flex
-      justify="space-between"
-      align={isMobile ? 'flex-start' : 'center'}
-      vertical={isMobile}
-      gap={isMobile ? 'small' : 0}
-    >
-      <div style={{ flex: isMobile ? undefined : 1 }}>
-        <Text strong>{title}</Text>
-        <div>
-          <Text type="secondary">{description}</Text>
-        </div>
-      </div>
-      {children}
-    </Flex>
-  )
 
   const ProviderMenu = () => (
     <Menu
@@ -986,208 +968,11 @@ export function ModelProvidersSettings() {
                 )
               }
             >
-              <Space
-                direction="vertical"
-                size="middle"
-                style={{ width: '100%' }}
-              >
-                <ResponsiveConfigItem
-                  title={t('modelProviders.autoUnloadOldModels')}
-                  description={t('modelProviders.autoUnloadDescription')}
-                >
-                  <Form.Item
-                    name="autoUnloadOldModels"
-                    valuePropName="checked"
-                    style={{ margin: 0 }}
-                  >
-                    <Switch disabled={!canEditProviders} />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.contextShift')}
-                  description={t('modelProviders.contextShiftDescription')}
-                >
-                  <Form.Item
-                    name="contextShift"
-                    valuePropName="checked"
-                    style={{ margin: 0 }}
-                  >
-                    <Switch disabled={!canEditProviders} />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.continuousBatching')}
-                  description={t(
-                    'modelProviders.continuousBatchingDescription',
-                  )}
-                >
-                  <Form.Item
-                    name="continuousBatching"
-                    valuePropName="checked"
-                    style={{ margin: 0 }}
-                  >
-                    <Switch disabled={!canEditProviders} />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.parallelOperations')}
-                  description={t(
-                    'modelProviders.parallelOperationsDescription',
-                  )}
-                >
-                  <Form.Item
-                    name="parallelOperations"
-                    style={{ margin: 0, width: isMobile ? '100%' : 100 }}
-                  >
-                    <InputNumber
-                      min={1}
-                      max={16}
-                      style={{ width: '100%' }}
-                      disabled={!canEditProviders}
-                    />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.cpuThreads')}
-                  description={t('modelProviders.cpuThreadsDescription')}
-                >
-                  <Form.Item
-                    name="cpuThreads"
-                    style={{ margin: 0, width: isMobile ? '100%' : 100 }}
-                  >
-                    <InputNumber
-                      placeholder={t('modelProviders.autoPlaceholder')}
-                      style={{ width: '100%' }}
-                      disabled={!canEditProviders}
-                    />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.threadsBatch')}
-                  description={t('modelProviders.threadsBatchDescription')}
-                >
-                  <Form.Item
-                    name="threadsBatch"
-                    style={{ margin: 0, width: isMobile ? '100%' : 100 }}
-                  >
-                    <InputNumber
-                      placeholder={t('modelProviders.sameAsThreadsPlaceholder')}
-                      style={{ width: '100%' }}
-                      disabled={!canEditProviders}
-                    />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.flashAttention')}
-                  description={t('modelProviders.flashAttentionDescription')}
-                >
-                  <Form.Item
-                    name="flashAttention"
-                    valuePropName="checked"
-                    style={{ margin: 0 }}
-                  >
-                    <Switch disabled={!canEditProviders} />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.caching')}
-                  description={t('modelProviders.cachingDescription')}
-                >
-                  <Form.Item
-                    name="caching"
-                    valuePropName="checked"
-                    style={{ margin: 0 }}
-                  >
-                    <Switch disabled={!canEditProviders} />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.kvCacheType')}
-                  description={t('modelProviders.kvCacheTypeDescription')}
-                >
-                  <Form.Item
-                    name="kvCacheType"
-                    style={{ margin: 0, width: isMobile ? '100%' : 100 }}
-                  >
-                    <Select
-                      style={{ width: '100%' }}
-                      disabled={!canEditProviders}
-                      options={[
-                        { value: 'q8_0', label: 'q8_0' },
-                        { value: 'q4_0', label: 'q4_0' },
-                        { value: 'q4_1', label: 'q4_1' },
-                        { value: 'q5_0', label: 'q5_0' },
-                        { value: 'q5_1', label: 'q5_1' },
-                      ]}
-                    />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <ResponsiveConfigItem
-                  title={t('modelProviders.mmap')}
-                  description={t('modelProviders.mmapDescription')}
-                >
-                  <Form.Item
-                    name="mmap"
-                    valuePropName="checked"
-                    style={{ margin: 0 }}
-                  >
-                    <Switch disabled={!canEditProviders} />
-                  </Form.Item>
-                </ResponsiveConfigItem>
-
-                <Divider style={{ margin: 0 }} />
-
-                <div>
-                  <Text strong>Hugging Face Access Token</Text>
-                  <div>
-                    <Text type="secondary">
-                      Access tokens programmatically authenticate your identity
-                      to the Hugging Face Hub, allowing applications to perform
-                      specific actions specified by the scope of permissions
-                      granted.
-                    </Text>
-                  </div>
-                  <Form.Item
-                    name="huggingFaceAccessToken"
-                    style={{ marginTop: 8, marginBottom: 0 }}
-                  >
-                    <Input.Password
-                      placeholder={t(
-                        'modelProviders.huggingfaceTokenPlaceholder',
-                      )}
-                      style={{ width: '100%' }}
-                      disabled={!canEditProviders}
-                    />
-                  </Form.Item>
-                </div>
-              </Space>
+              <CandleConfigurationSection
+                disabled={!canEditProviders}
+                useNestedSettings={false}
+                wrapInCard={false}
+              />
             </Card>
           </Form>
         )}
@@ -1266,6 +1051,7 @@ export function ModelProvidersSettings() {
 
       <AddModelModal
         open={isAddModelModalOpen}
+        providerId={selectedProvider}
         providerType={currentProvider?.type || 'custom'}
         onClose={() => setIsAddModelModalOpen(false)}
         onSubmit={handleAddModel}

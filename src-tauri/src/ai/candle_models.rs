@@ -35,7 +35,6 @@ impl LlamaModelWrapper {
         })
     }
 
-    #[allow(dead_code)]
     pub fn load_tokenizer(model_path: &str) -> Result<Tokenizer, CandleError> {
         let tokenizer_path = Path::new(model_path).join("tokenizer.json");
         Tokenizer::from_file(&tokenizer_path)
@@ -62,10 +61,8 @@ impl CandleModel for LlamaModelWrapper {
 }
 
 /// Model factory for creating different model types
-#[allow(dead_code)]
 pub struct ModelFactory;
 
-#[allow(dead_code)]
 impl ModelFactory {
     pub fn create_model(
         model_type: &str,
@@ -93,10 +90,8 @@ impl ModelFactory {
 }
 
 /// Utility functions for model management
-#[allow(dead_code)]
 pub struct ModelUtils;
 
-#[allow(dead_code)]
 impl ModelUtils {
     /// Check if a model exists at the given path
     pub fn model_exists(model_path: &str) -> bool {

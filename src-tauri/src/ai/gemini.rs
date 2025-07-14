@@ -16,8 +16,6 @@ pub struct GeminiProvider {
     client: Client,
     api_key: String,
     base_url: String,
-    #[allow(dead_code)] // Stored for debugging and potential future use
-    proxy_config: Option<ProxyConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -87,7 +85,6 @@ impl GeminiProvider {
             client,
             api_key,
             base_url,
-            proxy_config,
         })
     }
 
