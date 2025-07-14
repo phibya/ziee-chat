@@ -4,6 +4,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
+use super::provider_base::build_http_client;
 use super::providers::{
     AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
     StreamingResponse, Usage,
@@ -60,40 +61,8 @@ impl AnthropicProvider {
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let mut client_builder = Client::builder();
-
-        // Configure proxy if provided
-        if let Some(proxy) = &proxy_config {
-            if proxy.enabled && !proxy.url.is_empty() {
-                // Check if the base URL should bypass proxy based on no_proxy list
-                let should_use_proxy = if let Ok(url) = reqwest::Url::parse(&base_url.clone().unwrap_or_else(|| "https://api.anthropic.com".to_string())) {
-                    !proxy.no_proxy.iter().any(|no_proxy_host| {
-                        url.host_str()
-                            .map(|host| host.contains(no_proxy_host) || no_proxy_host.contains(host))
-                            .unwrap_or(false)
-                    })
-                } else {
-                    true // If URL parsing fails, use proxy by default
-                };
-
-                if should_use_proxy {
-                    let mut proxy_builder = reqwest::Proxy::all(&proxy.url)?;
-
-                    if let (Some(username), Some(password)) = (&proxy.username, &proxy.password) {
-                        proxy_builder = proxy_builder.basic_auth(username, password);
-                    }
-
-                    client_builder = client_builder.proxy(proxy_builder);
-                }
-            }
-
-            if proxy.ignore_ssl_certificates {
-                client_builder = client_builder.danger_accept_invalid_certs(true);
-            }
-        }
-
-        let client = client_builder.build()?;
         let base_url = base_url.unwrap_or_else(|| "https://api.anthropic.com".to_string());
+        let client = build_http_client(&base_url, proxy_config.as_ref())?;
 
         Ok(Self {
             client,

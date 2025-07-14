@@ -13,6 +13,10 @@ use uuid::Uuid;
 
 use crate::ai::{
     anthropic::AnthropicProvider,
+    custom::CustomProvider,
+    gemini::GeminiProvider,
+    groq::GroqProvider,
+    mistral::MistralProvider,
     openai::OpenAIProvider,
     providers::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
 };
@@ -1002,6 +1006,38 @@ fn create_ai_provider(
                 proxy_config,
             )?;
             Ok(Box::new(anthropic_provider))
+        }
+        "groq" => {
+            let groq_provider = GroqProvider::new(
+                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
+                provider.base_url.clone(),
+                proxy_config,
+            )?;
+            Ok(Box::new(groq_provider))
+        }
+        "gemini" => {
+            let gemini_provider = GeminiProvider::new(
+                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
+                provider.base_url.clone(),
+                proxy_config,
+            )?;
+            Ok(Box::new(gemini_provider))
+        }
+        "mistral" => {
+            let mistral_provider = MistralProvider::new(
+                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
+                provider.base_url.clone(),
+                proxy_config,
+            )?;
+            Ok(Box::new(mistral_provider))
+        }
+        "custom" => {
+            let custom_provider = CustomProvider::new(
+                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
+                provider.base_url.clone(),
+                proxy_config,
+            )?;
+            Ok(Box::new(custom_provider))
         }
         _ => Err(format!("Unsupported provider type: {}", provider.provider_type).into()),
     }

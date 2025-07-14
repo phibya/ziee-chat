@@ -6,22 +6,23 @@ use super::providers::{
 };
 
 #[derive(Debug, Clone)]
-pub struct OpenAIProvider {
+pub struct CustomProvider {
     inner: OpenAICompatibleProvider,
 }
 
-impl OpenAIProvider {
+impl CustomProvider {
     pub fn new(
         api_key: String,
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let base_url = base_url.unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+        // Default to localhost for custom providers
+        let base_url = base_url.unwrap_or_else(|| "http://localhost:8080".to_string());
         
         let inner = OpenAICompatibleProvider::new(
             api_key,
             base_url,
-            "openai",
+            "custom",
             proxy_config,
         )?;
 
@@ -30,7 +31,7 @@ impl OpenAIProvider {
 }
 
 #[async_trait]
-impl AIProvider for OpenAIProvider {
+impl AIProvider for CustomProvider {
     async fn chat(
         &self,
         request: ChatRequest,

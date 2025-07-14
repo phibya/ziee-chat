@@ -6,22 +6,22 @@ use super::providers::{
 };
 
 #[derive(Debug, Clone)]
-pub struct OpenAIProvider {
+pub struct GroqProvider {
     inner: OpenAICompatibleProvider,
 }
 
-impl OpenAIProvider {
+impl GroqProvider {
     pub fn new(
         api_key: String,
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let base_url = base_url.unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+        let base_url = base_url.unwrap_or_else(|| "https://api.groq.com/openai/v1".to_string());
         
         let inner = OpenAICompatibleProvider::new(
             api_key,
             base_url,
-            "openai",
+            "groq",
             proxy_config,
         )?;
 
@@ -30,7 +30,7 @@ impl OpenAIProvider {
 }
 
 #[async_trait]
-impl AIProvider for OpenAIProvider {
+impl AIProvider for GroqProvider {
     async fn chat(
         &self,
         request: ChatRequest,

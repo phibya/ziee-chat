@@ -1,8 +1,14 @@
 //! AI provider integrations for chat functionality
 //!
-//! This module provides integrations with various AI providers like OpenAI and Anthropic
-//! with support for streaming responses and proxy configurations.
+//! This module provides integrations with various AI providers including OpenAI, Anthropic,
+//! Groq, Gemini, Mistral, and Custom providers with support for streaming responses and proxy configurations.
 
 pub mod anthropic;
+pub mod custom;
+pub mod gemini;
+pub mod groq;
+pub mod mistral;
 pub mod openai;
+pub mod openai_compatible;
+pub mod provider_base;
 pub mod providers;
