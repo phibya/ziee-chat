@@ -33,7 +33,7 @@ export const ChatMessageList = memo(function ChatMessageList() {
   }
 
   return (
-    <Flex className={'flex-col gap-3 w-full'}>
+    <Flex className={'flex-col gap-1 w-full'}>
       {currentMessages.map(msg => (
         <ChatMessage key={msg.id} message={msg} />
       ))}

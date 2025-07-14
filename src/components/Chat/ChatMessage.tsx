@@ -137,14 +137,12 @@ export const ChatMessage = memo(function ChatMessage({
       onClick={() => handleMouseOverOrClick(true)}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={`flex items-center mb-2 ${!isUser ? 'hidden' : ''}`}>
-        <div className="flex items-center">
-          <Avatar size={24} icon={<UserOutlined />} />
-        </div>
+      <div className={`flex mb-0 ${!isUser ? 'hidden' : ''}`}>
+        <Avatar size={24} icon={<UserOutlined />} />
       </div>
 
       {/* Message content */}
-      <Flex className={`${isUser ? '!pt-0.5' : ''} w-full`}>
+      <Flex className={`${isUser ? '!pt-0.5' : ''} flex-1`}>
         {isEditing ? (
           <MessageEditor
             value={editValue}

@@ -336,6 +336,10 @@ pub async fn send_message_stream(
             content: request.content.clone(),
         });
 
+        // Check if this is a new conversation (count messages before moving them)
+        // Count messages excluding system messages (assistant instructions)
+        let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
+
         // Create AI provider
         let ai_provider = match create_ai_provider(&provider) {
             Ok(provider) => provider,
@@ -380,6 +384,26 @@ pub async fn send_message_stream(
                 .unwrap_or_default(),
             )));
             return;
+        }
+
+        // If there's only 1 message (the user message we just added), this is a new conversation
+        // Generate title before streaming the response
+        if user_and_assistant_messages == 1 {
+            let conversation_id = request.conversation_id;
+            let user_id = auth_user.user.id;
+
+            // Then spawn task to generate a better AI-powered title
+            let provider_clone = provider.clone();
+            let model_clone = model.clone();
+            tokio::spawn(async move {
+                let _ = generate_and_update_conversation_title(
+                    conversation_id,
+                    user_id,
+                    &provider_clone,
+                    &model_clone,
+                )
+                .await;
+            });
         }
 
         // Call AI provider with streaming
@@ -432,35 +456,15 @@ pub async fn send_message_stream(
 
                 match chat::send_message(assistant_message_req, auth_user.user.id).await {
                     Ok(assistant_message) => {
-                        // Update conversation title if this is a new conversation (only 1 message - the user message)
-                        let message_count = match chat::count_conversation_messages(
-                            request.conversation_id,
-                            auth_user.user.id,
-                        )
-                        .await
-                        {
-                            Ok(count) => count,
-                            Err(_) => 0,
-                        };
-
-                        // If there's only 1 message (the user message we just saved), this is a new conversation
-                        if message_count == 1 {
-                            let _ = generate_and_update_conversation_title(
-                                request.conversation_id,
-                                auth_user.user.id,
-                                &provider,
-                                &model,
-                            )
-                            .await;
-                        }
-
                         // Send completion event
                         let _ = tx.send(Ok(Event::default().event("complete").data(
                             &serde_json::to_string(&StreamCompleteData {
                                 message_id: assistant_message.id.to_string(),
                                 conversation_id: request.conversation_id.to_string(),
                                 role: assistant_message.role.clone(),
-                                originated_from_id: assistant_message.originated_from_id.map(|id| id.to_string()),
+                                originated_from_id: assistant_message
+                                    .originated_from_id
+                                    .map(|id| id.to_string()),
                                 edit_count: assistant_message.edit_count,
                                 created_at: assistant_message.created_at.to_rfc3339(),
                                 updated_at: assistant_message.updated_at.to_rfc3339(),
@@ -703,7 +707,9 @@ async fn stream_ai_response(
                             message_id: assistant_message.id.to_string(),
                             conversation_id: conversation.id.to_string(),
                             role: assistant_message.role.clone(),
-                            originated_from_id: assistant_message.originated_from_id.map(|id| id.to_string()),
+                            originated_from_id: assistant_message
+                                .originated_from_id
+                                .map(|id| id.to_string()),
                             edit_count: assistant_message.edit_count,
                             created_at: assistant_message.created_at.to_rfc3339(),
                             updated_at: assistant_message.updated_at.to_rfc3339(),
@@ -834,7 +840,10 @@ pub async fn edit_message_stream(
                             message_id: edit_response.message.id.to_string(),
                             conversation_id: edit_response.message.conversation_id.to_string(),
                             role: edit_response.message.role.clone(),
-                            originated_from_id: edit_response.message.originated_from_id.map(|id| id.to_string()),
+                            originated_from_id: edit_response
+                                .message
+                                .originated_from_id
+                                .map(|id| id.to_string()),
                             edit_count: edit_response.message.edit_count,
                             created_at: edit_response.message.created_at.to_rfc3339(),
                             updated_at: edit_response.message.updated_at.to_rfc3339(),

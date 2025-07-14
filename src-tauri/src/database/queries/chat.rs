@@ -374,41 +374,6 @@ pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<
     })
 }
 
-/// Count messages for a conversation's active branch
-pub async fn count_conversation_messages(
-    conversation_id: Uuid,
-    user_id: Uuid,
-) -> Result<i64, Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    // Get the conversation to find active branch
-    let conversation = match get_conversation_by_id(conversation_id, user_id).await? {
-        Some(conv) => conv,
-        None => return Ok(0),
-    };
-
-    // Get the active branch ID
-    let active_branch_id = match conversation.active_branch_id {
-        Some(branch_id) => branch_id,
-        None => return Ok(0), // No active branch means no messages
-    };
-
-    // Count messages for the active branch using branch_messages relationship
-    let row = sqlx::query(
-        r#"
-        SELECT COUNT(*) as count
-        FROM branch_messages
-        WHERE branch_id = $1
-        "#,
-    )
-    .bind(active_branch_id)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(row.get("count"))
-}
-
 /// Get messages for a conversation's active branch
 /// According to CLAUDE.md: Messages belong to branches, not conversations
 pub async fn get_conversation_messages(
@@ -901,7 +866,10 @@ pub async fn auto_update_conversation_title(
 
 /// Get all branches for a message (all branches containing messages with same originated_from_id)
 /// According to CLAUDE.md: Find all items with the same originated_from_id, order by created_at
-pub async fn get_message_branches(message_id: Uuid, user_id: Uuid) -> Result<Vec<MessageBranch>, Error> {
+pub async fn get_message_branches(
+    message_id: Uuid,
+    user_id: Uuid,
+) -> Result<Vec<MessageBranch>, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 

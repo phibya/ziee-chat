@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { App, Button, Input, Modal, Tooltip, Typography } from 'antd'
+import { App, Button, Input, Modal, theme, Tooltip, Typography } from 'antd'
 import {
   DeleteOutlined,
   EditOutlined,
@@ -32,6 +32,7 @@ export function RecentConversations({
   const { message } = App.useApp()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+  const { token } = theme.useToken()
 
   const {
     conversations,
@@ -133,7 +134,7 @@ export function RecentConversations({
   }
 
   return (
-    <div className="flex-1 overflow-auto max-w-42 pl-2">
+    <div className="flex-1 overflow-auto max-w-42 pl-2 flex flex-col gap-1">
       {isLoading ? (
         <div className="text-center">
           <div>{t('common.loading')}</div>
@@ -169,16 +170,21 @@ export function RecentConversations({
                   {conversation.title}
                 </Typography.Text>
 
-                {/* Last message preview */}
-                {conversation.last_message && (
-                  <Typography.Text type="secondary" ellipsis>
-                    {conversation.last_message.substring(0, 50)}
-                    {conversation.last_message.length > 50 ? '...' : ''}
-                  </Typography.Text>
-                )}
+                {/*/!* Last message preview *!/*/}
+                {/*{conversation.last_message && (*/}
+                {/*  <Typography.Text type="secondary" ellipsis>*/}
+                {/*    {conversation.last_message.substring(0, 50)}*/}
+                {/*    {conversation.last_message.length > 50 ? '...' : ''}*/}
+                {/*  </Typography.Text>*/}
+                {/*)}*/}
 
                 {/* Action buttons - only visible on hover */}
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 flex">
+                <div
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 flex rounded"
+                  style={{
+                    backgroundColor: token.colorBgContainer,
+                  }}
+                >
                   <Tooltip title={t('conversations.rename')}>
                     <Button
                       size="small"

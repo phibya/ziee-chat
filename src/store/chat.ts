@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { Conversation, Message, MessageBranch } from '../types/api/chat'
+import { useConversationsStore } from './conversations.ts'
 
 export interface ChatState {
   // Current conversation state
@@ -97,6 +98,18 @@ export const useChatStore = create<ChatState>()(
           const conversation = await ApiClient.Chat.getConversation({
             conversation_id: conversationId,
           })
+
+          useConversationsStore.setState(state => ({
+            conversations: state.conversations.map(conv => {
+              if (conv.id === conversationId) {
+                return {
+                  ...conv,
+                  title: conversation.title || conv.title,
+                }
+              }
+              return conv
+            }),
+          }))
 
           if (loadMessages) {
             // Load messages only if requested
