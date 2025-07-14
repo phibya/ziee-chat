@@ -38,8 +38,8 @@ interface ModelProvidersState {
   addModel: (providerId: string, data: Partial<Model>) => Promise<Model>
   updateModel: (modelId: string, data: Partial<Model>) => Promise<Model>
   deleteModel: (modelId: string) => Promise<void>
-  startModel: (modelId: string) => Promise<void> // For Llama.cpp
-  stopModel: (modelId: string) => Promise<void> // For Llama.cpp
+  startModel: (modelId: string) => Promise<void> // For Candle
+  stopModel: (modelId: string) => Promise<void> // For Candle
 
   // Proxy actions
   testProxy: (providerId: string) => Promise<boolean>

@@ -282,7 +282,7 @@ export function EditModelModal({
           />
         </Form.Item>
 
-        {providerType === 'llama.cpp' && (
+        {providerType === 'candle' && (
           <Form.Item
             name="path"
             label={t('modelProviders.modelPath')}
@@ -378,7 +378,7 @@ export function EditModelModal({
           </div>
         </Space>
 
-        {providerType === 'llama.cpp' && renderLlamaCppParameters()}
+        {providerType === 'candle' && renderLlamaCppParameters()}
       </Form>
     </Modal>
   )

@@ -215,7 +215,7 @@ export function SettingsPage() {
       <div className={'p-2.5'}>
         <Title level={4} style={{ margin: 0 }}>
           <SettingOutlined style={{ marginRight: 8 }} />
-          Settings
+          {t('settings.title')}
         </Title>
       </div>
       <Menu
@@ -242,7 +242,7 @@ export function SettingsPage() {
           />
           <Title level={4} style={{ margin: 0 }}>
             <SettingOutlined style={{ marginRight: 8 }} />
-            Settings
+            {t('settings.title')}
           </Title>
           <div className="w-8" />
         </div>

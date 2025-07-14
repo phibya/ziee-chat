@@ -83,7 +83,7 @@ pub async fn create_model_provider(
 ) -> ApiResult<Json<ModelProvider>> {
     // Validate provider type
     let valid_types = [
-        "llama.cpp",
+        "candle",
         "openai",
         "anthropic",
         "groq",
@@ -95,9 +95,9 @@ pub async fn create_model_provider(
         return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput, "Invalid request"));
     }
 
-    // Validate requirements for enabling non-llama.cpp providers
+    // Validate requirements for enabling non-candle providers
     if let Some(true) = request.enabled {
-        if request.provider_type != "llama.cpp" {
+        if request.provider_type != "candle" {
             // Check API key
             if request.api_key.is_none() || request.api_key.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: API key is required");
@@ -145,7 +145,7 @@ pub async fn update_model_provider(
         match model_providers::get_model_provider_by_id(provider_id).await {
             Ok(Some(current_provider)) => {
                 // Check if provider type requires API key and base URL
-                if current_provider.provider_type != "llama.cpp" {
+                if current_provider.provider_type != "candle" {
                     // Check API key
                     let api_key = request
                         .api_key

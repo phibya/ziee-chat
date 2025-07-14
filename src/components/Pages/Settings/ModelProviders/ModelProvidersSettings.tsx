@@ -51,7 +51,7 @@ const { Title, Text } = Typography
 const { Sider, Content } = Layout
 
 const PROVIDER_ICONS: Record<ModelProviderType, string> = {
-  'llama.cpp': '🦙',
+  candle: '🕯',
   openai: '🤖',
   anthropic: '🤖',
   groq: '⚡',
@@ -150,7 +150,7 @@ export function ModelProvidersSettings() {
   const canEnableProvider = (provider: ModelProvider): boolean => {
     if (provider.enabled) return true // Already enabled
     if (provider.models.length === 0) return false
-    if (provider.type === 'llama.cpp') return true
+    if (provider.type === 'candle') return true
     if (!provider.api_key || provider.api_key.trim() === '') return false
     if (!provider.base_url || provider.base_url.trim() === '') return false
     try {
@@ -165,7 +165,7 @@ export function ModelProvidersSettings() {
     if (provider.enabled) return null
     if (provider.models.length === 0)
       return 'No models available. Add at least one model first.'
-    if (provider.type === 'llama.cpp') return null
+    if (provider.type === 'candle') return null
     if (!provider.api_key || provider.api_key.trim() === '')
       return 'API key is required'
     if (!provider.base_url || provider.base_url.trim() === '')
@@ -236,14 +236,14 @@ export function ModelProvidersSettings() {
               `Cannot enable "${provider.name}" - No models available`,
             )
           } else if (
-            provider.type !== 'llama.cpp' &&
+            provider.type !== 'candle' &&
             (!provider.api_key || provider.api_key.trim() === '')
           ) {
             message.error(
               `Cannot enable "${provider.name}" - API key is required`,
             )
           } else if (
-            provider.type !== 'llama.cpp' &&
+            provider.type !== 'candle' &&
             (!provider.base_url || provider.base_url.trim() === '')
           ) {
             message.error(
@@ -479,7 +479,7 @@ export function ModelProvidersSettings() {
   }
 
   const handleStartStopModel = async (modelId: string, isActive: boolean) => {
-    if (!currentProvider || currentProvider.type !== 'llama.cpp') return
+    if (!currentProvider || currentProvider.type !== 'candle') return
 
     try {
       if (isActive) {
@@ -741,7 +741,7 @@ export function ModelProvidersSettings() {
         )}
 
         {/* API Configuration */}
-        {currentProvider.type !== 'llama.cpp' && (
+        {currentProvider.type !== 'candle' && (
           <Form
             form={form}
             layout="vertical"
@@ -840,7 +840,7 @@ export function ModelProvidersSettings() {
             )
           }
         >
-          {currentProvider.type === 'llama.cpp' && (
+          {currentProvider.type === 'candle' && (
             <Flex
               justify="space-between"
               align={isMobile ? 'flex-start' : 'center'}
@@ -868,7 +868,7 @@ export function ModelProvidersSettings() {
                 actions={
                   canEditProviders
                     ? [
-                        currentProvider.type === 'llama.cpp' &&
+                        currentProvider.type === 'candle' &&
                           currentProvider.enabled && (
                             <Button
                               key="start-stop"
@@ -954,8 +954,8 @@ export function ModelProvidersSettings() {
           />
         </Card>
 
-        {/* Proxy Settings - For non-Llama.cpp providers */}
-        {currentProvider.type !== 'llama.cpp' &&
+        {/* Proxy Settings - For non-Candle providers */}
+        {currentProvider.type !== 'candle' &&
           currentProvider.proxy_settings && (
             <ModelProviderProxySettingsForm
               providerId={currentProvider.id}
@@ -965,8 +965,8 @@ export function ModelProvidersSettings() {
             />
           )}
 
-        {/* Llama.cpp Specific Settings */}
-        {currentProvider.type === 'llama.cpp' && currentProvider.settings && (
+        {/* Candle Specific Settings */}
+        {currentProvider.type === 'candle' && currentProvider.settings && (
           <Form
             layout="vertical"
             initialValues={currentProvider.settings}

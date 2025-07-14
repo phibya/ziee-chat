@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::ai::{
     anthropic::AnthropicProvider,
+    candle::CandleProvider,
     custom::CustomProvider,
     gemini::GeminiProvider,
     groq::GroqProvider,
@@ -1038,6 +1039,15 @@ fn create_ai_provider(
                 proxy_config,
             )?;
             Ok(Box::new(custom_provider))
+        }
+        "candle" => {
+            let candle_provider = CandleProvider::new(
+                provider.base_url.clone().unwrap_or_else(|| "./models".to_string()), // model_path
+                "llama".to_string(), // model_type - could be made configurable
+                crate::ai::candle::DeviceType::Cpu, // device_type - could be made configurable
+                proxy_config,
+            )?;
+            Ok(Box::new(candle_provider))
         }
         _ => Err(format!("Unsupported provider type: {}", provider.provider_type).into()),
     }

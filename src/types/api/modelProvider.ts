@@ -11,7 +11,7 @@ export interface ModelCapabilities {
 }
 
 export interface ModelParameters {
-  // Llama.cpp specific parameters
+  // Candle specific parameters
   contextSize?: number
   gpuLayers?: number
   temperature?: number
@@ -29,7 +29,7 @@ export interface ModelProviderModel {
   name: string
   alias: string
   description?: string
-  path?: string // For Llama.cpp models
+  path?: string // For Candle models
   isDeprecated?: boolean
   isActive?: boolean
   enabled?: boolean
@@ -38,7 +38,7 @@ export interface ModelProviderModel {
 }
 
 export interface ModelProviderSettings {
-  // Llama.cpp specific settings
+  // Candle specific settings
   autoUnloadOldModels?: boolean
   contextShift?: boolean
   continuousBatching?: boolean
@@ -85,7 +85,7 @@ export interface ModelProvider {
 }
 
 export type ModelProviderType =
-  | 'llama.cpp'
+  | 'candle'
   | 'openai'
   | 'anthropic'
   | 'groq'

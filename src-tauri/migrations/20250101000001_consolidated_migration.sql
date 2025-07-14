@@ -115,7 +115,7 @@ CREATE TABLE configurations (
 CREATE TABLE model_providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    provider_type VARCHAR(50) NOT NULL CHECK (provider_type IN ('llama.cpp', 'openai', 'anthropic', 'groq', 'gemini', 'mistral', 'custom')),
+    provider_type VARCHAR(50) NOT NULL CHECK (provider_type IN ('candle', 'openai', 'anthropic', 'groq', 'gemini', 'mistral', 'custom')),
     enabled BOOLEAN DEFAULT FALSE,
     api_key TEXT,
     base_url VARCHAR(512),
@@ -151,10 +151,10 @@ CREATE TABLE model_provider_models (
     name VARCHAR(255) NOT NULL,
     alias VARCHAR(255) NOT NULL,
     description TEXT,
-    path VARCHAR(1024), -- For llama.cpp models
+    path VARCHAR(1024), -- For candle models
     enabled BOOLEAN DEFAULT TRUE,
     is_deprecated BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT FALSE, -- For llama.cpp start/stop state
+    is_active BOOLEAN DEFAULT FALSE, -- For candle start/stop state
     capabilities JSONB DEFAULT '{}',
     parameters JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -526,7 +526,7 @@ VALUES (
 
 -- Insert default model providers
 INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url, settings) VALUES
-('Llama.cpp', 'llama.cpp', false, true, null, '{"autoUnloadOldModels": true, "contextShift": false, "continuousBatching": false, "parallelOperations": 1, "cpuThreads": -1, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true, "huggingFaceAccessToken": ""}'),
+('Candle', 'candle', false, true, null, '{"autoUnloadOldModels": true, "contextShift": false, "continuousBatching": false, "parallelOperations": 1, "cpuThreads": -1, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true, "huggingFaceAccessToken": ""}'),
 ('OpenAI', 'openai', false, true, 'https://api.openai.com/v1', '{}'),
 ('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1', '{}'),
 ('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1', '{}'),
@@ -561,10 +561,10 @@ COMMENT ON TABLE project_conversations IS 'Links conversations to projects';
 COMMENT ON COLUMN user_groups.permissions IS 'AWS-style permissions stored as JSON array. Supports wildcards like "users::*", "groups::*", and "*"';
 COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g., "appearance.theme", "appearance.fontSize")';
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
-COMMENT ON COLUMN model_providers.provider_type IS 'Type of provider: llama.cpp, openai, anthropic, groq, gemini, mistral, custom';
-COMMENT ON COLUMN model_provider_models.path IS 'File path for llama.cpp models';
+COMMENT ON COLUMN model_providers.provider_type IS 'Type of provider: candle, openai, anthropic, groq, gemini, mistral, custom';
+COMMENT ON COLUMN model_provider_models.path IS 'File path for candle models';
 COMMENT ON COLUMN model_provider_models.alias IS 'User-friendly display name for the model';
-COMMENT ON COLUMN model_provider_models.is_active IS 'Whether the model is currently running (for llama.cpp models)';
+COMMENT ON COLUMN model_provider_models.is_active IS 'Whether the model is currently running (for candle models)';
 COMMENT ON COLUMN model_providers.proxy_enabled IS 'Whether proxy is enabled for this provider';
 COMMENT ON COLUMN model_providers.proxy_url IS 'Proxy URL for this provider';
 COMMENT ON COLUMN model_providers.proxy_username IS 'Proxy username for authentication';

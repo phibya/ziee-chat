@@ -4,6 +4,9 @@
 //! Groq, Gemini, Mistral, and Custom providers with support for streaming responses and proxy configurations.
 
 pub mod anthropic;
+pub mod candle;
+pub mod candle_config;
+pub mod candle_models;
 pub mod custom;
 pub mod gemini;
 pub mod groq;

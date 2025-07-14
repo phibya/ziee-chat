@@ -23,7 +23,7 @@ export interface ProviderDefaults {
 }
 
 export const SUPPORTED_PROVIDERS: ProviderOption[] = [
-  { value: 'llama.cpp', label: 'Llama.cpp' },
+  { value: 'candle', label: 'Candle' },
   { value: 'openai', label: 'OpenAI' },
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'groq', label: 'Groq' },
@@ -48,7 +48,7 @@ export const PROVIDER_DEFAULTS: Record<ModelProviderType, ProviderDefaults> = {
   mistral: {
     base_url: 'https://api.mistral.ai',
   },
-  'llama.cpp': {
+  candle: {
     settings: {
       autoUnloadOldModels: true,
       contextShift: false,

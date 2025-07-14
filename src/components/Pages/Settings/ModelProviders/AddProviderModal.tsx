@@ -36,8 +36,7 @@ export function AddProviderModal({
 }: AddProviderModalProps) {
   const { t } = useTranslation()
   const [form] = Form.useForm()
-  const [providerType, setProviderType] =
-    useState<ModelProviderType>('llama.cpp')
+  const [providerType, setProviderType] = useState<ModelProviderType>('candle')
 
   const handleSubmit = async () => {
     try {
@@ -77,9 +76,9 @@ export function AddProviderModal({
         form={form}
         layout="vertical"
         initialValues={{
-          type: 'llama.cpp',
+          type: 'candle',
           enabled: true,
-          ...getDefaultValues('llama.cpp'),
+          ...getDefaultValues('candle'),
         }}
       >
         <Form.Item
@@ -120,8 +119,8 @@ export function AddProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-llama.cpp providers */}
-        {providerType !== 'llama.cpp' && (
+        {/* API Configuration for non-candle providers */}
+        {providerType !== 'candle' && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title={t('modelProviders.apiConfiguration')}>
               <Form.Item
@@ -158,9 +157,9 @@ export function AddProviderModal({
           </Space>
         )}
 
-        {/* Llama.cpp Configuration */}
-        {providerType === 'llama.cpp' && (
-          <Card size="small" title={t('modelProviders.llamaCppConfiguration')}>
+        {/* Candle Configuration */}
+        {providerType === 'candle' && (
+          <Card size="small" title={t('modelProviders.candleConfiguration')}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Form.Item
                 name={['settings', 'autoUnloadOldModels']}

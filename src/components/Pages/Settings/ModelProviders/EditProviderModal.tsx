@@ -93,8 +93,8 @@ export function EditProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-llama.cpp providers */}
-        {provider.type !== 'llama.cpp' && (
+        {/* API Configuration for non-candle providers */}
+        {provider.type !== 'candle' && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title={t('modelProviders.apiConfiguration')}>
               <Form.Item
@@ -131,9 +131,9 @@ export function EditProviderModal({
           </Space>
         )}
 
-        {/* Llama.cpp Configuration */}
-        {provider.type === 'llama.cpp' && (
-          <Card size="small" title={t('modelProviders.llamaCppConfiguration')}>
+        {/* Candle Configuration */}
+        {provider.type === 'candle' && (
+          <Card size="small" title={t('modelProviders.candleConfiguration')}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Form.Item
                 name={['settings', 'autoUnloadOldModels']}

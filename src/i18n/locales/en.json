@@ -103,27 +103,19 @@
     "description": "Configure your chat application preferences",
     "save": "Save Settings",
     "reset": "Reset to Defaults",
-    "general": {
-      "title": "General Settings",
-      "defaultModel": "Default Model",
-      "theme": "Theme",
-      "language": "Language",
-      "componentSize": "Component Size",
-      "themes": {
-        "light": "Light",
-        "dark": "Dark",
-        "auto": "Auto"
-      },
-      "languages": {
-        "en": "English",
-        "vi": "Tiếng Việt"
-      },
-      "componentSizes": {
-        "small": "Small",
-        "middle": "Medium",
-        "large": "Large"
-      }
-    },
+    "general": "General",
+    "appearance": "Appearance",
+    "privacy": "Privacy",
+    "modelProviders": "Model Providers",
+    "shortcuts": "Shortcuts",
+    "hardware": "Hardware",
+    "localApiServer": "Local API Server",
+    "httpsProxy": "HTTPS Proxy",
+    "extensions": "Extensions",
+    "admin": "Admin",
+    "assistants": "Assistants",
+    "users": "Users",
+    "userGroups": "User Groups",
     "chat": {
       "title": "Chat Settings",
       "autoSave": "Auto-save Conversations",
@@ -379,7 +371,7 @@
     "baseUrl": "Base URL",
     "baseUrlRequired": "Please enter base URL",
     "baseUrlPlaceholder": "Base URL",
-    "llamaCppConfiguration": "Llama.cpp Configuration",
+    "candleConfiguration": "Candle Configuration",
     "autoUnloadOldModels": "Auto-Unload Old Models",
     "contextShift": "Context Shift",
     "continuousBatching": "Continuous Batching",
