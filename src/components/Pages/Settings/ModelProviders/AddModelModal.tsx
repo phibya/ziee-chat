@@ -1,4 +1,14 @@
-import { App, Button, Form, Input, Modal, Radio, Select, Upload } from 'antd'
+import {
+  App,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Radio,
+  Select,
+  Typography,
+  Upload,
+} from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelProviderType } from '../../../../types/api/modelProvider'
@@ -208,13 +218,47 @@ export function AddModelModal({
 
   const handleFileFormatChange = (value: string) => {
     setSelectedFileFormat(value)
-    // For now, just update the format - validation can be added later
+
+    // Clear the current filename when format changes to guide user
+    form.setFieldsValue({
+      local_filename: '',
+      hf_filename: '',
+    })
+
     console.log(
       'File format changed to:',
       value,
       'Current format:',
       selectedFileFormat,
     )
+  }
+
+  const getFilenamePlaceholder = (fileFormat: string) => {
+    switch (fileFormat) {
+      case 'safetensors':
+        return 'model.safetensors'
+      case 'pytorch':
+        return 'pytorch_model.bin'
+      case 'gguf':
+        return 'model.gguf'
+      default:
+        return 'pytorch_model.bin'
+    }
+  }
+
+  const validateFilename = (filename: string, fileFormat: string) => {
+    if (!filename) return false
+
+    const validExtensions = {
+      safetensors: ['.safetensors'],
+      pytorch: ['.bin', '.pt', '.pth'],
+      gguf: ['.gguf'],
+    }
+
+    const extensions = validExtensions[
+      fileFormat as keyof typeof validExtensions
+    ] || ['.bin']
+    return extensions.some(ext => filename.toLowerCase().endsWith(ext))
   }
 
   return (
@@ -274,21 +318,17 @@ export function AddModelModal({
               placeholder={t('modelProviders.selectModelArchitecture')}
               options={CANDLE_ARCHITECTURE_OPTIONS.map(option => ({
                 value: option.value,
-                label: (
-                  <div>
-                    <div>{option.label}</div>
-                    <div
-                      style={{
-                        fontSize: '12px',
-                        color: '#666',
-                        marginTop: '2px',
-                      }}
-                    >
-                      {option.description}
-                    </div>
-                  </div>
-                ),
+                label: option.label,
+                description: option.description,
               }))}
+              optionRender={option => (
+                <div className={'flex flex-col'}>
+                  <Typography.Text>{option.label}</Typography.Text>
+                  <Typography.Text type="secondary">
+                    {option.data.description}
+                  </Typography.Text>
+                </div>
+              )}
             />
           </Form.Item>
         )}
@@ -332,21 +372,17 @@ export function AddModelModal({
               onChange={handleFileFormatChange}
               options={CANDLE_FILE_TYPE_OPTIONS.map(option => ({
                 value: option.value,
-                label: (
-                  <div>
-                    <div>{option.label}</div>
-                    <div
-                      style={{
-                        fontSize: '12px',
-                        color: '#666',
-                        marginTop: '2px',
-                      }}
-                    >
-                      {option.description}
-                    </div>
-                  </div>
-                ),
+                label: option.label,
+                description: option.description,
               }))}
+              optionRender={option => (
+                <div className={'flex flex-col'}>
+                  <Typography.Text>{option.label}</Typography.Text>
+                  <Typography.Text type="secondary">
+                    {option.data.description}
+                  </Typography.Text>
+                </div>
+              )}
             />
           </Form.Item>
         )}
@@ -390,10 +426,22 @@ export function AddModelModal({
                   required: true,
                   message: t('modelProviders.localFilenameRequired'),
                 },
+                {
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve()
+                    if (validateFilename(value, selectedFileFormat)) {
+                      return Promise.resolve()
+                    }
+                    const placeholder = getFilenamePlaceholder(selectedFileFormat)
+                    return Promise.reject(
+                      new Error(`Filename must match selected format (e.g., ${placeholder})`),
+                    )
+                  },
+                },
               ]}
               help={t('modelProviders.localFilenameHelp')}
             >
-              <Input placeholder="pytorch_model.bin" />
+              <Input placeholder={getFilenamePlaceholder(selectedFileFormat)} />
             </Form.Item>
           </>
         )}
@@ -425,9 +473,21 @@ export function AddModelModal({
                   required: true,
                   message: t('modelProviders.huggingFaceFilenameRequired'),
                 },
+                {
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve()
+                    if (validateFilename(value, selectedFileFormat)) {
+                      return Promise.resolve()
+                    }
+                    const placeholder = getFilenamePlaceholder(selectedFileFormat)
+                    return Promise.reject(
+                      new Error(`Filename must match selected format (e.g., ${placeholder})`),
+                    )
+                  },
+                },
               ]}
             >
-              <Input placeholder="pytorch_model.bin" />
+              <Input placeholder={getFilenamePlaceholder(selectedFileFormat)} />
             </Form.Item>
 
             <Form.Item
