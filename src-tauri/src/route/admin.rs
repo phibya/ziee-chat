@@ -275,40 +275,22 @@ pub fn admin_routes() -> Router {
                 api::middleware::groups_delete_middleware,
             )),
         )
-        // Model upload routes for Candle models
+        // Model upload routes for Candle models removed - use upload-multipart and commit-upload workflow
         .route(
-            "/api/admin/uploaded-models",
-            post(api::model_uploads::create_model).layer(middleware::from_fn(
-                api::middleware::model_providers_create_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/uploaded-models",
-            get(api::model_uploads::list_models).layer(middleware::from_fn(
-                api::middleware::model_providers_read_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/uploaded-models/{model_id}",
-            get(api::model_uploads::get_model).layer(middleware::from_fn(
-                api::middleware::model_providers_read_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/uploaded-models/{model_id}",
-            put(api::model_uploads::update_model).layer(middleware::from_fn(
+            "/api/admin/uploaded-models/{model_id}/upload",
+            post(api::model_uploads::upload_model_file).layer(middleware::from_fn(
                 api::middleware::model_providers_edit_middleware,
             )),
         )
         .route(
-            "/api/admin/uploaded-models/{model_id}",
-            delete(api::model_uploads::delete_model).layer(middleware::from_fn(
-                api::middleware::model_providers_delete_middleware,
+            "/api/admin/uploaded-models/upload-multipart",
+            post(api::model_uploads::upload_model_file_multipart).layer(middleware::from_fn(
+                api::middleware::model_providers_edit_middleware,
             )),
         )
         .route(
-            "/api/admin/uploaded-models/{model_id}/upload",
-            post(api::model_uploads::upload_model_file).layer(middleware::from_fn(
+            "/api/admin/uploaded-models/commit-upload",
+            post(api::model_uploads::commit_uploaded_files).layer(middleware::from_fn(
                 api::middleware::model_providers_edit_middleware,
             )),
         )

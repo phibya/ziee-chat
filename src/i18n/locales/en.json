@@ -484,7 +484,22 @@
     "huggingFaceRepoFormat": "Repository format should be: username/repository-name",
     "huggingFaceFilename": "Hugging Face Filename",
     "huggingFaceFilenameRequired": "Please enter the model filename",
-    "huggingFaceBranch": "Hugging Face Branch"
+    "huggingFaceBranch": "Hugging Face Branch",
+    "uploadProgress": "Upload Progress",
+    "uploadingFiles": "Uploading Files",
+    "uploadComplete": "Upload Complete",
+    "uploadStopped": "Upload Stopped",
+    "filesCompleted": "{completed} of {total} files completed",
+    "filesWithErrors": "{errors} files with errors",
+    "uploadErrors": "Upload Errors",
+    "uploadErrorsDescription": "{count} files encountered errors during upload",
+    "fileDetails": "File Details",
+    "status": {
+      "pending": "Pending",
+      "uploading": "Uploading",
+      "completed": "Completed",
+      "error": "Error"
+    }
   },
   "projectDetails": {
     "loading": "Loading...",

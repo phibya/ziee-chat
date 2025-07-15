@@ -3,12 +3,45 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import {
   CreateModelProviderRequest,
+  ModelCapabilities,
   ModelProvider,
   ModelProviderModel,
 } from '../types/api/modelProvider'
+import {
+  uploadFile,
+  uploadFilesConcurrent,
+  UploadProgress,
+} from '../api/fileUpload'
+import { getAuthToken, getBaseUrl } from '../api/core'
 
 // Type alias for compatibility
 type Model = ModelProviderModel
+
+export interface FileUploadProgress {
+  filename: string
+  progress: number
+  status: 'pending' | 'uploading' | 'completed' | 'error'
+  error?: string
+  size?: number
+}
+
+export interface ProcessedFile {
+  temp_file_id: string
+  filename: string
+  file_type: string
+  size_bytes: number
+  checksum: string
+  validation_issues: string[]
+  is_main_file: boolean
+}
+
+export interface UploadSession {
+  session_id: string
+  files: ProcessedFile[]
+  total_size_bytes: number
+  main_filename: string
+  provider_id: string
+}
 
 interface ModelProvidersState {
   // Data
@@ -20,6 +53,17 @@ interface ModelProvidersState {
   updating: boolean
   deleting: boolean
   testingProxy: boolean
+
+  // Upload states
+  uploading: boolean
+  uploadProgress: FileUploadProgress[]
+  overallUploadProgress: number
+
+  // Upload session state
+  uploadSession: UploadSession | null
+
+  // Internal state for upload control
+  _uploadXhr?: XMLHttpRequest | null
 
   // Error state
   error: string | null
@@ -43,7 +87,25 @@ interface ModelProvidersState {
   enableModel: (modelId: string) => Promise<void>
   disableModel: (modelId: string) => Promise<void>
 
-  // Upload model actions (for Candle)
+  // Upload model actions (for Candle) - New multi-step workflow
+  uploadMultipleFiles: (
+    providerId: string,
+    files: File[],
+    mainFilename: string,
+  ) => Promise<UploadSession>
+  commitUploadedFiles: (
+    sessionId: string,
+    providerId: string,
+    name: string,
+    alias: string,
+    description: string | undefined,
+    architecture: string,
+    fileFormat: string,
+    capabilities: ModelCapabilities,
+    selectedFileIds: string[],
+  ) => Promise<void>
+
+  // Legacy upload actions (deprecated)
   createUploadModel: (
     providerId: string,
     name: string,
@@ -59,6 +121,11 @@ interface ModelProvidersState {
     files: File[],
     mainFilename: string,
   ) => Promise<void>
+
+  // Upload progress actions
+  clearUploadProgress: () => void
+  clearUploadSession: () => void
+  cancelUpload: () => void
 
   // Proxy actions
   testProxy: (providerId: string) => Promise<boolean>
@@ -78,6 +145,10 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
     updating: false,
     deleting: false,
     testingProxy: false,
+    uploading: false,
+    uploadProgress: [],
+    overallUploadProgress: 0,
+    uploadSession: null,
     error: null,
 
     loadProviders: async () => {
@@ -405,6 +476,234 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       }
     },
 
+    // New multi-step upload workflow
+    uploadMultipleFiles: async (
+      providerId: string,
+      files: File[],
+      mainFilename: string,
+    ): Promise<UploadSession> => {
+      try {
+        set({
+          uploading: true,
+          error: null,
+          uploadProgress: files.map(file => ({
+            filename: file.name,
+            progress: 0,
+            status: 'pending' as const,
+            size: file.size,
+          })),
+          overallUploadProgress: 0,
+          uploadSession: null,
+        })
+
+        // Create multipart form data
+        const formData = new FormData()
+
+        // Add provider_id and main_filename
+        formData.append('provider_id', providerId)
+        formData.append('main_filename', mainFilename)
+
+        // Add all files and calculate total size
+        let totalSize = 0
+        const fileSizes: number[] = []
+        files.forEach((file, index) => {
+          formData.append('files', file)
+          fileSizes[index] = file.size
+          totalSize += file.size
+        })
+
+        // Upload files to backend with simulated per-file progress
+        const baseUrl = await getBaseUrl()
+        const uploadSession: UploadSession = await new Promise(
+          (resolve, reject) => {
+            const xhr = new XMLHttpRequest()
+
+            // Store xhr for cancellation
+            set(state => ({ ...state, _uploadXhr: xhr }))
+
+            // Track overall upload progress and simulate individual file progress
+            xhr.upload.addEventListener('progress', event => {
+              if (event.lengthComputable) {
+                const bytesUploaded = event.loaded
+                const overallProgress = Math.round(
+                  (bytesUploaded / totalSize) * 100,
+                )
+
+                // Calculate which files have been uploaded based on bytes
+                let accumulatedBytes = 0
+                const fileProgresses: number[] = []
+
+                for (let i = 0; i < files.length; i++) {
+                  const fileStartBytes = accumulatedBytes
+                  const fileEndBytes = accumulatedBytes + fileSizes[i]
+
+                  if (bytesUploaded >= fileEndBytes) {
+                    // File is fully uploaded
+                    fileProgresses[i] = 100
+                  } else if (bytesUploaded > fileStartBytes) {
+                    // File is partially uploaded
+                    const fileProgress =
+                      ((bytesUploaded - fileStartBytes) / fileSizes[i]) * 100
+                    fileProgresses[i] = Math.round(fileProgress)
+                  } else {
+                    // File hasn't started uploading yet
+                    fileProgresses[i] = 0
+                  }
+
+                  accumulatedBytes += fileSizes[i]
+                }
+
+                // Update individual file progress
+                set(state => ({
+                  uploadProgress: state.uploadProgress.map((f, idx) => ({
+                    ...f,
+                    progress: fileProgresses[idx] || 0,
+                    status:
+                      fileProgresses[idx] === 100
+                        ? ('completed' as const)
+                        : fileProgresses[idx] > 0
+                          ? ('uploading' as const)
+                          : ('pending' as const),
+                  })),
+                  overallUploadProgress: overallProgress,
+                }))
+              }
+            })
+
+            // Handle completion
+            xhr.addEventListener('load', () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  const response = JSON.parse(xhr.responseText)
+
+                  // Mark all files as completed
+                  set(state => ({
+                    uploadProgress: state.uploadProgress.map(f => ({
+                      ...f,
+                      progress: 100,
+                      status: 'completed' as const,
+                    })),
+                    overallUploadProgress: 100,
+                  }))
+
+                  resolve(response)
+                } catch {
+                  reject(new Error('Failed to parse response'))
+                }
+              } else {
+                // Try to get detailed error from response
+                let errorMessage = `Upload failed: ${xhr.status} ${xhr.statusText}`
+                try {
+                  const errorData = JSON.parse(xhr.responseText)
+                  if (errorData.error) {
+                    errorMessage = errorData.error
+                  }
+                } catch {
+                  // If we can't parse the error response, use the status text
+                }
+                reject(new Error(errorMessage))
+              }
+            })
+
+            // Handle errors
+            xhr.addEventListener('error', () => {
+              reject(new Error('Upload failed: Network error'))
+            })
+
+            // Handle timeout
+            xhr.addEventListener('timeout', () => {
+              reject(new Error('Upload failed: Timeout'))
+            })
+
+            // Handle abort (cancellation)
+            xhr.addEventListener('abort', () => {
+              reject(new Error('Upload cancelled'))
+            })
+
+            // Setup and send request
+            xhr.open(
+              'POST',
+              `${baseUrl}/api/admin/uploaded-models/upload-multipart`,
+            )
+            xhr.setRequestHeader('Authorization', `Bearer ${getAuthToken()}`)
+            xhr.timeout = 300000 // 5 minute timeout for large files
+            xhr.send(formData)
+          },
+        )
+
+        // Update final state
+        set({
+          uploading: false,
+          uploadSession,
+          _uploadXhr: null, // Clear xhr reference
+        })
+
+        return uploadSession
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : 'Failed to upload files',
+          uploading: false,
+          uploadProgress: files.map(file => ({
+            filename: file.name,
+            progress: 0,
+            status: 'error' as const,
+            error: error instanceof Error ? error.message : 'Upload failed',
+            size: file.size,
+          })),
+          _uploadXhr: null, // Clear xhr reference
+        })
+        throw error
+      }
+    },
+
+    commitUploadedFiles: async (
+      sessionId: string,
+      providerId: string,
+      name: string,
+      alias: string,
+      description: string | undefined,
+      architecture: string,
+      fileFormat: string,
+      capabilities: ModelCapabilities,
+      selectedFileIds: string[],
+    ): Promise<void> => {
+      try {
+        set({ creating: true, error: null })
+
+        const newModel = await ApiClient.ModelUploads.commitUpload({
+          session_id: sessionId,
+          provider_id: providerId,
+          name,
+          alias,
+          description,
+          architecture,
+          file_format: fileFormat,
+          capabilities,
+          selected_files: selectedFileIds,
+        })
+
+        // Update providers state to include the new model
+        set(state => ({
+          providers: state.providers.map(p =>
+            p.id === providerId ? { ...p, models: [...p.models, newModel] } : p,
+          ),
+          creating: false,
+          uploadSession: null, // Clear the session after successful commit
+        }))
+
+        // Reload providers to get the latest state
+        await get().loadProviders()
+      } catch (error) {
+        set({
+          error:
+            error instanceof Error ? error.message : 'Failed to commit upload',
+          creating: false,
+        })
+        throw error
+      }
+    },
+
     createUploadModel: async (
       providerId: string,
       name: string,
@@ -444,21 +743,59 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
 
     uploadModelFile: async (modelId: string, file: File) => {
       try {
-        set({ updating: true, error: null })
-
-        await ApiClient.ModelUploads.upload({
-          model_id: modelId,
-          file,
+        set({
+          uploading: true,
+          error: null,
+          uploadProgress: [
+            {
+              filename: file.name,
+              progress: 0,
+              status: 'pending',
+              size: file.size,
+            },
+          ],
+          overallUploadProgress: 0,
         })
 
-        set({ updating: false })
+        await uploadFile(modelId, file, file.name, {
+          onProgress: (progress: UploadProgress) => {
+            set(state => ({
+              uploadProgress: state.uploadProgress.map(f =>
+                f.filename === file.name
+                  ? { ...f, progress: progress.percentage, status: 'uploading' }
+                  : f,
+              ),
+              overallUploadProgress: progress.percentage,
+            }))
+          },
+          onComplete: () => {
+            set(state => ({
+              uploadProgress: state.uploadProgress.map(f =>
+                f.filename === file.name
+                  ? { ...f, progress: 100, status: 'completed' }
+                  : f,
+              ),
+              overallUploadProgress: 100,
+              uploading: false,
+            }))
+          },
+          onError: (error: string) => {
+            set(state => ({
+              uploadProgress: state.uploadProgress.map(f =>
+                f.filename === file.name ? { ...f, status: 'error', error } : f,
+              ),
+              uploading: false,
+              error,
+            }))
+          },
+        })
       } catch (error) {
         set({
           error:
             error instanceof Error
               ? error.message
               : 'Failed to upload model file',
-          updating: false,
+          uploading: false,
         })
         throw error
       }
@@ -467,31 +804,124 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
     uploadModelFiles: async (
       modelId: string,
       files: File[],
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      _mainFilename: string,
+      mainFilename: string,
     ) => {
       try {
-        set({ updating: true, error: null })
+        // Initialize upload progress for all files
+        const initialProgress: FileUploadProgress[] = files.map(file => ({
+          filename: file.name,
+          progress: 0,
+          status: 'pending' as const,
+          size: file.size,
+        }))
 
-        // Upload each file sequentially
-        for (const file of files) {
-          await ApiClient.ModelUploads.upload({
-            model_id: modelId,
-            file,
-          })
-        }
+        set({
+          uploading: true,
+          error: null,
+          uploadProgress: initialProgress,
+          overallUploadProgress: 0,
+        })
 
-        set({ updating: false })
+        let uploadAborted = false
+
+        // Store abort controller for cancellation
+        const abortController = new AbortController()
+        set(state => ({ ...state, _abortController: abortController }))
+
+        await uploadFilesConcurrent(modelId, files, mainFilename, 3, {
+          onFileProgress: (fileIndex: number, progress: UploadProgress) => {
+            if (uploadAborted) return
+
+            set(state => ({
+              uploadProgress: state.uploadProgress.map((f, i) =>
+                i === fileIndex
+                  ? { ...f, progress: progress.percentage, status: 'uploading' }
+                  : f,
+              ),
+            }))
+          },
+          onFileComplete: (fileIndex: number) => {
+            if (uploadAborted) return
+
+            set(state => ({
+              uploadProgress: state.uploadProgress.map((f, i) =>
+                i === fileIndex
+                  ? { ...f, progress: 100, status: 'completed' }
+                  : f,
+              ),
+            }))
+          },
+          onFileError: (fileIndex: number, error: string) => {
+            if (uploadAborted) return
+
+            set(state => ({
+              uploadProgress: state.uploadProgress.map((f, i) =>
+                i === fileIndex ? { ...f, status: 'error', error } : f,
+              ),
+            }))
+          },
+          onOverallProgress: (completedFiles: number, totalFiles: number) => {
+            if (uploadAborted) return
+
+            const overallProgress = Math.round(
+              (completedFiles / totalFiles) * 100,
+            )
+            set({ overallUploadProgress: overallProgress })
+          },
+          onAllComplete: () => {
+            if (!uploadAborted) {
+              set({ uploading: false, overallUploadProgress: 100 })
+            }
+          },
+        })
       } catch (error) {
         set({
           error:
             error instanceof Error
               ? error.message
               : 'Failed to upload model files',
-          updating: false,
+          uploading: false,
         })
         throw error
       }
+    },
+
+    clearUploadProgress: () => {
+      set({
+        uploadProgress: [],
+        overallUploadProgress: 0,
+        uploading: false,
+      })
+    },
+
+    clearUploadSession: () => {
+      set({ uploadSession: null })
+    },
+
+    cancelUpload: () => {
+      set(state => {
+        // Abort XMLHttpRequest upload
+        const uploadXhr = (state as any)._uploadXhr
+        if (uploadXhr) {
+          uploadXhr.abort()
+        }
+
+        // Also handle legacy AbortController for backward compatibility
+        const abortController = (state as any)._abortController
+        if (abortController) {
+          abortController.abort()
+        }
+
+        return {
+          uploading: false,
+          uploadProgress: state.uploadProgress.map(f =>
+            f.status === 'uploading' || f.status === 'pending'
+              ? { ...f, status: 'error', error: 'Upload cancelled' }
+              : f,
+          ),
+          _uploadXhr: null, // Clear the xhr reference
+        }
+      })
     },
 
     clearError: () => {

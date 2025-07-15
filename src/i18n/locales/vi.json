@@ -164,7 +164,22 @@
     "huggingFaceFilename": "Tên File Hugging Face",
     "huggingFaceFilenameRequired": "Vui lòng nhập tên file model",
     "huggingFaceBranch": "Nhánh Hugging Face",
-    "browse": "Duyệt"
+    "browse": "Duyệt",
+    "uploadProgress": "Tiến độ tải lên",
+    "uploadingFiles": "Đang tải lên file",
+    "uploadComplete": "Tải lên hoàn tất",
+    "uploadStopped": "Dừng tải lên",
+    "filesCompleted": "Đã hoàn thành {completed} trong {total} file",
+    "filesWithErrors": "{errors} file có lỗi",
+    "uploadErrors": "Lỗi tải lên",
+    "uploadErrorsDescription": "{count} file gặp lỗi trong quá trình tải lên",
+    "fileDetails": "Chi tiết file",
+    "status": {
+      "pending": "Đang chờ",
+      "uploading": "Đang tải lên",
+      "completed": "Hoàn thành",
+      "error": "Lỗi"
+    }
   },
   "buttons": {
     "cancel": "Hủy",

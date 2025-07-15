@@ -320,6 +320,13 @@ pub struct ModelProviderModelDb {
     pub parameters: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // Additional fields for Candle models (NULL for other providers)
+    pub architecture: Option<String>,
+    pub quantization: Option<String>,
+    pub file_size_bytes: Option<i64>,
+    pub checksum: Option<String>,
+    pub validation_status: Option<String>,
+    pub validation_issues: Option<serde_json::Value>,
 }
 
 // API structures for model providers
@@ -366,6 +373,16 @@ pub struct ModelProviderModel {
     pub is_active: bool,
     pub capabilities: Option<serde_json::Value>,
     pub parameters: Option<serde_json::Value>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    // Additional fields for Candle models (None for other providers)
+    pub architecture: Option<String>,
+    pub quantization: Option<String>,
+    pub file_size_bytes: Option<i64>,
+    pub checksum: Option<String>,
+    pub validation_status: Option<String>,
+    pub validation_issues: Option<Vec<String>>,
+    pub files: Option<Vec<ModelFileInfo>>,
 }
 
 // Request/Response structures
@@ -393,13 +410,13 @@ pub struct UpdateModelProviderRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateModelRequest {
+    pub provider_id: Uuid,
     pub name: String,
     pub alias: String,
     pub description: Option<String>,
     pub path: Option<String>,
     pub enabled: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
-    pub parameters: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -522,7 +539,7 @@ pub struct MessageDb {
     pub role: String,
     pub content: String,
     pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
-    pub edit_count: Option<i32>,     // Number of times this message lineage has been edited
+    pub edit_count: Option<i32>,          // Number of times this message lineage has been edited
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -918,30 +935,7 @@ impl ProjectConversation {
     }
 }
 
-// Model upload structures for Candle models
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UploadedModelDb {
-    pub id: Uuid,
-    pub provider_id: Uuid,
-    pub name: String,
-    pub alias: String,
-    pub description: Option<String>,
-    pub model_path: String,
-    pub architecture: String,
-    pub quantization: Option<String>,
-    pub file_size_bytes: i64,
-    pub checksum: Option<String>,
-    pub enabled: bool,
-    pub is_deprecated: bool,
-    pub is_active: bool,
-    pub capabilities: serde_json::Value,
-    pub parameters: serde_json::Value,
-    pub validation_status: String,
-    pub validation_issues: Option<serde_json::Value>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
+// Model file tracking for uploaded files
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ModelFileDb {
     pub id: Uuid,
@@ -955,31 +949,6 @@ pub struct ModelFileDb {
     pub uploaded_at: DateTime<Utc>,
 }
 
-// API structures for model uploads
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UploadedModel {
-    pub id: Uuid,
-    pub provider_id: Uuid,
-    pub name: String,
-    pub alias: String,
-    pub description: Option<String>,
-    pub model_path: String,
-    pub architecture: String,
-    pub quantization: Option<String>,
-    pub file_size_bytes: i64,
-    pub checksum: Option<String>,
-    pub enabled: bool,
-    pub is_deprecated: bool,
-    pub is_active: bool,
-    pub capabilities: Option<serde_json::Value>,
-    pub parameters: Option<serde_json::Value>,
-    pub validation_status: String,
-    pub validation_issues: Option<Vec<String>>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub files: Vec<ModelFileInfo>,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelFileInfo {
     pub filename: String,
@@ -988,19 +957,6 @@ pub struct ModelFileInfo {
     pub checksum: Option<String>,
     pub uploaded_at: DateTime<Utc>,
 }
-
-#[derive(Debug, Deserialize)]
-pub struct CreateUploadedModelRequest {
-    pub provider_id: Uuid,
-    pub name: String,
-    pub alias: String,
-    pub description: Option<String>,
-    pub architecture: String,
-    pub quantization: Option<String>,
-    pub capabilities: Option<serde_json::Value>,
-    pub parameters: Option<serde_json::Value>,
-}
-
 
 #[derive(Debug, Serialize)]
 pub struct ModelUploadResponse {
@@ -1013,7 +969,7 @@ pub struct ModelUploadResponse {
 
 #[derive(Debug, Serialize)]
 pub struct ModelListResponse {
-    pub models: Vec<UploadedModel>,
+    pub models: Vec<ModelProviderModel>,
     pub total: i64,
     pub page: i32,
     pub per_page: i32,
@@ -1022,20 +978,10 @@ pub struct ModelListResponse {
 
 #[derive(Debug, Serialize)]
 pub struct ModelDetailsResponse {
-    pub model: UploadedModel,
+    pub model: ModelProviderModel,
     pub files: Vec<ModelFileInfo>,
     pub storage_size_bytes: u64,
     pub validation_issues: Vec<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateUploadedModelRequest {
-    pub name: Option<String>,
-    pub alias: Option<String>,
-    pub description: Option<String>,
-    pub enabled: Option<bool>,
-    pub capabilities: Option<serde_json::Value>,
-    pub parameters: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1063,41 +1009,45 @@ pub struct ModelStatusCounts {
     pub disabled: i64,
 }
 
-impl UploadedModel {
-    pub fn from_db(model_db: UploadedModelDb, files: Vec<ModelFileDb>) -> Self {
-        let validation_issues = model_db.validation_issues
+impl ModelProviderModel {
+    pub fn from_db(model_db: ModelProviderModelDb, files: Option<Vec<ModelFileDb>>) -> Self {
+        let validation_issues = model_db
+            .validation_issues
             .as_ref()
-            .and_then(|v| serde_json::from_value::<Vec<String>>(v.clone()).ok())
-            .unwrap_or_default();
+            .and_then(|v| serde_json::from_value::<Vec<String>>(v.clone()).ok());
 
-        let file_infos = files.into_iter().map(|f| ModelFileInfo {
-            filename: f.filename,
-            file_size_bytes: f.file_size_bytes,
-            file_type: f.file_type,
-            checksum: Some(f.checksum),
-            uploaded_at: f.uploaded_at,
-        }).collect();
+        let file_infos = files.map(|files| {
+            files
+                .into_iter()
+                .map(|f| ModelFileInfo {
+                    filename: f.filename,
+                    file_size_bytes: f.file_size_bytes,
+                    file_type: f.file_type,
+                    checksum: Some(f.checksum),
+                    uploaded_at: f.uploaded_at,
+                })
+                .collect()
+        });
 
         Self {
             id: model_db.id,
-            provider_id: model_db.provider_id,
             name: model_db.name,
             alias: model_db.alias,
             description: model_db.description,
-            model_path: model_db.model_path,
-            architecture: model_db.architecture,
-            quantization: model_db.quantization,
-            file_size_bytes: model_db.file_size_bytes,
-            checksum: model_db.checksum,
+            path: model_db.path,
             enabled: model_db.enabled,
             is_deprecated: model_db.is_deprecated,
             is_active: model_db.is_active,
             capabilities: Some(model_db.capabilities),
             parameters: Some(model_db.parameters),
-            validation_status: model_db.validation_status,
-            validation_issues: Some(validation_issues),
             created_at: model_db.created_at,
             updated_at: model_db.updated_at,
+            architecture: model_db.architecture,
+            quantization: model_db.quantization,
+            file_size_bytes: model_db.file_size_bytes,
+            checksum: model_db.checksum,
+            validation_status: model_db.validation_status,
+            validation_issues,
             files: file_infos,
         }
     }

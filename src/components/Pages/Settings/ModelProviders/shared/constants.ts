@@ -82,3 +82,20 @@ export const BASIC_MODEL_FIELDS: ParameterFieldConfig[] = [
     placeholder: 'Optional description of this model...',
   },
 ]
+
+export const CANDLE_MODEL_FIELDS: ParameterFieldConfig[] = [
+  {
+    name: 'alias',
+    label: 'Display Name',
+    type: 'text',
+    required: true,
+    placeholder: 'e.g., Llama 2 7B Chat',
+    help: 'Human-readable name shown in the interface',
+  },
+  {
+    name: 'description',
+    label: 'Description',
+    type: 'textarea',
+    placeholder: 'Optional description of this model...',
+  },
+]

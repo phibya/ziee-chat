@@ -47,6 +47,26 @@ pub enum ModelFileType {
     Other(String),    // Other files
 }
 
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct TempFile {
+    pub temp_file_id: Uuid,
+    pub filename: String,
+    pub file_path: String,
+    pub size_bytes: u64,
+    pub checksum: String,
+    pub is_main_file: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct CommittedFile {
+    pub filename: String,
+    pub file_path: String,
+    pub size_bytes: u64,
+    pub checksum: String,
+    pub is_main_file: bool,
+}
+
 pub struct ModelStorage {
     base_path: PathBuf,
 }
@@ -56,13 +76,34 @@ impl ModelStorage {
         let app_data_dir = std::env::var("APP_DATA_DIR")
             .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
         
-        let base_path = PathBuf::from(app_data_dir).join("models").join("candle");
+        let app_data_path = PathBuf::from(&app_data_dir);
+        let base_path = app_data_path.join("models");
         
-        // Create base directory if it doesn't exist
+        // Create models directory if it doesn't exist
         if !base_path.exists() {
-            fs::create_dir_all(&base_path)?;
+            println!("Creating ModelStorage base directory: {}", base_path.display());
+            fs::create_dir_all(&base_path).map_err(|e| {
+                ModelStorageError::Io(std::io::Error::new(
+                    e.kind(),
+                    format!("Failed to create base directory {}: {}", base_path.display(), e)
+                ))
+            })?;
         }
         
+        // Create temp directory at APP_DATA_DIR level
+        let temp_base = app_data_path.join("temp");
+        if !temp_base.exists() {
+            println!("Creating temp directory: {}", temp_base.display());
+            fs::create_dir_all(&temp_base).map_err(|e| {
+                ModelStorageError::Io(std::io::Error::new(
+                    e.kind(),
+                    format!("Failed to create temp directory {}: {}", temp_base.display(), e)
+                ))
+            })?;
+        }
+        
+        println!("ModelStorage initialized with base path: {}", base_path.display());
+        println!("Temp directory: {}", temp_base.display());
         Ok(Self { base_path })
     }
 
@@ -305,6 +346,173 @@ impl ModelStorage {
         }
         
         Ok(total_size)
+    }
+
+    /// Convert absolute file path to relative path (relative to APP_DATA_DIR)
+    pub fn to_relative_path(absolute_path: &Path) -> Result<String, ModelStorageError> {
+        let app_data_dir = std::env::var("APP_DATA_DIR")
+            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
+        let app_data_path = PathBuf::from(&app_data_dir);
+        
+        match absolute_path.strip_prefix(&app_data_path) {
+            Ok(relative_path) => Ok(relative_path.to_string_lossy().to_string()),
+            Err(_) => {
+                // If the path is not under APP_DATA_DIR, just use the filename
+                Ok(absolute_path.file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string())
+            }
+        }
+    }
+
+    /// Convert relative path to absolute path (relative to APP_DATA_DIR)
+    pub fn to_absolute_path(relative_path: &str) -> Result<PathBuf, ModelStorageError> {
+        let app_data_dir = std::env::var("APP_DATA_DIR")
+            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
+        Ok(PathBuf::from(app_data_dir).join(relative_path))
+    }
+
+    /// Save file to temporary storage
+    pub async fn save_temp_file(
+        &self,
+        _session_id: &Uuid, // Not needed since filenames are unique
+        temp_file_id: &Uuid,
+        filename: &str,
+        data: &[u8],
+    ) -> Result<TempFile, ModelStorageError> {
+        // Save directly to APP_DATA_DIR/temp/ since filenames are unique
+        let app_data_dir = std::env::var("APP_DATA_DIR")
+            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
+        let temp_base = PathBuf::from(app_data_dir).join("temp");
+        
+        // Ensure temp directory exists
+        if !temp_base.exists() {
+            println!("Creating temp directory: {}", temp_base.display());
+            fs::create_dir_all(&temp_base).map_err(|e| {
+                ModelStorageError::Io(std::io::Error::new(
+                    e.kind(),
+                    format!("Failed to create temp directory {}: {}", temp_base.display(), e)
+                ))
+            })?;
+        }
+        
+        // Debug the input parameters
+        println!("save_temp_file called with:");
+        println!("  temp_file_id: {}", temp_file_id);
+        println!("  filename: '{}'", filename);
+        
+        // Sanitize filename to prevent path traversal
+        let safe_filename = filename
+            .replace('/', "_")
+            .replace('\\', "_")
+            .replace("..", "_");
+        
+        println!("  safe_filename: '{}'", safe_filename);
+        println!("  temp_base: {}", temp_base.display());
+        
+        let file_path = temp_base.join(format!("{}_{}", temp_file_id, safe_filename));
+        println!("Saving temp file to: {}", file_path.display());
+        
+        let mut file = fs::File::create(&file_path).map_err(|e| {
+            ModelStorageError::Io(std::io::Error::new(
+                e.kind(),
+                format!("Failed to create file {}: {}", file_path.display(), e)
+            ))
+        })?;
+        
+        file.write_all(data)?;
+        file.sync_all()?;
+        
+        println!("Successfully saved temp file: {} ({} bytes)", file_path.display(), data.len());
+        
+        Ok(TempFile {
+            temp_file_id: *temp_file_id,
+            filename: safe_filename,
+            file_path: file_path.to_string_lossy().to_string(),
+            size_bytes: data.len() as u64,
+            checksum: Self::calculate_checksum(data),
+            is_main_file: false, // This will be set by the caller
+        })
+    }
+
+    /// Commit temporary file to permanent storage
+    pub async fn commit_temp_file(
+        &self,
+        _session_id: &Uuid, // Not needed since we search by temp_file_id
+        temp_file_id: &Uuid,
+        provider_id: &Uuid,
+        model_id: &Uuid,
+    ) -> Result<CommittedFile, ModelStorageError> {
+        let app_data_dir = std::env::var("APP_DATA_DIR")
+            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
+        let temp_path = PathBuf::from(app_data_dir).join("temp");
+        
+        // Find the temp file
+        let temp_files = fs::read_dir(&temp_path)?;
+        let mut temp_file_path = None;
+        let mut original_filename = None;
+        
+        for entry in temp_files {
+            let entry = entry?;
+            let file_name = entry.file_name().to_string_lossy().to_string();
+            
+            if file_name.starts_with(&format!("{}_", temp_file_id)) {
+                temp_file_path = Some(entry.path());
+                original_filename = Some(file_name.split('_').skip(1).collect::<Vec<_>>().join("_"));
+                break;
+            }
+        }
+        
+        let temp_file_path = temp_file_path.ok_or_else(|| {
+            ModelStorageError::ModelNotFound(format!("Temp file {} not found", temp_file_id))
+        })?;
+        
+        let filename = original_filename.ok_or_else(|| {
+            ModelStorageError::InvalidModel("Could not extract filename from temp file".to_string())
+        })?;
+        
+        // Create permanent storage location
+        let model_path = self.get_model_path(provider_id, model_id);
+        if !model_path.exists() {
+            fs::create_dir_all(&model_path)?;
+        }
+        
+        let permanent_path = model_path.join(&filename);
+        
+        // Move file from temp to permanent storage
+        fs::rename(&temp_file_path, &permanent_path)?;
+        
+        // Read file to calculate checksum
+        let data = fs::read(&permanent_path)?;
+        let checksum = Self::calculate_checksum(&data);
+        
+        Ok(CommittedFile {
+            filename,
+            file_path: Self::to_relative_path(&permanent_path)?,
+            size_bytes: data.len() as u64,
+            checksum,
+            is_main_file: false, // This will be set by the caller
+        })
+    }
+
+    /// Clean up temporary files for a session
+    pub async fn cleanup_temp_session(&self, _session_id: &Uuid) -> Result<(), ModelStorageError> {
+        let app_data_dir = std::env::var("APP_DATA_DIR")
+            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
+        let temp_path = PathBuf::from(app_data_dir).join("temp");
+        
+        if !temp_path.exists() {
+            return Ok(()); // Nothing to clean up
+        }
+        
+        // Find and delete files that belong to this session
+        // Since we don't track session->file mapping, we'll need to implement
+        // a different cleanup strategy or track session files differently
+        println!("Note: Session-based cleanup not implemented with flat temp structure");
+        println!("Consider implementing periodic cleanup of old temp files instead");
+        
+        Ok(())
     }
 }
 

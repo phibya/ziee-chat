@@ -36,6 +36,7 @@ import {
 import {
   AddModelToProviderRequest,
   CreateModelProviderRequest,
+  ModelCapabilities,
   ModelProvider,
   ModelProviderListResponse,
   ModelProviderModel,
@@ -152,6 +153,9 @@ export const ApiEndpoints = {
   'ModelUploads.update': 'PUT /api/admin/uploaded-models/{model_id}',
   'ModelUploads.delete': 'DELETE /api/admin/uploaded-models/{model_id}',
   'ModelUploads.upload': 'POST /api/admin/uploaded-models/{model_id}/upload',
+  'ModelUploads.uploadMultipart':
+    'POST /api/admin/uploaded-models/upload-multipart',
+  'ModelUploads.commitUpload': 'POST /api/admin/uploaded-models/commit-upload',
   // Assistant endpoints - User
   'Assistant.list': 'GET /api/assistants',
   'Assistant.create': 'POST /api/assistants',
@@ -287,6 +291,18 @@ export type ApiEndpointParameters = {
   }
   'ModelUploads.delete': { model_id: string }
   'ModelUploads.upload': { model_id: string; file: File }
+  'ModelUploads.uploadMultipart': FormData
+  'ModelUploads.commitUpload': {
+    session_id: string
+    provider_id: string
+    name: string
+    alias: string
+    description?: string
+    architecture: string
+    file_format: string
+    capabilities?: ModelCapabilities
+    selected_files: string[]
+  }
   // Assistant endpoints - User
   'Assistant.list': { page?: number; per_page?: number }
   'Assistant.create': CreateAssistantRequest
@@ -436,6 +452,22 @@ export type ApiEndpointResponses = {
   }
   'ModelUploads.delete': void
   'ModelUploads.upload': { message: string; file_id: string; size: number }
+  'ModelUploads.uploadMultipart': {
+    session_id: string
+    files: Array<{
+      temp_file_id: string
+      filename: string
+      file_type: string
+      size_bytes: number
+      checksum: string
+      validation_issues: string[]
+      is_main_file: boolean
+    }>
+    total_size_bytes: number
+    main_filename: string
+    provider_id: string
+  }
+  'ModelUploads.commitUpload': ModelProviderModel
   // Assistant endpoints - User
   'Assistant.list': AssistantListResponse
   'Assistant.create': Assistant

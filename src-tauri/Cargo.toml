@@ -29,7 +29,7 @@ tokio-tungstenite = "0.20"
 futures-util = "0.3"
 futures = "0.3"
 uuid = { version = "1.0", features = ["v4"] }
-axum = { version = "0.8.4", features = ["macros"] }
+axum = { version = "0.8.4", features = ["macros", "multipart"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "fs"] }
 proc-macro2 = "1.0"

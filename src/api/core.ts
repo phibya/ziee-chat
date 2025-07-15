@@ -3,7 +3,7 @@ import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from '../types'
 import { invoke } from '@tauri-apps/api/core'
 
 // Import getAuthToken function (avoiding circular import)
-const getAuthToken = () => {
+export const getAuthToken = () => {
   // eslint-disable-next-line no-undef
   const authData = localStorage.getItem('auth-storage')
   if (authData) {
@@ -16,7 +16,7 @@ const getAuthToken = () => {
 //@ts-ignore
 export const isDesktopApp = !!window.__TAURI_INTERNALS__
 
-const getBaseUrl = (function () {
+export const getBaseUrl = (function () {
   let baseUrl: Promise<string>
   //@ts-ignore
   return async function () {

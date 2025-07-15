@@ -6,7 +6,7 @@ mod route;
 mod utils;
 
 use crate::api::app::get_http_port;
-use axum::{body::Body, http::Request, response::Response, Router};
+use axum::{body::Body, http::Request, response::Response, Router, extract::DefaultBodyLimit};
 use once_cell::sync::Lazy;
 use route::create_rest_router;
 use std::net::SocketAddr;
@@ -131,6 +131,7 @@ async fn start_api_server(port: u16, api_router: Router) {
             port
         );
         api_router
+            .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
             .layer(CorsLayer::permissive())
             .fallback(proxy_to_vite)
     } else if std::env::var("HEADLESS").unwrap_or_default() == "true" {
@@ -146,6 +147,7 @@ async fn start_api_server(port: u16, api_router: Router) {
         if static_dir.exists() {
             println!("Serving UI from: {}", static_dir.display());
             api_router
+                .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
                 .layer(CorsLayer::permissive())
                 .fallback_service(ServeDir::new(static_dir))
         } else {
@@ -153,12 +155,16 @@ async fn start_api_server(port: u16, api_router: Router) {
                 "Warning: UI folder not found at {}, serving API only",
                 static_dir.display()
             );
-            api_router.layer(CorsLayer::permissive())
+            api_router
+                .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
+                .layer(CorsLayer::permissive())
         }
     } else {
         // Production mode: API only (webview handles frontend)
         println!("Production mode: API server only on port {}", port);
-        api_router.layer(CorsLayer::permissive())
+        api_router
+            .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
+            .layer(CorsLayer::permissive())
     };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));

@@ -401,9 +401,22 @@ export function ModelProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      await addModel(currentProvider.id, modelData)
-      setIsAddModelModalOpen(false)
-      message.success(t('modelProviders.modelAdded'))
+      // Handle Candle uploads differently - they're already processed
+      if (modelData.type === 'candle-upload') {
+        // For Candle uploads, just refresh the providers list
+        await loadProviders()
+        setIsAddModelModalOpen(false)
+        message.success(t('modelProviders.modelAdded'))
+      } else {
+        // For regular models, add them normally
+        await addModel(currentProvider.id, modelData)
+
+        // Refresh providers list to include any uploaded models
+        await loadProviders()
+
+        setIsAddModelModalOpen(false)
+        message.success(t('modelProviders.modelAdded'))
+      }
     } catch (error) {
       console.error('Failed to add model:', error)
       // Error is handled by the store

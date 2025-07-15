@@ -232,7 +232,7 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         let cloned_model_row: ModelProviderModelDb = sqlx::query_as(
             "INSERT INTO model_provider_models (id, provider_id, name, alias, description, path, enabled, capabilities, parameters) 
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-             RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
+             RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
         )
         .bind(cloned_model_id)
         .bind(new_provider_id)
@@ -246,18 +246,7 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         .fetch_one(pool)
         .await?;
 
-        cloned_models.push(ModelProviderModel {
-            id: cloned_model_row.id,
-            name: cloned_model_row.name,
-            alias: cloned_model_row.alias,
-            description: cloned_model_row.description,
-            path: cloned_model_row.path,
-            enabled: cloned_model_row.enabled,
-            is_deprecated: cloned_model_row.is_deprecated,
-            is_active: cloned_model_row.is_active,
-            capabilities: Some(cloned_model_row.capabilities),
-            parameters: Some(cloned_model_row.parameters),
-        });
+        cloned_models.push(ModelProviderModel::from_db(cloned_model_row, None));
     }
 
     Ok(Some(ModelProvider {
@@ -295,7 +284,7 @@ async fn get_models_for_provider(
     let pool = pool.as_ref();
 
     let model_rows: Vec<ModelProviderModelDb> = sqlx::query_as(
-        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
+        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues 
          FROM model_provider_models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC"
@@ -306,18 +295,7 @@ async fn get_models_for_provider(
 
     Ok(model_rows
         .into_iter()
-        .map(|model_db| ModelProviderModel {
-            id: model_db.id,
-            name: model_db.name,
-            alias: model_db.alias,
-            description: model_db.description,
-            path: model_db.path,
-            enabled: model_db.enabled,
-            is_deprecated: model_db.is_deprecated,
-            is_active: model_db.is_active,
-            capabilities: Some(model_db.capabilities),
-            parameters: Some(model_db.parameters),
-        })
+        .map(|model_db| ModelProviderModel::from_db(model_db, None))
         .collect())
 }
 
@@ -332,7 +310,7 @@ pub async fn create_model(
     let model_row: ModelProviderModelDb = sqlx::query_as(
         "INSERT INTO model_provider_models (id, provider_id, name, alias, description, path, enabled, capabilities, parameters) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
+         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
     )
     .bind(model_id)
     .bind(provider_id)
@@ -342,22 +320,11 @@ pub async fn create_model(
     .bind(&request.path)
     .bind(request.enabled.unwrap_or(true))
     .bind(request.capabilities.unwrap_or(serde_json::json!({})))
-    .bind(request.parameters.unwrap_or(serde_json::json!({})))
+    .bind(serde_json::json!({}))
     .fetch_one(pool)
     .await?;
 
-    Ok(ModelProviderModel {
-        id: model_row.id,
-        name: model_row.name,
-        alias: model_row.alias,
-        description: model_row.description,
-        path: model_row.path,
-        enabled: model_row.enabled,
-        is_deprecated: model_row.is_deprecated,
-        is_active: model_row.is_active,
-        capabilities: Some(model_row.capabilities),
-        parameters: Some(model_row.parameters),
-    })
+    Ok(ModelProviderModel::from_db(model_row, None))
 }
 
 pub async fn update_model(
@@ -379,7 +346,7 @@ pub async fn update_model(
              parameters = COALESCE($9, parameters),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at"
+         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
     )
     .bind(model_id)
     .bind(&request.name)
@@ -394,18 +361,7 @@ pub async fn update_model(
     .await?;
 
     match model_row {
-        Some(model_db) => Ok(Some(ModelProviderModel {
-            id: model_db.id,
-            name: model_db.name,
-            alias: model_db.alias,
-            description: model_db.description,
-            path: model_db.path,
-            enabled: model_db.enabled,
-            is_deprecated: model_db.is_deprecated,
-            is_active: model_db.is_active,
-            capabilities: Some(model_db.capabilities),
-            parameters: Some(model_db.parameters),
-        })),
+        Some(model_db) => Ok(Some(ModelProviderModel::from_db(model_db, None))),
         None => Ok(None),
     }
 }
@@ -427,7 +383,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<ModelProviderModel
     let pool = pool.as_ref();
 
     let model_row: Option<ModelProviderModelDb> = sqlx::query_as(
-        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at 
+        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues 
          FROM model_provider_models 
          WHERE id = $1"
     )
@@ -436,18 +392,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<ModelProviderModel
     .await?;
 
     match model_row {
-        Some(model_db) => Ok(Some(ModelProviderModel {
-            id: model_db.id,
-            name: model_db.name,
-            alias: model_db.alias,
-            description: model_db.description,
-            path: model_db.path,
-            enabled: model_db.enabled,
-            is_deprecated: model_db.is_deprecated,
-            is_active: model_db.is_active,
-            capabilities: Some(model_db.capabilities),
-            parameters: Some(model_db.parameters),
-        })),
+        Some(model_db) => Ok(Some(ModelProviderModel::from_db(model_db, None))),
         None => Ok(None),
     }
 }

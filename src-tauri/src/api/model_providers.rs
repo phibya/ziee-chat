@@ -6,7 +6,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult, AppError};
+use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
@@ -255,7 +255,14 @@ pub async fn create_model(
         Ok(model) => Ok(Json(model)),
         Err(e) => {
             eprintln!("Failed to create model for provider {}: {}", provider_id, e);
-            Err(AppError::internal_error("Database operation failed"))
+            // Handle unique constraint violation for (provider_id, name)
+            match &e {
+                sqlx::Error::Database(db_err) if db_err.constraint() == Some("model_provider_models_provider_id_name_unique") => {
+                    Err(AppError::new(ErrorCode::ValidInvalidInput, 
+                        "A model with this ID already exists for this provider. Please use a different model ID."))
+                },
+                _ => Err(AppError::internal_error("Database operation failed"))
+            }
         }
     }
 }
