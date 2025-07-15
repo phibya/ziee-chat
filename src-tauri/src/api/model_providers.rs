@@ -313,11 +313,71 @@ pub async fn delete_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
+    // Get the model database record using proper database query
+    let model = match model_providers::get_model_db_by_id(model_id).await {
+        Ok(Some(model)) => model,
+        Ok(None) => return Err(AppError::not_found("Model")),
+        Err(e) => {
+            eprintln!("Failed to get model {}: {}", model_id, e);
+            return Err(AppError::internal_error("Database operation failed"));
+        }
+    };
+
+    // Get the provider to check if it's a Candle provider
+    let provider = match model_providers::get_model_provider_by_id(model.provider_id).await {
+        Ok(Some(provider)) => provider,
+        Ok(None) => return Err(AppError::not_found("Model provider")),
+        Err(e) => {
+            eprintln!("Failed to get model provider: {}", e);
+            return Err(AppError::internal_error("Database operation failed"));
+        }
+    };
+
+    // If it's a Candle provider, handle model shutdown and file deletion
+    if provider.provider_type == "candle" {
+        // First, stop the model if it's running
+        let model_manager = crate::ai::model_manager::get_model_manager();
+        if model_manager.is_model_running(model_id).await {
+            println!("Stopping running model {} before deletion", model_id);
+            match model_manager.stop_model(model_id).await {
+                Ok(()) => {
+                    println!("Successfully stopped model {} for deletion", model_id);
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to stop running model {}: {}", model_id, e);
+                    // Continue with deletion anyway
+                }
+            }
+        }
+
+        // Delete the physical model files
+        let model_path = model.get_model_path();
+        let full_model_path = crate::APP_DATA_DIR.join(&model_path);
+        
+        println!("Deleting Candle model files at: {}", full_model_path.display());
+        
+        if full_model_path.exists() {
+            match std::fs::remove_dir_all(&full_model_path) {
+                Ok(()) => {
+                    println!("Successfully deleted model files for model {}", model_id);
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to delete model files for model {}: {}", model_id, e);
+                    // Continue with database deletion even if file deletion fails
+                    // This prevents orphaned database records
+                }
+            }
+        } else {
+            println!("Model files not found at {}, skipping file deletion", full_model_path.display());
+        }
+    }
+
+    // Delete the model from the database
     match model_providers::delete_model(model_id).await {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
         Ok(false) => Err(AppError::not_found("Resource")),
         Err(e) => {
-            eprintln!("Failed to delete model {}: {}", model_id, e);
+            eprintln!("Failed to delete model {} from database: {}", model_id, e);
             Err(AppError::internal_error("Database operation failed"))
         }
     }

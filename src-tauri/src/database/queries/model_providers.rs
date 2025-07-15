@@ -408,3 +408,18 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
         None => Ok(None),
     }
 }
+
+/// Get the model database record for deletion operations (returns ModelProviderModelDb with provider_id)
+pub async fn get_model_db_by_id(model_id: Uuid) -> Result<Option<crate::database::models::ModelProviderModelDb>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let model_row: Option<crate::database::models::ModelProviderModelDb> = sqlx::query_as(
+        "SELECT * FROM model_provider_models WHERE id = $1",
+    )
+    .bind(model_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(model_row)
+}
