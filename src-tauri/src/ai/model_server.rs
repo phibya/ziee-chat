@@ -23,6 +23,7 @@ pub struct ModelServerState {
     pub model_name: String,
     pub architecture: String,
     pub started_at: i64,
+    pub chat_template: Option<String>,
 }
 
 impl ModelServerState {
@@ -43,6 +44,9 @@ impl ModelServerState {
             .unwrap()
             .as_secs() as i64;
 
+        // Load chat template from tokenizer config
+        let chat_template = Self::load_chat_template(model_path);
+
         Ok(Self {
             model: Arc::new(Mutex::new(model)),
             tokenizer: Arc::new(tokenizer),
@@ -50,6 +54,7 @@ impl ModelServerState {
             model_name: model_name.to_string(),
             architecture: architecture.to_string(),
             started_at,
+            chat_template,
         })
     }
 
@@ -104,6 +109,9 @@ impl ModelServerState {
             .unwrap()
             .as_secs() as i64;
 
+        // Load chat template from tokenizer config
+        let chat_template = Self::load_chat_template(model_path);
+
         Ok(Self {
             model: Arc::new(Mutex::new(model)),
             tokenizer: Arc::new(tokenizer),
@@ -111,7 +119,83 @@ impl ModelServerState {
             model_name: model_name.to_string(),
             architecture: architecture.to_string(),
             started_at,
+            chat_template,
         })
+    }
+
+    fn load_chat_template(model_path: &str) -> Option<String> {
+        use std::path::Path;
+        
+        let tokenizer_config_path = Path::new(model_path).join("tokenizer_config.json");
+        
+        if let Ok(content) = std::fs::read_to_string(&tokenizer_config_path) {
+            if let Ok(config) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(template) = config.get("chat_template") {
+                    if let Some(template_str) = template.as_str() {
+                        return Some(template_str.to_string());
+                    }
+                }
+            }
+        }
+        
+        None
+    }
+
+    fn apply_chat_template(&self, messages: &[ChatMessage]) -> String {
+        if let Some(template) = &self.chat_template {
+            self.render_chat_template(template, messages)
+        } else {
+            // Fallback to default template
+            self.default_chat_template(messages)
+        }
+    }
+
+    fn render_chat_template(&self, template: &str, messages: &[ChatMessage]) -> String {
+        // Simple Jinja2-like template renderer for the specific template format
+        let mut result = String::new();
+        
+        // Replace the Jinja2 template with Rust logic
+        // Template: {% for message in messages %}{% if message['role'] == 'user' %}{{ '<|user|>\n' + message['content'] + eos_token }}{% elif message['role'] == 'system' %}{{ '<|system|>\n' + message['content'] + eos_token }}{% elif message['role'] == 'assistant' %}{{ '<|assistant|>\n'  + message['content'] + eos_token }}{% endif %}{% if loop.last and add_generation_prompt %}{{ '<|assistant|>' }}{% endif %}{% endfor %}
+        
+        let eos_token = "</s>";
+        
+        for (i, message) in messages.iter().enumerate() {
+            match message.role.as_str() {
+                "user" => {
+                    result.push_str(&format!("<|user|>\n{}{}", message.content, eos_token));
+                }
+                "system" => {
+                    result.push_str(&format!("<|system|>\n{}{}", message.content, eos_token));
+                }
+                "assistant" => {
+                    result.push_str(&format!("<|assistant|>\n{}{}", message.content, eos_token));
+                }
+                _ => {
+                    result.push_str(&format!("<|{}|>\n{}{}", message.role, message.content, eos_token));
+                }
+            }
+        }
+        
+        // Add generation prompt at the end (equivalent to loop.last and add_generation_prompt)
+        result.push_str("<|assistant|>\n");
+        
+        result
+    }
+
+    fn default_chat_template(&self, messages: &[ChatMessage]) -> String {
+        let mut prompt = String::new();
+
+        for message in messages {
+            match message.role.as_str() {
+                "system" => prompt.push_str(&format!("<|system|>\n{}</s>", message.content)),
+                "user" => prompt.push_str(&format!("<|user|>\n{}</s>", message.content)),
+                "assistant" => prompt.push_str(&format!("<|assistant|>\n{}</s>", message.content)),
+                _ => prompt.push_str(&format!("<|{}|>\n{}</s>", message.role, message.content)),
+            }
+        }
+
+        prompt.push_str("<|assistant|>\n");
+        prompt
     }
 }
 
@@ -142,8 +226,8 @@ async fn non_stream_chat_completion(
     state: Arc<ModelServerState>,
     request: ChatCompletionRequest,
 ) -> Response {
-    // Convert chat messages to a single prompt
-    let prompt = messages_to_prompt(&request.messages);
+    // Convert chat messages to a single prompt using chat template
+    let prompt = state.apply_chat_template(&request.messages);
 
     // Tokenize input
     let tokens = match state.tokenizer.encode(prompt.clone(), true) {
@@ -203,7 +287,7 @@ async fn stream_chat_completion(
     state: Arc<ModelServerState>,
     request: ChatCompletionRequest,
 ) -> Response {
-    let prompt = messages_to_prompt(&request.messages);
+    let prompt = state.apply_chat_template(&request.messages);
 
     let tokens = match state.tokenizer.encode(prompt, true) {
         Ok(encoding) => encoding.get_ids().to_vec(),
@@ -365,21 +449,6 @@ async fn shutdown_server() -> Json<serde_json::Value> {
 
 // Helper functions
 
-fn messages_to_prompt(messages: &[ChatMessage]) -> String {
-    let mut prompt = String::new();
-
-    for message in messages {
-        match message.role.as_str() {
-            "system" => prompt.push_str(&format!("System: {}\n", message.content)),
-            "user" => prompt.push_str(&format!("User: {}\n", message.content)),
-            "assistant" => prompt.push_str(&format!("Assistant: {}\n", message.content)),
-            _ => prompt.push_str(&format!("{}: {}\n", message.role, message.content)),
-        }
-    }
-
-    prompt.push_str("Assistant: ");
-    prompt
-}
 
 async fn generate_text(
     state: &Arc<ModelServerState>,
@@ -388,54 +457,89 @@ async fn generate_text(
 ) -> Result<String, CandleError> {
     use candle_core::Tensor;
     
-    println!("Starting text generation with {} input tokens", tokens.len());
     
     let mut model = state.model.lock().await;
-    let device = candle_core::Device::Cpu; // TODO: Make this configurable
+    let device = candle_core::Device::Cpu;
     
-    // Convert input tokens to tensor
-    let mut input_ids = Tensor::from_slice(tokens, (1, tokens.len()), &device)
-        .map_err(|e| CandleError::InferenceError(format!("Failed to create input tensor: {}", e)))?;
-    
-    let max_tokens = request.max_tokens.unwrap_or(100).min(512); // Limit to reasonable max
+    let max_tokens = request.max_tokens.unwrap_or(100);
     let temperature = request.temperature.unwrap_or(0.7);
     
-    println!("Max tokens: {}, Temperature: {}", max_tokens, temperature);
+    // Clear the cache for fresh generation
+    model.clear_cache();
     
     let mut generated_tokens = tokens.to_vec();
+    let mut new_tokens = Vec::new(); // Track only newly generated tokens
     let mut generated_text = String::new();
+    
+    // Process the input tokens first
+    let input_ids = Tensor::from_slice(tokens, (1, tokens.len()), &device)
+        .map_err(|e| CandleError::InferenceError(format!("Failed to create input tensor: {}", e)))?;
+    
+    let logits = model.forward(&input_ids, 0)
+        .map_err(|e| CandleError::InferenceError(format!("Model forward pass failed: {}", e)))?;
     
     // Generate tokens one by one
     for step in 0..max_tokens {
-        println!("Generation step {}", step);
-        // Run model forward pass
-        let logits = model.forward(&input_ids, 0)
-            .map_err(|e| CandleError::InferenceError(format!("Model forward pass failed: {}", e)))?;
-        
-        // Get logits for the last token position
-        let last_token_logits = logits.narrow(1, logits.dim(1)? - 1, 1)?
-            .squeeze(1)?;
-        
-        // Apply temperature scaling
-        let scaled_logits = if temperature > 0.0 {
-            last_token_logits.affine(1.0 / temperature as f64, 0.0)?
+        // For autoregressive generation, we only pass the last token and use start_pos > 0
+        let start_pos = tokens.len() + step as usize;
+        let last_token = if step == 0 {
+            // Get the last token from the logits we just computed
+            let last_token_logits = if logits.rank() == 2 {
+                // For 2D logits [batch_size, vocab_size], just take the first row
+                logits.narrow(0, 0, 1)?.squeeze(0)?
+            } else if logits.rank() == 3 {
+                // For 3D logits [batch_size, seq_len, vocab_size], take the last position
+                logits.narrow(1, logits.dim(1)? - 1, 1)?.squeeze(1)?
+            } else {
+                return Err(CandleError::InferenceError(format!("Unexpected logits shape: {:?}", logits.shape())));
+            };
+            
+            
+            // Apply temperature and sample
+            let scaled_logits = if temperature > 0.0 {
+                last_token_logits.affine(1.0 / temperature as f64, 0.0)?
+            } else {
+                last_token_logits
+            };
+            
+            sample_token_improved(&scaled_logits, temperature as f64)?
         } else {
-            last_token_logits
+            // For subsequent tokens, run forward pass with just the last token
+            let last_token_tensor = Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), &device)
+                .map_err(|e| CandleError::InferenceError(format!("Failed to create token tensor: {}", e)))?;
+            
+            let logits = model.forward(&last_token_tensor, start_pos)
+                .map_err(|e| CandleError::InferenceError(format!("Model forward pass failed: {}", e)))?;
+            
+            // Get logits for the last token position
+            let last_token_logits = if logits.rank() == 2 {
+                // For 2D logits [batch_size, vocab_size], just take the first row
+                logits.narrow(0, 0, 1)?.squeeze(0)?
+            } else if logits.rank() == 3 {
+                // For 3D logits [batch_size, seq_len, vocab_size], take the last position
+                logits.narrow(1, logits.dim(1)? - 1, 1)?.squeeze(1)?
+            } else {
+                return Err(CandleError::InferenceError(format!("Unexpected logits shape: {:?}", logits.shape())));
+            };
+            
+            
+            // Apply temperature and sample
+            let scaled_logits = if temperature > 0.0 {
+                last_token_logits.affine(1.0 / temperature as f64, 0.0)?
+            } else {
+                last_token_logits
+            };
+            
+            sample_token_improved(&scaled_logits, temperature as f64)?
         };
         
-        // Sample next token (simplified sampling - just take argmax for now)
-        let next_token = sample_token(&scaled_logits)?;
-        println!("Sampled token: {}", next_token);
         
-        // More lenient EOS check - don't break immediately on 0 or 2
-        // They might be valid tokens in the sequence
+        generated_tokens.push(last_token);
+        new_tokens.push(last_token);
         
-        generated_tokens.push(next_token);
-        
-        // Decode the new token
-        match state.tokenizer.decode(&[next_token], false) {
+        // Decode the new token and check for stop conditions
+        match state.tokenizer.decode(&[last_token], false) {
             Ok(token_text) => {
-                println!("Token {}: {:?}", next_token, token_text);
                 generated_text.push_str(&token_text);
                 
                 // Check for stop sequences
@@ -444,7 +548,6 @@ async fn generate_text(
                         if generated_text.ends_with(stop_seq) {
                             // Remove the stop sequence from the output
                             generated_text.truncate(generated_text.len() - stop_seq.len());
-                            println!("Hit stop sequence: {}", stop_seq);
                             return Ok(generated_text);
                         }
                     }
@@ -452,34 +555,30 @@ async fn generate_text(
                 
                 // Stop if we see common EOS patterns in the text
                 if token_text.trim() == "</s>" || token_text.trim() == "<|endoftext|>" {
-                    println!("Hit text-based EOS token");
                     break;
                 }
             }
-            Err(e) => {
-                println!("Failed to decode token {}: {}", next_token, e);
+            Err(_) => {
                 // Continue generation even if one token fails to decode
             }
         }
-        
-        // Update input for next iteration (avoid full sequence re-encoding for efficiency)
-        // For now, we'll recreate the tensor with all tokens
-        let new_input_ids = Tensor::from_slice(&generated_tokens, (1, generated_tokens.len()), &device)
-            .map_err(|e| CandleError::InferenceError(format!("Failed to create new input tensor: {}", e)))?;
-        
-        // Use the new tensor as input for the next iteration
-        input_ids = new_input_ids;
     }
     
-    println!("Generation complete. Final text length: {}", generated_text.len());
-    println!("Generated text: {:?}", generated_text);
+    // Decode only the newly generated tokens to get proper spacing
+    let final_text = if !new_tokens.is_empty() {
+        match state.tokenizer.decode(&new_tokens, true) {
+            Ok(text) => text,
+            Err(_) => generated_text
+        }
+    } else {
+        generated_text
+    };
     
     // Return some fallback text if generation produced nothing
-    if generated_text.trim().is_empty() {
-        println!("No text generated, returning fallback");
-        Ok("Hello! I'm a Candle-powered AI assistant.".to_string())
+    if final_text.trim().is_empty() {
+        Ok("I'm here to help!".to_string())
     } else {
-        Ok(generated_text)
+        Ok(final_text)
     }
 }
 
@@ -502,6 +601,64 @@ fn sample_token(logits: &Tensor) -> Result<u32, CandleError> {
         .unwrap_or(0);
     
     Ok(max_index as u32)
+}
+
+// Improved sampling function with temperature and top-k filtering
+fn sample_token_improved(logits: &Tensor, temperature: f64) -> Result<u32, CandleError> {
+    // Handle both 1D and 2D tensors
+    let mut logits_vec = if logits.rank() == 2 {
+        logits.flatten_all()?.to_vec1::<f32>()
+            .map_err(|e| CandleError::InferenceError(format!("Failed to convert 2D logits to vec: {}", e)))?
+    } else {
+        logits.to_vec1::<f32>()
+            .map_err(|e| CandleError::InferenceError(format!("Failed to convert logits to vec: {}", e)))?
+    };
+    
+    // Get top tokens for sampling
+    let mut indexed_logits: Vec<(usize, f32)> = logits_vec.iter().enumerate().map(|(i, &v)| (i, v)).collect();
+    indexed_logits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    
+    // If temperature is very low, just take argmax
+    if temperature < 0.01 {
+        let max_index = indexed_logits[0].0;
+        return Ok(max_index as u32);
+    }
+    
+    // Apply top-k filtering (k=50)
+    let top_k = 50.min(logits_vec.len());
+    
+    // Zero out all but top-k logits
+    for i in top_k..logits_vec.len() {
+        let idx = indexed_logits[i].0;
+        logits_vec[idx] = f32::NEG_INFINITY;
+    }
+    
+    // Apply softmax with temperature
+    let max_logit = logits_vec.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    let mut exp_logits: Vec<f32> = logits_vec.iter()
+        .map(|&x| ((x - max_logit) / temperature as f32).exp())
+        .collect();
+    
+    let sum: f32 = exp_logits.iter().sum();
+    if sum > 0.0 {
+        for val in &mut exp_logits {
+            *val /= sum;
+        }
+    }
+    
+    // Sample from the distribution
+    let rand_val: f32 = rand::random();
+    let mut cumsum = 0.0;
+    
+    for (i, &prob) in exp_logits.iter().enumerate() {
+        cumsum += prob;
+        if rand_val <= cumsum {
+            return Ok(i as u32);
+        }
+    }
+    
+    // Fallback to argmax
+    Ok(indexed_logits[0].0 as u32)
 }
 
 fn generate_text_stream(
@@ -538,6 +695,7 @@ fn generate_text_stream(
         };
         
         let mut generated_tokens = tokens.clone();
+        let mut new_tokens = Vec::new(); // Track only newly generated tokens
         let mut current_input = input_ids;
         let mut _token_count = 0;
         
@@ -559,95 +717,193 @@ fn generate_text_stream(
         
         yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&initial_chunk).unwrap()));
         
+        // Process initial input tokens
+        let mut logits = match model.forward(&current_input, 0) {
+            Ok(logits) => logits,
+            Err(_) => {
+                let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                return;
+            }
+        };
+        
         // Generate tokens one by one
-        for _step in 0..max_tokens {
-            // Run model forward pass
-            let logits = match model.forward(&current_input, 0) {
-                Ok(logits) => logits,
-                Err(_) => break, // Exit on error
-            };
-            
-            // Get logits for the last token position
-            let last_token_logits = match logits.narrow(1, logits.dim(1).unwrap_or(1) - 1, 1)
-                .and_then(|t| t.squeeze(1)) {
-                Ok(logits) => logits,
-                Err(_) => break,
-            };
-            
-            // Apply temperature scaling
-            let scaled_logits = if temperature > 0.0 {
-                match last_token_logits.affine(1.0 / temperature as f64, 0.0) {
-                    Ok(logits) => logits,
-                    Err(_) => last_token_logits,
+        for step in 0..max_tokens {
+            let start_pos = tokens.len() + step as usize;
+            let next_token = if step == 0 {
+                // Get the last token from the logits we just computed
+                let last_token_logits = if logits.rank() == 2 {
+                    match logits.narrow(0, 0, 1).and_then(|t| t.squeeze(0)) {
+                        Ok(logits) => logits,
+                        Err(_) => {
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        }
+                    }
+                } else if logits.rank() == 3 {
+                    match logits.narrow(1, logits.dim(1).unwrap_or(1) - 1, 1).and_then(|t| t.squeeze(1)) {
+                        Ok(logits) => logits,
+                        Err(_) => {
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        }
+                    }
+                } else {
+                    let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                    return;
+                };
+                
+                // Apply temperature and sample
+                let scaled_logits = if temperature > 0.0 {
+                    match last_token_logits.affine(1.0 / temperature as f64, 0.0) {
+                        Ok(logits) => logits,
+                        Err(_) => last_token_logits,
+                    }
+                } else {
+                    last_token_logits
+                };
+                
+                match sample_token_improved(&scaled_logits, temperature as f64) {
+                    Ok(token) => token,
+                    Err(_) => {
+                        let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                        yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                        return;
+                    }
                 }
             } else {
-                last_token_logits
-            };
-            
-            // Sample next token
-            let next_token = match sample_token(&scaled_logits) {
-                Ok(token) => token,
-                Err(_) => break,
+                // For subsequent tokens, run forward pass with just the last token
+                let last_token_tensor = match Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), &device) {
+                    Ok(tensor) => tensor,
+                    Err(_) => {
+                        let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                        yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                        return;
+                    }
+                };
+                
+                logits = match model.forward(&last_token_tensor, start_pos) {
+                    Ok(logits) => logits,
+                    Err(_) => {
+                        let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                        yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                        return;
+                    }
+                };
+                
+                // Get logits for the last token position
+                let last_token_logits = if logits.rank() == 2 {
+                    match logits.narrow(0, 0, 1).and_then(|t| t.squeeze(0)) {
+                        Ok(logits) => logits,
+                        Err(_) => {
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        }
+                    }
+                } else if logits.rank() == 3 {
+                    match logits.narrow(1, logits.dim(1).unwrap_or(1) - 1, 1).and_then(|t| t.squeeze(1)) {
+                        Ok(logits) => logits,
+                        Err(_) => {
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        }
+                    }
+                } else {
+                    let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                    return;
+                };
+                
+                // Apply temperature and sample
+                let scaled_logits = if temperature > 0.0 {
+                    match last_token_logits.affine(1.0 / temperature as f64, 0.0) {
+                        Ok(logits) => logits,
+                        Err(_) => last_token_logits,
+                    }
+                } else {
+                    last_token_logits
+                };
+                
+                match sample_token_improved(&scaled_logits, temperature as f64) {
+                    Ok(token) => token,
+                    Err(_) => {
+                        let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                        yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                        return;
+                    }
+                }
             };
             
             // More lenient EOS check - don't break immediately on 0 or 2
             // They might be valid tokens in the sequence
             
             generated_tokens.push(next_token);
+            new_tokens.push(next_token);
             _token_count += 1;
             
-            // Decode the new token
-            if let Ok(token_text) = state.tokenizer.decode(&[next_token], false) {
-                // Check for stop sequences
-                let mut should_stop = false;
-                let mut final_content = token_text.clone();
-                
-                if let Some(stop_sequences) = &request.stop {
-                    for stop_seq in stop_sequences {
-                        if final_content.contains(stop_seq) {
-                            // Remove the stop sequence from the output
-                            if let Some(pos) = final_content.find(stop_seq) {
-                                final_content.truncate(pos);
-                            }
-                            should_stop = true;
-                            break;
+            // For streaming, decode just the new token for this chunk
+            let new_content = if let Ok(token_text) = state.tokenizer.decode(&[next_token], false) {
+                token_text
+            } else {
+                String::new()
+            };
+            
+            // Check for stop sequences
+            let mut should_stop = false;
+            let mut final_content = new_content.clone();
+            
+            if let Some(stop_sequences) = &request.stop {
+                for stop_seq in stop_sequences {
+                    if final_content.contains(stop_seq) {
+                        // Remove the stop sequence from the output
+                        if let Some(pos) = final_content.find(stop_seq) {
+                            final_content.truncate(pos);
                         }
+                        should_stop = true;
+                        break;
                     }
                 }
-                
-                // Send the token chunk
-                if !final_content.is_empty() {
-                    let chunk = ChatCompletionChunk {
-                        id: response_id.clone(),
-                        object: "chat.completion.chunk".to_string(),
-                        created,
-                        model: state.model_name.clone(),
-                        choices: vec![ChatChoiceDelta {
-                            index: 0,
-                            delta: ChatMessageDelta {
-                                role: None,
-                                content: Some(final_content),
-                            },
-                            finish_reason: None,
-                        }],
-                    };
-                    
-                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&chunk).unwrap()));
-                }
-                
-                if should_stop {
-                    break;
-                }
-                
-                // Add small delay to simulate realistic streaming
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             }
+            
+            // Send the token chunk
+            if !final_content.is_empty() {
+                let chunk = ChatCompletionChunk {
+                    id: response_id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created,
+                    model: state.model_name.clone(),
+                    choices: vec![ChatChoiceDelta {
+                        index: 0,
+                        delta: ChatMessageDelta {
+                            role: None,
+                            content: Some(final_content),
+                        },
+                        finish_reason: None,
+                    }],
+                };
+                
+                yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&chunk).unwrap()));
+            }
+            
+            if should_stop {
+                break;
+            }
+            
+            // Add small delay to simulate realistic streaming
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             
             // Update input for next iteration
             if let Ok(new_input) = Tensor::from_slice(&generated_tokens, (1, generated_tokens.len()), &device) {
                 current_input = new_input;
             } else {
-                break;
+                let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                return;
             }
         }
         

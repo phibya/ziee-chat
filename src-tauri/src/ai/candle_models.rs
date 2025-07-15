@@ -1,42 +1,98 @@
 use candle_core::{Device, Tensor};
+use candle_transformers::models::llama::{Cache, Llama, Config as LlamaConfig, LlamaEosToks};
+use candle_nn::VarBuilder;
 use tokenizers::Tokenizer;
+use std::path::Path;
+use serde_json;
+use serde::Deserialize;
 
 use super::candle::{CandleError, CandleModel};
 
-/// Simplified Llama model implementation for Candle
-/// Note: This is a placeholder implementation - actual model loading would require
-/// specific model files and more complex initialization
+#[derive(Debug, Deserialize)]
+struct ConfigJson {
+    vocab_size: usize,
+    hidden_size: usize,
+    intermediate_size: usize,
+    num_hidden_layers: usize,
+    num_attention_heads: usize,
+    num_key_value_heads: Option<usize>,
+    max_position_embeddings: usize,
+    rms_norm_eps: f64,
+    rope_theta: f32,
+    bos_token_id: Option<u32>,
+    eos_token_id: Option<u32>,
+    tie_word_embeddings: Option<bool>,
+}
+
+impl ConfigJson {
+    fn to_candle_config(&self) -> LlamaConfig {
+        LlamaConfig {
+            vocab_size: self.vocab_size,
+            hidden_size: self.hidden_size,
+            intermediate_size: self.intermediate_size,
+            num_hidden_layers: self.num_hidden_layers,
+            num_attention_heads: self.num_attention_heads,
+            num_key_value_heads: self.num_key_value_heads.unwrap_or(self.num_attention_heads),
+            max_position_embeddings: self.max_position_embeddings,
+            rms_norm_eps: self.rms_norm_eps,
+            rope_theta: self.rope_theta,
+            bos_token_id: Some(self.bos_token_id.unwrap_or(1)),
+            eos_token_id: Some(LlamaEosToks::Single(self.eos_token_id.unwrap_or(2))),
+            rope_scaling: None,
+            tie_word_embeddings: self.tie_word_embeddings.unwrap_or(false),
+            use_flash_attn: false,
+        }
+    }
+}
+
+/// Real Llama model implementation using Candle
 #[derive(Debug)]
 pub struct LlamaModelWrapper {
+    model: Llama,
     device: Device,
-    vocab_size: usize,
-    cache: Option<Vec<Tensor>>,
+    cache: Cache,
+    config: LlamaConfig,
 }
 
 impl LlamaModelWrapper {
     pub fn load(model_path: &str, device: &Device) -> Result<Self, CandleError> {
-        // This is a simplified placeholder implementation
-        // In a real implementation, you would:
-        // 1. Load the model configuration from config.json
-        // 2. Load the model weights from model safetensors files
-        // 3. Initialize the Llama model with the weights
-
-        // Convert relative path to absolute path based on APP_DATA_DIR
-        let absolute_path = crate::APP_DATA_DIR.join(model_path);
-        println!("Loading Llama model from: {}", absolute_path.display());
-
-        // For now, create a minimal placeholder
+        println!("Loading real Llama model from: {}", model_path);
+        
+        // Load configuration
+        let config_path = Path::new(model_path).join("config.json");
+        let config_str = std::fs::read_to_string(&config_path)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to read config: {}", e)))?;
+        let config_json: ConfigJson = serde_json::from_str(&config_str)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to parse config: {}", e)))?;
+        let config = config_json.to_candle_config();
+        
+        println!("Model config loaded: vocab_size={}, hidden_size={}", config.vocab_size, config.hidden_size);
+        
+        // Load model weights - try with F16 first as it's more common for Llama models
+        let weights_path = Path::new(model_path).join("model.safetensors");
+        let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[weights_path], candle_core::DType::F16, device)? };
+        
+        // Create model
+        let model = Llama::load(vb, &config)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to load model: {}", e)))?;
+        
+        // Initialize cache with F16 to match model
+        let cache = Cache::new(true, candle_core::DType::F16, &config, device)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)))?;
+        
+        println!("Model loaded successfully!");
+        
         Ok(Self {
+            model,
             device: device.clone(),
-            vocab_size: 32000, // Default vocab size
-            cache: None,
+            cache,
+            config,
         })
     }
 
     pub fn load_tokenizer(model_path: &str) -> Result<Tokenizer, CandleError> {
-        // Convert relative path to absolute path based on APP_DATA_DIR
-        let absolute_path = crate::APP_DATA_DIR.join(model_path);
-        let tokenizer_path = absolute_path.join("tokenizer.json");
+        let tokenizer_path = Path::new(model_path).join("tokenizer.json");
+        println!("Loading tokenizer from: {}", tokenizer_path.display());
         Tokenizer::from_file(&tokenizer_path)
             .map_err(|e| CandleError::TokenizerError(format!("Failed to load tokenizer: {}", e)))
     }
@@ -48,24 +104,41 @@ impl LlamaModelWrapper {
         weight_file: Option<&str>,
         _additional_weight_files: Option<&str>,
     ) -> Result<Self, CandleError> {
-        // Convert relative path to absolute path based on APP_DATA_DIR
-        let absolute_path = crate::APP_DATA_DIR.join(model_path);
-        println!("Loading Llama model from: {} with specific files", absolute_path.display());
+        println!("Loading Llama model from: {} with specific files", model_path);
         
-        // Print the specific files being used
-        if let Some(config) = config_file {
-            println!("  Using config file: {}", config);
-        }
-        if let Some(weight) = weight_file {
-            println!("  Using weight file: {}", weight);
-        }
-
-        // For now, create a minimal placeholder
-        // TODO: Implement actual file-specific loading
+        // Use specific config file if provided
+        let config_path = if let Some(config_file) = config_file {
+            Path::new(model_path).join(config_file)
+        } else {
+            Path::new(model_path).join("config.json")
+        };
+        
+        let config_str = std::fs::read_to_string(&config_path)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to read config: {}", e)))?;
+        let config_json: ConfigJson = serde_json::from_str(&config_str)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to parse config: {}", e)))?;
+        let config = config_json.to_candle_config();
+        
+        // Use specific weight file if provided
+        let weights_path = if let Some(weight_file) = weight_file {
+            Path::new(model_path).join(weight_file)
+        } else {
+            Path::new(model_path).join("model.safetensors")
+        };
+        
+        let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[weights_path], candle_core::DType::F16, device)? };
+        
+        let model = Llama::load(vb, &config)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to load model: {}", e)))?;
+        
+        let cache = Cache::new(true, candle_core::DType::F16, &config, device)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)))?;
+        
         Ok(Self {
+            model,
             device: device.clone(),
-            vocab_size: 32000, // Default vocab size
-            cache: None,
+            cache,
+            config,
         })
     }
 
@@ -74,20 +147,9 @@ impl LlamaModelWrapper {
         device: &Device,
         weight_file: Option<&str>,
     ) -> Result<Self, CandleError> {
-        let absolute_path = crate::APP_DATA_DIR.join(model_path);
-        println!("Loading GGUF model from: {}", absolute_path.display());
-        
-        if let Some(weight) = weight_file {
-            println!("  Using GGUF file: {}", weight);
-        }
-
-        // For now, create a minimal placeholder
-        // TODO: Implement actual GGUF loading
-        Ok(Self {
-            device: device.clone(),
-            vocab_size: 32000, // Default vocab size
-            cache: None,
-        })
+        // GGUF loading would require different implementation
+        // For now, fall back to regular loading
+        Self::load(model_path, device)
     }
 
     pub fn load_tokenizer_with_file(
@@ -110,25 +172,56 @@ impl LlamaModelWrapper {
 }
 
 impl CandleModel for LlamaModelWrapper {
-    fn forward(&mut self, input_ids: &Tensor, _start_pos: usize) -> candle_core::Result<Tensor> {
-        // This is a placeholder implementation
-        // In a real implementation, this would run the actual model forward pass
-
-        let batch_size = input_ids.dim(0)?;
-        let seq_len = input_ids.dim(1)?;
-
-        // Create dummy logits tensor with vocab_size as last dimension
-        let logits = Tensor::randn(
-            0f32,
-            1.0,
-            (batch_size, seq_len, self.vocab_size),
-            &self.device,
-        )?;
-        Ok(logits)
+    fn forward(&mut self, input_ids: &Tensor, start_pos: usize) -> candle_core::Result<Tensor> {
+        // Run the actual model forward pass
+        println!("Running model forward pass with input shape: {:?}, start_pos: {}", input_ids.dims(), start_pos);
+        
+        let real_logits = self.model.forward(input_ids, start_pos, &mut self.cache)?;
+        
+        println!("Model output logits shape: {:?}", real_logits.dims());
+        
+        // DEBUG: Check what the real logits look like
+        if let Ok(logits_vec) = real_logits.to_vec2::<f32>() {
+            if !logits_vec.is_empty() && !logits_vec[0].is_empty() {
+                // Get the last token's logits
+                let last_token_logits = &logits_vec[0];
+                
+                // Find top 10 tokens by probability
+                let mut indexed_logits: Vec<(usize, f32)> = last_token_logits.iter().enumerate().map(|(i, &v)| (i, v)).collect();
+                indexed_logits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                
+                println!("Real model top 10 logits: {:?}", &indexed_logits[..10.min(indexed_logits.len())]);
+                
+                // Check if the model is outputting reasonable distributions
+                let max_logit = indexed_logits[0].1;
+                let min_logit = indexed_logits.last().map(|(_, v)| *v).unwrap_or(max_logit);
+                println!("Logit range: {} to {}", min_logit, max_logit);
+                
+                // Check if UNK token is consistently highest
+                if indexed_logits[0].0 == 0 {
+                    println!("WARNING: Model real logits show UNK token (0) as highest: {}", indexed_logits[0].1);
+                    
+                    // Try to find what tokens should be high
+                    let mut non_unk_tokens = Vec::new();
+                    for (i, logit) in indexed_logits.iter().take(20) {
+                        if *i != 0 && *i != 1 && *i != 2 { // Skip UNK, BOS, EOS
+                            non_unk_tokens.push((*i, *logit));
+                        }
+                    }
+                    println!("Top non-special tokens: {:?}", &non_unk_tokens[..5.min(non_unk_tokens.len())]);
+                }
+            }
+        }
+        
+        // Use the actual model logits now
+        Ok(real_logits)
     }
 
     fn clear_cache(&mut self) {
-        self.cache = None;
+        // Reset the cache
+        if let Ok(new_cache) = Cache::new(true, candle_core::DType::F16, &self.config, &self.device) {
+            self.cache = new_cache;
+        }
     }
 }
 
