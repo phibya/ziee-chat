@@ -4,6 +4,8 @@ use std::sync::{Arc, Mutex};
 use tokenizers::Tokenizer;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use uuid::Uuid;
+use serde::{Deserialize, Serialize};
 
 use super::providers::{
     AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
@@ -16,6 +18,8 @@ pub struct CandleProvider {
     model: Option<Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>>,
     tokenizer: Option<Arc<Tokenizer>>,
     device: Device,
+    model_id: Option<Uuid>,
+    client: reqwest::Client,
 }
 
 #[derive(Debug, Clone)]
@@ -74,6 +78,64 @@ pub enum CandleError {
     ConfigError(String),
     #[error("Candle core error: {0}")]
     CandleCore(#[from] candle_core::Error),
+    #[error("HTTP error: {0}")]
+    HttpError(#[from] reqwest::Error),
+    #[error("Model not running: {0}")]
+    ModelNotRunning(Uuid),
+}
+
+// OpenAI-compatible structs for local model server communication
+#[derive(Debug, Serialize)]
+struct OpenAIChatRequest {
+    model: String,
+    messages: Vec<OpenAIChatMessage>,
+    stream: bool,
+    temperature: Option<f64>,
+    max_tokens: Option<u32>,
+    top_p: Option<f64>,
+    frequency_penalty: Option<f64>,
+    presence_penalty: Option<f64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct OpenAIChatMessage {
+    role: String,
+    content: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIChatResponse {
+    choices: Vec<OpenAIChoice>,
+    usage: Option<OpenAIUsage>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIChoice {
+    message: OpenAIChatMessage,
+    finish_reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIStreamChoice {
+    delta: OpenAIStreamDelta,
+    finish_reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIStreamDelta {
+    content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIStreamResponse {
+    choices: Vec<OpenAIStreamChoice>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenAIUsage {
+    prompt_tokens: Option<u32>,
+    completion_tokens: Option<u32>,
+    total_tokens: Option<u32>,
 }
 
 impl CandleProvider {
@@ -81,7 +143,7 @@ impl CandleProvider {
         model_path: String,
         model_type: String,
         device_type: DeviceType,
-        _proxy_config: Option<ProxyConfig>,
+        proxy_config: Option<ProxyConfig>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let device = match device_type {
             DeviceType::Cpu => Device::Cpu,
@@ -107,12 +169,177 @@ impl CandleProvider {
             repeat_last_n: 64,
         };
 
+        // Create HTTP client with optional proxy
+        let mut client_builder = reqwest::Client::builder();
+        
+        if let Some(proxy_cfg) = proxy_config {
+            if proxy_cfg.enabled && !proxy_cfg.url.is_empty() {
+                let mut proxy = reqwest::Proxy::all(&proxy_cfg.url)
+                    .map_err(|e| CandleError::ConfigError(format!("Invalid proxy URL: {}", e)))?;
+                
+                if let (Some(username), Some(password)) = (&proxy_cfg.username, &proxy_cfg.password) {
+                    proxy = proxy.basic_auth(username, password);
+                }
+                
+                client_builder = client_builder.proxy(proxy);
+            }
+        }
+
+        let client = client_builder.build()
+            .map_err(|e| CandleError::ConfigError(format!("Failed to create HTTP client: {}", e)))?;
+
         Ok(Self {
             config,
             model: None,
             tokenizer: None,
             device,
+            model_id: None,
+            client,
         })
+    }
+
+    /// Set the model ID for this provider instance
+    pub fn set_model_id(&mut self, model_id: Uuid) {
+        self.model_id = Some(model_id);
+    }
+
+    /// Check if the model is running and get the port
+    async fn get_model_port(&self) -> Result<u16, CandleError> {
+        let model_id = self.model_id.ok_or_else(|| 
+            CandleError::ConfigError("Model ID not set".to_string()))?;
+        
+        let model_manager = crate::ai::model_manager::get_model_manager();
+        
+        if !model_manager.is_model_running(model_id).await {
+            return Err(CandleError::ModelNotRunning(model_id));
+        }
+        
+        model_manager.get_model_port(model_id).await
+            .ok_or_else(|| CandleError::ModelNotRunning(model_id))
+    }
+
+    /// Make a chat completion request to the running model server
+    async fn call_model_server(&self, request: &ChatRequest) -> Result<OpenAIChatResponse, CandleError> {
+        let port = self.get_model_port().await?;
+        let url = format!("http://localhost:{}/v1/chat/completions", port);
+        
+        let openai_messages: Vec<OpenAIChatMessage> = request.messages.iter()
+            .map(|msg| OpenAIChatMessage {
+                role: msg.role.clone(),
+                content: msg.content.clone(),
+            })
+            .collect();
+
+        let openai_request = OpenAIChatRequest {
+            model: request.model.clone(),
+            messages: openai_messages,
+            stream: false,
+            temperature: request.temperature,
+            max_tokens: request.max_tokens,
+            top_p: request.top_p,
+            frequency_penalty: request.frequency_penalty,
+            presence_penalty: request.presence_penalty,
+        };
+
+        let response = self.client
+            .post(&url)
+            .json(&openai_request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(CandleError::InferenceError(format!(
+                "Model server error {}: {}", status, error_text
+            )));
+        }
+
+        let openai_response: OpenAIChatResponse = response.json().await?;
+        Ok(openai_response)
+    }
+
+    /// Make a streaming chat completion request to the running model server
+    async fn stream_from_model_server(&self, request: &ChatRequest, tx: mpsc::UnboundedSender<Result<StreamingChunk, Box<dyn std::error::Error + Send + Sync>>>) -> Result<(), CandleError> {
+        let port = self.get_model_port().await?;
+        let url = format!("http://localhost:{}/v1/chat/completions", port);
+        
+        let openai_messages: Vec<OpenAIChatMessage> = request.messages.iter()
+            .map(|msg| OpenAIChatMessage {
+                role: msg.role.clone(),
+                content: msg.content.clone(),
+            })
+            .collect();
+
+        let openai_request = OpenAIChatRequest {
+            model: request.model.clone(),
+            messages: openai_messages,
+            stream: true,
+            temperature: request.temperature,
+            max_tokens: request.max_tokens,
+            top_p: request.top_p,
+            frequency_penalty: request.frequency_penalty,
+            presence_penalty: request.presence_penalty,
+        };
+
+        let response = self.client
+            .post(&url)
+            .json(&openai_request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_default();
+            return Err(CandleError::InferenceError(format!(
+                "Model server error {}: {}", status, error_text
+            )));
+        }
+
+        // Handle streaming response
+        use futures_util::StreamExt;
+        let mut stream = response.bytes_stream();
+        
+        while let Some(chunk_result) = stream.next().await {
+            match chunk_result {
+                Ok(bytes) => {
+                    let text = String::from_utf8_lossy(&bytes);
+                    // Parse SSE format: "data: {...}"
+                    for line in text.lines() {
+                        if line.starts_with("data: ") {
+                            let json_part = &line[6..]; // Remove "data: " prefix
+                            if json_part == "[DONE]" {
+                                let final_chunk = StreamingChunk {
+                                    content: None,
+                                    finish_reason: Some("stop".to_string()),
+                                };
+                                let _ = tx.send(Ok(final_chunk));
+                                return Ok(());
+                            }
+                            
+                            if let Ok(openai_response) = serde_json::from_str::<OpenAIStreamResponse>(json_part) {
+                                if let Some(choice) = openai_response.choices.first() {
+                                    let chunk = StreamingChunk {
+                                        content: choice.delta.content.clone(),
+                                        finish_reason: choice.finish_reason.clone(),
+                                    };
+                                    
+                                    if tx.send(Ok(chunk)).is_err() {
+                                        return Ok(()); // Receiver dropped
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    let _ = tx.send(Err(Box::new(CandleError::HttpError(e))));
+                    return Ok(());
+                }
+            }
+        }
+
+        Ok(())
     }
 
     async fn load_model(&mut self) -> Result<(), CandleError> {
@@ -197,70 +424,36 @@ impl AIProvider for CandleProvider {
         &self,
         request: ChatRequest,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
-        // For non-streaming, we'll collect all tokens and return the complete response
-        let mut provider = self.clone();
-        provider.load_model().await?;
-
-        let prompt = provider.format_chat_prompt(&request.messages);
-
-        // This is a placeholder implementation
-        // In practice, you'd:
-        // 1. Tokenize the prompt
-        // 2. Run inference
-        // 3. Decode the tokens
-        // 4. Return the response
-
-        Ok(ChatResponse {
-            content: format!("Candle response to: {}", prompt),
-            finish_reason: Some("stop".to_string()),
-            usage: Some(Usage {
-                prompt_tokens: Some(10),
-                completion_tokens: Some(20),
-                total_tokens: Some(30),
-            }),
-        })
+        // Call the running model server
+        let openai_response = self.call_model_server(&request).await?;
+        
+        if let Some(choice) = openai_response.choices.first() {
+            Ok(ChatResponse {
+                content: choice.message.content.clone(),
+                finish_reason: choice.finish_reason.clone(),
+                usage: openai_response.usage.map(|u| Usage {
+                    prompt_tokens: u.prompt_tokens,
+                    completion_tokens: u.completion_tokens,
+                    total_tokens: u.total_tokens,
+                }),
+            })
+        } else {
+            Err(CandleError::InferenceError("No response from model".to_string()).into())
+        }
     }
 
     async fn chat_stream(
         &self,
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let mut provider = self.clone();
-        provider.load_model().await?;
-
-        let _prompt = provider.format_chat_prompt(&request.messages);
         let (tx, rx) = mpsc::unbounded_channel();
-
-        // Spawn async task for inference
+        let provider = self.clone();
+        
+        // Spawn async task for streaming inference
         tokio::spawn(async move {
-            // This is a simplified streaming implementation
-            // In practice, you'd:
-            // 1. Tokenize the prompt
-            // 2. Run inference token by token
-            // 3. Send each token as it's generated
-
-            let words = vec!["Hello", " from", " Candle", " streaming", " inference", "!"];
-
-            for word in words {
-                let chunk = StreamingChunk {
-                    content: Some(word.to_string()),
-                    finish_reason: None,
-                };
-
-                if tx.send(Ok(chunk)).is_err() {
-                    break;
-                }
-
-                // Simulate processing time
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            if let Err(e) = provider.stream_from_model_server(&request, tx.clone()).await {
+                let _ = tx.send(Err(Box::new(e)));
             }
-
-            // Send final chunk
-            let final_chunk = StreamingChunk {
-                content: None,
-                finish_reason: Some("stop".to_string()),
-            };
-            let _ = tx.send(Ok(final_chunk));
         });
 
         Ok(Box::pin(UnboundedReceiverStream::new(rx)))

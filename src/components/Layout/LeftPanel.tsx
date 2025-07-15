@@ -12,7 +12,6 @@ import {
 import {
   AppstoreOutlined,
   BlockOutlined,
-  DatabaseOutlined,
   FolderOutlined,
   HistoryOutlined,
   LogoutOutlined,
@@ -57,7 +56,6 @@ export function LeftPanel({
     if (location.pathname === '/artifacts') return ['artifacts']
     if (location.pathname === '/hub') return ['hub']
     if (location.pathname === '/assistants') return ['assistants']
-    if (location.pathname === '/models') return ['models']
     if (location.pathname === '/settings') return ['settings']
     return []
   }
@@ -175,15 +173,6 @@ export function LeftPanel({
             label: t('navigation.assistants'),
             onClick: () => {
               navigate('/assistants')
-              onItemClick?.()
-            },
-          },
-          {
-            key: 'models',
-            icon: <DatabaseOutlined />,
-            label: t('navigation.models'),
-            onClick: () => {
-              navigate('/models')
               onItemClick?.()
             },
           },

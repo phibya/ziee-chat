@@ -42,7 +42,7 @@ pub struct StreamingChunk {
 }
 
 pub type StreamingResponse =
-    Pin<Box<dyn Stream<Item = Result<StreamingChunk, reqwest::Error>> + Send>>;
+    Pin<Box<dyn Stream<Item = Result<StreamingChunk, Box<dyn std::error::Error + Send + Sync>>> + Send>>;
 
 #[derive(Debug, Clone)]
 pub struct ProxyConfig {

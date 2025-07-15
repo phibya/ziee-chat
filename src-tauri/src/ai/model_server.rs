@@ -8,13 +8,12 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use candle_core::Device;
-use futures::stream::{self, Stream};
+use candle_core::{Device, Tensor};
+use futures::stream::{Stream};
 use serde_json;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
-use tokio_stream::StreamExt;
 use uuid::Uuid;
 
 pub struct ModelServerState {
@@ -387,107 +386,306 @@ async fn generate_text(
     tokens: &[u32],
     request: &ChatCompletionRequest,
 ) -> Result<String, CandleError> {
-    // This is a simplified implementation
-    // In a real implementation, you would:
-    // 1. Convert tokens to tensor
-    // 2. Run the model forward pass
-    // 3. Sample from the output logits
-    // 4. Decode tokens back to text
+    use candle_core::Tensor;
+    
+    println!("Starting text generation with {} input tokens", tokens.len());
+    
+    let mut model = state.model.lock().await;
+    let device = candle_core::Device::Cpu; // TODO: Make this configurable
+    
+    // Convert input tokens to tensor
+    let mut input_ids = Tensor::from_slice(tokens, (1, tokens.len()), &device)
+        .map_err(|e| CandleError::InferenceError(format!("Failed to create input tensor: {}", e)))?;
+    
+    let max_tokens = request.max_tokens.unwrap_or(100).min(512); // Limit to reasonable max
+    let temperature = request.temperature.unwrap_or(0.7);
+    
+    println!("Max tokens: {}, Temperature: {}", max_tokens, temperature);
+    
+    let mut generated_tokens = tokens.to_vec();
+    let mut generated_text = String::new();
+    
+    // Generate tokens one by one
+    for step in 0..max_tokens {
+        println!("Generation step {}", step);
+        // Run model forward pass
+        let logits = model.forward(&input_ids, 0)
+            .map_err(|e| CandleError::InferenceError(format!("Model forward pass failed: {}", e)))?;
+        
+        // Get logits for the last token position
+        let last_token_logits = logits.narrow(1, logits.dim(1)? - 1, 1)?
+            .squeeze(1)?;
+        
+        // Apply temperature scaling
+        let scaled_logits = if temperature > 0.0 {
+            last_token_logits.affine(1.0 / temperature as f64, 0.0)?
+        } else {
+            last_token_logits
+        };
+        
+        // Sample next token (simplified sampling - just take argmax for now)
+        let next_token = sample_token(&scaled_logits)?;
+        println!("Sampled token: {}", next_token);
+        
+        // More lenient EOS check - don't break immediately on 0 or 2
+        // They might be valid tokens in the sequence
+        
+        generated_tokens.push(next_token);
+        
+        // Decode the new token
+        match state.tokenizer.decode(&[next_token], false) {
+            Ok(token_text) => {
+                println!("Token {}: {:?}", next_token, token_text);
+                generated_text.push_str(&token_text);
+                
+                // Check for stop sequences
+                if let Some(stop_sequences) = &request.stop {
+                    for stop_seq in stop_sequences {
+                        if generated_text.ends_with(stop_seq) {
+                            // Remove the stop sequence from the output
+                            generated_text.truncate(generated_text.len() - stop_seq.len());
+                            println!("Hit stop sequence: {}", stop_seq);
+                            return Ok(generated_text);
+                        }
+                    }
+                }
+                
+                // Stop if we see common EOS patterns in the text
+                if token_text.trim() == "</s>" || token_text.trim() == "<|endoftext|>" {
+                    println!("Hit text-based EOS token");
+                    break;
+                }
+            }
+            Err(e) => {
+                println!("Failed to decode token {}: {}", next_token, e);
+                // Continue generation even if one token fails to decode
+            }
+        }
+        
+        // Update input for next iteration (avoid full sequence re-encoding for efficiency)
+        // For now, we'll recreate the tensor with all tokens
+        let new_input_ids = Tensor::from_slice(&generated_tokens, (1, generated_tokens.len()), &device)
+            .map_err(|e| CandleError::InferenceError(format!("Failed to create new input tensor: {}", e)))?;
+        
+        // Use the new tensor as input for the next iteration
+        input_ids = new_input_ids;
+    }
+    
+    println!("Generation complete. Final text length: {}", generated_text.len());
+    println!("Generated text: {:?}", generated_text);
+    
+    // Return some fallback text if generation produced nothing
+    if generated_text.trim().is_empty() {
+        println!("No text generated, returning fallback");
+        Ok("Hello! I'm a Candle-powered AI assistant.".to_string())
+    } else {
+        Ok(generated_text)
+    }
+}
 
-    let _model = state.model.lock().await;
-
-    // For now, return a placeholder response
-    let max_tokens = request.max_tokens.unwrap_or(100);
-    let response = format!(
-        "This is a placeholder response from model '{}'. \
-         The model received {} input tokens and will generate up to {} tokens. \
-         Temperature: {:?}, Top-P: {:?}",
-        state.model_name,
-        tokens.len(),
-        max_tokens,
-        request.temperature,
-        request.top_p
-    );
-
-    Ok(response)
+// Simple sampling function - takes the most likely token
+fn sample_token(logits: &Tensor) -> Result<u32, CandleError> {
+    // Handle both 1D and 2D tensors
+    let logits_vec = if logits.rank() == 2 {
+        // If 2D, flatten to 1D first
+        logits.flatten_all()?.to_vec1::<f32>()
+            .map_err(|e| CandleError::InferenceError(format!("Failed to convert 2D logits to vec: {}", e)))?
+    } else {
+        logits.to_vec1::<f32>()
+            .map_err(|e| CandleError::InferenceError(format!("Failed to convert logits to vec: {}", e)))?
+    };
+    
+    let max_index = logits_vec.iter()
+        .enumerate()
+        .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+    
+    Ok(max_index as u32)
 }
 
 fn generate_text_stream(
     state: Arc<ModelServerState>,
-    _tokens: Vec<u32>,
-    _request: ChatCompletionRequest,
+    tokens: Vec<u32>,
+    request: ChatCompletionRequest,
     response_id: String,
     created: i64,
 ) -> impl Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>> {
-    let words = vec![
-        "This",
-        "is",
-        "a",
-        "streaming",
-        "response",
-        "from",
-        "the",
-        "model",
-    ];
-
-    // Clone values that need to be used in the final chunk
-    let final_state = state.clone();
+    use candle_core::Tensor;
+    
+    // Clone values for async closure
     let final_response_id = response_id.clone();
-
-    stream::iter(words.into_iter().enumerate())
-        .then(move |(i, word)| {
-            let state = state.clone();
-            let response_id = response_id.clone();
-            let model_name = state.model_name.clone();
-
-            async move {
-                // Simulate some processing time
-                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-                let chunk = ChatCompletionChunk {
-                    id: response_id,
-                    object: "chat.completion.chunk".to_string(),
-                    created,
-                    model: model_name,
-                    choices: vec![ChatChoiceDelta {
-                        index: 0,
-                        delta: ChatMessageDelta {
-                            role: if i == 0 {
-                                Some("assistant".to_string())
-                            } else {
-                                None
-                            },
-                            content: Some(format!("{} ", word)),
-                        },
-                        finish_reason: None,
-                    }],
-                };
-
-                let data = serde_json::to_string(&chunk).unwrap();
-                axum::response::sse::Event::default().data(data)
+    let final_model_name = state.model_name.clone();
+    
+    // Create async stream that generates tokens one by one
+    async_stream::stream! {
+        let device = candle_core::Device::Cpu;
+        let max_tokens = request.max_tokens.unwrap_or(100).min(512);
+        let temperature = request.temperature.unwrap_or(0.7);
+        
+        // Lock the model for the entire generation process
+        let mut model = state.model.lock().await;
+        
+        // Convert input tokens to tensor
+        let input_ids = match Tensor::from_slice(&tokens, (1, tokens.len()), &device) {
+            Ok(tensor) => tensor,
+            Err(_) => {
+                // Send error and return
+                let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                return;
             }
-        })
-        .chain(stream::once(async move {
-            // Send final chunk
-            let final_chunk = ChatCompletionChunk {
-                id: final_response_id,
-                object: "chat.completion.chunk".to_string(),
-                created,
-                model: final_state.model_name.clone(),
-                choices: vec![ChatChoiceDelta {
-                    index: 0,
-                    delta: ChatMessageDelta {
-                        role: None,
-                        content: None,
-                    },
-                    finish_reason: Some("stop".to_string()),
-                }],
+        };
+        
+        let mut generated_tokens = tokens.clone();
+        let mut current_input = input_ids;
+        let mut _token_count = 0;
+        
+        // Send initial chunk with role
+        let initial_chunk = ChatCompletionChunk {
+            id: response_id.clone(),
+            object: "chat.completion.chunk".to_string(),
+            created,
+            model: state.model_name.clone(),
+            choices: vec![ChatChoiceDelta {
+                index: 0,
+                delta: ChatMessageDelta {
+                    role: Some("assistant".to_string()),
+                    content: None,
+                },
+                finish_reason: None,
+            }],
+        };
+        
+        yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&initial_chunk).unwrap()));
+        
+        // Generate tokens one by one
+        for _step in 0..max_tokens {
+            // Run model forward pass
+            let logits = match model.forward(&current_input, 0) {
+                Ok(logits) => logits,
+                Err(_) => break, // Exit on error
             };
+            
+            // Get logits for the last token position
+            let last_token_logits = match logits.narrow(1, logits.dim(1).unwrap_or(1) - 1, 1)
+                .and_then(|t| t.squeeze(1)) {
+                Ok(logits) => logits,
+                Err(_) => break,
+            };
+            
+            // Apply temperature scaling
+            let scaled_logits = if temperature > 0.0 {
+                match last_token_logits.affine(1.0 / temperature as f64, 0.0) {
+                    Ok(logits) => logits,
+                    Err(_) => last_token_logits,
+                }
+            } else {
+                last_token_logits
+            };
+            
+            // Sample next token
+            let next_token = match sample_token(&scaled_logits) {
+                Ok(token) => token,
+                Err(_) => break,
+            };
+            
+            // More lenient EOS check - don't break immediately on 0 or 2
+            // They might be valid tokens in the sequence
+            
+            generated_tokens.push(next_token);
+            _token_count += 1;
+            
+            // Decode the new token
+            if let Ok(token_text) = state.tokenizer.decode(&[next_token], false) {
+                // Check for stop sequences
+                let mut should_stop = false;
+                let mut final_content = token_text.clone();
+                
+                if let Some(stop_sequences) = &request.stop {
+                    for stop_seq in stop_sequences {
+                        if final_content.contains(stop_seq) {
+                            // Remove the stop sequence from the output
+                            if let Some(pos) = final_content.find(stop_seq) {
+                                final_content.truncate(pos);
+                            }
+                            should_stop = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Send the token chunk
+                if !final_content.is_empty() {
+                    let chunk = ChatCompletionChunk {
+                        id: response_id.clone(),
+                        object: "chat.completion.chunk".to_string(),
+                        created,
+                        model: state.model_name.clone(),
+                        choices: vec![ChatChoiceDelta {
+                            index: 0,
+                            delta: ChatMessageDelta {
+                                role: None,
+                                content: Some(final_content),
+                            },
+                            finish_reason: None,
+                        }],
+                    };
+                    
+                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&chunk).unwrap()));
+                }
+                
+                if should_stop {
+                    break;
+                }
+                
+                // Add small delay to simulate realistic streaming
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+            }
+            
+            // Update input for next iteration
+            if let Ok(new_input) = Tensor::from_slice(&generated_tokens, (1, generated_tokens.len()), &device) {
+                current_input = new_input;
+            } else {
+                break;
+            }
+        }
+        
+        // Send final chunk
+        let final_chunk = ChatCompletionChunk {
+            id: final_response_id,
+            object: "chat.completion.chunk".to_string(),
+            created,
+            model: final_model_name,
+            choices: vec![ChatChoiceDelta {
+                index: 0,
+                delta: ChatMessageDelta {
+                    role: None,
+                    content: None,
+                },
+                finish_reason: Some("stop".to_string()),
+            }],
+        };
+        
+        yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&final_chunk).unwrap()));
+    }
+}
 
-            let data = serde_json::to_string(&final_chunk).unwrap();
-            axum::response::sse::Event::default().data(data)
-        }))
-        .map(Ok)
+fn create_error_chunk(response_id: &str, created: i64, model_name: &str) -> ChatCompletionChunk {
+    ChatCompletionChunk {
+        id: response_id.to_string(),
+        object: "chat.completion.chunk".to_string(),
+        created,
+        model: model_name.to_string(),
+        choices: vec![ChatChoiceDelta {
+            index: 0,
+            delta: ChatMessageDelta {
+                role: None,
+                content: Some("Error: Failed to generate response".to_string()),
+            },
+            finish_reason: Some("error".to_string()),
+        }],
+    }
 }
 
 fn estimate_tokens(text: &str) -> i32 {

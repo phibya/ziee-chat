@@ -254,7 +254,7 @@ impl AIProvider for OpenAICompatibleProvider {
                         finish_reason: None,
                     }))
                 }
-                Err(e) => Err(e),
+                Err(e) => Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>),
             }
         });
 

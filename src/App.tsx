@@ -14,7 +14,6 @@ import { AssistantsPage } from './components/Pages/AssistantsPage'
 import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
 import { HubPage } from './components/Pages/HubPage'
 import { SettingsPage } from './components/Pages/SettingsPage'
-import { ModelsPage } from './components/Pages/ModelsPage'
 import { ProjectsPage } from './components/Pages/ProjectsPage'
 import { ProjectDetailsPage } from './components/Pages/ProjectDetailsPage'
 import {
@@ -75,7 +74,6 @@ function App() {
                 element={<ProjectDetailsPage />}
               />
               <Route path="/hub" element={<HubPage />} />
-              <Route path="/models" element={<ModelsPage />} />
               <Route path="/settings" element={<SettingsPage />}>
                 <Route
                   index

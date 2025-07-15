@@ -345,8 +345,8 @@ pub async fn send_message_stream(
         // Count messages excluding system messages (assistant instructions)
         let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
 
-        // Create AI provider
-        let ai_provider = match create_ai_provider(&provider) {
+        // Create AI provider with model ID for Candle providers
+        let ai_provider = match create_ai_provider_with_model_id(&provider, Some(request.model_id)) {
             Ok(provider) => provider,
             Err(e) => {
                 let _ = tx.send(Ok(Event::default().event("error").data(
@@ -618,8 +618,8 @@ async fn stream_ai_response(
         }
     };
 
-    // Create AI provider
-    let ai_provider = match create_ai_provider(&provider) {
+    // Create AI provider with model ID for Candle providers
+    let ai_provider = match create_ai_provider_with_model_id(&provider, Some(model_id)) {
         Ok(provider) => provider,
         Err(e) => {
             let _ = tx.send(Ok(Event::default().event("error").data(
@@ -998,6 +998,14 @@ fn create_proxy_config(
 fn create_ai_provider(
     provider: &crate::database::models::ModelProvider,
 ) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
+    create_ai_provider_with_model_id(provider, None)
+}
+
+/// Helper function to create AI provider instances with optional model ID for Candle providers
+fn create_ai_provider_with_model_id(
+    provider: &crate::database::models::ModelProvider,
+    model_id: Option<Uuid>,
+) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
     let proxy_config = provider
         .proxy_settings
         .as_ref()
@@ -1053,7 +1061,7 @@ fn create_ai_provider(
             Ok(Box::new(custom_provider))
         }
         "candle" => {
-            let candle_provider = CandleProvider::new(
+            let mut candle_provider = CandleProvider::new(
                 provider
                     .base_url
                     .clone()
@@ -1062,6 +1070,12 @@ fn create_ai_provider(
                 crate::ai::candle::DeviceType::Cpu, // device_type - could be made configurable
                 proxy_config,
             )?;
+            
+            // Set the model ID if provided (for Candle providers)
+            if let Some(id) = model_id {
+                candle_provider.set_model_id(id);
+            }
+            
             Ok(Box::new(candle_provider))
         }
         _ => Err(format!("Unsupported provider type: {}", provider.provider_type).into()),
@@ -1129,7 +1143,7 @@ async fn generate_and_update_conversation_title(
         }];
 
         // Create AI provider instance
-        let ai_provider = create_ai_provider(provider)?;
+        let ai_provider = create_ai_provider_with_model_id(provider, Some(model.id))?;
 
         // Create chat request for title generation
         let chat_request = ChatRequest {
