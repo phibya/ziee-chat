@@ -79,9 +79,9 @@ pub async fn upload_model_file(
     let storage = ModelStorage::new()
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
-    // Get the model directory path
-    let model_path = storage.get_model_path(&model.provider_id, &model_id);
-    let file_path = model_path.join(&request.filename);
+    // Get the model directory path using {provider_id}/{id} pattern
+    let model_path = format!("models/{}/{}", model.provider_id, model_id);
+    let file_path = crate::APP_DATA_DIR.join(&model_path).join(&request.filename);
 
     // For local folder uploads, we expect the files to already be accessible
     // This is a simplified implementation - in production you'd handle actual file uploads
@@ -337,7 +337,7 @@ pub async fn commit_uploaded_files(
     let model_path = storage.get_model_path(&request.provider_id, &model_id);
 
     // Convert absolute path to relative path for database storage
-    let relative_model_path = match ModelStorage::to_relative_path(&model_path) {
+    let _relative_model_path = match ModelStorage::to_relative_path(&model_path) {
         Ok(path) => path,
         Err(e) => {
             eprintln!("Warning: Failed to convert model path to relative: {}", e);
@@ -355,14 +355,13 @@ pub async fn commit_uploaded_files(
         name: request.name,
         alias: request.alias,
         description: request.description,
-        path: Some(relative_model_path.clone()),
         enabled: Some(false),
         capabilities: Some(serde_json::json!({})),
     };
 
     println!("Processing model with file format: {}", file_format);
 
-    let model_db = ModelOperations::create_candle_model(pool.as_ref(), &create_request, Some(&relative_model_path), Some(&architecture))
+    let model_db = ModelOperations::create_candle_model(pool.as_ref(), &create_request, Some(&architecture))
     .await
     .map_err(|e| {
       // Handle unique constraint violation for (provider_id, name)
@@ -607,23 +606,23 @@ pub async fn validate_model(
         .map_err(|e| AppError::internal_error(format!("Validation failed: {}", e)))?;
 
     // Additional validation using ModelUtils
-    let model_path = storage.get_model_path(&model.provider_id, &model_id);
-    if let Some(model_path_str) = model_path.to_str() {
-        // Validate model name
-        if let Err(e) = crate::utils::model_storage::ModelUtils::validate_model_name(&model.name) {
-            validation_issues.push(format!("Invalid model name: {}", e));
-        }
+    let model_path = format!("models/{}/{}", model.provider_id, model_id);
+    
+    // Validate model name
+    if let Err(e) = crate::utils::model_storage::ModelUtils::validate_model_name(&model.name) {
+        validation_issues.push(format!("Invalid model name: {}", e));
+    }
 
-        // Check if model exists using verification function
-        if let Err(e) = crate::utils::model_storage::ModelUtils::verify_model_exists(
-            model_path_str,
-            &model.name,
-        ) {
-            validation_issues.push(format!("Model verification failed: {}", e));
-        }
+    // Check if model exists using verification function
+    if let Err(e) = crate::utils::model_storage::ModelUtils::verify_model_exists(
+        &model_path,
+        &model.name,
+    ) {
+        validation_issues.push(format!("Model verification failed: {}", e));
+    }
 
-        // Get and validate model size
-        if let Ok(model_size) = crate::ai::candle_models::ModelUtils::get_model_size(model_path_str)
+    // Get and validate model size
+    if let Ok(model_size) = crate::ai::candle_models::ModelUtils::get_model_size(&model_path)
         {
             let formatted_size =
                 crate::utils::model_storage::ModelUtils::format_model_size(model_size);
@@ -631,7 +630,8 @@ pub async fn validate_model(
 
             // Only warn if the total model weight files are extremely small
             // Count only actual weight files, not config/tokenizer files
-            if let Ok(entries) = std::fs::read_dir(&model_path) {
+            let model_path_buf = crate::APP_DATA_DIR.join(&model_path);
+            if let Ok(entries) = std::fs::read_dir(&model_path_buf) {
                 let weight_files_size: u64 = entries
                     .filter_map(|entry| entry.ok())
                     .filter(|entry| {
@@ -654,40 +654,39 @@ pub async fn validate_model(
             }
         }
 
-        // Extract and validate model info from config.json if present
-        let config_path = model_path.join("config.json");
-        if config_path.exists() {
-            if let Ok(config_content) = std::fs::read_to_string(&config_path) {
-                match crate::utils::model_storage::ModelUtils::extract_model_info(&config_content) {
-                    Ok((extracted_name, _description)) => {
-                        println!("Extracted model info: name={}", extracted_name);
-                    }
-                    Err(e) => {
-                        validation_issues.push(format!("Invalid config.json: {}", e));
-                    }
+    // Extract and validate model info from config.json if present
+    let config_path = crate::APP_DATA_DIR.join(&model_path).join("config.json");
+    if config_path.exists() {
+        if let Ok(config_content) = std::fs::read_to_string(&config_path) {
+            match crate::utils::model_storage::ModelUtils::extract_model_info(&config_content) {
+                Ok((extracted_name, _description)) => {
+                    println!("Extracted model info: name={}", extracted_name);
+                }
+                Err(e) => {
+                    validation_issues.push(format!("Invalid config.json: {}", e));
                 }
             }
         }
+    }
 
-        // Discover and validate model using ModelDiscovery
-        match crate::utils::model_storage::ModelUtils::discover_models(model_path_str) {
-            Ok(discovered_models) => {
-                println!("Discovered {} models in directory", discovered_models.len());
-                if discovered_models.is_empty() {
-                    validation_issues.push("No valid models found in directory".to_string());
-                }
-            }
-            Err(e) => {
-                validation_issues.push(format!("Model discovery failed: {}", e));
+    // Discover and validate model using ModelDiscovery
+    match crate::utils::model_storage::ModelUtils::discover_models(&model_path) {
+        Ok(discovered_models) => {
+            println!("Discovered {} models in directory", discovered_models.len());
+            if discovered_models.is_empty() {
+                validation_issues.push("No valid models found in directory".to_string());
             }
         }
+        Err(e) => {
+            validation_issues.push(format!("Model discovery failed: {}", e));
+        }
+    }
 
-        // List available models in the directory
-        if let Ok(model_list) = crate::ai::candle_models::ModelUtils::list_models(model_path_str) {
-            println!("Available models: {:?}", model_list);
-            if model_list.is_empty() {
-                validation_issues.push("No model directories found".to_string());
-            }
+    // List available models in the directory
+    if let Ok(model_list) = crate::ai::candle_models::ModelUtils::list_models(&model_path) {
+        println!("Available models: {:?}", model_list);
+        if model_list.is_empty() {
+            validation_issues.push("No model directories found".to_string());
         }
     }
 

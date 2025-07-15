@@ -73,10 +73,7 @@ pub struct ModelStorage {
 
 impl ModelStorage {
     pub fn new() -> Result<Self, ModelStorageError> {
-        let app_data_dir = std::env::var("APP_DATA_DIR")
-            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
-        
-        let app_data_path = PathBuf::from(&app_data_dir);
+        let app_data_path = crate::APP_DATA_DIR.clone();
         let base_path = app_data_path.join("models");
         
         // Create models directory if it doesn't exist
@@ -350,9 +347,7 @@ impl ModelStorage {
 
     /// Convert absolute file path to relative path (relative to APP_DATA_DIR)
     pub fn to_relative_path(absolute_path: &Path) -> Result<String, ModelStorageError> {
-        let app_data_dir = std::env::var("APP_DATA_DIR")
-            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
-        let app_data_path = PathBuf::from(&app_data_dir);
+        let app_data_path = crate::APP_DATA_DIR.clone();
         
         match absolute_path.strip_prefix(&app_data_path) {
             Ok(relative_path) => Ok(relative_path.to_string_lossy().to_string()),
@@ -368,9 +363,7 @@ impl ModelStorage {
 
     /// Convert relative path to absolute path (relative to APP_DATA_DIR)
     pub fn to_absolute_path(relative_path: &str) -> Result<PathBuf, ModelStorageError> {
-        let app_data_dir = std::env::var("APP_DATA_DIR")
-            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
-        Ok(PathBuf::from(app_data_dir).join(relative_path))
+        Ok(crate::APP_DATA_DIR.join(relative_path))
     }
 
     /// Save file to temporary storage
@@ -382,9 +375,7 @@ impl ModelStorage {
         data: &[u8],
     ) -> Result<TempFile, ModelStorageError> {
         // Save directly to APP_DATA_DIR/temp/ since filenames are unique
-        let app_data_dir = std::env::var("APP_DATA_DIR")
-            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
-        let temp_base = PathBuf::from(app_data_dir).join("temp");
+        let temp_base = crate::APP_DATA_DIR.join("temp");
         
         // Ensure temp directory exists
         if !temp_base.exists() {
@@ -444,9 +435,7 @@ impl ModelStorage {
         provider_id: &Uuid,
         model_id: &Uuid,
     ) -> Result<CommittedFile, ModelStorageError> {
-        let app_data_dir = std::env::var("APP_DATA_DIR")
-            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
-        let temp_path = PathBuf::from(app_data_dir).join("temp");
+        let temp_path = crate::APP_DATA_DIR.join("temp");
         
         // Find the temp file
         let temp_files = fs::read_dir(&temp_path)?;
@@ -498,9 +487,7 @@ impl ModelStorage {
 
     /// Clean up temporary files for a session
     pub async fn cleanup_temp_session(&self, _session_id: &Uuid) -> Result<(), ModelStorageError> {
-        let app_data_dir = std::env::var("APP_DATA_DIR")
-            .map_err(|_| ModelStorageError::Environment("APP_DATA_DIR not set".to_string()))?;
-        let temp_path = PathBuf::from(app_data_dir).join("temp");
+        let temp_path = crate::APP_DATA_DIR.join("temp");
         
         if !temp_path.exists() {
             return Ok(()); // Nothing to clean up

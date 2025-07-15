@@ -1,12 +1,12 @@
-use uuid::Uuid;
 use sqlx::Row;
+use uuid::Uuid;
 
 use crate::database::{
     get_database_pool,
     models::{
         CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderDb,
-        ModelProviderModel, ModelProviderModelDb,
-        ModelProviderProxySettings, UpdateModelProviderRequest, UpdateModelRequest,
+        ModelProviderModel, ModelProviderModelDb, ModelProviderProxySettings,
+        UpdateModelProviderRequest, UpdateModelRequest,
     },
 };
 
@@ -230,16 +230,15 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
     for model in &original_provider.models {
         let cloned_model_id = Uuid::new_v4();
         let cloned_model_row: ModelProviderModelDb = sqlx::query_as(
-            "INSERT INTO model_provider_models (id, provider_id, name, alias, description, path, enabled, capabilities, parameters) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-             RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
+            "INSERT INTO model_provider_models (id, provider_id, name, alias, description, enabled, capabilities, parameters) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+             RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
         )
         .bind(cloned_model_id)
         .bind(new_provider_id)
         .bind(&model.name)
         .bind(&model.alias)
         .bind(&model.description)
-        .bind(&model.path)
         .bind(false) // Cloned models are disabled by default
         .bind(model.capabilities.as_ref().unwrap_or(&serde_json::json!({})))
         .bind(model.parameters.as_ref().unwrap_or(&serde_json::json!({})))
@@ -284,10 +283,10 @@ async fn get_models_for_provider(
     let pool = pool.as_ref();
 
     let model_rows: Vec<ModelProviderModelDb> = sqlx::query_as(
-        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues 
+        "SELECT * 
          FROM model_provider_models 
          WHERE provider_id = $1 
-         ORDER BY created_at ASC"
+         ORDER BY created_at ASC",
     )
     .bind(provider_id)
     .fetch_all(pool)
@@ -308,16 +307,15 @@ pub async fn create_model(
     let model_id = Uuid::new_v4();
 
     let model_row: ModelProviderModelDb = sqlx::query_as(
-        "INSERT INTO model_provider_models (id, provider_id, name, alias, description, path, enabled, capabilities, parameters) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
+        "INSERT INTO model_provider_models (id, provider_id, name, alias, description, enabled, capabilities, parameters) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
     )
     .bind(model_id)
     .bind(provider_id)
     .bind(&request.name)
     .bind(&request.alias)
     .bind(&request.description)
-    .bind(&request.path)
     .bind(request.enabled.unwrap_or(true))
     .bind(request.capabilities.unwrap_or(serde_json::json!({})))
     .bind(serde_json::json!({}))
@@ -339,20 +337,18 @@ pub async fn update_model(
          SET name = COALESCE($2, name),
              alias = COALESCE($3, alias),
              description = COALESCE($4, description),
-             path = COALESCE($5, path),
-             enabled = COALESCE($6, enabled),
-             is_active = COALESCE($7, is_active),
-             capabilities = COALESCE($8, capabilities),
-             parameters = COALESCE($9, parameters),
+             enabled = COALESCE($5, enabled),
+             is_active = COALESCE($6, is_active),
+             capabilities = COALESCE($7, capabilities),
+             parameters = COALESCE($8, parameters),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
     )
     .bind(model_id)
     .bind(&request.name)
     .bind(&request.alias)
     .bind(&request.description)
-    .bind(&request.path)
     .bind(request.enabled)
     .bind(request.is_active)
     .bind(&request.capabilities)
@@ -383,9 +379,9 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<ModelProviderModel
     let pool = pool.as_ref();
 
     let model_row: Option<ModelProviderModelDb> = sqlx::query_as(
-        "SELECT id, provider_id, name, alias, description, path, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues 
+        "SELECT * 
          FROM model_provider_models 
-         WHERE id = $1"
+         WHERE id = $1",
     )
     .bind(model_id)
     .fetch_optional(pool)

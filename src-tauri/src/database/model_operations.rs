@@ -10,7 +10,6 @@ impl ModelOperations {
     pub async fn create_model(
         pool: &PgPool,
         request: &CreateModelRequest,
-        model_path: Option<&str>,
     ) -> Result<ModelProviderModelDb, sqlx::Error> {
         let model_id = Uuid::new_v4();
         let now = Utc::now();
@@ -29,13 +28,13 @@ impl ModelOperations {
         let row = sqlx::query(
             r#"
             INSERT INTO model_provider_models (
-                id, provider_id, name, alias, description, path, 
+                id, provider_id, name, alias, description, 
                 architecture, quantization, file_size_bytes, enabled, 
                 is_deprecated, is_active, capabilities, parameters, 
                 validation_status, created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
-            ) RETURNING id, provider_id, name, alias, description, path, 
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+            ) RETURNING id, provider_id, name, alias, description, 
                        architecture, quantization, file_size_bytes, checksum, enabled, 
                        is_deprecated, is_active, capabilities, parameters, 
                        validation_status, validation_issues, created_at, updated_at
@@ -46,7 +45,6 @@ impl ModelOperations {
         .bind(&request.name)
         .bind(&request.alias)
         .bind(&request.description)
-        .bind(model_path)
         .bind(None::<String>) // architecture - NULL for non-Candle models
         .bind(None::<String>) // quantization - NULL for non-Candle models
         .bind(0i64)
@@ -67,7 +65,6 @@ impl ModelOperations {
             name: row.get("name"),
             alias: row.get("alias"),
             description: row.get("description"),
-            path: row.get("path"),
             enabled: row.get("enabled"),
             is_deprecated: row.get("is_deprecated"),
             is_active: row.get("is_active"),
@@ -90,7 +87,6 @@ impl ModelOperations {
     pub async fn create_candle_model(
         pool: &PgPool,
         request: &CreateModelRequest,
-        model_path: Option<&str>,
         architecture: Option<&str>,
     ) -> Result<ModelProviderModelDb, sqlx::Error> {
         let model_id = Uuid::new_v4();
@@ -110,13 +106,13 @@ impl ModelOperations {
         let row = sqlx::query(
             r#"
             INSERT INTO model_provider_models (
-                id, provider_id, name, alias, description, path, 
+                id, provider_id, name, alias, description, 
                 architecture, quantization, file_size_bytes, enabled, 
                 is_deprecated, is_active, capabilities, parameters, 
                 validation_status, created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
-            ) RETURNING id, provider_id, name, alias, description, path, 
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+            ) RETURNING id, provider_id, name, alias, description, 
                        architecture, quantization, file_size_bytes, checksum, enabled, 
                        is_deprecated, is_active, capabilities, parameters, 
                        validation_status, validation_issues, created_at, updated_at
@@ -127,7 +123,6 @@ impl ModelOperations {
         .bind(&request.name)
         .bind(&request.alias)
         .bind(&request.description)
-        .bind(model_path)
         .bind(architecture)
         .bind(None::<String>) // quantization removed
         .bind(0i64)
@@ -148,7 +143,6 @@ impl ModelOperations {
             name: row.get("name"),
             alias: row.get("alias"),
             description: row.get("description"),
-            path: row.get("path"),
             enabled: row.get("enabled"),
             is_deprecated: row.get("is_deprecated"),
             is_active: row.get("is_active"),
@@ -173,7 +167,7 @@ impl ModelOperations {
         model_id: &Uuid,
     ) -> Result<Option<ModelProviderModelDb>, sqlx::Error> {
         let row = sqlx::query(
-            "SELECT id, provider_id, name, alias, description, path, 
+            "SELECT id, provider_id, name, alias, description, 
                     architecture, quantization, file_size_bytes, checksum, enabled, 
                     is_deprecated, is_active, capabilities, parameters, 
                     validation_status, validation_issues, created_at, updated_at
@@ -190,7 +184,6 @@ impl ModelOperations {
                 name: row.get("name"),
                 alias: row.get("alias"),
                 description: row.get("description"),
-                path: row.get("path"),
                 architecture: row.get("architecture"),
                 quantization: row.get("quantization"),
                 file_size_bytes: row.get("file_size_bytes"),
@@ -222,7 +215,7 @@ impl ModelOperations {
 
         let rows = sqlx::query(
             r#"
-            SELECT id, provider_id, name, alias, description, path, 
+            SELECT id, provider_id, name, alias, description, 
                    architecture, quantization, file_size_bytes, checksum, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
                    validation_status, validation_issues, created_at, updated_at
@@ -246,7 +239,6 @@ impl ModelOperations {
                 name: row.get("name"),
                 alias: row.get("alias"),
                 description: row.get("description"),
-                path: row.get("path"),
                 architecture: row.get("architecture"),
                 quantization: row.get("quantization"),
                 file_size_bytes: row.get("file_size_bytes"),

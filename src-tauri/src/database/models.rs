@@ -312,7 +312,6 @@ pub struct ModelProviderModelDb {
     pub name: String,
     pub alias: String,
     pub description: Option<String>,
-    pub path: Option<String>,
     pub enabled: bool,
     pub is_deprecated: bool,
     pub is_active: bool,
@@ -327,6 +326,13 @@ pub struct ModelProviderModelDb {
     pub checksum: Option<String>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<serde_json::Value>,
+}
+
+impl ModelProviderModelDb {
+    /// Get the model path using the pattern {provider_id}/{id}
+    pub fn get_model_path(&self) -> String {
+        format!("models/{}/{}", self.provider_id, self.id)
+    }
 }
 
 // API structures for model providers
@@ -367,7 +373,6 @@ pub struct ModelProviderModel {
     pub name: String,
     pub alias: String,
     pub description: Option<String>,
-    pub path: Option<String>,
     pub enabled: bool,
     pub is_deprecated: bool,
     pub is_active: bool,
@@ -414,7 +419,6 @@ pub struct CreateModelRequest {
     pub name: String,
     pub alias: String,
     pub description: Option<String>,
-    pub path: Option<String>,
     pub enabled: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
 }
@@ -424,7 +428,6 @@ pub struct UpdateModelRequest {
     pub name: Option<String>,
     pub alias: Option<String>,
     pub description: Option<String>,
-    pub path: Option<String>,
     pub enabled: Option<bool>,
     pub is_active: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
@@ -1010,6 +1013,11 @@ pub struct ModelStatusCounts {
 }
 
 impl ModelProviderModel {
+    /// Get the model path using the pattern {provider_id}/{id}
+    pub fn get_model_path(&self, provider_id: &Uuid) -> String {
+        format!("models/{}/{}", provider_id, self.id)
+    }
+
     pub fn from_db(model_db: ModelProviderModelDb, files: Option<Vec<ModelFileDb>>) -> Self {
         let validation_issues = model_db
             .validation_issues
@@ -1034,7 +1042,6 @@ impl ModelProviderModel {
             name: model_db.name,
             alias: model_db.alias,
             description: model_db.description,
-            path: model_db.path,
             enabled: model_db.enabled,
             is_deprecated: model_db.is_deprecated,
             is_active: model_db.is_active,

@@ -835,26 +835,6 @@ export function ModelProvidersSettings() {
             )
           }
         >
-          {currentProvider.type === 'candle' && (
-            <Flex
-              justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
-              vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
-              style={{ marginBottom: 16 }}
-            >
-              <Text>Import models from your local machine</Text>
-              <Button
-                icon={<PlusOutlined />}
-                block={isMobile}
-                disabled={!canEditProviders}
-                onClick={() => setIsAddModelModalOpen(true)}
-              >
-                Import
-              </Button>
-            </Flex>
-          )}
-
           <List
             dataSource={currentProvider.models}
             locale={{ emptyText: 'No models added yet' }}
