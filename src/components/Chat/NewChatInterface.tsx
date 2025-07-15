@@ -55,11 +55,13 @@ export function NewChatInterface() {
   // Model providers store
   const {
     providers: modelProviders,
+    modelsByProvider,
     loading: providersLoading,
     loadProviders,
   } = useModelProvidersStore(
     useShallow(state => ({
       providers: state.providers,
+      modelsByProvider: state.modelsByProvider,
       loading: state.loading,
       loadProviders: state.loadProviders,
     })),
@@ -110,15 +112,16 @@ export function NewChatInterface() {
       const enabledProviders = modelProviders.filter(p => p.enabled)
       if (enabledProviders.length > 0) {
         const firstProvider = enabledProviders[0]
-        if (firstProvider && firstProvider.models.length > 0) {
-          const enabledModels = firstProvider.models.filter(m => m.enabled)
+        const providerModels = modelsByProvider[firstProvider.id] || []
+        if (firstProvider && providerModels.length > 0) {
+          const enabledModels = providerModels.filter(m => m.enabled)
           if (enabledModels.length > 0) {
             setSelectedModel(`${firstProvider.id}:${enabledModels[0].id}`)
           }
         }
       }
     }
-  }, [modelProviders, selectedModel])
+  }, [modelProviders, selectedModel, modelsByProvider])
 
   const createNewConversation = async () => {
     if (!selectedAssistant || !selectedModel) {
@@ -217,11 +220,15 @@ export function NewChatInterface() {
               showSearch
               optionFilterProp="children"
             >
-              {enabledProviders.map(provider => (
-                <Select.OptGroup key={provider.id} label={provider.name}>
-                  {provider.models
-                    .filter(model => model.enabled)
-                    .map(model => (
+              {enabledProviders.map(provider => {
+                const providerModels = modelsByProvider[provider.id] || []
+                const enabledModels = providerModels.filter(model => model.enabled)
+                
+                if (enabledModels.length === 0) return null
+                
+                return (
+                  <Select.OptGroup key={provider.id} label={provider.name}>
+                    {enabledModels.map(model => (
                       <Option
                         key={`${provider.id}:${model.id}`}
                         value={`${provider.id}:${model.id}`}
@@ -229,8 +236,9 @@ export function NewChatInterface() {
                         {model.alias}
                       </Option>
                     ))}
-                </Select.OptGroup>
-              ))}
+                  </Select.OptGroup>
+                )
+              })}
             </Select>
           </Col>
         </Row>

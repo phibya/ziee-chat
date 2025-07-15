@@ -204,7 +204,19 @@ pub async fn update_model_provider(
                 }
 
                 // Check if provider has any models
-                if current_provider.models.is_empty() {
+                let provider_models =
+                    match model_providers::get_models_for_provider(provider_id).await {
+                        Ok(models) => models,
+                        Err(e) => {
+                            eprintln!(
+                                "Error fetching models for provider {}: {:?}",
+                                provider_id, e
+                            );
+                            return Err(AppError::from(e));
+                        }
+                    };
+
+                if provider_models.is_empty() {
                     eprintln!(
                         "Cannot enable provider {}: No models available",
                         provider_id
@@ -353,22 +365,31 @@ pub async fn delete_model(
         // Delete the physical model files
         let model_path = model.get_model_path();
         let full_model_path = crate::APP_DATA_DIR.join(&model_path);
-        
-        println!("Deleting Candle model files at: {}", full_model_path.display());
-        
+
+        println!(
+            "Deleting Candle model files at: {}",
+            full_model_path.display()
+        );
+
         if full_model_path.exists() {
             match std::fs::remove_dir_all(&full_model_path) {
                 Ok(()) => {
                     println!("Successfully deleted model files for model {}", model_id);
                 }
                 Err(e) => {
-                    eprintln!("Warning: Failed to delete model files for model {}: {}", model_id, e);
+                    eprintln!(
+                        "Warning: Failed to delete model files for model {}: {}",
+                        model_id, e
+                    );
                     // Continue with database deletion even if file deletion fails
                     // This prevents orphaned database records
                 }
             }
         } else {
-            println!("Model files not found at {}, skipping file deletion", full_model_path.display());
+            println!(
+                "Model files not found at {}, skipping file deletion",
+                full_model_path.display()
+            );
         }
     }
 
@@ -584,12 +605,18 @@ pub async fn start_model(
     // Check if model is actually running (with cleanup of stale processes)
     let model_manager = crate::ai::model_manager::get_model_manager();
     let model_path = model.get_model_path();
-    
-    match model_manager.check_and_cleanup_model(model_id, &model_path).await {
+
+    match model_manager
+        .check_and_cleanup_model(model_id, &model_path)
+        .await
+    {
         Ok(true) => {
             // Model is actually running, update its active status in database
-            println!("Model {} is already running, updating active status in database", model_id);
-            
+            println!(
+                "Model {} is already running, updating active status in database",
+                model_id
+            );
+
             match model_providers::update_model(
                 model_id,
                 UpdateModelRequest {
@@ -667,7 +694,10 @@ pub async fn start_model(
             }
         }
         Ok(crate::ai::model_manager::ModelStartResult::AlreadyRunning(port)) => {
-            println!("Model {} is already running on port {}, updating database status", model_id, port);
+            println!(
+                "Model {} is already running on port {}, updating database status",
+                model_id, port
+            );
 
             // Update model status in database to ensure it's marked as active
             match model_providers::update_model(
@@ -752,10 +782,30 @@ pub async fn stop_model(
     // Check if model is running
     let model_manager = crate::ai::model_manager::get_model_manager();
     if !model_manager.is_model_running(model_id).await {
-        return Err(AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Model is not running",
-        ));
+        // Model is not running, but we should still update the database to ensure consistency
+        println!("Model {} is not running, updating database status", model_id);
+        
+        return match model_providers::update_model(
+            model_id,
+            UpdateModelRequest {
+                name: None,
+                alias: None,
+                description: None,
+                parameters: None,
+                enabled: None,
+                is_active: Some(false),
+                capabilities: None,
+            },
+        )
+        .await
+        {
+            Ok(Some(_)) => Ok(StatusCode::OK),
+            Ok(None) => Err(AppError::not_found("Model")),
+            Err(e) => {
+                eprintln!("Failed to update model status {}: {}", model_id, e);
+                Err(AppError::internal_error("Database operation failed"))
+            }
+        };
     }
 
     // Stop the model server process
@@ -847,6 +897,42 @@ pub async fn disable_model(
         Ok(None) => Err(AppError::not_found("Model")),
         Err(e) => {
             eprintln!("Failed to disable model {}: {}", model_id, e);
+            Err(AppError::internal_error("Database operation failed"))
+        }
+    }
+}
+
+/// List models for a specific provider
+pub async fn list_provider_models(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(provider_id): Path<Uuid>,
+) -> ApiResult<Json<Vec<ModelProviderModel>>> {
+    // First verify the user has access to this provider
+    let user_providers =
+        match user_group_model_providers::get_model_providers_for_user(auth_user.user.id).await {
+            Ok(providers) => providers,
+            Err(e) => {
+                eprintln!(
+                    "Failed to get model providers for user {}: {}",
+                    auth_user.user.id, e
+                );
+                return Err(e.into());
+            }
+        };
+
+    // Check if user has access to this provider
+    if !user_providers.iter().any(|p| p.id == provider_id) {
+        return Err(AppError::new(
+            ErrorCode::AuthzInsufficientPermissions,
+            "Access denied to this model provider",
+        ));
+    }
+
+    // Get models for the provider
+    match model_providers::get_models_for_provider(provider_id).await {
+        Ok(models) => Ok(Json(models)),
+        Err(e) => {
+            eprintln!("Failed to get models for provider {}: {}", provider_id, e);
             Err(AppError::internal_error("Database operation failed"))
         }
     }

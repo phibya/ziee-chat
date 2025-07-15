@@ -138,6 +138,8 @@ export const ApiEndpoints = {
   'ModelProviders.clone': 'POST /api/admin/model-providers/{provider_id}/clone',
   'ModelProviders.addModel':
     'POST /api/admin/model-providers/{provider_id}/models',
+  'ModelProviders.listModels':
+    'GET /api/admin/model-providers/{provider_id}/models',
   'Models.get': 'GET /api/admin/models/{model_id}',
   'Models.update': 'PUT /api/admin/models/{model_id}',
   'Models.delete': 'DELETE /api/admin/models/{model_id}',
@@ -263,6 +265,7 @@ export type ApiEndpointParameters = {
   'ModelProviders.delete': { provider_id: string }
   'ModelProviders.clone': { provider_id: string }
   'ModelProviders.addModel': { provider_id: string } & AddModelToProviderRequest
+  'ModelProviders.listModels': { provider_id: string }
   'Models.get': { model_id: string }
   'Models.update': { model_id: string } & UpdateModelRequest
   'Models.delete': { model_id: string }
@@ -419,6 +422,7 @@ export type ApiEndpointResponses = {
   'ModelProviders.delete': void
   'ModelProviders.clone': ModelProvider
   'ModelProviders.addModel': ModelProviderModel
+  'ModelProviders.listModels': ModelProviderModel[]
   'Models.get': ModelProviderModel
   'Models.update': ModelProviderModel
   'Models.delete': void

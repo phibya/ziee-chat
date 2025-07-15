@@ -86,10 +86,16 @@ function App() {
                 {(isDesktopApp ||
                   (!isDesktopApp &&
                     hasPermission(Permission.config.modelProviders.read))) && (
-                  <Route
-                    path="model-providers"
-                    element={<ModelProvidersSettings />}
-                  />
+                  <>
+                    <Route
+                      path="model-providers"
+                      element={<ModelProvidersSettings />}
+                    />
+                    <Route
+                      path="model-providers/:provider_id"
+                      element={<ModelProvidersSettings />}
+                    />
+                  </>
                 )}
                 <Route path="shortcuts" element={<ShortcutsSettings />} />
                 <Route path="hardware" element={<HardwareSettings />} />

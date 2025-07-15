@@ -76,7 +76,6 @@ export interface ModelProvider {
   enabled: boolean
   api_key?: string
   base_url?: string
-  models: ModelProviderModel[]
   settings?: ModelProviderSettings
   proxy_settings?: ModelProviderProxySettings
   is_default?: boolean

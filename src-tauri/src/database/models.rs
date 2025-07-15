@@ -359,7 +359,6 @@ pub struct ModelProvider {
     pub enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub models: Vec<ModelProviderModel>,
     pub settings: Option<serde_json::Value>,
     pub proxy_settings: Option<ModelProviderProxySettings>,
     pub is_default: bool,

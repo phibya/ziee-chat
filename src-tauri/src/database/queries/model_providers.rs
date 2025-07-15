@@ -27,7 +27,6 @@ pub async fn get_model_provider_by_id(
 
     match provider_row {
         Some(provider_db) => {
-            let models = get_models_for_provider(provider_db.id).await?;
             Ok(Some(ModelProvider {
                 id: provider_db.id,
                 name: provider_db.name,
@@ -35,7 +34,6 @@ pub async fn get_model_provider_by_id(
                 enabled: provider_db.enabled,
                 api_key: provider_db.api_key,
                 base_url: provider_db.base_url,
-                models,
                 settings: Some(provider_db.settings),
                 proxy_settings: Some(ModelProviderProxySettings {
                     enabled: false,
@@ -88,7 +86,6 @@ pub async fn create_model_provider(
         enabled: provider_row.enabled,
         api_key: provider_row.api_key,
         base_url: provider_row.base_url,
-        models: vec![], // New provider has no models
         settings: Some(provider_row.settings),
         proxy_settings: Some(ModelProviderProxySettings {
             enabled: false,
@@ -137,7 +134,6 @@ pub async fn update_model_provider(
 
     match provider_row {
         Some(provider_db) => {
-            let models = get_models_for_provider(provider_db.id).await?;
             Ok(Some(ModelProvider {
                 id: provider_db.id,
                 name: provider_db.name,
@@ -145,7 +141,6 @@ pub async fn update_model_provider(
                 enabled: provider_db.enabled,
                 api_key: provider_db.api_key,
                 base_url: provider_db.base_url,
-                models,
                 settings: Some(provider_db.settings),
                 proxy_settings: Some(ModelProviderProxySettings {
                     enabled: false,
@@ -225,14 +220,15 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
     .fetch_one(pool)
     .await?;
 
+    // Get models from the original provider to clone them
+    let original_models = get_models_for_provider(original_provider.id).await?;
+    
     // Clone all models from the original provider
-    let mut cloned_models = Vec::new();
-    for model in &original_provider.models {
+    for model in &original_models {
         let cloned_model_id = Uuid::new_v4();
-        let cloned_model_row: ModelProviderModelDb = sqlx::query_as(
+        sqlx::query(
             "INSERT INTO model_provider_models (id, provider_id, name, alias, description, enabled, capabilities, parameters) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-             RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
         )
         .bind(cloned_model_id)
         .bind(new_provider_id)
@@ -242,10 +238,8 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         .bind(false) // Cloned models are disabled by default
         .bind(model.capabilities.as_ref().unwrap_or(&serde_json::json!({})))
         .bind(model.parameters.as_ref().unwrap_or(&serde_json::json!({})))
-        .fetch_one(pool)
+        .execute(pool)
         .await?;
-
-        cloned_models.push(ModelProviderModel::from_db(cloned_model_row, None));
     }
 
     Ok(Some(ModelProvider {
@@ -255,7 +249,6 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         enabled: provider_row.enabled,
         api_key: provider_row.api_key,
         base_url: provider_row.base_url,
-        models: cloned_models,
         settings: Some(provider_row.settings),
         proxy_settings: Some(ModelProviderProxySettings {
             enabled: false,
@@ -276,7 +269,7 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
 }
 
 // Model queries
-async fn get_models_for_provider(
+pub async fn get_models_for_provider(
     provider_id: Uuid,
 ) -> Result<Vec<ModelProviderModel>, sqlx::Error> {
     let pool = get_database_pool()?;

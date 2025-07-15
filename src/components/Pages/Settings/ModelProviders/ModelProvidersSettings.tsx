@@ -20,6 +20,7 @@ import {
 } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -63,14 +64,19 @@ export function ModelProvidersSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
+  const { provider_id } = useParams<{ provider_id?: string }>()
+  const navigate = useNavigate()
 
   // Model providers store
   const {
     providers,
+    modelsByProvider,
     loading,
+    loadingModels,
     modelOperations,
     error,
     loadProviders,
+    loadModels,
     createProvider,
     updateProvider,
     deleteProvider,
@@ -86,10 +92,13 @@ export function ModelProvidersSettings() {
   } = useModelProvidersStore(
     useShallow(state => ({
       providers: state.providers,
+      modelsByProvider: state.modelsByProvider,
       loading: state.loading,
+      loadingModels: state.loadingModels,
       modelOperations: state.modelOperations,
       error: state.error,
       loadProviders: state.loadProviders,
+      loadModels: state.loadModels,
       createProvider: state.createProvider,
       updateProvider: state.updateProvider,
       deleteProvider: state.deleteProvider,
@@ -148,10 +157,13 @@ export function ModelProvidersSettings() {
   }, [])
 
   const currentProvider = providers.find(p => p.id === selectedProvider)
+  const currentModels = selectedProvider ? modelsByProvider[selectedProvider] || [] : []
+  const modelsLoading = selectedProvider ? loadingModels[selectedProvider] || false : false
 
   const canEnableProvider = (provider: ModelProvider): boolean => {
     if (provider.enabled) return true // Already enabled
-    if (provider.models.length === 0) return false
+    const providerModels = modelsByProvider[provider.id] || []
+    if (providerModels.length === 0) return false
     if (provider.type === 'candle') return true
     if (!provider.api_key || provider.api_key.trim() === '') return false
     if (!provider.base_url || provider.base_url.trim() === '') return false
@@ -165,7 +177,8 @@ export function ModelProvidersSettings() {
 
   const getEnableDisabledReason = (provider: ModelProvider): string | null => {
     if (provider.enabled) return null
-    if (provider.models.length === 0)
+    const providerModels = modelsByProvider[provider.id] || []
+    if (providerModels.length === 0)
       return 'No models available. Add at least one model first.'
     if (provider.type === 'candle') return null
     if (!provider.api_key || provider.api_key.trim() === '')
@@ -184,6 +197,13 @@ export function ModelProvidersSettings() {
     loadProviders()
   }, [loadProviders])
 
+  // Load models when provider is selected
+  useEffect(() => {
+    if (selectedProvider && !modelsByProvider[selectedProvider] && !loadingModels[selectedProvider]) {
+      loadModels(selectedProvider)
+    }
+  }, [selectedProvider, modelsByProvider, loadingModels, loadModels])
+
   // Show errors
   useEffect(() => {
     if (error) {
@@ -192,12 +212,28 @@ export function ModelProvidersSettings() {
     }
   }, [error, message, clearError])
 
-  // Set first provider as selected when providers load
+  // Handle URL parameter and provider selection
   useEffect(() => {
-    if (providers.length > 0 && !selectedProvider) {
-      setSelectedProvider(providers[0].id)
+    if (providers.length > 0) {
+      if (provider_id) {
+        // If URL has provider_id, use it if valid
+        const providerExists = providers.find(p => p.id === provider_id)
+        if (providerExists) {
+          setSelectedProvider(provider_id)
+        } else {
+          // Provider doesn't exist, redirect to first provider
+          navigate(`/settings/model-providers/${providers[0].id}`, {
+            replace: true,
+          })
+        }
+      } else if (!selectedProvider) {
+        // No URL parameter and no selected provider, navigate to first provider
+        navigate(`/settings/model-providers/${providers[0].id}`, {
+          replace: true,
+        })
+      }
     }
-  }, [providers, selectedProvider])
+  }, [providers, provider_id, selectedProvider, navigate])
 
   useEffect(() => {
     if (currentProvider) {
@@ -233,7 +269,8 @@ export function ModelProvidersSettings() {
       if (error.response?.status === 400) {
         const provider = providers.find(p => p.id === providerId)
         if (provider) {
-          if (provider.models.length === 0) {
+          const providerModels = modelsByProvider[provider.id] || []
+          if (providerModels.length === 0) {
             message.error(
               `Cannot enable "${provider.name}" - No models available`,
             )
@@ -354,9 +391,14 @@ export function ModelProvidersSettings() {
             const remainingProviders = providers.filter(
               p => p.id !== providerId,
             )
-            setSelectedProvider(
-              remainingProviders.length > 0 ? remainingProviders[0].id : '',
-            )
+            if (remainingProviders.length > 0) {
+              navigate(
+                `/settings/model-providers/${remainingProviders[0].id}`,
+                { replace: true },
+              )
+            } else {
+              navigate('/settings/model-providers', { replace: true })
+            }
           }
           message.success(t('modelProviders.providerDeleted'))
         } catch (error: any) {
@@ -387,8 +429,9 @@ export function ModelProvidersSettings() {
 
   const handleAddProvider = async (providerData: any) => {
     try {
-      await createProvider(providerData)
+      const newProvider = await createProvider(providerData)
       setIsAddModalOpen(false)
+      navigate(`/settings/model-providers/${newProvider.id}`)
       message.success(t('modelProviders.providerAdded'))
     } catch (error: any) {
       console.error('Failed to add provider:', error)
@@ -459,8 +502,8 @@ export function ModelProvidersSettings() {
 
       // Check if this was the last enabled model being disabled
       if (!enabled) {
-        const currentModels = currentProvider.models
-        const remainingEnabledModels = currentModels.filter(
+        const providerModels = currentModels
+        const remainingEnabledModels = providerModels.filter(
           m => m.id !== modelId && m.enabled !== false,
         )
 
@@ -469,14 +512,14 @@ export function ModelProvidersSettings() {
           try {
             await updateProvider(currentProvider.id, { enabled: false })
             const modelName =
-              currentModels.find(m => m.id === modelId)?.name || 'Model'
+              providerModels.find(m => m.id === modelId)?.name || 'Model'
             message.success(
               `${modelName} disabled. ${currentProvider.name} provider disabled as no models remain active.`,
             )
           } catch (providerError) {
             console.error('Failed to disable provider:', providerError)
             const modelName =
-              currentModels.find(m => m.id === modelId)?.name || 'Model'
+              providerModels.find(m => m.id === modelId)?.name || 'Model'
             message.warning(
               `${modelName} disabled, but failed to disable provider automatically`,
             )
@@ -488,7 +531,7 @@ export function ModelProvidersSettings() {
         }
       } else {
         const modelName =
-          currentProvider.models.find(m => m.id === modelId)?.name || 'Model'
+          currentModels.find(m => m.id === modelId)?.name || 'Model'
         message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
       }
     } catch (error) {
@@ -508,7 +551,7 @@ export function ModelProvidersSettings() {
       }
 
       const modelName =
-        currentProvider.models.find(m => m.id === modelId)?.name || 'Model'
+        currentModels.find(m => m.id === modelId)?.name || 'Model'
       message.success(`${modelName} ${is_active ? 'started' : 'stopped'}`)
     } catch (error) {
       console.error('Failed to start/stop model:', error)
@@ -599,7 +642,7 @@ export function ModelProvidersSettings() {
         if (key === 'add-provider') {
           setIsAddModalOpen(true)
         } else {
-          setSelectedProvider(key)
+          navigate(`/settings/model-providers/${key}`)
         }
       }}
       className={'!bg-transparent'}
@@ -835,7 +878,8 @@ export function ModelProvidersSettings() {
           }
         >
           <List
-            dataSource={currentProvider.models}
+            loading={modelsLoading}
+            dataSource={currentModels}
             locale={{ emptyText: 'No models added yet' }}
             renderItem={model => (
               <List.Item
@@ -1013,7 +1057,7 @@ export function ModelProvidersSettings() {
                     if (key === 'add-provider') {
                       setIsAddModalOpen(true)
                     } else {
-                      setSelectedProvider(key)
+                      navigate(`/settings/model-providers/${key}`)
                     }
                   },
                 }}

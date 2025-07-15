@@ -20,22 +20,12 @@ export const ChatHeader = memo(function ChatHeader() {
     })),
   )
 
-  const { providers: modelProviders } = useModelProvidersStore(
-    useShallow(state => ({
-      providers: state.providers,
-    })),
-  )
   const { token } = theme.useToken()
 
   const getModelDisplayName = () => {
     if (!currentConversation?.model_id) return ''
 
-    const provider = modelProviders.find(p =>
-      p.models?.some(m => m.id === currentConversation.model_id),
-    )
-    const model = provider?.models.find(
-      m => m.id === currentConversation.model_id,
-    )
+    const model = useModelProvidersStore.getState().getModelById(currentConversation.model_id)
     return model?.alias || currentConversation.model_id
   }
 
