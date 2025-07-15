@@ -173,7 +173,7 @@ impl ModelOperations {
         model_id: &Uuid,
     ) -> Result<Option<ModelProviderModelDb>, sqlx::Error> {
         let row = sqlx::query(
-            "SELECT id, provider_id, name, alias, description, model_path, 
+            "SELECT id, provider_id, name, alias, description, path, 
                     architecture, quantization, file_size_bytes, checksum, enabled, 
                     is_deprecated, is_active, capabilities, parameters, 
                     validation_status, validation_issues, created_at, updated_at
@@ -222,7 +222,7 @@ impl ModelOperations {
 
         let rows = sqlx::query(
             r#"
-            SELECT id, provider_id, name, alias, description, model_path, 
+            SELECT id, provider_id, name, alias, description, path, 
                    architecture, quantization, file_size_bytes, checksum, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
                    validation_status, validation_issues, created_at, updated_at

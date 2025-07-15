@@ -790,7 +790,11 @@ export function AddModelModal({
                     directory
                     multiple
                   >
-                    <Button icon={<UploadOutlined />} size="small">
+                    <Button
+                      icon={<UploadOutlined />}
+                      type={'text'}
+                      size="small"
+                    >
                       {t('modelProviders.browse')}
                     </Button>
                   </Upload>

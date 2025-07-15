@@ -1,8 +1,8 @@
--- COMPLETE DATABASE SCHEMA MIGRATION
--- This migration consolidates all schema changes and creates the complete database structure
--- Includes: initial schema, chat tables, branching system, projects, uploaded models, and all enhancements
--- Date: 2025-01-14
--- Consolidated from multiple migrations to ensure clean database initialization
+-- CONSOLIDATED DATABASE MIGRATION
+-- This migration contains the complete database schema with all updates
+-- Consolidated from multiple migrations for clean database initialization
+-- Date: 2025-01-15
+-- IMPORTANT: This replaces all previous migration files
 
 -- ===============================
 -- 1. UTILITY FUNCTIONS
@@ -146,7 +146,7 @@ CREATE TABLE user_group_model_providers (
     UNIQUE(group_id, provider_id)
 );
 
--- Create model provider models table
+-- Create model provider models table (unified table for all model types including Candle)
 CREATE TABLE model_provider_models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
@@ -159,32 +159,11 @@ CREATE TABLE model_provider_models (
     is_active BOOLEAN DEFAULT FALSE, -- For candle start/stop state
     capabilities JSONB DEFAULT '{}',
     parameters JSONB DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT model_provider_models_alias_not_empty CHECK (alias != '')
-);
-
--- ===============================
--- 5. UPLOADED MODELS SYSTEM
--- ===============================
-
--- Create uploaded_models table for Candle models
-CREATE TABLE uploaded_models (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    alias VARCHAR(255) NOT NULL,
-    description TEXT,
-    model_path VARCHAR(1000) NOT NULL,
-    architecture VARCHAR(100) NOT NULL,
+    -- Candle-specific fields
+    architecture VARCHAR(100),
     quantization VARCHAR(50),
     file_size_bytes BIGINT DEFAULT 0,
     checksum VARCHAR(64),
-    enabled BOOLEAN DEFAULT FALSE,
-    is_deprecated BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT FALSE,
-    capabilities JSONB NOT NULL DEFAULT '{}',
-    parameters JSONB NOT NULL DEFAULT '{}',
     validation_status VARCHAR(50) DEFAULT 'pending' CHECK (validation_status IN (
         'pending',        -- Initial status when model is created
         'await_upload',   -- For local folder uploads waiting for files
@@ -198,15 +177,20 @@ CREATE TABLE uploaded_models (
         'validation_warning' -- Downloaded but with validation warnings
     )),
     validation_issues JSONB,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(provider_id, alias)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT model_provider_models_alias_not_empty CHECK (alias != ''),
+    CONSTRAINT model_provider_models_provider_id_name_unique UNIQUE (provider_id, name)
 );
+
+-- ===============================
+-- 5. MODEL FILES SYSTEM
+-- ===============================
 
 -- Create model_files table for tracking individual files within models
 CREATE TABLE model_files (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    model_id UUID NOT NULL REFERENCES uploaded_models(id) ON DELETE CASCADE,
+    model_id UUID NOT NULL REFERENCES model_provider_models(id) ON DELETE CASCADE,
     filename VARCHAR(500) NOT NULL,
     file_path VARCHAR(1000) NOT NULL,
     file_size_bytes BIGINT NOT NULL,
@@ -396,11 +380,10 @@ CREATE INDEX idx_model_providers_enabled ON model_providers(enabled);
 CREATE INDEX idx_model_providers_proxy_enabled ON model_providers(proxy_enabled);
 CREATE INDEX idx_model_provider_models_provider_id ON model_provider_models(provider_id);
 CREATE INDEX idx_model_provider_models_enabled ON model_provider_models(enabled);
+CREATE INDEX idx_model_provider_models_validation_status ON model_provider_models(validation_status);
+CREATE INDEX idx_model_provider_models_architecture ON model_provider_models(architecture);
+CREATE INDEX idx_model_provider_models_file_size_bytes ON model_provider_models(file_size_bytes);
 
--- Uploaded models indexes
-CREATE INDEX idx_uploaded_models_provider_id ON uploaded_models(provider_id);
-CREATE INDEX idx_uploaded_models_enabled ON uploaded_models(enabled);
-CREATE INDEX idx_uploaded_models_validation_status ON uploaded_models(validation_status);
 CREATE INDEX idx_model_files_model_id ON model_files(model_id);
 CREATE INDEX idx_model_files_upload_status ON model_files(upload_status);
 
@@ -507,10 +490,6 @@ CREATE TRIGGER update_model_provider_models_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_uploaded_models_updated_at 
-    BEFORE UPDATE ON uploaded_models 
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_assistants_updated_at
     BEFORE UPDATE ON assistants
     FOR EACH ROW
@@ -613,9 +592,8 @@ COMMENT ON TABLE user_groups IS 'User groups with AWS-style permissions in array
 COMMENT ON TABLE configurations IS 'Application configuration settings including appearance defaults, system settings, and HTTP proxy settings';
 COMMENT ON TABLE user_settings IS 'User settings table for storing personal preferences like appearance, shortcuts, proxy settings, etc.';
 COMMENT ON TABLE model_providers IS 'Model providers table for managing AI model providers like OpenAI, Anthropic, etc.';
-COMMENT ON TABLE model_provider_models IS 'Individual models within each provider';
-COMMENT ON TABLE uploaded_models IS 'Uploaded Candle models with metadata and validation status';
-COMMENT ON TABLE model_files IS 'Individual files that make up uploaded models';
+COMMENT ON TABLE model_provider_models IS 'Individual models within each provider (unified table for all model types)';
+COMMENT ON TABLE model_files IS 'Individual files that make up models';
 COMMENT ON TABLE assistants IS 'Assistants table with template and user-created assistants';
 COMMENT ON TABLE conversations IS 'Chat conversations table';
 COMMENT ON TABLE messages IS 'Chat messages table without direct branch relationship';
@@ -631,8 +609,15 @@ COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g.
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
 COMMENT ON COLUMN model_providers.provider_type IS 'Type of provider: candle, openai, anthropic, groq, gemini, mistral, custom';
 COMMENT ON COLUMN model_provider_models.path IS 'File path for candle models';
-COMMENT ON COLUMN model_provider_models.alias IS 'User-friendly display name for the model';
+COMMENT ON COLUMN model_provider_models.name IS 'Unique model identifier within a provider';
+COMMENT ON COLUMN model_provider_models.alias IS 'Human-readable display name (can be duplicated across providers)';
 COMMENT ON COLUMN model_provider_models.is_active IS 'Whether the model is currently running (for candle models)';
+COMMENT ON COLUMN model_provider_models.architecture IS 'Model architecture type (e.g., llama, mistral, gemma) - for Candle models only';
+COMMENT ON COLUMN model_provider_models.quantization IS 'Quantization format (e.g., q4_0, q8_0, fp16, fp32) - for Candle models only';
+COMMENT ON COLUMN model_provider_models.file_size_bytes IS 'Total size of all model files in bytes - for Candle models only';
+COMMENT ON COLUMN model_provider_models.checksum IS 'SHA-256 checksum of the model files for integrity verification - for Candle models only';
+COMMENT ON COLUMN model_provider_models.validation_status IS 'Status of model validation and processing - for Candle models only';
+COMMENT ON COLUMN model_provider_models.validation_issues IS 'JSON array of validation issues if any - for Candle models only';
 COMMENT ON COLUMN model_providers.proxy_enabled IS 'Whether proxy is enabled for this provider';
 COMMENT ON COLUMN model_providers.proxy_url IS 'Proxy URL for this provider';
 COMMENT ON COLUMN model_providers.proxy_username IS 'Proxy username for authentication';
@@ -643,14 +628,6 @@ COMMENT ON COLUMN model_providers.proxy_ssl IS 'Whether to use SSL for proxy con
 COMMENT ON COLUMN model_providers.proxy_host_ssl IS 'Whether to use SSL for host connection';
 COMMENT ON COLUMN model_providers.proxy_peer_ssl IS 'Whether to use SSL for peer connection';
 COMMENT ON COLUMN model_providers.proxy_host_ssl_verify IS 'Whether to verify SSL certificates for host';
-COMMENT ON COLUMN uploaded_models.provider_id IS 'Reference to the Candle model provider';
-COMMENT ON COLUMN uploaded_models.model_path IS 'Storage path for the model files in the filesystem';
-COMMENT ON COLUMN uploaded_models.architecture IS 'Model architecture type (e.g., llama, mistral, gemma)';
-COMMENT ON COLUMN uploaded_models.quantization IS 'Quantization format (e.g., q4_0, q8_0, fp16, fp32)';
-COMMENT ON COLUMN uploaded_models.file_size_bytes IS 'Total size of all model files in bytes';
-COMMENT ON COLUMN uploaded_models.checksum IS 'SHA-256 checksum of the model files for integrity verification';
-COMMENT ON COLUMN uploaded_models.validation_status IS 'Status of model validation and processing: pending (initial), await_upload (waiting for files), downloading (HF download), processing (file processing), completed (download complete), failed (process failed), valid (validation passed), invalid (validation failed), error (general error), validation_warning (downloaded but with warnings)';
-COMMENT ON COLUMN uploaded_models.validation_issues IS 'JSON array of validation issues if any';
 COMMENT ON COLUMN model_files.filename IS 'Original filename of the uploaded file';
 COMMENT ON COLUMN model_files.file_path IS 'Storage path of the file in the filesystem';
 COMMENT ON COLUMN model_files.file_type IS 'Type of file (e.g., model, tokenizer, config, safetensors)';
@@ -668,3 +645,6 @@ COMMENT ON COLUMN messages.role IS 'Message role: user, assistant, or system';
 COMMENT ON COLUMN branch_messages.branch_id IS 'Reference to the branch containing this message';
 COMMENT ON COLUMN branch_messages.message_id IS 'Reference to the message in this branch';
 COMMENT ON COLUMN branch_messages.is_clone IS 'Indicates whether this message is a clone (belongs to multiple branches) or is unique to this branch';
+
+-- Constraint comments
+COMMENT ON CONSTRAINT model_provider_models_provider_id_name_unique ON model_provider_models IS 'Ensures model IDs (name) are unique per provider, while allowing duplicate display names (alias) across providers';
