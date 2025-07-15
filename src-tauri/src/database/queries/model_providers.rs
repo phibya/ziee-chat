@@ -300,9 +300,9 @@ pub async fn create_model(
     let model_id = Uuid::new_v4();
 
     let model_row: ModelProviderModelDb = sqlx::query_as(
-        "INSERT INTO model_provider_models (id, provider_id, name, alias, description, enabled, capabilities, parameters) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
+        "INSERT INTO model_provider_models (id, provider_id, name, alias, description, enabled, capabilities, parameters, device_type, device_ids) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues, device_type, device_ids"
     )
     .bind(model_id)
     .bind(provider_id)
@@ -312,6 +312,8 @@ pub async fn create_model(
     .bind(request.enabled.unwrap_or(true))
     .bind(request.capabilities.unwrap_or(serde_json::json!({})))
     .bind(serde_json::json!({}))
+    .bind(&request.device_type)
+    .bind(request.device_ids.map(|ids| serde_json::to_value(ids).unwrap_or(serde_json::json!([]))))
     .fetch_one(pool)
     .await?;
 
@@ -334,9 +336,11 @@ pub async fn update_model(
              is_active = COALESCE($6, is_active),
              capabilities = COALESCE($7, capabilities),
              parameters = COALESCE($8, parameters),
+             device_type = COALESCE($9, device_type),
+             device_ids = COALESCE($10, device_ids),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues, device_type, device_ids"
     )
     .bind(model_id)
     .bind(&request.name)
@@ -346,6 +350,8 @@ pub async fn update_model(
     .bind(request.is_active)
     .bind(&request.capabilities)
     .bind(&request.parameters)
+    .bind(&request.device_type)
+    .bind(request.device_ids.as_ref().map(|ids| serde_json::to_value(ids).unwrap_or(serde_json::json!([]))))
     .fetch_optional(pool)
     .await?;
 

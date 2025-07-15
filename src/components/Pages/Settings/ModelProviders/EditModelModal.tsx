@@ -1,12 +1,12 @@
-import { Button, Form, Input, Modal, Upload } from 'antd'
+import { Button, Form, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   ModelProviderModel,
   ModelProviderType,
 } from '../../../../types/api/modelProvider'
-import { UploadOutlined } from '@ant-design/icons'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
+import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { BASIC_MODEL_FIELDS, CANDLE_PARAMETERS } from './shared/constants'
 
@@ -36,6 +36,8 @@ export function EditModelModal({
         alias: model.alias,
         description: model.description,
         path: model.path,
+        device_type: model.device_type,
+        device_ids: model.device_ids || [],
         vision: model.capabilities?.vision,
         audio: model.capabilities?.audio,
         tools: model.capabilities?.tools,
@@ -44,16 +46,6 @@ export function EditModelModal({
       })
     }
   }, [model, open, form])
-
-  const handleFileSelect = (info: any) => {
-    const file = info.file.originFileObj || info.file
-
-    if (file) {
-      form.setFieldsValue({
-        path: file.name,
-      })
-    }
-  }
 
   const handleSubmit = async () => {
     try {
@@ -109,33 +101,7 @@ export function EditModelModal({
       <Form form={form} layout="vertical">
         <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
 
-        {providerType === 'candle' && (
-          <Form.Item
-            name="path"
-            label={t('modelProviders.modelPath')}
-            rules={[
-              {
-                required: true,
-                message: t('modelProviders.selectModelFileRequired'),
-              },
-            ]}
-          >
-            <Input
-              placeholder={t('modelProviders.selectModelFile')}
-              addonAfter={
-                <Upload
-                  showUploadList={false}
-                  beforeUpload={() => false}
-                  onChange={handleFileSelect}
-                >
-                  <Button icon={<UploadOutlined />} size="small">
-                    {t('modelProviders.browse')}
-                  </Button>
-                </Upload>
-              }
-            />
-          </Form.Item>
-        )}
+        {providerType === 'candle' && <DeviceSelectionSection />}
 
         <ModelCapabilitiesSection />
 

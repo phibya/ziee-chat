@@ -35,6 +35,8 @@ export interface ModelProviderModel {
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
+  device_type?: string // cpu, cuda, metal, etc.
+  device_ids?: string[] // Array of device IDs for multi-GPU
 }
 
 export interface ModelProviderSettings {
@@ -131,6 +133,8 @@ export interface AddModelToProviderRequest {
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
+  device_type?: string
+  device_ids?: string[]
 }
 
 export interface UpdateModelRequest {
@@ -142,6 +146,8 @@ export interface UpdateModelRequest {
   is_active?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
+  device_type?: string
+  device_ids?: string[]
 }
 
 export interface RemoveModelFromProviderRequest {
@@ -165,4 +171,20 @@ export interface TestModelProviderProxyRequest {
 export interface TestModelProviderProxyResponse {
   success: boolean
   message: string
+}
+
+// Device detection types
+export interface DeviceInfo {
+  id: string // Device identifier - UUID for CUDA GPUs, or descriptive ID for other devices
+  name: string
+  device_type: string // cpu, cuda, metal
+  memory_total?: number // Total memory in bytes
+  memory_free?: number // Free memory in bytes
+  is_available: boolean
+}
+
+export interface AvailableDevicesResponse {
+  devices: DeviceInfo[]
+  default_device_type: string
+  supports_multi_gpu: boolean
 }

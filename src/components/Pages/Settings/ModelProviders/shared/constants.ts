@@ -99,3 +99,21 @@ export const CANDLE_MODEL_FIELDS: ParameterFieldConfig[] = [
     placeholder: 'Optional description of this model...',
   },
 ]
+
+export const DEVICE_CONFIGURATION_FIELDS: ParameterFieldConfig[] = [
+  {
+    name: 'device_type',
+    label: 'Device Type',
+    type: 'select',
+    required: true,
+    placeholder: 'Select device type',
+    help: 'The type of compute device to use for model inference',
+  },
+  {
+    name: 'device_ids',
+    label: 'Specific Devices',
+    type: 'select',
+    placeholder: 'Select specific devices (optional)',
+    help: 'Select specific devices to use. Leave empty to use the default device.',
+  },
+]

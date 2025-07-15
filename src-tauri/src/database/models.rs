@@ -326,6 +326,8 @@ pub struct ModelProviderModelDb {
     pub checksum: Option<String>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<serde_json::Value>,
+    pub device_type: Option<String>, // cpu, cuda, metal, etc.
+    pub device_ids: Option<serde_json::Value>, // JSON array of device IDs for multi-GPU
 }
 
 impl ModelProviderModelDb {
@@ -386,6 +388,8 @@ pub struct ModelProviderModel {
     pub checksum: Option<String>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<Vec<String>>,
+    pub device_type: Option<String>, // cpu, cuda, metal, etc.
+    pub device_ids: Option<Vec<String>>, // Array of device IDs for multi-GPU
     pub files: Option<Vec<ModelFileInfo>>,
 }
 
@@ -420,6 +424,8 @@ pub struct CreateModelRequest {
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
+    pub device_type: Option<String>,
+    pub device_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -431,6 +437,26 @@ pub struct UpdateModelRequest {
     pub is_active: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
     pub parameters: Option<serde_json::Value>,
+    pub device_type: Option<String>,
+    pub device_ids: Option<Vec<String>>,
+}
+
+// Device detection structures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceInfo {
+    pub id: String, // Device identifier - UUID for CUDA GPUs, or descriptive ID for other devices
+    pub name: String,
+    pub device_type: String, // cpu, cuda, metal
+    pub memory_total: Option<u64>, // Total memory in bytes
+    pub memory_free: Option<u64>,  // Free memory in bytes
+    pub is_available: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AvailableDevicesResponse {
+    pub devices: Vec<DeviceInfo>,
+    pub default_device_type: String,
+    pub supports_multi_gpu: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1036,6 +1062,11 @@ impl ModelProviderModel {
                 .collect()
         });
 
+        let device_ids = model_db
+            .device_ids
+            .as_ref()
+            .and_then(|v| serde_json::from_value::<Vec<String>>(v.clone()).ok());
+
         Self {
             id: model_db.id,
             name: model_db.name,
@@ -1054,6 +1085,8 @@ impl ModelProviderModel {
             checksum: model_db.checksum,
             validation_status: model_db.validation_status,
             validation_issues,
+            device_type: model_db.device_type,
+            device_ids,
             files: file_infos,
         }
     }

@@ -222,10 +222,12 @@ export function NewChatInterface() {
             >
               {enabledProviders.map(provider => {
                 const providerModels = modelsByProvider[provider.id] || []
-                const enabledModels = providerModels.filter(model => model.enabled)
-                
+                const enabledModels = providerModels.filter(
+                  model => model.enabled,
+                )
+
                 if (enabledModels.length === 0) return null
-                
+
                 return (
                   <Select.OptGroup key={provider.id} label={provider.name}>
                     {enabledModels.map(model => (

@@ -157,8 +157,12 @@ export function ModelProvidersSettings() {
   }, [])
 
   const currentProvider = providers.find(p => p.id === selectedProvider)
-  const currentModels = selectedProvider ? modelsByProvider[selectedProvider] || [] : []
-  const modelsLoading = selectedProvider ? loadingModels[selectedProvider] || false : false
+  const currentModels = selectedProvider
+    ? modelsByProvider[selectedProvider] || []
+    : []
+  const modelsLoading = selectedProvider
+    ? loadingModels[selectedProvider] || false
+    : false
 
   const canEnableProvider = (provider: ModelProvider): boolean => {
     if (provider.enabled) return true // Already enabled
@@ -199,7 +203,11 @@ export function ModelProvidersSettings() {
 
   // Load models when provider is selected
   useEffect(() => {
-    if (selectedProvider && !modelsByProvider[selectedProvider] && !loadingModels[selectedProvider]) {
+    if (
+      selectedProvider &&
+      !modelsByProvider[selectedProvider] &&
+      !loadingModels[selectedProvider]
+    ) {
       loadModels(selectedProvider)
     }
   }, [selectedProvider, modelsByProvider, loadingModels, loadModels])

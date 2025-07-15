@@ -25,7 +25,9 @@ export const ChatHeader = memo(function ChatHeader() {
   const getModelDisplayName = () => {
     if (!currentConversation?.model_id) return ''
 
-    const model = useModelProvidersStore.getState().getModelById(currentConversation.model_id)
+    const model = useModelProvidersStore
+      .getState()
+      .getModelById(currentConversation.model_id)
     return model?.alias || currentConversation.model_id
   }
 

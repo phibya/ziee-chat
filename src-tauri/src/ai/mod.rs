@@ -8,6 +8,7 @@ pub mod candle;
 pub mod candle_config;
 pub mod candle_models;
 pub mod custom;
+pub mod device_detection;
 pub mod gemini;
 pub mod groq;
 pub mod mistral;

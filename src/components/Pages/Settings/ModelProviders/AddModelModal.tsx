@@ -21,6 +21,7 @@ import { useModelProvidersStore } from '../../../../store/modelProviders'
 import { useShallow } from 'zustand/react/shallow'
 import { UploadOutlined } from '@ant-design/icons'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
+import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { UploadProgress } from './UploadProgress'
 import { BASIC_MODEL_FIELDS, CANDLE_MODEL_FIELDS } from './shared/constants'
@@ -664,6 +665,8 @@ export function AddModelModal({
           model_source: 'upload',
           local_folder_path: '',
           local_filename: '',
+          device_type: 'cpu', // Default to CPU
+          device_ids: [],
           parameters: {
             temperature: 0.7,
             top_p: 0.9,
@@ -935,6 +938,8 @@ export function AddModelModal({
             </Form.Item>
           </>
         )}
+
+        {providerType === 'candle' && <DeviceSelectionSection />}
 
         <ModelCapabilitiesSection />
       </Form>

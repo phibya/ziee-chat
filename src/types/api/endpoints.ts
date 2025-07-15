@@ -35,6 +35,7 @@ import {
 } from './userSettings'
 import {
   AddModelToProviderRequest,
+  AvailableDevicesResponse,
   CreateModelProviderRequest,
   ModelCapabilities,
   ModelProvider,
@@ -149,6 +150,7 @@ export const ApiEndpoints = {
   'Models.disable': 'POST /api/admin/models/{model_id}/disable',
   'ModelProviders.testProxy':
     'POST /api/admin/model-providers/{provider_id}/test-proxy',
+  'Admin.getAvailableDevices': 'GET /api/admin/devices',
   // Model Upload endpoints for Candle
   'ModelUploads.create': 'POST /api/admin/uploaded-models',
   'ModelUploads.get': 'GET /api/admin/uploaded-models/{model_id}',
@@ -276,6 +278,7 @@ export type ApiEndpointParameters = {
   'ModelProviders.testProxy': {
     provider_id: string
   } & TestModelProviderProxyRequest
+  'Admin.getAvailableDevices': void
   // Model Upload parameters
   'ModelUploads.create': {
     provider_id: string
@@ -431,6 +434,7 @@ export type ApiEndpointResponses = {
   'Models.enable': { success: boolean; message: string }
   'Models.disable': { success: boolean; message: string }
   'ModelProviders.testProxy': TestModelProviderProxyResponse
+  'Admin.getAvailableDevices': AvailableDevicesResponse
   // Model Upload responses
   'ModelUploads.create': {
     id: string

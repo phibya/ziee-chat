@@ -204,6 +204,12 @@ pub fn admin_routes() -> Router {
                 api::middleware::model_providers_read_middleware,
             )),
         )
+        .route(
+            "/api/admin/devices",
+            get(api::model_providers::get_available_devices).layer(middleware::from_fn(
+                api::middleware::model_providers_read_middleware,
+            )),
+        )
         // Model routes
         .route(
             "/api/admin/model-providers/{provider_id}/models",

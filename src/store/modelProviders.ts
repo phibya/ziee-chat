@@ -283,9 +283,9 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
 
     loadModels: async (providerId: string) => {
       try {
-        set(state => ({ 
-          loadingModels: { ...state.loadingModels, [providerId]: true }, 
-          error: null 
+        set(state => ({
+          loadingModels: { ...state.loadingModels, [providerId]: true },
+          error: null,
         }))
 
         const models = await ApiClient.ModelProviders.listModels({
@@ -299,9 +299,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       } catch (error) {
         set(state => ({
           error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to load models',
+            error instanceof Error ? error.message : 'Failed to load models',
           loadingModels: { ...state.loadingModels, [providerId]: false },
         }))
         throw error
@@ -320,7 +318,10 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
         set(state => ({
           modelsByProvider: {
             ...state.modelsByProvider,
-            [providerId]: [...(state.modelsByProvider[providerId] || []), model],
+            [providerId]: [
+              ...(state.modelsByProvider[providerId] || []),
+              model,
+            ],
           },
           creating: false,
         }))
@@ -345,12 +346,15 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
         })
 
         set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce((acc, providerId) => {
-            acc[providerId] = state.modelsByProvider[providerId].map(m => 
-              m.id === modelId ? model : m
-            );
-            return acc;
-          }, {} as Record<string, ModelProviderModel[]>),
+          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
+            (acc, providerId) => {
+              acc[providerId] = state.modelsByProvider[providerId].map(m =>
+                m.id === modelId ? model : m,
+              )
+              return acc
+            },
+            {} as Record<string, ModelProviderModel[]>,
+          ),
           updating: false,
         }))
 
@@ -372,12 +376,15 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
         await ApiClient.Models.delete({ model_id: modelId })
 
         set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce((acc, providerId) => {
-            acc[providerId] = state.modelsByProvider[providerId].filter(m => 
-              m.id !== modelId
-            );
-            return acc;
-          }, {} as Record<string, ModelProviderModel[]>),
+          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
+            (acc, providerId) => {
+              acc[providerId] = state.modelsByProvider[providerId].filter(
+                m => m.id !== modelId,
+              )
+              return acc
+            },
+            {} as Record<string, ModelProviderModel[]>,
+          ),
           deleting: false,
         }))
       } catch (error) {
@@ -401,12 +408,15 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
 
         // Update model status to starting
         set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce((acc, providerId) => {
-            acc[providerId] = state.modelsByProvider[providerId].map(m => 
-              m.id === modelId ? { ...m, is_active: true } : m
-            );
-            return acc;
-          }, {} as Record<string, ModelProviderModel[]>),
+          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
+            (acc, providerId) => {
+              acc[providerId] = state.modelsByProvider[providerId].map(m =>
+                m.id === modelId ? { ...m, is_active: true } : m,
+              )
+              return acc
+            },
+            {} as Record<string, ModelProviderModel[]>,
+          ),
           modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
       } catch (error) {
@@ -430,12 +440,15 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
 
         // Update model status to stopping
         set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce((acc, providerId) => {
-            acc[providerId] = state.modelsByProvider[providerId].map(m => 
-              m.id === modelId ? { ...m, is_active: false } : m
-            );
-            return acc;
-          }, {} as Record<string, ModelProviderModel[]>),
+          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
+            (acc, providerId) => {
+              acc[providerId] = state.modelsByProvider[providerId].map(m =>
+                m.id === modelId ? { ...m, is_active: false } : m,
+              )
+              return acc
+            },
+            {} as Record<string, ModelProviderModel[]>,
+          ),
           modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
       } catch (error) {
@@ -456,12 +469,15 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
 
         // Update model status to enabled
         set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce((acc, providerId) => {
-            acc[providerId] = state.modelsByProvider[providerId].map(m => 
-              m.id === modelId ? { ...m, enabled: true } : m
-            );
-            return acc;
-          }, {} as Record<string, ModelProviderModel[]>),
+          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
+            (acc, providerId) => {
+              acc[providerId] = state.modelsByProvider[providerId].map(m =>
+                m.id === modelId ? { ...m, enabled: true } : m,
+              )
+              return acc
+            },
+            {} as Record<string, ModelProviderModel[]>,
+          ),
           updating: false,
         }))
       } catch (error) {
@@ -482,12 +498,15 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
 
         // Update model status to disabled
         set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce((acc, providerId) => {
-            acc[providerId] = state.modelsByProvider[providerId].map(m => 
-              m.id === modelId ? { ...m, enabled: false } : m
-            );
-            return acc;
-          }, {} as Record<string, ModelProviderModel[]>),
+          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
+            (acc, providerId) => {
+              acc[providerId] = state.modelsByProvider[providerId].map(m =>
+                m.id === modelId ? { ...m, enabled: false } : m,
+              )
+              return acc
+            },
+            {} as Record<string, ModelProviderModel[]>,
+          ),
           updating: false,
         }))
       } catch (error) {
@@ -732,7 +751,10 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
         set(state => ({
           modelsByProvider: {
             ...state.modelsByProvider,
-            [providerId]: [...(state.modelsByProvider[providerId] || []), newModel],
+            [providerId]: [
+              ...(state.modelsByProvider[providerId] || []),
+              newModel,
+            ],
           },
           creating: false,
           uploadSession: null, // Clear the session after successful commit

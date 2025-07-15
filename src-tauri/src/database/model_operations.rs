@@ -78,6 +78,8 @@ impl ModelOperations {
             checksum: row.get("checksum"),
             validation_status: row.get("validation_status"),
             validation_issues: row.get("validation_issues"),
+            device_type: row.get("device_type"),
+            device_ids: row.get("device_ids"),
         };
 
         Ok(model)
@@ -156,6 +158,8 @@ impl ModelOperations {
             checksum: row.get("checksum"),
             validation_status: row.get("validation_status"),
             validation_issues: row.get("validation_issues"),
+            device_type: row.get("device_type"),
+            device_ids: row.get("device_ids"),
         };
 
         Ok(model)
@@ -197,6 +201,8 @@ impl ModelOperations {
                 validation_issues: row.get("validation_issues"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
+                device_type: row.get("device_type"),
+                device_ids: row.get("device_ids"),
             };
             Ok(Some(model))
         } else {
@@ -252,6 +258,8 @@ impl ModelOperations {
                 validation_issues: row.get("validation_issues"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
+                device_type: row.get("device_type"),
+                device_ids: row.get("device_ids"),
             };
             models.push(model);
         }

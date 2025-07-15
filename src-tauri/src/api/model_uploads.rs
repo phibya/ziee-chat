@@ -359,6 +359,8 @@ pub async fn commit_uploaded_files(
         description: request.description,
         enabled: Some(false),
         capabilities: Some(serde_json::json!({})),
+        device_type: None,
+        device_ids: None,
     };
 
     println!("Processing model with file format: {}", file_format);

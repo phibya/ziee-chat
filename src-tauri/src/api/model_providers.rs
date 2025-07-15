@@ -12,7 +12,7 @@ use crate::database::{
     models::{
         CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderListResponse,
         ModelProviderModel, TestModelProviderProxyRequest, TestModelProviderProxyResponse,
-        UpdateModelProviderRequest, UpdateModelRequest, UserGroup,
+        UpdateModelProviderRequest, UpdateModelRequest, UserGroup, AvailableDevicesResponse,
     },
     queries::{model_providers, user_group_model_providers},
 };
@@ -627,6 +627,8 @@ pub async fn start_model(
                     enabled: None,
                     is_active: Some(true),
                     capabilities: None,
+                    device_type: None,
+                    device_ids: None,
                 },
             )
             .await
@@ -675,6 +677,8 @@ pub async fn start_model(
                     enabled: None,
                     is_active: Some(true),
                     capabilities: None,
+                    device_type: None,
+                    device_ids: None,
                 },
             )
             .await
@@ -710,6 +714,8 @@ pub async fn start_model(
                     enabled: None,
                     is_active: Some(true),
                     capabilities: None,
+                    device_type: None,
+                    device_ids: None,
                 },
             )
             .await
@@ -795,6 +801,8 @@ pub async fn stop_model(
                 enabled: None,
                 is_active: Some(false),
                 capabilities: None,
+                device_type: None,
+                device_ids: None,
             },
         )
         .await
@@ -824,6 +832,8 @@ pub async fn stop_model(
                     enabled: None,
                     is_active: Some(false),
                     capabilities: None,
+                    device_type: None,
+                    device_ids: None,
                 },
             )
             .await
@@ -861,6 +871,8 @@ pub async fn enable_model(
             enabled: Some(true),
             is_active: None,
             capabilities: None,
+            device_type: None,
+            device_ids: None,
         },
     )
     .await
@@ -889,6 +901,8 @@ pub async fn disable_model(
             enabled: Some(false),
             is_active: None,
             capabilities: None,
+            device_type: None,
+            device_ids: None,
         },
     )
     .await
@@ -936,4 +950,12 @@ pub async fn list_provider_models(
             Err(AppError::internal_error("Database operation failed"))
         }
     }
+}
+
+/// Get available compute devices for model deployment
+pub async fn get_available_devices(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+) -> ApiResult<Json<AvailableDevicesResponse>> {
+    let devices_response = crate::ai::device_detection::detect_available_devices();
+    Ok(Json(devices_response))
 }
