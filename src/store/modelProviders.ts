@@ -53,6 +53,7 @@ interface ModelProvidersState {
   updating: boolean
   deleting: boolean
   testingProxy: boolean
+  modelOperations: Record<string, boolean> // Track loading state for individual models
 
   // Upload states
   uploading: boolean
@@ -145,6 +146,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
     updating: false,
     deleting: false,
     testingProxy: false,
+    modelOperations: {},
     uploading: false,
     uploadProgress: [],
     overallUploadProgress: 0,
@@ -353,7 +355,10 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
 
     startModel: async (modelId: string) => {
       try {
-        set({ updating: true, error: null })
+        set(state => ({
+          modelOperations: { ...state.modelOperations, [modelId]: true },
+          error: null,
+        }))
 
         await ApiClient.Models.start({ model_id: modelId })
 
@@ -362,24 +367,27 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
           providers: state.providers.map(p => ({
             ...p,
             models: p.models.map(m =>
-              m.id === modelId ? { ...m, isActive: true } : m,
+              m.id === modelId ? { ...m, is_active: true } : m,
             ),
           })),
-          updating: false,
+          modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
       } catch (error) {
-        set({
+        set(state => ({
           error:
             error instanceof Error ? error.message : 'Failed to start model',
-          updating: false,
-        })
+          modelOperations: { ...state.modelOperations, [modelId]: false },
+        }))
         throw error
       }
     },
 
     stopModel: async (modelId: string) => {
       try {
-        set({ updating: true, error: null })
+        set(state => ({
+          modelOperations: { ...state.modelOperations, [modelId]: true },
+          error: null,
+        }))
 
         await ApiClient.Models.stop({ model_id: modelId })
 
@@ -388,17 +396,17 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
           providers: state.providers.map(p => ({
             ...p,
             models: p.models.map(m =>
-              m.id === modelId ? { ...m, isActive: false } : m,
+              m.id === modelId ? { ...m, is_active: false } : m,
             ),
           })),
-          updating: false,
+          modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
       } catch (error) {
-        set({
+        set(state => ({
           error:
             error instanceof Error ? error.message : 'Failed to stop model',
-          updating: false,
-        })
+          modelOperations: { ...state.modelOperations, [modelId]: false },
+        }))
         throw error
       }
     },

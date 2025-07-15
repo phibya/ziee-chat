@@ -30,8 +30,8 @@ export interface ModelProviderModel {
   alias: string
   description?: string
   path?: string // For Candle models
-  isDeprecated?: boolean
-  isActive?: boolean
+  is_deprecated?: boolean
+  is_active?: boolean
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
@@ -140,7 +140,7 @@ export interface UpdateModelRequest {
   description?: string
   path?: string
   enabled?: boolean
-  isActive?: boolean
+  is_active?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
 }

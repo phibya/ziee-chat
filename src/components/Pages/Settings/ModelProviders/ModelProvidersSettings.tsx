@@ -68,6 +68,7 @@ export function ModelProvidersSettings() {
   const {
     providers,
     loading,
+    modelOperations,
     error,
     loadProviders,
     createProvider,
@@ -86,9 +87,7 @@ export function ModelProvidersSettings() {
     useShallow(state => ({
       providers: state.providers,
       loading: state.loading,
-      creating: state.creating,
-      updating: state.updating,
-      deleting: state.deleting,
+      modelOperations: state.modelOperations,
       error: state.error,
       loadProviders: state.loadProviders,
       createProvider: state.createProvider,
@@ -498,11 +497,11 @@ export function ModelProvidersSettings() {
     }
   }
 
-  const handleStartStopModel = async (modelId: string, isActive: boolean) => {
+  const handleStartStopModel = async (modelId: string, is_active: boolean) => {
     if (!currentProvider || currentProvider.type !== 'candle') return
 
     try {
-      if (isActive) {
+      if (is_active) {
         await startModel(modelId)
       } else {
         await stopModel(modelId)
@@ -510,7 +509,7 @@ export function ModelProvidersSettings() {
 
       const modelName =
         currentProvider.models.find(m => m.id === modelId)?.name || 'Model'
-      message.success(`${modelName} ${isActive ? 'started' : 'stopped'}`)
+      message.success(`${modelName} ${is_active ? 'started' : 'stopped'}`)
     } catch (error) {
       console.error('Failed to start/stop model:', error)
       // Error is handled by the store
@@ -847,13 +846,21 @@ export function ModelProvidersSettings() {
                           currentProvider.enabled && (
                             <Button
                               key="start-stop"
-                              type={model.isActive ? 'default' : 'primary'}
+                              type={model.is_active ? 'default' : 'primary'}
                               size={isMobile ? 'small' : 'middle'}
+                              loading={modelOperations[model.id] || false}
+                              disabled={modelOperations[model.id] || false}
                               onClick={() =>
-                                handleStartStopModel(model.id, !model.isActive)
+                                handleStartStopModel(model.id, !model.is_active)
                               }
                             >
-                              {model.isActive ? 'Stop' : 'Start'}
+                              {modelOperations[model.id]
+                                ? model.is_active
+                                  ? 'Stopping...'
+                                  : 'Starting...'
+                                : model.is_active
+                                  ? 'Stop'
+                                  : 'Start'}
                             </Button>
                           ),
                         <Button
@@ -892,7 +899,7 @@ export function ModelProvidersSettings() {
                   title={
                     <Flex align="center" gap="small">
                       <Text>{model.alias}</Text>
-                      {model.isDeprecated && (
+                      {model.is_deprecated && (
                         <span style={{ fontSize: '12px' }}>⚠️</span>
                       )}
                     </Flex>

@@ -12,7 +12,7 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 const { Text } = Typography
 
@@ -79,28 +79,6 @@ export function CandleConfigurationSection({
 
   const content = (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      <ResponsiveConfigItem
-        title={t('modelProviders.device')}
-        description="Compute device to use for inference"
-      >
-        <Form.Item
-          name={getFieldName('device')}
-          style={{ margin: 0, width: isMobile ? '100%' : 120 }}
-        >
-          <Select
-            style={{ width: '100%' }}
-            disabled={disabled}
-            options={[
-              { value: 'cpu', label: 'CPU' },
-              { value: 'cuda', label: 'CUDA (NVIDIA GPU)' },
-              { value: 'metal', label: 'Metal (Apple GPU)' },
-            ]}
-          />
-        </Form.Item>
-      </ResponsiveConfigItem>
-
-      <Divider style={{ margin: 0 }} />
-
       <ResponsiveConfigItem
         title={t('modelProviders.autoUnloadOldModels')}
         description={t('modelProviders.autoUnloadDescription')}

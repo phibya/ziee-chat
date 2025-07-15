@@ -720,7 +720,8 @@ fn generate_text_stream(
         // Process initial input tokens
         let mut logits = match model.forward(&current_input, 0) {
             Ok(logits) => logits,
-            Err(_) => {
+            Err(e) => {
+                eprintln!("ERROR: Initial forward pass failed: {:?}", e);
                 let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                 yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                 return;
@@ -732,19 +733,38 @@ fn generate_text_stream(
             let start_pos = tokens.len() + step as usize;
             let next_token = if step == 0 {
                 // Get the last token from the logits we just computed
+                eprintln!("DEBUG: Processing first token, logits rank: {}", logits.rank());
                 let last_token_logits = if logits.rank() == 2 {
                     match logits.narrow(0, 0, 1).and_then(|t| t.squeeze(0)) {
                         Ok(logits) => logits,
-                        Err(_) => {
+                        Err(e) => {
+                            eprintln!("ERROR: First token logits processing failed (2D): {:?}", e);
                             let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                             yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                             return;
                         }
                     }
                 } else if logits.rank() == 3 {
-                    match logits.narrow(1, logits.dim(1).unwrap_or(1) - 1, 1).and_then(|t| t.squeeze(1)) {
-                        Ok(logits) => logits,
-                        Err(_) => {
+                    match logits.dim(1) {
+                        Ok(dim1) if dim1 > 0 => {
+                            match logits.narrow(1, dim1 - 1, 1).and_then(|t| t.squeeze(1)) {
+                                Ok(logits) => logits,
+                                Err(e) => {
+                                    eprintln!("ERROR: 3D logits narrow/squeeze failed: {:?}", e);
+                                    let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                                    return;
+                                }
+                            }
+                        },
+                        Ok(dim1) => {
+                            eprintln!("ERROR: Invalid logits dimension 1: {}", dim1);
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        },
+                        Err(e) => {
+                            eprintln!("ERROR: Failed to get logits dimension 1: {:?}", e);
                             let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                             yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                             return;
@@ -805,9 +825,26 @@ fn generate_text_stream(
                         }
                     }
                 } else if logits.rank() == 3 {
-                    match logits.narrow(1, logits.dim(1).unwrap_or(1) - 1, 1).and_then(|t| t.squeeze(1)) {
-                        Ok(logits) => logits,
-                        Err(_) => {
+                    match logits.dim(1) {
+                        Ok(dim1) if dim1 > 0 => {
+                            match logits.narrow(1, dim1 - 1, 1).and_then(|t| t.squeeze(1)) {
+                                Ok(logits) => logits,
+                                Err(e) => {
+                                    eprintln!("ERROR: Subsequent 3D logits narrow/squeeze failed: {:?}", e);
+                                    let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                                    return;
+                                }
+                            }
+                        },
+                        Ok(dim1) => {
+                            eprintln!("ERROR: Invalid subsequent logits dimension 1: {}", dim1);
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        },
+                        Err(e) => {
+                            eprintln!("ERROR: Failed to get subsequent logits dimension 1: {:?}", e);
                             let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                             yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                             return;
