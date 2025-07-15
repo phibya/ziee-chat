@@ -254,7 +254,7 @@ impl ModelManager {
         // Build command with specific file paths
         let mut cmd = Command::new(model_server_path);
         cmd.arg("--model-path")
-            .arg(&model_path)
+            .arg(full_model_path.to_string_lossy().as_ref())
             .arg("--architecture")
             .arg(architecture)
             .arg("--port")
@@ -263,6 +263,23 @@ impl ModelManager {
             .arg(model.id.to_string())
             .arg("--model-name")
             .arg(&model.name);
+
+        // Add device configuration if available
+        if let Some(device_type) = &model.device_type {
+            println!("Starting model {} with device type: {}", model.id, device_type);
+            cmd.arg("--device-type").arg(device_type);
+        }
+        
+        if let Some(device_ids_json) = &model.device_ids {
+            // Parse device_ids from JSON array to comma-separated string
+            if let Ok(device_ids) = serde_json::from_value::<Vec<String>>(device_ids_json.clone()) {
+                if !device_ids.is_empty() {
+                    let device_ids_str = device_ids.join(",");
+                    println!("Starting model {} with device IDs: {}", model.id, device_ids_str);
+                    cmd.arg("--device-ids").arg(device_ids_str);
+                }
+            }
+        }
 
         // Add specific file paths if available
         if let Some(config_file) = &file_paths.config_file {

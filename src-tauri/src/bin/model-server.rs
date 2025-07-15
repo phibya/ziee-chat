@@ -59,6 +59,14 @@ struct Args {
     /// Special tokens file path (relative to model_path)
     #[arg(long)]
     special_tokens_file: Option<String>,
+
+    /// Device type for inference (cpu, cuda, metal)
+    #[arg(long)]
+    device_type: Option<String>,
+
+    /// Device IDs for inference (comma-separated, e.g. "0,1" for CUDA GPUs or "GPU-uuid1,GPU-uuid2")
+    #[arg(long)]
+    device_ids: Option<String>,
 }
 
 #[tokio::main]
@@ -73,15 +81,27 @@ async fn main() {
     println!("Architecture: {}", args.architecture);
     println!("Port: {}", args.port);
     println!("Model Path: {}", args.model_path);
+    
+    // Print device configuration if provided
+    if let Some(device_type) = &args.device_type {
+        println!("Device Type: {}", device_type);
+    }
+    if let Some(device_ids) = &args.device_ids {
+        println!("Device IDs: {}", device_ids);
+    }
 
-    // Override APP_DATA_DIR if provided (for testing)
-    let base_dir = if let Some(override_dir) = args.app_data_dir {
-        PathBuf::from(override_dir)
+    // Check if model_path is already absolute, otherwise join with base directory
+    let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
+        PathBuf::from(&args.model_path)
     } else {
-        APP_DATA_DIR.clone()
+        // Override APP_DATA_DIR if provided (for testing)
+        let base_dir = if let Some(override_dir) = args.app_data_dir {
+            PathBuf::from(override_dir)
+        } else {
+            APP_DATA_DIR.clone()
+        };
+        base_dir.join(&args.model_path)
     };
-
-    let full_model_path = base_dir.join(&args.model_path);
 
     println!("Full model path: {}", full_model_path.display());
 
@@ -122,7 +142,7 @@ async fn main() {
 
     let model_state = if args.config_file.is_some() || args.tokenizer_file.is_some() || args.weight_file.is_some() {
         // Use specific file paths if provided
-        match ModelServerState::new_with_specific_files(
+        match ModelServerState::new_with_specific_files_and_device(
             full_model_path.to_str().unwrap(),
             &args.architecture,
             &args.model_id,
@@ -133,6 +153,8 @@ async fn main() {
             args.additional_weight_files.as_deref(),
             args.vocab_file.as_deref(),
             args.special_tokens_file.as_deref(),
+            args.device_type.as_deref(),
+            args.device_ids.as_deref(),
         )
         .await
         {
@@ -145,11 +167,13 @@ async fn main() {
         }
     } else {
         // Use auto-detection
-        match ModelServerState::new(
+        match ModelServerState::new_with_device_config(
             full_model_path.to_str().unwrap(),
             &args.architecture,
             &args.model_id,
             &model_name,
+            args.device_type.as_deref(),
+            args.device_ids.as_deref(),
         )
         .await
         {

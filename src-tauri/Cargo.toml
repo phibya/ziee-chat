@@ -75,5 +75,5 @@ winapi = { version = "0.3", features = ["processthreadsapi", "winnt", "handleapi
 
 [features]
 default = []
-cuda = ["candle-core/cuda"]
-metal = ["candle-core/metal"]
+cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
+metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]

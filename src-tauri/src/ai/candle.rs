@@ -1,5 +1,7 @@
 use async_trait::async_trait;
 use candle_core::{Device, Tensor};
+#[cfg(feature = "metal")]
+use candle_core::backend::BackendDevice;
 use std::sync::{Arc, Mutex};
 use tokenizers::Tokenizer;
 use tokio::sync::mpsc;
@@ -152,7 +154,7 @@ impl CandleProvider {
                 .map_err(|e| CandleError::DeviceError(format!("CUDA device {}: {}", id, e)))?,
             #[cfg(feature = "metal")]
             DeviceType::Metal => Device::Metal(
-                candle_core::MetalDevice::new()
+                candle_core::MetalDevice::new(0)
                     .map_err(|e| CandleError::DeviceError(format!("Metal device: {}", e)))?,
             ),
         };

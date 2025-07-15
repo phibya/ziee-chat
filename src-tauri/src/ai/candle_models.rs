@@ -8,6 +8,12 @@ use serde::Deserialize;
 
 use super::candle::{CandleError, CandleModel};
 
+/// Check if two devices are the same by comparing their debug representation
+/// This is a workaround since Device doesn't implement PartialEq
+fn device_matches(device1: &Device, device2: &Device) -> bool {
+    format!("{:?}", device1) == format!("{:?}", device2)
+}
+
 #[derive(Debug, Deserialize)]
 struct ConfigJson {
     vocab_size: usize,
@@ -176,7 +182,15 @@ impl CandleModel for LlamaModelWrapper {
         // Run the actual model forward pass
         println!("Running model forward pass with input shape: {:?}, start_pos: {}", input_ids.dims(), start_pos);
         
-        let real_logits = self.model.forward(input_ids, start_pos, &mut self.cache)?;
+        // Ensure input tensor is on the same device as the model
+        let input_ids = if !device_matches(input_ids.device(), &self.device) {
+            println!("Moving input tensor from {:?} to {:?}", input_ids.device(), self.device);
+            input_ids.to_device(&self.device)?
+        } else {
+            input_ids.clone()
+        };
+        
+        let real_logits = self.model.forward(&input_ids, start_pos, &mut self.cache)?;
         
         println!("Model output logits shape: {:?}", real_logits.dims());
         

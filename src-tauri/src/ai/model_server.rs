@@ -1,5 +1,7 @@
 use crate::ai::candle::{CandleError, CandleModel};
 use crate::ai::candle_models::ModelFactory;
+#[cfg(feature = "metal")]
+use candle_core::backend::BackendDevice;
 use crate::ai::openai_types::*;
 use axum::{
     extract::{Path, State},
@@ -27,15 +29,102 @@ pub struct ModelServerState {
 }
 
 impl ModelServerState {
+    /// Parse device configuration and create the appropriate device
+    fn create_device(device_type: Option<&str>, device_ids: Option<&str>) -> Result<Device, CandleError> {
+        match device_type {
+            Some("cuda") => {
+                // Parse device IDs for CUDA
+                if let Some(ids) = device_ids {
+                    let device_id_list: Vec<&str> = ids.split(',').map(|s| s.trim()).collect();
+                    if let Some(first_id) = device_id_list.first() {
+                        // For now, use the first device ID and try to parse as index
+                        // If it's a UUID format (starts with "GPU-"), use device 0
+                        let device_index = if first_id.starts_with("GPU-") {
+                            0 // Default to first CUDA device for UUID format
+                        } else {
+                            first_id.parse::<usize>().unwrap_or(0)
+                        };
+                        
+                        #[cfg(feature = "cuda")]
+                        {
+                            Device::cuda_if_available(device_index)
+                                .map_err(|e| CandleError::DeviceError(format!("CUDA device {}: {}", device_index, e)))
+                        }
+                        #[cfg(not(feature = "cuda"))]
+                        {
+                            println!("Warning: CUDA requested but not available, falling back to CPU");
+                            Ok(Device::Cpu)
+                        }
+                    } else {
+                        #[cfg(feature = "cuda")]
+                        {
+                            Device::cuda_if_available(0)
+                                .map_err(|e| CandleError::DeviceError(format!("CUDA device 0: {}", e)))
+                        }
+                        #[cfg(not(feature = "cuda"))]
+                        {
+                            println!("Warning: CUDA requested but not available, falling back to CPU");
+                            Ok(Device::Cpu)
+                        }
+                    }
+                } else {
+                    // No specific device ID, use default CUDA device
+                    #[cfg(feature = "cuda")]
+                    {
+                        Device::cuda_if_available(0)
+                            .map_err(|e| CandleError::DeviceError(format!("CUDA device 0: {}", e)))
+                    }
+                    #[cfg(not(feature = "cuda"))]
+                    {
+                        println!("Warning: CUDA requested but not available, falling back to CPU");
+                        Ok(Device::Cpu)
+                    }
+                }
+            }
+            Some("metal") => {
+                #[cfg(feature = "metal")]
+                {
+                    match candle_core::MetalDevice::new(0) {
+                        Ok(metal_device) => Ok(Device::Metal(metal_device)),
+                        Err(e) => {
+                            println!("Warning: Metal device creation failed ({}), falling back to CPU", e);
+                            Ok(Device::Cpu)
+                        }
+                    }
+                }
+                #[cfg(not(feature = "metal"))]
+                {
+                    println!("Warning: Metal requested but not available, falling back to CPU");
+                    Ok(Device::Cpu)
+                }
+            }
+            Some("cpu") | None => Ok(Device::Cpu),
+            Some(unknown) => {
+                println!("Warning: Unknown device type '{}', falling back to CPU", unknown);
+                Ok(Device::Cpu)
+            }
+        }
+    }
     pub async fn new(
         model_path: &str,
         architecture: &str,
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None).await
+    }
+
+    pub async fn new_with_device_config(
+        model_path: &str,
+        architecture: &str,
+        model_id: &str,
+        model_name: &str,
+        device_type: Option<&str>,
+        device_ids: Option<&str>,
+    ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
-        let device = Device::Cpu; // TODO: Add GPU support
+        let device = Self::create_device(device_type, device_ids)?;
         let model = ModelFactory::create_model(architecture, model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
 
@@ -70,6 +159,36 @@ impl ModelServerState {
         _vocab_file: Option<&str>,
         _special_tokens_file: Option<&str>,
     ) -> Result<Self, CandleError> {
+        Self::new_with_specific_files_and_device(
+            model_path,
+            architecture,
+            model_id,
+            model_name,
+            config_file,
+            tokenizer_file,
+            weight_file,
+            additional_weight_files,
+            _vocab_file,
+            _special_tokens_file,
+            None,
+            None,
+        ).await
+    }
+
+    pub async fn new_with_specific_files_and_device(
+        model_path: &str,
+        architecture: &str,
+        model_id: &str,
+        model_name: &str,
+        config_file: Option<&str>,
+        tokenizer_file: Option<&str>,
+        weight_file: Option<&str>,
+        additional_weight_files: Option<&str>,
+        _vocab_file: Option<&str>,
+        _special_tokens_file: Option<&str>,
+        device_type: Option<&str>,
+        device_ids: Option<&str>,
+    ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
         if let Some(config) = config_file {
@@ -85,7 +204,7 @@ impl ModelServerState {
             println!("  Additional weight files: {}", additional);
         }
 
-        let device = Device::Cpu; // TODO: Add GPU support
+        let device = Self::create_device(device_type, device_ids)?;
         
         // For now, use the existing factory methods but with specific file awareness
         // TODO: Update ModelFactory to accept specific file paths
