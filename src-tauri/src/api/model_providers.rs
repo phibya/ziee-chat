@@ -581,13 +581,46 @@ pub async fn start_model(
         ));
     }
 
-    // Check if model is already running
+    // Check if model is actually running (with cleanup of stale processes)
     let model_manager = crate::ai::model_manager::get_model_manager();
-    if model_manager.is_model_running(model_id).await {
-        return Err(AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Model is already running",
-        ));
+    let model_path = model.get_model_path();
+    
+    match model_manager.check_and_cleanup_model(model_id, &model_path).await {
+        Ok(true) => {
+            // Model is actually running, update its active status in database
+            println!("Model {} is already running, updating active status in database", model_id);
+            
+            match model_providers::update_model(
+                model_id,
+                UpdateModelRequest {
+                    name: None,
+                    alias: None,
+                    description: None,
+                    parameters: None,
+                    enabled: None,
+                    is_active: Some(true),
+                    capabilities: None,
+                },
+            )
+            .await
+            {
+                Ok(_) => {
+                    println!("Successfully updated model {} active status", model_id);
+                    return Ok(StatusCode::OK);
+                }
+                Err(e) => {
+                    eprintln!("Failed to update model {} active status: {}", model_id, e);
+                    return Err(AppError::internal_error("Failed to update model status"));
+                }
+            }
+        }
+        Ok(false) => {
+            // Model is not running, we can proceed with starting it
+        }
+        Err(e) => {
+            eprintln!("Error checking model status: {}", e);
+            // If we can't determine status, assume it's safe to proceed
+        }
     }
 
     // Validate that the model files exist
@@ -601,7 +634,7 @@ pub async fn start_model(
 
     // Start the model server process
     match model_manager.start_model(&model).await {
-        Ok(port) => {
+        Ok(crate::ai::model_manager::ModelStartResult::Started(port)) => {
             println!("Model {} started successfully on port {}", model_id, port);
 
             // Update model status in database
@@ -629,6 +662,38 @@ pub async fn start_model(
                     eprintln!("Failed to update model status {}: {}", model_id, e);
                     // Model started but database update failed, try to stop the model
                     let _ = model_manager.stop_model(model_id).await;
+                    Err(AppError::internal_error("Database operation failed"))
+                }
+            }
+        }
+        Ok(crate::ai::model_manager::ModelStartResult::AlreadyRunning(port)) => {
+            println!("Model {} is already running on port {}, updating database status", model_id, port);
+
+            // Update model status in database to ensure it's marked as active
+            match model_providers::update_model(
+                model_id,
+                UpdateModelRequest {
+                    name: None,
+                    alias: None,
+                    description: None,
+                    parameters: None,
+                    enabled: None,
+                    is_active: Some(true),
+                    capabilities: None,
+                },
+            )
+            .await
+            {
+                Ok(Some(_)) => {
+                    println!("Successfully updated model {} active status", model_id);
+                    Ok(StatusCode::OK)
+                }
+                Ok(None) => {
+                    eprintln!("Model {} not found in database", model_id);
+                    Err(AppError::not_found("Model"))
+                }
+                Err(e) => {
+                    eprintln!("Failed to update model {} active status: {}", model_id, e);
                     Err(AppError::internal_error("Database operation failed"))
                 }
             }

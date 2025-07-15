@@ -18,11 +18,94 @@ pub enum ModelStatus {
 }
 
 #[derive(Debug)]
+pub enum ProcessHandle {
+    Owned(Child),      // Process started by this manager
+    External(u32),     // External process, we only track the PID
+}
+
+impl ProcessHandle {
+    pub fn id(&self) -> u32 {
+        match self {
+            ProcessHandle::Owned(child) => child.id(),
+            ProcessHandle::External(pid) => *pid,
+        }
+    }
+
+    pub fn try_wait(&mut self) -> std::io::Result<Option<std::process::ExitStatus>> {
+        match self {
+            ProcessHandle::Owned(child) => child.try_wait(),
+            ProcessHandle::External(_) => Ok(None), // External processes don't provide exit status
+        }
+    }
+
+    pub fn kill(&mut self) -> std::io::Result<()> {
+        match self {
+            ProcessHandle::Owned(child) => child.kill(),
+            ProcessHandle::External(pid) => {
+                // Kill external process using platform-specific methods
+                #[cfg(unix)]
+                {
+                    unsafe {
+                        if libc::kill(*pid as libc::pid_t, libc::SIGTERM) == 0 {
+                            Ok(())
+                        } else {
+                            Err(std::io::Error::last_os_error())
+                        }
+                    }
+                }
+                #[cfg(windows)]
+                {
+                    use std::ptr;
+                    use winapi::um::processthreadsapi::{OpenProcess, TerminateProcess};
+                    use winapi::um::winnt::PROCESS_TERMINATE;
+                    use winapi::um::handleapi::CloseHandle;
+                    
+                    unsafe {
+                        let handle = OpenProcess(PROCESS_TERMINATE, 0, *pid);
+                        if handle != ptr::null_mut() {
+                            let result = if TerminateProcess(handle, 1) != 0 {
+                                Ok(())
+                            } else {
+                                Err(std::io::Error::last_os_error())
+                            };
+                            CloseHandle(handle);
+                            result
+                        } else {
+                            Err(std::io::Error::last_os_error())
+                        }
+                    }
+                }
+                #[cfg(not(any(unix, windows)))]
+                {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::Unsupported,
+                        "Process termination not supported on this platform",
+                    ))
+                }
+            }
+        }
+    }
+
+    pub fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
+        match self {
+            ProcessHandle::Owned(child) => child.wait(),
+            ProcessHandle::External(_) => {
+                // External processes can't be waited on, return a fake exit status
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Cannot wait on external process",
+                ))
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ModelProcess {
     pub model_id: Uuid,
     pub provider_id: Uuid,
     pub port: u16,
-    pub process: Child,
+    pub process: ProcessHandle,
     pub status: ModelStatus,
     pub started_at: DateTime<Utc>,
     pub model_path: String,
@@ -52,6 +135,12 @@ pub enum ModelManagerError {
     LockFileError(String),
 }
 
+#[derive(Debug)]
+pub enum ModelStartResult {
+    Started(u16),           // Model was started, returns port
+    AlreadyRunning(u16),    // Model was already running, returns port
+}
+
 impl ModelManager {
     pub fn new() -> Self {
         Self {
@@ -64,12 +153,14 @@ impl ModelManager {
     pub async fn start_model(
         &self,
         model: &ModelProviderModelDb,
-    ) -> Result<u16, ModelManagerError> {
+    ) -> Result<ModelStartResult, ModelManagerError> {
         let mut running_models = self.running_models.lock().await;
 
-        // Check if model is already running
-        if running_models.contains_key(&model.id) {
-            return Err(ModelManagerError::ModelAlreadyRunning(model.id));
+        // Check if model is already running in our tracking
+        if let Some(model_process) = running_models.get(&model.id) {
+            let port = model_process.port;
+            println!("Model {} is already running on port {} (in tracking)", model.id, port);
+            return Ok(ModelStartResult::AlreadyRunning(port));
         }
 
         // Find available port
@@ -84,12 +175,31 @@ impl ModelManager {
         if lock_file.exists() {
             // Try to read the lock file and check if process is still running
             if let Ok(lock_content) = std::fs::read_to_string(&lock_file) {
-                if let Some((pid_str, _port_str)) = lock_content.split_once(':') {
+                if let Some((pid_str, port_str)) = lock_content.split_once(':') {
                     if let Ok(pid) = pid_str.parse::<u32>() {
-                        if process_is_running(pid) {
-                            return Err(ModelManagerError::LockFileError(
-                                "Model is already running".to_string(),
-                            ));
+                        if self.is_process_alive(pid) {
+                            // Process is alive, get the port from lock file
+                            if let Ok(existing_port) = port_str.parse::<u16>() {
+                                println!("Model {} is already running on port {} (found via lock file), adding to tracking", model.id, existing_port);
+                                
+                                // Create a ModelProcess entry for the existing process
+                                let model_process = ModelProcess {
+                                    model_id: model.id,
+                                    provider_id: model.provider_id,
+                                    port: existing_port,
+                                    process: ProcessHandle::External(pid),
+                                    status: ModelStatus::Running,
+                                    started_at: chrono::Utc::now(), // We don't know the actual start time
+                                    model_path: model_path.clone(),
+                                    architecture: model.architecture.clone().unwrap_or_else(|| "llama".to_string()),
+                                };
+                                
+                                running_models.insert(model.id, model_process);
+                                return Ok(ModelStartResult::AlreadyRunning(existing_port));
+                            } else {
+                                println!("Model {} is already running but port is invalid in lock file", model.id);
+                                return Ok(ModelStartResult::AlreadyRunning(port)); // Use our allocated port as fallback
+                            }
                         }
                     }
                 }
@@ -219,7 +329,7 @@ impl ModelManager {
                     model_id: model.id,
                     provider_id: model.provider_id,
                     port,
-                    process: child,
+                    process: ProcessHandle::Owned(child),
                     status: ModelStatus::Running,
                     started_at: Utc::now(),
                     model_path: model_path.clone(),
@@ -228,7 +338,7 @@ impl ModelManager {
 
                 running_models.insert(model.id, model_process);
                 println!("Model {} started successfully on port {}", model.id, port);
-                Ok(port)
+                Ok(ModelStartResult::Started(port))
             }
             Err(e) => {
                 // Startup failed, kill the process and clean up
@@ -307,6 +417,122 @@ impl ModelManager {
         let running_models = self.running_models.lock().await;
         running_models.contains_key(&model_id)
     }
+
+    /// Check if a model is actually running and clean up if it's not
+    pub async fn check_and_cleanup_model(&self, model_id: Uuid, model_path: &str) -> Result<bool, ModelManagerError> {
+        let mut running_models = self.running_models.lock().await;
+        
+        // If model is not in our tracking, check for lock files
+        if !running_models.contains_key(&model_id) {
+            return Ok(self.check_lock_files_and_cleanup(model_path).await?);
+        }
+        
+        // Model is in our tracking, check if process is actually alive
+        let model_process = running_models.get(&model_id).unwrap();
+        let pid = model_process.process.id();
+        
+        // Check if process is still alive
+        if self.is_process_alive(pid) {
+            return Ok(true); // Model is actually running
+        }
+        
+        // Process is dead, clean up
+        println!("Model {} process (PID: {}) is no longer alive, cleaning up", model_id, pid);
+        
+        // Remove from our tracking
+        running_models.remove(&model_id);
+        drop(running_models); // Release the lock before cleanup
+        
+        // Clean up lock files
+        use std::path::Path;
+        self.cleanup_model_files(Path::new(model_path)).await;
+        
+        Ok(false)
+    }
+
+    /// Check if lock files exist and if the process is alive
+    async fn check_lock_files_and_cleanup(&self, model_path: &str) -> Result<bool, ModelManagerError> {
+        use std::path::Path;
+        
+        let model_dir = Path::new(model_path);
+        let lock_file = model_dir.join(".model.lock");
+        let pid_file = model_dir.join(".model.pid");
+        
+        // No lock file means model is not running
+        if !lock_file.exists() {
+            return Ok(false);
+        }
+        
+        // Read PID from lock file or PID file
+        let pid = if let Ok(lock_content) = std::fs::read_to_string(&lock_file) {
+            // Lock file format: "pid:port"
+            lock_content.split(':').next()
+                .and_then(|pid_str| pid_str.parse::<u32>().ok())
+        } else if let Ok(pid_content) = std::fs::read_to_string(&pid_file) {
+            pid_content.trim().parse::<u32>().ok()
+        } else {
+            None
+        };
+        
+        match pid {
+            Some(pid) => {
+                if self.is_process_alive(pid) {
+                    // Process is alive, model is running
+                    Ok(true)
+                } else {
+                    // Process is dead, clean up
+                    println!("Found stale lock files for dead process (PID: {}), cleaning up", pid);
+                    use std::path::Path;
+                    self.cleanup_model_files(Path::new(model_path)).await;
+                    Ok(false)
+                }
+            }
+            None => {
+                // Can't read PID, assume stale lock file
+                println!("Found lock file with invalid PID, cleaning up");
+                use std::path::Path;
+                self.cleanup_model_files(Path::new(model_path)).await;
+                Ok(false)
+            }
+        }
+    }
+
+    /// Check if a process is alive
+    fn is_process_alive(&self, pid: u32) -> bool {
+        #[cfg(unix)]
+        {
+            // On Unix, send signal 0 to check if process exists
+            unsafe {
+                libc::kill(pid as libc::pid_t, 0) == 0
+            }
+        }
+        
+        #[cfg(windows)]
+        {
+            // On Windows, try to open the process handle
+            use std::ptr;
+            use winapi::um::processthreadsapi::OpenProcess;
+            use winapi::um::winnt::PROCESS_QUERY_INFORMATION;
+            use winapi::um::handleapi::CloseHandle;
+            
+            unsafe {
+                let handle = OpenProcess(PROCESS_QUERY_INFORMATION, 0, pid);
+                if handle != ptr::null_mut() {
+                    CloseHandle(handle);
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+        
+        #[cfg(not(any(unix, windows)))]
+        {
+            // Fallback: assume process is alive
+            true
+        }
+    }
+
 
     /// Get the port for a running model
     pub async fn get_model_port(&self, model_id: Uuid) -> Option<u16> {
