@@ -30,6 +30,13 @@ export default [
         setInterval: 'readonly',
         clearInterval: 'readonly',
         React: 'readonly',
+        File: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        XMLHttpRequest: 'readonly',
+        AbortController: 'readonly',
+        ProgressEvent: 'readonly',
+        FileReader: 'readonly',
       },
     },
     plugins: {
