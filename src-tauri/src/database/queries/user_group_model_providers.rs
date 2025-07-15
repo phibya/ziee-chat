@@ -239,7 +239,6 @@ async fn get_all_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
     Ok(providers)
 }
 
-
 /// Get all relationships between user groups and model providers
 pub async fn list_user_group_model_provider_relationships(
 ) -> Result<Vec<UserGroupModelProviderResponse>, sqlx::Error> {

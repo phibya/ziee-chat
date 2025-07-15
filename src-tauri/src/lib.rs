@@ -1,4 +1,4 @@
-mod ai;
+pub mod ai;
 mod api;
 mod auth;
 mod database;
@@ -6,7 +6,7 @@ mod route;
 mod utils;
 
 use crate::api::app::get_http_port;
-use axum::{body::Body, http::Request, response::Response, Router, extract::DefaultBodyLimit};
+use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
 use once_cell::sync::Lazy;
 use route::create_rest_router;
 use std::net::SocketAddr;

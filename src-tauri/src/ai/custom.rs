@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 
 use super::openai_compatible::OpenAICompatibleProvider;
-use super::providers::{
-    AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingResponse,
-};
+use super::providers::{AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingResponse};
 
 #[derive(Debug, Clone)]
 pub struct CustomProvider {
@@ -18,13 +16,8 @@ impl CustomProvider {
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Default to localhost for custom providers
         let base_url = base_url.unwrap_or_else(|| "http://localhost:8080".to_string());
-        
-        let inner = OpenAICompatibleProvider::new(
-            api_key,
-            base_url,
-            "custom",
-            proxy_config,
-        )?;
+
+        let inner = OpenAICompatibleProvider::new(api_key, base_url, "custom", proxy_config)?;
 
         Ok(Self { inner })
     }

@@ -81,7 +81,9 @@ pub async fn upload_model_file(
 
     // Get the model directory path using {provider_id}/{id} pattern
     let model_path = format!("models/{}/{}", model.provider_id, model_id);
-    let file_path = crate::APP_DATA_DIR.join(&model_path).join(&request.filename);
+    let file_path = crate::APP_DATA_DIR
+        .join(&model_path)
+        .join(&request.filename);
 
     // For local folder uploads, we expect the files to already be accessible
     // This is a simplified implementation - in production you'd handle actual file uploads
@@ -399,15 +401,8 @@ pub async fn commit_uploaded_files(
                 total_size += committed_file.size_bytes;
 
                 // Create model file record
-                let file_type = if committed_file.filename.contains("model")
-                    || committed_file.filename.ends_with(".bin")
-                    || committed_file.filename.ends_with(".safetensors")
-                    || committed_file.filename.ends_with(".gguf")
-                {
-                    "model"
-                } else {
-                    "config"
-                };
+                let file_type = determine_model_file_type(&committed_file.filename).to_string();
+                let file_type_str = file_type.as_str();
 
                 ModelOperations::create_model_file(
                     pool.as_ref(),
@@ -415,7 +410,7 @@ pub async fn commit_uploaded_files(
                     &committed_file.filename,
                     &committed_file.file_path,
                     committed_file.size_bytes as i64,
-                    file_type,
+                    file_type_str,
                     &committed_file.checksum,
                 )
                 .await
@@ -607,52 +602,49 @@ pub async fn validate_model(
 
     // Additional validation using ModelUtils
     let model_path = format!("models/{}/{}", model.provider_id, model_id);
-    
+
     // Validate model name
     if let Err(e) = crate::utils::model_storage::ModelUtils::validate_model_name(&model.name) {
         validation_issues.push(format!("Invalid model name: {}", e));
     }
 
     // Check if model exists using verification function
-    if let Err(e) = crate::utils::model_storage::ModelUtils::verify_model_exists(
-        &model_path,
-        &model.name,
-    ) {
+    if let Err(e) =
+        crate::utils::model_storage::ModelUtils::verify_model_exists(&model_path, &model.name)
+    {
         validation_issues.push(format!("Model verification failed: {}", e));
     }
 
     // Get and validate model size
-    if let Ok(model_size) = crate::ai::candle_models::ModelUtils::get_model_size(&model_path)
-        {
-            let formatted_size =
-                crate::utils::model_storage::ModelUtils::format_model_size(model_size);
-            println!("Model size: {}", formatted_size);
+    if let Ok(model_size) = crate::ai::candle_models::ModelUtils::get_model_size(&model_path) {
+        let formatted_size = crate::utils::model_storage::ModelUtils::format_model_size(model_size);
+        println!("Model size: {}", formatted_size);
 
-            // Only warn if the total model weight files are extremely small
-            // Count only actual weight files, not config/tokenizer files
-            let model_path_buf = crate::APP_DATA_DIR.join(&model_path);
-            if let Ok(entries) = std::fs::read_dir(&model_path_buf) {
-                let weight_files_size: u64 = entries
-                    .filter_map(|entry| entry.ok())
-                    .filter(|entry| {
-                        if let Ok(file_name) = entry.file_name().into_string() {
-                            let file_type = determine_file_type(&file_name.to_lowercase());
-                            matches!(file_type, ModelFileType::WeightFile)
-                        } else {
-                            false
-                        }
-                    })
-                    .filter_map(|entry| entry.metadata().ok())
-                    .map(|metadata| metadata.len())
-                    .sum();
+        // Only warn if the total model weight files are extremely small
+        // Count only actual weight files, not config/tokenizer files
+        let model_path_buf = crate::APP_DATA_DIR.join(&model_path);
+        if let Ok(entries) = std::fs::read_dir(&model_path_buf) {
+            let weight_files_size: u64 = entries
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| {
+                    if let Ok(file_name) = entry.file_name().into_string() {
+                        let file_type = determine_file_type(&file_name.to_lowercase());
+                        matches!(file_type, ModelFileType::WeightFile)
+                    } else {
+                        false
+                    }
+                })
+                .filter_map(|entry| entry.metadata().ok())
+                .map(|metadata| metadata.len())
+                .sum();
 
-                if weight_files_size > 0 && weight_files_size < 100 * 1024 {
-                    // Less than 100KB of weight files
-                    validation_issues
-                        .push("Model weight files appear to be very small (< 100KB)".to_string());
-                }
+            if weight_files_size > 0 && weight_files_size < 100 * 1024 {
+                // Less than 100KB of weight files
+                validation_issues
+                    .push("Model weight files appear to be very small (< 100KB)".to_string());
             }
         }
+    }
 
     // Extract and validate model info from config.json if present
     let config_path = crate::APP_DATA_DIR.join(&model_path).join("config.json");

@@ -73,7 +73,6 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
     }))
 }
 
-
 pub async fn list_user_groups(
     page: i32,
     per_page: i32,

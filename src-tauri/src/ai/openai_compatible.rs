@@ -6,8 +6,7 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 use super::providers::{
-    AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
-    StreamingResponse, Usage,
+    AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
 
 #[derive(Debug, Clone)]
@@ -74,7 +73,9 @@ impl OpenAICompatibleProvider {
                 let should_use_proxy = if let Ok(url) = reqwest::Url::parse(&base_url) {
                     !proxy_config.no_proxy.iter().any(|no_proxy_host| {
                         url.host_str()
-                            .map(|host| host.contains(no_proxy_host) || no_proxy_host.contains(host))
+                            .map(|host| {
+                                host.contains(no_proxy_host) || no_proxy_host.contains(host)
+                            })
                             .unwrap_or(false)
                     })
                 } else {
@@ -84,7 +85,9 @@ impl OpenAICompatibleProvider {
                 if should_use_proxy {
                     let mut proxy = reqwest::Proxy::all(&proxy_config.url)?;
 
-                    if let (Some(username), Some(password)) = (&proxy_config.username, &proxy_config.password) {
+                    if let (Some(username), Some(password)) =
+                        (&proxy_config.username, &proxy_config.password)
+                    {
                         proxy = proxy.basic_auth(username, password);
                     }
 
@@ -227,7 +230,8 @@ impl AIProvider for OpenAICompatibleProvider {
                         if let Some(data) = line.strip_prefix("data: ") {
                             match serde_json::from_str::<OpenAICompatibleStreamResponse>(data) {
                                 Ok(stream_response) => {
-                                    if let Some(choice) = stream_response.choices.into_iter().next() {
+                                    if let Some(choice) = stream_response.choices.into_iter().next()
+                                    {
                                         result = Some(Ok(StreamingChunk {
                                             content: choice.delta.content,
                                             finish_reason: choice.finish_reason,
@@ -236,7 +240,10 @@ impl AIProvider for OpenAICompatibleProvider {
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("Failed to parse {} streaming response: {} for data: {}", provider_name, e, data);
+                                    eprintln!(
+                                        "Failed to parse {} streaming response: {} for data: {}",
+                                        provider_name, e, data
+                                    );
                                 }
                             }
                         }

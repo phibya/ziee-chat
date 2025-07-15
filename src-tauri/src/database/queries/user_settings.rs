@@ -68,4 +68,3 @@ pub async fn delete_all_user_settings(user_id: &Uuid) -> Result<u64, sqlx::Error
 
     Ok(result.rows_affected())
 }
-

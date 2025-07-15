@@ -82,7 +82,7 @@ impl ModelOperations {
 
         Ok(model)
     }
-    
+
     /// Create a Candle model with architecture support
     pub async fn create_candle_model(
         pool: &PgPool,

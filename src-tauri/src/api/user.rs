@@ -144,7 +144,14 @@ pub async fn create_user(
         }
     };
 
-    match users::create_user(request.username.clone(), request.email.clone(), Some(password_hash), None).await {
+    match users::create_user(
+        request.username.clone(),
+        request.email.clone(),
+        Some(password_hash),
+        None,
+    )
+    .await
+    {
         Ok(user) => Ok(Json(user)),
         Err(e) => {
             eprintln!("Error creating user: {}", e);

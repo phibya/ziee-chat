@@ -1,8 +1,8 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::io::Write;
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ModelStorageError {
@@ -39,12 +39,12 @@ pub struct ModelFile {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ModelFileType {
-    ModelWeights,     // .safetensors, .bin, .pth files
-    Tokenizer,        // tokenizer.json
-    Config,           // config.json
-    Vocabulary,       // vocab.txt, vocab.json
-    Readme,           // README.md
-    Other(String),    // Other files
+    ModelWeights,  // .safetensors, .bin, .pth files
+    Tokenizer,     // tokenizer.json
+    Config,        // config.json
+    Vocabulary,    // vocab.txt, vocab.json
+    Readme,        // README.md
+    Other(String), // Other files
 }
 
 #[derive(Debug, Clone)]
@@ -75,18 +75,25 @@ impl ModelStorage {
     pub fn new() -> Result<Self, ModelStorageError> {
         let app_data_path = crate::APP_DATA_DIR.clone();
         let base_path = app_data_path.join("models");
-        
+
         // Create models directory if it doesn't exist
         if !base_path.exists() {
-            println!("Creating ModelStorage base directory: {}", base_path.display());
+            println!(
+                "Creating ModelStorage base directory: {}",
+                base_path.display()
+            );
             fs::create_dir_all(&base_path).map_err(|e| {
                 ModelStorageError::Io(std::io::Error::new(
                     e.kind(),
-                    format!("Failed to create base directory {}: {}", base_path.display(), e)
+                    format!(
+                        "Failed to create base directory {}: {}",
+                        base_path.display(),
+                        e
+                    ),
                 ))
             })?;
         }
-        
+
         // Create temp directory at APP_DATA_DIR level
         let temp_base = app_data_path.join("temp");
         if !temp_base.exists() {
@@ -94,12 +101,19 @@ impl ModelStorage {
             fs::create_dir_all(&temp_base).map_err(|e| {
                 ModelStorageError::Io(std::io::Error::new(
                     e.kind(),
-                    format!("Failed to create temp directory {}: {}", temp_base.display(), e)
+                    format!(
+                        "Failed to create temp directory {}: {}",
+                        temp_base.display(),
+                        e
+                    ),
                 ))
             })?;
         }
-        
-        println!("ModelStorage initialized with base path: {}", base_path.display());
+
+        println!(
+            "ModelStorage initialized with base path: {}",
+            base_path.display()
+        );
         println!("Temp directory: {}", temp_base.display());
         Ok(Self { base_path })
     }
@@ -112,16 +126,20 @@ impl ModelStorage {
     }
 
     /// Create a new model directory
-    pub fn create_model_directory(&self, provider_id: &Uuid, model_id: &Uuid) -> Result<PathBuf, ModelStorageError> {
+    pub fn create_model_directory(
+        &self,
+        provider_id: &Uuid,
+        model_id: &Uuid,
+    ) -> Result<PathBuf, ModelStorageError> {
         let model_path = self.get_model_path(provider_id, model_id);
-        
+
         if model_path.exists() {
             return Err(ModelStorageError::ModelAlreadyExists(format!(
-                "Model directory already exists: {}", 
+                "Model directory already exists: {}",
                 model_path.display()
             )));
         }
-        
+
         fs::create_dir_all(&model_path)?;
         Ok(model_path)
     }
@@ -135,19 +153,19 @@ impl ModelStorage {
         data: &[u8],
     ) -> Result<ModelFile, ModelStorageError> {
         let model_path = self.get_model_path(provider_id, model_id);
-        
+
         if !model_path.exists() {
             fs::create_dir_all(&model_path)?;
         }
-        
+
         let file_path = model_path.join(filename);
         let mut file = fs::File::create(&file_path)?;
         file.write_all(data)?;
         file.sync_all()?;
-        
+
         let file_type = Self::detect_file_type(filename);
         let size_bytes = data.len() as u64;
-        
+
         Ok(ModelFile {
             filename: filename.to_string(),
             size_bytes,
@@ -165,10 +183,11 @@ impl ModelStorage {
     ) -> Result<(), ModelStorageError> {
         let model_path = self.get_model_path(provider_id, model_id);
         let metadata_path = model_path.join("metadata.json");
-        
-        let metadata_json = serde_json::to_string_pretty(metadata)
-            .map_err(|e| ModelStorageError::InvalidModel(format!("Failed to serialize metadata: {}", e)))?;
-        
+
+        let metadata_json = serde_json::to_string_pretty(metadata).map_err(|e| {
+            ModelStorageError::InvalidModel(format!("Failed to serialize metadata: {}", e))
+        })?;
+
         fs::write(metadata_path, metadata_json)?;
         Ok(())
     }
@@ -181,18 +200,19 @@ impl ModelStorage {
     ) -> Result<ModelMetadata, ModelStorageError> {
         let model_path = self.get_model_path(provider_id, model_id);
         let metadata_path = model_path.join("metadata.json");
-        
+
         if !metadata_path.exists() {
             return Err(ModelStorageError::ModelNotFound(format!(
-                "Metadata not found for model {} in provider {}", 
+                "Metadata not found for model {} in provider {}",
                 model_id, provider_id
             )));
         }
-        
+
         let metadata_content = fs::read_to_string(metadata_path)?;
-        let metadata: ModelMetadata = serde_json::from_str(&metadata_content)
-            .map_err(|e| ModelStorageError::InvalidModel(format!("Failed to parse metadata: {}", e)))?;
-        
+        let metadata: ModelMetadata = serde_json::from_str(&metadata_content).map_err(|e| {
+            ModelStorageError::InvalidModel(format!("Failed to parse metadata: {}", e))
+        })?;
+
         Ok(metadata)
     }
 
@@ -203,11 +223,11 @@ impl ModelStorage {
         model_id: &Uuid,
     ) -> Result<(), ModelStorageError> {
         let model_path = self.get_model_path(provider_id, model_id);
-        
+
         if model_path.exists() {
             fs::remove_dir_all(model_path)?;
         }
-        
+
         Ok(())
     }
 
@@ -217,13 +237,13 @@ impl ModelStorage {
         provider_id: &Uuid,
     ) -> Result<Vec<(Uuid, ModelMetadata)>, ModelStorageError> {
         let provider_path = self.base_path.join(provider_id.to_string());
-        
+
         if !provider_path.exists() {
             return Ok(Vec::new());
         }
-        
+
         let mut models = Vec::new();
-        
+
         for entry in fs::read_dir(provider_path)? {
             let entry = entry?;
             if entry.file_type()?.is_dir() {
@@ -234,21 +254,18 @@ impl ModelStorage {
                 }
             }
         }
-        
+
         Ok(models)
     }
 
     /// Get total storage size for a provider
-    pub fn get_provider_storage_size(
-        &self,
-        provider_id: &Uuid,
-    ) -> Result<u64, ModelStorageError> {
+    pub fn get_provider_storage_size(&self, provider_id: &Uuid) -> Result<u64, ModelStorageError> {
         let provider_path = self.base_path.join(provider_id.to_string());
-        
+
         if !provider_path.exists() {
             return Ok(0);
         }
-        
+
         Ok(Self::calculate_directory_size(&provider_path)?)
     }
 
@@ -260,51 +277,53 @@ impl ModelStorage {
     ) -> Result<Vec<String>, ModelStorageError> {
         let model_path = self.get_model_path(provider_id, model_id);
         let mut issues = Vec::new();
-        
+
         if !model_path.exists() {
             issues.push("Model directory does not exist".to_string());
             return Ok(issues);
         }
-        
+
         // Check for required files
         let tokenizer_path = model_path.join("tokenizer.json");
         if !tokenizer_path.exists() {
             issues.push("Missing tokenizer.json file".to_string());
         }
-        
+
         let config_path = model_path.join("config.json");
         if !config_path.exists() {
             issues.push("Missing config.json file".to_string());
         }
-        
+
         // Check for model weight files
-        let has_weights = model_path.read_dir()
+        let has_weights = model_path
+            .read_dir()
             .map_err(|e| ModelStorageError::Io(e))?
             .any(|entry| {
                 if let Ok(entry) = entry {
                     let filename = entry.file_name().to_string_lossy().to_lowercase();
-                    filename.ends_with(".safetensors") || 
-                    filename.ends_with(".bin") || 
-                    filename.ends_with(".pth")
+                    filename.ends_with(".safetensors")
+                        || filename.ends_with(".bin")
+                        || filename.ends_with(".pth")
                 } else {
                     false
                 }
             });
-        
+
         if !has_weights {
             issues.push("No model weight files found (.safetensors, .bin, or .pth)".to_string());
         }
-        
+
         Ok(issues)
     }
 
     /// Detect file type based on filename
     fn detect_file_type(filename: &str) -> ModelFileType {
         let filename_lower = filename.to_lowercase();
-        
-        if filename_lower.ends_with(".safetensors") || 
-           filename_lower.ends_with(".bin") || 
-           filename_lower.ends_with(".pth") {
+
+        if filename_lower.ends_with(".safetensors")
+            || filename_lower.ends_with(".bin")
+            || filename_lower.ends_with(".pth")
+        {
             ModelFileType::ModelWeights
         } else if filename_lower == "tokenizer.json" {
             ModelFileType::Tokenizer
@@ -321,7 +340,7 @@ impl ModelStorage {
 
     /// Calculate SHA256 checksum
     fn calculate_checksum(data: &[u8]) -> String {
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let mut hasher = Sha256::new();
         hasher.update(data);
         format!("{:x}", hasher.finalize())
@@ -330,30 +349,31 @@ impl ModelStorage {
     /// Calculate directory size recursively
     fn calculate_directory_size(path: &Path) -> Result<u64, std::io::Error> {
         let mut total_size = 0;
-        
+
         for entry in fs::read_dir(path)? {
             let entry = entry?;
             let metadata = entry.metadata()?;
-            
+
             if metadata.is_dir() {
                 total_size += Self::calculate_directory_size(&entry.path())?;
             } else {
                 total_size += metadata.len();
             }
         }
-        
+
         Ok(total_size)
     }
 
     /// Convert absolute file path to relative path (relative to APP_DATA_DIR)
     pub fn to_relative_path(absolute_path: &Path) -> Result<String, ModelStorageError> {
         let app_data_path = crate::APP_DATA_DIR.clone();
-        
+
         match absolute_path.strip_prefix(&app_data_path) {
             Ok(relative_path) => Ok(relative_path.to_string_lossy().to_string()),
             Err(_) => {
                 // If the path is not under APP_DATA_DIR, just use the filename
-                Ok(absolute_path.file_name()
+                Ok(absolute_path
+                    .file_name()
                     .unwrap_or_default()
                     .to_string_lossy()
                     .to_string())
@@ -376,47 +396,55 @@ impl ModelStorage {
     ) -> Result<TempFile, ModelStorageError> {
         // Save directly to APP_DATA_DIR/temp/ since filenames are unique
         let temp_base = crate::APP_DATA_DIR.join("temp");
-        
+
         // Ensure temp directory exists
         if !temp_base.exists() {
             println!("Creating temp directory: {}", temp_base.display());
             fs::create_dir_all(&temp_base).map_err(|e| {
                 ModelStorageError::Io(std::io::Error::new(
                     e.kind(),
-                    format!("Failed to create temp directory {}: {}", temp_base.display(), e)
+                    format!(
+                        "Failed to create temp directory {}: {}",
+                        temp_base.display(),
+                        e
+                    ),
                 ))
             })?;
         }
-        
+
         // Debug the input parameters
         println!("save_temp_file called with:");
         println!("  temp_file_id: {}", temp_file_id);
         println!("  filename: '{}'", filename);
-        
+
         // Sanitize filename to prevent path traversal
         let safe_filename = filename
             .replace('/', "_")
             .replace('\\', "_")
             .replace("..", "_");
-        
+
         println!("  safe_filename: '{}'", safe_filename);
         println!("  temp_base: {}", temp_base.display());
-        
+
         let file_path = temp_base.join(format!("{}_{}", temp_file_id, safe_filename));
         println!("Saving temp file to: {}", file_path.display());
-        
+
         let mut file = fs::File::create(&file_path).map_err(|e| {
             ModelStorageError::Io(std::io::Error::new(
                 e.kind(),
-                format!("Failed to create file {}: {}", file_path.display(), e)
+                format!("Failed to create file {}: {}", file_path.display(), e),
             ))
         })?;
-        
+
         file.write_all(data)?;
         file.sync_all()?;
-        
-        println!("Successfully saved temp file: {} ({} bytes)", file_path.display(), data.len());
-        
+
+        println!(
+            "Successfully saved temp file: {} ({} bytes)",
+            file_path.display(),
+            data.len()
+        );
+
         Ok(TempFile {
             temp_file_id: *temp_file_id,
             filename: safe_filename,
@@ -436,46 +464,47 @@ impl ModelStorage {
         model_id: &Uuid,
     ) -> Result<CommittedFile, ModelStorageError> {
         let temp_path = crate::APP_DATA_DIR.join("temp");
-        
+
         // Find the temp file
         let temp_files = fs::read_dir(&temp_path)?;
         let mut temp_file_path = None;
         let mut original_filename = None;
-        
+
         for entry in temp_files {
             let entry = entry?;
             let file_name = entry.file_name().to_string_lossy().to_string();
-            
+
             if file_name.starts_with(&format!("{}_", temp_file_id)) {
                 temp_file_path = Some(entry.path());
-                original_filename = Some(file_name.split('_').skip(1).collect::<Vec<_>>().join("_"));
+                original_filename =
+                    Some(file_name.split('_').skip(1).collect::<Vec<_>>().join("_"));
                 break;
             }
         }
-        
+
         let temp_file_path = temp_file_path.ok_or_else(|| {
             ModelStorageError::ModelNotFound(format!("Temp file {} not found", temp_file_id))
         })?;
-        
+
         let filename = original_filename.ok_or_else(|| {
             ModelStorageError::InvalidModel("Could not extract filename from temp file".to_string())
         })?;
-        
+
         // Create permanent storage location
         let model_path = self.get_model_path(provider_id, model_id);
         if !model_path.exists() {
             fs::create_dir_all(&model_path)?;
         }
-        
+
         let permanent_path = model_path.join(&filename);
-        
+
         // Move file from temp to permanent storage
         fs::rename(&temp_file_path, &permanent_path)?;
-        
+
         // Read file to calculate checksum
         let data = fs::read(&permanent_path)?;
         let checksum = Self::calculate_checksum(&data);
-        
+
         Ok(CommittedFile {
             filename,
             file_path: Self::to_relative_path(&permanent_path)?,
@@ -488,17 +517,17 @@ impl ModelStorage {
     /// Clean up temporary files for a session
     pub async fn cleanup_temp_session(&self, _session_id: &Uuid) -> Result<(), ModelStorageError> {
         let temp_path = crate::APP_DATA_DIR.join("temp");
-        
+
         if !temp_path.exists() {
             return Ok(()); // Nothing to clean up
         }
-        
+
         // Find and delete files that belong to this session
         // Since we don't track session->file mapping, we'll need to implement
         // a different cleanup strategy or track session files differently
         println!("Note: Session-based cleanup not implemented with flat temp structure");
         println!("Consider implementing periodic cleanup of old temp files instead");
-        
+
         Ok(())
     }
 }
@@ -508,21 +537,25 @@ pub struct ModelUtils;
 
 impl ModelUtils {
     /// Extract model information from config.json
-    pub fn extract_model_info(config_content: &str) -> Result<(String, Option<String>), ModelStorageError> {
+    pub fn extract_model_info(
+        config_content: &str,
+    ) -> Result<(String, Option<String>), ModelStorageError> {
         let config: serde_json::Value = serde_json::from_str(config_content)
             .map_err(|e| ModelStorageError::InvalidModel(format!("Invalid config.json: {}", e)))?;
-        
-        let architecture = config.get("architectures")
+
+        let architecture = config
+            .get("architectures")
             .and_then(|a| a.as_array())
             .and_then(|arr| arr.first())
             .and_then(|v| v.as_str())
             .unwrap_or("unknown")
             .to_lowercase();
-        
-        let model_type = config.get("model_type")
+
+        let model_type = config
+            .get("model_type")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
-        
+
         Ok((architecture, model_type))
     }
 
@@ -531,12 +564,12 @@ impl ModelUtils {
         const UNITS: &[&str] = &["B", "KB", "MB", "GB", "TB"];
         let mut size = size_bytes as f64;
         let mut unit_index = 0;
-        
+
         while size >= 1024.0 && unit_index < UNITS.len() - 1 {
             size /= 1024.0;
             unit_index += 1;
         }
-        
+
         if unit_index == 0 {
             format!("{} {}", size_bytes, UNITS[unit_index])
         } else {
@@ -547,40 +580,51 @@ impl ModelUtils {
     /// Validate model name
     pub fn validate_model_name(name: &str) -> Result<(), ModelStorageError> {
         if name.is_empty() {
-            return Err(ModelStorageError::InvalidModel("Model name cannot be empty".to_string()));
+            return Err(ModelStorageError::InvalidModel(
+                "Model name cannot be empty".to_string(),
+            ));
         }
-        
+
         if name.len() > 255 {
-            return Err(ModelStorageError::InvalidModel("Model name too long (max 255 characters)".to_string()));
+            return Err(ModelStorageError::InvalidModel(
+                "Model name too long (max 255 characters)".to_string(),
+            ));
         }
-        
+
         // Check for invalid characters
         let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
         if name.chars().any(|c| invalid_chars.contains(&c)) {
-            return Err(ModelStorageError::InvalidModel("Model name contains invalid characters".to_string()));
+            return Err(ModelStorageError::InvalidModel(
+                "Model name contains invalid characters".to_string(),
+            ));
         }
-        
+
         Ok(())
     }
-    
+
     /// Check if model directory exists using the same logic as candle_models::ModelUtils
     pub fn model_exists(model_path: &str) -> bool {
         crate::ai::candle_models::ModelUtils::model_exists(model_path)
     }
-    
+
     /// Verify model exists or return ModelNotFound error
-    pub fn verify_model_exists(model_path: &str, model_name: &str) -> Result<(), ModelStorageError> {
+    pub fn verify_model_exists(
+        model_path: &str,
+        model_name: &str,
+    ) -> Result<(), ModelStorageError> {
         if !Self::model_exists(model_path) {
             return Err(ModelStorageError::ModelNotFound(format!(
-                "Model '{}' not found at path: {}", 
+                "Model '{}' not found at path: {}",
                 model_name, model_path
             )));
         }
         Ok(())
     }
-    
+
     /// Discover available models in a directory using ModelDiscovery
-    pub fn discover_models(path: &str) -> Result<Vec<crate::ai::candle_config::ModelConfig>, std::io::Error> {
+    pub fn discover_models(
+        path: &str,
+    ) -> Result<Vec<crate::ai::candle_config::ModelConfig>, std::io::Error> {
         crate::ai::candle_config::ModelDiscovery::scan_models_directory(path)
     }
 }

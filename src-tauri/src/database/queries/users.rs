@@ -259,7 +259,6 @@ pub async fn get_user_by_username_or_email(
     get_user_by_email(username_or_email).await
 }
 
-
 // Add login token
 pub async fn add_login_token(
     user_id: Uuid,
@@ -462,7 +461,7 @@ pub async fn delete_user(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
 
     // Check if user is protected
-    let is_protected: Option<bool> = 
+    let is_protected: Option<bool> =
         sqlx::query_scalar("SELECT is_protected FROM users WHERE id = $1")
             .bind(user_id)
             .fetch_optional(&*pool)

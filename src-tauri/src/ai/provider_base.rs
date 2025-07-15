@@ -1,5 +1,5 @@
-use reqwest::Client;
 use super::providers::ProxyConfig;
+use reqwest::Client;
 
 /// Common HTTP client builder that handles proxy configuration
 /// This can be used by all providers regardless of their API format
@@ -26,7 +26,9 @@ pub fn build_http_client(
             if should_use_proxy {
                 let mut proxy = reqwest::Proxy::all(&proxy_config.url)?;
 
-                if let (Some(username), Some(password)) = (&proxy_config.username, &proxy_config.password) {
+                if let (Some(username), Some(password)) =
+                    (&proxy_config.username, &proxy_config.password)
+                {
                     proxy = proxy.basic_auth(username, password);
                 }
 

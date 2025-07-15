@@ -78,7 +78,8 @@ impl GeminiProvider {
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let base_url = base_url.unwrap_or_else(|| "https://generativelanguage.googleapis.com/v1beta".to_string());
+        let base_url = base_url
+            .unwrap_or_else(|| "https://generativelanguage.googleapis.com/v1beta".to_string());
         let client = build_http_client(&base_url, proxy_config.as_ref())?;
 
         Ok(Self {
@@ -128,7 +129,10 @@ impl AIProvider for GeminiProvider {
         &self,
         request: ChatRequest,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = format!("{}/models/{}:generateContent?key={}", self.base_url, request.model, self.api_key);
+        let url = format!(
+            "{}/models/{}:generateContent?key={}",
+            self.base_url, request.model, self.api_key
+        );
 
         let contents = self.convert_messages_to_gemini(&request.messages);
         let system_instruction = self.create_system_instruction(&request.messages);
@@ -189,7 +193,10 @@ impl AIProvider for GeminiProvider {
         &self,
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = format!("{}/models/{}:streamGenerateContent?key={}", self.base_url, request.model, self.api_key);
+        let url = format!(
+            "{}/models/{}:streamGenerateContent?key={}",
+            self.base_url, request.model, self.api_key
+        );
 
         let contents = self.convert_messages_to_gemini(&request.messages);
         let system_instruction = self.create_system_instruction(&request.messages);
@@ -245,7 +252,9 @@ impl AIProvider for GeminiProvider {
                         // Gemini returns JSON objects separated by newlines, not SSE format
                         match serde_json::from_str::<GeminiResponse>(&line) {
                             Ok(gemini_response) => {
-                                if let Some(candidate) = gemini_response.candidates.into_iter().next() {
+                                if let Some(candidate) =
+                                    gemini_response.candidates.into_iter().next()
+                                {
                                     let content = candidate
                                         .content
                                         .parts
@@ -264,7 +273,10 @@ impl AIProvider for GeminiProvider {
                                 }
                             }
                             Err(e) => {
-                                eprintln!("Failed to parse Gemini streaming response: {} for data: {}", e, line);
+                                eprintln!(
+                                    "Failed to parse Gemini streaming response: {} for data: {}",
+                                    e, line
+                                );
                             }
                         }
                     }

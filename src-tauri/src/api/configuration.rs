@@ -253,7 +253,7 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
     if !proxy_config.enabled {
         return Ok(()); // If proxy is disabled, consider it a success
     }
-    
+
     // Validate proxy URL format
     if proxy_config.url.trim().is_empty() {
         return Err("Proxy URL is empty".to_string());
@@ -282,14 +282,14 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
     if proxy_config.ignore_ssl_certificates {
         client_builder = client_builder.danger_accept_invalid_certs(true);
     }
-    
+
     // Apply additional SSL settings if needed
     if proxy_config.proxy_ssl || proxy_config.host_ssl || proxy_config.peer_ssl {
         // These fields control specific SSL verification aspects
         // For now, we use ignore_ssl_certificates as a general flag
         // Future implementations might need more granular control
     }
-    
+
     // Handle no_proxy list - domains that should bypass the proxy
     if !proxy_config.no_proxy.trim().is_empty() {
         // Parse the no_proxy list (comma-separated domains)

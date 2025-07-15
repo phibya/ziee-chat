@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 
 use super::openai_compatible::OpenAICompatibleProvider;
-use super::providers::{
-    AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingResponse,
-};
+use super::providers::{AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingResponse};
 
 #[derive(Debug, Clone)]
 pub struct GroqProvider {
@@ -17,13 +15,8 @@ impl GroqProvider {
         proxy_config: Option<ProxyConfig>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let base_url = base_url.unwrap_or_else(|| "https://api.groq.com/openai/v1".to_string());
-        
-        let inner = OpenAICompatibleProvider::new(
-            api_key,
-            base_url,
-            "groq",
-            proxy_config,
-        )?;
+
+        let inner = OpenAICompatibleProvider::new(api_key, base_url, "groq", proxy_config)?;
 
         Ok(Self { inner })
     }

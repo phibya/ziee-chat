@@ -14,7 +14,7 @@ pub struct CandleProviderConfig {
 /// Device configuration for Candle
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceConfig {
-    pub device_type: String, // "cpu", "cuda", "metal"
+    pub device_type: String,      // "cpu", "cuda", "metal"
     pub device_id: Option<usize>, // For CUDA devices
 }
 
@@ -105,7 +105,7 @@ impl ModelDiscovery {
     pub fn scan_models_directory(path: &str) -> Result<Vec<ModelConfig>, std::io::Error> {
         let mut models = Vec::new();
         let models_path = PathBuf::from(path);
-        
+
         if !models_path.exists() {
             std::fs::create_dir_all(&models_path)?;
             return Ok(models);
@@ -125,7 +125,8 @@ impl ModelDiscovery {
 
     /// Detect model type and configuration from a directory
     fn detect_model(path: &PathBuf) -> Result<Option<ModelConfig>, std::io::Error> {
-        let model_name = path.file_name()
+        let model_name = path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
@@ -133,14 +134,14 @@ impl ModelDiscovery {
         // Check for required files
         let config_file = path.join("config.json");
         let tokenizer_file = path.join("tokenizer.json");
-        
+
         if !tokenizer_file.exists() {
             return Ok(None); // Not a valid model directory
         }
 
         // Try to determine architecture from config or directory name
         let architecture = Self::detect_architecture(&model_name, &config_file);
-        
+
         // Calculate total size
         let size_bytes = Self::calculate_directory_size(path)?;
 
@@ -160,7 +161,7 @@ impl ModelDiscovery {
     /// Detect model architecture from name or config
     fn detect_architecture(name: &str, config_path: &PathBuf) -> String {
         let name_lower = name.to_lowercase();
-        
+
         if name_lower.contains("llama") {
             "llama".to_string()
         } else if name_lower.contains("mistral") {
@@ -173,11 +174,15 @@ impl ModelDiscovery {
             // Try to read from config.json if available
             if config_path.exists() {
                 if let Ok(config_content) = std::fs::read_to_string(config_path) {
-                    if let Ok(config_json) = serde_json::from_str::<serde_json::Value>(&config_content) {
-                        if let Some(arch) = config_json.get("architectures")
+                    if let Ok(config_json) =
+                        serde_json::from_str::<serde_json::Value>(&config_content)
+                    {
+                        if let Some(arch) = config_json
+                            .get("architectures")
                             .and_then(|a| a.as_array())
                             .and_then(|arr| arr.first())
-                            .and_then(|v| v.as_str()) {
+                            .and_then(|v| v.as_str())
+                        {
                             return arch.to_lowercase();
                         }
                     }
@@ -190,7 +195,7 @@ impl ModelDiscovery {
     /// Extract parameter count from model name
     fn extract_parameters(name: &str) -> Option<String> {
         let name_lower = name.to_lowercase();
-        
+
         for params in &["70b", "65b", "30b", "13b", "7b", "3b", "1b"] {
             if name_lower.contains(params) {
                 return Some(params.to_uppercase());
@@ -202,7 +207,7 @@ impl ModelDiscovery {
     /// Detect quantization from model name
     fn detect_quantization(name: &str) -> Option<String> {
         let name_lower = name.to_lowercase();
-        
+
         if name_lower.contains("q8_0") || name_lower.contains("q8") {
             Some("Q8_0".to_string())
         } else if name_lower.contains("q4_0") || name_lower.contains("q4") {
@@ -219,12 +224,12 @@ impl ModelDiscovery {
     /// Calculate total size of directory
     fn calculate_directory_size(path: &PathBuf) -> Result<u64, std::io::Error> {
         let mut total_size = 0;
-        
+
         fn visit_dir(dir: &PathBuf, total: &mut u64) -> Result<(), std::io::Error> {
             for entry in std::fs::read_dir(dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                
+
                 if path.is_dir() {
                     visit_dir(&path, total)?;
                 } else {
@@ -233,7 +238,7 @@ impl ModelDiscovery {
             }
             Ok(())
         }
-        
+
         visit_dir(path, &mut total_size)?;
         Ok(total_size)
     }

@@ -359,7 +359,7 @@ pub async fn send_message_stream(
                 return;
             }
         };
-        
+
         // Check if provider supports streaming
         if !ai_provider.supports_streaming() {
             let _ = tx.send(Ok(Event::default().event("error").data(
@@ -1054,7 +1054,10 @@ fn create_ai_provider(
         }
         "candle" => {
             let candle_provider = CandleProvider::new(
-                provider.base_url.clone().unwrap_or_else(|| "./models".to_string()), // model_path
+                provider
+                    .base_url
+                    .clone()
+                    .unwrap_or_else(|| "./models".to_string()), // model_path
                 "llama".to_string(), // model_type - could be made configurable
                 crate::ai::candle::DeviceType::Cpu, // device_type - could be made configurable
                 proxy_config,

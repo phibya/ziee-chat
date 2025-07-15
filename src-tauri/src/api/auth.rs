@@ -44,9 +44,7 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
 
 /// Initialize the app with root user (for web app)
 #[debug_handler]
-pub async fn init_app(
-    Json(payload): Json<CreateUserRequest>,
-) -> ApiResult<Json<AuthResponse>> {
+pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<AuthResponse>> {
     // Check if app is already initialized
     if let Ok(true) = crate::database::queries::configuration::is_app_initialized().await {
         return Err(AppError::app_already_initialized());
@@ -93,7 +91,10 @@ pub async fn init_app(
                         expires_at,
                     }))
                 }
-                Err(e) => Err(AppError::from_error(ErrorCode::AuthTokenGenerationFailed, e)),
+                Err(e) => Err(AppError::from_error(
+                    ErrorCode::AuthTokenGenerationFailed,
+                    e,
+                )),
             }
         }
         Err(e) => Err(AppError::from_string(ErrorCode::UserRootCreationFailed, e)),
@@ -102,9 +103,7 @@ pub async fn init_app(
 
 /// Login endpoint
 #[debug_handler]
-pub async fn login(
-    Json(payload): Json<LoginRequest>,
-) -> ApiResult<Json<AuthResponse>> {
+pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult<Json<AuthResponse>> {
     // For desktop app, always auto-login with default admin
     if is_desktop_app() {
         match AUTH_SERVICE.auto_login_desktop().await {
@@ -173,9 +172,7 @@ pub async fn me(
 
 /// Register endpoint (for web app only)
 #[debug_handler]
-pub async fn register(
-    Json(payload): Json<CreateUserRequest>,
-) -> ApiResult<Json<AuthResponse>> {
+pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<AuthResponse>> {
     // Desktop app doesn't support registration
     if is_desktop_app() {
         return Err(AppError::desktop_mode_restriction());
@@ -217,7 +214,10 @@ pub async fn register(
                         expires_at,
                     }))
                 }
-                Err(e) => Err(AppError::from_error(ErrorCode::AuthTokenGenerationFailed, e)),
+                Err(e) => Err(AppError::from_error(
+                    ErrorCode::AuthTokenGenerationFailed,
+                    e,
+                )),
             }
         }
         Err(e) => Err(AppError::from_string(ErrorCode::UserCreationFailed, e)),
