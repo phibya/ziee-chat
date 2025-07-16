@@ -276,6 +276,7 @@ pub struct ModelServerState {
     pub device: Device,
     pub cache_pool: Arc<CachePool>,
     pub inference_tx: mpsc::UnboundedSender<InferenceRequest>,
+    pub enable_context_shift: bool,
 }
 
 impl ModelServerState {
@@ -361,7 +362,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None).await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false).await
     }
 
     pub async fn new_with_device_config(
@@ -371,6 +372,7 @@ impl ModelServerState {
         model_name: &str,
         device_type: Option<&str>,
         device_ids: Option<&str>,
+        enable_context_shift: bool,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
@@ -415,6 +417,7 @@ impl ModelServerState {
             device,
             cache_pool,
             inference_tx,
+            enable_context_shift,
         })
     }
 
@@ -429,6 +432,7 @@ impl ModelServerState {
         additional_weight_files: Option<&str>,
         _vocab_file: Option<&str>,
         _special_tokens_file: Option<&str>,
+        enable_context_shift: bool,
     ) -> Result<Self, CandleError> {
         Self::new_with_specific_files_and_device(
             model_path,
@@ -443,6 +447,7 @@ impl ModelServerState {
             _special_tokens_file,
             None,
             None,
+            enable_context_shift,
         ).await
     }
 
@@ -459,6 +464,7 @@ impl ModelServerState {
         _special_tokens_file: Option<&str>,
         device_type: Option<&str>,
         device_ids: Option<&str>,
+        enable_context_shift: bool,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -531,6 +537,7 @@ impl ModelServerState {
             device,
             cache_pool,
             inference_tx,
+            enable_context_shift,
         })
     }
 
@@ -806,7 +813,7 @@ async fn non_stream_chat_completion(
     println!("=== END INITIAL PROMPT ===");
 
     // Tokenize input
-    let tokens = match state.tokenizer.encode(prompt.clone(), true) {
+    let mut tokens = match state.tokenizer.encode(prompt.clone(), true) {
         Ok(encoding) => encoding.get_ids().to_vec(),
         Err(e) => {
             return Json(ErrorResponse::invalid_request(&format!(
@@ -816,6 +823,23 @@ async fn non_stream_chat_completion(
             .into_response();
         }
     };
+
+    // Apply context shift if enabled and prompt exceeds context window
+    if state.enable_context_shift {
+        let max_context_len = state.model_config.max_position_embeddings as usize;
+        let max_new_tokens = request.max_tokens.unwrap_or(100) as usize;
+        let available_for_prompt = max_context_len.saturating_sub(max_new_tokens);
+        
+        if tokens.len() > available_for_prompt {
+            println!("Context shift triggered: {} tokens -> {} tokens", tokens.len(), available_for_prompt);
+            
+            // Preserve first 100 tokens (system prompt) and last 200 tokens (recent conversation)
+            let preserve_start = 100.min(tokens.len() / 4);
+            let preserve_end = 200.min(tokens.len() / 2);
+            
+            tokens = apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
+        }
+    }
 
     // Generate response
     let response_text = match generate_text(&state, &tokens, &request).await {
@@ -870,7 +894,7 @@ async fn stream_chat_completion(
     println!("{}", prompt);
     println!("=== END INITIAL PROMPT (STREAMING) ===");
 
-    let tokens = match state.tokenizer.encode(prompt, true) {
+    let mut tokens = match state.tokenizer.encode(prompt, true) {
         Ok(encoding) => encoding.get_ids().to_vec(),
         Err(e) => {
             return Json(ErrorResponse::invalid_request(&format!(
@@ -880,6 +904,23 @@ async fn stream_chat_completion(
             .into_response();
         }
     };
+
+    // Apply context shift if enabled and prompt exceeds context window
+    if state.enable_context_shift {
+        let max_context_len = state.model_config.max_position_embeddings as usize;
+        let max_new_tokens = request.max_tokens.unwrap_or(100) as usize;
+        let available_for_prompt = max_context_len.saturating_sub(max_new_tokens);
+        
+        if tokens.len() > available_for_prompt {
+            println!("Context shift triggered (streaming): {} tokens -> {} tokens", tokens.len(), available_for_prompt);
+            
+            // Preserve first 100 tokens (system prompt) and last 200 tokens (recent conversation)
+            let preserve_start = 100.min(tokens.len() / 4);
+            let preserve_end = 200.min(tokens.len() / 2);
+            
+            tokens = apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
+        }
+    }
 
     let response_id = format!("chatcmpl-{}", Uuid::new_v4());
     let created = SystemTime::now()
@@ -908,7 +949,7 @@ async fn completions(
     println!("{}", request.prompt);
     println!("=== END INITIAL PROMPT (COMPLETION) ===");
 
-    let tokens = match state.tokenizer.encode(request.prompt.clone(), true) {
+    let mut tokens = match state.tokenizer.encode(request.prompt.clone(), true) {
         Ok(encoding) => encoding.get_ids().to_vec(),
         Err(e) => {
             return Json(ErrorResponse::invalid_request(&format!(
@@ -918,6 +959,23 @@ async fn completions(
             .into_response();
         }
     };
+
+    // Apply context shift if enabled and prompt exceeds context window
+    if state.enable_context_shift {
+        let max_context_len = state.model_config.max_position_embeddings as usize;
+        let max_new_tokens = request.max_tokens.unwrap_or(100) as usize;
+        let available_for_prompt = max_context_len.saturating_sub(max_new_tokens);
+        
+        if tokens.len() > available_for_prompt {
+            println!("Context shift triggered (completion): {} tokens -> {} tokens", tokens.len(), available_for_prompt);
+            
+            // For completion endpoint, preserve more recent tokens (no system prompt)
+            let preserve_start = 50.min(tokens.len() / 8);
+            let preserve_end = 300.min(tokens.len() / 2);
+            
+            tokens = apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
+        }
+    }
 
     let chat_request = ChatCompletionRequest {
         messages: vec![ChatMessage {
@@ -1679,4 +1737,44 @@ fn create_error_chunk(response_id: &str, created: i64, model_name: &str) -> Chat
 fn estimate_tokens(text: &str) -> i32 {
     // Rough estimation: 1 token per 4 characters
     (text.len() / 4).max(1) as i32
+}
+
+/// Context shift implementation to handle long prompts
+/// When the prompt exceeds the context window, shift to keep the most relevant parts
+fn apply_context_shift(
+    tokens: &[u32],
+    max_context_len: usize,
+    preserve_start: usize,
+    preserve_end: usize,
+) -> Vec<u32> {
+    if tokens.len() <= max_context_len {
+        return tokens.to_vec();
+    }
+
+    // Calculate available space after preserving start and end
+    let available_space = max_context_len.saturating_sub(preserve_start + preserve_end);
+    
+    if available_space == 0 {
+        // If no space left, just take the most recent tokens
+        return tokens[tokens.len().saturating_sub(max_context_len)..].to_vec();
+    }
+
+    let mut shifted_tokens = Vec::with_capacity(max_context_len);
+    
+    // Preserve the beginning (system prompt, first user message, etc.)
+    if preserve_start > 0 {
+        let start_end = preserve_start.min(tokens.len());
+        shifted_tokens.extend_from_slice(&tokens[..start_end]);
+    }
+    
+    // Add ellipsis token if we're cutting content (optional, depends on tokenizer)
+    // For now, we'll just add a space to indicate truncation
+    
+    // Preserve the end (recent conversation)
+    if preserve_end > 0 && tokens.len() > preserve_end {
+        let end_start = tokens.len().saturating_sub(preserve_end);
+        shifted_tokens.extend_from_slice(&tokens[end_start..]);
+    }
+
+    shifted_tokens
 }

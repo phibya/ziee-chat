@@ -67,6 +67,10 @@ struct Args {
     /// Device IDs for inference (comma-separated, e.g. "0,1" for CUDA GPUs or "GPU-uuid1,GPU-uuid2")
     #[arg(long)]
     device_ids: Option<String>,
+
+    /// Enable context shift to handle long prompts by shifting the context window
+    #[arg(long)]
+    enable_context_shift: bool,
 }
 
 #[tokio::main]
@@ -89,6 +93,7 @@ async fn main() {
     if let Some(device_ids) = &args.device_ids {
         println!("Device IDs: {}", device_ids);
     }
+    println!("Context Shift: {}", args.enable_context_shift);
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -155,6 +160,7 @@ async fn main() {
             args.special_tokens_file.as_deref(),
             args.device_type.as_deref(),
             args.device_ids.as_deref(),
+            args.enable_context_shift,
         )
         .await
         {
@@ -174,6 +180,7 @@ async fn main() {
             &model_name,
             args.device_type.as_deref(),
             args.device_ids.as_deref(),
+            args.enable_context_shift,
         )
         .await
         {
