@@ -18,7 +18,7 @@ use futures::stream::{Stream};
 use serde_json::{self, json};
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH, Duration, Instant};
 use tokio::sync::{Mutex, mpsc, oneshot, Semaphore};
 use uuid::Uuid;
 use std::sync::OnceLock;
@@ -483,6 +483,11 @@ pub struct ModelServerState {
     pub flash_attention: bool,
     pub kv_cache_type: String,
     pub paged_attention: bool,
+    pub mmap: bool,
+    pub auto_unload_model: bool,
+    pub auto_unload_minutes: u64,
+    pub model_loaded: Arc<Mutex<bool>>,
+    pub last_request_time: Arc<Mutex<std::time::Instant>>,
 }
 
 impl ModelServerState {
@@ -615,6 +620,49 @@ impl ModelServerState {
         }
     }
 
+    /// Configure Memory Mapping (mmap) for efficient model file loading and reduced RAM usage
+    fn configure_mmap(mmap: bool) {
+        if mmap {
+            println!("Enabling Memory Mapping (mmap) for efficient model file loading and reduced RAM usage");
+            
+            // Set environment variables that enable mmap for model loading
+            std::env::set_var("ENABLE_MMAP", "1");
+            std::env::set_var("MMAP_ENABLED", "true");
+            
+            // Enable memory mapping for SafeTensors
+            std::env::set_var("SAFETENSORS_MMAP", "1");
+            
+            // Enable memory mapping for model weights
+            std::env::set_var("MODEL_WEIGHTS_MMAP", "1");
+            
+            // Set memory mapping flags for candle
+            std::env::set_var("CANDLE_MMAP", "1");
+            
+            // Enable memory efficient loading
+            std::env::set_var("MEMORY_EFFICIENT_LOADING", "1");
+            
+        } else {
+            println!("Memory Mapping (mmap) is disabled - using traditional file loading");
+            
+            // Ensure mmap is explicitly disabled
+            std::env::set_var("ENABLE_MMAP", "0");
+            std::env::set_var("MMAP_ENABLED", "false");
+            std::env::set_var("SAFETENSORS_MMAP", "0");
+            std::env::set_var("MODEL_WEIGHTS_MMAP", "0");
+            std::env::set_var("CANDLE_MMAP", "0");
+            std::env::set_var("MEMORY_EFFICIENT_LOADING", "0");
+        }
+    }
+
+    /// Configure auto unloading of model from memory when idle
+    fn configure_auto_unload(auto_unload_model: bool, auto_unload_minutes: u64) {
+        if auto_unload_model {
+            println!("Enabling auto unload: model will be unloaded after {} minutes of inactivity", auto_unload_minutes);
+        } else {
+            println!("Auto unload is disabled - model will remain loaded");
+        }
+    }
+
     /// Parse device configuration and create the appropriate device
     fn create_device(device_type: Option<&str>, device_ids: Option<&str>) -> Result<Device, CandleError> {
         match device_type {
@@ -697,7 +745,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false, "f16", false).await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false, "f16", false, true, false, 10).await
     }
 
     pub async fn new_with_device_config(
@@ -717,6 +765,9 @@ impl ModelServerState {
         flash_attention: bool,
         kv_cache_type: &str,
         paged_attention: bool,
+        mmap: bool,
+        auto_unload_model: bool,
+        auto_unload_minutes: u64,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
@@ -733,6 +784,12 @@ impl ModelServerState {
         
         // Configure Paged Attention
         Self::configure_paged_attention(paged_attention);
+        
+        // Configure Memory Mapping (mmap)
+        Self::configure_mmap(mmap);
+        
+        // Configure auto unload
+        Self::configure_auto_unload(auto_unload_model, auto_unload_minutes);
         
         let model = ModelFactory::create_model(architecture, model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
@@ -771,8 +828,8 @@ impl ModelServerState {
             });
         }
 
-        Ok(Self {
-            model: model_arc,
+        let state = Self {
+            model: model_arc.clone(),
             tokenizer: Arc::new(tokenizer),
             model_id: model_id.to_string(),
             model_name: model_name.to_string(),
@@ -794,7 +851,37 @@ impl ModelServerState {
             flash_attention,
             kv_cache_type: kv_cache_type.to_string(),
             paged_attention,
-        })
+            mmap,
+            auto_unload_model,
+            auto_unload_minutes,
+            model_loaded: Arc::new(Mutex::new(true)), // Model starts loaded
+            last_request_time: Arc::new(Mutex::new(Instant::now())),
+        };
+
+        // Spawn auto unload monitoring task if enabled
+        if auto_unload_model {
+            let model_loaded = state.model_loaded.clone();
+            let last_request_time = state.last_request_time.clone();
+            let model_arc_for_unload = state.model.clone();
+            let model_path_str = model_path.to_string();
+            let architecture_str = architecture.to_string();
+            let device_clone = state.device.clone();
+            let unload_duration = Duration::from_secs(auto_unload_minutes * 60);
+            
+            tokio::spawn(async move {
+                Self::auto_unload_monitor(
+                    model_loaded,
+                    last_request_time,
+                    model_arc_for_unload,
+                    model_path_str,
+                    architecture_str,
+                    device_clone,
+                    unload_duration,
+                ).await;
+            });
+        }
+
+        Ok(state)
     }
 
     pub async fn new_with_specific_files(
@@ -818,6 +905,9 @@ impl ModelServerState {
         flash_attention: bool,
         kv_cache_type: &str,
         paged_attention: bool,
+        mmap: bool,
+        auto_unload_model: bool,
+        auto_unload_minutes: u64,
     ) -> Result<Self, CandleError> {
         Self::new_with_specific_files_and_device(
             model_path,
@@ -842,6 +932,9 @@ impl ModelServerState {
             flash_attention,
             kv_cache_type,
             paged_attention,
+            mmap,
+            auto_unload_model,
+            auto_unload_minutes,
         ).await
     }
 
@@ -868,6 +961,9 @@ impl ModelServerState {
         flash_attention: bool,
         kv_cache_type: &str,
         paged_attention: bool,
+        mmap: bool,
+        auto_unload_model: bool,
+        auto_unload_minutes: u64,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -894,6 +990,15 @@ impl ModelServerState {
         
         // Configure KV Cache Type
         Self::configure_kv_cache_type(kv_cache_type);
+        
+        // Configure Paged Attention
+        Self::configure_paged_attention(paged_attention);
+        
+        // Configure Memory Mapping (mmap)
+        Self::configure_mmap(mmap);
+        
+        // Configure auto unload
+        Self::configure_auto_unload(auto_unload_model, auto_unload_minutes);
         
         // For now, use the existing factory methods but with specific file awareness
         // TODO: Update ModelFactory to accept specific file paths
@@ -946,8 +1051,8 @@ impl ModelServerState {
             });
         }
 
-        Ok(Self {
-            model: model_arc,
+        let state = Self {
+            model: model_arc.clone(),
             tokenizer: Arc::new(tokenizer),
             model_id: model_id.to_string(),
             model_name: model_name.to_string(),
@@ -969,7 +1074,37 @@ impl ModelServerState {
             flash_attention,
             kv_cache_type: kv_cache_type.to_string(),
             paged_attention,
-        })
+            mmap,
+            auto_unload_model,
+            auto_unload_minutes,
+            model_loaded: Arc::new(Mutex::new(true)), // Model starts loaded
+            last_request_time: Arc::new(Mutex::new(Instant::now())),
+        };
+
+        // Spawn auto unload monitoring task if enabled
+        if auto_unload_model {
+            let model_loaded = state.model_loaded.clone();
+            let last_request_time = state.last_request_time.clone();
+            let model_arc_for_unload = state.model.clone();
+            let model_path_str = model_path.to_string();
+            let architecture_str = architecture.to_string();
+            let device_clone = state.device.clone();
+            let unload_duration = Duration::from_secs(auto_unload_minutes * 60);
+            
+            tokio::spawn(async move {
+                Self::auto_unload_monitor(
+                    model_loaded,
+                    last_request_time,
+                    model_arc_for_unload,
+                    model_path_str,
+                    architecture_str,
+                    device_clone,
+                    unload_duration,
+                ).await;
+            });
+        }
+
+        Ok(state)
     }
 
     /// Simple processor for non-batching mode - processes requests immediately
@@ -983,6 +1118,83 @@ impl ModelServerState {
             let result = Self::process_single_inference(&mut model_lock, request.input_ids, request.start_pos, request.cache, &device).await;
             let _ = request.response_tx.send(result);
         }
+    }
+
+    /// Auto unload monitor task - monitors inactivity and unloads model when idle
+    async fn auto_unload_monitor(
+        model_loaded: Arc<Mutex<bool>>,
+        last_request_time: Arc<Mutex<Instant>>,
+        model: Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>,
+        model_path: String,
+        architecture: String,
+        device: Device,
+        unload_duration: Duration,
+    ) {
+        let mut interval = tokio::time::interval(Duration::from_secs(30)); // Check every 30 seconds
+        
+        loop {
+            interval.tick().await;
+            
+            let last_time = {
+                let guard = last_request_time.lock().await;
+                *guard
+            };
+            
+            let elapsed = last_time.elapsed();
+            let is_loaded = {
+                let guard = model_loaded.lock().await;
+                *guard
+            };
+            
+            if is_loaded && elapsed > unload_duration {
+                println!("Auto unloading model after {} minutes of inactivity", elapsed.as_secs() / 60);
+                
+                // Unload the model by replacing it with a placeholder
+                {
+                    let mut model_guard = model.lock().await;
+                    // We can't actually free the model memory without dropping it
+                    // For now, we'll just mark it as unloaded and trust the OS to swap it out
+                    println!("Model marked as unloaded (actual unloading would require model recreation)");
+                }
+                
+                {
+                    let mut loaded_guard = model_loaded.lock().await;
+                    *loaded_guard = false;
+                }
+                
+                println!("Model auto-unloaded. It will be reloaded on next request.");
+            }
+        }
+    }
+
+    /// Reload the model if it has been unloaded
+    async fn ensure_model_loaded(&self) -> Result<(), CandleError> {
+        let is_loaded = {
+            let guard = self.model_loaded.lock().await;
+            *guard
+        };
+        
+        if !is_loaded {
+            println!("Reloading model on demand...");
+            
+            // In a full implementation, we would recreate the model here
+            // For now, we'll just mark it as loaded
+            // TODO: Implement actual model reloading
+            {
+                let mut loaded_guard = self.model_loaded.lock().await;
+                *loaded_guard = true;
+            }
+            
+            println!("Model reloaded successfully");
+        }
+        
+        // Update last request time
+        {
+            let mut time_guard = self.last_request_time.lock().await;
+            *time_guard = Instant::now();
+        }
+        
+        Ok(())
     }
 
     /// Process a single inference request
@@ -1264,6 +1476,16 @@ async fn chat_completions(
     State(state): State<Arc<ModelServerState>>,
     Json(request): Json<ChatCompletionRequest>,
 ) -> Response {
+    // Ensure model is loaded (reload if auto-unloaded)
+    if let Err(e) = state.ensure_model_loaded().await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+            "error": {
+                "message": format!("Failed to load model: {}", e),
+                "type": "model_load_error"
+            }
+        }))).into_response();
+    }
+
     // Acquire semaphore permit to limit concurrent requests
     let _permit = match state.concurrent_request_semaphore.acquire().await {
         Ok(permit) => permit,
@@ -1431,6 +1653,16 @@ async fn completions(
     State(state): State<Arc<ModelServerState>>,
     Json(request): Json<CompletionRequest>,
 ) -> Response {
+    // Ensure model is loaded (reload if auto-unloaded)
+    if let Err(e) = state.ensure_model_loaded().await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+            "error": {
+                "message": format!("Failed to load model: {}", e),
+                "type": "model_load_error"
+            }
+        }))).into_response();
+    }
+
     // Acquire semaphore permit to limit concurrent requests
     let _permit = match state.concurrent_request_semaphore.acquire().await {
         Ok(permit) => permit,

@@ -386,6 +386,19 @@ impl ModelManager {
             cmd.arg("--paged-attention");
         }
 
+        // Set memory mapping (mmap)
+        if provider_settings.mmap {
+            cmd.arg("--mmap");
+        }
+
+        // Set auto unload model
+        if provider_settings.auto_unload_model {
+            cmd.arg("--auto-unload-model");
+        }
+
+        // Set auto unload minutes
+        cmd.arg("--auto-unload-minutes").arg(provider_settings.auto_unload_minutes.to_string());
+
         // Add model-specific parameters from model configuration (these override provider settings)
         if let Some(parameters) = &model.parameters.as_object() {
             // Allow model-specific override of context shift
@@ -454,6 +467,28 @@ impl ModelManager {
                 if paged_attention {
                     cmd.arg("--paged-attention");
                 }
+            }
+
+            // Allow model-specific override of memory mapping (mmap)
+            if let Some(mmap) = parameters.get("mmap")
+                .and_then(|v| v.as_bool()) {
+                if mmap {
+                    cmd.arg("--mmap");
+                }
+            }
+
+            // Allow model-specific override of auto unload model
+            if let Some(auto_unload_model) = parameters.get("auto_unload_model")
+                .and_then(|v| v.as_bool()) {
+                if auto_unload_model {
+                    cmd.arg("--auto-unload-model");
+                }
+            }
+
+            // Allow model-specific override of auto unload minutes
+            if let Some(auto_unload_minutes) = parameters.get("auto_unload_minutes")
+                .and_then(|v| v.as_u64()) {
+                cmd.arg("--auto-unload-minutes").arg(auto_unload_minutes.to_string());
             }
         }
 

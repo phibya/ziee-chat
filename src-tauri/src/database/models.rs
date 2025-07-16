@@ -302,33 +302,33 @@ impl ModelProviderDb {
         if self.settings.is_null() {
             return Ok(ModelProviderSettings::default());
         }
-        
+
         serde_json::from_value(self.settings.clone())
             .map_err(|e| format!("Failed to parse provider settings: {}", e))
     }
-    
+
     /// Get the settings for this provider, or return default settings if parsing fails
     pub fn get_settings(&self) -> ModelProviderSettings {
         self.parse_settings().unwrap_or_default()
     }
-    
+
     /// Get validated settings, returning an error if invalid
     pub fn get_validated_settings(&self) -> Result<ModelProviderSettings, String> {
         let settings = self.parse_settings()?;
         settings.validate()?;
         Ok(settings)
     }
-    
+
     /// Parse the proxy_settings JSON into a typed ModelProviderProxySettings struct
     pub fn parse_proxy_settings(&self) -> Result<ModelProviderProxySettings, String> {
         if self.proxy_settings.is_null() {
             return Ok(ModelProviderProxySettings::default());
         }
-        
+
         serde_json::from_value(self.proxy_settings.clone())
             .map_err(|e| format!("Failed to parse proxy settings: {}", e))
     }
-    
+
     /// Get the proxy settings for this provider, or return default settings if parsing fails
     pub fn get_proxy_settings(&self) -> ModelProviderProxySettings {
         self.parse_proxy_settings().unwrap_or_default()
@@ -398,80 +398,125 @@ pub struct ModelProviderSettings {
     /// Enable context shift to handle long prompts by shifting the context window
     #[serde(default)]
     pub enable_context_shift: bool,
-    
+
     /// Enable continuous batching for improved throughput
     #[serde(default)]
     pub enable_continuous_batching: bool,
-    
+
     /// Number of threads for batch processing (default: 4)
     #[serde(default = "default_batch_threads")]
     pub batch_threads: usize,
-    
+
     /// Batch size for continuous batching (default: 4)
     #[serde(default = "default_batch_size")]
     pub batch_size: usize,
-    
+
     /// Batch timeout in milliseconds (default: 10)
     #[serde(default = "default_batch_timeout_ms")]
     pub batch_timeout_ms: u64,
-    
+
     /// Maximum number of concurrent requests (default: 32)
     #[serde(default = "default_max_concurrent_requests")]
     pub max_concurrent_requests: usize,
-    
+
     /// Maximum number of prompts that can be processed simultaneously by the model (default: 8)
     #[serde(default = "default_max_concurrent_prompts")]
     pub max_concurrent_prompts: usize,
-    
+
     /// Number of CPU threads to use for inference when device type is cpu (default: 4)
     #[serde(default = "default_cpu_threads")]
     pub cpu_threads: usize,
-    
+
     /// Enable flash attention support for optimized memory usage and faster inference (default: false)
     #[serde(default = "default_flash_attention")]
     pub flash_attention: bool,
-    
+
     /// KV Cache Type for controlling memory usage and precision trade-off (default: f16)
     #[serde(default = "default_kv_cache_type")]
     pub kv_cache_type: String,
-    
+
     /// Enable Paged Attention for efficient memory usage and better batching performance (default: false)
     #[serde(default = "default_paged_attention")]
     pub paged_attention: bool,
-    
+
+    /// Enable Memory Mapping (mmap) for efficient model file loading and reduced RAM usage (default: true)
+    #[serde(default = "default_mmap")]
+    pub mmap: bool,
+
+    /// Enable auto unloading of model from memory when idle to free up memory usage (default: false)
+    #[serde(default = "default_auto_unload_model")]
+    pub auto_unload_model: bool,
+
+    /// Minutes of inactivity before auto unloading the model (default: 10 minutes)
+    #[serde(default = "default_auto_unload_minutes")]
+    pub auto_unload_minutes: u64,
+
     /// Request timeout in seconds (default: 300)
     #[serde(default = "default_request_timeout_seconds")]
     pub request_timeout_seconds: u64,
-    
+
     /// Enable request queuing when server is busy (default: true)
     #[serde(default = "default_enable_request_queuing")]
     pub enable_request_queuing: bool,
-    
+
     /// Maximum queue size for pending requests (default: 100)
     #[serde(default = "default_max_queue_size")]
     pub max_queue_size: usize,
 }
 
 // Default value functions for ModelProviderSettings
-fn default_batch_threads() -> usize { 4 }
-fn default_batch_size() -> usize { 4 }
-fn default_batch_timeout_ms() -> u64 { 10 }
-fn default_max_concurrent_requests() -> usize { 32 }
-fn default_max_concurrent_prompts() -> usize { 8 }
-fn default_cpu_threads() -> usize { 4 }
-fn default_flash_attention() -> bool { false }
-fn default_kv_cache_type() -> String { "f16".to_string() }
-fn default_paged_attention() -> bool { false }
-fn default_request_timeout_seconds() -> u64 { 300 }
-fn default_enable_request_queuing() -> bool { true }
-fn default_max_queue_size() -> usize { 100 }
+fn default_batch_threads() -> usize {
+    4
+}
+fn default_batch_size() -> usize {
+    4
+}
+fn default_batch_timeout_ms() -> u64 {
+    10
+}
+fn default_max_concurrent_requests() -> usize {
+    32
+}
+fn default_max_concurrent_prompts() -> usize {
+    8
+}
+fn default_cpu_threads() -> usize {
+    4
+}
+fn default_flash_attention() -> bool {
+    false
+}
+fn default_kv_cache_type() -> String {
+    "f16".to_string()
+}
+fn default_paged_attention() -> bool {
+    false
+}
+fn default_mmap() -> bool {
+    true
+}
+fn default_auto_unload_model() -> bool {
+    false
+}
+fn default_auto_unload_minutes() -> u64 {
+    10
+}
+fn default_request_timeout_seconds() -> u64 {
+    300
+}
+fn default_enable_request_queuing() -> bool {
+    true
+}
+fn default_max_queue_size() -> usize {
+    100
+}
 
 impl ModelProviderSettings {
     /// Create a new ModelProviderSettings with default values
     pub fn new() -> Self {
         Self::default()
     }
-    
+
     /// Create ModelProviderSettings optimized for high throughput
     pub fn high_throughput() -> Self {
         Self {
@@ -486,12 +531,15 @@ impl ModelProviderSettings {
             flash_attention: true,
             kv_cache_type: "f16".to_string(),
             paged_attention: true,
+            mmap: true,
+            auto_unload_model: false, // High throughput scenarios keep models loaded
+            auto_unload_minutes: 30,  // Longer timeout for high throughput
             request_timeout_seconds: 300,
             enable_request_queuing: true,
             max_queue_size: 200,
         }
     }
-    
+
     /// Create ModelProviderSettings optimized for low latency
     pub fn low_latency() -> Self {
         Self {
@@ -506,78 +554,93 @@ impl ModelProviderSettings {
             flash_attention: false,
             kv_cache_type: "f32".to_string(),
             paged_attention: false,
+            mmap: false,
+            auto_unload_model: true, // Low latency benefits from memory management
+            auto_unload_minutes: 5,  // Quick unload for memory efficiency
             request_timeout_seconds: 60,
             enable_request_queuing: false,
             max_queue_size: 32,
         }
     }
-    
+
     /// Validate the settings and return errors if any
     pub fn validate(&self) -> Result<(), String> {
         if self.batch_threads == 0 {
             return Err("batch_threads must be greater than 0".to_string());
         }
-        
+
         if self.batch_size == 0 {
             return Err("batch_size must be greater than 0".to_string());
         }
-        
+
         if self.batch_timeout_ms == 0 {
             return Err("batch_timeout_ms must be greater than 0".to_string());
         }
-        
+
         if self.max_concurrent_requests == 0 {
             return Err("max_concurrent_requests must be greater than 0".to_string());
         }
-        
+
         if self.max_concurrent_prompts == 0 {
             return Err("max_concurrent_prompts must be greater than 0".to_string());
         }
-        
+
         if self.cpu_threads == 0 {
             return Err("cpu_threads must be greater than 0".to_string());
         }
-        
+
         // Validate KV cache type
         match self.kv_cache_type.to_lowercase().as_str() {
-            "f32" | "f16" | "bf16" | "i8" | "auto" => {},
-            _ => return Err(format!("Invalid kv_cache_type '{}'. Must be one of: f32, f16, bf16, i8, auto", self.kv_cache_type)),
+            "f32" | "f16" | "bf16" | "i8" | "auto" => {}
+            _ => {
+                return Err(format!(
+                    "Invalid kv_cache_type '{}'. Must be one of: f32, f16, bf16, i8, auto",
+                    self.kv_cache_type
+                ))
+            }
         }
-        
+
         // Paged attention validation (boolean, no explicit validation needed but we can add warnings)
         if self.paged_attention && !self.enable_continuous_batching {
-            return Err("paged_attention requires enable_continuous_batching to be true".to_string());
+            return Err(
+                "paged_attention requires enable_continuous_batching to be true".to_string(),
+            );
         }
-        
+
         if self.request_timeout_seconds == 0 {
             return Err("request_timeout_seconds must be greater than 0".to_string());
         }
-        
+
         if self.max_queue_size == 0 {
             return Err("max_queue_size must be greater than 0".to_string());
         }
-        
+
+        // Auto unload validation
+        if self.auto_unload_minutes == 0 {
+            return Err("auto_unload_minutes must be greater than 0".to_string());
+        }
+
         // Reasonable limits
         if self.batch_threads > 32 {
             return Err("batch_threads should not exceed 32".to_string());
         }
-        
+
         if self.batch_size > 64 {
             return Err("batch_size should not exceed 64".to_string());
         }
-        
+
         if self.batch_timeout_ms > 10000 {
             return Err("batch_timeout_ms should not exceed 10000ms".to_string());
         }
-        
+
         if self.max_concurrent_requests > 1000 {
             return Err("max_concurrent_requests should not exceed 1000".to_string());
         }
-        
+
         if self.max_queue_size > 1000 {
             return Err("max_queue_size should not exceed 1000".to_string());
         }
-        
+
         Ok(())
     }
 }
@@ -603,7 +666,7 @@ impl ModelProvider {
     pub fn get_settings(&self) -> ModelProviderSettings {
         self.settings.clone().unwrap_or_default()
     }
-    
+
     /// Get validated settings, returning an error if invalid
     pub fn get_validated_settings(&self) -> Result<ModelProviderSettings, String> {
         let settings = self.get_settings();
@@ -632,7 +695,7 @@ pub struct ModelProviderModel {
     pub checksum: Option<String>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<Vec<String>>,
-    pub device_type: Option<String>, // cpu, cuda, metal, etc.
+    pub device_type: Option<String>,     // cpu, cuda, metal, etc.
     pub device_ids: Option<Vec<String>>, // Array of device IDs for multi-GPU
     pub files: Option<Vec<ModelFileInfo>>,
 }
@@ -690,7 +753,7 @@ pub struct UpdateModelRequest {
 pub struct DeviceInfo {
     pub id: String, // Device identifier - UUID for CUDA GPUs, or descriptive ID for other devices
     pub name: String,
-    pub device_type: String, // cpu, cuda, metal
+    pub device_type: String,       // cpu, cuda, metal
     pub memory_total: Option<u64>, // Total memory in bytes
     pub memory_free: Option<u64>,  // Free memory in bytes
     pub is_available: bool,

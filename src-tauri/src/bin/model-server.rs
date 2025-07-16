@@ -107,6 +107,18 @@ struct Args {
     /// Enable Paged Attention for efficient memory usage and better batching performance
     #[arg(long)]
     paged_attention: bool,
+
+    /// Enable Memory Mapping (mmap) for efficient model file loading and reduced RAM usage
+    #[arg(long)]
+    mmap: bool,
+
+    /// Enable auto unloading of model from memory when idle to free up memory usage
+    #[arg(long)]
+    auto_unload_model: bool,
+
+    /// Minutes of inactivity before auto unloading the model (default: 10 minutes)
+    #[arg(long, default_value = "10")]
+    auto_unload_minutes: u64,
 }
 
 #[tokio::main]
@@ -139,6 +151,9 @@ async fn main() {
     println!("Flash Attention: {}", args.flash_attention);
     println!("KV Cache Type: {}", args.kv_cache_type);
     println!("Paged Attention: {}", args.paged_attention);
+    println!("Memory Mapping (mmap): {}", args.mmap);
+    println!("Auto Unload Model: {}", args.auto_unload_model);
+    println!("Auto Unload Minutes: {}", args.auto_unload_minutes);
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -215,6 +230,9 @@ async fn main() {
             args.flash_attention,
             &args.kv_cache_type,
             args.paged_attention,
+            args.mmap,
+            args.auto_unload_model,
+            args.auto_unload_minutes,
         )
         .await
         {
@@ -244,6 +262,9 @@ async fn main() {
             args.flash_attention,
             &args.kv_cache_type,
             args.paged_attention,
+            args.mmap,
+            args.auto_unload_model,
+            args.auto_unload_minutes,
         )
         .await
         {
