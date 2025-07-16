@@ -308,9 +308,28 @@ pub struct ModelServerState {
     pub batch_timeout_ms: u64,
     pub max_concurrent_prompts: usize,
     pub concurrent_request_semaphore: Arc<Semaphore>,
+    pub cpu_threads: usize,
 }
 
 impl ModelServerState {
+    /// Configure CPU thread limit for CPU inference
+    fn configure_cpu_threads(device: &Device, cpu_threads: usize) {
+        // Only configure CPU threads if the device is CPU
+        if matches!(device, Device::Cpu) {
+            println!("Configuring CPU threads for inference: {}", cpu_threads);
+            
+            // Set the number of threads for CPU inference
+            // This affects CPU-based tensor operations
+            std::env::set_var("RAYON_NUM_THREADS", cpu_threads.to_string());
+            
+            // Also set OpenMP thread count (if available)
+            std::env::set_var("OMP_NUM_THREADS", cpu_threads.to_string());
+            
+            // Set MKL thread count (if available)
+            std::env::set_var("MKL_NUM_THREADS", cpu_threads.to_string());
+        }
+    }
+
     /// Parse device configuration and create the appropriate device
     fn create_device(device_type: Option<&str>, device_ids: Option<&str>) -> Result<Device, CandleError> {
         match device_type {
@@ -393,7 +412,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8).await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4).await
     }
 
     pub async fn new_with_device_config(
@@ -409,10 +428,15 @@ impl ModelServerState {
         batch_size: usize,
         batch_timeout_ms: u64,
         max_concurrent_prompts: usize,
+        cpu_threads: usize,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
         let device = Self::create_device(device_type, device_ids)?;
+        
+        // Configure CPU thread limit for CPU inference
+        Self::configure_cpu_threads(&device, cpu_threads);
+        
         let model = ModelFactory::create_model(architecture, model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
 
@@ -469,6 +493,7 @@ impl ModelServerState {
             batch_timeout_ms,
             max_concurrent_prompts,
             concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
+            cpu_threads,
         })
     }
 
@@ -489,6 +514,7 @@ impl ModelServerState {
         batch_size: usize,
         batch_timeout_ms: u64,
         max_concurrent_prompts: usize,
+        cpu_threads: usize,
     ) -> Result<Self, CandleError> {
         Self::new_with_specific_files_and_device(
             model_path,
@@ -509,6 +535,7 @@ impl ModelServerState {
             batch_size,
             batch_timeout_ms,
             max_concurrent_prompts,
+            cpu_threads,
         ).await
     }
 
@@ -531,6 +558,7 @@ impl ModelServerState {
         batch_size: usize,
         batch_timeout_ms: u64,
         max_concurrent_prompts: usize,
+        cpu_threads: usize,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -548,6 +576,9 @@ impl ModelServerState {
         }
 
         let device = Self::create_device(device_type, device_ids)?;
+        
+        // Configure CPU thread limit for CPU inference
+        Self::configure_cpu_threads(&device, cpu_threads);
         
         // For now, use the existing factory methods but with specific file awareness
         // TODO: Update ModelFactory to accept specific file paths
@@ -619,6 +650,7 @@ impl ModelServerState {
             batch_timeout_ms,
             max_concurrent_prompts,
             concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
+            cpu_threads,
         })
     }
 

@@ -370,6 +370,9 @@ impl ModelManager {
         // Set max concurrent prompts
         cmd.arg("--max-concurrent-prompts").arg(provider_settings.max_concurrent_prompts.to_string());
 
+        // Set CPU threads
+        cmd.arg("--cpu-threads").arg(provider_settings.cpu_threads.to_string());
+
         // Add model-specific parameters from model configuration (these override provider settings)
         if let Some(parameters) = &model.parameters.as_object() {
             // Allow model-specific override of context shift
@@ -410,6 +413,12 @@ impl ModelManager {
             if let Some(max_concurrent_prompts) = parameters.get("max_concurrent_prompts")
                 .and_then(|v| v.as_u64()) {
                 cmd.arg("--max-concurrent-prompts").arg(max_concurrent_prompts.to_string());
+            }
+
+            // Allow model-specific override of CPU threads
+            if let Some(cpu_threads) = parameters.get("cpu_threads")
+                .and_then(|v| v.as_u64()) {
+                cmd.arg("--cpu-threads").arg(cpu_threads.to_string());
             }
         }
 
