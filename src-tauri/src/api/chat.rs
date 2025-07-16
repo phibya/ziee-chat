@@ -90,6 +90,7 @@ pub struct StreamErrorData {
     pub code: String,
 }
 
+
 /// Create a new conversation
 pub async fn create_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
@@ -302,8 +303,8 @@ pub async fn send_message_stream(
         // Build chat messages for AI provider
         let mut messages = Vec::new();
 
-        // Add system message from assistant if available
-        if let Some(assistant_id) = conversation.assistant_id {
+        // Add system message from assistant and get assistant parameters
+        let assistant_params = if let Some(assistant_id) = conversation.assistant_id {
             if let Ok(Some(assistant)) =
                 get_assistant_by_id(assistant_id, Some(auth_user.user.id)).await
             {
@@ -315,8 +316,13 @@ pub async fn send_message_stream(
                         });
                     }
                 }
+                assistant.parameters.clone()
+            } else {
+                None
             }
-        }
+        } else {
+            None
+        };
 
         // Get conversation history and add it to messages
         match chat::get_conversation_messages(request.conversation_id, auth_user.user.id).await {
@@ -372,16 +378,20 @@ pub async fn send_message_stream(
             return;
         }
 
+        // Merge parameters from model and assistant configurations
+        let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) = 
+            merge_parameters(&model.parameters, &assistant_params);
+
         // Create chat request
         let chat_request = ChatRequest {
             messages,
             model: model.name.clone(),
             stream: true,
-            temperature: Some(0.7),
-            max_tokens: Some(4096),
-            top_p: Some(0.95),
-            frequency_penalty: None,
-            presence_penalty: None,
+            temperature,
+            max_tokens,
+            top_p,
+            frequency_penalty,
+            presence_penalty,
         };
 
         // First save the user message
@@ -526,6 +536,7 @@ async fn stream_ai_response(
     user_id: Uuid,
     save_user_message: bool,
     user_message_content: Option<String>,
+    assistant_params: Option<serde_json::Value>,
 ) {
     // Get provider_id from model_id first
     let provider_id = match get_provider_id_by_model_id(model_id).await {
@@ -629,16 +640,20 @@ async fn stream_ai_response(
         }
     };
 
+    // Merge parameters from model and assistant configurations
+    let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) = 
+        merge_parameters(&model.parameters, &assistant_params);
+
     // Create chat request
     let chat_request = ChatRequest {
         messages,
         model: model.name.clone(),
         stream: true,
-        temperature: Some(0.7),
-        max_tokens: Some(4096),
-        top_p: Some(0.95),
-        frequency_penalty: None,
-        presence_penalty: None,
+        temperature,
+        max_tokens,
+        top_p,
+        frequency_penalty,
+        presence_penalty,
     };
 
     // Save user message if requested
@@ -817,6 +832,17 @@ pub async fn edit_message_stream(
                                 content: message_content,
                             });
 
+                            // Get assistant parameters if available
+                            let assistant_params = if let Some(assistant_id) = conversation.assistant_id {
+                                if let Ok(Some(assistant)) = get_assistant_by_id(assistant_id, Some(user_id)).await {
+                                    assistant.parameters.clone()
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+
                             // Stream AI response (don't save user message again as it's already saved by edit_message)
                             stream_ai_response(
                                 tx.clone(),
@@ -826,6 +852,7 @@ pub async fn edit_message_stream(
                                 user_id,
                                 false, // Don't save user message again
                                 None,
+                                assistant_params,
                             )
                             .await;
                         } else {
@@ -1141,7 +1168,8 @@ async fn generate_and_update_conversation_title(
         // Create AI provider instance
         let ai_provider = create_ai_provider_with_model_id(provider, Some(model.id))?;
 
-        // Create chat request for title generation
+        // For title generation, use specific parameters optimized for titles
+        // Don't use assistant parameters as this is an internal system function
         let chat_request = ChatRequest {
             messages: chat_messages,
             model: model.name.clone(),
@@ -1196,4 +1224,63 @@ async fn generate_and_update_conversation_title(
     }
 
     Ok(())
+}
+
+/// Merge model and assistant parameters with assistant parameters taking priority
+/// Only include parameters that are actually defined (not null)
+fn merge_parameters(
+    model_params: &Option<serde_json::Value>,
+    assistant_params: &Option<serde_json::Value>,
+) -> (
+    Option<f64>,    // temperature
+    Option<u32>,    // max_tokens
+    Option<f64>,    // top_p
+    Option<f64>,    // frequency_penalty
+    Option<f64>,    // presence_penalty
+) {
+    let mut temperature = None;
+    let mut max_tokens = None;
+    let mut top_p = None;
+    let mut frequency_penalty = None;
+    let mut presence_penalty = None;
+    
+    // First, extract from model parameters
+    if let Some(model_obj) = model_params.as_ref().and_then(|p| p.as_object()) {
+        if let Some(temp) = model_obj.get("temperature").and_then(|t| t.as_f64()) {
+            temperature = Some(temp);
+        }
+        if let Some(max_tok) = model_obj.get("max_tokens").and_then(|t| t.as_i64()) {
+            max_tokens = Some(max_tok as u32);
+        }
+        if let Some(top_p_val) = model_obj.get("top_p").and_then(|t| t.as_f64()) {
+            top_p = Some(top_p_val);
+        }
+        if let Some(freq_pen) = model_obj.get("frequency_penalty").and_then(|t| t.as_f64()) {
+            frequency_penalty = Some(freq_pen);
+        }
+        if let Some(pres_pen) = model_obj.get("presence_penalty").and_then(|t| t.as_f64()) {
+            presence_penalty = Some(pres_pen);
+        }
+    }
+    
+    // Then, override with assistant parameters (higher priority)
+    if let Some(assistant_obj) = assistant_params.as_ref().and_then(|p| p.as_object()) {
+        if let Some(temp) = assistant_obj.get("temperature").and_then(|t| t.as_f64()) {
+            temperature = Some(temp);
+        }
+        if let Some(max_tok) = assistant_obj.get("max_tokens").and_then(|t| t.as_i64()) {
+            max_tokens = Some(max_tok as u32);
+        }
+        if let Some(top_p_val) = assistant_obj.get("top_p").and_then(|t| t.as_f64()) {
+            top_p = Some(top_p_val);
+        }
+        if let Some(freq_pen) = assistant_obj.get("frequency_penalty").and_then(|t| t.as_f64()) {
+            frequency_penalty = Some(freq_pen);
+        }
+        if let Some(pres_pen) = assistant_obj.get("presence_penalty").and_then(|t| t.as_f64()) {
+            presence_penalty = Some(pres_pen);
+        }
+    }
+    
+    (temperature, max_tokens, top_p, frequency_penalty, presence_penalty)
 }
