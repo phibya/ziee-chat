@@ -17,7 +17,7 @@ pub async fn get_model_provider_by_id(
     let pool = pool.as_ref();
 
     let provider_row: Option<ModelProviderDb> = sqlx::query_as(
-        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at 
+        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at 
          FROM model_providers 
          WHERE id = $1"
     )
@@ -27,6 +27,8 @@ pub async fn get_model_provider_by_id(
 
     match provider_row {
         Some(provider_db) => {
+            let settings = provider_db.get_settings();
+            let proxy_settings = provider_db.get_proxy_settings();
             Ok(Some(ModelProvider {
                 id: provider_db.id,
                 name: provider_db.name,
@@ -34,19 +36,8 @@ pub async fn get_model_provider_by_id(
                 enabled: provider_db.enabled,
                 api_key: provider_db.api_key,
                 base_url: provider_db.base_url,
-                settings: Some(provider_db.settings),
-                proxy_settings: Some(ModelProviderProxySettings {
-                    enabled: false,
-                    url: String::new(),
-                    username: String::new(),
-                    password: String::new(),
-                    no_proxy: String::new(),
-                    ignore_ssl_certificates: false,
-                    proxy_ssl: false,
-                    proxy_host_ssl: false,
-                    peer_ssl: false,
-                    host_ssl: false,
-                }),
+                settings: Some(settings),
+                proxy_settings: Some(proxy_settings),
                 is_default: provider_db.is_default,
                 created_at: provider_db.created_at,
                 updated_at: provider_db.updated_at,
@@ -64,9 +55,9 @@ pub async fn create_model_provider(
     let provider_id = Uuid::new_v4();
 
     let provider_row: ModelProviderDb = sqlx::query_as(
-        "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at"
+        "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
     )
     .bind(provider_id)
     .bind(&request.name)
@@ -74,11 +65,13 @@ pub async fn create_model_provider(
     .bind(request.enabled.unwrap_or(false))
     .bind(&request.api_key)
     .bind(&request.base_url)
-    .bind(request.settings.unwrap_or(serde_json::json!({})))
+    .bind(serde_json::to_value(request.settings.unwrap_or_default()).unwrap_or(serde_json::json!({})))
     .bind(false) // Custom providers are never default
+    .bind(serde_json::to_value(request.proxy_settings.unwrap_or_default()).unwrap_or(serde_json::json!({})))
     .fetch_one(pool)
     .await?;
 
+    let settings = provider_row.get_settings();
     Ok(ModelProvider {
         id: provider_row.id,
         name: provider_row.name,
@@ -86,7 +79,7 @@ pub async fn create_model_provider(
         enabled: provider_row.enabled,
         api_key: provider_row.api_key,
         base_url: provider_row.base_url,
-        settings: Some(provider_row.settings),
+        settings: Some(settings),
         proxy_settings: Some(ModelProviderProxySettings {
             enabled: false,
             url: String::new(),
@@ -119,21 +112,25 @@ pub async fn update_model_provider(
              api_key = COALESCE($4, api_key),
              base_url = COALESCE($5, base_url),
              settings = COALESCE($6, settings),
+             proxy_settings = COALESCE($7, proxy_settings),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at"
+         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
     )
     .bind(provider_id)
     .bind(&request.name)
     .bind(request.enabled)
     .bind(&request.api_key)
     .bind(&request.base_url)
-    .bind(&request.settings)
+    .bind(serde_json::to_value(&request.settings).unwrap_or(serde_json::json!({})))
+    .bind(serde_json::to_value(&request.proxy_settings).unwrap_or(serde_json::json!({})))
     .fetch_optional(pool)
     .await?;
 
     match provider_row {
         Some(provider_db) => {
+            let settings = provider_db.get_settings();
+            let proxy_settings = provider_db.get_proxy_settings();
             Ok(Some(ModelProvider {
                 id: provider_db.id,
                 name: provider_db.name,
@@ -141,19 +138,8 @@ pub async fn update_model_provider(
                 enabled: provider_db.enabled,
                 api_key: provider_db.api_key,
                 base_url: provider_db.base_url,
-                settings: Some(provider_db.settings),
-                proxy_settings: Some(ModelProviderProxySettings {
-                    enabled: false,
-                    url: String::new(),
-                    username: String::new(),
-                    password: String::new(),
-                    no_proxy: String::new(),
-                    ignore_ssl_certificates: false,
-                    proxy_ssl: false,
-                    proxy_host_ssl: false,
-                    peer_ssl: false,
-                    host_ssl: false,
-                }),
+                settings: Some(settings),
+                proxy_settings: Some(proxy_settings),
                 is_default: provider_db.is_default,
                 created_at: provider_db.created_at,
                 updated_at: provider_db.updated_at,
@@ -205,9 +191,9 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
     let cloned_name = format!("{} (Clone)", original_provider.name);
 
     let provider_row: ModelProviderDb = sqlx::query_as(
-        "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_enabled, proxy_url, proxy_username, proxy_password, proxy_no_proxy, proxy_ignore_ssl_certificates, proxy_ssl, proxy_host_ssl, proxy_peer_ssl, proxy_host_ssl_verify, created_at, updated_at"
+        "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
     )
     .bind(new_provider_id)
     .bind(&cloned_name)
@@ -215,8 +201,9 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
     .bind(false) // Cloned providers are disabled by default
     .bind(&original_provider.api_key)
     .bind(&original_provider.base_url)
-    .bind(&original_provider.settings)
+    .bind(serde_json::to_value(&original_provider.settings).unwrap_or(serde_json::json!({})))
     .bind(false) // Cloned providers are never default
+    .bind(serde_json::to_value(&original_provider.proxy_settings).unwrap_or(serde_json::json!({})))
     .fetch_one(pool)
     .await?;
 
@@ -242,6 +229,7 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         .await?;
     }
 
+    let settings = provider_row.get_settings();
     Ok(Some(ModelProvider {
         id: provider_row.id,
         name: provider_row.name,
@@ -249,7 +237,7 @@ pub async fn clone_model_provider(provider_id: Uuid) -> Result<Option<ModelProvi
         enabled: provider_row.enabled,
         api_key: provider_row.api_key,
         base_url: provider_row.base_url,
-        settings: Some(provider_row.settings),
+        settings: Some(settings),
         proxy_settings: Some(ModelProviderProxySettings {
             enabled: false,
             url: String::new(),

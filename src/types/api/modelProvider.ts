@@ -155,18 +155,7 @@ export interface RemoveModelFromProviderRequest {
   modelId: string
 }
 
-export interface TestModelProviderProxyRequest {
-  enabled: boolean
-  url: string
-  username: string
-  password: string
-  no_proxy: string
-  ignore_ssl_certificates: boolean
-  proxy_ssl: boolean
-  proxy_host_ssl: boolean
-  peer_ssl: boolean
-  host_ssl: boolean
-}
+// TestModelProviderProxyRequest removed - now using ModelProviderProxySettings directly
 
 export interface TestModelProviderProxyResponse {
   success: boolean

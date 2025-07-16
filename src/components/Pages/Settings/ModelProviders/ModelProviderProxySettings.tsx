@@ -62,7 +62,7 @@ export function ModelProviderProxySettingsForm({
         return
       }
 
-      const success = await testProxy(providerId)
+      const success = await testProxy(providerId, values)
 
       // Store the tested configuration
       const currentConfig = JSON.stringify({

@@ -120,7 +120,7 @@ pub struct ModelManager {
 #[derive(Debug, thiserror::Error)]
 pub enum ModelManagerError {
     #[error("Model not found: {0}")]
-    ModelNotFound(Uuid),
+    ModelNotFound(String),
     #[error("Model already running: {0}")]
     ModelAlreadyRunning(Uuid),
     #[error("No available ports in range {0}-{1}")]
@@ -133,6 +133,8 @@ pub enum ModelManagerError {
     IoError(#[from] std::io::Error),
     #[error("Lock file error: {0}")]
     LockFileError(String),
+    #[error("Database error: {0}")]
+    DatabaseError(String),
 }
 
 #[derive(Debug)]
@@ -154,6 +156,16 @@ impl ModelManager {
         &self,
         model: &ModelProviderModelDb,
     ) -> Result<ModelStartResult, ModelManagerError> {
+        // Get the provider information to access its settings
+        let provider = match crate::database::queries::model_providers::get_model_provider_by_id(model.provider_id).await {
+            Ok(Some(provider)) => provider,
+            Ok(None) => return Err(ModelManagerError::ModelNotFound(
+                format!("Provider {} not found", model.provider_id)
+            )),
+            Err(e) => return Err(ModelManagerError::DatabaseError(
+                format!("Failed to get provider: {}", e)
+            )),
+        };
         let mut running_models = self.running_models.lock().await;
 
         // Check if model is already running in our tracking
@@ -327,6 +339,71 @@ impl ModelManager {
             }
         }
 
+        // Add batching parameters from provider settings
+        let provider_settings = provider.get_settings();
+        
+        // Validate settings before using them
+        if let Err(validation_error) = provider_settings.validate() {
+            println!("Warning: Provider settings validation failed: {}", validation_error);
+            println!("Using default settings instead");
+        }
+
+        // Enable context shift if specified
+        if provider_settings.enable_context_shift {
+            cmd.arg("--enable-context-shift");
+        }
+
+        // Enable continuous batching if specified
+        if provider_settings.enable_continuous_batching {
+            cmd.arg("--enable-continuous-batching");
+        }
+
+        // Set batch threads
+        cmd.arg("--batch-threads").arg(provider_settings.batch_threads.to_string());
+
+        // Set batch size
+        cmd.arg("--batch-size").arg(provider_settings.batch_size.to_string());
+
+        // Set batch timeout
+        cmd.arg("--batch-timeout-ms").arg(provider_settings.batch_timeout_ms.to_string());
+
+        // Add model-specific parameters from model configuration (these override provider settings)
+        if let Some(parameters) = &model.parameters.as_object() {
+            // Allow model-specific override of context shift
+            if let Some(enable_context_shift) = parameters.get("enable_context_shift")
+                .and_then(|v| v.as_bool()) {
+                if enable_context_shift {
+                    cmd.arg("--enable-context-shift");
+                }
+            }
+
+            // Allow model-specific override of continuous batching
+            if let Some(enable_continuous_batching) = parameters.get("enable_continuous_batching")
+                .and_then(|v| v.as_bool()) {
+                if enable_continuous_batching {
+                    cmd.arg("--enable-continuous-batching");
+                }
+            }
+
+            // Allow model-specific override of batch threads
+            if let Some(batch_threads) = parameters.get("batch_threads")
+                .and_then(|v| v.as_u64()) {
+                cmd.arg("--batch-threads").arg(batch_threads.to_string());
+            }
+
+            // Allow model-specific override of batch size
+            if let Some(batch_size) = parameters.get("batch_size")
+                .and_then(|v| v.as_u64()) {
+                cmd.arg("--batch-size").arg(batch_size.to_string());
+            }
+
+            // Allow model-specific override of batch timeout
+            if let Some(batch_timeout_ms) = parameters.get("batch_timeout_ms")
+                .and_then(|v| v.as_u64()) {
+                cmd.arg("--batch-timeout-ms").arg(batch_timeout_ms.to_string());
+            }
+        }
+
         // Spawn model server process
         let mut child = cmd
             .stdout(Stdio::piped())
@@ -377,7 +454,7 @@ impl ModelManager {
 
         let mut model_process = running_models
             .remove(&model_id)
-            .ok_or(ModelManagerError::ModelNotFound(model_id))?;
+            .ok_or(ModelManagerError::ModelNotFound(model_id.to_string()))?;
 
         println!("Stopping model {} on port {}", model_id, model_process.port);
 

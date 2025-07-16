@@ -132,7 +132,7 @@ interface ModelProvidersState {
   cancelUpload: () => void
 
   // Proxy actions
-  testProxy: (providerId: string) => Promise<boolean>
+  testProxy: (providerId: string, proxySettings: any) => Promise<boolean>
 
   // Utility actions
   clearError: () => void
@@ -519,13 +519,14 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       }
     },
 
-    testProxy: async (providerId: string) => {
+    testProxy: async (providerId: string, proxySettings: any) => {
       try {
         set({ testingProxy: true, error: null })
 
         const result = await ApiClient.ModelProviders.testProxy({
           provider_id: providerId,
-        } as any)
+          ...proxySettings,
+        })
 
         set({ testingProxy: false })
 

@@ -41,7 +41,7 @@ import {
   ModelProvider,
   ModelProviderListResponse,
   ModelProviderModel,
-  TestModelProviderProxyRequest,
+  ModelProviderProxySettings,
   TestModelProviderProxyResponse,
   UpdateModelProviderRequest,
   UpdateModelRequest,
@@ -277,7 +277,7 @@ export type ApiEndpointParameters = {
   'Models.disable': { model_id: string }
   'ModelProviders.testProxy': {
     provider_id: string
-  } & TestModelProviderProxyRequest
+  } & ModelProviderProxySettings
   'Admin.getAvailableDevices': void
   // Model Upload parameters
   'ModelUploads.create': {

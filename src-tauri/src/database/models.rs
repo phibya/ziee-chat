@@ -291,18 +291,48 @@ pub struct ModelProviderDb {
     pub base_url: Option<String>,
     pub settings: serde_json::Value,
     pub is_default: bool,
-    pub proxy_enabled: bool,
-    pub proxy_url: String,
-    pub proxy_username: String,
-    pub proxy_password: String,
-    pub proxy_no_proxy: String,
-    pub proxy_ignore_ssl_certificates: bool,
-    pub proxy_ssl: bool,
-    pub proxy_host_ssl: bool,
-    pub proxy_peer_ssl: bool,
-    pub proxy_host_ssl_verify: bool,
+    pub proxy_settings: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl ModelProviderDb {
+    /// Parse the settings JSON into a typed ModelProviderSettings struct
+    pub fn parse_settings(&self) -> Result<ModelProviderSettings, String> {
+        if self.settings.is_null() {
+            return Ok(ModelProviderSettings::default());
+        }
+        
+        serde_json::from_value(self.settings.clone())
+            .map_err(|e| format!("Failed to parse provider settings: {}", e))
+    }
+    
+    /// Get the settings for this provider, or return default settings if parsing fails
+    pub fn get_settings(&self) -> ModelProviderSettings {
+        self.parse_settings().unwrap_or_default()
+    }
+    
+    /// Get validated settings, returning an error if invalid
+    pub fn get_validated_settings(&self) -> Result<ModelProviderSettings, String> {
+        let settings = self.parse_settings()?;
+        settings.validate()?;
+        Ok(settings)
+    }
+    
+    /// Parse the proxy_settings JSON into a typed ModelProviderProxySettings struct
+    pub fn parse_proxy_settings(&self) -> Result<ModelProviderProxySettings, String> {
+        if self.proxy_settings.is_null() {
+            return Ok(ModelProviderProxySettings::default());
+        }
+        
+        serde_json::from_value(self.proxy_settings.clone())
+            .map_err(|e| format!("Failed to parse proxy settings: {}", e))
+    }
+    
+    /// Get the proxy settings for this provider, or return default settings if parsing fails
+    pub fn get_proxy_settings(&self) -> ModelProviderProxySettings {
+        self.parse_proxy_settings().unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -338,18 +368,164 @@ impl ModelProviderModelDb {
 }
 
 // API structures for model providers
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelProviderProxySettings {
+    #[serde(default)]
     pub enabled: bool,
+    #[serde(default)]
     pub url: String,
+    #[serde(default)]
     pub username: String,
+    #[serde(default)]
     pub password: String,
+    #[serde(default)]
     pub no_proxy: String,
+    #[serde(default)]
     pub ignore_ssl_certificates: bool,
+    #[serde(default)]
     pub proxy_ssl: bool,
+    #[serde(default)]
     pub proxy_host_ssl: bool,
+    #[serde(default)]
     pub peer_ssl: bool,
+    #[serde(default)]
     pub host_ssl: bool,
+}
+
+/// Typed settings for model provider performance and batching configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ModelProviderSettings {
+    /// Enable context shift to handle long prompts by shifting the context window
+    #[serde(default)]
+    pub enable_context_shift: bool,
+    
+    /// Enable continuous batching for improved throughput
+    #[serde(default)]
+    pub enable_continuous_batching: bool,
+    
+    /// Number of threads for batch processing (default: 4)
+    #[serde(default = "default_batch_threads")]
+    pub batch_threads: usize,
+    
+    /// Batch size for continuous batching (default: 4)
+    #[serde(default = "default_batch_size")]
+    pub batch_size: usize,
+    
+    /// Batch timeout in milliseconds (default: 10)
+    #[serde(default = "default_batch_timeout_ms")]
+    pub batch_timeout_ms: u64,
+    
+    /// Maximum number of concurrent requests (default: 32)
+    #[serde(default = "default_max_concurrent_requests")]
+    pub max_concurrent_requests: usize,
+    
+    /// Request timeout in seconds (default: 300)
+    #[serde(default = "default_request_timeout_seconds")]
+    pub request_timeout_seconds: u64,
+    
+    /// Enable request queuing when server is busy (default: true)
+    #[serde(default = "default_enable_request_queuing")]
+    pub enable_request_queuing: bool,
+    
+    /// Maximum queue size for pending requests (default: 100)
+    #[serde(default = "default_max_queue_size")]
+    pub max_queue_size: usize,
+}
+
+// Default value functions for ModelProviderSettings
+fn default_batch_threads() -> usize { 4 }
+fn default_batch_size() -> usize { 4 }
+fn default_batch_timeout_ms() -> u64 { 10 }
+fn default_max_concurrent_requests() -> usize { 32 }
+fn default_request_timeout_seconds() -> u64 { 300 }
+fn default_enable_request_queuing() -> bool { true }
+fn default_max_queue_size() -> usize { 100 }
+
+impl ModelProviderSettings {
+    /// Create a new ModelProviderSettings with default values
+    pub fn new() -> Self {
+        Self::default()
+    }
+    
+    /// Create ModelProviderSettings optimized for high throughput
+    pub fn high_throughput() -> Self {
+        Self {
+            enable_context_shift: true,
+            enable_continuous_batching: true,
+            batch_threads: 8,
+            batch_size: 8,
+            batch_timeout_ms: 20,
+            max_concurrent_requests: 64,
+            request_timeout_seconds: 300,
+            enable_request_queuing: true,
+            max_queue_size: 200,
+        }
+    }
+    
+    /// Create ModelProviderSettings optimized for low latency
+    pub fn low_latency() -> Self {
+        Self {
+            enable_context_shift: false,
+            enable_continuous_batching: false,
+            batch_threads: 2,
+            batch_size: 1,
+            batch_timeout_ms: 5,
+            max_concurrent_requests: 16,
+            request_timeout_seconds: 60,
+            enable_request_queuing: false,
+            max_queue_size: 32,
+        }
+    }
+    
+    /// Validate the settings and return errors if any
+    pub fn validate(&self) -> Result<(), String> {
+        if self.batch_threads == 0 {
+            return Err("batch_threads must be greater than 0".to_string());
+        }
+        
+        if self.batch_size == 0 {
+            return Err("batch_size must be greater than 0".to_string());
+        }
+        
+        if self.batch_timeout_ms == 0 {
+            return Err("batch_timeout_ms must be greater than 0".to_string());
+        }
+        
+        if self.max_concurrent_requests == 0 {
+            return Err("max_concurrent_requests must be greater than 0".to_string());
+        }
+        
+        if self.request_timeout_seconds == 0 {
+            return Err("request_timeout_seconds must be greater than 0".to_string());
+        }
+        
+        if self.max_queue_size == 0 {
+            return Err("max_queue_size must be greater than 0".to_string());
+        }
+        
+        // Reasonable limits
+        if self.batch_threads > 32 {
+            return Err("batch_threads should not exceed 32".to_string());
+        }
+        
+        if self.batch_size > 64 {
+            return Err("batch_size should not exceed 64".to_string());
+        }
+        
+        if self.batch_timeout_ms > 10000 {
+            return Err("batch_timeout_ms should not exceed 10000ms".to_string());
+        }
+        
+        if self.max_concurrent_requests > 1000 {
+            return Err("max_concurrent_requests should not exceed 1000".to_string());
+        }
+        
+        if self.max_queue_size > 1000 {
+            return Err("max_queue_size should not exceed 1000".to_string());
+        }
+        
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -361,11 +537,25 @@ pub struct ModelProvider {
     pub enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<serde_json::Value>,
+    pub settings: Option<ModelProviderSettings>,
     pub proxy_settings: Option<ModelProviderProxySettings>,
     pub is_default: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl ModelProvider {
+    /// Get the settings for this provider, or return default settings if none are set
+    pub fn get_settings(&self) -> ModelProviderSettings {
+        self.settings.clone().unwrap_or_default()
+    }
+    
+    /// Get validated settings, returning an error if invalid
+    pub fn get_validated_settings(&self) -> Result<ModelProviderSettings, String> {
+        let settings = self.get_settings();
+        settings.validate()?;
+        Ok(settings)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -402,7 +592,7 @@ pub struct CreateModelProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<serde_json::Value>,
+    pub settings: Option<ModelProviderSettings>,
     pub proxy_settings: Option<ModelProviderProxySettings>,
 }
 
@@ -412,7 +602,7 @@ pub struct UpdateModelProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<serde_json::Value>,
+    pub settings: Option<ModelProviderSettings>,
     pub proxy_settings: Option<ModelProviderProxySettings>,
 }
 
@@ -467,19 +657,7 @@ pub struct ModelProviderListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TestModelProviderProxyRequest {
-    pub enabled: bool,
-    pub url: String,
-    pub username: String,
-    pub password: String,
-    pub no_proxy: String,
-    pub ignore_ssl_certificates: bool,
-    pub proxy_ssl: bool,
-    pub proxy_host_ssl: bool,
-    pub peer_ssl: bool,
-    pub host_ssl: bool,
-}
+// TestModelProviderProxyRequest removed - now using ModelProviderProxySettings directly
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestModelProviderProxyResponse {

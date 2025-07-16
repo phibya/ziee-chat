@@ -11,7 +11,7 @@ use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
         CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderListResponse,
-        ModelProviderModel, TestModelProviderProxyRequest, TestModelProviderProxyResponse,
+        ModelProviderModel, ModelProviderProxySettings, TestModelProviderProxyResponse,
         UpdateModelProviderRequest, UpdateModelRequest, UserGroup, AvailableDevicesResponse,
     },
     queries::{model_providers, user_group_model_providers},
@@ -422,7 +422,7 @@ pub async fn get_model(
 pub async fn test_model_provider_proxy_connection(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(_provider_id): Path<Uuid>,
-    Json(request): Json<TestModelProviderProxyRequest>,
+    Json(request): Json<ModelProviderProxySettings>,
 ) -> ApiResult<Json<TestModelProviderProxyResponse>> {
     // Test the proxy connection by making a simple HTTP request through the proxy
     match test_proxy_connectivity_for_provider(&request).await {
@@ -438,7 +438,7 @@ pub async fn test_model_provider_proxy_connection(
 }
 
 async fn test_proxy_connectivity_for_provider(
-    proxy_config: &TestModelProviderProxyRequest,
+    proxy_config: &ModelProviderProxySettings,
 ) -> ApiResult<()> {
     // Validate proxy URL format
     if proxy_config.url.trim().is_empty() {
@@ -479,6 +479,11 @@ async fn test_proxy_connectivity_for_provider(
     if proxy_config.ignore_ssl_certificates {
         client_builder = client_builder.danger_accept_invalid_certs(true);
     }
+    
+    // Handle other SSL settings
+    if proxy_config.proxy_ssl {
+        // Additional proxy SSL configuration if needed
+    }
 
     let client = client_builder.build().map_err(|e| {
         AppError::new(
@@ -489,7 +494,14 @@ async fn test_proxy_connectivity_for_provider(
 
     // Test the proxy by making a request to a reliable endpoint
     // Using httpbin.org as it's a simple testing service that returns IP info
-    let test_url = "https://httpbin.org/ip";
+    let test_url = if proxy_config.enabled {
+        "https://httpbin.org/ip"
+    } else {
+        return Err(AppError::new(
+            crate::api::errors::ErrorCode::ValidInvalidInput,
+            "Proxy is not enabled",
+        ));
+    };
 
     match client.get(test_url).send().await {
         Ok(response) => {

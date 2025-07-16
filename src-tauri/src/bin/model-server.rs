@@ -71,6 +71,22 @@ struct Args {
     /// Enable context shift to handle long prompts by shifting the context window
     #[arg(long)]
     enable_context_shift: bool,
+
+    /// Enable continuous batching for improved throughput
+    #[arg(long)]
+    enable_continuous_batching: bool,
+
+    /// Number of threads for batch processing (default: 4)
+    #[arg(long, default_value = "4")]
+    batch_threads: usize,
+
+    /// Batch size for continuous batching (default: 4)
+    #[arg(long, default_value = "4")]
+    batch_size: usize,
+
+    /// Batch timeout in milliseconds (default: 10)
+    #[arg(long, default_value = "10")]
+    batch_timeout_ms: u64,
 }
 
 #[tokio::main]
@@ -94,6 +110,10 @@ async fn main() {
         println!("Device IDs: {}", device_ids);
     }
     println!("Context Shift: {}", args.enable_context_shift);
+    println!("Continuous Batching: {}", args.enable_continuous_batching);
+    println!("Batch Threads: {}", args.batch_threads);
+    println!("Batch Size: {}", args.batch_size);
+    println!("Batch Timeout: {}ms", args.batch_timeout_ms);
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -161,6 +181,10 @@ async fn main() {
             args.device_type.as_deref(),
             args.device_ids.as_deref(),
             args.enable_context_shift,
+            args.enable_continuous_batching,
+            args.batch_threads,
+            args.batch_size,
+            args.batch_timeout_ms,
         )
         .await
         {
@@ -181,6 +205,10 @@ async fn main() {
             args.device_type.as_deref(),
             args.device_ids.as_deref(),
             args.enable_context_shift,
+            args.enable_continuous_batching,
+            args.batch_threads,
+            args.batch_size,
+            args.batch_timeout_ms,
         )
         .await
         {

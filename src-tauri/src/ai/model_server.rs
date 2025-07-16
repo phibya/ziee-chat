@@ -226,14 +226,55 @@ impl BatchProcessor {
     }
 
     async fn process_batch(&self, batch: &mut Vec<InferenceRequest>) {
-        // For now, process requests sequentially within the batch
-        // TODO: Implement true batched inference for models that support it
+        // For models that support batching, we could implement true batch processing here
+        // For now, we'll process requests in parallel within the batch using multiple threads
         
-        let mut model = self.model.lock().await;
+        let batch_size = batch.len();
+        if batch_size == 0 {
+            return;
+        }
         
-        for request in batch.drain(..) {
+        println!("Processing batch of {} requests", batch_size);
+        
+        // For single requests, process directly
+        if batch_size == 1 {
+            let mut model = self.model.lock().await;
+            let request = batch.drain(..).next().unwrap();
             let result = self.process_single_request(&mut model, request.input_ids, request.start_pos, request.cache).await;
             let _ = request.response_tx.send(result);
+            return;
+        }
+        
+        // For multiple requests, process them in parallel (limited by model lock)
+        // This allows for better throughput when the model can handle it
+        let requests: Vec<_> = batch.drain(..).collect();
+        
+        // Use tokio::spawn to process each request concurrently
+        // Note: The model lock will serialize the actual inference, but we can prepare inputs/outputs in parallel
+        let mut join_handles = Vec::new();
+        
+        for request in requests {
+            let model = self.model.clone();
+            let device = self.device.clone();
+            
+            let handle = tokio::spawn(async move {
+                let mut model_lock = model.lock().await;
+                let result = ModelServerState::process_single_inference(
+                    &mut model_lock, 
+                    request.input_ids, 
+                    request.start_pos, 
+                    request.cache, 
+                    &device
+                ).await;
+                let _ = request.response_tx.send(result);
+            });
+            
+            join_handles.push(handle);
+        }
+        
+        // Wait for all requests to complete
+        for handle in join_handles {
+            let _ = handle.await;
         }
     }
 
@@ -242,25 +283,9 @@ impl BatchProcessor {
         model: &mut Box<dyn CandleModel + Send + Sync>,
         input_ids: Tensor,
         start_pos: usize,
-        mut cache: Cache,
+        cache: Cache,
     ) -> Result<(Tensor, Cache), CandleError> {
-        // For Metal devices, serialize forward passes to prevent command buffer conflicts
-        #[cfg(feature = "metal")]
-        {
-            if matches!(self.device, Device::Metal(_)) {
-                let _lock = get_metal_lock().lock().await;
-                match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
-                    Ok(logits) => return Ok((logits, cache)),
-                    Err(e) => return Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
-                }
-            }
-        }
-        
-        // For non-Metal devices, forward pass without serialization
-        match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
-            Ok(logits) => Ok((logits, cache)),
-            Err(e) => Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
-        }
+        ModelServerState::process_single_inference(model, input_ids, start_pos, cache, &self.device).await
     }
 }
 
@@ -277,6 +302,10 @@ pub struct ModelServerState {
     pub cache_pool: Arc<CachePool>,
     pub inference_tx: mpsc::UnboundedSender<InferenceRequest>,
     pub enable_context_shift: bool,
+    pub enable_continuous_batching: bool,
+    pub batch_threads: usize,
+    pub batch_size: usize,
+    pub batch_timeout_ms: u64,
 }
 
 impl ModelServerState {
@@ -362,7 +391,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false).await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10).await
     }
 
     pub async fn new_with_device_config(
@@ -373,6 +402,10 @@ impl ModelServerState {
         device_type: Option<&str>,
         device_ids: Option<&str>,
         enable_context_shift: bool,
+        enable_continuous_batching: bool,
+        batch_threads: usize,
+        batch_size: usize,
+        batch_timeout_ms: u64,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
@@ -399,11 +432,20 @@ impl ModelServerState {
         let (inference_tx, inference_rx) = mpsc::unbounded_channel();
         let model_arc = Arc::new(Mutex::new(model));
         
-        // Spawn batch processor
-        let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, 4, 10, device.clone());
-        tokio::spawn(async move {
-            batch_processor.run().await;
-        });
+        // Spawn batch processor if continuous batching is enabled
+        if enable_continuous_batching {
+            let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, batch_size, batch_timeout_ms, device.clone());
+            tokio::spawn(async move {
+                batch_processor.run().await;
+            });
+        } else {
+            // For non-batching mode, spawn a simple processor
+            let model_for_processor = model_arc.clone();
+            let device_for_processor = device.clone();
+            tokio::spawn(async move {
+                Self::simple_processor(model_for_processor, inference_rx, device_for_processor).await;
+            });
+        }
 
         Ok(Self {
             model: model_arc,
@@ -418,6 +460,10 @@ impl ModelServerState {
             cache_pool,
             inference_tx,
             enable_context_shift,
+            enable_continuous_batching,
+            batch_threads,
+            batch_size,
+            batch_timeout_ms,
         })
     }
 
@@ -433,6 +479,10 @@ impl ModelServerState {
         _vocab_file: Option<&str>,
         _special_tokens_file: Option<&str>,
         enable_context_shift: bool,
+        enable_continuous_batching: bool,
+        batch_threads: usize,
+        batch_size: usize,
+        batch_timeout_ms: u64,
     ) -> Result<Self, CandleError> {
         Self::new_with_specific_files_and_device(
             model_path,
@@ -448,6 +498,10 @@ impl ModelServerState {
             None,
             None,
             enable_context_shift,
+            enable_continuous_batching,
+            batch_threads,
+            batch_size,
+            batch_timeout_ms,
         ).await
     }
 
@@ -465,6 +519,10 @@ impl ModelServerState {
         device_type: Option<&str>,
         device_ids: Option<&str>,
         enable_context_shift: bool,
+        enable_continuous_batching: bool,
+        batch_threads: usize,
+        batch_size: usize,
+        batch_timeout_ms: u64,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -519,11 +577,20 @@ impl ModelServerState {
         let (inference_tx, inference_rx) = mpsc::unbounded_channel();
         let model_arc = Arc::new(Mutex::new(model));
         
-        // Spawn batch processor
-        let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, 4, 10, device.clone());
-        tokio::spawn(async move {
-            batch_processor.run().await;
-        });
+        // Spawn batch processor if continuous batching is enabled
+        if enable_continuous_batching {
+            let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, batch_size, batch_timeout_ms, device.clone());
+            tokio::spawn(async move {
+                batch_processor.run().await;
+            });
+        } else {
+            // For non-batching mode, spawn a simple processor
+            let model_for_processor = model_arc.clone();
+            let device_for_processor = device.clone();
+            tokio::spawn(async move {
+                Self::simple_processor(model_for_processor, inference_rx, device_for_processor).await;
+            });
+        }
 
         Ok(Self {
             model: model_arc,
@@ -538,7 +605,51 @@ impl ModelServerState {
             cache_pool,
             inference_tx,
             enable_context_shift,
+            enable_continuous_batching,
+            batch_threads,
+            batch_size,
+            batch_timeout_ms,
         })
+    }
+
+    /// Simple processor for non-batching mode - processes requests immediately
+    async fn simple_processor(
+        model: Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>,
+        mut request_rx: mpsc::UnboundedReceiver<InferenceRequest>,
+        device: Device,
+    ) {
+        while let Some(request) = request_rx.recv().await {
+            let mut model_lock = model.lock().await;
+            let result = Self::process_single_inference(&mut model_lock, request.input_ids, request.start_pos, request.cache, &device).await;
+            let _ = request.response_tx.send(result);
+        }
+    }
+
+    /// Process a single inference request
+    async fn process_single_inference(
+        model: &mut Box<dyn CandleModel + Send + Sync>,
+        input_ids: Tensor,
+        start_pos: usize,
+        mut cache: Cache,
+        device: &Device,
+    ) -> Result<(Tensor, Cache), CandleError> {
+        // For Metal devices, serialize forward passes to prevent command buffer conflicts
+        #[cfg(feature = "metal")]
+        {
+            if matches!(device, Device::Metal(_)) {
+                let _lock = get_metal_lock().lock().await;
+                match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
+                    Ok(logits) => return Ok((logits, cache)),
+                    Err(e) => return Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
+                }
+            }
+        }
+        
+        // For non-Metal devices, forward pass without serialization
+        match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
+            Ok(logits) => Ok((logits, cache)),
+            Err(e) => Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
+        }
     }
 
     fn load_tokenizer_config(model_path: &str) -> TokenizerConfig {
