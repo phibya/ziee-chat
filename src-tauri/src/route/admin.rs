@@ -87,18 +87,18 @@ pub fn admin_routes() -> Router {
         )
         // User Group Model Provider relationship routes
         .route(
-            "/api/admin/groups/{group_id}/model-providers",
-            get(api::user_groups::get_group_model_providers)
+            "/api/admin/groups/{group_id}/providers",
+            get(api::user_groups::get_group_providers)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         .route(
             "/api/admin/groups/assign-model-provider",
-            post(api::user_groups::assign_model_provider_to_group)
+            post(api::user_groups::assign_provider_to_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         .route(
-            "/api/admin/groups/{group_id}/model-providers/{provider_id}",
-            delete(api::user_groups::remove_model_provider_from_group)
+            "/api/admin/groups/{group_id}/providers/{provider_id}",
+            delete(api::user_groups::remove_provider_from_group)
                 .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         .route(
@@ -151,55 +151,55 @@ pub fn admin_routes() -> Router {
         )
         // Model provider routes
         .route(
-            "/api/admin/model-providers",
-            get(api::model_providers::list_model_providers).layer(middleware::from_fn(
+            "/api/admin/providers",
+            get(api::model_providers::list_providers).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
         )
         .route(
-            "/api/admin/model-providers",
-            post(api::model_providers::create_model_provider).layer(middleware::from_fn(
+            "/api/admin/providers",
+            post(api::model_providers::create_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_create_middleware,
             )),
         )
         .route(
-            "/api/admin/model-providers/{provider_id}",
-            get(api::model_providers::get_model_provider).layer(middleware::from_fn(
+            "/api/admin/providers/{provider_id}",
+            get(api::model_providers::get_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
         )
         .route(
-            "/api/admin/model-providers/{provider_id}",
-            put(api::model_providers::update_model_provider).layer(middleware::from_fn(
+            "/api/admin/providers/{provider_id}",
+            put(api::model_providers::update_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_edit_middleware,
             )),
         )
         .route(
-            "/api/admin/model-providers/{provider_id}",
-            delete(api::model_providers::delete_model_provider).layer(middleware::from_fn(
+            "/api/admin/providers/{provider_id}",
+            delete(api::model_providers::delete_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_delete_middleware,
             )),
         )
         .route(
-            "/api/admin/model-providers/{provider_id}/clone",
-            post(api::model_providers::clone_model_provider).layer(middleware::from_fn(
+            "/api/admin/providers/{provider_id}/clone",
+            post(api::model_providers::clone_provider).layer(middleware::from_fn(
                 api::middleware::model_providers_create_middleware,
             )),
         )
         .route(
-            "/api/admin/model-providers/{provider_id}/test-proxy",
+            "/api/admin/providers/{provider_id}/test-proxy",
             post(api::model_providers::test_model_provider_proxy_connection).layer(
                 middleware::from_fn(api::middleware::model_providers_read_middleware),
             ),
         )
         .route(
-            "/api/admin/model-providers/{provider_id}/groups",
+            "/api/admin/providers/{provider_id}/groups",
             get(api::model_providers::get_provider_groups).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
         )
         .route(
-            "/api/admin/model-providers/{provider_id}/models",
+            "/api/admin/providers/{provider_id}/models",
             get(api::model_providers::list_provider_models).layer(middleware::from_fn(
                 api::middleware::model_providers_read_middleware,
             )),
@@ -212,7 +212,7 @@ pub fn admin_routes() -> Router {
         )
         // Model routes
         .route(
-            "/api/admin/model-providers/{provider_id}/models",
+            "/api/admin/providers/{provider_id}/models",
             post(api::model_providers::create_model).layer(middleware::from_fn(
                 api::middleware::model_providers_edit_middleware,
             )),

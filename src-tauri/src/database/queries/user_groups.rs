@@ -1,6 +1,6 @@
 use crate::database::get_database_pool;
 use crate::database::models::*;
-use crate::database::queries::user_group_model_providers::get_model_provider_ids_for_group;
+use crate::database::queries::user_group_model_providers::get_provider_ids_for_group;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -26,7 +26,7 @@ pub async fn create_user_group(
     .await?;
 
     let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id)
+    let provider_ids = get_provider_ids_for_group(group_id)
         .await
         .unwrap_or_default();
 
@@ -35,7 +35,7 @@ pub async fn create_user_group(
         name: row.get("name"),
         description: row.get("description"),
         permissions: row.get("permissions"),
-        model_provider_ids,
+        provider_ids,
         is_protected: row.get("is_protected"),
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
@@ -56,7 +56,7 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
     };
 
     let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id)
+    let provider_ids = get_provider_ids_for_group(group_id)
         .await
         .unwrap_or_default();
 
@@ -65,7 +65,7 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
         name: row.get("name"),
         description: row.get("description"),
         permissions: row.get("permissions"),
-        model_provider_ids,
+        provider_ids,
         is_protected: row.get("is_protected"),
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),
@@ -96,7 +96,7 @@ pub async fn list_user_groups(
     let mut groups = Vec::new();
     for row in rows {
         let group_id: Uuid = row.get("id");
-        let model_provider_ids = get_model_provider_ids_for_group(group_id)
+        let provider_ids = get_provider_ids_for_group(group_id)
             .await
             .unwrap_or_default();
 
@@ -105,7 +105,7 @@ pub async fn list_user_groups(
             name: row.get("name"),
             description: row.get("description"),
             permissions: row.get("permissions"),
-            model_provider_ids,
+            provider_ids,
             is_protected: row.get("is_protected"),
             is_active: row.get("is_active"),
             created_at: row.get("created_at"),
@@ -201,7 +201,7 @@ pub async fn update_user_group(
     };
 
     let group_id: Uuid = row.get("id");
-    let model_provider_ids = get_model_provider_ids_for_group(group_id)
+    let provider_ids = get_provider_ids_for_group(group_id)
         .await
         .unwrap_or_default();
 
@@ -210,7 +210,7 @@ pub async fn update_user_group(
         name: row.get("name"),
         description: row.get("description"),
         permissions: row.get("permissions"),
-        model_provider_ids,
+        provider_ids,
         is_protected: row.get("is_protected"),
         is_active: row.get("is_active"),
         created_at: row.get("created_at"),

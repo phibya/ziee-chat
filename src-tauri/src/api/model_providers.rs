@@ -10,9 +10,9 @@ use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        CreateModelProviderRequest, CreateModelRequest, ModelProvider, ModelProviderListResponse,
-        ModelProviderModel, ModelProviderProxySettings, TestModelProviderProxyResponse,
-        UpdateModelProviderRequest, UpdateModelRequest, UserGroup, AvailableDevicesResponse,
+        CreateProviderRequest, CreateModelRequest, Provider, ProviderListResponse,
+        Model, ProviderProxySettings, TestProviderProxyResponse,
+        UpdateProviderRequest, UpdateModelRequest, UserGroup, AvailableDevicesResponse,
     },
     queries::{model_providers, user_group_model_providers},
 };
@@ -23,17 +23,17 @@ pub struct PaginationQuery {
     per_page: Option<i32>,
 }
 
-// Model Provider endpoints
-pub async fn list_model_providers(
+// Provider endpoints
+pub async fn list_providers(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult<Json<ModelProviderListResponse>> {
+) -> ApiResult<Json<ProviderListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
-    // Get model providers based on user permissions
+    // Get providers based on user permissions
     let user_providers =
-        match user_group_model_providers::get_model_providers_for_user(auth_user.user.id).await {
+        match user_group_model_providers::get_providers_for_user(auth_user.user.id).await {
             Ok(providers) => providers,
             Err(e) => {
                 eprintln!(
@@ -55,7 +55,7 @@ pub async fn list_model_providers(
         Vec::new()
     };
 
-    Ok(Json(ModelProviderListResponse {
+    Ok(Json(ProviderListResponse {
         providers: paginated_providers,
         total,
         page,
@@ -63,11 +63,11 @@ pub async fn list_model_providers(
     }))
 }
 
-pub async fn get_model_provider(
+pub async fn get_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult<Json<ModelProvider>> {
-    match model_providers::get_model_provider_by_id(provider_id).await {
+) -> ApiResult<Json<Provider>> {
+    match model_providers::get_provider_by_id(provider_id).await {
         Ok(Some(provider)) => Ok(Json(provider)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -77,10 +77,10 @@ pub async fn get_model_provider(
     }
 }
 
-pub async fn create_model_provider(
+pub async fn create_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-    Json(mut request): Json<CreateModelProviderRequest>,
-) -> ApiResult<Json<ModelProvider>> {
+    Json(mut request): Json<CreateProviderRequest>,
+) -> ApiResult<Json<Provider>> {
     // Validate provider type
     let valid_types = [
         "candle",
@@ -133,7 +133,7 @@ pub async fn create_model_provider(
         }
     }
 
-    match model_providers::create_model_provider(request).await {
+    match model_providers::create_provider(request).await {
         Ok(provider) => Ok(Json(provider)),
         Err(e) => {
             eprintln!("Failed to create model provider: {}", e);
@@ -146,15 +146,15 @@ fn is_valid_url(url: &str) -> bool {
     reqwest::Url::parse(url).is_ok()
 }
 
-pub async fn update_model_provider(
+pub async fn update_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-    Json(request): Json<UpdateModelProviderRequest>,
-) -> ApiResult<Json<ModelProvider>> {
+    Json(request): Json<UpdateProviderRequest>,
+) -> ApiResult<Json<Provider>> {
     // If trying to enable the provider, validate requirements
     if let Some(true) = request.enabled {
         // Get the current provider to check its state
-        match model_providers::get_model_provider_by_id(provider_id).await {
+        match model_providers::get_provider_by_id(provider_id).await {
             Ok(Some(current_provider)) => {
                 // Check if provider type requires API key and base URL
                 if current_provider.provider_type != "candle" {
@@ -235,7 +235,7 @@ pub async fn update_model_provider(
         }
     }
 
-    match model_providers::update_model_provider(provider_id, request).await {
+    match model_providers::update_provider(provider_id, request).await {
         Ok(Some(provider)) => Ok(Json(provider)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -245,11 +245,11 @@ pub async fn update_model_provider(
     }
 }
 
-pub async fn delete_model_provider(
+pub async fn delete_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    match model_providers::delete_model_provider(provider_id).await {
+    match model_providers::delete_provider(provider_id).await {
         Ok(Ok(true)) => Ok(StatusCode::NO_CONTENT),
         Ok(Ok(false)) => Err(AppError::not_found("Resource")),
         Ok(Err(error_message)) => {
@@ -270,11 +270,11 @@ pub async fn delete_model_provider(
     }
 }
 
-pub async fn clone_model_provider(
+pub async fn clone_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult<Json<ModelProvider>> {
-    match model_providers::clone_model_provider(provider_id).await {
+) -> ApiResult<Json<Provider>> {
+    match model_providers::clone_provider(provider_id).await {
         Ok(Some(provider)) => Ok(Json(provider)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -289,7 +289,7 @@ pub async fn create_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
     Json(request): Json<CreateModelRequest>,
-) -> ApiResult<Json<ModelProviderModel>> {
+) -> ApiResult<Json<Model>> {
     match model_providers::create_model(provider_id, request).await {
         Ok(model) => Ok(Json(model)),
         Err(e) => {
@@ -310,7 +310,7 @@ pub async fn update_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateModelRequest>,
-) -> ApiResult<Json<ModelProviderModel>> {
+) -> ApiResult<Json<Model>> {
     match model_providers::update_model(model_id, request).await {
         Ok(Some(model)) => Ok(Json(model)),
         Ok(None) => Err(AppError::not_found("Resource")),
@@ -336,7 +336,7 @@ pub async fn delete_model(
     };
 
     // Get the provider to check if it's a Candle provider
-    let provider = match model_providers::get_model_provider_by_id(model.provider_id).await {
+    let provider = match model_providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err(AppError::not_found("Model provider")),
         Err(e) => {
@@ -407,7 +407,7 @@ pub async fn delete_model(
 pub async fn get_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult<Json<ModelProviderModel>> {
+) -> ApiResult<Json<Model>> {
     match model_providers::get_model_by_id(model_id).await {
         Ok(Some(model)) => Ok(Json(model)),
         Ok(None) => Err(AppError::not_found("Resource")),
@@ -422,15 +422,15 @@ pub async fn get_model(
 pub async fn test_model_provider_proxy_connection(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(_provider_id): Path<Uuid>,
-    Json(request): Json<ModelProviderProxySettings>,
-) -> ApiResult<Json<TestModelProviderProxyResponse>> {
+    Json(request): Json<ProviderProxySettings>,
+) -> ApiResult<Json<TestProviderProxyResponse>> {
     // Test the proxy connection by making a simple HTTP request through the proxy
     match test_proxy_connectivity_for_provider(&request).await {
-        Ok(()) => Ok(Json(TestModelProviderProxyResponse {
+        Ok(()) => Ok(Json(TestProviderProxyResponse {
             success: true,
             message: "Proxy connection successful".to_string(),
         })),
-        Err(e) => Ok(Json(TestModelProviderProxyResponse {
+        Err(e) => Ok(Json(TestProviderProxyResponse {
             success: false,
             message: format!("Proxy connection failed: {}", e),
         })),
@@ -438,7 +438,7 @@ pub async fn test_model_provider_proxy_connection(
 }
 
 async fn test_proxy_connectivity_for_provider(
-    proxy_config: &ModelProviderProxySettings,
+    proxy_config: &ProviderProxySettings,
 ) -> ApiResult<()> {
     // Validate proxy URL format
     if proxy_config.url.trim().is_empty() {
@@ -585,7 +585,7 @@ pub async fn start_model(
     })?;
     let pool = pool.as_ref();
 
-    let model_row: Option<crate::database::models::ModelProviderModelDb> =
+    let model_row: Option<crate::database::models::ModelDb> =
         sqlx::query_as("SELECT * FROM model_provider_models WHERE id = $1")
             .bind(model_id)
             .fetch_optional(pool)
@@ -598,7 +598,7 @@ pub async fn start_model(
     let model = model_row.ok_or_else(|| AppError::not_found("Model"))?;
 
     // Get the provider to check if it's a Candle provider
-    let provider = match model_providers::get_model_provider_by_id(model.provider_id).await {
+    let provider = match model_providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err(AppError::not_found("Model provider")),
         Err(e) => {
@@ -768,7 +768,7 @@ pub async fn stop_model(
     })?;
     let pool = pool.as_ref();
 
-    let model_row: Option<crate::database::models::ModelProviderModelDb> =
+    let model_row: Option<crate::database::models::ModelDb> =
         sqlx::query_as("SELECT * FROM model_provider_models WHERE id = $1")
             .bind(model_id)
             .fetch_optional(pool)
@@ -781,7 +781,7 @@ pub async fn stop_model(
     let model = model_row.ok_or_else(|| AppError::not_found("Model"))?;
 
     // Get the provider to check if it's a Candle provider
-    let provider = match model_providers::get_model_provider_by_id(model.provider_id).await {
+    let provider = match model_providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err(AppError::not_found("Model provider")),
         Err(e) => {
@@ -932,10 +932,10 @@ pub async fn disable_model(
 pub async fn list_provider_models(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult<Json<Vec<ModelProviderModel>>> {
+) -> ApiResult<Json<Vec<Model>>> {
     // First verify the user has access to this provider
     let user_providers =
-        match user_group_model_providers::get_model_providers_for_user(auth_user.user.id).await {
+        match user_group_model_providers::get_providers_for_user(auth_user.user.id).await {
             Ok(providers) => providers,
             Err(e) => {
                 eprintln!(

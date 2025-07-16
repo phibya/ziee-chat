@@ -111,7 +111,7 @@ pub struct UserGroup {
     pub name: String,
     pub description: Option<String>,
     pub permissions: serde_json::Value,
-    pub model_provider_ids: Vec<Uuid>,
+    pub provider_ids: Vec<Uuid>,
     pub is_protected: bool,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
@@ -202,7 +202,7 @@ pub struct UserSettingsResponse {
 
 // User group model provider relationship
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserGroupModelProviderDb {
+pub struct UserGroupProviderDb {
     pub id: Uuid,
     pub group_id: Uuid,
     pub provider_id: Uuid,
@@ -210,18 +210,18 @@ pub struct UserGroupModelProviderDb {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AssignModelProviderToGroupRequest {
+pub struct AssignProviderToGroupRequest {
     pub group_id: Uuid,
     pub provider_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserGroupModelProviderResponse {
+pub struct UserGroupProviderResponse {
     pub id: Uuid,
     pub group_id: Uuid,
     pub provider_id: Uuid,
     pub assigned_at: DateTime<Utc>,
-    pub provider: ModelProvider,
+    pub provider: Provider,
     pub group: UserGroup,
 }
 
@@ -231,7 +231,7 @@ pub struct CreateUserGroupRequest {
     pub name: String,
     pub description: Option<String>,
     pub permissions: serde_json::Value,
-    pub model_provider_ids: Option<Vec<Uuid>>,
+    pub provider_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,7 +239,7 @@ pub struct UpdateUserGroupRequest {
     pub name: Option<String>,
     pub description: Option<String>,
     pub permissions: Option<serde_json::Value>,
-    pub model_provider_ids: Option<Vec<Uuid>>,
+    pub provider_ids: Option<Vec<Uuid>>,
     pub is_active: Option<bool>,
 }
 
@@ -282,7 +282,7 @@ pub struct UserGroupListResponse {
 
 // Model provider structures
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct ModelProviderDb {
+pub struct ProviderDb {
     pub id: Uuid,
     pub name: String,
     pub provider_type: String,
@@ -296,11 +296,11 @@ pub struct ModelProviderDb {
     pub updated_at: DateTime<Utc>,
 }
 
-impl ModelProviderDb {
-    /// Parse the settings JSON into a typed ModelProviderSettings struct
-    pub fn parse_settings(&self) -> Result<ModelProviderSettings, String> {
+impl ProviderDb {
+    /// Parse the settings JSON into a typed ProviderSettings struct
+    pub fn parse_settings(&self) -> Result<ProviderSettings, String> {
         if self.settings.is_null() {
-            return Ok(ModelProviderSettings::default());
+            return Ok(ProviderSettings::default());
         }
 
         serde_json::from_value(self.settings.clone())
@@ -308,21 +308,21 @@ impl ModelProviderDb {
     }
 
     /// Get the settings for this provider, or return default settings if parsing fails
-    pub fn get_settings(&self) -> ModelProviderSettings {
+    pub fn get_settings(&self) -> ProviderSettings {
         self.parse_settings().unwrap_or_default()
     }
 
     /// Get validated settings, returning an error if invalid
-    pub fn get_validated_settings(&self) -> Result<ModelProviderSettings, String> {
+    pub fn get_validated_settings(&self) -> Result<ProviderSettings, String> {
         let settings = self.parse_settings()?;
         settings.validate()?;
         Ok(settings)
     }
 
-    /// Parse the proxy_settings JSON into a typed ModelProviderProxySettings struct
-    pub fn parse_proxy_settings(&self) -> Result<ModelProviderProxySettings, String> {
+    /// Parse the proxy_settings JSON into a typed ProviderProxySettings struct
+    pub fn parse_proxy_settings(&self) -> Result<ProviderProxySettings, String> {
         if self.proxy_settings.is_null() {
-            return Ok(ModelProviderProxySettings::default());
+            return Ok(ProviderProxySettings::default());
         }
 
         serde_json::from_value(self.proxy_settings.clone())
@@ -330,13 +330,13 @@ impl ModelProviderDb {
     }
 
     /// Get the proxy settings for this provider, or return default settings if parsing fails
-    pub fn get_proxy_settings(&self) -> ModelProviderProxySettings {
+    pub fn get_proxy_settings(&self) -> ProviderProxySettings {
         self.parse_proxy_settings().unwrap_or_default()
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct ModelProviderModelDb {
+pub struct ModelDb {
     pub id: Uuid,
     pub provider_id: Uuid,
     pub name: String,
@@ -360,7 +360,7 @@ pub struct ModelProviderModelDb {
     pub device_ids: Option<serde_json::Value>, // JSON array of device IDs for multi-GPU
 }
 
-impl ModelProviderModelDb {
+impl ModelDb {
     /// Get the model path using the pattern {provider_id}/{id}
     pub fn get_model_path(&self) -> String {
         format!("models/{}/{}", self.provider_id, self.id)
@@ -369,7 +369,7 @@ impl ModelProviderModelDb {
 
 // API structures for model providers
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ModelProviderProxySettings {
+pub struct ProviderProxySettings {
     #[serde(default)]
     pub enabled: bool,
     #[serde(default)]
@@ -394,7 +394,7 @@ pub struct ModelProviderProxySettings {
 
 /// Typed settings for model provider performance and batching configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ModelProviderSettings {
+pub struct ProviderSettings {
     /// Enable context shift to handle long prompts by shifting the context window
     #[serde(default)]
     pub enable_context_shift: bool,
@@ -464,7 +464,7 @@ pub struct ModelProviderSettings {
     pub max_queue_size: usize,
 }
 
-// Default value functions for ModelProviderSettings
+// Default value functions for ProviderSettings
 fn default_batch_threads() -> usize {
     4
 }
@@ -511,13 +511,13 @@ fn default_max_queue_size() -> usize {
     100
 }
 
-impl ModelProviderSettings {
-    /// Create a new ModelProviderSettings with default values
+impl ProviderSettings {
+    /// Create a new ProviderSettings with default values
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create ModelProviderSettings optimized for high throughput
+    /// Create ProviderSettings optimized for high throughput
     pub fn high_throughput() -> Self {
         Self {
             enable_context_shift: true,
@@ -540,7 +540,7 @@ impl ModelProviderSettings {
         }
     }
 
-    /// Create ModelProviderSettings optimized for low latency
+    /// Create ProviderSettings optimized for low latency
     pub fn low_latency() -> Self {
         Self {
             enable_context_shift: false,
@@ -646,7 +646,7 @@ impl ModelProviderSettings {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelProvider {
+pub struct Provider {
     pub id: Uuid,
     pub name: String,
     #[serde(rename = "type")]
@@ -654,21 +654,21 @@ pub struct ModelProvider {
     pub enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<ModelProviderSettings>,
-    pub proxy_settings: Option<ModelProviderProxySettings>,
+    pub settings: Option<ProviderSettings>,
+    pub proxy_settings: Option<ProviderProxySettings>,
     pub is_default: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
-impl ModelProvider {
+impl Provider {
     /// Get the settings for this provider, or return default settings if none are set
-    pub fn get_settings(&self) -> ModelProviderSettings {
+    pub fn get_settings(&self) -> ProviderSettings {
         self.settings.clone().unwrap_or_default()
     }
 
     /// Get validated settings, returning an error if invalid
-    pub fn get_validated_settings(&self) -> Result<ModelProviderSettings, String> {
+    pub fn get_validated_settings(&self) -> Result<ProviderSettings, String> {
         let settings = self.get_settings();
         settings.validate()?;
         Ok(settings)
@@ -676,7 +676,7 @@ impl ModelProvider {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelProviderModel {
+pub struct Model {
     pub id: Uuid,
     pub name: String,
     pub alias: String,
@@ -702,25 +702,25 @@ pub struct ModelProviderModel {
 
 // Request/Response structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateModelProviderRequest {
+pub struct CreateProviderRequest {
     pub name: String,
     #[serde(rename = "type")]
     pub provider_type: String,
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<ModelProviderSettings>,
-    pub proxy_settings: Option<ModelProviderProxySettings>,
+    pub settings: Option<ProviderSettings>,
+    pub proxy_settings: Option<ProviderProxySettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateModelProviderRequest {
+pub struct UpdateProviderRequest {
     pub name: Option<String>,
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<ModelProviderSettings>,
-    pub proxy_settings: Option<ModelProviderProxySettings>,
+    pub settings: Option<ProviderSettings>,
+    pub proxy_settings: Option<ProviderProxySettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -767,17 +767,17 @@ pub struct AvailableDevicesResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelProviderListResponse {
-    pub providers: Vec<ModelProvider>,
+pub struct ProviderListResponse {
+    pub providers: Vec<Provider>,
     pub total: i64,
     pub page: i32,
     pub per_page: i32,
 }
 
-// TestModelProviderProxyRequest removed - now using ModelProviderProxySettings directly
+// TestProviderProxyRequest removed - now using ProviderProxySettings directly
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TestModelProviderProxyResponse {
+pub struct TestProviderProxyResponse {
     pub success: bool,
     pub message: String,
 }
@@ -1046,7 +1046,7 @@ impl User {
                     name: g.name,
                     description: g.description,
                     permissions: g.permissions,
-                    model_provider_ids: vec![], // TODO: Fetch actual model provider IDs asynchronously
+                    provider_ids: vec![], // TODO: Fetch actual provider IDs asynchronously
                     is_protected: g.is_protected,
                     is_active: g.is_active,
                     created_at: g.created_at,
@@ -1292,7 +1292,7 @@ pub struct ModelUploadResponse {
 
 #[derive(Debug, Serialize)]
 pub struct ModelListResponse {
-    pub models: Vec<ModelProviderModel>,
+    pub models: Vec<Model>,
     pub total: i64,
     pub page: i32,
     pub per_page: i32,
@@ -1301,7 +1301,7 @@ pub struct ModelListResponse {
 
 #[derive(Debug, Serialize)]
 pub struct ModelDetailsResponse {
-    pub model: ModelProviderModel,
+    pub model: Model,
     pub files: Vec<ModelFileInfo>,
     pub storage_size_bytes: u64,
     pub validation_issues: Vec<String>,
@@ -1332,13 +1332,13 @@ pub struct ModelStatusCounts {
     pub disabled: i64,
 }
 
-impl ModelProviderModel {
+impl Model {
     /// Get the model path using the pattern {provider_id}/{id}
     pub fn get_model_path(&self, provider_id: &Uuid) -> String {
         format!("models/{}/{}", provider_id, self.id)
     }
 
-    pub fn from_db(model_db: ModelProviderModelDb, files: Option<Vec<ModelFileDb>>) -> Self {
+    pub fn from_db(model_db: ModelDb, files: Option<Vec<ModelFileDb>>) -> Self {
         let validation_issues = model_db
             .validation_issues
             .as_ref()

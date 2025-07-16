@@ -9,8 +9,8 @@ use uuid::Uuid;
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        AssignModelProviderToGroupRequest, AssignUserToGroupRequest, CreateUserGroupRequest,
-        UpdateUserGroupRequest, UserGroupModelProviderResponse,
+        AssignProviderToGroupRequest, AssignUserToGroupRequest, CreateUserGroupRequest,
+        UpdateUserGroupRequest, UserGroupProviderResponse,
     },
     queries::{user_group_model_providers, user_groups},
 };
@@ -31,14 +31,14 @@ pub async fn create_user_group(
     {
         Ok(group) => {
             // If model_provider_ids are provided, assign them to the group
-            if let Some(provider_ids) = request.model_provider_ids {
+            if let Some(provider_ids) = request.provider_ids {
                 for provider_id in provider_ids {
-                    let assign_request = AssignModelProviderToGroupRequest {
+                    let assign_request = AssignProviderToGroupRequest {
                         group_id: group.id,
                         provider_id,
                     };
                     if let Err(e) =
-                        user_group_model_providers::assign_model_provider_to_group(assign_request)
+                        user_group_model_providers::assign_provider_to_group(assign_request)
                             .await
                     {
                         eprintln!("Error assigning model provider to group: {}", e);
@@ -103,17 +103,17 @@ pub async fn update_user_group(
     Json(request): Json<UpdateUserGroupRequest>,
 ) -> Result<Json<crate::database::models::UserGroup>, StatusCode> {
     // Handle model provider assignments if provided
-    if let Some(provider_ids) = &request.model_provider_ids {
+    if let Some(provider_ids) = &request.provider_ids {
         // First, get current assignments
         let current_providers =
-            user_group_model_providers::get_model_provider_ids_for_group(group_id)
+            user_group_model_providers::get_provider_ids_for_group(group_id)
                 .await
                 .unwrap_or_default();
 
         // Remove providers that are no longer in the list
         for current_provider in &current_providers {
             if !provider_ids.contains(current_provider) {
-                if let Err(e) = user_group_model_providers::remove_model_provider_from_group(
+                if let Err(e) = user_group_model_providers::remove_provider_from_group(
                     group_id,
                     *current_provider,
                 )
@@ -127,12 +127,12 @@ pub async fn update_user_group(
         // Add new providers
         for provider_id in provider_ids {
             if !current_providers.contains(provider_id) {
-                let assign_request = AssignModelProviderToGroupRequest {
+                let assign_request = AssignProviderToGroupRequest {
                     group_id,
                     provider_id: *provider_id,
                 };
                 if let Err(e) =
-                    user_group_model_providers::assign_model_provider_to_group(assign_request).await
+                    user_group_model_providers::assign_provider_to_group(assign_request).await
                 {
                     eprintln!("Error assigning model provider to group: {}", e);
                 }
@@ -227,11 +227,11 @@ pub async fn get_group_members(
 }
 
 // Get model providers for a group
-pub async fn get_group_model_providers(
+pub async fn get_group_providers(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
-) -> Result<Json<Vec<crate::database::models::ModelProvider>>, StatusCode> {
-    match user_group_model_providers::get_model_providers_for_group(group_id).await {
+) -> Result<Json<Vec<crate::database::models::Provider>>, StatusCode> {
+    match user_group_model_providers::get_providers_for_group(group_id).await {
         Ok(providers) => Ok(Json(providers)),
         Err(e) => {
             eprintln!("Error getting model providers for group: {}", e);
@@ -241,11 +241,11 @@ pub async fn get_group_model_providers(
 }
 
 // Assign model provider to group
-pub async fn assign_model_provider_to_group(
+pub async fn assign_provider_to_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-    Json(request): Json<AssignModelProviderToGroupRequest>,
-) -> Result<Json<UserGroupModelProviderResponse>, StatusCode> {
-    match user_group_model_providers::assign_model_provider_to_group(request).await {
+    Json(request): Json<AssignProviderToGroupRequest>,
+) -> Result<Json<UserGroupProviderResponse>, StatusCode> {
+    match user_group_model_providers::assign_provider_to_group(request).await {
         Ok(response) => Ok(Json(response)),
         Err(e) => {
             eprintln!("Error assigning model provider to group: {}", e);
@@ -261,11 +261,11 @@ pub async fn assign_model_provider_to_group(
 }
 
 // Remove model provider from group
-pub async fn remove_model_provider_from_group(
+pub async fn remove_provider_from_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path((group_id, provider_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, StatusCode> {
-    match user_group_model_providers::remove_model_provider_from_group(group_id, provider_id).await
+    match user_group_model_providers::remove_provider_from_group(group_id, provider_id).await
     {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
         Ok(false) => Err(StatusCode::NOT_FOUND),
@@ -279,7 +279,7 @@ pub async fn remove_model_provider_from_group(
 // List all user group model provider relationships
 pub async fn list_user_group_model_provider_relationships(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<Vec<UserGroupModelProviderResponse>>, StatusCode> {
+) -> Result<Json<Vec<UserGroupProviderResponse>>, StatusCode> {
     match user_group_model_providers::list_user_group_model_provider_relationships().await {
         Ok(relationships) => Ok(Json(relationships)),
         Err(e) => {

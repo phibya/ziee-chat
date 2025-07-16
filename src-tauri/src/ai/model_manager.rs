@@ -1,4 +1,4 @@
-use crate::database::models::ModelProviderModelDb;
+use crate::database::models::ModelDb;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -154,10 +154,10 @@ impl ModelManager {
     /// Start a model server process
     pub async fn start_model(
         &self,
-        model: &ModelProviderModelDb,
+        model: &ModelDb,
     ) -> Result<ModelStartResult, ModelManagerError> {
         // Get the provider information to access its settings
-        let provider = match crate::database::queries::model_providers::get_model_provider_by_id(model.provider_id).await {
+        let provider = match crate::database::queries::model_providers::get_provider_by_id(model.provider_id).await {
             Ok(Some(provider)) => provider,
             Ok(None) => return Err(ModelManagerError::ModelNotFound(
                 format!("Provider {} not found", model.provider_id)

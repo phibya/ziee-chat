@@ -28,10 +28,10 @@ pub mod permissions {
     pub const SETTINGS_DELETE: &str = "settings::delete";
 
     // Model provider permissions
-    pub const MODEL_PROVIDERS_READ: &str = "config::model-providers::read";
-    pub const MODEL_PROVIDERS_EDIT: &str = "config::model-providers::edit";
-    pub const MODEL_PROVIDERS_DELETE: &str = "config::model-providers::delete";
-    pub const MODEL_PROVIDERS_CREATE: &str = "config::model-providers::create";
+    pub const PROVIDERS_READ: &str = "config::providers::read";
+    pub const PROVIDERS_EDIT: &str = "config::providers::edit";
+    pub const PROVIDERS_DELETE: &str = "config::providers::delete";
+    pub const PROVIDERS_CREATE: &str = "config::providers::create";
 
     // Wildcard permissions
     pub const ALL: &str = "*";

@@ -31,7 +31,7 @@ use crate::database::{
     queries::{
         assistants::get_assistant_by_id,
         chat,
-        model_providers::{get_model_by_id, get_model_provider_by_id, get_provider_id_by_model_id},
+        model_providers::{get_model_by_id, get_provider_by_id, get_provider_id_by_model_id},
     },
 };
 
@@ -207,7 +207,7 @@ pub async fn send_message_stream(
         };
 
         // Get the model provider configuration
-        let provider = match get_model_provider_by_id(provider_id).await {
+        let provider = match get_provider_by_id(provider_id).await {
             Ok(Some(provider)) => {
                 println!("DEBUG: Found provider: {:?}", provider.name);
                 provider
@@ -564,7 +564,7 @@ async fn stream_ai_response(
     };
 
     // Get the model provider configuration
-    let provider = match get_model_provider_by_id(provider_id).await {
+    let provider = match get_provider_by_id(provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => {
             let _ = tx.send(Ok(Event::default().event("error").data(
@@ -989,7 +989,7 @@ pub async fn search_conversations(
 
 /// Helper function to create proxy configuration from model provider settings
 fn create_proxy_config(
-    proxy_settings: &crate::database::models::ModelProviderProxySettings,
+    proxy_settings: &crate::database::models::ProviderProxySettings,
 ) -> Option<ProxyConfig> {
     if proxy_settings.enabled {
         Some(ProxyConfig {
@@ -1019,14 +1019,14 @@ fn create_proxy_config(
 
 /// Helper function to create AI provider instances
 fn create_ai_provider(
-    provider: &crate::database::models::ModelProvider,
+    provider: &crate::database::models::Provider,
 ) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
     create_ai_provider_with_model_id(provider, None)
 }
 
 /// Helper function to create AI provider instances with optional model ID for Candle providers
 fn create_ai_provider_with_model_id(
-    provider: &crate::database::models::ModelProvider,
+    provider: &crate::database::models::Provider,
     model_id: Option<Uuid>,
 ) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
     let proxy_config = provider
@@ -1141,8 +1141,8 @@ pub async fn get_conversation_messages_by_branch(
 async fn generate_and_update_conversation_title(
     conversation_id: Uuid,
     user_id: Uuid,
-    provider: &crate::database::models::ModelProvider,
-    model: &crate::database::models::ModelProviderModel,
+    provider: &crate::database::models::Provider,
+    model: &crate::database::models::Model,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Get the first user message from the conversation
     let messages = chat::get_conversation_messages(conversation_id, user_id).await?;

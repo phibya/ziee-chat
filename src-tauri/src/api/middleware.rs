@@ -244,56 +244,56 @@ pub async fn settings_delete_middleware(req: Request, next: Next) -> Result<Resp
     Ok(next.run(req).await)
 }
 
-/// Middleware that checks for config::model-providers::read permission
+/// Middleware that checks for config::providers::read permission
 pub async fn model_providers_read_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
-    if !check_permission(user, permissions::MODEL_PROVIDERS_READ) {
+    if !check_permission(user, permissions::PROVIDERS_READ) {
         return Err(StatusCode::FORBIDDEN);
     }
 
     Ok(next.run(req).await)
 }
 
-/// Middleware that checks for config::model-providers::edit permission
+/// Middleware that checks for config::providers::edit permission
 pub async fn model_providers_edit_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
-    if !check_permission(user, permissions::MODEL_PROVIDERS_EDIT) {
+    if !check_permission(user, permissions::PROVIDERS_EDIT) {
         return Err(StatusCode::FORBIDDEN);
     }
 
     Ok(next.run(req).await)
 }
 
-/// Middleware that checks for config::model-providers::create permission
+/// Middleware that checks for config::providers::create permission
 pub async fn model_providers_create_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
-    if !check_permission(user, permissions::MODEL_PROVIDERS_CREATE) {
+    if !check_permission(user, permissions::PROVIDERS_CREATE) {
         return Err(StatusCode::FORBIDDEN);
     }
 
     Ok(next.run(req).await)
 }
 
-/// Middleware that checks for config::model-providers::delete permission
+/// Middleware that checks for config::providers::delete permission
 pub async fn model_providers_delete_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
-    if !check_permission(user, permissions::MODEL_PROVIDERS_DELETE) {
+    if !check_permission(user, permissions::PROVIDERS_DELETE) {
         return Err(StatusCode::FORBIDDEN);
     }
 

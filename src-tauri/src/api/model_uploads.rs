@@ -311,7 +311,7 @@ pub async fn upload_model_file_multipart(
 pub async fn commit_uploaded_files(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CommitUploadRequest>,
-) -> ApiResult<Json<ModelProviderModel>> {
+) -> ApiResult<Json<Model>> {
     let pool = get_database_pool()?;
     let storage = ModelStorage::new()
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
@@ -714,7 +714,7 @@ pub async fn update_model_status(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateModelStatusRequest>,
-) -> ApiResult<Json<ModelProviderModel>> {
+) -> ApiResult<Json<Model>> {
     let pool = get_database_pool()?;
 
     // Update model status

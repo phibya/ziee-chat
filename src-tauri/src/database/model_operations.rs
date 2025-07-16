@@ -10,7 +10,7 @@ impl ModelOperations {
     pub async fn create_model(
         pool: &PgPool,
         request: &CreateModelRequest,
-    ) -> Result<ModelProviderModelDb, sqlx::Error> {
+    ) -> Result<ModelDb, sqlx::Error> {
         let model_id = Uuid::new_v4();
         let now = Utc::now();
 
@@ -59,7 +59,7 @@ impl ModelOperations {
         .fetch_one(pool)
         .await?;
 
-        let model = ModelProviderModelDb {
+        let model = ModelDb {
             id: row.get("id"),
             provider_id: row.get("provider_id"),
             name: row.get("name"),
@@ -90,7 +90,7 @@ impl ModelOperations {
         pool: &PgPool,
         request: &CreateModelRequest,
         architecture: Option<&str>,
-    ) -> Result<ModelProviderModelDb, sqlx::Error> {
+    ) -> Result<ModelDb, sqlx::Error> {
         let model_id = Uuid::new_v4();
         let now = Utc::now();
 
@@ -139,7 +139,7 @@ impl ModelOperations {
         .fetch_one(pool)
         .await?;
 
-        let model = ModelProviderModelDb {
+        let model = ModelDb {
             id: row.get("id"),
             provider_id: row.get("provider_id"),
             name: row.get("name"),
@@ -169,7 +169,7 @@ impl ModelOperations {
     pub async fn get_model_by_id(
         pool: &PgPool,
         model_id: &Uuid,
-    ) -> Result<Option<ModelProviderModelDb>, sqlx::Error> {
+    ) -> Result<Option<ModelDb>, sqlx::Error> {
         let row = sqlx::query(
             "SELECT id, provider_id, name, alias, description, 
                     architecture, quantization, file_size_bytes, checksum, enabled, 
@@ -182,7 +182,7 @@ impl ModelOperations {
         .await?;
 
         if let Some(row) = row {
-            let model = ModelProviderModelDb {
+            let model = ModelDb {
                 id: row.get("id"),
                 provider_id: row.get("provider_id"),
                 name: row.get("name"),
@@ -216,7 +216,7 @@ impl ModelOperations {
         provider_id: &Uuid,
         page: i32,
         per_page: i32,
-    ) -> Result<(Vec<ModelProviderModelDb>, i64), sqlx::Error> {
+    ) -> Result<(Vec<ModelDb>, i64), sqlx::Error> {
         let offset = (page - 1) * per_page;
 
         let rows = sqlx::query(
@@ -239,7 +239,7 @@ impl ModelOperations {
 
         let mut models = Vec::new();
         for row in rows {
-            let model = ModelProviderModelDb {
+            let model = ModelDb {
                 id: row.get("id"),
                 provider_id: row.get("provider_id"),
                 name: row.get("name"),
@@ -532,12 +532,12 @@ impl ModelOperations {
     pub async fn get_model_with_files(
         pool: &PgPool,
         model_id: &Uuid,
-    ) -> Result<Option<ModelProviderModel>, sqlx::Error> {
+    ) -> Result<Option<Model>, sqlx::Error> {
         let model_db = Self::get_model_by_id(pool, model_id).await?;
 
         if let Some(model_db) = model_db {
             let files = Self::get_model_files(pool, model_id).await?;
-            Ok(Some(ModelProviderModel::from_db(model_db, Some(files))))
+            Ok(Some(Model::from_db(model_db, Some(files))))
         } else {
             Ok(None)
         }
@@ -549,14 +549,14 @@ impl ModelOperations {
         provider_id: &Uuid,
         page: i32,
         per_page: i32,
-    ) -> Result<(Vec<ModelProviderModel>, i64), sqlx::Error> {
+    ) -> Result<(Vec<Model>, i64), sqlx::Error> {
         let (model_dbs, total) =
             Self::list_models_for_provider(pool, provider_id, page, per_page).await?;
 
         let mut models = Vec::new();
         for model_db in model_dbs {
             let files = Self::get_model_files(pool, &model_db.id).await?;
-            models.push(ModelProviderModel::from_db(model_db, Some(files)));
+            models.push(Model::from_db(model_db, Some(files)));
         }
 
         Ok((models, total))

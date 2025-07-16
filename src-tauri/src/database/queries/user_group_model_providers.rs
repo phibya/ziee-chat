@@ -1,25 +1,25 @@
 use uuid::Uuid;
 
 use crate::database::queries::{
-    model_providers::get_model_provider_by_id, user_groups::get_user_group_by_id,
+  model_providers::get_provider_by_id, user_groups::get_user_group_by_id,
 };
 use crate::database::{
-    get_database_pool,
-    models::{
-        AssignModelProviderToGroupRequest, ModelProvider, UserGroup, UserGroupModelProviderDb,
-        UserGroupModelProviderResponse,
-    },
+  get_database_pool,
+  models::{
+    AssignProviderToGroupRequest, Provider, UserGroup, UserGroupProviderDb,
+    UserGroupProviderResponse,
+  },
 };
 
-/// Assign a model provider to a user group
-pub async fn assign_model_provider_to_group(
-    request: AssignModelProviderToGroupRequest,
-) -> Result<UserGroupModelProviderResponse, sqlx::Error> {
+/// Assign a provider to a user group
+pub async fn assign_provider_to_group(
+    request: AssignProviderToGroupRequest,
+) -> Result<UserGroupProviderResponse, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
     // First validate that both the provider and group exist before inserting
-    let provider = get_model_provider_by_id(request.provider_id)
+    let provider = get_provider_by_id(request.provider_id)
         .await?
         .ok_or_else(|| {
             eprintln!("Model provider not found: {}", request.provider_id);
@@ -51,7 +51,7 @@ pub async fn assign_model_provider_to_group(
     }
 
     let relationship_id = Uuid::new_v4();
-    let relationship_row: UserGroupModelProviderDb = sqlx::query_as(
+    let relationship_row: UserGroupProviderDb = sqlx::query_as(
         "INSERT INTO user_group_model_providers (id, group_id, provider_id) 
          VALUES ($1, $2, $3) 
          RETURNING id, group_id, provider_id, assigned_at",
@@ -62,7 +62,7 @@ pub async fn assign_model_provider_to_group(
     .fetch_one(pool)
     .await?;
 
-    Ok(UserGroupModelProviderResponse {
+    Ok(UserGroupProviderResponse {
         id: relationship_row.id,
         group_id: relationship_row.group_id,
         provider_id: relationship_row.provider_id,
@@ -72,8 +72,8 @@ pub async fn assign_model_provider_to_group(
     })
 }
 
-/// Remove a model provider from a user group
-pub async fn remove_model_provider_from_group(
+/// Remove a provider from a user group
+pub async fn remove_provider_from_group(
     group_id: Uuid,
     provider_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
@@ -92,8 +92,8 @@ pub async fn remove_model_provider_from_group(
     Ok(result.rows_affected() > 0)
 }
 
-/// Get model provider IDs assigned to a user group
-pub async fn get_model_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>, sqlx::Error> {
+/// Get provider IDs assigned to a user group
+pub async fn get_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -106,10 +106,8 @@ pub async fn get_model_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid
     Ok(provider_ids.into_iter().map(|(id,)| id).collect())
 }
 
-/// Get all model providers assigned to a user group
-pub async fn get_model_providers_for_group(
-    group_id: Uuid,
-) -> Result<Vec<ModelProvider>, sqlx::Error> {
+/// Get all providers assigned to a user group
+pub async fn get_providers_for_group(group_id: Uuid) -> Result<Vec<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -121,7 +119,7 @@ pub async fn get_model_providers_for_group(
 
     let mut providers = Vec::new();
     for (provider_id,) in provider_ids {
-        if let Some(provider) = get_model_provider_by_id(provider_id).await? {
+        if let Some(provider) = get_provider_by_id(provider_id).await? {
             providers.push(provider);
         }
     }
@@ -153,14 +151,12 @@ pub async fn get_groups_for_model_provider(
 }
 
 /// Get all model providers available to a user based on their group memberships
-/// Users with config::model-providers::read permission get access to all providers
-pub async fn get_model_providers_for_user(
-    user_id: Uuid,
-) -> Result<Vec<ModelProvider>, sqlx::Error> {
+/// Users with config::providers::read permission get access to all providers
+pub async fn get_providers_for_user(user_id: Uuid) -> Result<Vec<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    // First check if the user has config::model-providers::read permission
+    // First check if the user has config::providers::read permission
     let has_read_permission = check_user_model_providers_read_permission(user_id).await?;
 
     if has_read_permission {
@@ -182,7 +178,7 @@ pub async fn get_model_providers_for_user(
 
     let mut providers = Vec::new();
     for (provider_id,) in provider_ids {
-        if let Some(provider) = get_model_provider_by_id(provider_id).await? {
+        if let Some(provider) = get_provider_by_id(provider_id).await? {
             providers.push(provider);
         }
     }
@@ -190,12 +186,12 @@ pub async fn get_model_providers_for_user(
     Ok(providers)
 }
 
-/// Check if a user has config::model-providers::read permission
+/// Check if a user has config::providers::read permission
 async fn check_user_model_providers_read_permission(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    // Check if user belongs to any active group with config::model-providers::read permission
+    // Check if user belongs to any active group with config::providers::read permission
     let has_permission: Option<(bool,)> = sqlx::query_as(
         "SELECT true 
          FROM user_group_memberships ugm
@@ -210,8 +206,8 @@ async fn check_user_model_providers_read_permission(user_id: Uuid) -> Result<boo
          LIMIT 1",
     )
     .bind(user_id)
-    .bind(serde_json::json!(["config::model-providers::read"]))
-    .bind(serde_json::json!(["config::model-providers::*"]))
+    .bind(serde_json::json!(["config::providers::read"]))
+    .bind(serde_json::json!(["config::providers::*"]))
     .bind(serde_json::json!(["*"]))
     .fetch_optional(pool)
     .await?;
@@ -220,7 +216,7 @@ async fn check_user_model_providers_read_permission(user_id: Uuid) -> Result<boo
 }
 
 /// Get all model providers (for admin users)
-async fn get_all_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
+async fn get_all_model_providers() -> Result<Vec<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -231,7 +227,7 @@ async fn get_all_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
 
     let mut providers = Vec::new();
     for (provider_id,) in provider_ids {
-        if let Some(provider) = get_model_provider_by_id(provider_id).await? {
+        if let Some(provider) = get_provider_by_id(provider_id).await? {
             providers.push(provider);
         }
     }
@@ -241,11 +237,11 @@ async fn get_all_model_providers() -> Result<Vec<ModelProvider>, sqlx::Error> {
 
 /// Get all relationships between user groups and model providers
 pub async fn list_user_group_model_provider_relationships(
-) -> Result<Vec<UserGroupModelProviderResponse>, sqlx::Error> {
+) -> Result<Vec<UserGroupProviderResponse>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let relationships: Vec<UserGroupModelProviderDb> = sqlx::query_as(
+    let relationships: Vec<UserGroupProviderDb> = sqlx::query_as(
         "SELECT id, group_id, provider_id, assigned_at 
          FROM user_group_model_providers 
          ORDER BY assigned_at DESC",
@@ -256,10 +252,10 @@ pub async fn list_user_group_model_provider_relationships(
     let mut responses = Vec::new();
     for relationship in relationships {
         if let (Some(provider), Some(group)) = (
-            get_model_provider_by_id(relationship.provider_id).await?,
+            get_provider_by_id(relationship.provider_id).await?,
             get_user_group_by_id(relationship.group_id).await?,
         ) {
-            responses.push(UserGroupModelProviderResponse {
+            responses.push(UserGroupProviderResponse {
                 id: relationship.id,
                 group_id: relationship.group_id,
                 provider_id: relationship.provider_id,
