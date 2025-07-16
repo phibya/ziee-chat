@@ -1,10 +1,10 @@
 use candle_core::{Device, Tensor};
-use candle_transformers::models::llama::{Cache, Llama, Config as LlamaConfig, LlamaEosToks};
 use candle_nn::VarBuilder;
-use tokenizers::Tokenizer;
-use std::path::Path;
-use serde_json;
+use candle_transformers::models::llama::{Cache, Config as LlamaConfig, Llama, LlamaEosToks};
 use serde::Deserialize;
+use serde_json;
+use std::path::Path;
+use tokenizers::Tokenizer;
 
 use super::candle::{CandleError, CandleModel};
 
@@ -63,7 +63,7 @@ pub struct LlamaModelWrapper {
 impl LlamaModelWrapper {
     pub fn load(model_path: &str, device: &Device) -> Result<Self, CandleError> {
         println!("Loading real Llama model from: {}", model_path);
-        
+
         // Load configuration
         let config_path = Path::new(model_path).join("config.json");
         let config_str = std::fs::read_to_string(&config_path)
@@ -71,23 +71,28 @@ impl LlamaModelWrapper {
         let config_json: ConfigJson = serde_json::from_str(&config_str)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to parse config: {}", e)))?;
         let config = config_json.to_candle_config();
-        
-        println!("Model config loaded: vocab_size={}, hidden_size={}", config.vocab_size, config.hidden_size);
-        
+
+        println!(
+            "Model config loaded: vocab_size={}, hidden_size={}",
+            config.vocab_size, config.hidden_size
+        );
+
         // Load model weights - try with F16 first as it's more common for Llama models
         let weights_path = Path::new(model_path).join("model.safetensors");
-        let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[weights_path], candle_core::DType::F16, device)? };
-        
+        let vb = unsafe {
+            VarBuilder::from_mmaped_safetensors(&[weights_path], candle_core::DType::F16, device)?
+        };
+
         // Create model
         let model = Llama::load(vb, &config)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to load model: {}", e)))?;
-        
+
         // Initialize cache with F16 to match model
         let cache = Cache::new(true, candle_core::DType::F16, &config, device)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)))?;
-        
+
         println!("Model loaded successfully!");
-        
+
         Ok(Self {
             model,
             device: device.clone(),
@@ -110,36 +115,41 @@ impl LlamaModelWrapper {
         weight_file: Option<&str>,
         _additional_weight_files: Option<&str>,
     ) -> Result<Self, CandleError> {
-        println!("Loading Llama model from: {} with specific files", model_path);
-        
+        println!(
+            "Loading Llama model from: {} with specific files",
+            model_path
+        );
+
         // Use specific config file if provided
         let config_path = if let Some(config_file) = config_file {
             Path::new(model_path).join(config_file)
         } else {
             Path::new(model_path).join("config.json")
         };
-        
+
         let config_str = std::fs::read_to_string(&config_path)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to read config: {}", e)))?;
         let config_json: ConfigJson = serde_json::from_str(&config_str)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to parse config: {}", e)))?;
         let config = config_json.to_candle_config();
-        
+
         // Use specific weight file if provided
         let weights_path = if let Some(weight_file) = weight_file {
             Path::new(model_path).join(weight_file)
         } else {
             Path::new(model_path).join("model.safetensors")
         };
-        
-        let vb = unsafe { VarBuilder::from_mmaped_safetensors(&[weights_path], candle_core::DType::F16, device)? };
-        
+
+        let vb = unsafe {
+            VarBuilder::from_mmaped_safetensors(&[weights_path], candle_core::DType::F16, device)?
+        };
+
         let model = Llama::load(vb, &config)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to load model: {}", e)))?;
-        
+
         let cache = Cache::new(true, candle_core::DType::F16, &config, device)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)))?;
-        
+
         Ok(Self {
             model,
             device: device.clone(),
@@ -163,15 +173,15 @@ impl LlamaModelWrapper {
         tokenizer_file: Option<&str>,
     ) -> Result<Tokenizer, CandleError> {
         let absolute_path = crate::APP_DATA_DIR.join(model_path);
-        
+
         let tokenizer_path = if let Some(tokenizer_file) = tokenizer_file {
             absolute_path.join(tokenizer_file)
         } else {
             absolute_path.join("tokenizer.json")
         };
-        
+
         println!("Loading tokenizer from: {}", tokenizer_path.display());
-        
+
         Tokenizer::from_file(&tokenizer_path)
             .map_err(|e| CandleError::TokenizerError(format!("Failed to load tokenizer: {}", e)))
     }
@@ -179,61 +189,68 @@ impl LlamaModelWrapper {
 
 impl CandleModel for LlamaModelWrapper {
     fn forward(&mut self, input_ids: &Tensor, start_pos: usize) -> candle_core::Result<Tensor> {
-        // Run the actual model forward pass
-        println!("Running model forward pass with input shape: {:?}, start_pos: {}", input_ids.dims(), start_pos);
-        
-        // Ensure input tensor is on the same device as the model
-        let input_ids = if !device_matches(input_ids.device(), &self.device) {
-            println!("Moving input tensor from {:?} to {:?}", input_ids.device(), self.device);
-            input_ids.to_device(&self.device)?
-        } else {
-            input_ids.clone()
-        };
-        
+        // Note: Input tensors should now be created on the correct device directly
+        // If this message appears, there's still a device mismatch that should be investigated
+        if !device_matches(input_ids.device(), &self.device) {
+            println!(
+                "WARNING: Input tensor device mismatch - tensor: {:?}, model: {:?}",
+                input_ids.device(),
+                self.device
+            );
+        }
+
         let real_logits = self.model.forward(&input_ids, start_pos, &mut self.cache)?;
-        
-        println!("Model output logits shape: {:?}", real_logits.dims());
-        
+
         // DEBUG: Check what the real logits look like
         if let Ok(logits_vec) = real_logits.to_vec2::<f32>() {
             if !logits_vec.is_empty() && !logits_vec[0].is_empty() {
                 // Get the last token's logits
                 let last_token_logits = &logits_vec[0];
-                
+
                 // Find top 10 tokens by probability
-                let mut indexed_logits: Vec<(usize, f32)> = last_token_logits.iter().enumerate().map(|(i, &v)| (i, v)).collect();
-                indexed_logits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-                
-                println!("Real model top 10 logits: {:?}", &indexed_logits[..10.min(indexed_logits.len())]);
-                
+                let mut indexed_logits: Vec<(usize, f32)> = last_token_logits
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &v)| (i, v))
+                    .collect();
+                indexed_logits
+                    .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
                 // Check if the model is outputting reasonable distributions
                 let max_logit = indexed_logits[0].1;
                 let min_logit = indexed_logits.last().map(|(_, v)| *v).unwrap_or(max_logit);
-                println!("Logit range: {} to {}", min_logit, max_logit);
-                
+
                 // Check if UNK token is consistently highest
                 if indexed_logits[0].0 == 0 {
-                    println!("WARNING: Model real logits show UNK token (0) as highest: {}", indexed_logits[0].1);
-                    
+                    println!(
+                        "WARNING: Model real logits show UNK token (0) as highest: {}",
+                        indexed_logits[0].1
+                    );
+
                     // Try to find what tokens should be high
                     let mut non_unk_tokens = Vec::new();
                     for (i, logit) in indexed_logits.iter().take(20) {
-                        if *i != 0 && *i != 1 && *i != 2 { // Skip UNK, BOS, EOS
+                        if *i != 0 && *i != 1 && *i != 2 {
+                            // Skip UNK, BOS, EOS
                             non_unk_tokens.push((*i, *logit));
                         }
                     }
-                    println!("Top non-special tokens: {:?}", &non_unk_tokens[..5.min(non_unk_tokens.len())]);
+                    println!(
+                        "Top non-special tokens: {:?}",
+                        &non_unk_tokens[..5.min(non_unk_tokens.len())]
+                    );
                 }
             }
         }
-        
+
         // Use the actual model logits now
         Ok(real_logits)
     }
 
     fn clear_cache(&mut self) {
         // Reset the cache
-        if let Ok(new_cache) = Cache::new(true, candle_core::DType::F16, &self.config, &self.device) {
+        if let Ok(new_cache) = Cache::new(true, candle_core::DType::F16, &self.config, &self.device)
+        {
             self.cache = new_cache;
         }
     }
@@ -268,11 +285,11 @@ impl ModelFactory {
         match model_type.to_lowercase().as_str() {
             "llama" => {
                 let model = LlamaModelWrapper::load_with_files(
-                    model_path, 
-                    device, 
-                    config_file, 
+                    model_path,
+                    device,
+                    config_file,
                     weight_file,
-                    additional_weight_files
+                    additional_weight_files,
                 )?;
                 Ok(Box::new(model))
             }
@@ -297,7 +314,9 @@ impl ModelFactory {
         tokenizer_file: Option<&str>,
     ) -> Result<Tokenizer, CandleError> {
         match model_type.to_lowercase().as_str() {
-            "llama" | "gguf" => LlamaModelWrapper::load_tokenizer_with_file(model_path, tokenizer_file),
+            "llama" | "gguf" => {
+                LlamaModelWrapper::load_tokenizer_with_file(model_path, tokenizer_file)
+            }
             _ => Err(CandleError::UnsupportedModel(model_type.to_string())),
         }
     }
@@ -307,8 +326,8 @@ impl ModelFactory {
 #[derive(Debug, Clone)]
 pub struct ModelFormat {
     pub name: String,
-    pub required_files: Vec<String>,  // Required filenames
-    pub optional_files: Vec<String>,  // Optional filenames 
+    pub required_files: Vec<String>,       // Required filenames
+    pub optional_files: Vec<String>,       // Optional filenames
     pub weight_file_patterns: Vec<String>, // Patterns for weight files (can be multiple)
 }
 
@@ -332,10 +351,7 @@ impl ModelUtils {
         match architecture.to_lowercase().as_str() {
             "llama" => ModelFormat {
                 name: "Llama".to_string(),
-                required_files: vec![
-                    "tokenizer.json".to_string(),
-                    "config.json".to_string(),
-                ],
+                required_files: vec!["tokenizer.json".to_string(), "config.json".to_string()],
                 optional_files: vec![
                     "tokenizer_config.json".to_string(),
                     "special_tokens_map.json".to_string(),
@@ -350,10 +366,7 @@ impl ModelUtils {
             },
             "mistral" => ModelFormat {
                 name: "Mistral".to_string(),
-                required_files: vec![
-                    "tokenizer.json".to_string(),
-                    "config.json".to_string(),
-                ],
+                required_files: vec!["tokenizer.json".to_string(), "config.json".to_string()],
                 optional_files: vec![
                     "tokenizer_config.json".to_string(),
                     "special_tokens_map.json".to_string(),
@@ -368,21 +381,13 @@ impl ModelUtils {
             },
             "gguf" => ModelFormat {
                 name: "GGUF".to_string(),
-                required_files: vec![],  // GGUF models are self-contained
-                optional_files: vec![
-                    "tokenizer.json".to_string(),
-                    "config.json".to_string(),
-                ],
-                weight_file_patterns: vec![
-                    "*.gguf".to_string(),
-                ],
+                required_files: vec![], // GGUF models are self-contained
+                optional_files: vec!["tokenizer.json".to_string(), "config.json".to_string()],
+                weight_file_patterns: vec!["*.gguf".to_string()],
             },
             _ => ModelFormat {
                 name: "Generic".to_string(),
-                required_files: vec![
-                    "tokenizer.json".to_string(),
-                    "config.json".to_string(),
-                ],
+                required_files: vec!["tokenizer.json".to_string(), "config.json".to_string()],
                 optional_files: vec![
                     "tokenizer_config.json".to_string(),
                     "special_tokens_map.json".to_string(),
@@ -393,7 +398,7 @@ impl ModelUtils {
                     "*.safetensors".to_string(),
                     "*.bin".to_string(),
                 ],
-            }
+            },
         }
     }
 
@@ -401,17 +406,17 @@ impl ModelUtils {
     pub fn detect_model_format(model_path: &str) -> Result<String, std::io::Error> {
         let absolute_path = crate::APP_DATA_DIR.join(model_path);
         let entries = std::fs::read_dir(&absolute_path)?;
-        
+
         let mut has_gguf = false;
         let mut has_safetensors = false;
         let mut has_pytorch_bin = false;
         let mut has_config = false;
         let mut has_tokenizer = false;
-        
+
         for entry in entries {
             let entry = entry?;
             let filename = entry.file_name().to_string_lossy().to_lowercase();
-            
+
             if filename.ends_with(".gguf") {
                 has_gguf = true;
             } else if filename.ends_with(".safetensors") {
@@ -424,7 +429,7 @@ impl ModelUtils {
                 has_tokenizer = true;
             }
         }
-        
+
         // Determine format based on file patterns
         if has_gguf {
             Ok("gguf".to_string())
@@ -432,7 +437,7 @@ impl ModelUtils {
             if has_safetensors {
                 Ok("llama".to_string()) // Default to llama for safetensors
             } else if has_pytorch_bin {
-                Ok("llama".to_string()) // Default to llama for pytorch bins  
+                Ok("llama".to_string()) // Default to llama for pytorch bins
             } else {
                 Ok("llama".to_string()) // Default format
             }
@@ -442,10 +447,13 @@ impl ModelUtils {
     }
 
     /// Get specific file paths for a model
-    pub fn get_model_file_paths(model_path: &str, architecture: &str) -> Result<ModelFilePaths, std::io::Error> {
+    pub fn get_model_file_paths(
+        model_path: &str,
+        architecture: &str,
+    ) -> Result<ModelFilePaths, std::io::Error> {
         let absolute_path = crate::APP_DATA_DIR.join(model_path);
         let format = Self::get_model_format(architecture);
-        
+
         let mut file_paths = ModelFilePaths {
             config_file: None,
             tokenizer_file: None,
@@ -454,34 +462,46 @@ impl ModelUtils {
             special_tokens_file: None,
             weight_files: Vec::new(),
         };
-        
+
         let entries = std::fs::read_dir(&absolute_path)?;
         for entry in entries {
             let entry = entry?;
             let filename = entry.file_name().to_string_lossy().to_string();
             let file_path = entry.path();
-            
+
             match filename.as_str() {
-                "config.json" => file_paths.config_file = Some(file_path.to_string_lossy().to_string()),
-                "tokenizer.json" => file_paths.tokenizer_file = Some(file_path.to_string_lossy().to_string()),
-                "tokenizer_config.json" => file_paths.tokenizer_config_file = Some(file_path.to_string_lossy().to_string()),
-                "special_tokens_map.json" => file_paths.special_tokens_file = Some(file_path.to_string_lossy().to_string()),
-                "vocab.json" | "vocab.txt" => file_paths.vocab_file = Some(file_path.to_string_lossy().to_string()),
+                "config.json" => {
+                    file_paths.config_file = Some(file_path.to_string_lossy().to_string())
+                }
+                "tokenizer.json" => {
+                    file_paths.tokenizer_file = Some(file_path.to_string_lossy().to_string())
+                }
+                "tokenizer_config.json" => {
+                    file_paths.tokenizer_config_file = Some(file_path.to_string_lossy().to_string())
+                }
+                "special_tokens_map.json" => {
+                    file_paths.special_tokens_file = Some(file_path.to_string_lossy().to_string())
+                }
+                "vocab.json" | "vocab.txt" => {
+                    file_paths.vocab_file = Some(file_path.to_string_lossy().to_string())
+                }
                 _ => {
                     // Check if this is a weight file
                     for pattern in &format.weight_file_patterns {
                         if Self::matches_pattern(&filename, pattern) {
-                            file_paths.weight_files.push(file_path.to_string_lossy().to_string());
+                            file_paths
+                                .weight_files
+                                .push(file_path.to_string_lossy().to_string());
                             break;
                         }
                     }
                 }
             }
         }
-        
+
         Ok(file_paths)
     }
-    
+
     /// Simple pattern matching for filenames
     fn matches_pattern(filename: &str, pattern: &str) -> bool {
         if pattern.contains('*') {
@@ -503,16 +523,16 @@ impl ModelUtils {
         // Convert relative path to absolute path based on APP_DATA_DIR
         let absolute_path = crate::APP_DATA_DIR.join(model_path);
         println!("Checking model path: {}", absolute_path.display());
-        
+
         if !absolute_path.exists() || !absolute_path.is_dir() {
             return false;
         }
-        
+
         // Try to detect the model format and check for required files
         match Self::detect_model_format(model_path) {
             Ok(architecture) => {
                 let format = Self::get_model_format(&architecture);
-                
+
                 // Check for required files
                 for required_file in &format.required_files {
                     if !absolute_path.join(required_file).exists() {
@@ -520,7 +540,7 @@ impl ModelUtils {
                         return false;
                     }
                 }
-                
+
                 // Check for at least one weight file
                 if let Ok(file_paths) = Self::get_model_file_paths(model_path, &architecture) {
                     if file_paths.weight_files.is_empty() && architecture != "gguf" {
@@ -528,7 +548,7 @@ impl ModelUtils {
                         return false;
                     }
                 }
-                
+
                 true
             }
             Err(e) => {

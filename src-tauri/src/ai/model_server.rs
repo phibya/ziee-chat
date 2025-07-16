@@ -18,6 +18,56 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+#[derive(Debug, Clone)]
+pub struct TokenizerConfig {
+    pub eos_token: String,
+    pub eos_token_id: u32,
+    pub bos_token: String,
+    pub bos_token_id: u32,
+    pub unk_token: String,
+    pub unk_token_id: u32,
+    pub chat_template: Option<String>,
+    pub model_max_length: u32,
+    pub pad_token: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelConfig {
+    pub max_position_embeddings: u32,
+    pub vocab_size: u32,
+    pub hidden_size: u32,
+    pub model_type: String,
+    pub architectures: Vec<String>,
+}
+
+impl Default for TokenizerConfig {
+    fn default() -> Self {
+        Self {
+            eos_token: "</s>".to_string(),
+            eos_token_id: 2,
+            bos_token: "<s>".to_string(),
+            bos_token_id: 1,
+            unk_token: "<unk>".to_string(),
+            unk_token_id: 0,
+            chat_template: None,
+            model_max_length: 2048,
+            pad_token: None,
+        }
+    }
+}
+
+impl Default for ModelConfig {
+    fn default() -> Self {
+        Self {
+            max_position_embeddings: 2048,
+            vocab_size: 32000,
+            hidden_size: 2048,
+            model_type: "llama".to_string(),
+            architectures: vec!["LlamaForCausalLM".to_string()],
+        }
+    }
+}
+
 pub struct ModelServerState {
     pub model: Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>,
     pub tokenizer: Arc<tokenizers::Tokenizer>,
@@ -25,7 +75,9 @@ pub struct ModelServerState {
     pub model_name: String,
     pub architecture: String,
     pub started_at: i64,
-    pub chat_template: Option<String>,
+    pub tokenizer_config: TokenizerConfig,
+    pub model_config: ModelConfig,
+    pub device: Device,
 }
 
 impl ModelServerState {
@@ -133,8 +185,9 @@ impl ModelServerState {
             .unwrap()
             .as_secs() as i64;
 
-        // Load chat template from tokenizer config
-        let chat_template = Self::load_chat_template(model_path);
+        // Load tokenizer and model configuration from config files
+        let tokenizer_config = Self::load_tokenizer_config(model_path);
+        let model_config = Self::load_model_config(model_path);
 
         Ok(Self {
             model: Arc::new(Mutex::new(model)),
@@ -143,7 +196,9 @@ impl ModelServerState {
             model_name: model_name.to_string(),
             architecture: architecture.to_string(),
             started_at,
-            chat_template,
+            tokenizer_config,
+            model_config,
+            device,
         })
     }
 
@@ -228,8 +283,9 @@ impl ModelServerState {
             .unwrap()
             .as_secs() as i64;
 
-        // Load chat template from tokenizer config
-        let chat_template = Self::load_chat_template(model_path);
+        // Load tokenizer and model configuration from config files
+        let tokenizer_config = Self::load_tokenizer_config(model_path);
+        let model_config = Self::load_model_config(model_path);
 
         Ok(Self {
             model: Arc::new(Mutex::new(model)),
@@ -238,30 +294,151 @@ impl ModelServerState {
             model_name: model_name.to_string(),
             architecture: architecture.to_string(),
             started_at,
-            chat_template,
+            tokenizer_config,
+            model_config,
+            device,
         })
     }
 
-    fn load_chat_template(model_path: &str) -> Option<String> {
+    fn load_tokenizer_config(model_path: &str) -> TokenizerConfig {
         use std::path::Path;
         
         let tokenizer_config_path = Path::new(model_path).join("tokenizer_config.json");
+        let mut config = TokenizerConfig::default();
         
         if let Ok(content) = std::fs::read_to_string(&tokenizer_config_path) {
-            if let Ok(config) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(template) = config.get("chat_template") {
+            if let Ok(json_config) = serde_json::from_str::<serde_json::Value>(&content) {
+                // Load chat template
+                if let Some(template) = json_config.get("chat_template") {
                     if let Some(template_str) = template.as_str() {
-                        return Some(template_str.to_string());
+                        config.chat_template = Some(template_str.to_string());
                     }
                 }
+                
+                // Load special tokens
+                if let Some(eos_token) = json_config.get("eos_token") {
+                    if let Some(eos_str) = eos_token.as_str() {
+                        config.eos_token = eos_str.to_string();
+                    }
+                }
+                
+                if let Some(bos_token) = json_config.get("bos_token") {
+                    if let Some(bos_str) = bos_token.as_str() {
+                        config.bos_token = bos_str.to_string();
+                    }
+                }
+                
+                if let Some(unk_token) = json_config.get("unk_token") {
+                    if let Some(unk_str) = unk_token.as_str() {
+                        config.unk_token = unk_str.to_string();
+                    }
+                }
+                
+                // Load model max length
+                if let Some(max_len) = json_config.get("model_max_length") {
+                    if let Some(max_len_num) = max_len.as_u64() {
+                        config.model_max_length = max_len_num as u32;
+                    }
+                }
+                
+                // Load pad token
+                if let Some(pad_token) = json_config.get("pad_token") {
+                    if let Some(pad_str) = pad_token.as_str() {
+                        config.pad_token = Some(pad_str.to_string());
+                    }
+                }
+                
+                // Load token IDs from added_tokens_decoder
+                if let Some(added_tokens) = json_config.get("added_tokens_decoder") {
+                    if let Some(added_tokens_obj) = added_tokens.as_object() {
+                        for (token_id_str, token_info) in added_tokens_obj {
+                            if let Ok(token_id) = token_id_str.parse::<u32>() {
+                                if let Some(token_content) = token_info.get("content") {
+                                    if let Some(content_str) = token_content.as_str() {
+                                        match content_str {
+                                            "</s>" => config.eos_token_id = token_id,
+                                            "<s>" => config.bos_token_id = token_id,
+                                            "<unk>" => config.unk_token_id = token_id,
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                println!("Loaded tokenizer config: EOS='{}' (ID: {}), BOS='{}' (ID: {}), UNK='{}' (ID: {})", 
+                         config.eos_token, config.eos_token_id,
+                         config.bos_token, config.bos_token_id,
+                         config.unk_token, config.unk_token_id);
             }
         }
         
-        None
+        config
+    }
+
+    fn load_model_config(model_path: &str) -> ModelConfig {
+        use std::path::Path;
+        
+        let model_config_path = Path::new(model_path).join("config.json");
+        let mut config = ModelConfig::default();
+        
+        if let Ok(content) = std::fs::read_to_string(&model_config_path) {
+            if let Ok(json_config) = serde_json::from_str::<serde_json::Value>(&content) {
+                // Load max position embeddings
+                if let Some(max_pos) = json_config.get("max_position_embeddings") {
+                    if let Some(max_pos_num) = max_pos.as_u64() {
+                        config.max_position_embeddings = max_pos_num as u32;
+                    }
+                }
+                
+                // Load vocab size
+                if let Some(vocab_size) = json_config.get("vocab_size") {
+                    if let Some(vocab_num) = vocab_size.as_u64() {
+                        config.vocab_size = vocab_num as u32;
+                    }
+                }
+                
+                // Load hidden size
+                if let Some(hidden_size) = json_config.get("hidden_size") {
+                    if let Some(hidden_num) = hidden_size.as_u64() {
+                        config.hidden_size = hidden_num as u32;
+                    }
+                }
+                
+                // Load model type
+                if let Some(model_type) = json_config.get("model_type") {
+                    if let Some(model_type_str) = model_type.as_str() {
+                        config.model_type = model_type_str.to_string();
+                    }
+                }
+                
+                // Load architectures
+                if let Some(architectures) = json_config.get("architectures") {
+                    if let Some(arch_array) = architectures.as_array() {
+                        let mut arch_vec = Vec::new();
+                        for arch in arch_array {
+                            if let Some(arch_str) = arch.as_str() {
+                                arch_vec.push(arch_str.to_string());
+                            }
+                        }
+                        if !arch_vec.is_empty() {
+                            config.architectures = arch_vec;
+                        }
+                    }
+                }
+                
+                println!("Loaded model config: max_pos_embeddings={}, vocab_size={}, hidden_size={}, model_type={}", 
+                         config.max_position_embeddings, config.vocab_size, config.hidden_size, config.model_type);
+            }
+        }
+        
+        config
     }
 
     fn apply_chat_template(&self, messages: &[ChatMessage]) -> String {
-        if let Some(template) = &self.chat_template {
+        if let Some(template) = &self.tokenizer_config.chat_template {
             self.render_chat_template(template, messages)
         } else {
             // Fallback to default template
@@ -270,46 +447,87 @@ impl ModelServerState {
     }
 
     fn render_chat_template(&self, template: &str, messages: &[ChatMessage]) -> String {
-        // Simple Jinja2-like template renderer for the specific template format
+        // Basic Jinja2-like template renderer
+        // This is a simplified implementation that handles the common chat template pattern
+        
+        let eos_token = &self.tokenizer_config.eos_token;
         let mut result = String::new();
         
-        // Replace the Jinja2 template with Rust logic
-        // Template: {% for message in messages %}{% if message['role'] == 'user' %}{{ '<|user|>\n' + message['content'] + eos_token }}{% elif message['role'] == 'system' %}{{ '<|system|>\n' + message['content'] + eos_token }}{% elif message['role'] == 'assistant' %}{{ '<|assistant|>\n'  + message['content'] + eos_token }}{% endif %}{% if loop.last and add_generation_prompt %}{{ '<|assistant|>' }}{% endif %}{% endfor %}
+        // Check if this looks like the expected template format
+        if template.contains("{% for message in messages %}") && template.contains("message['role']") {
+            // Parse the template for role-specific patterns
+            let user_template = if template.contains("'user'") {
+                // Extract pattern between 'user' condition and next elif/endif
+                self.extract_role_template(template, "user", eos_token)
+            } else {
+                format!("<|user|>\n{{}}{}", eos_token) // fallback
+            };
+            
+            let system_template = if template.contains("'system'") {
+                self.extract_role_template(template, "system", eos_token)
+            } else {
+                format!("<|system|>\n{{}}{}", eos_token) // fallback
+            };
+            
+            let assistant_template = if template.contains("'assistant'") {
+                self.extract_role_template(template, "assistant", eos_token)
+            } else {
+                format!("<|assistant|>\n{{}}{}", eos_token) // fallback
+            };
+            
+            // Apply the template to each message
+            for message in messages {
+                let template_str = match message.role.as_str() {
+                    "user" => &user_template,
+                    "system" => &system_template,
+                    "assistant" => &assistant_template,
+                    _ => &format!("<|{}|>\n{{}}{}", message.role, eos_token),
+                };
+                
+                result.push_str(&template_str.replace("{}", &message.content));
+            }
+            
+            // Add generation prompt if template indicates it
+            if template.contains("add_generation_prompt") && template.contains("<|assistant|>") {
+                result.push_str("<|assistant|>");
+            }
+        } else {
+            // Fallback to simple format if template is unrecognized
+            result = self.default_chat_template(messages);
+        }
         
-        let eos_token = "</s>";
+        result
+    }
+    
+    fn extract_role_template(&self, template: &str, role: &str, eos_token: &str) -> String {
+        // Simple pattern extraction for role-specific templates
+        // Look for patterns like {{ '<|user|>\n' + message['content'] + eos_token }}
         
-        for (i, message) in messages.iter().enumerate() {
-            match message.role.as_str() {
-                "user" => {
-                    result.push_str(&format!("<|user|>\n{}{}", message.content, eos_token));
-                }
-                "system" => {
-                    result.push_str(&format!("<|system|>\n{}{}", message.content, eos_token));
-                }
-                "assistant" => {
-                    result.push_str(&format!("<|assistant|>\n{}{}", message.content, eos_token));
-                }
-                _ => {
-                    result.push_str(&format!("<|{}|>\n{}{}", message.role, message.content, eos_token));
+        let role_pattern = format!("'{}' %}}{{{{ '", role);
+        if let Some(start_pos) = template.find(&role_pattern) {
+            let start = start_pos + role_pattern.len();
+            if let Some(template_part) = template.get(start..) {
+                if let Some(end_pos) = template_part.find("' + message['content'] + eos_token }}") {
+                    let role_prefix = &template_part[..end_pos];
+                    return format!("{}{{}}{}", role_prefix, eos_token);
                 }
             }
         }
         
-        // Add generation prompt at the end (equivalent to loop.last and add_generation_prompt)
-        result.push_str("<|assistant|>\n");
-        
-        result
+        // Fallback pattern
+        format!("<|{}|>\n{{}}{}", role, eos_token)
     }
 
     fn default_chat_template(&self, messages: &[ChatMessage]) -> String {
         let mut prompt = String::new();
+        let eos_token = &self.tokenizer_config.eos_token;
 
         for message in messages {
             match message.role.as_str() {
-                "system" => prompt.push_str(&format!("<|system|>\n{}</s>", message.content)),
-                "user" => prompt.push_str(&format!("<|user|>\n{}</s>", message.content)),
-                "assistant" => prompt.push_str(&format!("<|assistant|>\n{}</s>", message.content)),
-                _ => prompt.push_str(&format!("<|{}|>\n{}</s>", message.role, message.content)),
+                "system" => prompt.push_str(&format!("<|system|>\n{}{}", message.content, eos_token)),
+                "user" => prompt.push_str(&format!("<|user|>\n{}{}", message.content, eos_token)),
+                "assistant" => prompt.push_str(&format!("<|assistant|>\n{}{}", message.content, eos_token)),
+                _ => prompt.push_str(&format!("<|{}|>\n{}{}", message.role, message.content, eos_token)),
             }
         }
 
@@ -347,6 +565,11 @@ async fn non_stream_chat_completion(
 ) -> Response {
     // Convert chat messages to a single prompt using chat template
     let prompt = state.apply_chat_template(&request.messages);
+    
+    // DEBUG: Print the initial prompt for debugging purposes
+    println!("=== INITIAL PROMPT ===");
+    println!("{}", prompt);
+    println!("=== END INITIAL PROMPT ===");
 
     // Tokenize input
     let tokens = match state.tokenizer.encode(prompt.clone(), true) {
@@ -407,6 +630,11 @@ async fn stream_chat_completion(
     request: ChatCompletionRequest,
 ) -> Response {
     let prompt = state.apply_chat_template(&request.messages);
+    
+    // DEBUG: Print the initial prompt for debugging purposes
+    println!("=== INITIAL PROMPT (STREAMING) ===");
+    println!("{}", prompt);
+    println!("=== END INITIAL PROMPT (STREAMING) ===");
 
     let tokens = match state.tokenizer.encode(prompt, true) {
         Ok(encoding) => encoding.get_ids().to_vec(),
@@ -441,6 +669,11 @@ async fn completions(
     State(state): State<Arc<ModelServerState>>,
     Json(request): Json<CompletionRequest>,
 ) -> Response {
+    // DEBUG: Print the initial prompt for debugging purposes
+    println!("=== INITIAL PROMPT (COMPLETION) ===");
+    println!("{}", request.prompt);
+    println!("=== END INITIAL PROMPT (COMPLETION) ===");
+
     let tokens = match state.tokenizer.encode(request.prompt.clone(), true) {
         Ok(encoding) => encoding.get_ids().to_vec(),
         Err(e) => {
@@ -578,9 +811,9 @@ async fn generate_text(
     
     
     let mut model = state.model.lock().await;
-    let device = candle_core::Device::Cpu;
+    let device = &state.device;
     
-    let max_tokens = request.max_tokens.unwrap_or(100);
+    let max_tokens = request.max_tokens.unwrap_or(100).min(state.model_config.max_position_embeddings as i32);
     let temperature = request.temperature.unwrap_or(0.7);
     
     // Clear the cache for fresh generation
@@ -591,7 +824,7 @@ async fn generate_text(
     let mut generated_text = String::new();
     
     // Process the input tokens first
-    let input_ids = Tensor::from_slice(tokens, (1, tokens.len()), &device)
+    let input_ids = Tensor::from_slice(tokens, (1, tokens.len()), device)
         .map_err(|e| CandleError::InferenceError(format!("Failed to create input tensor: {}", e)))?;
     
     let logits = model.forward(&input_ids, 0)
@@ -624,7 +857,7 @@ async fn generate_text(
             sample_token_improved(&scaled_logits, temperature as f64)?
         } else {
             // For subsequent tokens, run forward pass with just the last token
-            let last_token_tensor = Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), &device)
+            let last_token_tensor = Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), device)
                 .map_err(|e| CandleError::InferenceError(format!("Failed to create token tensor: {}", e)))?;
             
             let logits = model.forward(&last_token_tensor, start_pos)
@@ -795,15 +1028,15 @@ fn generate_text_stream(
     
     // Create async stream that generates tokens one by one
     async_stream::stream! {
-        let device = candle_core::Device::Cpu;
-        let max_tokens = request.max_tokens.unwrap_or(100).min(512);
+        let device = &state.device;
+        let max_tokens = request.max_tokens.unwrap_or(100).min(state.model_config.max_position_embeddings as i32);
         let temperature = request.temperature.unwrap_or(0.7);
         
         // Lock the model for the entire generation process
         let mut model = state.model.lock().await;
         
         // Convert input tokens to tensor
-        let input_ids = match Tensor::from_slice(&tokens, (1, tokens.len()), &device) {
+        let input_ids = match Tensor::from_slice(&tokens, (1, tokens.len()), device) {
             Ok(tensor) => tensor,
             Err(_) => {
                 // Send error and return
@@ -915,7 +1148,7 @@ fn generate_text_stream(
                 }
             } else {
                 // For subsequent tokens, run forward pass with just the last token
-                let last_token_tensor = match Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), &device) {
+                let last_token_tensor = match Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), device) {
                     Ok(tensor) => tensor,
                     Err(_) => {
                         let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
@@ -995,9 +1228,6 @@ fn generate_text_stream(
                 }
             };
             
-            // More lenient EOS check - don't break immediately on 0 or 2
-            // They might be valid tokens in the sequence
-            
             generated_tokens.push(next_token);
             new_tokens.push(next_token);
             _token_count += 1;
@@ -1009,8 +1239,20 @@ fn generate_text_stream(
                 String::new()
             };
             
-            // Check for stop sequences
+            // Check for stop sequences and EOS tokens
             let mut should_stop = false;
+            
+            // Check for EOS tokens that should stop generation
+            if next_token == state.tokenizer_config.eos_token_id {
+                println!("DEBUG: EOS token ('{}') detected, stopping generation", state.tokenizer_config.eos_token);
+                should_stop = true;
+            }
+            
+            // Check max tokens limit
+            if new_tokens.len() >= max_tokens as usize {
+                println!("DEBUG: Max tokens limit ({}) reached, stopping generation", max_tokens);
+                should_stop = true;
+            }
             let mut final_content = new_content.clone();
             
             if let Some(stop_sequences) = &request.stop {
@@ -1054,7 +1296,7 @@ fn generate_text_stream(
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
             
             // Update input for next iteration
-            if let Ok(new_input) = Tensor::from_slice(&generated_tokens, (1, generated_tokens.len()), &device) {
+            if let Ok(new_input) = Tensor::from_slice(&generated_tokens, (1, generated_tokens.len()), device) {
                 current_input = new_input;
             } else {
                 let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
