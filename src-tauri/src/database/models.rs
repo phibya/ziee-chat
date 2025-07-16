@@ -427,6 +427,10 @@ pub struct ModelProviderSettings {
     #[serde(default = "default_cpu_threads")]
     pub cpu_threads: usize,
     
+    /// Enable flash attention support for optimized memory usage and faster inference (default: false)
+    #[serde(default = "default_flash_attention")]
+    pub flash_attention: bool,
+    
     /// Request timeout in seconds (default: 300)
     #[serde(default = "default_request_timeout_seconds")]
     pub request_timeout_seconds: u64,
@@ -447,6 +451,7 @@ fn default_batch_timeout_ms() -> u64 { 10 }
 fn default_max_concurrent_requests() -> usize { 32 }
 fn default_max_concurrent_prompts() -> usize { 8 }
 fn default_cpu_threads() -> usize { 4 }
+fn default_flash_attention() -> bool { false }
 fn default_request_timeout_seconds() -> u64 { 300 }
 fn default_enable_request_queuing() -> bool { true }
 fn default_max_queue_size() -> usize { 100 }
@@ -468,6 +473,7 @@ impl ModelProviderSettings {
             max_concurrent_requests: 64,
             max_concurrent_prompts: 16,
             cpu_threads: 8,
+            flash_attention: true,
             request_timeout_seconds: 300,
             enable_request_queuing: true,
             max_queue_size: 200,
@@ -485,6 +491,7 @@ impl ModelProviderSettings {
             max_concurrent_requests: 16,
             max_concurrent_prompts: 4,
             cpu_threads: 2,
+            flash_attention: false,
             request_timeout_seconds: 60,
             enable_request_queuing: false,
             max_queue_size: 32,

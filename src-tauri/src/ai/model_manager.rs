@@ -373,6 +373,11 @@ impl ModelManager {
         // Set CPU threads
         cmd.arg("--cpu-threads").arg(provider_settings.cpu_threads.to_string());
 
+        // Set flash attention
+        if provider_settings.flash_attention {
+            cmd.arg("--flash-attention");
+        }
+
         // Add model-specific parameters from model configuration (these override provider settings)
         if let Some(parameters) = &model.parameters.as_object() {
             // Allow model-specific override of context shift
@@ -419,6 +424,14 @@ impl ModelManager {
             if let Some(cpu_threads) = parameters.get("cpu_threads")
                 .and_then(|v| v.as_u64()) {
                 cmd.arg("--cpu-threads").arg(cpu_threads.to_string());
+            }
+
+            // Allow model-specific override of flash attention
+            if let Some(flash_attention) = parameters.get("flash_attention")
+                .and_then(|v| v.as_bool()) {
+                if flash_attention {
+                    cmd.arg("--flash-attention");
+                }
             }
         }
 

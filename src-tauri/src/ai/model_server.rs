@@ -309,6 +309,7 @@ pub struct ModelServerState {
     pub max_concurrent_prompts: usize,
     pub concurrent_request_semaphore: Arc<Semaphore>,
     pub cpu_threads: usize,
+    pub flash_attention: bool,
 }
 
 impl ModelServerState {
@@ -327,6 +328,40 @@ impl ModelServerState {
             
             // Set MKL thread count (if available)
             std::env::set_var("MKL_NUM_THREADS", cpu_threads.to_string());
+        }
+    }
+
+    /// Configure flash attention for optimized memory usage and faster inference
+    fn configure_flash_attention(flash_attention: bool) {
+        if flash_attention {
+            println!("Enabling flash attention for optimized memory usage and faster inference");
+            
+            // Set environment variables that enable flash attention in various libraries
+            std::env::set_var("ENABLE_FLASH_ATTENTION", "1");
+            std::env::set_var("FLASH_ATTENTION_ENABLED", "true");
+            
+            // For PyTorch-based models (if applicable)
+            std::env::set_var("PYTORCH_FLASH_ATTENTION", "1");
+            
+            // For transformer models
+            std::env::set_var("TRANSFORMERS_FLASH_ATTENTION", "1");
+            
+            // For Hugging Face models
+            std::env::set_var("HF_FLASH_ATTENTION", "1");
+            
+            // Set memory optimization flags
+            std::env::set_var("FLASH_ATTENTION_MEMORY_EFFICIENT", "1");
+            
+        } else {
+            println!("Flash attention is disabled");
+            
+            // Ensure flash attention is explicitly disabled
+            std::env::set_var("ENABLE_FLASH_ATTENTION", "0");
+            std::env::set_var("FLASH_ATTENTION_ENABLED", "false");
+            std::env::set_var("PYTORCH_FLASH_ATTENTION", "0");
+            std::env::set_var("TRANSFORMERS_FLASH_ATTENTION", "0");
+            std::env::set_var("HF_FLASH_ATTENTION", "0");
+            std::env::set_var("FLASH_ATTENTION_MEMORY_EFFICIENT", "0");
         }
     }
 
@@ -412,7 +447,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4).await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false).await
     }
 
     pub async fn new_with_device_config(
@@ -429,6 +464,7 @@ impl ModelServerState {
         batch_timeout_ms: u64,
         max_concurrent_prompts: usize,
         cpu_threads: usize,
+        flash_attention: bool,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
@@ -436,6 +472,9 @@ impl ModelServerState {
         
         // Configure CPU thread limit for CPU inference
         Self::configure_cpu_threads(&device, cpu_threads);
+        
+        // Configure flash attention
+        Self::configure_flash_attention(flash_attention);
         
         let model = ModelFactory::create_model(architecture, model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
@@ -494,6 +533,7 @@ impl ModelServerState {
             max_concurrent_prompts,
             concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
             cpu_threads,
+            flash_attention,
         })
     }
 
@@ -515,6 +555,7 @@ impl ModelServerState {
         batch_timeout_ms: u64,
         max_concurrent_prompts: usize,
         cpu_threads: usize,
+        flash_attention: bool,
     ) -> Result<Self, CandleError> {
         Self::new_with_specific_files_and_device(
             model_path,
@@ -536,6 +577,7 @@ impl ModelServerState {
             batch_timeout_ms,
             max_concurrent_prompts,
             cpu_threads,
+            flash_attention,
         ).await
     }
 
@@ -559,6 +601,7 @@ impl ModelServerState {
         batch_timeout_ms: u64,
         max_concurrent_prompts: usize,
         cpu_threads: usize,
+        flash_attention: bool,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -579,6 +622,9 @@ impl ModelServerState {
         
         // Configure CPU thread limit for CPU inference
         Self::configure_cpu_threads(&device, cpu_threads);
+        
+        // Configure flash attention
+        Self::configure_flash_attention(flash_attention);
         
         // For now, use the existing factory methods but with specific file awareness
         // TODO: Update ModelFactory to accept specific file paths
@@ -651,6 +697,7 @@ impl ModelServerState {
             max_concurrent_prompts,
             concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
             cpu_threads,
+            flash_attention,
         })
     }
 

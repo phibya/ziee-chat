@@ -95,6 +95,10 @@ struct Args {
     /// Number of CPU threads to use for inference when device type is cpu (default: 4)
     #[arg(long, default_value = "4")]
     cpu_threads: usize,
+
+    /// Enable flash attention support for optimized memory usage and faster inference
+    #[arg(long)]
+    flash_attention: bool,
 }
 
 #[tokio::main]
@@ -124,6 +128,7 @@ async fn main() {
     println!("Batch Timeout: {}ms", args.batch_timeout_ms);
     println!("Max Concurrent Prompts: {}", args.max_concurrent_prompts);
     println!("CPU Threads: {}", args.cpu_threads);
+    println!("Flash Attention: {}", args.flash_attention);
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -197,6 +202,7 @@ async fn main() {
             args.batch_timeout_ms,
             args.max_concurrent_prompts,
             args.cpu_threads,
+            args.flash_attention,
         )
         .await
         {
@@ -223,6 +229,7 @@ async fn main() {
             args.batch_timeout_ms,
             args.max_concurrent_prompts,
             args.cpu_threads,
+            args.flash_attention,
         )
         .await
         {
