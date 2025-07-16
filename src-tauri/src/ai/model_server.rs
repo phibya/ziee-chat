@@ -566,7 +566,7 @@ async fn non_stream_chat_completion(
     // Convert chat messages to a single prompt using chat template
     let prompt = state.apply_chat_template(&request.messages);
     
-    // DEBUG: Print the initial prompt for debugging purposes
+    // Print the initial prompt for debugging purposes
     println!("=== INITIAL PROMPT ===");
     println!("{}", prompt);
     println!("=== END INITIAL PROMPT ===");
@@ -631,7 +631,7 @@ async fn stream_chat_completion(
 ) -> Response {
     let prompt = state.apply_chat_template(&request.messages);
     
-    // DEBUG: Print the initial prompt for debugging purposes
+    // Print the initial prompt for debugging purposes  
     println!("=== INITIAL PROMPT (STREAMING) ===");
     println!("{}", prompt);
     println!("=== END INITIAL PROMPT (STREAMING) ===");
@@ -669,7 +669,7 @@ async fn completions(
     State(state): State<Arc<ModelServerState>>,
     Json(request): Json<CompletionRequest>,
 ) -> Response {
-    // DEBUG: Print the initial prompt for debugging purposes
+    // Print the initial prompt for debugging purposes
     println!("=== INITIAL PROMPT (COMPLETION) ===");
     println!("{}", request.prompt);
     println!("=== END INITIAL PROMPT (COMPLETION) ===");
@@ -1035,6 +1035,9 @@ fn generate_text_stream(
         // Lock the model for the entire generation process
         let mut model = state.model.lock().await;
         
+        // Clear the cache for fresh generation
+        model.clear_cache();
+        
         // Convert input tokens to tensor
         let input_ids = match Tensor::from_slice(&tokens, (1, tokens.len()), device) {
             Ok(tensor) => tensor,
@@ -1050,6 +1053,7 @@ fn generate_text_stream(
         let mut new_tokens = Vec::new(); // Track only newly generated tokens
         let mut current_input = input_ids;
         let mut _token_count = 0;
+        let mut previous_text = String::new(); // Track previously sent text for incremental streaming
         
         // Send initial chunk with role
         let initial_chunk = ChatCompletionChunk {
@@ -1085,7 +1089,6 @@ fn generate_text_stream(
             let start_pos = tokens.len() + step as usize;
             let next_token = if step == 0 {
                 // Get the last token from the logits we just computed
-                eprintln!("DEBUG: Processing first token, logits rank: {}", logits.rank());
                 let last_token_logits = if logits.rank() == 2 {
                     match logits.narrow(0, 0, 1).and_then(|t| t.squeeze(0)) {
                         Ok(logits) => logits,
@@ -1232,9 +1235,19 @@ fn generate_text_stream(
             new_tokens.push(next_token);
             _token_count += 1;
             
-            // For streaming, decode just the new token for this chunk
-            let new_content = if let Ok(token_text) = state.tokenizer.decode(&[next_token], false) {
-                token_text
+            // For proper streaming with spaces, decode all new tokens and get incremental difference
+            let new_content = if let Ok(full_text) = state.tokenizer.decode(&new_tokens, true) {
+                // Get only the new content by removing what we've already sent
+                let incremental_content = if full_text.len() > previous_text.len() {
+                    full_text[previous_text.len()..].to_string()
+                } else {
+                    String::new()
+                };
+                
+                // Update previous text for next iteration
+                previous_text = full_text;
+                
+                incremental_content
             } else {
                 String::new()
             };
@@ -1244,13 +1257,11 @@ fn generate_text_stream(
             
             // Check for EOS tokens that should stop generation
             if next_token == state.tokenizer_config.eos_token_id {
-                println!("DEBUG: EOS token ('{}') detected, stopping generation", state.tokenizer_config.eos_token);
                 should_stop = true;
             }
             
             // Check max tokens limit
             if new_tokens.len() >= max_tokens as usize {
-                println!("DEBUG: Max tokens limit ({}) reached, stopping generation", max_tokens);
                 should_stop = true;
             }
             let mut final_content = new_content.clone();
@@ -1279,7 +1290,7 @@ fn generate_text_stream(
                         index: 0,
                         delta: ChatMessageDelta {
                             role: None,
-                            content: Some(final_content),
+                            content: Some(final_content.clone()),
                         },
                         finish_reason: None,
                     }],
