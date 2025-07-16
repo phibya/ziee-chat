@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import {
-  CreateModelProviderRequest,
+  CreateProviderRequest,
   ModelCapabilities,
-  ModelProvider,
-  ModelProviderModel,
+  Provider,
+  Model,
 } from '../types/api/modelProvider'
 import {
   uploadFile,
@@ -14,8 +14,7 @@ import {
 } from '../api/fileUpload'
 import { getAuthToken, getBaseUrl } from '../api/core'
 
-// Type alias for compatibility
-type Model = ModelProviderModel
+// Type definitions are now imported from the API types
 
 export interface FileUploadProgress {
   filename: string
@@ -43,10 +42,10 @@ export interface UploadSession {
   provider_id: string
 }
 
-interface ModelProvidersState {
+interface ProvidersState {
   // Data
-  providers: ModelProvider[]
-  modelsByProvider: Record<string, ModelProviderModel[]> // Store models by provider ID
+  providers: Provider[]
+  modelsByProvider: Record<string, Model[]> // Store models by provider ID
 
   // Loading states
   loading: boolean
@@ -73,13 +72,13 @@ interface ModelProvidersState {
 
   // Actions
   loadProviders: () => Promise<void>
-  createProvider: (data: CreateModelProviderRequest) => Promise<ModelProvider>
+  createProvider: (data: CreateProviderRequest) => Promise<Provider>
   updateProvider: (
     id: string,
-    data: Partial<ModelProvider>,
-  ) => Promise<ModelProvider>
+    data: Partial<Provider>,
+  ) => Promise<Provider>
   deleteProvider: (id: string) => Promise<void>
-  cloneProvider: (id: string, name: string) => Promise<ModelProvider>
+  cloneProvider: (id: string, name: string) => Promise<Provider>
 
   // Model actions
   loadModels: (providerId: string) => Promise<void>
@@ -136,11 +135,11 @@ interface ModelProvidersState {
 
   // Utility actions
   clearError: () => void
-  getProviderById: (id: string) => ModelProvider | undefined
+  getProviderById: (id: string) => Provider | undefined
   getModelById: (id: string) => Model | undefined
 }
 
-export const useModelProvidersStore = create<ModelProvidersState>()(
+export const useProvidersStore = create<ProvidersState>()(
   subscribeWithSelector((set, get) => ({
     // Initial state
     providers: [],
@@ -162,7 +161,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       try {
         set({ loading: true, error: null })
 
-        const response = await ApiClient.ModelProviders.list({
+        const response = await ApiClient.Providers.list({
           page: 1,
           per_page: 50,
         })
@@ -183,11 +182,11 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       }
     },
 
-    createProvider: async (data: CreateModelProviderRequest) => {
+    createProvider: async (data: CreateProviderRequest) => {
       try {
         set({ creating: true, error: null })
 
-        const provider = await ApiClient.ModelProviders.create(data)
+        const provider = await ApiClient.Providers.create(data)
 
         set(state => ({
           providers: [...state.providers, provider],
@@ -207,11 +206,11 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       }
     },
 
-    updateProvider: async (id: string, data: Partial<ModelProvider>) => {
+    updateProvider: async (id: string, data: Partial<Provider>) => {
       try {
         set({ updating: true, error: null })
 
-        const provider = await ApiClient.ModelProviders.update({
+        const provider = await ApiClient.Providers.update({
           provider_id: id,
           ...data,
         })
@@ -238,7 +237,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       try {
         set({ deleting: true, error: null })
 
-        await ApiClient.ModelProviders.delete({ provider_id: id })
+        await ApiClient.Providers.delete({ provider_id: id })
 
         set(state => ({
           providers: state.providers.filter(p => p.id !== id),
@@ -260,7 +259,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       try {
         set({ creating: true, error: null })
 
-        const provider = await ApiClient.ModelProviders.clone({
+        const provider = await ApiClient.Providers.clone({
           provider_id: id,
           name: name,
         } as any)
@@ -288,7 +287,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
           error: null,
         }))
 
-        const models = await ApiClient.ModelProviders.listModels({
+        const models = await ApiClient.Providers.listModels({
           provider_id: providerId,
         })
 
@@ -310,7 +309,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       try {
         set({ creating: true, error: null })
 
-        const model = await ApiClient.ModelProviders.addModel({
+        const model = await ApiClient.Providers.addModel({
           provider_id: providerId,
           ...data,
         } as any)
@@ -353,7 +352,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ModelProviderModel[]>,
+            {} as Record<string, ProviderModel[]>,
           ),
           updating: false,
         }))
@@ -383,7 +382,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ModelProviderModel[]>,
+            {} as Record<string, ProviderModel[]>,
           ),
           deleting: false,
         }))
@@ -415,7 +414,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ModelProviderModel[]>,
+            {} as Record<string, ProviderModel[]>,
           ),
           modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
@@ -447,7 +446,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ModelProviderModel[]>,
+            {} as Record<string, ProviderModel[]>,
           ),
           modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
@@ -476,7 +475,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ModelProviderModel[]>,
+            {} as Record<string, ProviderModel[]>,
           ),
           updating: false,
         }))
@@ -505,7 +504,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ModelProviderModel[]>,
+            {} as Record<string, ProviderModel[]>,
           ),
           updating: false,
         }))
@@ -523,7 +522,7 @@ export const useModelProvidersStore = create<ModelProvidersState>()(
       try {
         set({ testingProxy: true, error: null })
 
-        const result = await ApiClient.ModelProviders.testProxy({
+        const result = await ApiClient.Providers.testProxy({
           provider_id: providerId,
           ...proxySettings,
         })

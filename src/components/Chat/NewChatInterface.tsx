@@ -7,7 +7,7 @@ import { RobotOutlined } from '@ant-design/icons'
 import { ChatInput } from './ChatInput'
 import { useChatStore } from '../../store/chat'
 import { useAssistantsStore } from '../../store/assistants'
-import { useModelProvidersStore } from '../../store/modelProviders'
+import { useProvidersStore } from '../../store/modelProviders'
 import { useConversationsStore } from '../../store'
 import { useAuthStore } from '../../store/auth'
 
@@ -58,7 +58,7 @@ export function NewChatInterface() {
     modelsByProvider,
     loading: providersLoading,
     loadProviders,
-  } = useModelProvidersStore(
+  } = useProvidersStore(
     useShallow(state => ({
       providers: state.providers,
       modelsByProvider: state.modelsByProvider,

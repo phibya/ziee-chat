@@ -12,8 +12,8 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import {
-  ModelProvider,
-  UpdateModelProviderRequest,
+  Provider,
+  UpdateProviderRequest,
 } from '../../../../types/api/modelProvider'
 
 interface EditProviderModalProps {

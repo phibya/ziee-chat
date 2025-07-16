@@ -37,7 +37,7 @@ import {
 import { Permission, usePermissions } from '../../../../permissions'
 import { PageContainer } from '../../../common/PageContainer'
 import { useAdminStore } from '../../../../store/admin'
-import { useModelProvidersStore } from '../../../../store/modelProviders'
+import { useProvidersStore } from '../../../../store/modelProviders'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -79,7 +79,7 @@ export function UserGroupsSettings() {
   )
 
   // Model providers store
-  const { providers: modelProviders, loadProviders } = useModelProvidersStore(
+  const { providers: modelProviders, loadProviders } = useProvidersStore(
     useShallow(state => ({
       providers: state.providers,
       loadProviders: state.loadProviders,

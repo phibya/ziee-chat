@@ -16,8 +16,8 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdate } from 'react-use'
-import { ModelProviderType } from '../../../../types/api/modelProvider'
-import { useModelProvidersStore } from '../../../../store/modelProviders'
+import { ProviderType } from '../../../../types/api/modelProvider'
+import { useProvidersStore } from '../../../../store/modelProviders'
 import { useShallow } from 'zustand/react/shallow'
 import { UploadOutlined } from '@ant-design/icons'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
@@ -35,7 +35,7 @@ import {
 interface AddModelModalProps {
   open: boolean
   providerId: string
-  providerType: ModelProviderType
+  providerType: ProviderType
   onClose: () => void
   onSubmit: (modelData: any) => void
 }
@@ -88,7 +88,7 @@ export function AddModelModal({
     clearUploadSession,
     cancelUpload,
     loadProviders,
-  } = useModelProvidersStore(
+  } = useProvidersStore(
     useShallow(state => ({
       uploadMultipleFiles: state.uploadMultipleFiles,
       commitUploadedFiles: state.commitUploadedFiles,

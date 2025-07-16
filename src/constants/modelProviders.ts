@@ -1,7 +1,7 @@
-import { ModelProviderType } from '../types/api/modelProvider'
+import { ProviderType } from '../types/api/modelProvider'
 
 export interface ProviderOption {
-  value: ModelProviderType
+  value: ProviderType
   label: string
 }
 
@@ -35,7 +35,7 @@ export const SUPPORTED_PROVIDERS: ProviderOption[] = [
   { value: 'custom', label: 'Custom' },
 ]
 
-export const PROVIDER_DEFAULTS: Record<ModelProviderType, ProviderDefaults> = {
+export const PROVIDER_DEFAULTS: Record<ProviderType, ProviderDefaults> = {
   openai: {
     base_url: 'https://api.openai.com/v1',
   },

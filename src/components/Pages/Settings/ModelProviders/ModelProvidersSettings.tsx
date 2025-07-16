@@ -36,21 +36,21 @@ import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
 import {
-  ModelProvider,
-  ModelProviderModel,
-  ModelProviderType,
+  Provider,
+  Model,
+  ProviderType,
 } from '../../../../types/api/modelProvider'
 import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
 import { ModelProviderProxySettingsForm } from './ModelProviderProxySettings'
 import { CandleConfigurationSection } from './shared/CandleConfigurationSection'
-import { useModelProvidersStore } from '../../../../store/modelProviders'
+import { useProvidersStore } from '../../../../store/modelProviders'
 
 const { Title, Text } = Typography
 const { Sider, Content } = Layout
 
-const PROVIDER_ICONS: Record<ModelProviderType, string> = {
+const PROVIDER_ICONS: Record<ProviderType, string> = {
   candle: '🕯',
   openai: '🤖',
   anthropic: '🤖',
@@ -89,7 +89,7 @@ export function ModelProvidersSettings() {
     enableModel,
     disableModel,
     clearError,
-  } = useModelProvidersStore(
+  } = useProvidersStore(
     useShallow(state => ({
       providers: state.providers,
       modelsByProvider: state.modelsByProvider,
@@ -121,7 +121,7 @@ export function ModelProvidersSettings() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isAddModelModalOpen, setIsAddModelModalOpen] = useState(false)
   const [isEditModelModalOpen, setIsEditModelModalOpen] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<ModelProviderModel | null>(
+  const [selectedModel, setSelectedModel] = useState<Model | null>(
     null,
   )
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -164,7 +164,7 @@ export function ModelProvidersSettings() {
     ? loadingModels[selectedProvider] || false
     : false
 
-  const canEnableProvider = (provider: ModelProvider): boolean => {
+  const canEnableProvider = (provider: Provider): boolean => {
     if (provider.enabled) return true // Already enabled
     const providerModels = modelsByProvider[provider.id] || []
     if (providerModels.length === 0) return false
@@ -179,7 +179,7 @@ export function ModelProvidersSettings() {
     }
   }
 
-  const getEnableDisabledReason = (provider: ModelProvider): string | null => {
+  const getEnableDisabledReason = (provider: Provider): string | null => {
     if (provider.enabled) return null
     const providerModels = modelsByProvider[provider.id] || []
     if (providerModels.length === 0)
@@ -576,7 +576,7 @@ export function ModelProvidersSettings() {
     }
   }
 
-  const getProviderActions = (provider: ModelProvider) => {
+  const getProviderActions = (provider: Provider) => {
     const actions: any[] = []
 
     if (canEditProviders) {

@@ -2,8 +2,8 @@ import { Form, Input, Modal, Select, Switch } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  CreateModelProviderRequest,
-  ModelProviderType,
+  CreateProviderRequest,
+  ProviderType,
 } from '../../../../types/api/modelProvider'
 import {
   PROVIDER_DEFAULTS,
@@ -26,7 +26,7 @@ export function AddProviderModal({
 }: AddProviderModalProps) {
   const { t } = useTranslation()
   const [form] = Form.useForm()
-  const [providerType, setProviderType] = useState<ModelProviderType>('candle')
+  const [providerType, setProviderType] = useState<ProviderType>('candle')
 
   const handleSubmit = async () => {
     try {
@@ -37,7 +37,7 @@ export function AddProviderModal({
     }
   }
 
-  const handleTypeChange = (type: ModelProviderType) => {
+  const handleTypeChange = (type: ProviderType) => {
     setProviderType(type)
     // Reset form when type changes
     form.resetFields(['api_key', 'base_url', 'settings'])
@@ -47,7 +47,7 @@ export function AddProviderModal({
     form.setFieldsValue(defaults)
   }
 
-  const getDefaultValues = (type: ModelProviderType) => {
+  const getDefaultValues = (type: ProviderType) => {
     return PROVIDER_DEFAULTS[type] || {}
   }
 

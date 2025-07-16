@@ -24,7 +24,7 @@ export interface ModelParameters {
   frequencyPenalty?: number
 }
 
-export interface ModelProviderModel {
+export interface Model {
   id: string
   name: string
   alias: string
@@ -39,7 +39,7 @@ export interface ModelProviderModel {
   device_ids?: string[] // Array of device IDs for multi-GPU
 }
 
-export interface ModelProviderSettings {
+export interface ProviderSettings {
   // Candle specific settings
   autoUnloadOldModels?: boolean
   contextShift?: boolean
@@ -57,7 +57,7 @@ export interface ModelProviderSettings {
   [key: string]: any
 }
 
-export interface ModelProviderProxySettings {
+export interface ProviderProxySettings {
   enabled: boolean
   url: string
   username: string
@@ -70,22 +70,22 @@ export interface ModelProviderProxySettings {
   host_ssl: boolean
 }
 
-export interface ModelProvider {
+export interface Provider {
   id: string
   name: string
-  type: ModelProviderType
+  type: ProviderType
   icon?: string
   enabled: boolean
   api_key?: string
   base_url?: string
-  settings?: ModelProviderSettings
-  proxy_settings?: ModelProviderProxySettings
+  settings?: ProviderSettings
+  proxy_settings?: ProviderProxySettings
   is_default?: boolean
   created_at?: string
   updated_at?: string
 }
 
-export type ModelProviderType =
+export type ProviderType =
   | 'candle'
   | 'openai'
   | 'anthropic'
@@ -94,33 +94,33 @@ export type ModelProviderType =
   | 'mistral'
   | 'custom'
 
-export interface CreateModelProviderRequest {
+export interface CreateProviderRequest {
   name: string
-  type: ModelProviderType
+  type: ProviderType
   enabled?: boolean
   api_key?: string
   base_url?: string
-  settings?: ModelProviderSettings
-  proxy_settings?: ModelProviderProxySettings
+  settings?: ProviderSettings
+  proxy_settings?: ProviderProxySettings
 }
 
-export interface UpdateModelProviderRequest {
+export interface UpdateProviderRequest {
   name?: string
   enabled?: boolean
   api_key?: string
   base_url?: string
-  settings?: ModelProviderSettings
-  proxy_settings?: ModelProviderProxySettings
+  settings?: ProviderSettings
+  proxy_settings?: ProviderProxySettings
 }
 
-export interface ModelProviderListResponse {
-  providers: ModelProvider[]
+export interface ProviderListResponse {
+  providers: Provider[]
   total: number
   page: number
   per_page: number
 }
 
-export interface CloneModelProviderRequest {
+export interface CloneProviderRequest {
   sourceId: string
   name: string
 }
@@ -155,9 +155,9 @@ export interface RemoveModelFromProviderRequest {
   modelId: string
 }
 
-// TestModelProviderProxyRequest removed - now using ModelProviderProxySettings directly
+// TestProviderProxyRequest removed - now using ProviderProxySettings directly
 
-export interface TestModelProviderProxyResponse {
+export interface TestProviderProxyResponse {
   success: boolean
   message: string
 }

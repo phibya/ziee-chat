@@ -2,8 +2,8 @@ import { Button, Form, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  ModelProviderModel,
-  ModelProviderType,
+  Model,
+  ProviderType,
 } from '../../../../types/api/modelProvider'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
 import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
@@ -12,8 +12,8 @@ import { BASIC_MODEL_FIELDS, CANDLE_PARAMETERS } from './shared/constants'
 
 interface EditModelModalProps {
   open: boolean
-  model: ModelProviderModel | null
-  providerType: ModelProviderType
+  model: Model | null
+  providerType: ProviderType
   onClose: () => void
   onSubmit: (modelData: any) => void
 }

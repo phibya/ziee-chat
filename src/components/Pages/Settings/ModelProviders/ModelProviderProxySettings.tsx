@@ -13,33 +13,33 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { ModelProviderProxySettings } from '../../../../types/api/modelProvider'
-import { useModelProvidersStore } from '../../../../store/modelProviders'
+import { ProviderProxySettings } from '../../../../types/api/modelProvider'
+import { useProvidersStore } from '../../../../store/modelProviders'
 
 const { Title, Text } = Typography
 
-interface ModelProviderProxySettingsProps {
+interface ProviderProxySettingsProps {
   providerId: string
-  initialSettings: ModelProviderProxySettings
-  onSave: (settings: ModelProviderProxySettings) => void
+  initialSettings: ProviderProxySettings
+  onSave: (settings: ProviderProxySettings) => void
   loading?: boolean
   disabled?: boolean
 }
 
-export function ModelProviderProxySettingsForm({
+export function ProviderProxySettingsForm({
   providerId,
   initialSettings,
   onSave,
   loading = false,
   disabled = false,
-}: ModelProviderProxySettingsProps) {
+}: ProviderProxySettingsProps) {
   const { t } = useTranslation()
   const [form] = Form.useForm()
   const [lastTestedConfig, setLastTestedConfig] = useState<string | null>(null)
   const [isProxyTested, setIsProxyTested] = useState(false)
 
   // Model providers store
-  const { testingProxy, testProxy } = useModelProvidersStore(
+  const { testingProxy, testProxy } = useProvidersStore(
     useShallow(state => ({
       testingProxy: state.testingProxy,
       testProxy: state.testProxy,
