@@ -435,6 +435,10 @@ pub struct ModelProviderSettings {
     #[serde(default = "default_kv_cache_type")]
     pub kv_cache_type: String,
     
+    /// Enable Paged Attention for efficient memory usage and better batching performance (default: false)
+    #[serde(default = "default_paged_attention")]
+    pub paged_attention: bool,
+    
     /// Request timeout in seconds (default: 300)
     #[serde(default = "default_request_timeout_seconds")]
     pub request_timeout_seconds: u64,
@@ -457,6 +461,7 @@ fn default_max_concurrent_prompts() -> usize { 8 }
 fn default_cpu_threads() -> usize { 4 }
 fn default_flash_attention() -> bool { false }
 fn default_kv_cache_type() -> String { "f16".to_string() }
+fn default_paged_attention() -> bool { false }
 fn default_request_timeout_seconds() -> u64 { 300 }
 fn default_enable_request_queuing() -> bool { true }
 fn default_max_queue_size() -> usize { 100 }
@@ -480,6 +485,7 @@ impl ModelProviderSettings {
             cpu_threads: 8,
             flash_attention: true,
             kv_cache_type: "f16".to_string(),
+            paged_attention: true,
             request_timeout_seconds: 300,
             enable_request_queuing: true,
             max_queue_size: 200,
@@ -499,6 +505,7 @@ impl ModelProviderSettings {
             cpu_threads: 2,
             flash_attention: false,
             kv_cache_type: "f32".to_string(),
+            paged_attention: false,
             request_timeout_seconds: 60,
             enable_request_queuing: false,
             max_queue_size: 32,
@@ -535,6 +542,11 @@ impl ModelProviderSettings {
         match self.kv_cache_type.to_lowercase().as_str() {
             "f32" | "f16" | "bf16" | "i8" | "auto" => {},
             _ => return Err(format!("Invalid kv_cache_type '{}'. Must be one of: f32, f16, bf16, i8, auto", self.kv_cache_type)),
+        }
+        
+        // Paged attention validation (boolean, no explicit validation needed but we can add warnings)
+        if self.paged_attention && !self.enable_continuous_batching {
+            return Err("paged_attention requires enable_continuous_batching to be true".to_string());
         }
         
         if self.request_timeout_seconds == 0 {

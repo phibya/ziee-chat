@@ -1,5 +1,7 @@
 use crate::ai::candle::{CandleError, CandleModel};
 use crate::ai::candle_models::ModelFactory;
+use crate::ai::scheduler::{Scheduler, SchedulerConfig, BlockManager, SequenceGroup, Sequence, SequenceStatus};
+use crate::ai::paged_attention::{PagedAttention, PagedAttentionConfig, CacheEngine, InputMetadata};
 #[cfg(feature = "metal")]
 use candle_core::backend::BackendDevice;
 use crate::ai::openai_types::*;
@@ -480,6 +482,7 @@ pub struct ModelServerState {
     pub cpu_threads: usize,
     pub flash_attention: bool,
     pub kv_cache_type: String,
+    pub paged_attention: bool,
 }
 
 impl ModelServerState {
@@ -582,6 +585,36 @@ impl ModelServerState {
         }
     }
 
+    /// Configure Paged Attention for efficient memory usage and better batching performance
+    fn configure_paged_attention(paged_attention: bool) {
+        if paged_attention {
+            println!("Enabling Paged Attention for efficient memory usage and better batching performance");
+            
+            // Set environment variables that enable paged attention
+            std::env::set_var("ENABLE_PAGED_ATTENTION", "1");
+            std::env::set_var("PAGED_ATTENTION_ENABLED", "true");
+            
+            // Set memory management flags for paged attention
+            std::env::set_var("PAGED_ATTENTION_BLOCK_SIZE", "32");
+            std::env::set_var("PAGED_ATTENTION_MAX_BLOCKS", "1024");
+            
+            // Enable block-based memory management
+            std::env::set_var("BLOCK_BASED_MEMORY", "1");
+            
+            // Enable advanced scheduling
+            std::env::set_var("ADVANCED_SCHEDULING", "1");
+            
+        } else {
+            println!("Paged Attention is disabled");
+            
+            // Ensure paged attention is explicitly disabled
+            std::env::set_var("ENABLE_PAGED_ATTENTION", "0");
+            std::env::set_var("PAGED_ATTENTION_ENABLED", "false");
+            std::env::set_var("BLOCK_BASED_MEMORY", "0");
+            std::env::set_var("ADVANCED_SCHEDULING", "0");
+        }
+    }
+
     /// Parse device configuration and create the appropriate device
     fn create_device(device_type: Option<&str>, device_ids: Option<&str>) -> Result<Device, CandleError> {
         match device_type {
@@ -664,7 +697,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false, "f16").await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false, "f16", false).await
     }
 
     pub async fn new_with_device_config(
@@ -683,6 +716,7 @@ impl ModelServerState {
         cpu_threads: usize,
         flash_attention: bool,
         kv_cache_type: &str,
+        paged_attention: bool,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
@@ -696,6 +730,9 @@ impl ModelServerState {
         
         // Configure KV Cache Type
         Self::configure_kv_cache_type(kv_cache_type);
+        
+        // Configure Paged Attention
+        Self::configure_paged_attention(paged_attention);
         
         let model = ModelFactory::create_model(architecture, model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
@@ -756,6 +793,7 @@ impl ModelServerState {
             cpu_threads,
             flash_attention,
             kv_cache_type: kv_cache_type.to_string(),
+            paged_attention,
         })
     }
 
@@ -778,6 +816,8 @@ impl ModelServerState {
         max_concurrent_prompts: usize,
         cpu_threads: usize,
         flash_attention: bool,
+        kv_cache_type: &str,
+        paged_attention: bool,
     ) -> Result<Self, CandleError> {
         Self::new_with_specific_files_and_device(
             model_path,
@@ -800,7 +840,8 @@ impl ModelServerState {
             max_concurrent_prompts,
             cpu_threads,
             flash_attention,
-            "f16",
+            kv_cache_type,
+            paged_attention,
         ).await
     }
 
@@ -826,6 +867,7 @@ impl ModelServerState {
         cpu_threads: usize,
         flash_attention: bool,
         kv_cache_type: &str,
+        paged_attention: bool,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -926,6 +968,7 @@ impl ModelServerState {
             cpu_threads,
             flash_attention,
             kv_cache_type: kv_cache_type.to_string(),
+            paged_attention,
         })
     }
 

@@ -103,6 +103,10 @@ struct Args {
     /// KV Cache Type for controlling memory usage and precision trade-off (f32, f16, bf16, i8, auto) (default: f16)
     #[arg(long, default_value = "f16")]
     kv_cache_type: String,
+
+    /// Enable Paged Attention for efficient memory usage and better batching performance
+    #[arg(long)]
+    paged_attention: bool,
 }
 
 #[tokio::main]
@@ -134,6 +138,7 @@ async fn main() {
     println!("CPU Threads: {}", args.cpu_threads);
     println!("Flash Attention: {}", args.flash_attention);
     println!("KV Cache Type: {}", args.kv_cache_type);
+    println!("Paged Attention: {}", args.paged_attention);
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -209,6 +214,7 @@ async fn main() {
             args.cpu_threads,
             args.flash_attention,
             &args.kv_cache_type,
+            args.paged_attention,
         )
         .await
         {
@@ -237,6 +243,7 @@ async fn main() {
             args.cpu_threads,
             args.flash_attention,
             &args.kv_cache_type,
+            args.paged_attention,
         )
         .await
         {

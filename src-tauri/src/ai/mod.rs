@@ -17,5 +17,7 @@ pub mod model_server;
 pub mod openai;
 pub mod openai_compatible;
 pub mod openai_types;
+pub mod paged_attention;
 pub mod provider_base;
 pub mod providers;
+pub mod scheduler;

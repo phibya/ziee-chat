@@ -381,6 +381,11 @@ impl ModelManager {
         // Set KV cache type
         cmd.arg("--kv-cache-type").arg(&provider_settings.kv_cache_type);
 
+        // Set paged attention
+        if provider_settings.paged_attention {
+            cmd.arg("--paged-attention");
+        }
+
         // Add model-specific parameters from model configuration (these override provider settings)
         if let Some(parameters) = &model.parameters.as_object() {
             // Allow model-specific override of context shift
@@ -441,6 +446,14 @@ impl ModelManager {
             if let Some(kv_cache_type) = parameters.get("kv_cache_type")
                 .and_then(|v| v.as_str()) {
                 cmd.arg("--kv-cache-type").arg(kv_cache_type);
+            }
+
+            // Allow model-specific override of paged attention
+            if let Some(paged_attention) = parameters.get("paged_attention")
+                .and_then(|v| v.as_bool()) {
+                if paged_attention {
+                    cmd.arg("--paged-attention");
+                }
             }
         }
 
