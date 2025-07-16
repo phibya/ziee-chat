@@ -99,6 +99,10 @@ struct Args {
     /// Enable flash attention support for optimized memory usage and faster inference
     #[arg(long)]
     flash_attention: bool,
+
+    /// KV Cache Type for controlling memory usage and precision trade-off (f32, f16, bf16, i8, auto) (default: f16)
+    #[arg(long, default_value = "f16")]
+    kv_cache_type: String,
 }
 
 #[tokio::main]
@@ -129,6 +133,7 @@ async fn main() {
     println!("Max Concurrent Prompts: {}", args.max_concurrent_prompts);
     println!("CPU Threads: {}", args.cpu_threads);
     println!("Flash Attention: {}", args.flash_attention);
+    println!("KV Cache Type: {}", args.kv_cache_type);
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -203,6 +208,7 @@ async fn main() {
             args.max_concurrent_prompts,
             args.cpu_threads,
             args.flash_attention,
+            &args.kv_cache_type,
         )
         .await
         {
@@ -230,6 +236,7 @@ async fn main() {
             args.max_concurrent_prompts,
             args.cpu_threads,
             args.flash_attention,
+            &args.kv_cache_type,
         )
         .await
         {

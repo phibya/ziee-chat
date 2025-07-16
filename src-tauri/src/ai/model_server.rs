@@ -87,16 +87,22 @@ pub struct CachePool {
     device: Device,
     max_size: usize,
     created_count: Arc<Mutex<usize>>,
+    kv_cache_type: String,
+    model_path: String,
+    architecture: String,
 }
 
 impl CachePool {
-    pub fn new(config: candle_transformers::models::llama::Config, device: Device, max_size: usize) -> Self {
+    pub fn new(config: candle_transformers::models::llama::Config, device: Device, max_size: usize, kv_cache_type: String, model_path: String, architecture: String) -> Self {
         Self {
             available_caches: Arc::new(Mutex::new(VecDeque::new())),
             config,
             device,
             max_size,
             created_count: Arc::new(Mutex::new(0)),
+            kv_cache_type,
+            model_path,
+            architecture,
         }
     }
 
@@ -128,19 +134,182 @@ impl CachePool {
         }
     }
 
+    fn get_cache_dtype(&self) -> candle_core::DType {
+        match self.kv_cache_type.to_lowercase().as_str() {
+            "f32" => candle_core::DType::F32,
+            "f16" => candle_core::DType::F16,
+            "bf16" => candle_core::DType::BF16,
+            "i8" => candle_core::DType::U8, // Use U8 as closest equivalent to I8
+            "auto" => {
+                // Auto-detect based on model configuration
+                self.auto_detect_cache_dtype()
+            }
+            _ => {
+                println!("Warning: Unknown KV cache type '{}', defaulting to F16", self.kv_cache_type);
+                candle_core::DType::F16
+            }
+        }
+    }
+
+    fn auto_detect_cache_dtype(&self) -> candle_core::DType {
+        // Try to detect model dtype from model config first
+        if let Some(dtype) = self.parse_model_config_dtype() {
+            println!("Auto-detected KV cache dtype: {:?} (matching model precision from config.json)", dtype);
+            return dtype;
+        }
+        
+        // Fallback to architecture-based detection
+        let model_dtype = self.detect_model_dtype();
+        
+        match model_dtype {
+            Some(dtype) => {
+                println!("Auto-detected KV cache dtype: {:?} (architecture-based detection)", dtype);
+                dtype
+            }
+            None => {
+                println!("Auto-detecting KV cache dtype: Could not detect model dtype, using F16 (balanced precision)");
+                candle_core::DType::F16
+            }
+        }
+    }
+
+    fn detect_model_dtype(&self) -> Option<candle_core::DType> {
+        // Try to read model config to detect dtype
+        let model_path = std::path::Path::new(&format!("{}/config.json", 
+            self.config.max_position_embeddings.to_string())); // This is a placeholder
+        
+        // For now, we'll implement a more practical approach by checking common patterns
+        // In a real implementation, we would parse the actual model config.json file
+        
+        // Try to detect from model architecture and common patterns
+        match self.architecture.as_str() {
+            "llama" => {
+                // Most Llama models use F16 by default, but some use BF16
+                // We'll try to detect from the model directory structure
+                self.detect_dtype_from_model_files()
+            }
+            _ => {
+                // Default to F16 for other architectures
+                Some(candle_core::DType::F16)
+            }
+        }
+    }
+
+    fn detect_dtype_from_model_files(&self) -> Option<candle_core::DType> {
+        // Try to read config.json from the model directory
+        // We need to access the actual model path from the ModelServerState
+        // For now, we'll use a simplified approach and enhance it later
+        
+        // Try to parse config.json if it exists
+        if let Some(dtype) = self.parse_model_config_dtype() {
+            return Some(dtype);
+        }
+        
+        // Fallback to F16 as a safe default
+        Some(candle_core::DType::F16)
+    }
+
+    fn parse_model_config_dtype(&self) -> Option<candle_core::DType> {
+        // Try to read config.json from the model directory
+        let config_path = std::path::Path::new(&self.model_path).join("config.json");
+        
+        if !config_path.exists() {
+            println!("Model config.json not found at: {}", config_path.display());
+            return None;
+        }
+        
+        // Read and parse the config.json file
+        match std::fs::read_to_string(&config_path) {
+            Ok(config_content) => {
+                match serde_json::from_str::<serde_json::Value>(&config_content) {
+                    Ok(config) => {
+                        // Extract torch_dtype from the config
+                        if let Some(torch_dtype) = config.get("torch_dtype").and_then(|v| v.as_str()) {
+                            let detected_dtype = self.convert_torch_dtype_to_candle(torch_dtype);
+                            println!("Detected model dtype from config.json: {} -> {:?}", torch_dtype, detected_dtype);
+                            return detected_dtype;
+                        } else {
+                            println!("No torch_dtype found in config.json");
+                        }
+                    }
+                    Err(e) => {
+                        println!("Failed to parse config.json: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                println!("Failed to read config.json: {}", e);
+            }
+        }
+        
+        None
+    }
+
+    fn convert_torch_dtype_to_candle(&self, torch_dtype: &str) -> Option<candle_core::DType> {
+        match torch_dtype.to_lowercase().as_str() {
+            "float32" | "torch.float32" | "f32" => Some(candle_core::DType::F32),
+            "float16" | "torch.float16" | "f16" => Some(candle_core::DType::F16),
+            "bfloat16" | "torch.bfloat16" | "bf16" => Some(candle_core::DType::BF16),
+            "int8" | "torch.int8" | "i8" => Some(candle_core::DType::U8), // Use U8 as closest equivalent
+            _ => {
+                println!("Warning: Unknown torch_dtype '{}', cannot convert to candle DType", torch_dtype);
+                None
+            }
+        }
+    }
+
+    fn validate_dtype_compatibility(&self, model_dtype: candle_core::DType, cache_dtype: candle_core::DType) -> Result<(), String> {
+        // Check if the model and cache dtypes are compatible
+        match (model_dtype, cache_dtype) {
+            // Perfect matches
+            (candle_core::DType::F32, candle_core::DType::F32) |
+            (candle_core::DType::F16, candle_core::DType::F16) |
+            (candle_core::DType::BF16, candle_core::DType::BF16) |
+            (candle_core::DType::U8, candle_core::DType::U8) => {
+                println!("✓ Perfect dtype compatibility: Model={:?}, Cache={:?}", model_dtype, cache_dtype);
+                Ok(())
+            }
+            
+            // Potentially compatible combinations (with warnings)
+            (candle_core::DType::F32, candle_core::DType::F16) |
+            (candle_core::DType::F16, candle_core::DType::F32) => {
+                Err(format!("Potential dtype mismatch: Model={:?}, Cache={:?}. This may cause inference errors.", model_dtype, cache_dtype))
+            }
+            
+            (candle_core::DType::BF16, candle_core::DType::F16) |
+            (candle_core::DType::F16, candle_core::DType::BF16) => {
+                Err(format!("Potential dtype mismatch: Model={:?}, Cache={:?}. This may cause inference errors.", model_dtype, cache_dtype))
+            }
+            
+            // Likely incompatible combinations
+            _ => {
+                Err(format!("Likely dtype incompatibility: Model={:?}, Cache={:?}. This will probably cause inference errors.", model_dtype, cache_dtype))
+            }
+        }
+    }
+
     async fn create_cache_safely(&self) -> Result<Cache, CandleError> {
         // For Metal devices, serialize cache creation to prevent command buffer conflicts
+        let cache_dtype = self.get_cache_dtype();
+        
+        // Validate dtype compatibility if we can detect the model dtype
+        if let Some(model_dtype) = self.parse_model_config_dtype() {
+            if let Err(warning) = self.validate_dtype_compatibility(model_dtype, cache_dtype) {
+                println!("Warning: {}", warning);
+            }
+        }
+        
         #[cfg(feature = "metal")]
         {
             if matches!(self.device, Device::Metal(_)) {
                 let _lock = get_metal_lock().lock().await;
-                return Cache::new(true, candle_core::DType::F16, &self.config, &self.device)
+                return Cache::new(true, cache_dtype, &self.config, &self.device)
                     .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)));
             }
         }
         
         // For non-Metal devices, create cache without serialization
-        Cache::new(true, candle_core::DType::F16, &self.config, &self.device)
+        Cache::new(true, cache_dtype, &self.config, &self.device)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)))
     }
 
@@ -310,6 +479,7 @@ pub struct ModelServerState {
     pub concurrent_request_semaphore: Arc<Semaphore>,
     pub cpu_threads: usize,
     pub flash_attention: bool,
+    pub kv_cache_type: String,
 }
 
 impl ModelServerState {
@@ -362,6 +532,53 @@ impl ModelServerState {
             std::env::set_var("TRANSFORMERS_FLASH_ATTENTION", "0");
             std::env::set_var("HF_FLASH_ATTENTION", "0");
             std::env::set_var("FLASH_ATTENTION_MEMORY_EFFICIENT", "0");
+        }
+    }
+
+    /// Configure KV Cache Type for controlling memory usage and precision trade-off
+    fn configure_kv_cache_type(kv_cache_type: &str) {
+        println!("Configuring KV Cache Type: {}", kv_cache_type);
+        
+        // Set environment variables for KV cache type configuration
+        std::env::set_var("KV_CACHE_TYPE", kv_cache_type);
+        std::env::set_var("CANDLE_KV_CACHE_TYPE", kv_cache_type);
+        std::env::set_var("PYTORCH_KV_CACHE_TYPE", kv_cache_type);
+        std::env::set_var("TRANSFORMERS_KV_CACHE_TYPE", kv_cache_type);
+        
+        // Set precision-specific environment variables
+        match kv_cache_type.to_lowercase().as_str() {
+            "f32" => {
+                std::env::set_var("KV_CACHE_PRECISION", "f32");
+                std::env::set_var("FORCE_F32_PRECISION", "1");
+                println!("KV Cache configured for f32 precision (high memory usage, highest precision)");
+            }
+            "f16" => {
+                std::env::set_var("KV_CACHE_PRECISION", "f16");
+                std::env::set_var("FORCE_F16_PRECISION", "1");
+                println!("KV Cache configured for f16 precision (balanced memory usage and precision)");
+            }
+            "bf16" => {
+                std::env::set_var("KV_CACHE_PRECISION", "bf16");
+                std::env::set_var("FORCE_BF16_PRECISION", "1");
+                println!("KV Cache configured for bf16 precision (balanced memory usage and precision)");
+            }
+            "i8" => {
+                std::env::set_var("KV_CACHE_PRECISION", "u8");
+                std::env::set_var("FORCE_U8_PRECISION", "1");
+                println!("KV Cache configured for u8 precision (low memory usage, reduced precision)");
+            }
+            "auto" => {
+                std::env::set_var("KV_CACHE_PRECISION", "auto");
+                std::env::set_var("KV_CACHE_AUTO_DETECT", "1");
+                std::env::set_var("FORCE_F16_PRECISION", "1"); // Default fallback
+                println!("KV Cache configured for auto-detection (will match model precision)");
+            }
+            _ => {
+                println!("Warning: Unknown KV cache type '{}', defaulting to f16", kv_cache_type);
+                std::env::set_var("KV_CACHE_TYPE", "f16");
+                std::env::set_var("KV_CACHE_PRECISION", "f16");
+                std::env::set_var("FORCE_F16_PRECISION", "1");
+            }
         }
     }
 
@@ -447,7 +664,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false).await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false, "f16").await
     }
 
     pub async fn new_with_device_config(
@@ -465,6 +682,7 @@ impl ModelServerState {
         max_concurrent_prompts: usize,
         cpu_threads: usize,
         flash_attention: bool,
+        kv_cache_type: &str,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
@@ -475,6 +693,9 @@ impl ModelServerState {
         
         // Configure flash attention
         Self::configure_flash_attention(flash_attention);
+        
+        // Configure KV Cache Type
+        Self::configure_kv_cache_type(kv_cache_type);
         
         let model = ModelFactory::create_model(architecture, model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
@@ -492,7 +713,7 @@ impl ModelServerState {
         let model_config_for_cache = model.get_config();
 
         // Create cache pool
-        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10));
+        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10, kv_cache_type.to_string(), model_path.to_string(), architecture.to_string()));
         
         // Create batch processor channel
         let (inference_tx, inference_rx) = mpsc::unbounded_channel();
@@ -534,6 +755,7 @@ impl ModelServerState {
             concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
             cpu_threads,
             flash_attention,
+            kv_cache_type: kv_cache_type.to_string(),
         })
     }
 
@@ -578,6 +800,7 @@ impl ModelServerState {
             max_concurrent_prompts,
             cpu_threads,
             flash_attention,
+            "f16",
         ).await
     }
 
@@ -602,6 +825,7 @@ impl ModelServerState {
         max_concurrent_prompts: usize,
         cpu_threads: usize,
         flash_attention: bool,
+        kv_cache_type: &str,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -625,6 +849,9 @@ impl ModelServerState {
         
         // Configure flash attention
         Self::configure_flash_attention(flash_attention);
+        
+        // Configure KV Cache Type
+        Self::configure_kv_cache_type(kv_cache_type);
         
         // For now, use the existing factory methods but with specific file awareness
         // TODO: Update ModelFactory to accept specific file paths
@@ -656,7 +883,7 @@ impl ModelServerState {
         let model_config_for_cache = model.get_config();
 
         // Create cache pool
-        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10));
+        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10, kv_cache_type.to_string(), model_path.to_string(), architecture.to_string()));
         
         // Create batch processor channel
         let (inference_tx, inference_rx) = mpsc::unbounded_channel();
@@ -698,6 +925,7 @@ impl ModelServerState {
             concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
             cpu_threads,
             flash_attention,
+            kv_cache_type: kv_cache_type.to_string(),
         })
     }
 

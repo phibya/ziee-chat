@@ -378,6 +378,9 @@ impl ModelManager {
             cmd.arg("--flash-attention");
         }
 
+        // Set KV cache type
+        cmd.arg("--kv-cache-type").arg(&provider_settings.kv_cache_type);
+
         // Add model-specific parameters from model configuration (these override provider settings)
         if let Some(parameters) = &model.parameters.as_object() {
             // Allow model-specific override of context shift
@@ -432,6 +435,12 @@ impl ModelManager {
                 if flash_attention {
                     cmd.arg("--flash-attention");
                 }
+            }
+
+            // Allow model-specific override of KV cache type
+            if let Some(kv_cache_type) = parameters.get("kv_cache_type")
+                .and_then(|v| v.as_str()) {
+                cmd.arg("--kv-cache-type").arg(kv_cache_type);
             }
         }
 
