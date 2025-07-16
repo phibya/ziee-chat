@@ -409,18 +409,14 @@ pub async fn send_message_stream(
             let conversation_id = request.conversation_id;
             let user_id = auth_user.user.id;
 
-            // Then spawn task to generate a better AI-powered title
-            let provider_clone = provider.clone();
-            let model_clone = model.clone();
-            tokio::spawn(async move {
-                let _ = generate_and_update_conversation_title(
-                    conversation_id,
-                    user_id,
-                    &provider_clone,
-                    &model_clone,
-                )
-                .await;
-            });
+            // Wait for title generation to complete before streaming the response
+            let _ = generate_and_update_conversation_title(
+                conversation_id,
+                user_id,
+                &provider,
+                &model,
+            )
+            .await;
         }
 
         // Call AI provider with streaming
