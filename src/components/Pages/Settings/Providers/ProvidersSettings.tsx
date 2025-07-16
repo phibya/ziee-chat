@@ -20,7 +20,7 @@ import {
 } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   CopyOutlined,
   DeleteOutlined,
@@ -35,17 +35,13 @@ import {
 import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
-import {
-  Provider,
-  Model,
-  ProviderType,
-} from '../../../../types/api/modelProvider'
+import { Model, Provider, ProviderType } from '../../../../types/api/provider'
 import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
-import { ModelProviderProxySettingsForm } from './ModelProviderProxySettings'
+import { ProviderProxySettingsForm } from './ProviderProxySettings'
 import { CandleConfigurationSection } from './shared/CandleConfigurationSection'
-import { useProvidersStore } from '../../../../store/modelProviders'
+import { useProvidersStore } from '../../../../store/providers'
 
 const { Title, Text } = Typography
 const { Sider, Content } = Layout
@@ -60,7 +56,7 @@ const PROVIDER_ICONS: Record<ProviderType, string> = {
   custom: '🔧',
 }
 
-export function ModelProvidersSettings() {
+export function ProvidersSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
@@ -121,17 +117,15 @@ export function ModelProvidersSettings() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isAddModelModalOpen, setIsAddModelModalOpen] = useState(false)
   const [isEditModelModalOpen, setIsEditModelModalOpen] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<Model | null>(
-    null,
-  )
+  const [selectedModel, setSelectedModel] = useState<Model | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [pendingSettings, setPendingSettings] = useState<any>(null)
 
   // Check permissions for web app
   const canEditProviders =
-    isDesktopApp || hasPermission(Permission.config.modelProviders.edit)
+    isDesktopApp || hasPermission(Permission.config.providers.edit)
   const canViewProviders =
-    isDesktopApp || hasPermission(Permission.config.modelProviders.read)
+    isDesktopApp || hasPermission(Permission.config.providers.read)
 
   // If user doesn't have view permissions, don't render the component
   if (!canViewProviders) {
@@ -230,13 +224,13 @@ export function ModelProvidersSettings() {
           setSelectedProvider(provider_id)
         } else {
           // Provider doesn't exist, redirect to first provider
-          navigate(`/settings/model-providers/${providers[0].id}`, {
+          navigate(`/settings/providers/${providers[0].id}`, {
             replace: true,
           })
         }
       } else if (!selectedProvider) {
         // No URL parameter and no selected provider, navigate to first provider
-        navigate(`/settings/model-providers/${providers[0].id}`, {
+        navigate(`/settings/providers/${providers[0].id}`, {
           replace: true,
         })
       }
@@ -261,7 +255,7 @@ export function ModelProvidersSettings() {
 
   const handleProviderToggle = async (providerId: string, enabled: boolean) => {
     if (!canEditProviders) {
-      message.error(t('modelProviders.noPermissionModify'))
+      message.error(t('providers.noPermissionModify'))
       return
     }
 
@@ -356,7 +350,7 @@ export function ModelProvidersSettings() {
 
       setHasUnsavedChanges(false)
       setPendingSettings(null)
-      message.success(t('modelProviders.settingsSaved'))
+      message.success(t('providers.settingsSaved'))
     } catch (error) {
       console.error('Failed to save settings:', error)
       // Error is handled by the store
@@ -370,7 +364,7 @@ export function ModelProvidersSettings() {
       await updateProvider(currentProvider.id, {
         proxy_settings: proxySettings,
       })
-      message.success(t('modelProviders.proxySettingsSaved'))
+      message.success(t('providers.proxySettingsSaved'))
     } catch (error) {
       console.error('Failed to save proxy settings:', error)
       // Error is handled by the store
@@ -379,7 +373,7 @@ export function ModelProvidersSettings() {
 
   const handleDeleteProvider = async (providerId: string) => {
     if (!canEditProviders) {
-      message.error(t('modelProviders.noPermissionDelete'))
+      message.error(t('providers.noPermissionDelete'))
       return
     }
 
@@ -387,7 +381,7 @@ export function ModelProvidersSettings() {
     if (!provider) return
 
     Modal.confirm({
-      title: t('modelProviders.deleteModelProvider'),
+      title: t('providers.deleteProvider'),
       content: `Are you sure you want to delete "${provider.name}"? This action cannot be undone.`,
       okText: 'Delete',
       okType: 'danger',
@@ -400,15 +394,14 @@ export function ModelProvidersSettings() {
               p => p.id !== providerId,
             )
             if (remainingProviders.length > 0) {
-              navigate(
-                `/settings/model-providers/${remainingProviders[0].id}`,
-                { replace: true },
-              )
+              navigate(`/settings/providers/${remainingProviders[0].id}`, {
+                replace: true,
+              })
             } else {
-              navigate('/settings/model-providers', { replace: true })
+              navigate('/settings/providers', { replace: true })
             }
           }
-          message.success(t('modelProviders.providerDeleted'))
+          message.success(t('providers.providerDeleted'))
         } catch (error: any) {
           console.error('Failed to delete provider:', error)
           // Error is handled by the store
@@ -419,7 +412,7 @@ export function ModelProvidersSettings() {
 
   const handleCloneProvider = async (providerId: string) => {
     if (!canEditProviders) {
-      message.error(t('modelProviders.noPermissionClone'))
+      message.error(t('providers.noPermissionClone'))
       return
     }
 
@@ -428,7 +421,7 @@ export function ModelProvidersSettings() {
         providerId,
         `${providers.find(p => p.id === providerId)?.name} (Clone)`,
       )
-      message.success(t('modelProviders.providerCloned'))
+      message.success(t('providers.providerCloned'))
     } catch (error) {
       console.error('Failed to clone provider:', error)
       // Error is handled by the store
@@ -439,8 +432,8 @@ export function ModelProvidersSettings() {
     try {
       const newProvider = await createProvider(providerData)
       setIsAddModalOpen(false)
-      navigate(`/settings/model-providers/${newProvider.id}`)
-      message.success(t('modelProviders.providerAdded'))
+      navigate(`/settings/providers/${newProvider.id}`)
+      message.success(t('providers.providerAdded'))
     } catch (error: any) {
       console.error('Failed to add provider:', error)
       // Error is handled by the store
@@ -456,7 +449,7 @@ export function ModelProvidersSettings() {
         // For Candle uploads, just refresh the providers list
         await loadProviders()
         setIsAddModelModalOpen(false)
-        message.success(t('modelProviders.modelAdded'))
+        message.success(t('providers.modelAdded'))
       } else {
         // For regular models, add them normally
         await addModel(currentProvider.id, modelData)
@@ -465,7 +458,7 @@ export function ModelProvidersSettings() {
         await loadProviders()
 
         setIsAddModelModalOpen(false)
-        message.success(t('modelProviders.modelAdded'))
+        message.success(t('providers.modelAdded'))
       }
     } catch (error) {
       console.error('Failed to add model:', error)
@@ -479,7 +472,7 @@ export function ModelProvidersSettings() {
     try {
       await updateModel(modelData.id, modelData)
       setIsEditModelModalOpen(false)
-      message.success(t('modelProviders.modelUpdated'))
+      message.success(t('providers.modelUpdated'))
     } catch (error) {
       console.error('Failed to update model:', error)
       // Error is handled by the store
@@ -491,7 +484,7 @@ export function ModelProvidersSettings() {
 
     try {
       await deleteModel(modelId)
-      message.success(t('modelProviders.modelDeleted'))
+      message.success(t('providers.modelDeleted'))
     } catch (error) {
       console.error('Failed to delete model:', error)
       // Error is handled by the store
@@ -570,9 +563,9 @@ export function ModelProvidersSettings() {
   const copyToClipboard = (text: string) => {
     if (typeof window !== 'undefined' && window.navigator?.clipboard) {
       window.navigator.clipboard.writeText(text)
-      message.success(t('modelProviders.copiedToClipboard'))
+      message.success(t('providers.copiedToClipboard'))
     } else {
-      message.error(t('modelProviders.clipboardNotAvailable'))
+      message.error(t('providers.clipboardNotAvailable'))
     }
   }
 
@@ -650,7 +643,7 @@ export function ModelProvidersSettings() {
         if (key === 'add-provider') {
           setIsAddModalOpen(true)
         } else {
-          navigate(`/settings/model-providers/${key}`)
+          navigate(`/settings/providers/${key}`)
         }
       }}
       className={'!bg-transparent'}
@@ -669,7 +662,7 @@ export function ModelProvidersSettings() {
     if (!currentProvider) {
       return (
         <Empty
-          description={t('modelProviders.noProviderSelected')}
+          description={t('providers.noProviderSelected')}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       )
@@ -741,7 +734,7 @@ export function ModelProvidersSettings() {
             >
               <Form.Item
                 name="name"
-                label={t('modelProviders.providerName')}
+                label={t('providers.providerName')}
                 style={{ margin: 0 }}
               >
                 <Input
@@ -797,7 +790,7 @@ export function ModelProvidersSettings() {
             onValuesChange={handleFormChange}
           >
             <Card
-              title={t('modelProviders.apiConfiguration')}
+              title={t('providers.apiConfiguration')}
               extra={
                 canEditProviders && (
                   <Button
@@ -824,7 +817,7 @@ export function ModelProvidersSettings() {
                     style={{ marginBottom: 0, marginTop: 16 }}
                   >
                     <Input.Password
-                      placeholder={t('modelProviders.insertApiKey')}
+                      placeholder={t('providers.insertApiKey')}
                       disabled={!canEditProviders}
                       iconRender={visible =>
                         visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
@@ -862,7 +855,7 @@ export function ModelProvidersSettings() {
                     style={{ marginBottom: 0, marginTop: 16 }}
                   >
                     <Input
-                      placeholder={t('modelProviders.baseUrl')}
+                      placeholder={t('providers.baseUrl')}
                       disabled={!canEditProviders}
                     />
                   </Form.Item>
@@ -874,7 +867,7 @@ export function ModelProvidersSettings() {
 
         {/* Models Section */}
         <Card
-          title={t('modelProviders.models')}
+          title={t('providers.models')}
           extra={
             canEditProviders && (
               <Button
@@ -991,7 +984,7 @@ export function ModelProvidersSettings() {
         {/* Proxy Settings - For non-Candle providers */}
         {currentProvider.type !== 'candle' &&
           currentProvider.proxy_settings && (
-            <ModelProviderProxySettingsForm
+            <ProviderProxySettingsForm
               providerId={currentProvider.id}
               initialSettings={currentProvider.proxy_settings}
               onSave={handleProxySettingsSave}
@@ -1007,7 +1000,7 @@ export function ModelProvidersSettings() {
             onValuesChange={handleSettingsChange}
           >
             <Card
-              title={t('modelProviders.configuration')}
+              title={t('providers.configuration')}
               extra={
                 canEditProviders && (
                   <Button
@@ -1042,7 +1035,7 @@ export function ModelProvidersSettings() {
           style={{ backgroundColor: 'transparent' }}
         >
           <div>
-            <Title level={3}>Model Providers</Title>
+            <Title level={3}>Providers</Title>
             <ProviderMenu />
           </div>
         </Sider>
@@ -1056,7 +1049,7 @@ export function ModelProvidersSettings() {
             <div style={{ marginBottom: '24px' }}>
               <Title level={3} style={{ margin: '0 0 16px 0' }}>
                 <SettingOutlined style={{ marginRight: 8 }} />
-                Model Providers
+                Providers
               </Title>
               <Dropdown
                 menu={{
@@ -1065,7 +1058,7 @@ export function ModelProvidersSettings() {
                     if (key === 'add-provider') {
                       setIsAddModalOpen(true)
                     } else {
-                      navigate(`/settings/model-providers/${key}`)
+                      navigate(`/settings/providers/${key}`)
                     }
                   },
                 }}

@@ -1,5 +1,5 @@
 /**
- * Model Provider API type definitions
+ * Provider API type definitions
  * Types for managing model providers in the application
  */
 

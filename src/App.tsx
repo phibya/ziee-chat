@@ -26,8 +26,8 @@ import {
   HardwareSettings,
   HttpsProxySettings,
   LocalApiServerSettings,
-  ModelProvidersSettings,
   PrivacySettings,
+  ProvidersSettings,
   ShortcutsSettings,
   UserGroupsSettings,
   UsersSettings,
@@ -82,18 +82,15 @@ function App() {
                 <Route path="general" element={<GeneralSettings />} />
                 <Route path="appearance" element={<AppearanceSettings />} />
                 <Route path="privacy" element={<PrivacySettings />} />
-                {/* Model Providers: Main settings for desktop, Admin section for web */}
+                {/* Providers: Main settings for desktop, Admin section for web */}
                 {(isDesktopApp ||
                   (!isDesktopApp &&
-                    hasPermission(Permission.config.modelProviders.read))) && (
+                    hasPermission(Permission.config.providers.read))) && (
                   <>
+                    <Route path="providers" element={<ProvidersSettings />} />
                     <Route
-                      path="model-providers"
-                      element={<ModelProvidersSettings />}
-                    />
-                    <Route
-                      path="model-providers/:provider_id"
-                      element={<ModelProvidersSettings />}
+                      path="providers/:provider_id"
+                      element={<ProvidersSettings />}
                     />
                   </>
                 )}

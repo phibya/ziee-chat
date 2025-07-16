@@ -1,4 +1,4 @@
-import { ProviderType } from '../types/api/modelProvider'
+import { ProviderType } from '../types/api/provider'
 
 export interface ProviderOption {
   value: ProviderType

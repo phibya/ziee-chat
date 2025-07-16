@@ -31,7 +31,7 @@ use crate::database::{
     queries::{
         assistants::get_assistant_by_id,
         chat,
-        model_providers::{get_model_by_id, get_provider_by_id, get_provider_id_by_model_id},
+        providers::{get_model_by_id, get_provider_by_id, get_provider_id_by_model_id},
     },
 };
 
@@ -89,7 +89,6 @@ pub struct StreamErrorData {
     pub error: String,
     pub code: String,
 }
-
 
 /// Create a new conversation
 pub async fn create_conversation(
@@ -352,7 +351,8 @@ pub async fn send_message_stream(
         let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
 
         // Create AI provider with model ID for Candle providers
-        let ai_provider = match create_ai_provider_with_model_id(&provider, Some(request.model_id)) {
+        let ai_provider = match create_ai_provider_with_model_id(&provider, Some(request.model_id))
+        {
             Ok(provider) => provider,
             Err(e) => {
                 let _ = tx.send(Ok(Event::default().event("error").data(
@@ -379,7 +379,7 @@ pub async fn send_message_stream(
         }
 
         // Merge parameters from model and assistant configurations
-        let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) = 
+        let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) =
             merge_parameters(&model.parameters, &assistant_params);
 
         // Create chat request
@@ -420,13 +420,9 @@ pub async fn send_message_stream(
             let user_id = auth_user.user.id;
 
             // Wait for title generation to complete before streaming the response
-            let _ = generate_and_update_conversation_title(
-                conversation_id,
-                user_id,
-                &provider,
-                &model,
-            )
-            .await;
+            let _ =
+                generate_and_update_conversation_title(conversation_id, user_id, &provider, &model)
+                    .await;
         }
 
         // Call AI provider with streaming
@@ -641,7 +637,7 @@ async fn stream_ai_response(
     };
 
     // Merge parameters from model and assistant configurations
-    let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) = 
+    let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) =
         merge_parameters(&model.parameters, &assistant_params);
 
     // Create chat request
@@ -833,15 +829,18 @@ pub async fn edit_message_stream(
                             });
 
                             // Get assistant parameters if available
-                            let assistant_params = if let Some(assistant_id) = conversation.assistant_id {
-                                if let Ok(Some(assistant)) = get_assistant_by_id(assistant_id, Some(user_id)).await {
-                                    assistant.parameters.clone()
+                            let assistant_params =
+                                if let Some(assistant_id) = conversation.assistant_id {
+                                    if let Ok(Some(assistant)) =
+                                        get_assistant_by_id(assistant_id, Some(user_id)).await
+                                    {
+                                        assistant.parameters.clone()
+                                    } else {
+                                        None
+                                    }
                                 } else {
                                     None
-                                }
-                            } else {
-                                None
-                            };
+                                };
 
                             // Stream AI response (don't save user message again as it's already saved by edit_message)
                             stream_ai_response(
@@ -1093,12 +1092,12 @@ fn create_ai_provider_with_model_id(
                 crate::ai::candle::DeviceType::Cpu, // device_type - could be made configurable
                 proxy_config,
             )?;
-            
+
             // Set the model ID if provided (for Candle providers)
             if let Some(id) = model_id {
                 candle_provider.set_model_id(id);
             }
-            
+
             Ok(Box::new(candle_provider))
         }
         _ => Err(format!("Unsupported provider type: {}", provider.provider_type).into()),
@@ -1232,18 +1231,18 @@ fn merge_parameters(
     model_params: &Option<serde_json::Value>,
     assistant_params: &Option<serde_json::Value>,
 ) -> (
-    Option<f64>,    // temperature
-    Option<u32>,    // max_tokens
-    Option<f64>,    // top_p
-    Option<f64>,    // frequency_penalty
-    Option<f64>,    // presence_penalty
+    Option<f64>, // temperature
+    Option<u32>, // max_tokens
+    Option<f64>, // top_p
+    Option<f64>, // frequency_penalty
+    Option<f64>, // presence_penalty
 ) {
     let mut temperature = None;
     let mut max_tokens = None;
     let mut top_p = None;
     let mut frequency_penalty = None;
     let mut presence_penalty = None;
-    
+
     // First, extract from model parameters
     if let Some(model_obj) = model_params.as_ref().and_then(|p| p.as_object()) {
         if let Some(temp) = model_obj.get("temperature").and_then(|t| t.as_f64()) {
@@ -1262,7 +1261,7 @@ fn merge_parameters(
             presence_penalty = Some(pres_pen);
         }
     }
-    
+
     // Then, override with assistant parameters (higher priority)
     if let Some(assistant_obj) = assistant_params.as_ref().and_then(|p| p.as_object()) {
         if let Some(temp) = assistant_obj.get("temperature").and_then(|t| t.as_f64()) {
@@ -1274,13 +1273,25 @@ fn merge_parameters(
         if let Some(top_p_val) = assistant_obj.get("top_p").and_then(|t| t.as_f64()) {
             top_p = Some(top_p_val);
         }
-        if let Some(freq_pen) = assistant_obj.get("frequency_penalty").and_then(|t| t.as_f64()) {
+        if let Some(freq_pen) = assistant_obj
+            .get("frequency_penalty")
+            .and_then(|t| t.as_f64())
+        {
             frequency_penalty = Some(freq_pen);
         }
-        if let Some(pres_pen) = assistant_obj.get("presence_penalty").and_then(|t| t.as_f64()) {
+        if let Some(pres_pen) = assistant_obj
+            .get("presence_penalty")
+            .and_then(|t| t.as_f64())
+        {
             presence_penalty = Some(pres_pen);
         }
     }
-    
-    (temperature, max_tokens, top_p, frequency_penalty, presence_penalty)
+
+    (
+        temperature,
+        max_tokens,
+        top_p,
+        frequency_penalty,
+        presence_penalty,
+    )
 }

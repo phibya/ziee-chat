@@ -106,7 +106,7 @@
     "general": "General",
     "appearance": "Appearance",
     "privacy": "Privacy",
-    "modelProviders": "Model Providers",
+    "providers": "Providers",
     "shortcuts": "Shortcuts",
     "hardware": "Hardware",
     "localApiServer": "Local API Server",
@@ -332,10 +332,10 @@
     "willBeDisabled": "⚠️ Proxy will be disabled on save - test required",
     "enterProxyUrl": "Please enter proxy URL"
   },
-  "modelProviders": {
-    "title": "Model Providers",
+  "providers": {
+    "title": "Providers",
     "addProvider": "Add Provider",
-    "addProviderTitle": "Add Model Provider",
+    "addProviderTitle": "Add Provider",
     "editProvider": "Edit Provider",
     "cloneProvider": "Clone Provider",
     "deleteProvider": "Delete Provider",
@@ -433,7 +433,7 @@
     "providerCloned": "Provider cloned successfully",
     "copiedToClipboard": "Copied to clipboard",
     "clipboardNotAvailable": "Clipboard not available",
-    "deleteModelProvider": "Delete Model Provider",
+    "deleteProvider": "Delete Provider",
     "noProviderSelected": "No provider selected",
     "insertApiKey": "Insert API Key",
     "configuration": "Configuration",

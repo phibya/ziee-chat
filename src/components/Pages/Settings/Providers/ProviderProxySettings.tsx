@@ -13,8 +13,8 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { ProviderProxySettings } from '../../../../types/api/modelProvider'
-import { useProvidersStore } from '../../../../store/modelProviders'
+import { ProviderProxySettings } from '../../../../types/api/provider'
+import { useProvidersStore } from '../../../../store/providers'
 
 const { Title, Text } = Typography
 

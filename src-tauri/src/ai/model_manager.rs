@@ -19,8 +19,8 @@ pub enum ModelStatus {
 
 #[derive(Debug)]
 pub enum ProcessHandle {
-    Owned(Child),      // Process started by this manager
-    External(u32),     // External process, we only track the PID
+    Owned(Child),  // Process started by this manager
+    External(u32), // External process, we only track the PID
 }
 
 impl ProcessHandle {
@@ -56,10 +56,10 @@ impl ProcessHandle {
                 #[cfg(windows)]
                 {
                     use std::ptr;
+                    use winapi::um::handleapi::CloseHandle;
                     use winapi::um::processthreadsapi::{OpenProcess, TerminateProcess};
                     use winapi::um::winnt::PROCESS_TERMINATE;
-                    use winapi::um::handleapi::CloseHandle;
-                    
+
                     unsafe {
                         let handle = OpenProcess(PROCESS_TERMINATE, 0, *pid);
                         if handle != ptr::null_mut() {
@@ -139,8 +139,8 @@ pub enum ModelManagerError {
 
 #[derive(Debug)]
 pub enum ModelStartResult {
-    Started(u16),           // Model was started, returns port
-    AlreadyRunning(u16),    // Model was already running, returns port
+    Started(u16),        // Model was started, returns port
+    AlreadyRunning(u16), // Model was already running, returns port
 }
 
 impl ModelManager {
@@ -157,21 +157,34 @@ impl ModelManager {
         model: &ModelDb,
     ) -> Result<ModelStartResult, ModelManagerError> {
         // Get the provider information to access its settings
-        let provider = match crate::database::queries::model_providers::get_provider_by_id(model.provider_id).await {
+        let provider = match crate::database::queries::providers::get_provider_by_id(
+            model.provider_id,
+        )
+        .await
+        {
             Ok(Some(provider)) => provider,
-            Ok(None) => return Err(ModelManagerError::ModelNotFound(
-                format!("Provider {} not found", model.provider_id)
-            )),
-            Err(e) => return Err(ModelManagerError::DatabaseError(
-                format!("Failed to get provider: {}", e)
-            )),
+            Ok(None) => {
+                return Err(ModelManagerError::ModelNotFound(format!(
+                    "Provider {} not found",
+                    model.provider_id
+                )))
+            }
+            Err(e) => {
+                return Err(ModelManagerError::DatabaseError(format!(
+                    "Failed to get provider: {}",
+                    e
+                )))
+            }
         };
         let mut running_models = self.running_models.lock().await;
 
         // Check if model is already running in our tracking
         if let Some(model_process) = running_models.get(&model.id) {
             let port = model_process.port;
-            println!("Model {} is already running on port {} (in tracking)", model.id, port);
+            println!(
+                "Model {} is already running on port {} (in tracking)",
+                model.id, port
+            );
             return Ok(ModelStartResult::AlreadyRunning(port));
         }
 
@@ -193,7 +206,7 @@ impl ModelManager {
                             // Process is alive, get the port from lock file
                             if let Ok(existing_port) = port_str.parse::<u16>() {
                                 println!("Model {} is already running on port {} (found via lock file), adding to tracking", model.id, existing_port);
-                                
+
                                 // Create a ModelProcess entry for the existing process
                                 let model_process = ModelProcess {
                                     model_id: model.id,
@@ -203,14 +216,21 @@ impl ModelManager {
                                     status: ModelStatus::Running,
                                     started_at: chrono::Utc::now(), // We don't know the actual start time
                                     model_path: model_path.clone(),
-                                    architecture: model.architecture.clone().unwrap_or_else(|| "llama".to_string()),
+                                    architecture: model
+                                        .architecture
+                                        .clone()
+                                        .unwrap_or_else(|| "llama".to_string()),
                                 };
-                                
+
                                 running_models.insert(model.id, model_process);
                                 return Ok(ModelStartResult::AlreadyRunning(existing_port));
                             } else {
-                                println!("Model {} is already running but port is invalid in lock file", model.id);
-                                return Ok(ModelStartResult::AlreadyRunning(port)); // Use our allocated port as fallback
+                                println!(
+                                    "Model {} is already running but port is invalid in lock file",
+                                    model.id
+                                );
+                                return Ok(ModelStartResult::AlreadyRunning(port));
+                                // Use our allocated port as fallback
                             }
                         }
                     }
@@ -223,16 +243,23 @@ impl ModelManager {
         }
 
         // Detect model format and get specific file paths
-        let detected_architecture = match crate::ai::candle_models::ModelUtils::detect_model_format(&model_path) {
-            Ok(arch) => arch,
-            Err(e) => {
-                eprintln!("Warning: Could not detect model format: {}, using default", e);
-                "llama".to_string()
-            }
-        };
-        
+        let detected_architecture =
+            match crate::ai::candle_models::ModelUtils::detect_model_format(&model_path) {
+                Ok(arch) => arch,
+                Err(e) => {
+                    eprintln!(
+                        "Warning: Could not detect model format: {}, using default",
+                        e
+                    );
+                    "llama".to_string()
+                }
+            };
+
         // Use the detected architecture or fall back to the model's architecture
-        let architecture = model.architecture.as_deref().unwrap_or(&detected_architecture);
+        let architecture = model
+            .architecture
+            .as_deref()
+            .unwrap_or(&detected_architecture);
 
         println!(
             "Starting model server for model {} on port {} (detected format: {})",
@@ -240,11 +267,20 @@ impl ModelManager {
         );
 
         // Get specific file paths for this model
-        let file_paths = match crate::ai::candle_models::ModelUtils::get_model_file_paths(&model_path, architecture) {
+        let file_paths = match crate::ai::candle_models::ModelUtils::get_model_file_paths(
+            &model_path,
+            architecture,
+        ) {
             Ok(paths) => paths,
             Err(e) => {
-                eprintln!("Warning: Could not get specific file paths: {}, using defaults", e);
-                return Err(ModelManagerError::ProcessSpawnFailed(format!("Failed to get model file paths: {}", e)));
+                eprintln!(
+                    "Warning: Could not get specific file paths: {}, using defaults",
+                    e
+                );
+                return Err(ModelManagerError::ProcessSpawnFailed(format!(
+                    "Failed to get model file paths: {}",
+                    e
+                )));
             }
         };
 
@@ -278,16 +314,22 @@ impl ModelManager {
 
         // Add device configuration if available
         if let Some(device_type) = &model.device_type {
-            println!("Starting model {} with device type: {}", model.id, device_type);
+            println!(
+                "Starting model {} with device type: {}",
+                model.id, device_type
+            );
             cmd.arg("--device-type").arg(device_type);
         }
-        
+
         if let Some(device_ids_json) = &model.device_ids {
             // Parse device_ids from JSON array to comma-separated string
             if let Ok(device_ids) = serde_json::from_value::<Vec<String>>(device_ids_json.clone()) {
                 if !device_ids.is_empty() {
                     let device_ids_str = device_ids.join(",");
-                    println!("Starting model {} with device IDs: {}", model.id, device_ids_str);
+                    println!(
+                        "Starting model {} with device IDs: {}",
+                        model.id, device_ids_str
+                    );
                     cmd.arg("--device-ids").arg(device_ids_str);
                 }
             }
@@ -296,25 +338,29 @@ impl ModelManager {
         // Add specific file paths if available
         if let Some(config_file) = &file_paths.config_file {
             if let Some(filename) = std::path::Path::new(config_file).file_name() {
-                cmd.arg("--config-file").arg(filename.to_string_lossy().as_ref());
+                cmd.arg("--config-file")
+                    .arg(filename.to_string_lossy().as_ref());
             }
         }
 
         if let Some(tokenizer_file) = &file_paths.tokenizer_file {
             if let Some(filename) = std::path::Path::new(tokenizer_file).file_name() {
-                cmd.arg("--tokenizer-file").arg(filename.to_string_lossy().as_ref());
+                cmd.arg("--tokenizer-file")
+                    .arg(filename.to_string_lossy().as_ref());
             }
         }
 
         if let Some(vocab_file) = &file_paths.vocab_file {
             if let Some(filename) = std::path::Path::new(vocab_file).file_name() {
-                cmd.arg("--vocab-file").arg(filename.to_string_lossy().as_ref());
+                cmd.arg("--vocab-file")
+                    .arg(filename.to_string_lossy().as_ref());
             }
         }
 
         if let Some(special_tokens_file) = &file_paths.special_tokens_file {
             if let Some(filename) = std::path::Path::new(special_tokens_file).file_name() {
-                cmd.arg("--special-tokens-file").arg(filename.to_string_lossy().as_ref());
+                cmd.arg("--special-tokens-file")
+                    .arg(filename.to_string_lossy().as_ref());
             }
         }
 
@@ -322,9 +368,10 @@ impl ModelManager {
         if !file_paths.weight_files.is_empty() {
             // Use the first weight file as primary
             if let Some(filename) = std::path::Path::new(&file_paths.weight_files[0]).file_name() {
-                cmd.arg("--weight-file").arg(filename.to_string_lossy().as_ref());
+                cmd.arg("--weight-file")
+                    .arg(filename.to_string_lossy().as_ref());
             }
-            
+
             // Add additional weight files if there are more than one
             if file_paths.weight_files.len() > 1 {
                 let additional_files: Vec<String> = file_paths.weight_files[1..]
@@ -332,19 +379,23 @@ impl ModelManager {
                     .filter_map(|f| std::path::Path::new(f).file_name())
                     .map(|f| f.to_string_lossy().to_string())
                     .collect();
-                
+
                 if !additional_files.is_empty() {
-                    cmd.arg("--additional-weight-files").arg(additional_files.join(","));
+                    cmd.arg("--additional-weight-files")
+                        .arg(additional_files.join(","));
                 }
             }
         }
 
         // Add batching parameters from provider settings
         let provider_settings = provider.get_settings();
-        
+
         // Validate settings before using them
         if let Err(validation_error) = provider_settings.validate() {
-            println!("Warning: Provider settings validation failed: {}", validation_error);
+            println!(
+                "Warning: Provider settings validation failed: {}",
+                validation_error
+            );
             println!("Using default settings instead");
         }
 
@@ -359,19 +410,24 @@ impl ModelManager {
         }
 
         // Set batch threads
-        cmd.arg("--batch-threads").arg(provider_settings.batch_threads.to_string());
+        cmd.arg("--batch-threads")
+            .arg(provider_settings.batch_threads.to_string());
 
         // Set batch size
-        cmd.arg("--batch-size").arg(provider_settings.batch_size.to_string());
+        cmd.arg("--batch-size")
+            .arg(provider_settings.batch_size.to_string());
 
         // Set batch timeout
-        cmd.arg("--batch-timeout-ms").arg(provider_settings.batch_timeout_ms.to_string());
+        cmd.arg("--batch-timeout-ms")
+            .arg(provider_settings.batch_timeout_ms.to_string());
 
         // Set max concurrent prompts
-        cmd.arg("--max-concurrent-prompts").arg(provider_settings.max_concurrent_prompts.to_string());
+        cmd.arg("--max-concurrent-prompts")
+            .arg(provider_settings.max_concurrent_prompts.to_string());
 
         // Set CPU threads
-        cmd.arg("--cpu-threads").arg(provider_settings.cpu_threads.to_string());
+        cmd.arg("--cpu-threads")
+            .arg(provider_settings.cpu_threads.to_string());
 
         // Set flash attention
         if provider_settings.flash_attention {
@@ -379,7 +435,8 @@ impl ModelManager {
         }
 
         // Set KV cache type
-        cmd.arg("--kv-cache-type").arg(&provider_settings.kv_cache_type);
+        cmd.arg("--kv-cache-type")
+            .arg(&provider_settings.kv_cache_type);
 
         // Set paged attention
         if provider_settings.paged_attention {
@@ -397,98 +454,110 @@ impl ModelManager {
         }
 
         // Set auto unload minutes
-        cmd.arg("--auto-unload-minutes").arg(provider_settings.auto_unload_minutes.to_string());
+        cmd.arg("--auto-unload-minutes")
+            .arg(provider_settings.auto_unload_minutes.to_string());
 
         // Add model-specific parameters from model configuration (these override provider settings)
         if let Some(parameters) = &model.parameters.as_object() {
             // Allow model-specific override of context shift
-            if let Some(enable_context_shift) = parameters.get("enable_context_shift")
-                .and_then(|v| v.as_bool()) {
+            if let Some(enable_context_shift) = parameters
+                .get("enable_context_shift")
+                .and_then(|v| v.as_bool())
+            {
                 if enable_context_shift {
                     cmd.arg("--enable-context-shift");
                 }
             }
 
             // Allow model-specific override of continuous batching
-            if let Some(enable_continuous_batching) = parameters.get("enable_continuous_batching")
-                .and_then(|v| v.as_bool()) {
+            if let Some(enable_continuous_batching) = parameters
+                .get("enable_continuous_batching")
+                .and_then(|v| v.as_bool())
+            {
                 if enable_continuous_batching {
                     cmd.arg("--enable-continuous-batching");
                 }
             }
 
             // Allow model-specific override of batch threads
-            if let Some(batch_threads) = parameters.get("batch_threads")
-                .and_then(|v| v.as_u64()) {
+            if let Some(batch_threads) = parameters.get("batch_threads").and_then(|v| v.as_u64()) {
                 cmd.arg("--batch-threads").arg(batch_threads.to_string());
             }
 
             // Allow model-specific override of batch size
-            if let Some(batch_size) = parameters.get("batch_size")
-                .and_then(|v| v.as_u64()) {
+            if let Some(batch_size) = parameters.get("batch_size").and_then(|v| v.as_u64()) {
                 cmd.arg("--batch-size").arg(batch_size.to_string());
             }
 
             // Allow model-specific override of batch timeout
-            if let Some(batch_timeout_ms) = parameters.get("batch_timeout_ms")
-                .and_then(|v| v.as_u64()) {
-                cmd.arg("--batch-timeout-ms").arg(batch_timeout_ms.to_string());
+            if let Some(batch_timeout_ms) =
+                parameters.get("batch_timeout_ms").and_then(|v| v.as_u64())
+            {
+                cmd.arg("--batch-timeout-ms")
+                    .arg(batch_timeout_ms.to_string());
             }
 
             // Allow model-specific override of max concurrent prompts
-            if let Some(max_concurrent_prompts) = parameters.get("max_concurrent_prompts")
-                .and_then(|v| v.as_u64()) {
-                cmd.arg("--max-concurrent-prompts").arg(max_concurrent_prompts.to_string());
+            if let Some(max_concurrent_prompts) = parameters
+                .get("max_concurrent_prompts")
+                .and_then(|v| v.as_u64())
+            {
+                cmd.arg("--max-concurrent-prompts")
+                    .arg(max_concurrent_prompts.to_string());
             }
 
             // Allow model-specific override of CPU threads
-            if let Some(cpu_threads) = parameters.get("cpu_threads")
-                .and_then(|v| v.as_u64()) {
+            if let Some(cpu_threads) = parameters.get("cpu_threads").and_then(|v| v.as_u64()) {
                 cmd.arg("--cpu-threads").arg(cpu_threads.to_string());
             }
 
             // Allow model-specific override of flash attention
-            if let Some(flash_attention) = parameters.get("flash_attention")
-                .and_then(|v| v.as_bool()) {
+            if let Some(flash_attention) =
+                parameters.get("flash_attention").and_then(|v| v.as_bool())
+            {
                 if flash_attention {
                     cmd.arg("--flash-attention");
                 }
             }
 
             // Allow model-specific override of KV cache type
-            if let Some(kv_cache_type) = parameters.get("kv_cache_type")
-                .and_then(|v| v.as_str()) {
+            if let Some(kv_cache_type) = parameters.get("kv_cache_type").and_then(|v| v.as_str()) {
                 cmd.arg("--kv-cache-type").arg(kv_cache_type);
             }
 
             // Allow model-specific override of paged attention
-            if let Some(paged_attention) = parameters.get("paged_attention")
-                .and_then(|v| v.as_bool()) {
+            if let Some(paged_attention) =
+                parameters.get("paged_attention").and_then(|v| v.as_bool())
+            {
                 if paged_attention {
                     cmd.arg("--paged-attention");
                 }
             }
 
             // Allow model-specific override of memory mapping (mmap)
-            if let Some(mmap) = parameters.get("mmap")
-                .and_then(|v| v.as_bool()) {
+            if let Some(mmap) = parameters.get("mmap").and_then(|v| v.as_bool()) {
                 if mmap {
                     cmd.arg("--mmap");
                 }
             }
 
             // Allow model-specific override of auto unload model
-            if let Some(auto_unload_model) = parameters.get("auto_unload_model")
-                .and_then(|v| v.as_bool()) {
+            if let Some(auto_unload_model) = parameters
+                .get("auto_unload_model")
+                .and_then(|v| v.as_bool())
+            {
                 if auto_unload_model {
                     cmd.arg("--auto-unload-model");
                 }
             }
 
             // Allow model-specific override of auto unload minutes
-            if let Some(auto_unload_minutes) = parameters.get("auto_unload_minutes")
-                .and_then(|v| v.as_u64()) {
-                cmd.arg("--auto-unload-minutes").arg(auto_unload_minutes.to_string());
+            if let Some(auto_unload_minutes) = parameters
+                .get("auto_unload_minutes")
+                .and_then(|v| v.as_u64())
+            {
+                cmd.arg("--auto-unload-minutes")
+                    .arg(auto_unload_minutes.to_string());
             }
         }
 
@@ -601,61 +670,73 @@ impl ModelManager {
     }
 
     /// Check if a model is actually running and clean up if it's not
-    pub async fn check_and_cleanup_model(&self, model_id: Uuid, model_path: &str) -> Result<bool, ModelManagerError> {
+    pub async fn check_and_cleanup_model(
+        &self,
+        model_id: Uuid,
+        model_path: &str,
+    ) -> Result<bool, ModelManagerError> {
         let mut running_models = self.running_models.lock().await;
-        
+
         // If model is not in our tracking, check for lock files
         if !running_models.contains_key(&model_id) {
             return Ok(self.check_lock_files_and_cleanup(model_path).await?);
         }
-        
+
         // Model is in our tracking, check if process is actually alive
         let model_process = running_models.get(&model_id).unwrap();
         let pid = model_process.process.id();
-        
+
         // Check if process is still alive
         if self.is_process_alive(pid) {
             return Ok(true); // Model is actually running
         }
-        
+
         // Process is dead, clean up
-        println!("Model {} process (PID: {}) is no longer alive, cleaning up", model_id, pid);
-        
+        println!(
+            "Model {} process (PID: {}) is no longer alive, cleaning up",
+            model_id, pid
+        );
+
         // Remove from our tracking
         running_models.remove(&model_id);
         drop(running_models); // Release the lock before cleanup
-        
+
         // Clean up lock files
         use std::path::Path;
         self.cleanup_model_files(Path::new(model_path)).await;
-        
+
         Ok(false)
     }
 
     /// Check if lock files exist and if the process is alive
-    async fn check_lock_files_and_cleanup(&self, model_path: &str) -> Result<bool, ModelManagerError> {
+    async fn check_lock_files_and_cleanup(
+        &self,
+        model_path: &str,
+    ) -> Result<bool, ModelManagerError> {
         use std::path::Path;
-        
+
         let model_dir = Path::new(model_path);
         let lock_file = model_dir.join(".model.lock");
         let pid_file = model_dir.join(".model.pid");
-        
+
         // No lock file means model is not running
         if !lock_file.exists() {
             return Ok(false);
         }
-        
+
         // Read PID from lock file or PID file
         let pid = if let Ok(lock_content) = std::fs::read_to_string(&lock_file) {
             // Lock file format: "pid:port"
-            lock_content.split(':').next()
+            lock_content
+                .split(':')
+                .next()
                 .and_then(|pid_str| pid_str.parse::<u32>().ok())
         } else if let Ok(pid_content) = std::fs::read_to_string(&pid_file) {
             pid_content.trim().parse::<u32>().ok()
         } else {
             None
         };
-        
+
         match pid {
             Some(pid) => {
                 if self.is_process_alive(pid) {
@@ -663,7 +744,10 @@ impl ModelManager {
                     Ok(true)
                 } else {
                     // Process is dead, clean up
-                    println!("Found stale lock files for dead process (PID: {}), cleaning up", pid);
+                    println!(
+                        "Found stale lock files for dead process (PID: {}), cleaning up",
+                        pid
+                    );
                     use std::path::Path;
                     self.cleanup_model_files(Path::new(model_path)).await;
                     Ok(false)
@@ -684,19 +768,17 @@ impl ModelManager {
         #[cfg(unix)]
         {
             // On Unix, send signal 0 to check if process exists
-            unsafe {
-                libc::kill(pid as libc::pid_t, 0) == 0
-            }
+            unsafe { libc::kill(pid as libc::pid_t, 0) == 0 }
         }
-        
+
         #[cfg(windows)]
         {
             // On Windows, try to open the process handle
             use std::ptr;
+            use winapi::um::handleapi::CloseHandle;
             use winapi::um::processthreadsapi::OpenProcess;
             use winapi::um::winnt::PROCESS_QUERY_INFORMATION;
-            use winapi::um::handleapi::CloseHandle;
-            
+
             unsafe {
                 let handle = OpenProcess(PROCESS_QUERY_INFORMATION, 0, pid);
                 if handle != ptr::null_mut() {
@@ -707,14 +789,13 @@ impl ModelManager {
                 }
             }
         }
-        
+
         #[cfg(not(any(unix, windows)))]
         {
             // Fallback: assume process is alive
             true
         }
     }
-
 
     /// Get the port for a running model
     pub async fn get_model_port(&self, model_id: Uuid) -> Option<u16> {

@@ -7,7 +7,7 @@ import { RobotOutlined } from '@ant-design/icons'
 import { ChatInput } from './ChatInput'
 import { useChatStore } from '../../store/chat'
 import { useAssistantsStore } from '../../store/assistants'
-import { useProvidersStore } from '../../store/modelProviders'
+import { useProvidersStore } from '../../store/providers'
 import { useConversationsStore } from '../../store'
 import { useAuthStore } from '../../store/auth'
 
@@ -54,7 +54,7 @@ export function NewChatInterface() {
 
   // Model providers store
   const {
-    providers: modelProviders,
+    providers: providers,
     modelsByProvider,
     loading: providersLoading,
     loadProviders,
@@ -107,9 +107,9 @@ export function NewChatInterface() {
   }, [assistants, selectedAssistant])
 
   useEffect(() => {
-    if (modelProviders.length > 0 && !selectedModel) {
+    if (providers.length > 0 && !selectedModel) {
       // Filter to only show enabled providers
-      const enabledProviders = modelProviders.filter(p => p.enabled)
+      const enabledProviders = providers.filter(p => p.enabled)
       if (enabledProviders.length > 0) {
         const firstProvider = enabledProviders[0]
         const providerModels = modelsByProvider[firstProvider.id] || []
@@ -121,7 +121,7 @@ export function NewChatInterface() {
         }
       }
     }
-  }, [modelProviders, selectedModel, modelsByProvider])
+  }, [providers, selectedModel, modelsByProvider])
 
   const createNewConversation = async () => {
     if (!selectedAssistant || !selectedModel) {
@@ -185,7 +185,7 @@ export function NewChatInterface() {
   const userAssistants = assistants.filter(a => !a.is_template)
 
   // Filter to only show enabled providers
-  const enabledProviders = modelProviders.filter(p => p.enabled)
+  const enabledProviders = providers.filter(p => p.enabled)
 
   return (
     <div className="flex flex-col h-full">

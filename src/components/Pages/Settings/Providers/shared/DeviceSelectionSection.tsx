@@ -4,7 +4,7 @@ import { ApiClient } from '../../../../../api/client'
 import {
   AvailableDevicesResponse,
   DeviceInfo,
-} from '../../../../../types/api/modelProvider'
+} from '../../../../../types/api/provider'
 import { useUpdate } from 'react-use'
 
 const { Title, Text } = Typography

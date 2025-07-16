@@ -1,4 +1,4 @@
-import { Progress, Typography, Card, List, Button, Alert } from 'antd'
+import { Alert, Button, Card, List, Progress, Typography } from 'antd'
 import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
@@ -59,16 +59,16 @@ export function UploadProgress({
   }
 
   return (
-    <Card title={t('modelProviders.uploadProgress')} className="w-full">
+    <Card title={t('providers.uploadProgress')} className="w-full">
       {/* Overall Progress */}
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
           <Title level={5} className="mb-0">
             {isUploading
-              ? t('modelProviders.uploadingFiles')
+              ? t('providers.uploadingFiles')
               : completedFiles === totalFiles
-                ? t('modelProviders.uploadComplete')
-                : t('modelProviders.uploadStopped')}
+                ? t('providers.uploadComplete')
+                : t('providers.uploadStopped')}
           </Title>
           {isUploading && onCancel && (
             <Button
@@ -92,14 +92,14 @@ export function UploadProgress({
 
         <div className="flex justify-between mt-1">
           <Text type="secondary">
-            {t('modelProviders.filesCompleted', {
+            {t('providers.filesCompleted', {
               completed: completedFiles,
               total: totalFiles,
             })}
           </Text>
           {errorFiles > 0 && (
             <Text type="danger">
-              {t('modelProviders.filesWithErrors', { errors: errorFiles })}
+              {t('providers.filesWithErrors', { errors: errorFiles })}
             </Text>
           )}
         </div>
@@ -109,8 +109,8 @@ export function UploadProgress({
       {errorFiles > 0 && (
         <Alert
           type="warning"
-          message={t('modelProviders.uploadErrors')}
-          description={t('modelProviders.uploadErrorsDescription', {
+          message={t('providers.uploadErrors')}
+          description={t('providers.uploadErrorsDescription', {
             count: errorFiles,
           })}
           className="mb-4"
@@ -121,7 +121,7 @@ export function UploadProgress({
       {/* File Details */}
       {showDetails && (
         <div>
-          <Title level={5}>{t('modelProviders.fileDetails')}</Title>
+          <Title level={5}>{t('providers.fileDetails')}</Title>
           <List
             size="small"
             dataSource={files}
@@ -143,7 +143,7 @@ export function UploadProgress({
                     <Text type="secondary" className="text-xs">
                       {file.status === 'uploading'
                         ? `${file.progress}%`
-                        : t(`modelProviders.status.${file.status}`)}
+                        : t(`providers.status.${file.status}`)}
                     </Text>
                   </div>
 

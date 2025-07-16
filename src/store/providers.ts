@@ -3,10 +3,10 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import {
   CreateProviderRequest,
+  Model,
   ModelCapabilities,
   Provider,
-  Model,
-} from '../types/api/modelProvider'
+} from '../types/api/provider'
 import {
   uploadFile,
   uploadFilesConcurrent,
@@ -73,10 +73,7 @@ interface ProvidersState {
   // Actions
   loadProviders: () => Promise<void>
   createProvider: (data: CreateProviderRequest) => Promise<Provider>
-  updateProvider: (
-    id: string,
-    data: Partial<Provider>,
-  ) => Promise<Provider>
+  updateProvider: (id: string, data: Partial<Provider>) => Promise<Provider>
   deleteProvider: (id: string) => Promise<void>
   cloneProvider: (id: string, name: string) => Promise<Provider>
 
@@ -352,7 +349,7 @@ export const useProvidersStore = create<ProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ProviderModel[]>,
+            {} as Record<string, Model[]>,
           ),
           updating: false,
         }))
@@ -382,7 +379,7 @@ export const useProvidersStore = create<ProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ProviderModel[]>,
+            {} as Record<string, Model[]>,
           ),
           deleting: false,
         }))
@@ -414,7 +411,7 @@ export const useProvidersStore = create<ProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ProviderModel[]>,
+            {} as Record<string, Model[]>,
           ),
           modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
@@ -446,7 +443,7 @@ export const useProvidersStore = create<ProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ProviderModel[]>,
+            {} as Record<string, Model[]>,
           ),
           modelOperations: { ...state.modelOperations, [modelId]: false },
         }))
@@ -475,7 +472,7 @@ export const useProvidersStore = create<ProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ProviderModel[]>,
+            {} as Record<string, Model[]>,
           ),
           updating: false,
         }))
@@ -504,7 +501,7 @@ export const useProvidersStore = create<ProvidersState>()(
               )
               return acc
             },
-            {} as Record<string, ProviderModel[]>,
+            {} as Record<string, Model[]>,
           ),
           updating: false,
         }))

@@ -3,7 +3,7 @@ import { Flex, theme, Typography } from 'antd'
 import { useShallow } from 'zustand/react/shallow'
 import { useChatStore } from '../../store/chat'
 import { useAssistantsStore } from '../../store/assistants'
-import { useProvidersStore } from '../../store/modelProviders'
+import { useProvidersStore } from '../../store/providers'
 
 const { Text } = Typography
 

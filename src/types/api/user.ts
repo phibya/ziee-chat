@@ -39,7 +39,7 @@ export interface UserGroup {
   name: string
   description?: string
   permissions: PermissionKey[] // Array of permission strings
-  model_provider_ids: string[] // Array of model provider IDs assigned to this group
+  provider_ids: string[] // Array of model provider IDs assigned to this group
   is_protected: boolean // Whether this group is protected (admin/user groups)
   is_active: boolean
   created_at: string
@@ -53,7 +53,7 @@ export interface CreateUserGroupRequest {
   name: string
   description?: string
   permissions: PermissionKey[]
-  model_provider_ids?: string[]
+  provider_ids?: string[]
 }
 
 export interface UpdateUserGroupRequest {
@@ -61,7 +61,7 @@ export interface UpdateUserGroupRequest {
   name?: string
   description?: string
   permissions?: PermissionKey[]
-  model_provider_ids?: string[]
+  provider_ids?: string[]
   is_active?: boolean
 }
 

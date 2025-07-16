@@ -1,7 +1,7 @@
 export { GeneralSettings } from './GeneralSettings'
 export { AppearanceSettings } from './AppearanceSettings'
 export { PrivacySettings } from './PrivacySettings'
-export { ModelProvidersSettings } from './ModelProvidersSettings'
+export { ProvidersSettings } from './ProvidersSettings'
 export { ShortcutsSettings } from './ShortcutsSettings'
 export { HardwareSettings } from './HardwareSettings'
 export { LocalApiServerSettings } from './LocalApiServerSettings'

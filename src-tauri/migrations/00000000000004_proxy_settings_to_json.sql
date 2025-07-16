@@ -1,9 +1,9 @@
 -- Add proxy_settings JSON column and drop individual proxy columns
-ALTER TABLE model_providers 
+ALTER TABLE providers 
 ADD COLUMN proxy_settings JSONB DEFAULT '{}';
 
 -- Migrate existing proxy data to JSON format
-UPDATE model_providers 
+UPDATE providers 
 SET proxy_settings = jsonb_build_object(
     'enabled', proxy_enabled,
     'url', proxy_url,
@@ -18,7 +18,7 @@ SET proxy_settings = jsonb_build_object(
 );
 
 -- Drop individual proxy columns
-ALTER TABLE model_providers 
+ALTER TABLE providers 
 DROP COLUMN proxy_enabled,
 DROP COLUMN proxy_url,
 DROP COLUMN proxy_username,

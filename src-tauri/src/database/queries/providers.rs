@@ -4,23 +4,20 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateProviderRequest, CreateModelRequest, Provider, ProviderDb,
-        Model, ModelDb, ProviderProxySettings,
-        UpdateProviderRequest, UpdateModelRequest,
+        CreateModelRequest, CreateProviderRequest, Model, ModelDb, Provider, ProviderDb,
+        ProviderProxySettings, UpdateModelRequest, UpdateProviderRequest,
     },
 };
 
-pub async fn get_provider_by_id(
-    provider_id: Uuid,
-) -> Result<Option<Provider>, sqlx::Error> {
+pub async fn get_provider_by_id(provider_id: Uuid) -> Result<Option<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
     let provider_row: Option<ProviderDb> = sqlx::query_as(
-        "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at 
-         FROM model_providers 
+    "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at
+         FROM providers 
          WHERE id = $1"
-    )
+  )
     .bind(provider_id)
     .fetch_optional(pool)
     .await?;
@@ -47,18 +44,16 @@ pub async fn get_provider_by_id(
     }
 }
 
-pub async fn create_provider(
-    request: CreateProviderRequest,
-) -> Result<Provider, sqlx::Error> {
+pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let provider_id = Uuid::new_v4();
 
     let provider_row: ProviderDb = sqlx::query_as(
-        "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings) 
+    "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
          RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
-    )
+  )
     .bind(provider_id)
     .bind(&request.name)
     .bind(&request.provider_type)
@@ -106,7 +101,7 @@ pub async fn update_provider(
     let pool = pool.as_ref();
 
     let provider_row: Option<ProviderDb> = sqlx::query_as(
-        "UPDATE model_providers 
+    "UPDATE providers
          SET name = COALESCE($2, name),
              enabled = COALESCE($3, enabled),
              api_key = COALESCE($4, api_key),
@@ -116,7 +111,7 @@ pub async fn update_provider(
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
          RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
-    )
+  )
     .bind(provider_id)
     .bind(&request.name)
     .bind(request.enabled)
@@ -155,7 +150,7 @@ pub async fn delete_provider(provider_id: Uuid) -> Result<Result<bool, String>, 
 
     // First check if provider exists and if it's default
     let provider_row: Option<(bool,)> =
-        sqlx::query_as("SELECT is_default FROM model_providers WHERE id = $1")
+        sqlx::query_as("SELECT is_default FROM providers WHERE id = $1")
             .bind(provider_id)
             .fetch_optional(pool)
             .await?;
@@ -165,7 +160,7 @@ pub async fn delete_provider(provider_id: Uuid) -> Result<Result<bool, String>, 
             if is_default {
                 Ok(Err("Cannot delete default model provider".to_string()))
             } else {
-                let result = sqlx::query("DELETE FROM model_providers WHERE id = $1")
+                let result = sqlx::query("DELETE FROM providers WHERE id = $1")
                     .bind(provider_id)
                     .execute(pool)
                     .await?;
@@ -191,10 +186,10 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
     let cloned_name = format!("{} (Clone)", original_provider.name);
 
     let provider_row: ProviderDb = sqlx::query_as(
-        "INSERT INTO model_providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings) 
+    "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
          RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
-    )
+  )
     .bind(new_provider_id)
     .bind(&cloned_name)
     .bind(&original_provider.provider_type)
@@ -209,24 +204,24 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
 
     // Get models from the original provider to clone them
     let original_models = get_models_for_provider(original_provider.id).await?;
-    
+
     // Clone all models from the original provider
     for model in &original_models {
         let cloned_model_id = Uuid::new_v4();
         sqlx::query(
-            "INSERT INTO model_provider_models (id, provider_id, name, alias, description, enabled, capabilities, parameters) 
+      "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
-        )
-        .bind(cloned_model_id)
-        .bind(new_provider_id)
-        .bind(&model.name)
-        .bind(&model.alias)
-        .bind(&model.description)
-        .bind(false) // Cloned models are disabled by default
-        .bind(model.capabilities.as_ref().unwrap_or(&serde_json::json!({})))
-        .bind(model.parameters.as_ref().unwrap_or(&serde_json::json!({})))
-        .execute(pool)
-        .await?;
+    )
+      .bind(cloned_model_id)
+      .bind(new_provider_id)
+      .bind(&model.name)
+      .bind(&model.alias)
+      .bind(&model.description)
+      .bind(false) // Cloned models are disabled by default
+      .bind(model.capabilities.as_ref().unwrap_or(&serde_json::json!({})))
+      .bind(model.parameters.as_ref().unwrap_or(&serde_json::json!({})))
+      .execute(pool)
+      .await?;
     }
 
     let settings = provider_row.get_settings();
@@ -257,15 +252,13 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
 }
 
 // Model queries
-pub async fn get_models_for_provider(
-    provider_id: Uuid,
-) -> Result<Vec<Model>, sqlx::Error> {
+pub async fn get_models_for_provider(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
     let model_rows: Vec<ModelDb> = sqlx::query_as(
-        "SELECT * 
-         FROM model_provider_models 
+        "SELECT *
+         FROM models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC",
     )
@@ -288,10 +281,10 @@ pub async fn create_model(
     let model_id = Uuid::new_v4();
 
     let model_row: ModelDb = sqlx::query_as(
-        "INSERT INTO model_provider_models (id, provider_id, name, alias, description, enabled, capabilities, parameters, device_type, device_ids) 
+    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, device_type, device_ids)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
          RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues, device_type, device_ids"
-    )
+  )
     .bind(model_id)
     .bind(provider_id)
     .bind(&request.name)
@@ -316,7 +309,7 @@ pub async fn update_model(
     let pool = pool.as_ref();
 
     let model_row: Option<ModelDb> = sqlx::query_as(
-        "UPDATE model_provider_models 
+    "UPDATE models
          SET name = COALESCE($2, name),
              alias = COALESCE($3, alias),
              description = COALESCE($4, description),
@@ -329,7 +322,7 @@ pub async fn update_model(
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
          RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues, device_type, device_ids"
-    )
+  )
     .bind(model_id)
     .bind(&request.name)
     .bind(&request.alias)
@@ -353,7 +346,7 @@ pub async fn delete_model(model_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query("DELETE FROM model_provider_models WHERE id = $1")
+    let result = sqlx::query("DELETE FROM models WHERE id = $1")
         .bind(model_id)
         .execute(pool)
         .await?;
@@ -366,8 +359,8 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let pool = pool.as_ref();
 
     let model_row: Option<ModelDb> = sqlx::query_as(
-        "SELECT * 
-         FROM model_provider_models 
+        "SELECT *
+         FROM models 
          WHERE id = $1",
     )
     .bind(model_id)
@@ -385,7 +378,7 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let row = sqlx::query("SELECT provider_id FROM model_provider_models WHERE id = $1")
+    let row = sqlx::query("SELECT provider_id FROM models WHERE id = $1")
         .bind(model_id)
         .fetch_optional(pool)
         .await?;
@@ -397,16 +390,17 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
 }
 
 /// Get the model database record for deletion operations (returns ModelDb with provider_id)
-pub async fn get_model_db_by_id(model_id: Uuid) -> Result<Option<crate::database::models::ModelDb>, sqlx::Error> {
+pub async fn get_model_db_by_id(
+    model_id: Uuid,
+) -> Result<Option<crate::database::models::ModelDb>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_row: Option<crate::database::models::ModelDb> = sqlx::query_as(
-        "SELECT * FROM model_provider_models WHERE id = $1",
-    )
-    .bind(model_id)
-    .fetch_optional(pool)
-    .await?;
+    let model_row: Option<crate::database::models::ModelDb> =
+        sqlx::query_as("SELECT * FROM models WHERE id = $1")
+            .bind(model_id)
+            .fetch_optional(pool)
+            .await?;
 
     Ok(model_row)
 }

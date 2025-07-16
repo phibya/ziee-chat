@@ -1,4 +1,4 @@
--- Remove path column from model_provider_models table
+-- Remove path column from models table
 -- Model paths are now determined by the pattern models/{provider_id}/{id}
 
-ALTER TABLE model_provider_models DROP COLUMN IF EXISTS path;
+ALTER TABLE models DROP COLUMN IF EXISTS path;

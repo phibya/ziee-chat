@@ -1,6 +1,6 @@
 use crate::database::get_database_pool;
 use crate::database::models::*;
-use crate::database::queries::user_group_model_providers::get_provider_ids_for_group;
+use crate::database::queries::user_group_providers::get_provider_ids_for_group;
 use sqlx::Row;
 use uuid::Uuid;
 

@@ -1,10 +1,7 @@
 import { Button, Form, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Model,
-  ProviderType,
-} from '../../../../types/api/modelProvider'
+import { Model, ProviderType } from '../../../../types/api/provider'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
 import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
@@ -79,7 +76,7 @@ export function EditModelModal({
 
   return (
     <Modal
-      title={t('modelProviders.editModel')}
+      title={t('providers.editModel')}
       open={open}
       onCancel={onClose}
       footer={[
@@ -107,7 +104,7 @@ export function EditModelModal({
 
         {providerType === 'candle' && (
           <ModelParametersSection
-            title={t('modelProviders.parameters')}
+            title={t('providers.parameters')}
             parameters={CANDLE_PARAMETERS}
           />
         )}

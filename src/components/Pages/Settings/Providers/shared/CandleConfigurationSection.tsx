@@ -80,8 +80,8 @@ export function CandleConfigurationSection({
   const content = (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <ResponsiveConfigItem
-        title={t('modelProviders.autoUnloadOldModels')}
-        description={t('modelProviders.autoUnloadDescription')}
+        title={t('providers.autoUnloadOldModels')}
+        description={t('providers.autoUnloadDescription')}
       >
         <Form.Item
           name={getFieldName('autoUnloadOldModels')}
@@ -95,8 +95,8 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.contextShift')}
-        description={t('modelProviders.contextShiftDescription')}
+        title={t('providers.contextShift')}
+        description={t('providers.contextShiftDescription')}
       >
         <Form.Item
           name={getFieldName('contextShift')}
@@ -110,8 +110,8 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.continuousBatching')}
-        description={t('modelProviders.continuousBatchingDescription')}
+        title={t('providers.continuousBatching')}
+        description={t('providers.continuousBatchingDescription')}
       >
         <Form.Item
           name={getFieldName('continuousBatching')}
@@ -125,8 +125,8 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.parallelOperations')}
-        description={t('modelProviders.parallelOperationsDescription')}
+        title={t('providers.parallelOperations')}
+        description={t('providers.parallelOperationsDescription')}
       >
         <Form.Item
           name={getFieldName('parallelOperations')}
@@ -144,15 +144,15 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.cpuThreads')}
-        description={t('modelProviders.cpuThreadsDescription')}
+        title={t('providers.cpuThreads')}
+        description={t('providers.cpuThreadsDescription')}
       >
         <Form.Item
           name={getFieldName('cpuThreads')}
           style={{ margin: 0, width: isMobile ? '100%' : 100 }}
         >
           <InputNumber
-            placeholder={t('modelProviders.autoPlaceholder')}
+            placeholder={t('providers.autoPlaceholder')}
             style={{ width: '100%' }}
             disabled={disabled}
           />
@@ -162,15 +162,15 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.threadsBatch')}
-        description={t('modelProviders.threadsBatchDescription')}
+        title={t('providers.threadsBatch')}
+        description={t('providers.threadsBatchDescription')}
       >
         <Form.Item
           name={getFieldName('threadsBatch')}
           style={{ margin: 0, width: isMobile ? '100%' : 100 }}
         >
           <InputNumber
-            placeholder={t('modelProviders.sameAsThreadsPlaceholder')}
+            placeholder={t('providers.sameAsThreadsPlaceholder')}
             style={{ width: '100%' }}
             disabled={disabled}
           />
@@ -180,8 +180,8 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.flashAttention')}
-        description={t('modelProviders.flashAttentionDescription')}
+        title={t('providers.flashAttention')}
+        description={t('providers.flashAttentionDescription')}
       >
         <Form.Item
           name={getFieldName('flashAttention')}
@@ -195,8 +195,8 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.caching')}
-        description={t('modelProviders.cachingDescription')}
+        title={t('providers.caching')}
+        description={t('providers.cachingDescription')}
       >
         <Form.Item
           name={getFieldName('caching')}
@@ -210,8 +210,8 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.kvCacheType')}
-        description={t('modelProviders.kvCacheTypeDescription')}
+        title={t('providers.kvCacheType')}
+        description={t('providers.kvCacheTypeDescription')}
       >
         <Form.Item
           name={getFieldName('kvCacheType')}
@@ -228,8 +228,8 @@ export function CandleConfigurationSection({
       <Divider style={{ margin: 0 }} />
 
       <ResponsiveConfigItem
-        title={t('modelProviders.mmap')}
-        description={t('modelProviders.mmapDescription')}
+        title={t('providers.mmap')}
+        description={t('providers.mmapDescription')}
       >
         <Form.Item
           name={getFieldName('mmap')}
@@ -256,7 +256,7 @@ export function CandleConfigurationSection({
           style={{ marginTop: 8, marginBottom: 0 }}
         >
           <Input.Password
-            placeholder={t('modelProviders.huggingfaceTokenPlaceholder')}
+            placeholder={t('providers.huggingfaceTokenPlaceholder')}
             style={{ width: '100%' }}
             disabled={disabled}
             iconRender={visible =>
@@ -269,7 +269,7 @@ export function CandleConfigurationSection({
   )
 
   return wrapInCard ? (
-    <Card size="small" title={t('modelProviders.candleConfiguration')}>
+    <Card size="small" title={t('providers.candleConfiguration')}>
       {content}
     </Card>
   ) : (

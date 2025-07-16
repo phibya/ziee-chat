@@ -245,7 +245,7 @@ pub async fn settings_delete_middleware(req: Request, next: Next) -> Result<Resp
 }
 
 /// Middleware that checks for config::providers::read permission
-pub async fn model_providers_read_middleware(
+pub async fn providers_read_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
@@ -259,7 +259,7 @@ pub async fn model_providers_read_middleware(
 }
 
 /// Middleware that checks for config::providers::edit permission
-pub async fn model_providers_edit_middleware(
+pub async fn providers_edit_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
@@ -273,7 +273,7 @@ pub async fn model_providers_edit_middleware(
 }
 
 /// Middleware that checks for config::providers::create permission
-pub async fn model_providers_create_middleware(
+pub async fn providers_create_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
@@ -287,7 +287,7 @@ pub async fn model_providers_create_middleware(
 }
 
 /// Middleware that checks for config::providers::delete permission
-pub async fn model_providers_delete_middleware(
+pub async fn providers_delete_middleware(
     req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {

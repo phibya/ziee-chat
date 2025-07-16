@@ -27,7 +27,7 @@ impl ModelOperations {
 
         let row = sqlx::query(
             r#"
-            INSERT INTO model_provider_models (
+            INSERT INTO models (
                 id, provider_id, name, alias, description, 
                 architecture, quantization, file_size_bytes, enabled, 
                 is_deprecated, is_active, capabilities, parameters, 
@@ -107,7 +107,7 @@ impl ModelOperations {
 
         let row = sqlx::query(
             r#"
-            INSERT INTO model_provider_models (
+            INSERT INTO models (
                 id, provider_id, name, alias, description, 
                 architecture, quantization, file_size_bytes, enabled, 
                 is_deprecated, is_active, capabilities, parameters, 
@@ -175,7 +175,7 @@ impl ModelOperations {
                     architecture, quantization, file_size_bytes, checksum, enabled, 
                     is_deprecated, is_active, capabilities, parameters, 
                     validation_status, validation_issues, created_at, updated_at
-             FROM model_provider_models WHERE id = $1",
+             FROM models WHERE id = $1",
         )
         .bind(model_id)
         .fetch_optional(pool)
@@ -225,7 +225,7 @@ impl ModelOperations {
                    architecture, quantization, file_size_bytes, checksum, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
                    validation_status, validation_issues, created_at, updated_at
-            FROM model_provider_models 
+            FROM models 
             WHERE provider_id = $1 
             ORDER BY created_at DESC 
             LIMIT $2 OFFSET $3
@@ -264,12 +264,10 @@ impl ModelOperations {
             models.push(model);
         }
 
-        let total_row = sqlx::query(
-            "SELECT COUNT(*) as count FROM model_provider_models WHERE provider_id = $1",
-        )
-        .bind(provider_id)
-        .fetch_one(pool)
-        .await?;
+        let total_row = sqlx::query("SELECT COUNT(*) as count FROM models WHERE provider_id = $1")
+            .bind(provider_id)
+            .fetch_one(pool)
+            .await?;
 
         let total: i64 = total_row.get("count");
 
@@ -290,7 +288,7 @@ impl ModelOperations {
 
         sqlx::query(
             r#"
-            UPDATE model_provider_models 
+            UPDATE models 
             SET validation_status = $1, 
                 validation_issues = $2, 
                 file_size_bytes = COALESCE($3, file_size_bytes),
@@ -318,7 +316,7 @@ impl ModelOperations {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
-            UPDATE model_provider_models 
+            UPDATE models 
             SET enabled = COALESCE($1, enabled),
                 is_active = COALESCE($2, is_active),
                 updated_at = $3
@@ -343,7 +341,7 @@ impl ModelOperations {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
-            UPDATE model_provider_models 
+            UPDATE models 
             SET checksum = $1, updated_at = $2
             WHERE id = $3
             "#,
@@ -366,7 +364,7 @@ impl ModelOperations {
             .await?;
 
         // Delete the model
-        sqlx::query("DELETE FROM model_provider_models WHERE id = $1")
+        sqlx::query("DELETE FROM models WHERE id = $1")
             .bind(model_id)
             .execute(pool)
             .await?;
@@ -473,7 +471,7 @@ impl ModelOperations {
                 COUNT(*) FILTER (WHERE is_deprecated = true) as deprecated,
                 COUNT(*) FILTER (WHERE enabled = true) as enabled,
                 COUNT(*) FILTER (WHERE enabled = false) as disabled
-            FROM model_provider_models 
+            FROM models 
             WHERE provider_id = $1
             "#,
         )
@@ -503,7 +501,7 @@ impl ModelOperations {
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
-            UPDATE model_provider_models 
+            UPDATE models 
             SET name = COALESCE($1, name),
                 alias = COALESCE($2, alias),
                 description = COALESCE($3, description),

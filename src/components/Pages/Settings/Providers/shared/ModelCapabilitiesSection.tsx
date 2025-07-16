@@ -14,7 +14,7 @@ export function ModelCapabilitiesSection({
 
   return (
     <>
-      <Title level={5}>{t('modelProviders.capabilities')}</Title>
+      <Title level={5}>{t('providers.capabilities')}</Title>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {capabilities.includes('vision') && (
           <div
@@ -24,7 +24,7 @@ export function ModelCapabilitiesSection({
               alignItems: 'center',
             }}
           >
-            <span>{t('modelProviders.vision')}</span>
+            <span>{t('providers.vision')}</span>
             <Form.Item
               name="vision"
               valuePropName="checked"
@@ -43,7 +43,7 @@ export function ModelCapabilitiesSection({
               alignItems: 'center',
             }}
           >
-            <span>{t('modelProviders.audio')}</span>
+            <span>{t('providers.audio')}</span>
             <Form.Item
               name="audio"
               valuePropName="checked"
@@ -62,7 +62,7 @@ export function ModelCapabilitiesSection({
               alignItems: 'center',
             }}
           >
-            <span>{t('modelProviders.tools')}</span>
+            <span>{t('providers.tools')}</span>
             <Form.Item
               name="tools"
               valuePropName="checked"
@@ -81,7 +81,7 @@ export function ModelCapabilitiesSection({
               alignItems: 'center',
             }}
           >
-            <span>{t('modelProviders.codeInterpreter')}</span>
+            <span>{t('providers.codeInterpreter')}</span>
             <Form.Item
               name="codeInterpreter"
               valuePropName="checked"

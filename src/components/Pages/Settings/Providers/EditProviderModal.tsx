@@ -11,16 +11,13 @@ import {
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
-import {
-  Provider,
-  UpdateProviderRequest,
-} from '../../../../types/api/modelProvider'
+import { Provider, UpdateProviderRequest } from '../../../../types/api/provider'
 
 interface EditProviderModalProps {
   open: boolean
-  provider: ModelProvider | null
+  provider: Provider | null
   onClose: () => void
-  onSubmit: (provider: UpdateModelProviderRequest) => void
+  onSubmit: (provider: UpdateProviderRequest) => void
   loading?: boolean
 }
 
@@ -52,7 +49,7 @@ export function EditProviderModal({
       onSubmit({
         id: provider!.id,
         ...values,
-      } as UpdateModelProviderRequest)
+      } as UpdateProviderRequest)
     } catch (error) {
       console.error('Form validation failed:', error)
     }
@@ -62,7 +59,7 @@ export function EditProviderModal({
 
   return (
     <Modal
-      title={`${t('modelProviders.editProvider')} ${provider.name}`}
+      title={`${t('providers.editProvider')} ${provider.name}`}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
@@ -74,20 +71,20 @@ export function EditProviderModal({
       <Form form={form} layout="vertical">
         <Form.Item
           name="name"
-          label={t('modelProviders.providerName')}
+          label={t('providers.providerName')}
           rules={[
             {
               required: true,
-              message: t('modelProviders.providerNameRequired'),
+              message: t('providers.providerNameRequired'),
             },
           ]}
         >
-          <Input placeholder={t('modelProviders.providerNamePlaceholder')} />
+          <Input placeholder={t('providers.providerNamePlaceholder')} />
         </Form.Item>
 
         <Form.Item
           name="enabled"
-          label={t('modelProviders.enabled')}
+          label={t('providers.enabled')}
           valuePropName="checked"
         >
           <Switch />
@@ -96,19 +93,19 @@ export function EditProviderModal({
         {/* API Configuration for non-candle providers */}
         {provider.type !== 'candle' && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small" title={t('modelProviders.apiConfiguration')}>
+            <Card size="small" title={t('providers.apiConfiguration')}>
               <Form.Item
                 name="api_key"
-                label={t('modelProviders.apiKey')}
+                label={t('providers.apiKey')}
                 rules={[
                   {
                     required: true,
-                    message: t('modelProviders.apiKeyRequired'),
+                    message: t('providers.apiKeyRequired'),
                   },
                 ]}
               >
                 <Input.Password
-                  placeholder={t('modelProviders.apiKeyPlaceholder')}
+                  placeholder={t('providers.apiKeyPlaceholder')}
                   iconRender={visible =>
                     visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                   }
@@ -117,15 +114,15 @@ export function EditProviderModal({
 
               <Form.Item
                 name="base_url"
-                label={t('modelProviders.baseUrl')}
+                label={t('providers.baseUrl')}
                 rules={[
                   {
                     required: true,
-                    message: t('modelProviders.baseUrlRequired'),
+                    message: t('providers.baseUrlRequired'),
                   },
                 ]}
               >
-                <Input placeholder={t('modelProviders.baseUrlPlaceholder')} />
+                <Input placeholder={t('providers.baseUrlPlaceholder')} />
               </Form.Item>
             </Card>
           </Space>
@@ -133,11 +130,11 @@ export function EditProviderModal({
 
         {/* Candle Configuration */}
         {provider.type === 'candle' && (
-          <Card size="small" title={t('modelProviders.candleConfiguration')}>
+          <Card size="small" title={t('providers.candleConfiguration')}>
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <Form.Item
                 name={['settings', 'autoUnloadOldModels']}
-                label={t('modelProviders.autoUnloadOldModels')}
+                label={t('providers.autoUnloadOldModels')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -145,7 +142,7 @@ export function EditProviderModal({
 
               <Form.Item
                 name={['settings', 'contextShift']}
-                label={t('modelProviders.contextShift')}
+                label={t('providers.contextShift')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -153,7 +150,7 @@ export function EditProviderModal({
 
               <Form.Item
                 name={['settings', 'continuousBatching']}
-                label={t('modelProviders.continuousBatching')}
+                label={t('providers.continuousBatching')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -161,34 +158,34 @@ export function EditProviderModal({
 
               <Form.Item
                 name={['settings', 'parallelOperations']}
-                label={t('modelProviders.parallelOperations')}
+                label={t('providers.parallelOperations')}
               >
                 <InputNumber min={1} max={16} style={{ width: '100%' }} />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'cpuThreads']}
-                label={t('modelProviders.cpuThreads')}
+                label={t('providers.cpuThreads')}
               >
                 <InputNumber
-                  placeholder={t('modelProviders.cpuThreadsPlaceholder')}
+                  placeholder={t('providers.cpuThreadsPlaceholder')}
                   style={{ width: '100%' }}
                 />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'threadsBatch']}
-                label={t('modelProviders.threadsBatch')}
+                label={t('providers.threadsBatch')}
               >
                 <InputNumber
-                  placeholder={t('modelProviders.threadsBatchPlaceholder')}
+                  placeholder={t('providers.threadsBatchPlaceholder')}
                   style={{ width: '100%' }}
                 />
               </Form.Item>
 
               <Form.Item
                 name={['settings', 'flashAttention']}
-                label={t('modelProviders.flashAttention')}
+                label={t('providers.flashAttention')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -196,7 +193,7 @@ export function EditProviderModal({
 
               <Form.Item
                 name={['settings', 'caching']}
-                label={t('modelProviders.caching')}
+                label={t('providers.caching')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -204,7 +201,7 @@ export function EditProviderModal({
 
               <Form.Item
                 name={['settings', 'kvCacheType']}
-                label={t('modelProviders.kvCacheType')}
+                label={t('providers.kvCacheType')}
               >
                 <Select
                   options={[
@@ -219,7 +216,7 @@ export function EditProviderModal({
 
               <Form.Item
                 name={['settings', 'mmap']}
-                label={t('modelProviders.mmap')}
+                label={t('providers.mmap')}
                 valuePropName="checked"
               >
                 <Switch />
@@ -227,10 +224,10 @@ export function EditProviderModal({
 
               <Form.Item
                 name={['settings', 'huggingFaceAccessToken']}
-                label={t('modelProviders.huggingFaceAccessToken')}
+                label={t('providers.huggingFaceAccessToken')}
               >
                 <Input.Password
-                  placeholder={t('modelProviders.huggingFaceTokenPlaceholder')}
+                  placeholder={t('providers.huggingFaceTokenPlaceholder')}
                 />
               </Form.Item>
             </Space>

@@ -61,13 +61,13 @@ export function SettingsPage() {
       icon: <LockOutlined />,
       label: t('settings.privacy'),
     },
-    // Model Providers only shows in main menu for desktop apps
+    // Providers only shows in main menu for desktop apps
     ...(isDesktopApp
       ? [
           {
-            key: 'model-providers',
+            key: 'providers',
             icon: <ToolOutlined />,
-            label: t('settings.modelProviders'),
+            label: t('settings.providers'),
           },
         ]
       : []),
@@ -114,8 +114,8 @@ export function SettingsPage() {
         const hasAppearanceManagement = hasPermission(
           Permission.config.experimental.edit,
         )
-        const hasModelProviderManagement = hasPermission(
-          Permission.config.modelProviders.read,
+        const hasProviderManagement = hasPermission(
+          Permission.config.providers.read,
         )
         const hasProxyManagement = hasPermission(Permission.config.proxy.read)
         const hasAssistantsManagement = hasPermission(
@@ -126,7 +126,7 @@ export function SettingsPage() {
           hasUserManagement ||
           hasGroupManagement ||
           hasAppearanceManagement ||
-          hasModelProviderManagement ||
+          hasProviderManagement ||
           hasProxyManagement ||
           hasAssistantsManagement
         ) {
@@ -156,11 +156,11 @@ export function SettingsPage() {
             })
           }
 
-          if (hasModelProviderManagement) {
+          if (hasProviderManagement) {
             items.push({
-              key: 'model-providers',
+              key: 'providers',
               icon: <ToolOutlined />,
-              label: t('settings.modelProviders'),
+              label: t('settings.providers'),
             })
           }
 

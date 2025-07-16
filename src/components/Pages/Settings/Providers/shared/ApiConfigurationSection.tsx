@@ -18,20 +18,20 @@ export function ApiConfigurationSection({
   const { t } = useTranslation()
 
   return (
-    <Card size="small" title={t('modelProviders.apiConfiguration')}>
+    <Card size="small" title={t('providers.apiConfiguration')}>
       {showApiKey && (
         <Form.Item
           name="api_key"
-          label={t('modelProviders.apiKey')}
+          label={t('providers.apiKey')}
           rules={[
             {
               required: apiKeyRequired,
-              message: t('modelProviders.apiKeyRequired'),
+              message: t('providers.apiKeyRequired'),
             },
           ]}
         >
           <Input.Password
-            placeholder={t('modelProviders.apiKeyPlaceholder')}
+            placeholder={t('providers.apiKeyPlaceholder')}
             iconRender={visible =>
               visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
             }
@@ -42,15 +42,15 @@ export function ApiConfigurationSection({
       {showBaseUrl && (
         <Form.Item
           name="base_url"
-          label={t('modelProviders.baseUrl')}
+          label={t('providers.baseUrl')}
           rules={[
             {
               required: baseUrlRequired,
-              message: t('modelProviders.baseUrlRequired'),
+              message: t('providers.baseUrlRequired'),
             },
           ]}
         >
-          <Input placeholder={t('modelProviders.baseUrlPlaceholder')} />
+          <Input placeholder={t('providers.baseUrlPlaceholder')} />
         </Form.Item>
       )}
     </Card>

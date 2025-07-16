@@ -73,7 +73,7 @@
     "general": "Chung",
     "appearance": "Giao diện",
     "privacy": "Quyền riêng tư",
-    "modelProviders": "Nhà cung cấp Model",
+    "providers": "Nhà cung cấp Model",
     "shortcuts": "Phím tắt",
     "hardware": "Phần cứng",
     "localApiServer": "Máy chủ API cục bộ",
@@ -132,7 +132,7 @@
       "systemPromptPlaceholder": "Nhập system prompt tùy chỉnh (tùy chọn)"
     }
   },
-  "modelProviders": {
+  "providers": {
     "title": "Nhà cung cấp Model",
     "addModel": "Thêm Model",
     "addProvider": "Thêm nhà cung cấp",

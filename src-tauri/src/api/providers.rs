@@ -10,11 +10,11 @@ use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        CreateProviderRequest, CreateModelRequest, Provider, ProviderListResponse,
-        Model, ProviderProxySettings, TestProviderProxyResponse,
-        UpdateProviderRequest, UpdateModelRequest, UserGroup, AvailableDevicesResponse,
+        AvailableDevicesResponse, CreateModelRequest, CreateProviderRequest, Model, Provider,
+        ProviderListResponse, ProviderProxySettings, TestProviderProxyResponse, UpdateModelRequest,
+        UpdateProviderRequest, UserGroup,
     },
-    queries::{model_providers, user_group_model_providers},
+    queries::{providers, user_group_providers},
 };
 
 #[derive(Debug, Deserialize)]
@@ -32,17 +32,17 @@ pub async fn list_providers(
     let per_page = params.per_page.unwrap_or(20);
 
     // Get providers based on user permissions
-    let user_providers =
-        match user_group_model_providers::get_providers_for_user(auth_user.user.id).await {
-            Ok(providers) => providers,
-            Err(e) => {
-                eprintln!(
-                    "Failed to get model providers for user {}: {}",
-                    auth_user.user.id, e
-                );
-                return Err(e.into());
-            }
-        };
+    let user_providers = match user_group_providers::get_providers_for_user(auth_user.user.id).await
+    {
+        Ok(providers) => providers,
+        Err(e) => {
+            eprintln!(
+                "Failed to get model providers for user {}: {}",
+                auth_user.user.id, e
+            );
+            return Err(e.into());
+        }
+    };
 
     // Calculate pagination
     let total = user_providers.len() as i64;
@@ -67,7 +67,7 @@ pub async fn get_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
 ) -> ApiResult<Json<Provider>> {
-    match model_providers::get_provider_by_id(provider_id).await {
+    match providers::get_provider_by_id(provider_id).await {
         Ok(Some(provider)) => Ok(Json(provider)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -133,7 +133,7 @@ pub async fn create_provider(
         }
     }
 
-    match model_providers::create_provider(request).await {
+    match providers::create_provider(request).await {
         Ok(provider) => Ok(Json(provider)),
         Err(e) => {
             eprintln!("Failed to create model provider: {}", e);
@@ -154,7 +154,7 @@ pub async fn update_provider(
     // If trying to enable the provider, validate requirements
     if let Some(true) = request.enabled {
         // Get the current provider to check its state
-        match model_providers::get_provider_by_id(provider_id).await {
+        match providers::get_provider_by_id(provider_id).await {
             Ok(Some(current_provider)) => {
                 // Check if provider type requires API key and base URL
                 if current_provider.provider_type != "candle" {
@@ -204,17 +204,16 @@ pub async fn update_provider(
                 }
 
                 // Check if provider has any models
-                let provider_models =
-                    match model_providers::get_models_for_provider(provider_id).await {
-                        Ok(models) => models,
-                        Err(e) => {
-                            eprintln!(
-                                "Error fetching models for provider {}: {:?}",
-                                provider_id, e
-                            );
-                            return Err(AppError::from(e));
-                        }
-                    };
+                let provider_models = match providers::get_models_for_provider(provider_id).await {
+                    Ok(models) => models,
+                    Err(e) => {
+                        eprintln!(
+                            "Error fetching models for provider {}: {:?}",
+                            provider_id, e
+                        );
+                        return Err(AppError::from(e));
+                    }
+                };
 
                 if provider_models.is_empty() {
                     eprintln!(
@@ -235,7 +234,7 @@ pub async fn update_provider(
         }
     }
 
-    match model_providers::update_provider(provider_id, request).await {
+    match providers::update_provider(provider_id, request).await {
         Ok(Some(provider)) => Ok(Json(provider)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -249,7 +248,7 @@ pub async fn delete_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    match model_providers::delete_provider(provider_id).await {
+    match providers::delete_provider(provider_id).await {
         Ok(Ok(true)) => Ok(StatusCode::NO_CONTENT),
         Ok(Ok(false)) => Err(AppError::not_found("Resource")),
         Ok(Err(error_message)) => {
@@ -274,7 +273,7 @@ pub async fn clone_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
 ) -> ApiResult<Json<Provider>> {
-    match model_providers::clone_provider(provider_id).await {
+    match providers::clone_provider(provider_id).await {
         Ok(Some(provider)) => Ok(Json(provider)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -290,13 +289,13 @@ pub async fn create_model(
     Path(provider_id): Path<Uuid>,
     Json(request): Json<CreateModelRequest>,
 ) -> ApiResult<Json<Model>> {
-    match model_providers::create_model(provider_id, request).await {
+    match providers::create_model(provider_id, request).await {
         Ok(model) => Ok(Json(model)),
         Err(e) => {
             eprintln!("Failed to create model for provider {}: {}", provider_id, e);
             // Handle unique constraint violation for (provider_id, name)
             match &e {
-        sqlx::Error::Database(db_err) if db_err.constraint() == Some("model_provider_models_provider_id_name_unique") => {
+        sqlx::Error::Database(db_err) if db_err.constraint() == Some("models_provider_id_name_unique") => {
           Err(AppError::new(ErrorCode::ValidInvalidInput,
                             "A model with this ID already exists for this provider. Please use a different model ID."))
         }
@@ -311,7 +310,7 @@ pub async fn update_model(
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateModelRequest>,
 ) -> ApiResult<Json<Model>> {
-    match model_providers::update_model(model_id, request).await {
+    match providers::update_model(model_id, request).await {
         Ok(Some(model)) => Ok(Json(model)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -326,7 +325,7 @@ pub async fn delete_model(
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     // Get the model database record using proper database query
-    let model = match model_providers::get_model_db_by_id(model_id).await {
+    let model = match providers::get_model_db_by_id(model_id).await {
         Ok(Some(model)) => model,
         Ok(None) => return Err(AppError::not_found("Model")),
         Err(e) => {
@@ -336,7 +335,7 @@ pub async fn delete_model(
     };
 
     // Get the provider to check if it's a Candle provider
-    let provider = match model_providers::get_provider_by_id(model.provider_id).await {
+    let provider = match providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err(AppError::not_found("Model provider")),
         Err(e) => {
@@ -394,7 +393,7 @@ pub async fn delete_model(
     }
 
     // Delete the model from the database
-    match model_providers::delete_model(model_id).await {
+    match providers::delete_model(model_id).await {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
         Ok(false) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -408,7 +407,7 @@ pub async fn get_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<Json<Model>> {
-    match model_providers::get_model_by_id(model_id).await {
+    match providers::get_model_by_id(model_id).await {
         Ok(Some(model)) => Ok(Json(model)),
         Ok(None) => Err(AppError::not_found("Resource")),
         Err(e) => {
@@ -479,7 +478,7 @@ async fn test_proxy_connectivity_for_provider(
     if proxy_config.ignore_ssl_certificates {
         client_builder = client_builder.danger_accept_invalid_certs(true);
     }
-    
+
     // Handle other SSL settings
     if proxy_config.proxy_ssl {
         // Additional proxy SSL configuration if needed
@@ -564,7 +563,7 @@ pub async fn get_provider_groups(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<UserGroup>>> {
-    match user_group_model_providers::get_groups_for_model_provider(provider_id).await {
+    match user_group_providers::get_groups_for_model_provider(provider_id).await {
         Ok(groups) => Ok(Json(groups)),
         Err(e) => {
             eprintln!("Error getting groups for model provider: {}", e);
@@ -586,7 +585,7 @@ pub async fn start_model(
     let pool = pool.as_ref();
 
     let model_row: Option<crate::database::models::ModelDb> =
-        sqlx::query_as("SELECT * FROM model_provider_models WHERE id = $1")
+        sqlx::query_as("SELECT * FROM models WHERE id = $1")
             .bind(model_id)
             .fetch_optional(pool)
             .await
@@ -598,7 +597,7 @@ pub async fn start_model(
     let model = model_row.ok_or_else(|| AppError::not_found("Model"))?;
 
     // Get the provider to check if it's a Candle provider
-    let provider = match model_providers::get_provider_by_id(model.provider_id).await {
+    let provider = match providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err(AppError::not_found("Model provider")),
         Err(e) => {
@@ -629,7 +628,7 @@ pub async fn start_model(
                 model_id
             );
 
-            match model_providers::update_model(
+            match providers::update_model(
                 model_id,
                 UpdateModelRequest {
                     name: None,
@@ -679,7 +678,7 @@ pub async fn start_model(
             println!("Model {} started successfully on port {}", model_id, port);
 
             // Update model status in database
-            match model_providers::update_model(
+            match providers::update_model(
                 model_id,
                 UpdateModelRequest {
                     name: None,
@@ -716,7 +715,7 @@ pub async fn start_model(
             );
 
             // Update model status in database to ensure it's marked as active
-            match model_providers::update_model(
+            match providers::update_model(
                 model_id,
                 UpdateModelRequest {
                     name: None,
@@ -769,7 +768,7 @@ pub async fn stop_model(
     let pool = pool.as_ref();
 
     let model_row: Option<crate::database::models::ModelDb> =
-        sqlx::query_as("SELECT * FROM model_provider_models WHERE id = $1")
+        sqlx::query_as("SELECT * FROM models WHERE id = $1")
             .bind(model_id)
             .fetch_optional(pool)
             .await
@@ -781,7 +780,7 @@ pub async fn stop_model(
     let model = model_row.ok_or_else(|| AppError::not_found("Model"))?;
 
     // Get the provider to check if it's a Candle provider
-    let provider = match model_providers::get_provider_by_id(model.provider_id).await {
+    let provider = match providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err(AppError::not_found("Model provider")),
         Err(e) => {
@@ -801,9 +800,12 @@ pub async fn stop_model(
     let model_manager = crate::ai::model_manager::get_model_manager();
     if !model_manager.is_model_running(model_id).await {
         // Model is not running, but we should still update the database to ensure consistency
-        println!("Model {} is not running, updating database status", model_id);
-        
-        return match model_providers::update_model(
+        println!(
+            "Model {} is not running, updating database status",
+            model_id
+        );
+
+        return match providers::update_model(
             model_id,
             UpdateModelRequest {
                 name: None,
@@ -834,7 +836,7 @@ pub async fn stop_model(
             println!("Model {} stopped successfully", model_id);
 
             // Update model status in database
-            match model_providers::update_model(
+            match providers::update_model(
                 model_id,
                 UpdateModelRequest {
                     name: None,
@@ -873,7 +875,7 @@ pub async fn enable_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    match model_providers::update_model(
+    match providers::update_model(
         model_id,
         UpdateModelRequest {
             name: None,
@@ -903,7 +905,7 @@ pub async fn disable_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    match model_providers::update_model(
+    match providers::update_model(
         model_id,
         UpdateModelRequest {
             name: None,
@@ -934,17 +936,17 @@ pub async fn list_provider_models(
     Path(provider_id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<Model>>> {
     // First verify the user has access to this provider
-    let user_providers =
-        match user_group_model_providers::get_providers_for_user(auth_user.user.id).await {
-            Ok(providers) => providers,
-            Err(e) => {
-                eprintln!(
-                    "Failed to get model providers for user {}: {}",
-                    auth_user.user.id, e
-                );
-                return Err(e.into());
-            }
-        };
+    let user_providers = match user_group_providers::get_providers_for_user(auth_user.user.id).await
+    {
+        Ok(providers) => providers,
+        Err(e) => {
+            eprintln!(
+                "Failed to get model providers for user {}: {}",
+                auth_user.user.id, e
+            );
+            return Err(e.into());
+        }
+    };
 
     // Check if user has access to this provider
     if !user_providers.iter().any(|p| p.id == provider_id) {
@@ -955,7 +957,7 @@ pub async fn list_provider_models(
     }
 
     // Get models for the provider
-    match model_providers::get_models_for_provider(provider_id).await {
+    match providers::get_models_for_provider(provider_id).await {
         Ok(models) => Ok(Json(models)),
         Err(e) => {
             eprintln!("Failed to get models for provider {}: {}", provider_id, e);

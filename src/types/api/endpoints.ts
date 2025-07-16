@@ -37,15 +37,15 @@ import {
   AddModelToProviderRequest,
   AvailableDevicesResponse,
   CreateProviderRequest,
+  Model,
   ModelCapabilities,
   Provider,
   ProviderListResponse,
-  Model,
   ProviderProxySettings,
   TestProviderProxyResponse,
-  UpdateProviderRequest,
   UpdateModelRequest,
-} from './modelProvider'
+  UpdateProviderRequest,
+} from './provider'
 import {
   Assistant,
   AssistantListResponse,
@@ -101,17 +101,14 @@ export const ApiEndpoints = {
   'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
   'Admin.removeUserFromGroup':
     'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
-  // User Group Model Provider relationships
-  'Admin.getGroupProviders':
-    'GET /api/admin/groups/{group_id}/model-providers',
-  'Admin.assignProviderToGroup':
-    'POST /api/admin/groups/assign-model-provider',
+  // User Group Provider relationships
+  'Admin.getGroupProviders': 'GET /api/admin/groups/{group_id}/providers',
+  'Admin.assignProviderToGroup': 'POST /api/admin/groups/assign-provider',
   'Admin.removeProviderFromGroup':
-    'DELETE /api/admin/groups/{group_id}/model-providers/{provider_id}',
-  'Admin.getProviderGroups':
-    'GET /api/admin/model-providers/{provider_id}/groups',
+    'DELETE /api/admin/groups/{group_id}/providers/{provider_id}',
+  'Admin.getProviderGroups': 'GET /api/admin/providers/{provider_id}/groups',
   'Admin.listUserGroupProviderRelationships':
-    'GET /api/admin/user-group-model-provider-relationships',
+    'GET /api/admin/user-group-provider-relationships',
   // Public configuration
   'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
   'Config.getDefaultLanguage': 'GET /api/config/default-language',
@@ -130,17 +127,15 @@ export const ApiEndpoints = {
   'UserSettings.set': 'POST /api/user/settings',
   'UserSettings.delete': 'DELETE /api/user/settings/{key}',
   'UserSettings.deleteAll': 'DELETE /api/user/settings/all',
-  // Model Provider management
-  'Providers.list': 'GET /api/admin/model-providers',
-  'Providers.get': 'GET /api/admin/model-providers/{provider_id}',
-  'Providers.create': 'POST /api/admin/model-providers',
-  'Providers.update': 'PUT /api/admin/model-providers/{provider_id}',
-  'Providers.delete': 'DELETE /api/admin/model-providers/{provider_id}',
-  'Providers.clone': 'POST /api/admin/model-providers/{provider_id}/clone',
-  'Providers.addModel':
-    'POST /api/admin/model-providers/{provider_id}/models',
-  'Providers.listModels':
-    'GET /api/admin/model-providers/{provider_id}/models',
+  // Provider management
+  'Providers.list': 'GET /api/admin/providers',
+  'Providers.get': 'GET /api/admin/providers/{provider_id}',
+  'Providers.create': 'POST /api/admin/providers',
+  'Providers.update': 'PUT /api/admin/providers/{provider_id}',
+  'Providers.delete': 'DELETE /api/admin/providers/{provider_id}',
+  'Providers.clone': 'POST /api/admin/providers/{provider_id}/clone',
+  'Providers.addModel': 'POST /api/admin/providers/{provider_id}/models',
+  'Providers.listModels': 'GET /api/admin/providers/{provider_id}/models',
   'Models.get': 'GET /api/admin/models/{model_id}',
   'Models.update': 'PUT /api/admin/models/{model_id}',
   'Models.delete': 'DELETE /api/admin/models/{model_id}',
@@ -148,8 +143,7 @@ export const ApiEndpoints = {
   'Models.stop': 'POST /api/admin/models/{model_id}/stop',
   'Models.enable': 'POST /api/admin/models/{model_id}/enable',
   'Models.disable': 'POST /api/admin/models/{model_id}/disable',
-  'Providers.testProxy':
-    'POST /api/admin/model-providers/{provider_id}/test-proxy',
+  'Providers.testProxy': 'POST /api/admin/providers/{provider_id}/test-proxy',
   'Admin.getAvailableDevices': 'GET /api/admin/devices',
   // Model Upload endpoints for Candle
   'ModelUploads.create': 'POST /api/admin/uploaded-models',
@@ -233,7 +227,7 @@ export type ApiEndpointParameters = {
   }
   'Admin.assignUserToGroup': AssignUserToGroupRequest
   'Admin.removeUserFromGroup': { user_id: string; group_id: string }
-  // User Group Model Provider relationships
+  // User Group Provider relationships
   'Admin.getGroupProviders': { group_id: string }
   'Admin.assignProviderToGroup': { group_id: string; provider_id: string }
   'Admin.removeProviderFromGroup': {
@@ -259,7 +253,7 @@ export type ApiEndpointParameters = {
   'UserSettings.set': UserSettingRequest
   'UserSettings.delete': { key: string }
   'UserSettings.deleteAll': void
-  // Model Provider management
+  // Provider management
   'Providers.list': { page?: number; per_page?: number }
   'Providers.get': { provider_id: string }
   'Providers.create': CreateProviderRequest
@@ -380,7 +374,7 @@ export type ApiEndpointResponses = {
   'Admin.getGroupMembers': UserListResponse
   'Admin.assignUserToGroup': void
   'Admin.removeUserFromGroup': void
-  // User Group Model Provider relationships
+  // User Group Provider relationships
   'Admin.getGroupProviders': Provider[]
   'Admin.assignProviderToGroup': {
     id: string
@@ -417,7 +411,7 @@ export type ApiEndpointResponses = {
   'UserSettings.set': UserSetting
   'UserSettings.delete': void
   'UserSettings.deleteAll': { deleted: number }
-  // Model Provider management
+  // Provider management
   'Providers.list': ProviderListResponse
   'Providers.get': Provider
   'Providers.create': Provider

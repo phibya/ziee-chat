@@ -16,8 +16,8 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdate } from 'react-use'
-import { ProviderType } from '../../../../types/api/modelProvider'
-import { useProvidersStore } from '../../../../store/modelProviders'
+import { ProviderType } from '../../../../types/api/provider'
+import { useProvidersStore } from '../../../../store/providers'
 import { useShallow } from 'zustand/react/shallow'
 import { UploadOutlined } from '@ant-design/icons'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
@@ -115,12 +115,12 @@ export function AddModelModal({
         if (values.model_source === 'upload') {
           // Step 1: Upload files using new workflow
           if (selectedFiles.length === 0) {
-            message.error(t('modelProviders.selectModelFolderRequired'))
+            message.error(t('providers.selectModelFolderRequired'))
             return
           }
 
           if (!values.local_filename) {
-            message.error(t('modelProviders.localFilenameRequired'))
+            message.error(t('providers.localFilenameRequired'))
             return
           }
 
@@ -150,7 +150,7 @@ export function AddModelModal({
             file => file.name === values.local_filename,
           )
           if (!mainFile) {
-            message.error(t('modelProviders.mainFileNotFound'))
+            message.error(t('providers.mainFileNotFound'))
             return
           }
 
@@ -177,14 +177,14 @@ export function AddModelModal({
             selectedFileIds,
           )
 
-          message.success(t('modelProviders.modelFolderUploadedSuccessfully'))
+          message.success(t('providers.modelFolderUploadedSuccessfully'))
 
           // Step 4: Refresh model list of that provider
           await loadProviders()
         } else if (values.model_source === 'huggingface') {
           // For Hugging Face download workflow - keep existing logic for now
           // This will be updated later to use the new workflow
-          message.success(t('modelProviders.modelDownloadStarted'))
+          message.success(t('providers.modelDownloadStarted'))
         }
 
         // Step 5: Close the modal for adding model
@@ -637,7 +637,7 @@ export function AddModelModal({
 
   return (
     <Modal
-      title={t('modelProviders.addModel')}
+      title={t('providers.addModel')}
       open={open}
       onCancel={onClose}
       footer={[
@@ -650,7 +650,7 @@ export function AddModelModal({
           loading={loading}
           onClick={handleSubmit}
         >
-          {t('modelProviders.addModel')}
+          {t('providers.addModel')}
         </Button>,
       ]}
       width={600}
@@ -686,16 +686,16 @@ export function AddModelModal({
         {providerType === 'candle' && (
           <Form.Item
             name="architecture"
-            label={t('modelProviders.modelArchitecture')}
+            label={t('providers.modelArchitecture')}
             rules={[
               {
                 required: true,
-                message: t('modelProviders.modelArchitectureRequired'),
+                message: t('providers.modelArchitectureRequired'),
               },
             ]}
           >
             <Select
-              placeholder={t('modelProviders.selectModelArchitecture')}
+              placeholder={t('providers.selectModelArchitecture')}
               options={CANDLE_ARCHITECTURE_OPTIONS.map(option => ({
                 value: option.value,
                 label: option.label,
@@ -716,11 +716,11 @@ export function AddModelModal({
         {providerType === 'candle' && (
           <Form.Item
             name="model_source"
-            label={t('modelProviders.modelSource')}
+            label={t('providers.modelSource')}
             rules={[
               {
                 required: true,
-                message: t('modelProviders.modelSourceRequired'),
+                message: t('providers.modelSourceRequired'),
               },
             ]}
           >
@@ -731,9 +731,9 @@ export function AddModelModal({
               }}
               value={modelSource}
             >
-              <Radio value="upload">{t('modelProviders.uploadFile')}</Radio>
+              <Radio value="upload">{t('providers.uploadFile')}</Radio>
               <Radio value="huggingface">
-                {t('modelProviders.downloadFromHuggingFace')}
+                {t('providers.downloadFromHuggingFace')}
               </Radio>
             </Radio.Group>
           </Form.Item>
@@ -742,16 +742,16 @@ export function AddModelModal({
         {providerType === 'candle' && (
           <Form.Item
             name="file_format"
-            label={t('modelProviders.fileFormat')}
+            label={t('providers.fileFormat')}
             rules={[
               {
                 required: true,
-                message: t('modelProviders.fileFormatRequired'),
+                message: t('providers.fileFormatRequired'),
               },
             ]}
           >
             <Select
-              placeholder={t('modelProviders.selectFileFormat')}
+              placeholder={t('providers.selectFileFormat')}
               onChange={handleFileFormatChange}
               options={CANDLE_FILE_TYPE_OPTIONS.map(option => ({
                 value: option.value,
@@ -774,16 +774,16 @@ export function AddModelModal({
           <>
             <Form.Item
               name="local_folder_path"
-              label={t('modelProviders.localFolderPath')}
+              label={t('providers.localFolderPath')}
               rules={[
                 {
                   required: true,
-                  message: t('modelProviders.selectModelFolderRequired'),
+                  message: t('providers.selectModelFolderRequired'),
                 },
               ]}
             >
               <Input
-                placeholder={t('modelProviders.selectModelFolder')}
+                placeholder={t('providers.selectModelFolder')}
                 addonBefore="📁"
                 addonAfter={
                   <Upload
@@ -798,7 +798,7 @@ export function AddModelModal({
                       type={'text'}
                       size="small"
                     >
-                      {t('modelProviders.browse')}
+                      {t('providers.browse')}
                     </Button>
                   </Upload>
                 }
@@ -807,11 +807,11 @@ export function AddModelModal({
 
             <Form.Item
               name="local_filename"
-              label={t('modelProviders.localFilename')}
+              label={t('providers.localFilename')}
               rules={[
                 {
                   required: true,
-                  message: t('modelProviders.localFilenameRequired'),
+                  message: t('providers.localFilenameRequired'),
                 },
                 {
                   validator: (_, value) => {
@@ -829,7 +829,7 @@ export function AddModelModal({
                   },
                 },
               ]}
-              help={t('modelProviders.localFilenameHelp')}
+              help={t('providers.localFilenameHelp')}
             >
               <Input placeholder={getFilenamePlaceholder(selectedFileFormat)} />
             </Form.Item>
@@ -887,15 +887,15 @@ export function AddModelModal({
           <>
             <Form.Item
               name="hf_repo"
-              label={t('modelProviders.huggingFaceRepo')}
+              label={t('providers.huggingFaceRepo')}
               rules={[
                 {
                   required: true,
-                  message: t('modelProviders.huggingFaceRepoRequired'),
+                  message: t('providers.huggingFaceRepoRequired'),
                 },
                 {
                   pattern: /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+$/,
-                  message: t('modelProviders.huggingFaceRepoFormat'),
+                  message: t('providers.huggingFaceRepoFormat'),
                 },
               ]}
             >
@@ -904,11 +904,11 @@ export function AddModelModal({
 
             <Form.Item
               name="hf_filename"
-              label={t('modelProviders.huggingFaceFilename')}
+              label={t('providers.huggingFaceFilename')}
               rules={[
                 {
                   required: true,
-                  message: t('modelProviders.huggingFaceFilenameRequired'),
+                  message: t('providers.huggingFaceFilenameRequired'),
                 },
                 {
                   validator: (_, value) => {
@@ -932,7 +932,7 @@ export function AddModelModal({
 
             <Form.Item
               name="hf_branch"
-              label={t('modelProviders.huggingFaceBranch')}
+              label={t('providers.huggingFaceBranch')}
             >
               <Input placeholder="main" />
             </Form.Item>

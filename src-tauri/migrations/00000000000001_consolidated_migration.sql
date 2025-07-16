@@ -114,7 +114,7 @@ CREATE TABLE configurations (
 -- ===============================
 
 -- Create model providers table
-CREATE TABLE model_providers (
+CREATE TABLE providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     provider_type VARCHAR(50) NOT NULL CHECK (provider_type IN ('candle', 'openai', 'anthropic', 'groq', 'gemini', 'mistral', 'custom')),
@@ -138,18 +138,18 @@ CREATE TABLE model_providers (
 );
 
 -- Create user group model provider relationships
-CREATE TABLE user_group_model_providers (
+CREATE TABLE user_group_providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id UUID NOT NULL REFERENCES user_groups(id) ON DELETE CASCADE,
-    provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
     assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(group_id, provider_id)
 );
 
 -- Create model provider models table (unified table for all model types including Candle)
-CREATE TABLE model_provider_models (
+CREATE TABLE models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    provider_id UUID NOT NULL REFERENCES model_providers(id) ON DELETE CASCADE,
+    provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     alias VARCHAR(255) NOT NULL,
     description TEXT,
@@ -179,8 +179,8 @@ CREATE TABLE model_provider_models (
     validation_issues JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT model_provider_models_alias_not_empty CHECK (alias != ''),
-    CONSTRAINT model_provider_models_provider_id_name_unique UNIQUE (provider_id, name)
+    CONSTRAINT models_alias_not_empty CHECK (alias != ''),
+    CONSTRAINT models_provider_id_name_unique UNIQUE (provider_id, name)
 );
 
 -- ===============================
@@ -190,7 +190,7 @@ CREATE TABLE model_provider_models (
 -- Create model_files table for tracking individual files within models
 CREATE TABLE model_files (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    model_id UUID NOT NULL REFERENCES model_provider_models(id) ON DELETE CASCADE,
+    model_id UUID NOT NULL REFERENCES models(id) ON DELETE CASCADE,
     filename VARCHAR(500) NOT NULL,
     file_path VARCHAR(1000) NOT NULL,
     file_size_bytes BIGINT NOT NULL,
@@ -230,7 +230,7 @@ CREATE TABLE conversations (
     title VARCHAR(255) NOT NULL,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     assistant_id UUID REFERENCES assistants(id),
-    model_id UUID REFERENCES model_provider_models(id),
+    model_id UUID REFERENCES models(id),
     active_branch_id UUID, -- Will be set after branches table is created
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -362,8 +362,8 @@ CREATE INDEX idx_user_group_memberships_user_id ON user_group_memberships(user_i
 CREATE INDEX idx_user_group_memberships_group_id ON user_group_memberships(group_id);
 CREATE INDEX idx_user_group_memberships_assigned_by ON user_group_memberships(assigned_by);
 
-CREATE INDEX idx_user_group_model_providers_group_id ON user_group_model_providers(group_id);
-CREATE INDEX idx_user_group_model_providers_provider_id ON user_group_model_providers(provider_id);
+CREATE INDEX idx_user_group_providers_group_id ON user_group_providers(group_id);
+CREATE INDEX idx_user_group_providers_provider_id ON user_group_providers(provider_id);
 
 -- Configuration indexes
 CREATE INDEX idx_configurations_name ON configurations(name);
@@ -375,14 +375,14 @@ CREATE INDEX idx_user_settings_user_id_key ON user_settings(user_id, key);
 CREATE INDEX idx_user_settings_value ON user_settings USING GIN(value);
 
 -- Model provider indexes
-CREATE INDEX idx_model_providers_provider_type ON model_providers(provider_type);
-CREATE INDEX idx_model_providers_enabled ON model_providers(enabled);
-CREATE INDEX idx_model_providers_proxy_enabled ON model_providers(proxy_enabled);
-CREATE INDEX idx_model_provider_models_provider_id ON model_provider_models(provider_id);
-CREATE INDEX idx_model_provider_models_enabled ON model_provider_models(enabled);
-CREATE INDEX idx_model_provider_models_validation_status ON model_provider_models(validation_status);
-CREATE INDEX idx_model_provider_models_architecture ON model_provider_models(architecture);
-CREATE INDEX idx_model_provider_models_file_size_bytes ON model_provider_models(file_size_bytes);
+CREATE INDEX idx_providers_provider_type ON providers(provider_type);
+CREATE INDEX idx_providers_enabled ON providers(enabled);
+CREATE INDEX idx_providers_proxy_enabled ON providers(proxy_enabled);
+CREATE INDEX idx_models_provider_id ON models(provider_id);
+CREATE INDEX idx_models_enabled ON models(enabled);
+CREATE INDEX idx_models_validation_status ON models(validation_status);
+CREATE INDEX idx_models_architecture ON models(architecture);
+CREATE INDEX idx_models_file_size_bytes ON models(file_size_bytes);
 
 CREATE INDEX idx_model_files_model_id ON model_files(model_id);
 CREATE INDEX idx_model_files_upload_status ON model_files(upload_status);
@@ -480,13 +480,13 @@ CREATE TRIGGER update_user_settings_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_model_providers_updated_at 
-    BEFORE UPDATE ON model_providers
+CREATE TRIGGER update_providers_updated_at 
+    BEFORE UPDATE ON providers
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_model_provider_models_updated_at 
-    BEFORE UPDATE ON model_provider_models
+CREATE TRIGGER update_models_updated_at 
+    BEFORE UPDATE ON models
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
@@ -570,7 +570,7 @@ VALUES (
 );
 
 -- Insert default model providers
-INSERT INTO model_providers (name, provider_type, enabled, is_default, base_url, settings) VALUES
+INSERT INTO providers (name, provider_type, enabled, is_default, base_url, settings) VALUES
 ('Candle', 'candle', false, true, null, '{"device": "cpu", "autoUnloadOldModels": true, "parallelOperations": 1, "cpuThreads": -1, "huggingFaceAccessToken": "", "contextShift": false, "continuousBatching": false, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true}'),
 ('OpenAI', 'openai', false, true, 'https://api.openai.com/v1', '{}'),
 ('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1', '{}'),
@@ -591,8 +591,8 @@ COMMENT ON TABLE users IS 'Users table with Meteor-like structure';
 COMMENT ON TABLE user_groups IS 'User groups with AWS-style permissions in array format';
 COMMENT ON TABLE configurations IS 'Application configuration settings including appearance defaults, system settings, and HTTP proxy settings';
 COMMENT ON TABLE user_settings IS 'User settings table for storing personal preferences like appearance, shortcuts, proxy settings, etc.';
-COMMENT ON TABLE model_providers IS 'Model providers table for managing AI model providers like OpenAI, Anthropic, etc.';
-COMMENT ON TABLE model_provider_models IS 'Individual models within each provider (unified table for all model types)';
+COMMENT ON TABLE providers IS 'Model providers table for managing AI model providers like OpenAI, Anthropic, etc.';
+COMMENT ON TABLE models IS 'Individual models within each provider (unified table for all model types)';
 COMMENT ON TABLE model_files IS 'Individual files that make up models';
 COMMENT ON TABLE assistants IS 'Assistants table with template and user-created assistants';
 COMMENT ON TABLE conversations IS 'Chat conversations table';
@@ -607,27 +607,27 @@ COMMENT ON TABLE project_conversations IS 'Links conversations to projects';
 COMMENT ON COLUMN user_groups.permissions IS 'AWS-style permissions stored as JSON array. Supports wildcards like "users::*", "groups::*", and "*"';
 COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g., "appearance.theme", "appearance.fontSize")';
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
-COMMENT ON COLUMN model_providers.provider_type IS 'Type of provider: candle, openai, anthropic, groq, gemini, mistral, custom';
-COMMENT ON COLUMN model_provider_models.path IS 'File path for candle models';
-COMMENT ON COLUMN model_provider_models.name IS 'Unique model identifier within a provider';
-COMMENT ON COLUMN model_provider_models.alias IS 'Human-readable display name (can be duplicated across providers)';
-COMMENT ON COLUMN model_provider_models.is_active IS 'Whether the model is currently running (for candle models)';
-COMMENT ON COLUMN model_provider_models.architecture IS 'Model architecture type (e.g., llama, mistral, gemma) - for Candle models only';
-COMMENT ON COLUMN model_provider_models.quantization IS 'Quantization format (e.g., q4_0, q8_0, fp16, fp32) - for Candle models only';
-COMMENT ON COLUMN model_provider_models.file_size_bytes IS 'Total size of all model files in bytes - for Candle models only';
-COMMENT ON COLUMN model_provider_models.checksum IS 'SHA-256 checksum of the model files for integrity verification - for Candle models only';
-COMMENT ON COLUMN model_provider_models.validation_status IS 'Status of model validation and processing - for Candle models only';
-COMMENT ON COLUMN model_provider_models.validation_issues IS 'JSON array of validation issues if any - for Candle models only';
-COMMENT ON COLUMN model_providers.proxy_enabled IS 'Whether proxy is enabled for this provider';
-COMMENT ON COLUMN model_providers.proxy_url IS 'Proxy URL for this provider';
-COMMENT ON COLUMN model_providers.proxy_username IS 'Proxy username for authentication';
-COMMENT ON COLUMN model_providers.proxy_password IS 'Proxy password for authentication';
-COMMENT ON COLUMN model_providers.proxy_no_proxy IS 'Comma-separated list of hosts to bypass proxy';
-COMMENT ON COLUMN model_providers.proxy_ignore_ssl_certificates IS 'Whether to ignore SSL certificate errors';
-COMMENT ON COLUMN model_providers.proxy_ssl IS 'Whether to use SSL for proxy connection';
-COMMENT ON COLUMN model_providers.proxy_host_ssl IS 'Whether to use SSL for host connection';
-COMMENT ON COLUMN model_providers.proxy_peer_ssl IS 'Whether to use SSL for peer connection';
-COMMENT ON COLUMN model_providers.proxy_host_ssl_verify IS 'Whether to verify SSL certificates for host';
+COMMENT ON COLUMN providers.provider_type IS 'Type of provider: candle, openai, anthropic, groq, gemini, mistral, custom';
+COMMENT ON COLUMN models.path IS 'File path for candle models';
+COMMENT ON COLUMN models.name IS 'Unique model identifier within a provider';
+COMMENT ON COLUMN models.alias IS 'Human-readable display name (can be duplicated across providers)';
+COMMENT ON COLUMN models.is_active IS 'Whether the model is currently running (for candle models)';
+COMMENT ON COLUMN models.architecture IS 'Model architecture type (e.g., llama, mistral, gemma) - for Candle models only';
+COMMENT ON COLUMN models.quantization IS 'Quantization format (e.g., q4_0, q8_0, fp16, fp32) - for Candle models only';
+COMMENT ON COLUMN models.file_size_bytes IS 'Total size of all model files in bytes - for Candle models only';
+COMMENT ON COLUMN models.checksum IS 'SHA-256 checksum of the model files for integrity verification - for Candle models only';
+COMMENT ON COLUMN models.validation_status IS 'Status of model validation and processing - for Candle models only';
+COMMENT ON COLUMN models.validation_issues IS 'JSON array of validation issues if any - for Candle models only';
+COMMENT ON COLUMN providers.proxy_enabled IS 'Whether proxy is enabled for this provider';
+COMMENT ON COLUMN providers.proxy_url IS 'Proxy URL for this provider';
+COMMENT ON COLUMN providers.proxy_username IS 'Proxy username for authentication';
+COMMENT ON COLUMN providers.proxy_password IS 'Proxy password for authentication';
+COMMENT ON COLUMN providers.proxy_no_proxy IS 'Comma-separated list of hosts to bypass proxy';
+COMMENT ON COLUMN providers.proxy_ignore_ssl_certificates IS 'Whether to ignore SSL certificate errors';
+COMMENT ON COLUMN providers.proxy_ssl IS 'Whether to use SSL for proxy connection';
+COMMENT ON COLUMN providers.proxy_host_ssl IS 'Whether to use SSL for host connection';
+COMMENT ON COLUMN providers.proxy_peer_ssl IS 'Whether to use SSL for peer connection';
+COMMENT ON COLUMN providers.proxy_host_ssl_verify IS 'Whether to verify SSL certificates for host';
 COMMENT ON COLUMN model_files.filename IS 'Original filename of the uploaded file';
 COMMENT ON COLUMN model_files.file_path IS 'Storage path of the file in the filesystem';
 COMMENT ON COLUMN model_files.file_type IS 'Type of file (e.g., model, tokenizer, config, safetensors)';
@@ -647,4 +647,4 @@ COMMENT ON COLUMN branch_messages.message_id IS 'Reference to the message in thi
 COMMENT ON COLUMN branch_messages.is_clone IS 'Indicates whether this message is a clone (belongs to multiple branches) or is unique to this branch';
 
 -- Constraint comments
-COMMENT ON CONSTRAINT model_provider_models_provider_id_name_unique ON model_provider_models IS 'Ensures model IDs (name) are unique per provider, while allowing duplicate display names (alias) across providers';
+COMMENT ON CONSTRAINT models_provider_id_name_unique ON models IS 'Ensures model IDs (name) are unique per provider, while allowing duplicate display names (alias) across providers';

@@ -1,7 +1,7 @@
 use axum::{
-    extract::{Multipart, Path, Query},
-    response::Json,
-    Extension,
+  extract::{Multipart, Path, Query},
+  response::Json,
+  Extension,
 };
 use serde::Deserialize;
 use sqlx::Row;
@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::api::{
-    errors::{ApiResult, AppError, ErrorCode},
-    middleware::AuthenticatedUser,
+  errors::{ApiResult, AppError, ErrorCode},
+  middleware::AuthenticatedUser,
 };
 use crate::database::{get_database_pool, model_operations::ModelOperations, models::*};
 
@@ -317,7 +317,7 @@ pub async fn commit_uploaded_files(
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
     // Validate provider exists and is of type 'candle'
-    let provider_row = sqlx::query("SELECT id, provider_type FROM model_providers WHERE id = $1")
+    let provider_row = sqlx::query("SELECT id, provider_type FROM providers WHERE id = $1")
         .bind(request.provider_id)
         .fetch_optional(pool.as_ref())
         .await
@@ -370,7 +370,7 @@ pub async fn commit_uploaded_files(
     .map_err(|e| {
       // Handle unique constraint violation for (provider_id, name)
       match &e {
-        sqlx::Error::Database(db_err) if db_err.constraint() == Some("model_provider_models_provider_id_name_unique") => {
+        sqlx::Error::Database(db_err) if db_err.constraint() == Some("models_provider_id_name_unique") => {
           AppError::new(ErrorCode::ValidInvalidInput,
                         format!("Model ID '{}' already exists for this provider. Please use a different model ID.", model_name))
         }

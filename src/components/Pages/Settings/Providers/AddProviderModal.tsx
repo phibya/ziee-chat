@@ -4,17 +4,17 @@ import { useTranslation } from 'react-i18next'
 import {
   CreateProviderRequest,
   ProviderType,
-} from '../../../../types/api/modelProvider'
+} from '../../../../types/api/provider'
 import {
   PROVIDER_DEFAULTS,
   SUPPORTED_PROVIDERS,
-} from '../../../../constants/modelProviders'
+} from '../../../../constants/providers'
 import { ApiConfigurationSection, CandleConfigurationSection } from './shared'
 
 interface AddProviderModalProps {
   open: boolean
   onClose: () => void
-  onSubmit: (provider: CreateModelProviderRequest) => void
+  onSubmit: (provider: CreateProviderRequest) => void
   loading?: boolean
 }
 
@@ -31,7 +31,7 @@ export function AddProviderModal({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      onSubmit(values as CreateModelProviderRequest)
+      onSubmit(values as CreateProviderRequest)
     } catch (error) {
       console.error('Form validation failed:', error)
     }
@@ -53,7 +53,7 @@ export function AddProviderModal({
 
   return (
     <Modal
-      title={t('modelProviders.addProviderTitle')}
+      title={t('providers.addProviderTitle')}
       open={open}
       onCancel={onClose}
       onOk={handleSubmit}
@@ -73,37 +73,37 @@ export function AddProviderModal({
       >
         <Form.Item
           name="name"
-          label={t('modelProviders.providerName')}
+          label={t('providers.providerName')}
           rules={[
             {
               required: true,
-              message: t('modelProviders.providerNameRequired'),
+              message: t('providers.providerNameRequired'),
             },
           ]}
         >
-          <Input placeholder={t('modelProviders.providerNamePlaceholder')} />
+          <Input placeholder={t('providers.providerNamePlaceholder')} />
         </Form.Item>
 
         <Form.Item
           name="type"
-          label={t('modelProviders.providerType')}
+          label={t('providers.providerType')}
           rules={[
             {
               required: true,
-              message: t('modelProviders.providerTypeRequired'),
+              message: t('providers.providerTypeRequired'),
             },
           ]}
         >
           <Select
             options={SUPPORTED_PROVIDERS}
             onChange={handleTypeChange}
-            placeholder={t('modelProviders.providerTypePlaceholder')}
+            placeholder={t('providers.providerTypePlaceholder')}
           />
         </Form.Item>
 
         <Form.Item
           name="enabled"
-          label={t('modelProviders.enabled')}
+          label={t('providers.enabled')}
           valuePropName="checked"
         >
           <Switch />

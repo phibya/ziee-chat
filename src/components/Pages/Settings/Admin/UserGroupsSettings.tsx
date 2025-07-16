@@ -37,7 +37,7 @@ import {
 import { Permission, usePermissions } from '../../../../permissions'
 import { PageContainer } from '../../../common/PageContainer'
 import { useAdminStore } from '../../../../store/admin'
-import { useProvidersStore } from '../../../../store/modelProviders'
+import { useProvidersStore } from '../../../../store/providers'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -79,7 +79,7 @@ export function UserGroupsSettings() {
   )
 
   // Model providers store
-  const { providers: modelProviders, loadProviders } = useProvidersStore(
+  const { providers: providers, loadProviders } = useProvidersStore(
     useShallow(state => ({
       providers: state.providers,
       loadProviders: state.loadProviders,
@@ -98,9 +98,7 @@ export function UserGroupsSettings() {
   const canEditGroups = hasPermission(Permission.groups.edit)
   const canCreateGroups = hasPermission(Permission.groups.create)
   const canDeleteGroups = hasPermission(Permission.groups.delete)
-  const canManageModelProviders = hasPermission(
-    Permission.config.modelProviders.edit,
-  )
+  const canManageProviders = hasPermission(Permission.config.providers.edit)
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
@@ -132,9 +130,9 @@ export function UserGroupsSettings() {
 
     // Check if user is trying to assign model providers but doesn't have permission
     if (
-      values.model_provider_ids &&
-      values.model_provider_ids.length > 0 &&
-      !canManageModelProviders
+      values.provider_ids &&
+      values.provider_ids.length > 0 &&
+      !canManageProviders
     ) {
       message.error(
         'You do not have permission to assign model providers to groups',
@@ -147,7 +145,7 @@ export function UserGroupsSettings() {
         name: values.name,
         description: values.description,
         permissions: values.permissions ? JSON.parse(values.permissions) : {},
-        model_provider_ids: values.model_provider_ids || [],
+        provider_ids: values.provider_ids || [],
       }
       await createGroup(groupData)
       message.success('User group created successfully')
@@ -167,13 +165,13 @@ export function UserGroupsSettings() {
     }
 
     // Check if user is trying to modify model providers but doesn't have permission
-    const originalProviders = selectedGroup.model_provider_ids || []
-    const newProviders = values.model_provider_ids || []
+    const originalProviders = selectedGroup.provider_ids || []
+    const newProviders = values.provider_ids || []
     const providersChanged =
       JSON.stringify(originalProviders.sort()) !==
       JSON.stringify(newProviders.sort())
 
-    if (providersChanged && !canManageModelProviders) {
+    if (providersChanged && !canManageProviders) {
       message.error(
         'You do not have permission to modify model provider assignments',
       )
@@ -190,7 +188,7 @@ export function UserGroupsSettings() {
           : values.permissions
             ? JSON.parse(values.permissions)
             : undefined,
-        model_provider_ids: values.model_provider_ids || [],
+        provider_ids: values.provider_ids || [],
         is_active: selectedGroup.is_protected ? undefined : values.is_active,
       }
       await updateGroup(selectedGroup.id, updateData)
@@ -236,7 +234,7 @@ export function UserGroupsSettings() {
       name: group.name,
       description: group.description,
       permissions: JSON.stringify(group.permissions, null, 2),
-      model_provider_ids: group.model_provider_ids || [],
+      provider_ids: group.provider_ids || [],
       is_active: group.is_active,
     })
     setEditModalVisible(true)
@@ -271,23 +269,21 @@ export function UserGroupsSettings() {
         <Text code>{Object.keys(permissions || {}).length} permissions</Text>
       ),
     },
-    ...(canManageModelProviders
+    ...(canManageProviders
       ? [
           {
-            title: 'Model Providers',
-            dataIndex: 'model_provider_ids',
-            key: 'model_provider_ids',
+            title: 'Providers',
+            dataIndex: 'provider_ids',
+            key: 'provider_ids',
             render: (providerIds: string[], record: UserGroup) => {
-              const ids = providerIds || record.model_provider_ids || []
+              const ids = providerIds || record.provider_ids || []
               if (ids.length === 0) {
                 return <Text type="secondary">No providers assigned</Text>
               }
               return (
                 <Space size={[0, 4]} wrap>
                   {ids.map(providerId => {
-                    const provider = modelProviders.find(
-                      p => p.id === providerId,
-                    )
+                    const provider = providers.find(p => p.id === providerId)
                     return (
                       <Tag key={providerId} color="blue">
                         {provider?.name || providerId}
@@ -463,16 +459,16 @@ export function UserGroupsSettings() {
               />
             </Form.Item>
 
-            {canManageModelProviders && (
+            {canManageProviders && (
               <Form.Item
-                name="model_provider_ids"
-                label="Model Providers"
+                name="provider_ids"
+                label="Providers"
                 tooltip="Select which model providers this group can access"
               >
                 <Select
                   mode="multiple"
                   placeholder="Select model providers"
-                  options={modelProviders.map(provider => ({
+                  options={providers.map(provider => ({
                     value: provider.id,
                     label: provider.name,
                     disabled: !provider.enabled,
@@ -561,16 +557,16 @@ export function UserGroupsSettings() {
               <TextArea rows={6} disabled={selectedGroup?.is_protected} />
             </Form.Item>
 
-            {canManageModelProviders && (
+            {canManageProviders && (
               <Form.Item
-                name="model_provider_ids"
-                label="Model Providers"
+                name="provider_ids"
+                label="Providers"
                 tooltip="Select which model providers this group can access"
               >
                 <Select
                   mode="multiple"
                   placeholder="Select model providers"
-                  options={modelProviders.map(provider => ({
+                  options={providers.map(provider => ({
                     value: provider.id,
                     label: provider.name,
                     disabled: !provider.enabled,
