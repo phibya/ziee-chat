@@ -367,6 +367,9 @@ impl ModelManager {
         // Set batch timeout
         cmd.arg("--batch-timeout-ms").arg(provider_settings.batch_timeout_ms.to_string());
 
+        // Set max concurrent prompts
+        cmd.arg("--max-concurrent-prompts").arg(provider_settings.max_concurrent_prompts.to_string());
+
         // Add model-specific parameters from model configuration (these override provider settings)
         if let Some(parameters) = &model.parameters.as_object() {
             // Allow model-specific override of context shift
@@ -401,6 +404,12 @@ impl ModelManager {
             if let Some(batch_timeout_ms) = parameters.get("batch_timeout_ms")
                 .and_then(|v| v.as_u64()) {
                 cmd.arg("--batch-timeout-ms").arg(batch_timeout_ms.to_string());
+            }
+
+            // Allow model-specific override of max concurrent prompts
+            if let Some(max_concurrent_prompts) = parameters.get("max_concurrent_prompts")
+                .and_then(|v| v.as_u64()) {
+                cmd.arg("--max-concurrent-prompts").arg(max_concurrent_prompts.to_string());
             }
         }
 

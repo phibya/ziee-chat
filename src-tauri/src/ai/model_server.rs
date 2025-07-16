@@ -13,11 +13,11 @@ use axum::{
 use candle_core::{Device, Tensor};
 use candle_transformers::models::llama::Cache;
 use futures::stream::{Stream};
-use serde_json;
+use serde_json::{self, json};
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::sync::{Mutex, mpsc, oneshot};
+use tokio::sync::{Mutex, mpsc, oneshot, Semaphore};
 use uuid::Uuid;
 use std::sync::OnceLock;
 
@@ -306,6 +306,8 @@ pub struct ModelServerState {
     pub batch_threads: usize,
     pub batch_size: usize,
     pub batch_timeout_ms: u64,
+    pub max_concurrent_prompts: usize,
+    pub concurrent_request_semaphore: Arc<Semaphore>,
 }
 
 impl ModelServerState {
@@ -391,7 +393,7 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10).await
+        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8).await
     }
 
     pub async fn new_with_device_config(
@@ -406,6 +408,7 @@ impl ModelServerState {
         batch_threads: usize,
         batch_size: usize,
         batch_timeout_ms: u64,
+        max_concurrent_prompts: usize,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {}", model_path);
 
@@ -464,6 +467,8 @@ impl ModelServerState {
             batch_threads,
             batch_size,
             batch_timeout_ms,
+            max_concurrent_prompts,
+            concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
         })
     }
 
@@ -483,6 +488,7 @@ impl ModelServerState {
         batch_threads: usize,
         batch_size: usize,
         batch_timeout_ms: u64,
+        max_concurrent_prompts: usize,
     ) -> Result<Self, CandleError> {
         Self::new_with_specific_files_and_device(
             model_path,
@@ -502,6 +508,7 @@ impl ModelServerState {
             batch_threads,
             batch_size,
             batch_timeout_ms,
+            max_concurrent_prompts,
         ).await
     }
 
@@ -523,6 +530,7 @@ impl ModelServerState {
         batch_threads: usize,
         batch_size: usize,
         batch_timeout_ms: u64,
+        max_concurrent_prompts: usize,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
         
@@ -609,6 +617,8 @@ impl ModelServerState {
             batch_threads,
             batch_size,
             batch_timeout_ms,
+            max_concurrent_prompts,
+            concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
         })
     }
 
@@ -904,10 +914,26 @@ async fn chat_completions(
     State(state): State<Arc<ModelServerState>>,
     Json(request): Json<ChatCompletionRequest>,
 ) -> Response {
+    // Acquire semaphore permit to limit concurrent requests
+    let _permit = match state.concurrent_request_semaphore.acquire().await {
+        Ok(permit) => permit,
+        Err(_) => {
+            return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({
+                "error": {
+                    "message": "Service temporarily unavailable: too many concurrent requests",
+                    "type": "service_unavailable_error"
+                }
+            }))).into_response();
+        }
+    };
+    
+    // Clone the Arc to avoid borrowing issues
+    let state_cloned = Arc::clone(&state);
+    
     if request.stream {
-        stream_chat_completion(state, request).await
+        stream_chat_completion(state_cloned, request).await
     } else {
-        non_stream_chat_completion(state, request).await
+        non_stream_chat_completion(state_cloned, request).await
     }
 }
 
@@ -1055,6 +1081,19 @@ async fn completions(
     State(state): State<Arc<ModelServerState>>,
     Json(request): Json<CompletionRequest>,
 ) -> Response {
+    // Acquire semaphore permit to limit concurrent requests
+    let _permit = match state.concurrent_request_semaphore.acquire().await {
+        Ok(permit) => permit,
+        Err(_) => {
+            return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({
+                "error": {
+                    "message": "Service temporarily unavailable: too many concurrent requests",
+                    "type": "service_unavailable_error"
+                }
+            }))).into_response();
+        }
+    };
+    
     // Print the initial prompt for debugging purposes
     println!("=== INITIAL PROMPT (COMPLETION) ===");
     println!("{}", request.prompt);

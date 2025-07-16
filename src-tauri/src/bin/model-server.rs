@@ -87,6 +87,10 @@ struct Args {
     /// Batch timeout in milliseconds (default: 10)
     #[arg(long, default_value = "10")]
     batch_timeout_ms: u64,
+
+    /// Maximum number of prompts that can be processed simultaneously (default: 8)
+    #[arg(long, default_value = "8")]
+    max_concurrent_prompts: usize,
 }
 
 #[tokio::main]
@@ -114,6 +118,7 @@ async fn main() {
     println!("Batch Threads: {}", args.batch_threads);
     println!("Batch Size: {}", args.batch_size);
     println!("Batch Timeout: {}ms", args.batch_timeout_ms);
+    println!("Max Concurrent Prompts: {}", args.max_concurrent_prompts);
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -185,6 +190,7 @@ async fn main() {
             args.batch_threads,
             args.batch_size,
             args.batch_timeout_ms,
+            args.max_concurrent_prompts,
         )
         .await
         {
@@ -209,6 +215,7 @@ async fn main() {
             args.batch_threads,
             args.batch_size,
             args.batch_timeout_ms,
+            args.max_concurrent_prompts,
         )
         .await
         {

@@ -419,6 +419,10 @@ pub struct ModelProviderSettings {
     #[serde(default = "default_max_concurrent_requests")]
     pub max_concurrent_requests: usize,
     
+    /// Maximum number of prompts that can be processed simultaneously by the model (default: 8)
+    #[serde(default = "default_max_concurrent_prompts")]
+    pub max_concurrent_prompts: usize,
+    
     /// Request timeout in seconds (default: 300)
     #[serde(default = "default_request_timeout_seconds")]
     pub request_timeout_seconds: u64,
@@ -437,6 +441,7 @@ fn default_batch_threads() -> usize { 4 }
 fn default_batch_size() -> usize { 4 }
 fn default_batch_timeout_ms() -> u64 { 10 }
 fn default_max_concurrent_requests() -> usize { 32 }
+fn default_max_concurrent_prompts() -> usize { 8 }
 fn default_request_timeout_seconds() -> u64 { 300 }
 fn default_enable_request_queuing() -> bool { true }
 fn default_max_queue_size() -> usize { 100 }
@@ -456,6 +461,7 @@ impl ModelProviderSettings {
             batch_size: 8,
             batch_timeout_ms: 20,
             max_concurrent_requests: 64,
+            max_concurrent_prompts: 16,
             request_timeout_seconds: 300,
             enable_request_queuing: true,
             max_queue_size: 200,
@@ -471,6 +477,7 @@ impl ModelProviderSettings {
             batch_size: 1,
             batch_timeout_ms: 5,
             max_concurrent_requests: 16,
+            max_concurrent_prompts: 4,
             request_timeout_seconds: 60,
             enable_request_queuing: false,
             max_queue_size: 32,
@@ -493,6 +500,10 @@ impl ModelProviderSettings {
         
         if self.max_concurrent_requests == 0 {
             return Err("max_concurrent_requests must be greater than 0".to_string());
+        }
+        
+        if self.max_concurrent_prompts == 0 {
+            return Err("max_concurrent_prompts must be greater than 0".to_string());
         }
         
         if self.request_timeout_seconds == 0 {
