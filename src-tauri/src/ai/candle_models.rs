@@ -218,7 +218,7 @@ impl CandleModel for LlamaModelWrapper {
 
                 // Check if the model is outputting reasonable distributions
                 let max_logit = indexed_logits[0].1;
-                let min_logit = indexed_logits.last().map(|(_, v)| *v).unwrap_or(max_logit);
+                let _min_logit = indexed_logits.last().map(|(_, v)| *v).unwrap_or(max_logit);
 
                 // Check if UNK token is consistently highest
                 if indexed_logits[0].0 == 0 {
@@ -247,12 +247,30 @@ impl CandleModel for LlamaModelWrapper {
         Ok(real_logits)
     }
 
+    fn forward_with_cache(&self, input_ids: &Tensor, start_pos: usize, cache: &mut Cache) -> candle_core::Result<Tensor> {
+        // Check device match
+        if !device_matches(input_ids.device(), &self.device) {
+            println!(
+                "WARNING: Input tensor device mismatch - tensor: {:?}, model: {:?}",
+                input_ids.device(),
+                self.device
+            );
+        }
+
+        // Forward pass with external cache
+        self.model.forward(input_ids, start_pos, cache)
+    }
+
     fn clear_cache(&mut self) {
         // Reset the cache
         if let Ok(new_cache) = Cache::new(true, candle_core::DType::F16, &self.config, &self.device)
         {
             self.cache = new_cache;
         }
+    }
+
+    fn get_config(&self) -> candle_transformers::models::llama::Config {
+        self.config.clone()
     }
 }
 

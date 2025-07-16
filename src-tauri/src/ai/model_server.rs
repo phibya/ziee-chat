@@ -11,12 +11,24 @@ use axum::{
     Json, Router,
 };
 use candle_core::{Device, Tensor};
+use candle_transformers::models::llama::Cache;
 use futures::stream::{Stream};
 use serde_json;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, mpsc, oneshot};
 use uuid::Uuid;
+use std::sync::OnceLock;
+
+// Global Metal synchronization lock to prevent concurrent Metal operations
+#[cfg(feature = "metal")]
+static METAL_LOCK: OnceLock<Arc<Mutex<()>>> = OnceLock::new();
+
+#[cfg(feature = "metal")]
+fn get_metal_lock() -> &'static Arc<Mutex<()>> {
+    METAL_LOCK.get_or_init(|| Arc::new(Mutex::new(())))
+}
 
 #[derive(Debug, Clone)]
 pub struct TokenizerConfig {
@@ -68,6 +80,190 @@ impl Default for ModelConfig {
     }
 }
 
+/// Cache pool for managing reusable cache instances
+pub struct CachePool {
+    available_caches: Arc<Mutex<VecDeque<Cache>>>,
+    config: candle_transformers::models::llama::Config,
+    device: Device,
+    max_size: usize,
+    created_count: Arc<Mutex<usize>>,
+}
+
+impl CachePool {
+    pub fn new(config: candle_transformers::models::llama::Config, device: Device, max_size: usize) -> Self {
+        Self {
+            available_caches: Arc::new(Mutex::new(VecDeque::new())),
+            config,
+            device,
+            max_size,
+            created_count: Arc::new(Mutex::new(0)),
+        }
+    }
+
+    pub async fn acquire(&self) -> Result<Cache, CandleError> {
+        loop {
+            let mut available = self.available_caches.lock().await;
+            
+            if let Some(_cache) = available.pop_front() {
+                // Always create a fresh cache for each request to avoid corruption
+                drop(available);
+                return self.create_cache_safely().await;
+            } else {
+                // Create new cache if under limit
+                let mut created = self.created_count.lock().await;
+                if *created < self.max_size {
+                    *created += 1;
+                    drop(created);
+                    drop(available);
+                    
+                    return self.create_cache_safely().await;
+                } else {
+                    drop(available);
+                    drop(created);
+                    // Wait for a cache to become available
+                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                    // Continue loop instead of recursive call
+                }
+            }
+        }
+    }
+
+    async fn create_cache_safely(&self) -> Result<Cache, CandleError> {
+        // For Metal devices, serialize cache creation to prevent command buffer conflicts
+        #[cfg(feature = "metal")]
+        {
+            if matches!(self.device, Device::Metal(_)) {
+                let _lock = get_metal_lock().lock().await;
+                return Cache::new(true, candle_core::DType::F16, &self.config, &self.device)
+                    .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)));
+            }
+        }
+        
+        // For non-Metal devices, create cache without serialization
+        Cache::new(true, candle_core::DType::F16, &self.config, &self.device)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)))
+    }
+
+    pub async fn release(&self, cache: Cache) {
+        let mut available = self.available_caches.lock().await;
+        if available.len() < self.max_size {
+            available.push_back(cache);
+        }
+        // If at capacity, just drop the cache (it will be garbage collected)
+    }
+}
+
+/// Request for batched inference
+#[derive(Debug)]
+pub struct InferenceRequest {
+    pub input_ids: Tensor,
+    pub start_pos: usize,
+    pub cache: Cache,
+    pub response_tx: oneshot::Sender<Result<(Tensor, Cache), CandleError>>,
+}
+
+/// Batch processor for handling multiple inference requests together
+pub struct BatchProcessor {
+    model: Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>,
+    request_rx: mpsc::UnboundedReceiver<InferenceRequest>,
+    batch_size: usize,
+    batch_timeout_ms: u64,
+    device: Device,
+}
+
+impl BatchProcessor {
+    pub fn new(
+        model: Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>,
+        request_rx: mpsc::UnboundedReceiver<InferenceRequest>,
+        batch_size: usize,
+        batch_timeout_ms: u64,
+        device: Device,
+    ) -> Self {
+        Self {
+            model,
+            request_rx,
+            batch_size,
+            batch_timeout_ms,
+            device,
+        }
+    }
+
+    pub async fn run(mut self) {
+        let mut batch = Vec::new();
+        let mut batch_timer = tokio::time::interval(tokio::time::Duration::from_millis(self.batch_timeout_ms));
+
+        loop {
+            tokio::select! {
+                // Receive new requests
+                request = self.request_rx.recv() => {
+                    match request {
+                        Some(req) => {
+                            batch.push(req);
+                            
+                            // Process batch if it's full
+                            if batch.len() >= self.batch_size {
+                                self.process_batch(&mut batch).await;
+                            }
+                        }
+                        None => {
+                            // Channel closed, process remaining batch and exit
+                            if !batch.is_empty() {
+                                self.process_batch(&mut batch).await;
+                            }
+                            break;
+                        }
+                    }
+                }
+                
+                // Process batch on timeout
+                _ = batch_timer.tick() => {
+                    if !batch.is_empty() {
+                        self.process_batch(&mut batch).await;
+                    }
+                }
+            }
+        }
+    }
+
+    async fn process_batch(&self, batch: &mut Vec<InferenceRequest>) {
+        // For now, process requests sequentially within the batch
+        // TODO: Implement true batched inference for models that support it
+        
+        let mut model = self.model.lock().await;
+        
+        for request in batch.drain(..) {
+            let result = self.process_single_request(&mut model, request.input_ids, request.start_pos, request.cache).await;
+            let _ = request.response_tx.send(result);
+        }
+    }
+
+    async fn process_single_request(
+        &self,
+        model: &mut Box<dyn CandleModel + Send + Sync>,
+        input_ids: Tensor,
+        start_pos: usize,
+        mut cache: Cache,
+    ) -> Result<(Tensor, Cache), CandleError> {
+        // For Metal devices, serialize forward passes to prevent command buffer conflicts
+        #[cfg(feature = "metal")]
+        {
+            if matches!(self.device, Device::Metal(_)) {
+                let _lock = get_metal_lock().lock().await;
+                match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
+                    Ok(logits) => return Ok((logits, cache)),
+                    Err(e) => return Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
+                }
+            }
+        }
+        
+        // For non-Metal devices, forward pass without serialization
+        match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
+            Ok(logits) => Ok((logits, cache)),
+            Err(e) => Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
+        }
+    }
+}
+
 pub struct ModelServerState {
     pub model: Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>,
     pub tokenizer: Arc<tokenizers::Tokenizer>,
@@ -78,6 +274,8 @@ pub struct ModelServerState {
     pub tokenizer_config: TokenizerConfig,
     pub model_config: ModelConfig,
     pub device: Device,
+    pub cache_pool: Arc<CachePool>,
+    pub inference_tx: mpsc::UnboundedSender<InferenceRequest>,
 }
 
 impl ModelServerState {
@@ -189,8 +387,24 @@ impl ModelServerState {
         let tokenizer_config = Self::load_tokenizer_config(model_path);
         let model_config = Self::load_model_config(model_path);
 
+        // Get model config for cache pool
+        let model_config_for_cache = model.get_config();
+
+        // Create cache pool
+        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10));
+        
+        // Create batch processor channel
+        let (inference_tx, inference_rx) = mpsc::unbounded_channel();
+        let model_arc = Arc::new(Mutex::new(model));
+        
+        // Spawn batch processor
+        let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, 4, 10, device.clone());
+        tokio::spawn(async move {
+            batch_processor.run().await;
+        });
+
         Ok(Self {
-            model: Arc::new(Mutex::new(model)),
+            model: model_arc,
             tokenizer: Arc::new(tokenizer),
             model_id: model_id.to_string(),
             model_name: model_name.to_string(),
@@ -199,6 +413,8 @@ impl ModelServerState {
             tokenizer_config,
             model_config,
             device,
+            cache_pool,
+            inference_tx,
         })
     }
 
@@ -287,8 +503,24 @@ impl ModelServerState {
         let tokenizer_config = Self::load_tokenizer_config(model_path);
         let model_config = Self::load_model_config(model_path);
 
+        // Get model config for cache pool
+        let model_config_for_cache = model.get_config();
+
+        // Create cache pool
+        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10));
+        
+        // Create batch processor channel
+        let (inference_tx, inference_rx) = mpsc::unbounded_channel();
+        let model_arc = Arc::new(Mutex::new(model));
+        
+        // Spawn batch processor
+        let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, 4, 10, device.clone());
+        tokio::spawn(async move {
+            batch_processor.run().await;
+        });
+
         Ok(Self {
-            model: Arc::new(Mutex::new(model)),
+            model: model_arc,
             tokenizer: Arc::new(tokenizer),
             model_id: model_id.to_string(),
             model_name: model_name.to_string(),
@@ -297,6 +529,8 @@ impl ModelServerState {
             tokenizer_config,
             model_config,
             device,
+            cache_pool,
+            inference_tx,
         })
     }
 
@@ -808,27 +1042,42 @@ async fn generate_text(
     request: &ChatCompletionRequest,
 ) -> Result<String, CandleError> {
     use candle_core::Tensor;
+    use tokio::sync::oneshot;
     
-    
-    let mut model = state.model.lock().await;
     let device = &state.device;
     
     let max_tokens = request.max_tokens.unwrap_or(100).min(state.model_config.max_position_embeddings as i32);
     let temperature = request.temperature.unwrap_or(0.7);
     
-    // Clear the cache for fresh generation
-    model.clear_cache();
+    // Acquire cache from pool
+    let mut cache = state.cache_pool.acquire().await?;
     
     let mut generated_tokens = tokens.to_vec();
     let mut new_tokens = Vec::new(); // Track only newly generated tokens
     let mut generated_text = String::new();
     
-    // Process the input tokens first
+    // Process the input tokens first using batch processing
     let input_ids = Tensor::from_slice(tokens, (1, tokens.len()), device)
         .map_err(|e| CandleError::InferenceError(format!("Failed to create input tensor: {}", e)))?;
     
-    let logits = model.forward(&input_ids, 0)
-        .map_err(|e| CandleError::InferenceError(format!("Model forward pass failed: {}", e)))?;
+    let (logits, cache_returned) = {
+        let (tx, rx) = oneshot::channel();
+        let inference_request = InferenceRequest {
+            input_ids,
+            start_pos: 0,
+            cache,
+            response_tx: tx,
+        };
+        
+        state.inference_tx.send(inference_request)
+            .map_err(|_| CandleError::InferenceError("Failed to send inference request".to_string()))?;
+        
+        rx.await
+            .map_err(|_| CandleError::InferenceError("Failed to receive inference response".to_string()))?
+            .map_err(|e| e)?
+    };
+    
+    cache = cache_returned;
     
     // Generate tokens one by one
     for step in 0..max_tokens {
@@ -856,12 +1105,28 @@ async fn generate_text(
             
             sample_token_improved(&scaled_logits, temperature as f64)?
         } else {
-            // For subsequent tokens, run forward pass with just the last token
+            // For subsequent tokens, run forward pass with just the last token using batch processing
             let last_token_tensor = Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), device)
                 .map_err(|e| CandleError::InferenceError(format!("Failed to create token tensor: {}", e)))?;
             
-            let logits = model.forward(&last_token_tensor, start_pos)
-                .map_err(|e| CandleError::InferenceError(format!("Model forward pass failed: {}", e)))?;
+            let (logits, cache_returned) = {
+                let (tx, rx) = oneshot::channel();
+                let inference_request = InferenceRequest {
+                    input_ids: last_token_tensor,
+                    start_pos,
+                    cache,
+                    response_tx: tx,
+                };
+                
+                state.inference_tx.send(inference_request)
+                    .map_err(|_| CandleError::InferenceError("Failed to send inference request".to_string()))?;
+                
+                rx.await
+                    .map_err(|_| CandleError::InferenceError("Failed to receive inference response".to_string()))?
+                    .map_err(|e| e)?
+            };
+            
+            cache = cache_returned;
             
             // Get logits for the last token position
             let last_token_logits = if logits.rank() == 2 {
@@ -925,6 +1190,9 @@ async fn generate_text(
     } else {
         generated_text
     };
+    
+    // Return cache to pool
+    state.cache_pool.release(cache).await;
     
     // Return some fallback text if generation produced nothing
     if final_text.trim().is_empty() {
@@ -1033,10 +1301,15 @@ fn generate_text_stream(
         let temperature = request.temperature.unwrap_or(0.7);
         
         // Lock the model for the entire generation process
-        let mut model = state.model.lock().await;
-        
-        // Clear the cache for fresh generation
-        model.clear_cache();
+        // Acquire cache from pool for this generation session
+        let mut cache = match state.cache_pool.acquire().await {
+            Ok(cache) => cache,
+            Err(_) => {
+                let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                return;
+            }
+        };
         
         // Convert input tokens to tensor
         let input_ids = match Tensor::from_slice(&tokens, (1, tokens.len()), device) {
@@ -1073,16 +1346,39 @@ fn generate_text_stream(
         
         yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&initial_chunk).unwrap()));
         
-        // Process initial input tokens
-        let mut logits = match model.forward(&current_input, 0) {
-            Ok(logits) => logits,
-            Err(e) => {
-                eprintln!("ERROR: Initial forward pass failed: {:?}", e);
+        // Process initial input tokens using batch processing
+        let (mut logits, cache_returned) = {
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            let inference_request = InferenceRequest {
+                input_ids: current_input.clone(),
+                start_pos: 0,
+                cache,
+                response_tx: tx,
+            };
+            
+            if state.inference_tx.send(inference_request).is_err() {
                 let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                 yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                 return;
             }
+            
+            match rx.await {
+                Ok(Ok(result)) => result,
+                Ok(Err(e)) => {
+                    eprintln!("ERROR: Initial forward pass failed: {:?}", e);
+                    let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                    return;
+                }
+                Err(_) => {
+                    let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                    yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                    return;
+                }
+            }
         };
+        
+        cache = cache_returned;
         
         // Generate tokens one by one
         for step in 0..max_tokens {
@@ -1160,14 +1456,38 @@ fn generate_text_stream(
                     }
                 };
                 
-                logits = match model.forward(&last_token_tensor, start_pos) {
-                    Ok(logits) => logits,
-                    Err(_) => {
+                let (new_logits, cache_returned) = {
+                    let (tx, rx) = tokio::sync::oneshot::channel();
+                    let inference_request = InferenceRequest {
+                        input_ids: last_token_tensor,
+                        start_pos,
+                        cache,
+                        response_tx: tx,
+                    };
+                    
+                    if state.inference_tx.send(inference_request).is_err() {
                         let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                         yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                         return;
                     }
+                    
+                    match rx.await {
+                        Ok(Ok(result)) => result,
+                        Ok(Err(_)) => {
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        }
+                        Err(_) => {
+                            let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
+                            yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
+                            return;
+                        }
+                    }
                 };
+                
+                logits = new_logits;
+                cache = cache_returned;
                 
                 // Get logits for the last token position
                 let last_token_logits = if logits.rank() == 2 {
@@ -1333,6 +1653,9 @@ fn generate_text_stream(
         };
         
         yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&final_chunk).unwrap()));
+        
+        // Return cache to pool
+        state.cache_pool.release(cache).await;
     }
 }
 

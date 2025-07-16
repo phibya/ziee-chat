@@ -59,7 +59,9 @@ pub enum QuantizationType {
 #[allow(dead_code)]
 pub trait CandleModel: std::fmt::Debug {
     fn forward(&mut self, input_ids: &Tensor, start_pos: usize) -> candle_core::Result<Tensor>;
+    fn forward_with_cache(&self, input_ids: &Tensor, start_pos: usize, cache: &mut candle_transformers::models::llama::Cache) -> candle_core::Result<Tensor>;
     fn clear_cache(&mut self);
+    fn get_config(&self) -> candle_transformers::models::llama::Config;
 }
 
 // Error handling for Candle operations
