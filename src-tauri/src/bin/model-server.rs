@@ -5,7 +5,7 @@ use std::process;
 use tokio::signal;
 
 // Import necessary modules from the main crate
-use react_test_lib::ai::model_server::{create_model_server_router, ModelServerState};
+use react_test_lib::ai::candle::model_server::{create_model_server_router, ModelServerState};
 use react_test_lib::APP_DATA_DIR;
 
 #[derive(Parser, Debug)]

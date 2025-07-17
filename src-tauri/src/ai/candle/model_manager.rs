@@ -244,7 +244,7 @@ impl ModelManager {
 
         // Detect model format and get specific file paths
         let detected_architecture =
-            match crate::ai::candle_models::ModelUtils::detect_model_format(&model_path) {
+            match super::candle_models::ModelUtils::detect_model_format(&model_path) {
                 Ok(arch) => arch,
                 Err(e) => {
                     eprintln!(
@@ -267,7 +267,7 @@ impl ModelManager {
         );
 
         // Get specific file paths for this model
-        let file_paths = match crate::ai::candle_models::ModelUtils::get_model_file_paths(
+        let file_paths = match super::candle_models::ModelUtils::get_model_file_paths(
             &model_path,
             architecture,
         ) {

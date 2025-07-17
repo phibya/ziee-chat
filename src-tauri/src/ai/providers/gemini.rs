@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 
-use super::provider_base::build_http_client;
-use super::providers::{
+use crate::ai::core::provider_base::build_http_client;
+use crate::ai::core::providers::{
     AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
     StreamingResponse, Usage,
 };

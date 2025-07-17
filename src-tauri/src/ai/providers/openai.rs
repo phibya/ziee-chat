@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use super::openai_compatible::OpenAICompatibleProvider;
-use super::providers::{AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingResponse};
+use crate::ai::core::providers::{AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingResponse};
 
 #[derive(Debug, Clone)]
 pub struct OpenAIProvider {

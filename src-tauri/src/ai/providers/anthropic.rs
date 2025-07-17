@@ -4,8 +4,8 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use super::provider_base::build_http_client;
-use super::providers::{
+use crate::ai::core::provider_base::build_http_client;
+use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
 

@@ -1,6 +1,6 @@
-use crate::ai::candle::{CandleError, CandleModel};
-use crate::ai::candle_models::ModelFactory;
-use crate::ai::openai_types::*;
+use super::candle::{CandleError, CandleModel};
+use super::candle_models::ModelFactory;
+use crate::ai::providers::openai_types::*;
 use axum::{
     extract::{Path, State},
     http::StatusCode,

@@ -12,14 +12,16 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::ai::{
-    anthropic::AnthropicProvider,
-    candle::CandleProvider,
-    custom::CustomProvider,
-    gemini::GeminiProvider,
-    groq::GroqProvider,
-    mistral::MistralProvider,
-    openai::OpenAIProvider,
-    providers::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
+    providers::{
+        anthropic::AnthropicProvider,
+        custom::CustomProvider,
+        gemini::GeminiProvider,
+        groq::GroqProvider,
+        mistral::MistralProvider,
+        openai::OpenAIProvider,
+    },
+    candle::candle::CandleProvider,
+    core::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
 };
 use crate::api::errors::ErrorCode;
 use crate::api::middleware::AuthenticatedUser;

@@ -459,9 +459,10 @@ impl CacheEngine {
 /// Utility functions for paged attention
 pub mod utils {
     use super::*;
+    use super::super::scheduler::Sequence;
 
     pub fn create_block_tables(
-        sequences: &[crate::ai::scheduler::Sequence],
+        sequences: &[Sequence],
         block_size: usize,
     ) -> HashMap<Uuid, Vec<Uuid>> {
         let mut block_tables = HashMap::new();
@@ -482,7 +483,7 @@ pub mod utils {
     }
 
     pub fn create_slot_mapping(
-        sequences: &[crate::ai::scheduler::Sequence],
+        sequences: &[Sequence],
         block_size: usize,
     ) -> Vec<usize> {
         let mut slot_mapping = Vec::new();

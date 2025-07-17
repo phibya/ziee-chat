@@ -2,22 +2,14 @@
 //!
 //! This module provides integrations with various AI providers including OpenAI, Anthropic,
 //! Groq, Gemini, Mistral, and Custom providers with support for streaming responses and proxy configurations.
+//! It also includes local ML inference capabilities using the Candle framework.
 
-pub mod anthropic;
-pub mod candle;
-pub mod candle_config;
-pub mod candle_models;
-pub mod custom;
-pub mod device_detection;
-pub mod gemini;
-pub mod groq;
-pub mod mistral;
-pub mod model_manager;
-pub mod model_server;
-pub mod openai;
-pub mod openai_compatible;
-pub mod openai_types;
-pub mod paged_attention;
-pub mod provider_base;
+pub mod core;
 pub mod providers;
-pub mod scheduler;
+pub mod candle;
+
+// Re-export commonly used items for convenience
+pub use core::{AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk, StreamingResponse, Usage, build_http_client};
+pub use providers::*;
+// Re-export specific items from candle to avoid conflicts
+pub use candle::{CandleProvider, CandleConfig, DeviceType, QuantizationType, ModelStatus, ModelManager};

@@ -1,4 +1,4 @@
-use crate::ai::candle::CandleError;
+use super::candle::CandleError;
 use candle_core::{Device, Tensor};
 use candle_transformers::models::llama::Cache;
 use serde::{Deserialize, Serialize};

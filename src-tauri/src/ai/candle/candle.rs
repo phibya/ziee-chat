@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
-use super::providers::{
+use crate::ai::core::providers::{
     AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk,
     StreamingResponse, Usage,
 };
@@ -216,7 +216,7 @@ impl CandleProvider {
             .model_id
             .ok_or_else(|| CandleError::ConfigError("Model ID not set".to_string()))?;
 
-        let model_manager = crate::ai::model_manager::get_model_manager();
+        let model_manager = super::model_manager::get_model_manager();
 
         if !model_manager.is_model_running(model_id).await {
             return Err(CandleError::ModelNotRunning(model_id));
