@@ -30,7 +30,7 @@ pub async fn create_user_group(
         .await
     {
         Ok(group) => {
-            // If model_provider_ids are provided, assign them to the group
+            // If provider_ids are provided, assign them to the group
             if let Some(provider_ids) = request.provider_ids {
                 for provider_id in provider_ids {
                     let assign_request = AssignProviderToGroupRequest {
@@ -277,10 +277,10 @@ pub async fn remove_provider_from_group(
 }
 
 // List all user group model provider relationships
-pub async fn list_user_group_model_provider_relationships(
+pub async fn list_user_group_provider_relationships(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Vec<UserGroupProviderResponse>>, StatusCode> {
-    match user_group_providers::list_user_group_model_provider_relationships().await {
+    match user_group_providers::list_user_group_provider_relationships().await {
         Ok(relationships) => Ok(Json(relationships)),
         Err(e) => {
             eprintln!(

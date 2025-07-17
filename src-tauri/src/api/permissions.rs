@@ -96,7 +96,7 @@ mod tests {
             name: "test_group".to_string(),
             description: Some("Test group".to_string()),
             permissions: permissions_json,
-            model_provider_ids: vec![],
+            provider_ids: vec![],
             is_protected: false,
             is_active: true,
             created_at: chrono::Utc::now(),
@@ -165,7 +165,7 @@ mod tests {
             name: "test_group".to_string(),
             description: Some("Test group".to_string()),
             permissions: permissions_json,
-            model_provider_ids: vec![],
+            provider_ids: vec![],
             is_protected: false,
             is_active: false, // Inactive group
             created_at: chrono::Utc::now(),

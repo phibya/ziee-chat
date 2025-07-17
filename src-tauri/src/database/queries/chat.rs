@@ -729,7 +729,7 @@ pub async fn search_conversations(
     let rows = sqlx::query(
         r#"
         SELECT DISTINCT ON (c.id)
-            c.id, c.title, c.user_id, c.assistant_id, c.model_provider_id, c.model_id,
+            c.id, c.title, c.user_id, c.assistant_id, c.provider_id, c.model_id,
             c.created_at, c.updated_at,
             latest_msg.content as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count

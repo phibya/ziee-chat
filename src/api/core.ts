@@ -84,7 +84,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       if (params[c] !== undefined) {
         //@ts-ignore
         endpointPath = endpointPath.replace(`{${capture}}`, params[c])
-        delete params[c] // Remove from params to avoid sending it in body
+        // delete params[c] // Remove from params to avoid sending it in body
       } else {
         throw new Error(`Missing required parameter: ${capture}`)
       }

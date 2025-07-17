@@ -1,8 +1,13 @@
 -- CONSOLIDATED DATABASE MIGRATION
 -- This migration contains the complete database schema with all updates
 -- Consolidated from multiple migrations for clean database initialization
--- Date: 2025-01-15
+-- Date: 2025-07-16
 -- IMPORTANT: This replaces all previous migration files
+--
+-- Consolidated changes:
+-- - Removed path column from models table (models paths are determined by pattern)
+-- - Added device_type and device_ids fields to models table for device configuration
+-- - Replaced individual proxy columns with proxy_settings JSONB column
 
 -- ===============================
 -- 1. UTILITY FUNCTIONS
@@ -123,16 +128,7 @@ CREATE TABLE providers (
     base_url VARCHAR(512),
     settings JSONB DEFAULT '{}',
     is_default BOOLEAN DEFAULT FALSE,
-    proxy_enabled BOOLEAN DEFAULT FALSE,
-    proxy_url VARCHAR(512) DEFAULT '',
-    proxy_username VARCHAR(255) DEFAULT '',
-    proxy_password TEXT DEFAULT '',
-    proxy_no_proxy TEXT DEFAULT '',
-    proxy_ignore_ssl_certificates BOOLEAN DEFAULT FALSE,
-    proxy_ssl BOOLEAN DEFAULT FALSE,
-    proxy_host_ssl BOOLEAN DEFAULT FALSE,
-    proxy_peer_ssl BOOLEAN DEFAULT FALSE,
-    proxy_host_ssl_verify BOOLEAN DEFAULT FALSE,
+    proxy_settings JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -153,7 +149,6 @@ CREATE TABLE models (
     name VARCHAR(255) NOT NULL,
     alias VARCHAR(255) NOT NULL,
     description TEXT,
-    path VARCHAR(1024), -- For candle models
     enabled BOOLEAN DEFAULT TRUE,
     is_deprecated BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT FALSE, -- For candle start/stop state
@@ -162,9 +157,9 @@ CREATE TABLE models (
     -- Candle-specific fields
     architecture VARCHAR(100),
     quantization VARCHAR(50),
-    file_size_bytes BIGINT DEFAULT 0,
+    file_size_bytes BIGINT,
     checksum VARCHAR(64),
-    validation_status VARCHAR(50) DEFAULT 'pending' CHECK (validation_status IN (
+    validation_status VARCHAR(50) CHECK (validation_status IN (
         'pending',        -- Initial status when model is created
         'await_upload',   -- For local folder uploads waiting for files
         'downloading',    -- For Hugging Face downloads in progress
@@ -177,6 +172,9 @@ CREATE TABLE models (
         'validation_warning' -- Downloaded but with validation warnings
     )),
     validation_issues JSONB,
+    -- Device configuration fields
+    device_type VARCHAR(50),
+    device_ids JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT models_alias_not_empty CHECK (alias != ''),
@@ -377,12 +375,12 @@ CREATE INDEX idx_user_settings_value ON user_settings USING GIN(value);
 -- Model provider indexes
 CREATE INDEX idx_providers_provider_type ON providers(provider_type);
 CREATE INDEX idx_providers_enabled ON providers(enabled);
-CREATE INDEX idx_providers_proxy_enabled ON providers(proxy_enabled);
 CREATE INDEX idx_models_provider_id ON models(provider_id);
 CREATE INDEX idx_models_enabled ON models(enabled);
 CREATE INDEX idx_models_validation_status ON models(validation_status);
 CREATE INDEX idx_models_architecture ON models(architecture);
 CREATE INDEX idx_models_file_size_bytes ON models(file_size_bytes);
+CREATE INDEX idx_models_device_type ON models(device_type);
 
 CREATE INDEX idx_model_files_model_id ON model_files(model_id);
 CREATE INDEX idx_model_files_upload_status ON model_files(upload_status);
@@ -608,7 +606,8 @@ COMMENT ON COLUMN user_groups.permissions IS 'AWS-style permissions stored as JS
 COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g., "appearance.theme", "appearance.fontSize")';
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
 COMMENT ON COLUMN providers.provider_type IS 'Type of provider: candle, openai, anthropic, groq, gemini, mistral, custom';
-COMMENT ON COLUMN models.path IS 'File path for candle models';
+COMMENT ON COLUMN models.device_type IS 'Device type for model execution: cpu, cuda, metal, etc.';
+COMMENT ON COLUMN models.device_ids IS 'JSON array of device IDs for multi-GPU setups';
 COMMENT ON COLUMN models.name IS 'Unique model identifier within a provider';
 COMMENT ON COLUMN models.alias IS 'Human-readable display name (can be duplicated across providers)';
 COMMENT ON COLUMN models.is_active IS 'Whether the model is currently running (for candle models)';
@@ -618,16 +617,7 @@ COMMENT ON COLUMN models.file_size_bytes IS 'Total size of all model files in by
 COMMENT ON COLUMN models.checksum IS 'SHA-256 checksum of the model files for integrity verification - for Candle models only';
 COMMENT ON COLUMN models.validation_status IS 'Status of model validation and processing - for Candle models only';
 COMMENT ON COLUMN models.validation_issues IS 'JSON array of validation issues if any - for Candle models only';
-COMMENT ON COLUMN providers.proxy_enabled IS 'Whether proxy is enabled for this provider';
-COMMENT ON COLUMN providers.proxy_url IS 'Proxy URL for this provider';
-COMMENT ON COLUMN providers.proxy_username IS 'Proxy username for authentication';
-COMMENT ON COLUMN providers.proxy_password IS 'Proxy password for authentication';
-COMMENT ON COLUMN providers.proxy_no_proxy IS 'Comma-separated list of hosts to bypass proxy';
-COMMENT ON COLUMN providers.proxy_ignore_ssl_certificates IS 'Whether to ignore SSL certificate errors';
-COMMENT ON COLUMN providers.proxy_ssl IS 'Whether to use SSL for proxy connection';
-COMMENT ON COLUMN providers.proxy_host_ssl IS 'Whether to use SSL for host connection';
-COMMENT ON COLUMN providers.proxy_peer_ssl IS 'Whether to use SSL for peer connection';
-COMMENT ON COLUMN providers.proxy_host_ssl_verify IS 'Whether to verify SSL certificates for host';
+COMMENT ON COLUMN providers.proxy_settings IS 'JSON object containing all proxy configuration settings including enabled, url, username, password, no_proxy, SSL settings, etc.';
 COMMENT ON COLUMN model_files.filename IS 'Original filename of the uploaded file';
 COMMENT ON COLUMN model_files.file_path IS 'Storage path of the file in the filesystem';
 COMMENT ON COLUMN model_files.file_type IS 'Type of file (e.g., model, tokenizer, config, safetensors)';

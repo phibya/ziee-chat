@@ -128,7 +128,7 @@ pub async fn get_providers_for_group(group_id: Uuid) -> Result<Vec<Provider>, sq
 }
 
 /// Get all user groups that have access to a model provider
-pub async fn get_groups_for_model_provider(
+pub async fn get_groups_for_provider(
     provider_id: Uuid,
 ) -> Result<Vec<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -236,7 +236,7 @@ async fn get_all_providers() -> Result<Vec<Provider>, sqlx::Error> {
 }
 
 /// Get all relationships between user groups and model providers
-pub async fn list_user_group_model_provider_relationships(
+pub async fn list_user_group_provider_relationships(
 ) -> Result<Vec<UserGroupProviderResponse>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();

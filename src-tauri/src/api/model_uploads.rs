@@ -77,6 +77,7 @@ pub async fn upload_model_file(
 
     // Initialize storage
     let storage = ModelStorage::new()
+        .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
     // Get the model directory path using {provider_id}/{id} pattern
@@ -154,6 +155,7 @@ pub async fn upload_model_file_multipart(
     mut multipart: Multipart,
 ) -> ApiResult<Json<UploadFilesResponse>> {
     let storage = ModelStorage::new()
+        .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
     let mut uploaded_files = Vec::new();
@@ -314,6 +316,7 @@ pub async fn commit_uploaded_files(
 ) -> ApiResult<Json<Model>> {
     let pool = get_database_pool()?;
     let storage = ModelStorage::new()
+        .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
     // Validate provider exists and is of type 'candle'
@@ -381,6 +384,7 @@ pub async fn commit_uploaded_files(
     // Create storage directory
     storage
         .create_model_directory(&request.provider_id, &model_db.id)
+        .await
         .map_err(|e| {
             AppError::internal_error(format!("Failed to create storage directory: {}", e))
         })?;
@@ -595,11 +599,13 @@ pub async fn validate_model(
 
     // Initialize storage
     let storage = ModelStorage::new()
+        .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
     // Validate model using both storage and utils
     let mut validation_issues = storage
         .validate_model(&model.provider_id, &model_id)
+        .await
         .map_err(|e| AppError::internal_error(format!("Validation failed: {}", e)))?;
 
     // Additional validation using ModelUtils
@@ -625,20 +631,19 @@ pub async fn validate_model(
         // Only warn if the total model weight files are extremely small
         // Count only actual weight files, not config/tokenizer files
         let model_path_buf = crate::APP_DATA_DIR.join(&model_path);
-        if let Ok(entries) = std::fs::read_dir(&model_path_buf) {
-            let weight_files_size: u64 = entries
-                .filter_map(|entry| entry.ok())
-                .filter(|entry| {
-                    if let Ok(file_name) = entry.file_name().into_string() {
-                        let file_type = determine_file_type(&file_name.to_lowercase());
-                        matches!(file_type, ModelFileType::WeightFile)
-                    } else {
-                        false
+        if let Ok(mut read_dir) = tokio::fs::read_dir(&model_path_buf).await {
+            let mut weight_files_size: u64 = 0;
+            
+            while let Ok(Some(entry)) = read_dir.next_entry().await {
+                if let Ok(file_name) = entry.file_name().into_string() {
+                    let file_type = determine_file_type(&file_name.to_lowercase());
+                    if matches!(file_type, ModelFileType::WeightFile) {
+                        if let Ok(metadata) = entry.metadata().await {
+                            weight_files_size += metadata.len();
+                        }
                     }
-                })
-                .filter_map(|entry| entry.metadata().ok())
-                .map(|metadata| metadata.len())
-                .sum();
+                }
+            }
 
             if weight_files_size > 0 && weight_files_size < 100 * 1024 {
                 // Less than 100KB of weight files
@@ -651,7 +656,7 @@ pub async fn validate_model(
     // Extract and validate model info from config.json if present
     let config_path = crate::APP_DATA_DIR.join(&model_path).join("config.json");
     if config_path.exists() {
-        if let Ok(config_content) = std::fs::read_to_string(&config_path) {
+        if let Ok(config_content) = tokio::fs::read_to_string(&config_path).await {
             match crate::utils::model_storage::ModelUtils::extract_model_info(&config_content) {
                 Ok((extracted_name, _description)) => {
                     println!("Extracted model info: name={}", extracted_name);
@@ -760,10 +765,11 @@ pub async fn get_storage_stats(
 
     // Enhanced stats using ModelStorage
     let storage = ModelStorage::new()
+        .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
     // Get actual storage size from filesystem
-    if let Ok(actual_size) = storage.get_provider_storage_size(&provider_id) {
+    if let Ok(actual_size) = storage.get_provider_storage_size(&provider_id).await {
         stats.total_storage_bytes = actual_size as u64;
         println!(
             "Provider {} actual storage size: {} bytes",
@@ -772,7 +778,7 @@ pub async fn get_storage_stats(
     }
 
     // List all models in storage
-    if let Ok(stored_models) = storage.list_provider_models(&provider_id) {
+    if let Ok(stored_models) = storage.list_provider_models(&provider_id).await {
         println!(
             "Found {} models in storage for provider {}",
             stored_models.len(),
@@ -781,7 +787,7 @@ pub async fn get_storage_stats(
 
         // Validate each model and update stats if needed
         for (model_id, _metadata) in &stored_models {
-            match storage.validate_model(&provider_id, model_id) {
+            match storage.validate_model(&provider_id, model_id).await {
                 Ok(issues) => {
                     if !issues.is_empty() {
                         println!("Model {} has validation issues: {:?}", model_id, issues);

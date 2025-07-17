@@ -1,9 +1,5 @@
 use crate::ai::candle::{CandleError, CandleModel};
 use crate::ai::candle_models::ModelFactory;
-use crate::ai::scheduler::{Scheduler, SchedulerConfig, BlockManager, SequenceGroup, Sequence, SequenceStatus};
-use crate::ai::paged_attention::{PagedAttention, PagedAttentionConfig, CacheEngine, InputMetadata};
-#[cfg(feature = "metal")]
-use candle_core::backend::BackendDevice;
 use crate::ai::openai_types::*;
 use axum::{
     extract::{Path, State},
@@ -12,16 +8,19 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+#[cfg(feature = "metal")]
+use candle_core::backend::BackendDevice;
 use candle_core::{Device, Tensor};
 use candle_transformers::models::llama::Cache;
-use futures::stream::{Stream};
+use futures::stream::Stream;
 use serde_json::{self, json};
 use std::collections::VecDeque;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH, Duration, Instant};
-use tokio::sync::{Mutex, mpsc, oneshot, Semaphore};
-use uuid::Uuid;
+#[cfg(feature = "metal")]
 use std::sync::OnceLock;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use tokio::sync::{mpsc, oneshot, Mutex, Semaphore};
+use uuid::Uuid;
 
 // Global Metal synchronization lock to prevent concurrent Metal operations
 #[cfg(feature = "metal")]
@@ -95,7 +94,14 @@ pub struct CachePool {
 }
 
 impl CachePool {
-    pub fn new(config: candle_transformers::models::llama::Config, device: Device, max_size: usize, kv_cache_type: String, model_path: String, architecture: String) -> Self {
+    pub fn new(
+        config: candle_transformers::models::llama::Config,
+        device: Device,
+        max_size: usize,
+        kv_cache_type: String,
+        model_path: String,
+        architecture: String,
+    ) -> Self {
         Self {
             available_caches: Arc::new(Mutex::new(VecDeque::new())),
             config,
@@ -111,7 +117,7 @@ impl CachePool {
     pub async fn acquire(&self) -> Result<Cache, CandleError> {
         loop {
             let mut available = self.available_caches.lock().await;
-            
+
             if let Some(_cache) = available.pop_front() {
                 // Always create a fresh cache for each request to avoid corruption
                 drop(available);
@@ -123,7 +129,7 @@ impl CachePool {
                     *created += 1;
                     drop(created);
                     drop(available);
-                    
+
                     return self.create_cache_safely().await;
                 } else {
                     drop(available);
@@ -147,7 +153,10 @@ impl CachePool {
                 self.auto_detect_cache_dtype()
             }
             _ => {
-                println!("Warning: Unknown KV cache type '{}', defaulting to F16", self.kv_cache_type);
+                println!(
+                    "Warning: Unknown KV cache type '{}', defaulting to F16",
+                    self.kv_cache_type
+                );
                 candle_core::DType::F16
             }
         }
@@ -156,16 +165,22 @@ impl CachePool {
     fn auto_detect_cache_dtype(&self) -> candle_core::DType {
         // Try to detect model dtype from model config first
         if let Some(dtype) = self.parse_model_config_dtype() {
-            println!("Auto-detected KV cache dtype: {:?} (matching model precision from config.json)", dtype);
+            println!(
+                "Auto-detected KV cache dtype: {:?} (matching model precision from config.json)",
+                dtype
+            );
             return dtype;
         }
-        
+
         // Fallback to architecture-based detection
         let model_dtype = self.detect_model_dtype();
-        
+
         match model_dtype {
             Some(dtype) => {
-                println!("Auto-detected KV cache dtype: {:?} (architecture-based detection)", dtype);
+                println!(
+                    "Auto-detected KV cache dtype: {:?} (architecture-based detection)",
+                    dtype
+                );
                 dtype
             }
             None => {
@@ -177,12 +192,14 @@ impl CachePool {
 
     fn detect_model_dtype(&self) -> Option<candle_core::DType> {
         // Try to read model config to detect dtype
-        let model_path = std::path::Path::new(&format!("{}/config.json", 
-            self.config.max_position_embeddings.to_string())); // This is a placeholder
-        
+        let model_path = std::path::Path::new(&format!(
+            "{}/config.json",
+            self.config.max_position_embeddings.to_string()
+        )); // This is a placeholder
+
         // For now, we'll implement a more practical approach by checking common patterns
         // In a real implementation, we would parse the actual model config.json file
-        
+
         // Try to detect from model architecture and common patterns
         match self.architecture.as_str() {
             "llama" => {
@@ -201,12 +218,12 @@ impl CachePool {
         // Try to read config.json from the model directory
         // We need to access the actual model path from the ModelServerState
         // For now, we'll use a simplified approach and enhance it later
-        
+
         // Try to parse config.json if it exists
         if let Some(dtype) = self.parse_model_config_dtype() {
             return Some(dtype);
         }
-        
+
         // Fallback to F16 as a safe default
         Some(candle_core::DType::F16)
     }
@@ -214,21 +231,26 @@ impl CachePool {
     fn parse_model_config_dtype(&self) -> Option<candle_core::DType> {
         // Try to read config.json from the model directory
         let config_path = std::path::Path::new(&self.model_path).join("config.json");
-        
+
         if !config_path.exists() {
             println!("Model config.json not found at: {}", config_path.display());
             return None;
         }
-        
+
         // Read and parse the config.json file
         match std::fs::read_to_string(&config_path) {
             Ok(config_content) => {
                 match serde_json::from_str::<serde_json::Value>(&config_content) {
                     Ok(config) => {
                         // Extract torch_dtype from the config
-                        if let Some(torch_dtype) = config.get("torch_dtype").and_then(|v| v.as_str()) {
+                        if let Some(torch_dtype) =
+                            config.get("torch_dtype").and_then(|v| v.as_str())
+                        {
                             let detected_dtype = self.convert_torch_dtype_to_candle(torch_dtype);
-                            println!("Detected model dtype from config.json: {} -> {:?}", torch_dtype, detected_dtype);
+                            println!(
+                                "Detected model dtype from config.json: {} -> {:?}",
+                                torch_dtype, detected_dtype
+                            );
                             return detected_dtype;
                         } else {
                             println!("No torch_dtype found in config.json");
@@ -243,7 +265,7 @@ impl CachePool {
                 println!("Failed to read config.json: {}", e);
             }
         }
-        
+
         None
     }
 
@@ -254,13 +276,20 @@ impl CachePool {
             "bfloat16" | "torch.bfloat16" | "bf16" => Some(candle_core::DType::BF16),
             "int8" | "torch.int8" | "i8" => Some(candle_core::DType::U8), // Use U8 as closest equivalent
             _ => {
-                println!("Warning: Unknown torch_dtype '{}', cannot convert to candle DType", torch_dtype);
+                println!(
+                    "Warning: Unknown torch_dtype '{}', cannot convert to candle DType",
+                    torch_dtype
+                );
                 None
             }
         }
     }
 
-    fn validate_dtype_compatibility(&self, model_dtype: candle_core::DType, cache_dtype: candle_core::DType) -> Result<(), String> {
+    fn validate_dtype_compatibility(
+        &self,
+        model_dtype: candle_core::DType,
+        cache_dtype: candle_core::DType,
+    ) -> Result<(), String> {
         // Check if the model and cache dtypes are compatible
         match (model_dtype, cache_dtype) {
             // Perfect matches
@@ -271,18 +300,18 @@ impl CachePool {
                 println!("✓ Perfect dtype compatibility: Model={:?}, Cache={:?}", model_dtype, cache_dtype);
                 Ok(())
             }
-            
+
             // Potentially compatible combinations (with warnings)
             (candle_core::DType::F32, candle_core::DType::F16) |
             (candle_core::DType::F16, candle_core::DType::F32) => {
                 Err(format!("Potential dtype mismatch: Model={:?}, Cache={:?}. This may cause inference errors.", model_dtype, cache_dtype))
             }
-            
+
             (candle_core::DType::BF16, candle_core::DType::F16) |
             (candle_core::DType::F16, candle_core::DType::BF16) => {
                 Err(format!("Potential dtype mismatch: Model={:?}, Cache={:?}. This may cause inference errors.", model_dtype, cache_dtype))
             }
-            
+
             // Likely incompatible combinations
             _ => {
                 Err(format!("Likely dtype incompatibility: Model={:?}, Cache={:?}. This will probably cause inference errors.", model_dtype, cache_dtype))
@@ -293,23 +322,24 @@ impl CachePool {
     async fn create_cache_safely(&self) -> Result<Cache, CandleError> {
         // For Metal devices, serialize cache creation to prevent command buffer conflicts
         let cache_dtype = self.get_cache_dtype();
-        
+
         // Validate dtype compatibility if we can detect the model dtype
         if let Some(model_dtype) = self.parse_model_config_dtype() {
             if let Err(warning) = self.validate_dtype_compatibility(model_dtype, cache_dtype) {
                 println!("Warning: {}", warning);
             }
         }
-        
+
         #[cfg(feature = "metal")]
         {
             if matches!(self.device, Device::Metal(_)) {
                 let _lock = get_metal_lock().lock().await;
-                return Cache::new(true, cache_dtype, &self.config, &self.device)
-                    .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)));
+                return Cache::new(true, cache_dtype, &self.config, &self.device).map_err(|e| {
+                    CandleError::ModelLoadError(format!("Failed to create cache: {}", e))
+                });
             }
         }
-        
+
         // For non-Metal devices, create cache without serialization
         Cache::new(true, cache_dtype, &self.config, &self.device)
             .map_err(|e| CandleError::ModelLoadError(format!("Failed to create cache: {}", e)))
@@ -361,7 +391,8 @@ impl BatchProcessor {
 
     pub async fn run(mut self) {
         let mut batch = Vec::new();
-        let mut batch_timer = tokio::time::interval(tokio::time::Duration::from_millis(self.batch_timeout_ms));
+        let mut batch_timer =
+            tokio::time::interval(tokio::time::Duration::from_millis(self.batch_timeout_ms));
 
         loop {
             tokio::select! {
@@ -370,7 +401,7 @@ impl BatchProcessor {
                     match request {
                         Some(req) => {
                             batch.push(req);
-                            
+
                             // Process batch if it's full
                             if batch.len() >= self.batch_size {
                                 self.process_batch(&mut batch).await;
@@ -385,7 +416,7 @@ impl BatchProcessor {
                         }
                     }
                 }
-                
+
                 // Process batch on timeout
                 _ = batch_timer.tick() => {
                     if !batch.is_empty() {
@@ -399,50 +430,58 @@ impl BatchProcessor {
     async fn process_batch(&self, batch: &mut Vec<InferenceRequest>) {
         // For models that support batching, we could implement true batch processing here
         // For now, we'll process requests in parallel within the batch using multiple threads
-        
+
         let batch_size = batch.len();
         if batch_size == 0 {
             return;
         }
-        
+
         println!("Processing batch of {} requests", batch_size);
-        
+
         // For single requests, process directly
         if batch_size == 1 {
             let mut model = self.model.lock().await;
             let request = batch.drain(..).next().unwrap();
-            let result = self.process_single_request(&mut model, request.input_ids, request.start_pos, request.cache).await;
+            let result = self
+                .process_single_request(
+                    &mut model,
+                    request.input_ids,
+                    request.start_pos,
+                    request.cache,
+                )
+                .await;
             let _ = request.response_tx.send(result);
             return;
         }
-        
+
         // For multiple requests, process them in parallel (limited by model lock)
         // This allows for better throughput when the model can handle it
         let requests: Vec<_> = batch.drain(..).collect();
-        
+
         // Use tokio::spawn to process each request concurrently
         // Note: The model lock will serialize the actual inference, but we can prepare inputs/outputs in parallel
         let mut join_handles = Vec::new();
-        
+
         for request in requests {
             let model = self.model.clone();
             let device = self.device.clone();
-            
+
             let handle = tokio::spawn(async move {
                 let mut model_lock = model.lock().await;
                 let result = ModelServerState::process_single_inference(
-                    &mut model_lock, 
-                    request.input_ids, 
-                    request.start_pos, 
-                    request.cache, 
-                    &device
-                ).await;
+                    &mut model_lock,
+                    request.input_ids,
+                    request.start_pos,
+                    request.cache,
+                    &device,
+                )
+                .await;
                 let _ = request.response_tx.send(result);
             });
-            
+
             join_handles.push(handle);
         }
-        
+
         // Wait for all requests to complete
         for handle in join_handles {
             let _ = handle.await;
@@ -456,7 +495,8 @@ impl BatchProcessor {
         start_pos: usize,
         cache: Cache,
     ) -> Result<(Tensor, Cache), CandleError> {
-        ModelServerState::process_single_inference(model, input_ids, start_pos, cache, &self.device).await
+        ModelServerState::process_single_inference(model, input_ids, start_pos, cache, &self.device)
+            .await
     }
 }
 
@@ -496,14 +536,14 @@ impl ModelServerState {
         // Only configure CPU threads if the device is CPU
         if matches!(device, Device::Cpu) {
             println!("Configuring CPU threads for inference: {}", cpu_threads);
-            
+
             // Set the number of threads for CPU inference
             // This affects CPU-based tensor operations
             std::env::set_var("RAYON_NUM_THREADS", cpu_threads.to_string());
-            
+
             // Also set OpenMP thread count (if available)
             std::env::set_var("OMP_NUM_THREADS", cpu_threads.to_string());
-            
+
             // Set MKL thread count (if available)
             std::env::set_var("MKL_NUM_THREADS", cpu_threads.to_string());
         }
@@ -513,26 +553,25 @@ impl ModelServerState {
     fn configure_flash_attention(flash_attention: bool) {
         if flash_attention {
             println!("Enabling flash attention for optimized memory usage and faster inference");
-            
+
             // Set environment variables that enable flash attention in various libraries
             std::env::set_var("ENABLE_FLASH_ATTENTION", "1");
             std::env::set_var("FLASH_ATTENTION_ENABLED", "true");
-            
+
             // For PyTorch-based models (if applicable)
             std::env::set_var("PYTORCH_FLASH_ATTENTION", "1");
-            
+
             // For transformer models
             std::env::set_var("TRANSFORMERS_FLASH_ATTENTION", "1");
-            
+
             // For Hugging Face models
             std::env::set_var("HF_FLASH_ATTENTION", "1");
-            
+
             // Set memory optimization flags
             std::env::set_var("FLASH_ATTENTION_MEMORY_EFFICIENT", "1");
-            
         } else {
             println!("Flash attention is disabled");
-            
+
             // Ensure flash attention is explicitly disabled
             std::env::set_var("ENABLE_FLASH_ATTENTION", "0");
             std::env::set_var("FLASH_ATTENTION_ENABLED", "false");
@@ -546,34 +585,42 @@ impl ModelServerState {
     /// Configure KV Cache Type for controlling memory usage and precision trade-off
     fn configure_kv_cache_type(kv_cache_type: &str) {
         println!("Configuring KV Cache Type: {}", kv_cache_type);
-        
+
         // Set environment variables for KV cache type configuration
         std::env::set_var("KV_CACHE_TYPE", kv_cache_type);
         std::env::set_var("CANDLE_KV_CACHE_TYPE", kv_cache_type);
         std::env::set_var("PYTORCH_KV_CACHE_TYPE", kv_cache_type);
         std::env::set_var("TRANSFORMERS_KV_CACHE_TYPE", kv_cache_type);
-        
+
         // Set precision-specific environment variables
         match kv_cache_type.to_lowercase().as_str() {
             "f32" => {
                 std::env::set_var("KV_CACHE_PRECISION", "f32");
                 std::env::set_var("FORCE_F32_PRECISION", "1");
-                println!("KV Cache configured for f32 precision (high memory usage, highest precision)");
+                println!(
+                    "KV Cache configured for f32 precision (high memory usage, highest precision)"
+                );
             }
             "f16" => {
                 std::env::set_var("KV_CACHE_PRECISION", "f16");
                 std::env::set_var("FORCE_F16_PRECISION", "1");
-                println!("KV Cache configured for f16 precision (balanced memory usage and precision)");
+                println!(
+                    "KV Cache configured for f16 precision (balanced memory usage and precision)"
+                );
             }
             "bf16" => {
                 std::env::set_var("KV_CACHE_PRECISION", "bf16");
                 std::env::set_var("FORCE_BF16_PRECISION", "1");
-                println!("KV Cache configured for bf16 precision (balanced memory usage and precision)");
+                println!(
+                    "KV Cache configured for bf16 precision (balanced memory usage and precision)"
+                );
             }
             "i8" => {
                 std::env::set_var("KV_CACHE_PRECISION", "u8");
                 std::env::set_var("FORCE_U8_PRECISION", "1");
-                println!("KV Cache configured for u8 precision (low memory usage, reduced precision)");
+                println!(
+                    "KV Cache configured for u8 precision (low memory usage, reduced precision)"
+                );
             }
             "auto" => {
                 std::env::set_var("KV_CACHE_PRECISION", "auto");
@@ -582,7 +629,10 @@ impl ModelServerState {
                 println!("KV Cache configured for auto-detection (will match model precision)");
             }
             _ => {
-                println!("Warning: Unknown KV cache type '{}', defaulting to f16", kv_cache_type);
+                println!(
+                    "Warning: Unknown KV cache type '{}', defaulting to f16",
+                    kv_cache_type
+                );
                 std::env::set_var("KV_CACHE_TYPE", "f16");
                 std::env::set_var("KV_CACHE_PRECISION", "f16");
                 std::env::set_var("FORCE_F16_PRECISION", "1");
@@ -594,24 +644,23 @@ impl ModelServerState {
     fn configure_paged_attention(paged_attention: bool) {
         if paged_attention {
             println!("Enabling Paged Attention for efficient memory usage and better batching performance");
-            
+
             // Set environment variables that enable paged attention
             std::env::set_var("ENABLE_PAGED_ATTENTION", "1");
             std::env::set_var("PAGED_ATTENTION_ENABLED", "true");
-            
+
             // Set memory management flags for paged attention
             std::env::set_var("PAGED_ATTENTION_BLOCK_SIZE", "32");
             std::env::set_var("PAGED_ATTENTION_MAX_BLOCKS", "1024");
-            
+
             // Enable block-based memory management
             std::env::set_var("BLOCK_BASED_MEMORY", "1");
-            
+
             // Enable advanced scheduling
             std::env::set_var("ADVANCED_SCHEDULING", "1");
-            
         } else {
             println!("Paged Attention is disabled");
-            
+
             // Ensure paged attention is explicitly disabled
             std::env::set_var("ENABLE_PAGED_ATTENTION", "0");
             std::env::set_var("PAGED_ATTENTION_ENABLED", "false");
@@ -624,26 +673,25 @@ impl ModelServerState {
     fn configure_mmap(mmap: bool) {
         if mmap {
             println!("Enabling Memory Mapping (mmap) for efficient model file loading and reduced RAM usage");
-            
+
             // Set environment variables that enable mmap for model loading
             std::env::set_var("ENABLE_MMAP", "1");
             std::env::set_var("MMAP_ENABLED", "true");
-            
+
             // Enable memory mapping for SafeTensors
             std::env::set_var("SAFETENSORS_MMAP", "1");
-            
+
             // Enable memory mapping for model weights
             std::env::set_var("MODEL_WEIGHTS_MMAP", "1");
-            
+
             // Set memory mapping flags for candle
             std::env::set_var("CANDLE_MMAP", "1");
-            
+
             // Enable memory efficient loading
             std::env::set_var("MEMORY_EFFICIENT_LOADING", "1");
-            
         } else {
             println!("Memory Mapping (mmap) is disabled - using traditional file loading");
-            
+
             // Ensure mmap is explicitly disabled
             std::env::set_var("ENABLE_MMAP", "0");
             std::env::set_var("MMAP_ENABLED", "false");
@@ -657,14 +705,20 @@ impl ModelServerState {
     /// Configure auto unloading of model from memory when idle
     fn configure_auto_unload(auto_unload_model: bool, auto_unload_minutes: u64) {
         if auto_unload_model {
-            println!("Enabling auto unload: model will be unloaded after {} minutes of inactivity", auto_unload_minutes);
+            println!(
+                "Enabling auto unload: model will be unloaded after {} minutes of inactivity",
+                auto_unload_minutes
+            );
         } else {
             println!("Auto unload is disabled - model will remain loaded");
         }
     }
 
     /// Parse device configuration and create the appropriate device
-    fn create_device(device_type: Option<&str>, device_ids: Option<&str>) -> Result<Device, CandleError> {
+    fn create_device(
+        device_type: Option<&str>,
+        device_ids: Option<&str>,
+    ) -> Result<Device, CandleError> {
         match device_type {
             Some("cuda") => {
                 // Parse device IDs for CUDA
@@ -678,26 +732,35 @@ impl ModelServerState {
                         } else {
                             first_id.parse::<usize>().unwrap_or(0)
                         };
-                        
+
                         #[cfg(feature = "cuda")]
                         {
-                            Device::cuda_if_available(device_index)
-                                .map_err(|e| CandleError::DeviceError(format!("CUDA device {}: {}", device_index, e)))
+                            Device::cuda_if_available(device_index).map_err(|e| {
+                                CandleError::DeviceError(format!(
+                                    "CUDA device {}: {}",
+                                    device_index, e
+                                ))
+                            })
                         }
                         #[cfg(not(feature = "cuda"))]
                         {
-                            println!("Warning: CUDA requested but not available, falling back to CPU");
+                            println!(
+                                "Warning: CUDA requested but not available, falling back to CPU"
+                            );
                             Ok(Device::Cpu)
                         }
                     } else {
                         #[cfg(feature = "cuda")]
                         {
-                            Device::cuda_if_available(0)
-                                .map_err(|e| CandleError::DeviceError(format!("CUDA device 0: {}", e)))
+                            Device::cuda_if_available(0).map_err(|e| {
+                                CandleError::DeviceError(format!("CUDA device 0: {}", e))
+                            })
                         }
                         #[cfg(not(feature = "cuda"))]
                         {
-                            println!("Warning: CUDA requested but not available, falling back to CPU");
+                            println!(
+                                "Warning: CUDA requested but not available, falling back to CPU"
+                            );
                             Ok(Device::Cpu)
                         }
                     }
@@ -721,7 +784,10 @@ impl ModelServerState {
                     match candle_core::MetalDevice::new(0) {
                         Ok(metal_device) => Ok(Device::Metal(metal_device)),
                         Err(e) => {
-                            println!("Warning: Metal device creation failed ({}), falling back to CPU", e);
+                            println!(
+                                "Warning: Metal device creation failed ({}), falling back to CPU",
+                                e
+                            );
                             Ok(Device::Cpu)
                         }
                     }
@@ -734,7 +800,10 @@ impl ModelServerState {
             }
             Some("cpu") | None => Ok(Device::Cpu),
             Some(unknown) => {
-                println!("Warning: Unknown device type '{}', falling back to CPU", unknown);
+                println!(
+                    "Warning: Unknown device type '{}', falling back to CPU",
+                    unknown
+                );
                 Ok(Device::Cpu)
             }
         }
@@ -745,7 +814,28 @@ impl ModelServerState {
         model_id: &str,
         model_name: &str,
     ) -> Result<Self, CandleError> {
-        Self::new_with_device_config(model_path, architecture, model_id, model_name, None, None, false, false, 4, 4, 10, 8, 4, false, "f16", false, true, false, 10).await
+        Self::new_with_device_config(
+            model_path,
+            architecture,
+            model_id,
+            model_name,
+            None,
+            None,
+            false,
+            false,
+            4,
+            4,
+            10,
+            8,
+            4,
+            false,
+            "f16",
+            false,
+            true,
+            false,
+            10,
+        )
+        .await
     }
 
     pub async fn new_with_device_config(
@@ -772,25 +862,25 @@ impl ModelServerState {
         println!("Loading model from: {}", model_path);
 
         let device = Self::create_device(device_type, device_ids)?;
-        
+
         // Configure CPU thread limit for CPU inference
         Self::configure_cpu_threads(&device, cpu_threads);
-        
+
         // Configure flash attention
         Self::configure_flash_attention(flash_attention);
-        
+
         // Configure KV Cache Type
         Self::configure_kv_cache_type(kv_cache_type);
-        
+
         // Configure Paged Attention
         Self::configure_paged_attention(paged_attention);
-        
+
         // Configure Memory Mapping (mmap)
         Self::configure_mmap(mmap);
-        
+
         // Configure auto unload
         Self::configure_auto_unload(auto_unload_model, auto_unload_minutes);
-        
+
         let model = ModelFactory::create_model(architecture, model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
 
@@ -807,15 +897,28 @@ impl ModelServerState {
         let model_config_for_cache = model.get_config();
 
         // Create cache pool
-        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10, kv_cache_type.to_string(), model_path.to_string(), architecture.to_string()));
-        
+        let cache_pool = Arc::new(CachePool::new(
+            model_config_for_cache,
+            device.clone(),
+            10,
+            kv_cache_type.to_string(),
+            model_path.to_string(),
+            architecture.to_string(),
+        ));
+
         // Create batch processor channel
         let (inference_tx, inference_rx) = mpsc::unbounded_channel();
         let model_arc = Arc::new(Mutex::new(model));
-        
+
         // Spawn batch processor if continuous batching is enabled
         if enable_continuous_batching {
-            let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, batch_size, batch_timeout_ms, device.clone());
+            let batch_processor = BatchProcessor::new(
+                model_arc.clone(),
+                inference_rx,
+                batch_size,
+                batch_timeout_ms,
+                device.clone(),
+            );
             tokio::spawn(async move {
                 batch_processor.run().await;
             });
@@ -824,7 +927,8 @@ impl ModelServerState {
             let model_for_processor = model_arc.clone();
             let device_for_processor = device.clone();
             tokio::spawn(async move {
-                Self::simple_processor(model_for_processor, inference_rx, device_for_processor).await;
+                Self::simple_processor(model_for_processor, inference_rx, device_for_processor)
+                    .await;
             });
         }
 
@@ -863,21 +967,16 @@ impl ModelServerState {
             let model_loaded = state.model_loaded.clone();
             let last_request_time = state.last_request_time.clone();
             let model_arc_for_unload = state.model.clone();
-            let model_path_str = model_path.to_string();
-            let architecture_str = architecture.to_string();
-            let device_clone = state.device.clone();
             let unload_duration = Duration::from_secs(auto_unload_minutes * 60);
-            
+
             tokio::spawn(async move {
                 Self::auto_unload_monitor(
                     model_loaded,
                     last_request_time,
                     model_arc_for_unload,
-                    model_path_str,
-                    architecture_str,
-                    device_clone,
                     unload_duration,
-                ).await;
+                )
+                .await;
             });
         }
 
@@ -935,7 +1034,8 @@ impl ModelServerState {
             mmap,
             auto_unload_model,
             auto_unload_minutes,
-        ).await
+        )
+        .await
     }
 
     pub async fn new_with_specific_files_and_device(
@@ -966,7 +1066,7 @@ impl ModelServerState {
         auto_unload_minutes: u64,
     ) -> Result<Self, CandleError> {
         println!("Loading model from: {} with specific files", model_path);
-        
+
         if let Some(config) = config_file {
             println!("  Config file: {}", config);
         }
@@ -981,41 +1081,38 @@ impl ModelServerState {
         }
 
         let device = Self::create_device(device_type, device_ids)?;
-        
+
         // Configure CPU thread limit for CPU inference
         Self::configure_cpu_threads(&device, cpu_threads);
-        
+
         // Configure flash attention
         Self::configure_flash_attention(flash_attention);
-        
+
         // Configure KV Cache Type
         Self::configure_kv_cache_type(kv_cache_type);
-        
+
         // Configure Paged Attention
         Self::configure_paged_attention(paged_attention);
-        
+
         // Configure Memory Mapping (mmap)
         Self::configure_mmap(mmap);
-        
+
         // Configure auto unload
         Self::configure_auto_unload(auto_unload_model, auto_unload_minutes);
-        
+
         // For now, use the existing factory methods but with specific file awareness
         // TODO: Update ModelFactory to accept specific file paths
         let model = ModelFactory::create_model_with_files(
-            architecture, 
-            model_path, 
+            architecture,
+            model_path,
             &device,
             config_file,
             weight_file,
-            additional_weight_files
+            additional_weight_files,
         )?;
-        
-        let tokenizer = ModelFactory::load_tokenizer_with_file(
-            architecture, 
-            model_path,
-            tokenizer_file
-        )?;
+
+        let tokenizer =
+            ModelFactory::load_tokenizer_with_file(architecture, model_path, tokenizer_file)?;
 
         let started_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -1030,15 +1127,28 @@ impl ModelServerState {
         let model_config_for_cache = model.get_config();
 
         // Create cache pool
-        let cache_pool = Arc::new(CachePool::new(model_config_for_cache, device.clone(), 10, kv_cache_type.to_string(), model_path.to_string(), architecture.to_string()));
-        
+        let cache_pool = Arc::new(CachePool::new(
+            model_config_for_cache,
+            device.clone(),
+            10,
+            kv_cache_type.to_string(),
+            model_path.to_string(),
+            architecture.to_string(),
+        ));
+
         // Create batch processor channel
         let (inference_tx, inference_rx) = mpsc::unbounded_channel();
         let model_arc = Arc::new(Mutex::new(model));
-        
+
         // Spawn batch processor if continuous batching is enabled
         if enable_continuous_batching {
-            let batch_processor = BatchProcessor::new(model_arc.clone(), inference_rx, batch_size, batch_timeout_ms, device.clone());
+            let batch_processor = BatchProcessor::new(
+                model_arc.clone(),
+                inference_rx,
+                batch_size,
+                batch_timeout_ms,
+                device.clone(),
+            );
             tokio::spawn(async move {
                 batch_processor.run().await;
             });
@@ -1047,7 +1157,8 @@ impl ModelServerState {
             let model_for_processor = model_arc.clone();
             let device_for_processor = device.clone();
             tokio::spawn(async move {
-                Self::simple_processor(model_for_processor, inference_rx, device_for_processor).await;
+                Self::simple_processor(model_for_processor, inference_rx, device_for_processor)
+                    .await;
             });
         }
 
@@ -1086,21 +1197,16 @@ impl ModelServerState {
             let model_loaded = state.model_loaded.clone();
             let last_request_time = state.last_request_time.clone();
             let model_arc_for_unload = state.model.clone();
-            let model_path_str = model_path.to_string();
-            let architecture_str = architecture.to_string();
-            let device_clone = state.device.clone();
             let unload_duration = Duration::from_secs(auto_unload_minutes * 60);
-            
+
             tokio::spawn(async move {
                 Self::auto_unload_monitor(
                     model_loaded,
                     last_request_time,
                     model_arc_for_unload,
-                    model_path_str,
-                    architecture_str,
-                    device_clone,
                     unload_duration,
-                ).await;
+                )
+                .await;
             });
         }
 
@@ -1115,7 +1221,14 @@ impl ModelServerState {
     ) {
         while let Some(request) = request_rx.recv().await {
             let mut model_lock = model.lock().await;
-            let result = Self::process_single_inference(&mut model_lock, request.input_ids, request.start_pos, request.cache, &device).await;
+            let result = Self::process_single_inference(
+                &mut model_lock,
+                request.input_ids,
+                request.start_pos,
+                request.cache,
+                &device,
+            )
+            .await;
             let _ = request.response_tx.send(result);
         }
     }
@@ -1125,43 +1238,43 @@ impl ModelServerState {
         model_loaded: Arc<Mutex<bool>>,
         last_request_time: Arc<Mutex<Instant>>,
         model: Arc<Mutex<Box<dyn CandleModel + Send + Sync>>>,
-        model_path: String,
-        architecture: String,
-        device: Device,
         unload_duration: Duration,
     ) {
         let mut interval = tokio::time::interval(Duration::from_secs(30)); // Check every 30 seconds
-        
+
         loop {
             interval.tick().await;
-            
+
             let last_time = {
                 let guard = last_request_time.lock().await;
                 *guard
             };
-            
+
             let elapsed = last_time.elapsed();
             let is_loaded = {
                 let guard = model_loaded.lock().await;
                 *guard
             };
-            
+
             if is_loaded && elapsed > unload_duration {
-                println!("Auto unloading model after {} minutes of inactivity", elapsed.as_secs() / 60);
-                
+                println!(
+                    "Auto unloading model after {} minutes of inactivity",
+                    elapsed.as_secs() / 60
+                );
+
                 // Unload the model by replacing it with a placeholder
                 {
-                    let mut model_guard = model.lock().await;
+                    let _model_guard = model.lock().await;
                     // We can't actually free the model memory without dropping it
                     // For now, we'll just mark it as unloaded and trust the OS to swap it out
                     println!("Model marked as unloaded (actual unloading would require model recreation)");
                 }
-                
+
                 {
                     let mut loaded_guard = model_loaded.lock().await;
                     *loaded_guard = false;
                 }
-                
+
                 println!("Model auto-unloaded. It will be reloaded on next request.");
             }
         }
@@ -1173,10 +1286,10 @@ impl ModelServerState {
             let guard = self.model_loaded.lock().await;
             *guard
         };
-        
+
         if !is_loaded {
             println!("Reloading model on demand...");
-            
+
             // In a full implementation, we would recreate the model here
             // For now, we'll just mark it as loaded
             // TODO: Implement actual model reloading
@@ -1184,16 +1297,16 @@ impl ModelServerState {
                 let mut loaded_guard = self.model_loaded.lock().await;
                 *loaded_guard = true;
             }
-            
+
             println!("Model reloaded successfully");
         }
-        
+
         // Update last request time
         {
             let mut time_guard = self.last_request_time.lock().await;
             *time_guard = Instant::now();
         }
-        
+
         Ok(())
     }
 
@@ -1212,24 +1325,32 @@ impl ModelServerState {
                 let _lock = get_metal_lock().lock().await;
                 match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
                     Ok(logits) => return Ok((logits, cache)),
-                    Err(e) => return Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
+                    Err(e) => {
+                        return Err(CandleError::InferenceError(format!(
+                            "Forward pass failed: {}",
+                            e
+                        )))
+                    }
                 }
             }
         }
-        
+
         // For non-Metal devices, forward pass without serialization
         match model.forward_with_cache(&input_ids, start_pos, &mut cache) {
             Ok(logits) => Ok((logits, cache)),
-            Err(e) => Err(CandleError::InferenceError(format!("Forward pass failed: {}", e))),
+            Err(e) => Err(CandleError::InferenceError(format!(
+                "Forward pass failed: {}",
+                e
+            ))),
         }
     }
 
     fn load_tokenizer_config(model_path: &str) -> TokenizerConfig {
         use std::path::Path;
-        
+
         let tokenizer_config_path = Path::new(model_path).join("tokenizer_config.json");
         let mut config = TokenizerConfig::default();
-        
+
         if let Ok(content) = std::fs::read_to_string(&tokenizer_config_path) {
             if let Ok(json_config) = serde_json::from_str::<serde_json::Value>(&content) {
                 // Load chat template
@@ -1238,40 +1359,40 @@ impl ModelServerState {
                         config.chat_template = Some(template_str.to_string());
                     }
                 }
-                
+
                 // Load special tokens
                 if let Some(eos_token) = json_config.get("eos_token") {
                     if let Some(eos_str) = eos_token.as_str() {
                         config.eos_token = eos_str.to_string();
                     }
                 }
-                
+
                 if let Some(bos_token) = json_config.get("bos_token") {
                     if let Some(bos_str) = bos_token.as_str() {
                         config.bos_token = bos_str.to_string();
                     }
                 }
-                
+
                 if let Some(unk_token) = json_config.get("unk_token") {
                     if let Some(unk_str) = unk_token.as_str() {
                         config.unk_token = unk_str.to_string();
                     }
                 }
-                
+
                 // Load model max length
                 if let Some(max_len) = json_config.get("model_max_length") {
                     if let Some(max_len_num) = max_len.as_u64() {
                         config.model_max_length = max_len_num as u32;
                     }
                 }
-                
+
                 // Load pad token
                 if let Some(pad_token) = json_config.get("pad_token") {
                     if let Some(pad_str) = pad_token.as_str() {
                         config.pad_token = Some(pad_str.to_string());
                     }
                 }
-                
+
                 // Load token IDs from added_tokens_decoder
                 if let Some(added_tokens) = json_config.get("added_tokens_decoder") {
                     if let Some(added_tokens_obj) = added_tokens.as_object() {
@@ -1291,23 +1412,23 @@ impl ModelServerState {
                         }
                     }
                 }
-                
-                println!("Loaded tokenizer config: EOS='{}' (ID: {}), BOS='{}' (ID: {}), UNK='{}' (ID: {})", 
+
+                println!("Loaded tokenizer config: EOS='{}' (ID: {}), BOS='{}' (ID: {}), UNK='{}' (ID: {})",
                          config.eos_token, config.eos_token_id,
                          config.bos_token, config.bos_token_id,
                          config.unk_token, config.unk_token_id);
             }
         }
-        
+
         config
     }
 
     fn load_model_config(model_path: &str) -> ModelConfig {
         use std::path::Path;
-        
+
         let model_config_path = Path::new(model_path).join("config.json");
         let mut config = ModelConfig::default();
-        
+
         if let Ok(content) = std::fs::read_to_string(&model_config_path) {
             if let Ok(json_config) = serde_json::from_str::<serde_json::Value>(&content) {
                 // Load max position embeddings
@@ -1316,28 +1437,28 @@ impl ModelServerState {
                         config.max_position_embeddings = max_pos_num as u32;
                     }
                 }
-                
+
                 // Load vocab size
                 if let Some(vocab_size) = json_config.get("vocab_size") {
                     if let Some(vocab_num) = vocab_size.as_u64() {
                         config.vocab_size = vocab_num as u32;
                     }
                 }
-                
+
                 // Load hidden size
                 if let Some(hidden_size) = json_config.get("hidden_size") {
                     if let Some(hidden_num) = hidden_size.as_u64() {
                         config.hidden_size = hidden_num as u32;
                     }
                 }
-                
+
                 // Load model type
                 if let Some(model_type) = json_config.get("model_type") {
                     if let Some(model_type_str) = model_type.as_str() {
                         config.model_type = model_type_str.to_string();
                     }
                 }
-                
+
                 // Load architectures
                 if let Some(architectures) = json_config.get("architectures") {
                     if let Some(arch_array) = architectures.as_array() {
@@ -1352,12 +1473,12 @@ impl ModelServerState {
                         }
                     }
                 }
-                
-                println!("Loaded model config: max_pos_embeddings={}, vocab_size={}, hidden_size={}, model_type={}", 
+
+                println!("Loaded model config: max_pos_embeddings={}, vocab_size={}, hidden_size={}, model_type={}",
                          config.max_position_embeddings, config.vocab_size, config.hidden_size, config.model_type);
             }
         }
-        
+
         config
     }
 
@@ -1373,12 +1494,14 @@ impl ModelServerState {
     fn render_chat_template(&self, template: &str, messages: &[ChatMessage]) -> String {
         // Basic Jinja2-like template renderer
         // This is a simplified implementation that handles the common chat template pattern
-        
+
         let eos_token = &self.tokenizer_config.eos_token;
         let mut result = String::new();
-        
+
         // Check if this looks like the expected template format
-        if template.contains("{% for message in messages %}") && template.contains("message['role']") {
+        if template.contains("{% for message in messages %}")
+            && template.contains("message['role']")
+        {
             // Parse the template for role-specific patterns
             let user_template = if template.contains("'user'") {
                 // Extract pattern between 'user' condition and next elif/endif
@@ -1386,19 +1509,19 @@ impl ModelServerState {
             } else {
                 format!("<|user|>\n{{}}{}", eos_token) // fallback
             };
-            
+
             let system_template = if template.contains("'system'") {
                 self.extract_role_template(template, "system", eos_token)
             } else {
                 format!("<|system|>\n{{}}{}", eos_token) // fallback
             };
-            
+
             let assistant_template = if template.contains("'assistant'") {
                 self.extract_role_template(template, "assistant", eos_token)
             } else {
                 format!("<|assistant|>\n{{}}{}", eos_token) // fallback
             };
-            
+
             // Apply the template to each message
             for message in messages {
                 let template_str = match message.role.as_str() {
@@ -1407,10 +1530,10 @@ impl ModelServerState {
                     "assistant" => &assistant_template,
                     _ => &format!("<|{}|>\n{{}}{}", message.role, eos_token),
                 };
-                
+
                 result.push_str(&template_str.replace("{}", &message.content));
             }
-            
+
             // Add generation prompt if template indicates it
             if template.contains("add_generation_prompt") && template.contains("<|assistant|>") {
                 result.push_str("<|assistant|>");
@@ -1419,14 +1542,14 @@ impl ModelServerState {
             // Fallback to simple format if template is unrecognized
             result = self.default_chat_template(messages);
         }
-        
+
         result
     }
-    
+
     fn extract_role_template(&self, template: &str, role: &str, eos_token: &str) -> String {
         // Simple pattern extraction for role-specific templates
         // Look for patterns like {{ '<|user|>\n' + message['content'] + eos_token }}
-        
+
         let role_pattern = format!("'{}' %}}{{{{ '", role);
         if let Some(start_pos) = template.find(&role_pattern) {
             let start = start_pos + role_pattern.len();
@@ -1437,7 +1560,7 @@ impl ModelServerState {
                 }
             }
         }
-        
+
         // Fallback pattern
         format!("<|{}|>\n{{}}{}", role, eos_token)
     }
@@ -1448,10 +1571,17 @@ impl ModelServerState {
 
         for message in messages {
             match message.role.as_str() {
-                "system" => prompt.push_str(&format!("<|system|>\n{}{}", message.content, eos_token)),
+                "system" => {
+                    prompt.push_str(&format!("<|system|>\n{}{}", message.content, eos_token))
+                }
                 "user" => prompt.push_str(&format!("<|user|>\n{}{}", message.content, eos_token)),
-                "assistant" => prompt.push_str(&format!("<|assistant|>\n{}{}", message.content, eos_token)),
-                _ => prompt.push_str(&format!("<|{}|>\n{}{}", message.role, message.content, eos_token)),
+                "assistant" => {
+                    prompt.push_str(&format!("<|assistant|>\n{}{}", message.content, eos_token))
+                }
+                _ => prompt.push_str(&format!(
+                    "<|{}|>\n{}{}",
+                    message.role, message.content, eos_token
+                )),
             }
         }
 
@@ -1478,30 +1608,35 @@ async fn chat_completions(
 ) -> Response {
     // Ensure model is loaded (reload if auto-unloaded)
     if let Err(e) = state.ensure_model_loaded().await {
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": {
-                "message": format!("Failed to load model: {}", e),
-                "type": "model_load_error"
-            }
-        }))).into_response();
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": {
+                    "message": format!("Failed to load model: {}", e),
+                    "type": "model_load_error"
+                }
+            })),
+        )
+            .into_response();
     }
 
     // Acquire semaphore permit to limit concurrent requests
-    let _permit = match state.concurrent_request_semaphore.acquire().await {
-        Ok(permit) => permit,
-        Err(_) => {
-            return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({
+    let _permit =
+        match state.concurrent_request_semaphore.acquire().await {
+            Ok(permit) => permit,
+            Err(_) => {
+                return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({
                 "error": {
                     "message": "Service temporarily unavailable: too many concurrent requests",
                     "type": "service_unavailable_error"
                 }
             }))).into_response();
-        }
-    };
-    
+            }
+        };
+
     // Clone the Arc to avoid borrowing issues
     let state_cloned = Arc::clone(&state);
-    
+
     if request.stream {
         stream_chat_completion(state_cloned, request).await
     } else {
@@ -1515,7 +1650,7 @@ async fn non_stream_chat_completion(
 ) -> Response {
     // Convert chat messages to a single prompt using chat template
     let prompt = state.apply_chat_template(&request.messages);
-    
+
     // Print the initial prompt for debugging purposes
     println!("=== INITIAL PROMPT ===");
     println!("{}", prompt);
@@ -1538,15 +1673,20 @@ async fn non_stream_chat_completion(
         let max_context_len = state.model_config.max_position_embeddings as usize;
         let max_new_tokens = request.max_tokens.unwrap_or(100) as usize;
         let available_for_prompt = max_context_len.saturating_sub(max_new_tokens);
-        
+
         if tokens.len() > available_for_prompt {
-            println!("Context shift triggered: {} tokens -> {} tokens", tokens.len(), available_for_prompt);
-            
+            println!(
+                "Context shift triggered: {} tokens -> {} tokens",
+                tokens.len(),
+                available_for_prompt
+            );
+
             // Preserve first 100 tokens (system prompt) and last 200 tokens (recent conversation)
             let preserve_start = 100.min(tokens.len() / 4);
             let preserve_end = 200.min(tokens.len() / 2);
-            
-            tokens = apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
+
+            tokens =
+                apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
         }
     }
 
@@ -1597,8 +1737,8 @@ async fn stream_chat_completion(
     request: ChatCompletionRequest,
 ) -> Response {
     let prompt = state.apply_chat_template(&request.messages);
-    
-    // Print the initial prompt for debugging purposes  
+
+    // Print the initial prompt for debugging purposes
     println!("=== INITIAL PROMPT (STREAMING) ===");
     println!("{}", prompt);
     println!("=== END INITIAL PROMPT (STREAMING) ===");
@@ -1619,15 +1759,20 @@ async fn stream_chat_completion(
         let max_context_len = state.model_config.max_position_embeddings as usize;
         let max_new_tokens = request.max_tokens.unwrap_or(100) as usize;
         let available_for_prompt = max_context_len.saturating_sub(max_new_tokens);
-        
+
         if tokens.len() > available_for_prompt {
-            println!("Context shift triggered (streaming): {} tokens -> {} tokens", tokens.len(), available_for_prompt);
-            
+            println!(
+                "Context shift triggered (streaming): {} tokens -> {} tokens",
+                tokens.len(),
+                available_for_prompt
+            );
+
             // Preserve first 100 tokens (system prompt) and last 200 tokens (recent conversation)
             let preserve_start = 100.min(tokens.len() / 4);
             let preserve_end = 200.min(tokens.len() / 2);
-            
-            tokens = apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
+
+            tokens =
+                apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
         }
     }
 
@@ -1655,27 +1800,32 @@ async fn completions(
 ) -> Response {
     // Ensure model is loaded (reload if auto-unloaded)
     if let Err(e) = state.ensure_model_loaded().await {
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": {
-                "message": format!("Failed to load model: {}", e),
-                "type": "model_load_error"
-            }
-        }))).into_response();
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": {
+                    "message": format!("Failed to load model: {}", e),
+                    "type": "model_load_error"
+                }
+            })),
+        )
+            .into_response();
     }
 
     // Acquire semaphore permit to limit concurrent requests
-    let _permit = match state.concurrent_request_semaphore.acquire().await {
-        Ok(permit) => permit,
-        Err(_) => {
-            return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({
+    let _permit =
+        match state.concurrent_request_semaphore.acquire().await {
+            Ok(permit) => permit,
+            Err(_) => {
+                return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({
                 "error": {
                     "message": "Service temporarily unavailable: too many concurrent requests",
                     "type": "service_unavailable_error"
                 }
             }))).into_response();
-        }
-    };
-    
+            }
+        };
+
     // Print the initial prompt for debugging purposes
     println!("=== INITIAL PROMPT (COMPLETION) ===");
     println!("{}", request.prompt);
@@ -1697,15 +1847,20 @@ async fn completions(
         let max_context_len = state.model_config.max_position_embeddings as usize;
         let max_new_tokens = request.max_tokens.unwrap_or(100) as usize;
         let available_for_prompt = max_context_len.saturating_sub(max_new_tokens);
-        
+
         if tokens.len() > available_for_prompt {
-            println!("Context shift triggered (completion): {} tokens -> {} tokens", tokens.len(), available_for_prompt);
-            
+            println!(
+                "Context shift triggered (completion): {} tokens -> {} tokens",
+                tokens.len(),
+                available_for_prompt
+            );
+
             // For completion endpoint, preserve more recent tokens (no system prompt)
             let preserve_start = 50.min(tokens.len() / 8);
             let preserve_end = 300.min(tokens.len() / 2);
-            
-            tokens = apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
+
+            tokens =
+                apply_context_shift(&tokens, available_for_prompt, preserve_start, preserve_end);
         }
     }
 
@@ -1825,7 +1980,6 @@ async fn shutdown_server() -> Json<serde_json::Value> {
 
 // Helper functions
 
-
 async fn generate_text(
     state: &Arc<ModelServerState>,
     tokens: &[u32],
@@ -1833,23 +1987,27 @@ async fn generate_text(
 ) -> Result<String, CandleError> {
     use candle_core::Tensor;
     use tokio::sync::oneshot;
-    
+
     let device = &state.device;
-    
-    let max_tokens = request.max_tokens.unwrap_or(100).min(state.model_config.max_position_embeddings as i32);
+
+    let max_tokens = request
+        .max_tokens
+        .unwrap_or(100)
+        .min(state.model_config.max_position_embeddings as i32);
     let temperature = request.temperature.unwrap_or(0.7);
-    
+
     // Acquire cache from pool
     let mut cache = state.cache_pool.acquire().await?;
-    
+
     let mut generated_tokens = tokens.to_vec();
     let mut new_tokens = Vec::new(); // Track only newly generated tokens
     let mut generated_text = String::new();
-    
+
     // Process the input tokens first using batch processing
-    let input_ids = Tensor::from_slice(tokens, (1, tokens.len()), device)
-        .map_err(|e| CandleError::InferenceError(format!("Failed to create input tensor: {}", e)))?;
-    
+    let input_ids = Tensor::from_slice(tokens, (1, tokens.len()), device).map_err(|e| {
+        CandleError::InferenceError(format!("Failed to create input tensor: {}", e))
+    })?;
+
     let (logits, cache_returned) = {
         let (tx, rx) = oneshot::channel();
         let inference_request = InferenceRequest {
@@ -1858,17 +2016,20 @@ async fn generate_text(
             cache,
             response_tx: tx,
         };
-        
-        state.inference_tx.send(inference_request)
-            .map_err(|_| CandleError::InferenceError("Failed to send inference request".to_string()))?;
-        
+
+        state.inference_tx.send(inference_request).map_err(|_| {
+            CandleError::InferenceError("Failed to send inference request".to_string())
+        })?;
+
         rx.await
-            .map_err(|_| CandleError::InferenceError("Failed to receive inference response".to_string()))?
+            .map_err(|_| {
+                CandleError::InferenceError("Failed to receive inference response".to_string())
+            })?
             .map_err(|e| e)?
     };
-    
+
     cache = cache_returned;
-    
+
     // Generate tokens one by one
     for step in 0..max_tokens {
         // For autoregressive generation, we only pass the last token and use start_pos > 0
@@ -1882,23 +2043,31 @@ async fn generate_text(
                 // For 3D logits [batch_size, seq_len, vocab_size], take the last position
                 logits.narrow(1, logits.dim(1)? - 1, 1)?.squeeze(1)?
             } else {
-                return Err(CandleError::InferenceError(format!("Unexpected logits shape: {:?}", logits.shape())));
+                return Err(CandleError::InferenceError(format!(
+                    "Unexpected logits shape: {:?}",
+                    logits.shape()
+                )));
             };
-            
-            
+
             // Apply temperature and sample
             let scaled_logits = if temperature > 0.0 {
                 last_token_logits.affine(1.0 / temperature as f64, 0.0)?
             } else {
                 last_token_logits
             };
-            
+
             sample_token_improved(&scaled_logits, temperature as f64)?
         } else {
             // For subsequent tokens, run forward pass with just the last token using batch processing
-            let last_token_tensor = Tensor::from_slice(&[generated_tokens[generated_tokens.len() - 1]], (1, 1), device)
-                .map_err(|e| CandleError::InferenceError(format!("Failed to create token tensor: {}", e)))?;
-            
+            let last_token_tensor = Tensor::from_slice(
+                &[generated_tokens[generated_tokens.len() - 1]],
+                (1, 1),
+                device,
+            )
+            .map_err(|e| {
+                CandleError::InferenceError(format!("Failed to create token tensor: {}", e))
+            })?;
+
             let (logits, cache_returned) = {
                 let (tx, rx) = oneshot::channel();
                 let inference_request = InferenceRequest {
@@ -1907,17 +2076,22 @@ async fn generate_text(
                     cache,
                     response_tx: tx,
                 };
-                
-                state.inference_tx.send(inference_request)
-                    .map_err(|_| CandleError::InferenceError("Failed to send inference request".to_string()))?;
-                
+
+                state.inference_tx.send(inference_request).map_err(|_| {
+                    CandleError::InferenceError("Failed to send inference request".to_string())
+                })?;
+
                 rx.await
-                    .map_err(|_| CandleError::InferenceError("Failed to receive inference response".to_string()))?
+                    .map_err(|_| {
+                        CandleError::InferenceError(
+                            "Failed to receive inference response".to_string(),
+                        )
+                    })?
                     .map_err(|e| e)?
             };
-            
+
             cache = cache_returned;
-            
+
             // Get logits for the last token position
             let last_token_logits = if logits.rank() == 2 {
                 // For 2D logits [batch_size, vocab_size], just take the first row
@@ -1926,29 +2100,30 @@ async fn generate_text(
                 // For 3D logits [batch_size, seq_len, vocab_size], take the last position
                 logits.narrow(1, logits.dim(1)? - 1, 1)?.squeeze(1)?
             } else {
-                return Err(CandleError::InferenceError(format!("Unexpected logits shape: {:?}", logits.shape())));
+                return Err(CandleError::InferenceError(format!(
+                    "Unexpected logits shape: {:?}",
+                    logits.shape()
+                )));
             };
-            
-            
+
             // Apply temperature and sample
             let scaled_logits = if temperature > 0.0 {
                 last_token_logits.affine(1.0 / temperature as f64, 0.0)?
             } else {
                 last_token_logits
             };
-            
+
             sample_token_improved(&scaled_logits, temperature as f64)?
         };
-        
-        
+
         generated_tokens.push(last_token);
         new_tokens.push(last_token);
-        
+
         // Decode the new token and check for stop conditions
         match state.tokenizer.decode(&[last_token], false) {
             Ok(token_text) => {
                 generated_text.push_str(&token_text);
-                
+
                 // Check for stop sequences
                 if let Some(stop_sequences) = &request.stop {
                     for stop_seq in stop_sequences {
@@ -1959,7 +2134,7 @@ async fn generate_text(
                         }
                     }
                 }
-                
+
                 // Stop if we see common EOS patterns in the text
                 if token_text.trim() == "</s>" || token_text.trim() == "<|endoftext|>" {
                     break;
@@ -1970,20 +2145,20 @@ async fn generate_text(
             }
         }
     }
-    
+
     // Decode only the newly generated tokens to get proper spacing
     let final_text = if !new_tokens.is_empty() {
         match state.tokenizer.decode(&new_tokens, true) {
             Ok(text) => text,
-            Err(_) => generated_text
+            Err(_) => generated_text,
         }
     } else {
         generated_text
     };
-    
+
     // Return cache to pool
     state.cache_pool.release(cache).await;
-    
+
     // Return some fallback text if generation produced nothing
     if final_text.trim().is_empty() {
         Ok("I'm here to help!".to_string())
@@ -1997,19 +2172,22 @@ fn sample_token(logits: &Tensor) -> Result<u32, CandleError> {
     // Handle both 1D and 2D tensors
     let logits_vec = if logits.rank() == 2 {
         // If 2D, flatten to 1D first
-        logits.flatten_all()?.to_vec1::<f32>()
-            .map_err(|e| CandleError::InferenceError(format!("Failed to convert 2D logits to vec: {}", e)))?
+        logits.flatten_all()?.to_vec1::<f32>().map_err(|e| {
+            CandleError::InferenceError(format!("Failed to convert 2D logits to vec: {}", e))
+        })?
     } else {
-        logits.to_vec1::<f32>()
-            .map_err(|e| CandleError::InferenceError(format!("Failed to convert logits to vec: {}", e)))?
+        logits.to_vec1::<f32>().map_err(|e| {
+            CandleError::InferenceError(format!("Failed to convert logits to vec: {}", e))
+        })?
     };
-    
-    let max_index = logits_vec.iter()
+
+    let max_index = logits_vec
+        .iter()
         .enumerate()
         .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .map(|(i, _)| i)
         .unwrap_or(0);
-    
+
     Ok(max_index as u32)
 }
 
@@ -2017,56 +2195,63 @@ fn sample_token(logits: &Tensor) -> Result<u32, CandleError> {
 fn sample_token_improved(logits: &Tensor, temperature: f64) -> Result<u32, CandleError> {
     // Handle both 1D and 2D tensors
     let mut logits_vec = if logits.rank() == 2 {
-        logits.flatten_all()?.to_vec1::<f32>()
-            .map_err(|e| CandleError::InferenceError(format!("Failed to convert 2D logits to vec: {}", e)))?
+        logits.flatten_all()?.to_vec1::<f32>().map_err(|e| {
+            CandleError::InferenceError(format!("Failed to convert 2D logits to vec: {}", e))
+        })?
     } else {
-        logits.to_vec1::<f32>()
-            .map_err(|e| CandleError::InferenceError(format!("Failed to convert logits to vec: {}", e)))?
+        logits.to_vec1::<f32>().map_err(|e| {
+            CandleError::InferenceError(format!("Failed to convert logits to vec: {}", e))
+        })?
     };
-    
+
     // Get top tokens for sampling
-    let mut indexed_logits: Vec<(usize, f32)> = logits_vec.iter().enumerate().map(|(i, &v)| (i, v)).collect();
+    let mut indexed_logits: Vec<(usize, f32)> = logits_vec
+        .iter()
+        .enumerate()
+        .map(|(i, &v)| (i, v))
+        .collect();
     indexed_logits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    
+
     // If temperature is very low, just take argmax
     if temperature < 0.01 {
         let max_index = indexed_logits[0].0;
         return Ok(max_index as u32);
     }
-    
+
     // Apply top-k filtering (k=50)
     let top_k = 50.min(logits_vec.len());
-    
+
     // Zero out all but top-k logits
     for i in top_k..logits_vec.len() {
         let idx = indexed_logits[i].0;
         logits_vec[idx] = f32::NEG_INFINITY;
     }
-    
+
     // Apply softmax with temperature
     let max_logit = logits_vec.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
-    let mut exp_logits: Vec<f32> = logits_vec.iter()
+    let mut exp_logits: Vec<f32> = logits_vec
+        .iter()
         .map(|&x| ((x - max_logit) / temperature as f32).exp())
         .collect();
-    
+
     let sum: f32 = exp_logits.iter().sum();
     if sum > 0.0 {
         for val in &mut exp_logits {
             *val /= sum;
         }
     }
-    
+
     // Sample from the distribution
     let rand_val: f32 = rand::random();
     let mut cumsum = 0.0;
-    
+
     for (i, &prob) in exp_logits.iter().enumerate() {
         cumsum += prob;
         if rand_val <= cumsum {
             return Ok(i as u32);
         }
     }
-    
+
     // Fallback to argmax
     Ok(indexed_logits[0].0 as u32)
 }
@@ -2079,17 +2264,17 @@ fn generate_text_stream(
     created: i64,
 ) -> impl Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>> {
     use candle_core::Tensor;
-    
+
     // Clone values for async closure
     let final_response_id = response_id.clone();
     let final_model_name = state.model_name.clone();
-    
+
     // Create async stream that generates tokens one by one
     async_stream::stream! {
         let device = &state.device;
         let max_tokens = request.max_tokens.unwrap_or(100).min(state.model_config.max_position_embeddings as i32);
         let temperature = request.temperature.unwrap_or(0.7);
-        
+
         // Lock the model for the entire generation process
         // Acquire cache from pool for this generation session
         let mut cache = match state.cache_pool.acquire().await {
@@ -2100,7 +2285,7 @@ fn generate_text_stream(
                 return;
             }
         };
-        
+
         // Convert input tokens to tensor
         let input_ids = match Tensor::from_slice(&tokens, (1, tokens.len()), device) {
             Ok(tensor) => tensor,
@@ -2111,13 +2296,13 @@ fn generate_text_stream(
                 return;
             }
         };
-        
+
         let mut generated_tokens = tokens.clone();
         let mut new_tokens = Vec::new(); // Track only newly generated tokens
         let mut current_input = input_ids;
         let mut _token_count = 0;
         let mut previous_text = String::new(); // Track previously sent text for incremental streaming
-        
+
         // Send initial chunk with role
         let initial_chunk = ChatCompletionChunk {
             id: response_id.clone(),
@@ -2133,9 +2318,9 @@ fn generate_text_stream(
                 finish_reason: None,
             }],
         };
-        
+
         yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&initial_chunk).unwrap()));
-        
+
         // Process initial input tokens using batch processing
         let (mut logits, cache_returned) = {
             let (tx, rx) = tokio::sync::oneshot::channel();
@@ -2145,13 +2330,13 @@ fn generate_text_stream(
                 cache,
                 response_tx: tx,
             };
-            
+
             if state.inference_tx.send(inference_request).is_err() {
                 let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                 yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                 return;
             }
-            
+
             match rx.await {
                 Ok(Ok(result)) => result,
                 Ok(Err(e)) => {
@@ -2167,9 +2352,9 @@ fn generate_text_stream(
                 }
             }
         };
-        
+
         cache = cache_returned;
-        
+
         // Generate tokens one by one
         for step in 0..max_tokens {
             let start_pos = tokens.len() + step as usize;
@@ -2216,7 +2401,7 @@ fn generate_text_stream(
                     yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                     return;
                 };
-                
+
                 // Apply temperature and sample
                 let scaled_logits = if temperature > 0.0 {
                     match last_token_logits.affine(1.0 / temperature as f64, 0.0) {
@@ -2226,7 +2411,7 @@ fn generate_text_stream(
                 } else {
                     last_token_logits
                 };
-                
+
                 match sample_token_improved(&scaled_logits, temperature as f64) {
                     Ok(token) => token,
                     Err(_) => {
@@ -2245,7 +2430,7 @@ fn generate_text_stream(
                         return;
                     }
                 };
-                
+
                 let (new_logits, cache_returned) = {
                     let (tx, rx) = tokio::sync::oneshot::channel();
                     let inference_request = InferenceRequest {
@@ -2254,13 +2439,13 @@ fn generate_text_stream(
                         cache,
                         response_tx: tx,
                     };
-                    
+
                     if state.inference_tx.send(inference_request).is_err() {
                         let error_chunk = create_error_chunk(&response_id, created, &state.model_name);
                         yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                         return;
                     }
-                    
+
                     match rx.await {
                         Ok(Ok(result)) => result,
                         Ok(Err(_)) => {
@@ -2275,10 +2460,10 @@ fn generate_text_stream(
                         }
                     }
                 };
-                
+
                 logits = new_logits;
                 cache = cache_returned;
-                
+
                 // Get logits for the last token position
                 let last_token_logits = if logits.rank() == 2 {
                     match logits.narrow(0, 0, 1).and_then(|t| t.squeeze(0)) {
@@ -2320,7 +2505,7 @@ fn generate_text_stream(
                     yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&error_chunk).unwrap()));
                     return;
                 };
-                
+
                 // Apply temperature and sample
                 let scaled_logits = if temperature > 0.0 {
                     match last_token_logits.affine(1.0 / temperature as f64, 0.0) {
@@ -2330,7 +2515,7 @@ fn generate_text_stream(
                 } else {
                     last_token_logits
                 };
-                
+
                 match sample_token_improved(&scaled_logits, temperature as f64) {
                     Ok(token) => token,
                     Err(_) => {
@@ -2340,11 +2525,11 @@ fn generate_text_stream(
                     }
                 }
             };
-            
+
             generated_tokens.push(next_token);
             new_tokens.push(next_token);
             _token_count += 1;
-            
+
             // For proper streaming with spaces, decode all new tokens and get incremental difference
             let new_content = if let Ok(full_text) = state.tokenizer.decode(&new_tokens, true) {
                 // Get only the new content by removing what we've already sent
@@ -2353,29 +2538,29 @@ fn generate_text_stream(
                 } else {
                     String::new()
                 };
-                
+
                 // Update previous text for next iteration
                 previous_text = full_text;
-                
+
                 incremental_content
             } else {
                 String::new()
             };
-            
+
             // Check for stop sequences and EOS tokens
             let mut should_stop = false;
-            
+
             // Check for EOS tokens that should stop generation
             if next_token == state.tokenizer_config.eos_token_id {
                 should_stop = true;
             }
-            
+
             // Check max tokens limit
             if new_tokens.len() >= max_tokens as usize {
                 should_stop = true;
             }
             let mut final_content = new_content.clone();
-            
+
             if let Some(stop_sequences) = &request.stop {
                 for stop_seq in stop_sequences {
                     if final_content.contains(stop_seq) {
@@ -2388,7 +2573,7 @@ fn generate_text_stream(
                     }
                 }
             }
-            
+
             // Send the token chunk
             if !final_content.is_empty() {
                 let chunk = ChatCompletionChunk {
@@ -2405,17 +2590,17 @@ fn generate_text_stream(
                         finish_reason: None,
                     }],
                 };
-                
+
                 yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&chunk).unwrap()));
             }
-            
+
             if should_stop {
                 break;
             }
-            
+
             // Add small delay to simulate realistic streaming
             tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-            
+
             // Update input for next iteration
             if let Ok(new_input) = Tensor::from_slice(&generated_tokens, (1, generated_tokens.len()), device) {
                 current_input = new_input;
@@ -2425,7 +2610,7 @@ fn generate_text_stream(
                 return;
             }
         }
-        
+
         // Send final chunk
         let final_chunk = ChatCompletionChunk {
             id: final_response_id,
@@ -2441,9 +2626,9 @@ fn generate_text_stream(
                 finish_reason: Some("stop".to_string()),
             }],
         };
-        
+
         yield Ok(axum::response::sse::Event::default().data(serde_json::to_string(&final_chunk).unwrap()));
-        
+
         // Return cache to pool
         state.cache_pool.release(cache).await;
     }
@@ -2485,23 +2670,23 @@ fn apply_context_shift(
 
     // Calculate available space after preserving start and end
     let available_space = max_context_len.saturating_sub(preserve_start + preserve_end);
-    
+
     if available_space == 0 {
         // If no space left, just take the most recent tokens
         return tokens[tokens.len().saturating_sub(max_context_len)..].to_vec();
     }
 
     let mut shifted_tokens = Vec::with_capacity(max_context_len);
-    
+
     // Preserve the beginning (system prompt, first user message, etc.)
     if preserve_start > 0 {
         let start_end = preserve_start.min(tokens.len());
         shifted_tokens.extend_from_slice(&tokens[..start_end]);
     }
-    
+
     // Add ellipsis token if we're cutting content (optional, depends on tokenizer)
     // For now, we'll just add a space to indicate truncation
-    
+
     // Preserve the end (recent conversation)
     if preserve_end > 0 && tokens.len() > preserve_end {
         let end_start = tokens.len().saturating_sub(preserve_end);

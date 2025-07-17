@@ -103,7 +103,7 @@ pub fn admin_routes() -> Router {
         )
         .route(
             "/api/admin/user-group-model-provider-relationships",
-            get(api::user_groups::list_user_group_model_provider_relationships)
+            get(api::user_groups::list_user_group_provider_relationships)
                 .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
         // Admin configuration routes
@@ -188,7 +188,7 @@ pub fn admin_routes() -> Router {
         )
         .route(
             "/api/admin/providers/{provider_id}/test-proxy",
-            post(api::providers::test_model_provider_proxy_connection).layer(middleware::from_fn(
+            post(api::providers::test_provider_proxy_connection).layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
         )

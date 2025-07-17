@@ -1,6 +1,4 @@
-use crate::ai::candle::CandleError;
-use crate::ai::scheduler::{PhysicalBlock, LogicalBlock};
-use candle_core::{Device, Tensor, DType, Result as CandleResult};
+use candle_core::{DType, Device, Result as CandleResult, Tensor};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -60,16 +58,8 @@ impl KVCacheBlock {
         head_size: usize,
     ) -> CandleResult<Self> {
         // Initialize empty cache tensors
-        let key_cache = Tensor::zeros(
-            (block_size, num_heads, head_size),
-            dtype,
-            &device,
-        )?;
-        let value_cache = Tensor::zeros(
-            (block_size, num_heads, head_size),
-            dtype,
-            &device,
-        )?;
+        let key_cache = Tensor::zeros((block_size, num_heads, head_size), dtype, &device)?;
+        let value_cache = Tensor::zeros((block_size, num_heads, head_size), dtype, &device)?;
 
         Ok(Self {
             block_id,
@@ -119,7 +109,7 @@ impl KVCacheBlock {
                     // Copy key and value to the specific slot
                     let key_slice = key.narrow(0, i, 1)?;
                     let value_slice = value.narrow(0, i, 1)?;
-                    
+
                     // This is a simplified update - in a real implementation,
                     // you'd need to properly update the cache tensors
                     // key_cache.slice_assign(&[slot..slot+1], &key_slice)?;
@@ -149,7 +139,7 @@ impl PagedAttention {
 
     pub async fn create_kv_cache_block(&self, block_id: Uuid) -> CandleResult<()> {
         let mut blocks = self.kv_cache_blocks.lock().await;
-        
+
         if !blocks.contains_key(&block_id) {
             let block = KVCacheBlock::new(
                 block_id,
@@ -161,7 +151,7 @@ impl PagedAttention {
             )?;
             blocks.insert(block_id, block);
         }
-        
+
         Ok(())
     }
 
@@ -170,9 +160,13 @@ impl PagedAttention {
         blocks.remove(&block_id);
     }
 
-    pub async fn copy_kv_cache_blocks(&self, src_blocks: &[Uuid], dst_blocks: &[Uuid]) -> CandleResult<()> {
+    pub async fn copy_kv_cache_blocks(
+        &self,
+        src_blocks: &[Uuid],
+        dst_blocks: &[Uuid],
+    ) -> CandleResult<()> {
         let mut blocks = self.kv_cache_blocks.lock().await;
-        
+
         for (src_id, dst_id) in src_blocks.iter().zip(dst_blocks.iter()) {
             if let Some(src_block) = blocks.get(src_id).cloned() {
                 if let Some(dst_block) = blocks.get_mut(dst_id) {
@@ -180,7 +174,7 @@ impl PagedAttention {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -205,20 +199,30 @@ impl PagedAttention {
         let num_kv_heads = self.config.num_kv_heads;
 
         // Reshape query, key, value for multi-head attention
-        let query = query.reshape((batch_size, seq_len, num_heads, head_size))?.transpose(1, 2)?;
-        let key = key.reshape((batch_size, seq_len, num_kv_heads, head_size))?.transpose(1, 2)?;
-        let value = value.reshape((batch_size, seq_len, num_kv_heads, head_size))?.transpose(1, 2)?;
+        let query = query
+            .reshape((batch_size, seq_len, num_heads, head_size))?
+            .transpose(1, 2)?;
+        let key = key
+            .reshape((batch_size, seq_len, num_kv_heads, head_size))?
+            .transpose(1, 2)?;
+        let value = value
+            .reshape((batch_size, seq_len, num_kv_heads, head_size))?
+            .transpose(1, 2)?;
 
         // Update KV cache blocks
-        self.update_kv_cache_blocks(&key, &value, kv_cache_blocks, slot_mapping).await?;
+        self.update_kv_cache_blocks(&key, &value, kv_cache_blocks, slot_mapping)
+            .await?;
 
         // Perform attention computation with cached values
-        let attention_output = self.compute_attention(&query, kv_cache_blocks, input_metadata).await?;
+        let attention_output = self
+            .compute_attention(&query, kv_cache_blocks, input_metadata)
+            .await?;
 
         // Reshape output back to original format
-        let output = attention_output
-            .transpose(1, 2)?
-            .reshape((batch_size, seq_len, hidden_size))?;
+        let output =
+            attention_output
+                .transpose(1, 2)?
+                .reshape((batch_size, seq_len, hidden_size))?;
 
         Ok(output)
     }
@@ -231,20 +235,20 @@ impl PagedAttention {
         slot_mapping: &[usize],
     ) -> CandleResult<()> {
         let mut blocks = self.kv_cache_blocks.lock().await;
-        
+
         for (i, &block_id) in kv_cache_blocks.iter().enumerate() {
             if let Some(block) = blocks.get_mut(&block_id) {
                 // Calculate slot mapping for this block
                 let start_idx = i * self.config.block_size;
                 let end_idx = std::cmp::min(start_idx + self.config.block_size, slot_mapping.len());
-                
+
                 if start_idx < end_idx {
                     let block_slot_mapping = &slot_mapping[start_idx..end_idx];
                     block.update_cache(key, value, block_slot_mapping)?;
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -256,42 +260,51 @@ impl PagedAttention {
     ) -> CandleResult<Tensor> {
         let blocks = self.kv_cache_blocks.lock().await;
         let (batch_size, num_heads, seq_len, head_size) = query.dims4()?;
-        
+
         // Collect all key and value tensors from cache blocks
         let mut all_keys = Vec::new();
         let mut all_values = Vec::new();
-        
+
         for &block_id in kv_cache_blocks {
             if let Some(block) = blocks.get(&block_id) {
-                if let (Some(key_cache), Some(value_cache)) = (&block.key_cache, &block.value_cache) {
+                if let (Some(key_cache), Some(value_cache)) = (&block.key_cache, &block.value_cache)
+                {
                     all_keys.push(key_cache.clone());
                     all_values.push(value_cache.clone());
                 }
             }
         }
-        
+
         if all_keys.is_empty() {
             // No cached values, return zeros
-            return Tensor::zeros((batch_size, num_heads, seq_len, head_size), query.dtype(), query.device());
+            return Tensor::zeros(
+                (batch_size, num_heads, seq_len, head_size),
+                query.dtype(),
+                query.device(),
+            );
         }
-        
+
         // Concatenate all cached keys and values
         let cached_keys = if all_keys.len() == 1 {
             all_keys[0].clone()
         } else {
             Tensor::cat(&all_keys, 0)?
         };
-        
+
         let cached_values = if all_values.len() == 1 {
             all_values[0].clone()
         } else {
             Tensor::cat(&all_values, 0)?
         };
-        
+
         // Compute attention scores
         let scores = query.matmul(&cached_keys.transpose(2, 3)?)?;
-        let scaled_scores = scores.mul(&Tensor::from_slice(&[self.config.scale], (1,), scores.device())?)?;
-        
+        let scaled_scores = scores.mul(&Tensor::from_slice(
+            &[self.config.scale],
+            (1,),
+            scores.device(),
+        )?)?;
+
         // Apply attention mask if provided
         let attention_weights = if let Some(mask) = &input_metadata.attention_mask {
             let masked_scores = scaled_scores.broadcast_add(mask)?;
@@ -299,17 +312,26 @@ impl PagedAttention {
         } else {
             candle_nn::ops::softmax_last_dim(&scaled_scores)?
         };
-        
+
         // Apply attention weights to values
         let attention_output = attention_weights.matmul(&cached_values)?;
-        
+
         Ok(attention_output)
     }
 
-    fn regular_attention(&self, query: &Tensor, key: &Tensor, value: &Tensor) -> CandleResult<Tensor> {
+    fn regular_attention(
+        &self,
+        query: &Tensor,
+        key: &Tensor,
+        value: &Tensor,
+    ) -> CandleResult<Tensor> {
         // Simple attention implementation without paging
         let scores = query.matmul(&key.transpose(2, 3)?)?;
-        let scaled_scores = scores.mul(&Tensor::from_slice(&[self.config.scale], (1,), scores.device())?)?;
+        let scaled_scores = scores.mul(&Tensor::from_slice(
+            &[self.config.scale],
+            (1,),
+            scores.device(),
+        )?)?;
         let attention_weights = candle_nn::ops::softmax_last_dim(&scaled_scores)?;
         let attention_output = attention_weights.matmul(value)?;
         Ok(attention_output)
@@ -392,7 +414,7 @@ pub struct CacheEngine {
 impl CacheEngine {
     pub fn new(config: PagedAttentionConfig, device: Device) -> Self {
         let paged_attention = PagedAttention::new(config, device);
-        
+
         Self {
             paged_attention,
             gpu_cache_blocks: HashMap::new(),
@@ -410,17 +432,27 @@ impl CacheEngine {
 
     pub async fn swap_in(&mut self, src_blocks: &[Uuid], dst_blocks: &[Uuid]) -> CandleResult<()> {
         // Swap cache blocks from CPU to GPU
-        self.paged_attention.copy_kv_cache_blocks(src_blocks, dst_blocks).await
+        self.paged_attention
+            .copy_kv_cache_blocks(src_blocks, dst_blocks)
+            .await
     }
 
     pub async fn swap_out(&mut self, src_blocks: &[Uuid], dst_blocks: &[Uuid]) -> CandleResult<()> {
         // Swap cache blocks from GPU to CPU
-        self.paged_attention.copy_kv_cache_blocks(src_blocks, dst_blocks).await
+        self.paged_attention
+            .copy_kv_cache_blocks(src_blocks, dst_blocks)
+            .await
     }
 
-    pub async fn copy_blocks(&mut self, src_blocks: &[Uuid], dst_blocks: &[Uuid]) -> CandleResult<()> {
+    pub async fn copy_blocks(
+        &mut self,
+        src_blocks: &[Uuid],
+        dst_blocks: &[Uuid],
+    ) -> CandleResult<()> {
         // Copy cache blocks (for fork operations)
-        self.paged_attention.copy_kv_cache_blocks(src_blocks, dst_blocks).await
+        self.paged_attention
+            .copy_kv_cache_blocks(src_blocks, dst_blocks)
+            .await
     }
 }
 
@@ -433,19 +465,19 @@ pub mod utils {
         block_size: usize,
     ) -> HashMap<Uuid, Vec<Uuid>> {
         let mut block_tables = HashMap::new();
-        
+
         for seq in sequences {
             let mut blocks = Vec::new();
             let seq_len = seq.get_len();
             let num_blocks = (seq_len + block_size - 1) / block_size;
-            
+
             for _ in 0..num_blocks {
                 blocks.push(Uuid::new_v4());
             }
-            
+
             block_tables.insert(seq.id, blocks);
         }
-        
+
         block_tables
     }
 
@@ -454,21 +486,21 @@ pub mod utils {
         block_size: usize,
     ) -> Vec<usize> {
         let mut slot_mapping = Vec::new();
-        
+
         for seq in sequences {
             let seq_len = seq.get_len();
             let num_blocks = (seq_len + block_size - 1) / block_size;
-            
+
             for block_idx in 0..num_blocks {
                 let start_pos = block_idx * block_size;
                 let end_pos = std::cmp::min(start_pos + block_size, seq_len);
-                
+
                 for pos in start_pos..end_pos {
                     slot_mapping.push(pos % block_size);
                 }
             }
         }
-        
+
         slot_mapping
     }
 

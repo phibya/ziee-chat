@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -48,7 +46,6 @@ pub enum ModelFileType {
 }
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct TempFile {
     pub temp_file_id: Uuid,
     pub filename: String,
@@ -72,7 +69,7 @@ pub struct ModelStorage {
 }
 
 impl ModelStorage {
-    pub fn new() -> Result<Self, ModelStorageError> {
+    pub async fn new() -> Result<Self, ModelStorageError> {
         let app_data_path = crate::APP_DATA_DIR.clone();
         let base_path = app_data_path.join("models");
 
@@ -82,7 +79,7 @@ impl ModelStorage {
                 "Creating ModelStorage base directory: {}",
                 base_path.display()
             );
-            fs::create_dir_all(&base_path).map_err(|e| {
+            tokio::fs::create_dir_all(&base_path).await.map_err(|e| {
                 ModelStorageError::Io(std::io::Error::new(
                     e.kind(),
                     format!(
@@ -98,7 +95,7 @@ impl ModelStorage {
         let temp_base = app_data_path.join("temp");
         if !temp_base.exists() {
             println!("Creating temp directory: {}", temp_base.display());
-            fs::create_dir_all(&temp_base).map_err(|e| {
+            tokio::fs::create_dir_all(&temp_base).await.map_err(|e| {
                 ModelStorageError::Io(std::io::Error::new(
                     e.kind(),
                     format!(
@@ -126,7 +123,7 @@ impl ModelStorage {
     }
 
     /// Create a new model directory
-    pub fn create_model_directory(
+    pub async fn create_model_directory(
         &self,
         provider_id: &Uuid,
         model_id: &Uuid,
@@ -140,7 +137,7 @@ impl ModelStorage {
             )));
         }
 
-        fs::create_dir_all(&model_path)?;
+        tokio::fs::create_dir_all(&model_path).await?;
         Ok(model_path)
     }
 
@@ -155,13 +152,11 @@ impl ModelStorage {
         let model_path = self.get_model_path(provider_id, model_id);
 
         if !model_path.exists() {
-            fs::create_dir_all(&model_path)?;
+            tokio::fs::create_dir_all(&model_path).await?;
         }
 
         let file_path = model_path.join(filename);
-        let mut file = fs::File::create(&file_path)?;
-        file.write_all(data)?;
-        file.sync_all()?;
+        tokio::fs::write(&file_path, data).await?;
 
         let file_type = Self::detect_file_type(filename);
         let size_bytes = data.len() as u64;
@@ -174,26 +169,8 @@ impl ModelStorage {
         })
     }
 
-    /// Save model metadata
-    pub fn save_metadata(
-        &self,
-        provider_id: &Uuid,
-        model_id: &Uuid,
-        metadata: &ModelMetadata,
-    ) -> Result<(), ModelStorageError> {
-        let model_path = self.get_model_path(provider_id, model_id);
-        let metadata_path = model_path.join("metadata.json");
-
-        let metadata_json = serde_json::to_string_pretty(metadata).map_err(|e| {
-            ModelStorageError::InvalidModel(format!("Failed to serialize metadata: {}", e))
-        })?;
-
-        fs::write(metadata_path, metadata_json)?;
-        Ok(())
-    }
-
     /// Load model metadata
-    pub fn load_metadata(
+    pub async fn load_metadata(
         &self,
         provider_id: &Uuid,
         model_id: &Uuid,
@@ -208,7 +185,7 @@ impl ModelStorage {
             )));
         }
 
-        let metadata_content = fs::read_to_string(metadata_path)?;
+        let metadata_content = tokio::fs::read_to_string(metadata_path).await?;
         let metadata: ModelMetadata = serde_json::from_str(&metadata_content).map_err(|e| {
             ModelStorageError::InvalidModel(format!("Failed to parse metadata: {}", e))
         })?;
@@ -216,23 +193,8 @@ impl ModelStorage {
         Ok(metadata)
     }
 
-    /// Delete a model and all its files
-    pub fn delete_model(
-        &self,
-        provider_id: &Uuid,
-        model_id: &Uuid,
-    ) -> Result<(), ModelStorageError> {
-        let model_path = self.get_model_path(provider_id, model_id);
-
-        if model_path.exists() {
-            fs::remove_dir_all(model_path)?;
-        }
-
-        Ok(())
-    }
-
     /// List all models for a provider
-    pub fn list_provider_models(
+    pub async fn list_provider_models(
         &self,
         provider_id: &Uuid,
     ) -> Result<Vec<(Uuid, ModelMetadata)>, ModelStorageError> {
@@ -244,11 +206,11 @@ impl ModelStorage {
 
         let mut models = Vec::new();
 
-        for entry in fs::read_dir(provider_path)? {
-            let entry = entry?;
-            if entry.file_type()?.is_dir() {
+        let mut read_dir = tokio::fs::read_dir(provider_path).await?;
+        while let Some(entry) = read_dir.next_entry().await? {
+            if entry.file_type().await?.is_dir() {
                 if let Ok(model_id) = entry.file_name().to_string_lossy().parse::<Uuid>() {
-                    if let Ok(metadata) = self.load_metadata(provider_id, &model_id) {
+                    if let Ok(metadata) = self.load_metadata(provider_id, &model_id).await {
                         models.push((model_id, metadata));
                     }
                 }
@@ -259,18 +221,18 @@ impl ModelStorage {
     }
 
     /// Get total storage size for a provider
-    pub fn get_provider_storage_size(&self, provider_id: &Uuid) -> Result<u64, ModelStorageError> {
+    pub async fn get_provider_storage_size(&self, provider_id: &Uuid) -> Result<u64, ModelStorageError> {
         let provider_path = self.base_path.join(provider_id.to_string());
 
         if !provider_path.exists() {
             return Ok(0);
         }
 
-        Ok(Self::calculate_directory_size(&provider_path)?)
+        Ok(Self::calculate_directory_size(&provider_path).await?)
     }
 
     /// Validate model files
-    pub fn validate_model(
+    pub async fn validate_model(
         &self,
         provider_id: &Uuid,
         model_id: &Uuid,
@@ -295,19 +257,20 @@ impl ModelStorage {
         }
 
         // Check for model weight files
-        let has_weights = model_path
-            .read_dir()
-            .map_err(|e| ModelStorageError::Io(e))?
-            .any(|entry| {
-                if let Ok(entry) = entry {
-                    let filename = entry.file_name().to_string_lossy().to_lowercase();
-                    filename.ends_with(".safetensors")
-                        || filename.ends_with(".bin")
-                        || filename.ends_with(".pth")
-                } else {
-                    false
-                }
-            });
+        let mut read_dir = tokio::fs::read_dir(&model_path).await
+            .map_err(|e| ModelStorageError::Io(e))?;
+        
+        let mut has_weights = false;
+        while let Some(entry) = read_dir.next_entry().await
+            .map_err(|e| ModelStorageError::Io(e))? {
+            let filename = entry.file_name().to_string_lossy().to_lowercase();
+            if filename.ends_with(".safetensors")
+                || filename.ends_with(".bin")
+                || filename.ends_with(".pth") {
+                has_weights = true;
+                break;
+            }
+        }
 
         if !has_weights {
             issues.push("No model weight files found (.safetensors, .bin, or .pth)".to_string());
@@ -347,17 +310,20 @@ impl ModelStorage {
     }
 
     /// Calculate directory size recursively
-    fn calculate_directory_size(path: &Path) -> Result<u64, std::io::Error> {
+    async fn calculate_directory_size(path: &Path) -> Result<u64, std::io::Error> {
         let mut total_size = 0;
+        let mut dirs_to_visit = vec![path.to_path_buf()];
 
-        for entry in fs::read_dir(path)? {
-            let entry = entry?;
-            let metadata = entry.metadata()?;
+        while let Some(current_path) = dirs_to_visit.pop() {
+            let mut read_dir = tokio::fs::read_dir(&current_path).await?;
+            while let Some(entry) = read_dir.next_entry().await? {
+                let metadata = entry.metadata().await?;
 
-            if metadata.is_dir() {
-                total_size += Self::calculate_directory_size(&entry.path())?;
-            } else {
-                total_size += metadata.len();
+                if metadata.is_dir() {
+                    dirs_to_visit.push(entry.path());
+                } else {
+                    total_size += metadata.len();
+                }
             }
         }
 
@@ -400,7 +366,7 @@ impl ModelStorage {
         // Ensure temp directory exists
         if !temp_base.exists() {
             println!("Creating temp directory: {}", temp_base.display());
-            fs::create_dir_all(&temp_base).map_err(|e| {
+            tokio::fs::create_dir_all(&temp_base).await.map_err(|e| {
                 ModelStorageError::Io(std::io::Error::new(
                     e.kind(),
                     format!(
@@ -429,15 +395,12 @@ impl ModelStorage {
         let file_path = temp_base.join(format!("{}_{}", temp_file_id, safe_filename));
         println!("Saving temp file to: {}", file_path.display());
 
-        let mut file = fs::File::create(&file_path).map_err(|e| {
+        tokio::fs::write(&file_path, data).await.map_err(|e| {
             ModelStorageError::Io(std::io::Error::new(
                 e.kind(),
-                format!("Failed to create file {}: {}", file_path.display(), e),
+                format!("Failed to write file {}: {}", file_path.display(), e),
             ))
         })?;
-
-        file.write_all(data)?;
-        file.sync_all()?;
 
         println!(
             "Successfully saved temp file: {} ({} bytes)",
@@ -466,12 +429,11 @@ impl ModelStorage {
         let temp_path = crate::APP_DATA_DIR.join("temp");
 
         // Find the temp file
-        let temp_files = fs::read_dir(&temp_path)?;
+        let mut read_dir = tokio::fs::read_dir(&temp_path).await?;
         let mut temp_file_path = None;
         let mut original_filename = None;
 
-        for entry in temp_files {
-            let entry = entry?;
+        while let Some(entry) = read_dir.next_entry().await? {
             let file_name = entry.file_name().to_string_lossy().to_string();
 
             if file_name.starts_with(&format!("{}_", temp_file_id)) {
@@ -493,16 +455,16 @@ impl ModelStorage {
         // Create permanent storage location
         let model_path = self.get_model_path(provider_id, model_id);
         if !model_path.exists() {
-            fs::create_dir_all(&model_path)?;
+            tokio::fs::create_dir_all(&model_path).await?;
         }
 
         let permanent_path = model_path.join(&filename);
 
         // Move file from temp to permanent storage
-        fs::rename(&temp_file_path, &permanent_path)?;
+        tokio::fs::rename(&temp_file_path, &permanent_path).await?;
 
         // Read file to calculate checksum
-        let data = fs::read(&permanent_path)?;
+        let data = tokio::fs::read(&permanent_path).await?;
         let checksum = Self::calculate_checksum(&data);
 
         Ok(CommittedFile {

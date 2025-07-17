@@ -418,7 +418,7 @@ pub async fn get_model(
 }
 
 // Test proxy connection for model provider
-pub async fn test_model_provider_proxy_connection(
+pub async fn test_provider_proxy_connection(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(_provider_id): Path<Uuid>,
     Json(request): Json<ProviderProxySettings>,
@@ -563,7 +563,7 @@ pub async fn get_provider_groups(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
 ) -> ApiResult<Json<Vec<UserGroup>>> {
-    match user_group_providers::get_groups_for_model_provider(provider_id).await {
+    match user_group_providers::get_groups_for_provider(provider_id).await {
         Ok(groups) => Ok(Json(groups)),
         Err(e) => {
             eprintln!("Error getting groups for model provider: {}", e);

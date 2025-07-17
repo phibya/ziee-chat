@@ -338,15 +338,9 @@ export function ProvidersSettings() {
     try {
       await updateProvider(currentProvider.id, pendingSettings)
 
-      // Update form with the new values from updated provider
-      const updatedProvider = providers.find(p => p.id === currentProvider.id)
-      if (updatedProvider) {
-        form.setFieldsValue({
-          api_key: updatedProvider.api_key,
-          base_url: updatedProvider.base_url,
-          settings: updatedProvider.settings,
-        })
-      }
+      // Don't reset form fields - they should keep their current values
+      // The form already has the values the user entered, and the backend
+      // update was successful, so no need to overwrite them
 
       setHasUnsavedChanges(false)
       setPendingSettings(null)
