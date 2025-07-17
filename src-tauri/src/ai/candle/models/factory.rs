@@ -7,6 +7,7 @@ use std::path::Path;
 use tokenizers::Tokenizer;
 
 use super::super::candle::{CandleError, CandleModel};
+use super::super::quantization::{QuantConfig, QuantMethod, GptqConfig, GptqLoader};
 
 /// Check if two devices are the same by comparing their debug representation
 /// This is a workaround since Device doesn't implement PartialEq
@@ -24,7 +25,7 @@ struct ConfigJson {
     num_key_value_heads: Option<usize>,
     max_position_embeddings: usize,
     rms_norm_eps: f64,
-    rope_theta: f32,
+    rope_theta: Option<f32>,
     bos_token_id: Option<u32>,
     eos_token_id: Option<u32>,
     tie_word_embeddings: Option<bool>,
@@ -41,7 +42,7 @@ impl ConfigJson {
             num_key_value_heads: self.num_key_value_heads.unwrap_or(self.num_attention_heads),
             max_position_embeddings: self.max_position_embeddings,
             rms_norm_eps: self.rms_norm_eps,
-            rope_theta: self.rope_theta,
+            rope_theta: self.rope_theta.unwrap_or(10000.0),
             bos_token_id: Some(self.bos_token_id.unwrap_or(1)),
             eos_token_id: Some(LlamaEosToks::Single(self.eos_token_id.unwrap_or(2))),
             rope_scaling: None,
@@ -277,6 +278,111 @@ impl CandleModel for LlamaModelWrapper {
 /// Model factory for creating different model types
 pub struct ModelFactory;
 
+/// GPTQ-quantized LLaMA model wrapper
+#[derive(Debug)]
+pub struct GptqLlamaModelWrapper {
+    config: LlamaConfig,
+    quantization_config: QuantConfig,
+    device: Device,
+    // For simplicity, we'll fall back to regular model for now
+    // In a full implementation, this would contain GPTQ linear layers
+    inner_model: LlamaModelWrapper,
+}
+
+impl GptqLlamaModelWrapper {
+    pub fn load(
+        model_path: &str,
+        device: &Device,
+        quant_config: &QuantConfig,
+    ) -> Result<Self, CandleError> {
+        // Validate quantization config
+        quant_config.validate().map_err(|e| CandleError::ConfigError(e))?;
+
+        println!(
+            "Loading GPTQ model with {} bits, group size {}, symmetric: {}",
+            quant_config.bits, quant_config.group_size, quant_config.symmetric
+        );
+
+        // Load configuration first
+        let config_path = Path::new(model_path).join("config.json");
+        let config_str = std::fs::read_to_string(&config_path)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to read config: {}", e)))?;
+        let config_json: ConfigJson = serde_json::from_str(&config_str)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to parse config: {}", e)))?;
+        let config = config_json.to_candle_config();
+
+        // Check for GPTQ tensors first to avoid loading wrong format
+        let safetensors_path = Path::new(model_path).join("model.safetensors");
+        if !safetensors_path.exists() {
+            return Err(CandleError::ModelLoadError(
+                "GPTQ model.safetensors file not found".to_string()
+            ));
+        }
+
+        // First check the safetensors file metadata for tensor names without loading
+        let safetensors_content = std::fs::read(&safetensors_path)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to read safetensors: {}", e)))?;
+        
+        // Parse safetensors metadata to check for GPTQ tensor names
+        let has_qweight_tensors = {
+            // Look for characteristic GPTQ tensor patterns in the file
+            let content_str = String::from_utf8_lossy(&safetensors_content);
+            content_str.contains(".qweight") && content_str.contains(".scales")
+        };
+
+        if has_qweight_tensors {
+            println!("✓ Detected GPTQ tensors (qweight, scales, qzeros format)");
+            
+            // This is a proper GPTQ model - we would implement full GPTQ loading here
+            // For now, return an error explaining the limitation
+            return Err(CandleError::ModelLoadError(
+                "GPTQ tensor loading is detected but not yet fully implemented. \
+                The model contains GPTQ tensors (qweight, scales, qzeros) which require \
+                specialized loading logic and GPTQ linear layers. \
+                This will be implemented in a future update.".to_string()
+            ));
+        } else {
+            println!("⚠️  Warning: Model has quantization_config but uses regular tensor format");
+            println!("   This appears to be a regular model misidentified as GPTQ");
+            
+            // Fall back to regular loading for models that claim to be GPTQ but aren't
+            let inner_model = LlamaModelWrapper::load(model_path, device)?;
+            
+            Ok(Self {
+                config: inner_model.get_config(),
+                quantization_config: quant_config.clone(),
+                device: device.clone(),
+                inner_model,
+            })
+        }
+    }
+}
+
+impl CandleModel for GptqLlamaModelWrapper {
+    fn forward(&mut self, input_ids: &Tensor, start_pos: usize) -> candle_core::Result<Tensor> {
+        // For now, delegate to the inner model
+        // In a full implementation, this would use GPTQ layers
+        self.inner_model.forward(input_ids, start_pos)
+    }
+
+    fn forward_with_cache(
+        &self,
+        input_ids: &Tensor,
+        start_pos: usize,
+        cache: &mut Cache,
+    ) -> candle_core::Result<Tensor> {
+        self.inner_model.forward_with_cache(input_ids, start_pos, cache)
+    }
+
+    fn clear_cache(&mut self) {
+        self.inner_model.clear_cache()
+    }
+
+    fn get_config(&self) -> LlamaConfig {
+        self.config.clone()
+    }
+}
+
 impl ModelFactory {
     pub fn create_model(
         model_type: &str,
@@ -337,6 +443,124 @@ impl ModelFactory {
             }
             _ => Err(CandleError::UnsupportedModel(model_type.to_string())),
         }
+    }
+
+    /// Detect quantization format in model directory
+    pub fn detect_quantization(model_path: &str) -> Result<QuantConfig, CandleError> {
+        let path = Path::new(model_path);
+        
+        // Try to detect GPTQ first
+        if let Ok(Some(gptq_config)) = GptqLoader::detect_gptq_model(path) {
+            let quant_config: QuantConfig = gptq_config.into();
+            return Ok(quant_config);
+        }
+        
+        // TODO: Add GGUF detection here
+        
+        // Default to no quantization
+        Ok(QuantConfig::default())
+    }
+
+    /// Create a quantized model based on detected or specified quantization
+    pub fn create_quantized_model(
+        model_type: &str,
+        model_path: &str,
+        device: &Device,
+        quant_config: Option<&QuantConfig>,
+    ) -> Result<Box<dyn CandleModel + Send + Sync>, CandleError> {
+        let quant_config = if let Some(config) = quant_config {
+            config.clone()
+        } else {
+            Self::detect_quantization(model_path)?
+        };
+
+        match quant_config.method {
+            QuantMethod::None => {
+                // Load normal model
+                Self::create_model(model_type, model_path, device)
+            }
+            QuantMethod::Gptq | QuantMethod::Awq | QuantMethod::Marlin => {
+                // Load GPTQ quantized model
+                Self::create_gptq_model(model_type, model_path, device, &quant_config)
+            }
+            QuantMethod::Gguf => {
+                // Load GGUF model (future implementation)
+                Err(CandleError::UnsupportedModel("GGUF not yet implemented".to_string()))
+            }
+        }
+    }
+
+    /// Create a GPTQ quantized model
+    pub fn create_gptq_model(
+        model_type: &str,
+        model_path: &str,
+        device: &Device,
+        quant_config: &QuantConfig,
+    ) -> Result<Box<dyn CandleModel + Send + Sync>, CandleError> {
+        match model_type.to_lowercase().as_str() {
+            "llama" => {
+                // For now, create a wrapper that uses GPTQ linear layers
+                let model = GptqLlamaModelWrapper::load(model_path, device, quant_config)?;
+                Ok(Box::new(model))
+            }
+            _ => Err(CandleError::UnsupportedModel(format!(
+                "GPTQ not supported for model type: {}",
+                model_type
+            ))),
+        }
+    }
+
+    /// Auto-detect model format and quantization
+    pub fn auto_detect_and_create(
+        model_path: &str,
+        device: &Device,
+    ) -> Result<Box<dyn CandleModel + Send + Sync>, CandleError> {
+        // First detect architecture
+        let architecture = Self::detect_model_architecture(model_path)?;
+        
+        // Then detect quantization
+        let quant_config = Self::detect_quantization(model_path)?;
+        
+        // Create appropriate model
+        Self::create_quantized_model(&architecture, model_path, device, Some(&quant_config))
+    }
+
+    /// Detect model architecture from config file
+    pub fn detect_model_architecture(model_path: &str) -> Result<String, CandleError> {
+        let config_path = Path::new(model_path).join("config.json");
+        
+        if !config_path.exists() {
+            return Ok("llama".to_string()); // Default fallback
+        }
+
+        let config_content = std::fs::read_to_string(&config_path)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to read config.json: {}", e)))?;
+        
+        let config: serde_json::Value = serde_json::from_str(&config_content)
+            .map_err(|e| CandleError::ModelLoadError(format!("Failed to parse config.json: {}", e)))?;
+
+        // Try model_type first
+        if let Some(model_type) = config.get("model_type").and_then(|v| v.as_str()) {
+            return Ok(model_type.to_string());
+        }
+
+        // Try architectures array
+        if let Some(architectures) = config.get("architectures").and_then(|v| v.as_array()) {
+            if let Some(arch) = architectures.first().and_then(|v| v.as_str()) {
+                let normalized = arch.to_lowercase();
+                if normalized.contains("llama") {
+                    return Ok("llama".to_string());
+                } else if normalized.contains("mistral") {
+                    return Ok("mistral".to_string());
+                } else if normalized.contains("qwen") {
+                    return Ok("qwen".to_string());
+                }
+                return Ok(normalized);
+            }
+        }
+
+        // Default fallback
+        Ok("llama".to_string())
     }
 }
 

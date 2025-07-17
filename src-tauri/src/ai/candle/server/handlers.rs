@@ -1,5 +1,6 @@
 use super::super::candle::{CandleError, CandleModel};
 use super::super::models::ModelFactory;
+use super::super::quantization::QuantConfig;
 use crate::ai::providers::openai_types::*;
 use axum::{
     extract::{Path, State},
@@ -881,7 +882,7 @@ impl ModelServerState {
         // Configure auto unload
         Self::configure_auto_unload(auto_unload_model, auto_unload_minutes);
 
-        let model = ModelFactory::create_model(architecture, model_path, &device)?;
+        let model = ModelFactory::auto_detect_and_create(model_path, &device)?;
         let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
 
         let started_at = SystemTime::now()
@@ -1113,6 +1114,159 @@ impl ModelServerState {
 
         let tokenizer =
             ModelFactory::load_tokenizer_with_file(architecture, model_path, tokenizer_file)?;
+
+        let started_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64;
+
+        // Load tokenizer and model configuration from config files
+        let tokenizer_config = Self::load_tokenizer_config(model_path);
+        let model_config = Self::load_model_config(model_path);
+
+        // Get model config for cache pool
+        let model_config_for_cache = model.get_config();
+
+        // Create cache pool
+        let cache_pool = Arc::new(CachePool::new(
+            model_config_for_cache,
+            device.clone(),
+            10,
+            kv_cache_type.to_string(),
+            model_path.to_string(),
+            architecture.to_string(),
+        ));
+
+        // Create batch processor channel
+        let (inference_tx, inference_rx) = mpsc::unbounded_channel();
+        let model_arc = Arc::new(Mutex::new(model));
+
+        // Spawn batch processor if continuous batching is enabled
+        if enable_continuous_batching {
+            let batch_processor = BatchProcessor::new(
+                model_arc.clone(),
+                inference_rx,
+                batch_size,
+                batch_timeout_ms,
+                device.clone(),
+            );
+            tokio::spawn(async move {
+                batch_processor.run().await;
+            });
+        } else {
+            // For non-batching mode, spawn a simple processor
+            let model_for_processor = model_arc.clone();
+            let device_for_processor = device.clone();
+            tokio::spawn(async move {
+                Self::simple_processor(model_for_processor, inference_rx, device_for_processor)
+                    .await;
+            });
+        }
+
+        let state = Self {
+            model: model_arc.clone(),
+            tokenizer: Arc::new(tokenizer),
+            model_id: model_id.to_string(),
+            model_name: model_name.to_string(),
+            architecture: architecture.to_string(),
+            started_at,
+            tokenizer_config,
+            model_config,
+            device,
+            cache_pool,
+            inference_tx,
+            enable_context_shift,
+            enable_continuous_batching,
+            batch_threads,
+            batch_size,
+            batch_timeout_ms,
+            max_concurrent_prompts,
+            concurrent_request_semaphore: Arc::new(Semaphore::new(max_concurrent_prompts)),
+            cpu_threads,
+            flash_attention,
+            kv_cache_type: kv_cache_type.to_string(),
+            paged_attention,
+            mmap,
+            auto_unload_model,
+            auto_unload_minutes,
+            model_loaded: Arc::new(Mutex::new(true)), // Model starts loaded
+            last_request_time: Arc::new(Mutex::new(Instant::now())),
+        };
+
+        // Spawn auto unload monitoring task if enabled
+        if auto_unload_model {
+            let model_loaded = state.model_loaded.clone();
+            let last_request_time = state.last_request_time.clone();
+            let model_arc_for_unload = state.model.clone();
+            let unload_duration = Duration::from_secs(auto_unload_minutes * 60);
+
+            tokio::spawn(async move {
+                Self::auto_unload_monitor(
+                    model_loaded,
+                    last_request_time,
+                    model_arc_for_unload,
+                    unload_duration,
+                )
+                .await;
+            });
+        }
+
+        Ok(state)
+    }
+
+    /// Create ModelServerState with explicit quantization configuration
+    pub async fn new_with_device_config_and_quantization(
+        model_path: &str,
+        architecture: &str,
+        model_id: &str,
+        model_name: &str,
+        device_type: Option<&str>,
+        device_ids: Option<&str>,
+        enable_context_shift: bool,
+        enable_continuous_batching: bool,
+        batch_threads: usize,
+        batch_size: usize,
+        batch_timeout_ms: u64,
+        max_concurrent_prompts: usize,
+        cpu_threads: usize,
+        flash_attention: bool,
+        kv_cache_type: &str,
+        paged_attention: bool,
+        mmap: bool,
+        auto_unload_model: bool,
+        auto_unload_minutes: u64,
+        quant_config: Option<&QuantConfig>,
+    ) -> Result<Self, CandleError> {
+        println!("Loading model from: {}", model_path);
+
+        let device = Self::create_device(device_type, device_ids)?;
+
+        // Configure CPU thread limit for CPU inference
+        Self::configure_cpu_threads(&device, cpu_threads);
+
+        // Configure flash attention
+        Self::configure_flash_attention(flash_attention);
+
+        // Configure KV Cache Type
+        Self::configure_kv_cache_type(kv_cache_type);
+
+        // Configure Paged Attention
+        Self::configure_paged_attention(paged_attention);
+
+        // Configure Memory Mapping (mmap)
+        Self::configure_mmap(mmap);
+
+        // Configure auto unload
+        Self::configure_auto_unload(auto_unload_model, auto_unload_minutes);
+
+        // Create model with optional quantization
+        let model = if let Some(config) = quant_config {
+            ModelFactory::create_quantized_model(architecture, model_path, &device, Some(config))?
+        } else {
+            ModelFactory::auto_detect_and_create(model_path, &device)?
+        };
+
+        let tokenizer = ModelFactory::load_tokenizer(architecture, model_path)?;
 
         let started_at = SystemTime::now()
             .duration_since(UNIX_EPOCH)

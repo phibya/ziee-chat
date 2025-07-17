@@ -6,6 +6,7 @@ use tokio::signal;
 
 // Import necessary modules from the main crate
 use react_test_lib::ai::candle::server::{create_model_server_router, ModelServerState};
+use react_test_lib::ai::candle::quantization::{QuantConfig, QuantMethod};
 use react_test_lib::APP_DATA_DIR;
 
 #[derive(Parser, Debug)]
@@ -119,6 +120,30 @@ struct Args {
     /// Minutes of inactivity before auto unloading the model (default: 10 minutes)
     #[arg(long, default_value = "10")]
     auto_unload_minutes: u64,
+
+    /// Quantization method for model weights (auto, none, gptq, awq, marlin, gguf) (default: auto)
+    #[arg(long, default_value = "auto")]
+    quantization: String,
+
+    /// Number of bits for quantization (4 or 8) (default: 4)
+    #[arg(long, default_value = "4")]
+    quantization_bits: u32,
+
+    /// Group size for group-wise quantization, -1 for per-channel (default: 128)
+    #[arg(long, default_value = "128")]
+    quantization_group_size: i32,
+
+    /// Use symmetric quantization (no zero points) (default: true)
+    #[arg(long, default_value = "true")]
+    quantization_symmetric: bool,
+
+    /// Enable activation ordering for GPTQ (desc_act) (default: false)
+    #[arg(long)]
+    quantization_desc_act: bool,
+
+    /// Checkpoint format for quantized models (e.g., marlin) (optional)
+    #[arg(long)]
+    quantization_checkpoint_format: Option<String>,
 }
 
 #[tokio::main]
@@ -154,6 +179,14 @@ async fn main() {
     println!("Memory Mapping (mmap): {}", args.mmap);
     println!("Auto Unload Model: {}", args.auto_unload_model);
     println!("Auto Unload Minutes: {}", args.auto_unload_minutes);
+    println!("Quantization: {}", args.quantization);
+    println!("Quantization Bits: {}", args.quantization_bits);
+    println!("Quantization Group Size: {}", args.quantization_group_size);
+    println!("Quantization Symmetric: {}", args.quantization_symmetric);
+    println!("Quantization Desc Act: {}", args.quantization_desc_act);
+    if let Some(ref format) = args.quantization_checkpoint_format {
+        println!("Quantization Checkpoint Format: {}", format);
+    }
 
     // Check if model_path is already absolute, otherwise join with base directory
     let full_model_path = if PathBuf::from(&args.model_path).is_absolute() {
@@ -202,11 +235,59 @@ async fn main() {
         process::exit(1);
     }
 
+    // Parse quantization configuration
+    let quant_config = if args.quantization == "auto" {
+        // Auto-detect quantization from model directory
+        None // Will be auto-detected by ModelFactory
+    } else {
+        let quant_method = match args.quantization.parse::<QuantMethod>() {
+            Ok(method) => method,
+            Err(e) => {
+                eprintln!("Error: Invalid quantization method '{}': {}", args.quantization, e);
+                cleanup_files(&full_model_path);
+                process::exit(1);
+            }
+        };
+
+        // Validate quantization parameters
+        if quant_method != QuantMethod::None {
+            if args.quantization_bits != 4 && args.quantization_bits != 8 {
+                eprintln!("Error: Quantization bits must be 4 or 8, got {}", args.quantization_bits);
+                cleanup_files(&full_model_path);
+                process::exit(1);
+            }
+            if args.quantization_group_size != -1 && args.quantization_group_size <= 0 {
+                eprintln!("Error: Quantization group size must be -1 or positive, got {}", args.quantization_group_size);
+                cleanup_files(&full_model_path);
+                process::exit(1);
+            }
+        }
+
+        let config = QuantConfig {
+            method: quant_method,
+            bits: args.quantization_bits,
+            group_size: args.quantization_group_size,
+            symmetric: args.quantization_symmetric,
+            desc_act: args.quantization_desc_act,
+            checkpoint_format: args.quantization_checkpoint_format.clone(),
+        };
+
+        // Validate the configuration
+        if let Err(e) = config.validate() {
+            eprintln!("Error: Invalid quantization configuration: {}", e);
+            cleanup_files(&full_model_path);
+            process::exit(1);
+        }
+
+        Some(config)
+    };
+
     // Initialize model state
     let model_name = args.model_name.unwrap_or_else(|| args.model_id.clone());
 
     let model_state = if args.config_file.is_some() || args.tokenizer_file.is_some() || args.weight_file.is_some() {
         // Use specific file paths if provided
+        // For now, specific files don't support quantization override - they use auto-detection
         match ModelServerState::new_with_specific_files_and_device(
             full_model_path.to_str().unwrap(),
             &args.architecture,
@@ -244,8 +325,8 @@ async fn main() {
             }
         }
     } else {
-        // Use auto-detection
-        match ModelServerState::new_with_device_config(
+        // Use auto-detection or explicit quantization
+        match ModelServerState::new_with_device_config_and_quantization(
             full_model_path.to_str().unwrap(),
             &args.architecture,
             &args.model_id,
@@ -265,6 +346,7 @@ async fn main() {
             args.mmap,
             args.auto_unload_model,
             args.auto_unload_minutes,
+            quant_config.as_ref(),
         )
         .await
         {

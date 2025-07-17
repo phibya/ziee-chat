@@ -8,6 +8,7 @@ pub mod device_detection;
 pub mod inference;
 pub mod management;
 pub mod models;
+pub mod quantization;
 pub mod server;
 
 pub use candle::*;
