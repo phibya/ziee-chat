@@ -195,7 +195,7 @@ export function AddModelModal({
         onClose()
 
         // Step 6: Trigger parent refresh (if needed)
-        await onSubmit({ type: 'candle-upload', success: true })
+        await onSubmit({ type: 'candle_server-upload', success: true })
       } else {
         // For other providers, use the existing workflow
         const modelData = {

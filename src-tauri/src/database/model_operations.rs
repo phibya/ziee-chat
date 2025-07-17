@@ -35,9 +35,9 @@ impl ModelOperations {
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
             ) RETURNING id, provider_id, name, alias, description, 
-                       architecture, quantization, file_size_bytes, checksum, enabled, 
+                       architecture, quantization, file_size_bytes, enabled, 
                        is_deprecated, is_active, capabilities, parameters, 
-                       validation_status, validation_issues, created_at, updated_at
+                       validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
             "#,
         )
         .bind(model_id)
@@ -75,11 +75,11 @@ impl ModelOperations {
             architecture: row.get("architecture"),
             quantization: row.get("quantization"),
             file_size_bytes: row.get("file_size_bytes"),
-            checksum: row.get("checksum"),
             validation_status: row.get("validation_status"),
             validation_issues: row.get("validation_issues"),
             device_type: row.get("device_type"),
             device_ids: row.get("device_ids"),
+            port: row.get("port"),
         };
 
         Ok(model)
@@ -115,9 +115,9 @@ impl ModelOperations {
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
             ) RETURNING id, provider_id, name, alias, description, 
-                       architecture, quantization, file_size_bytes, checksum, enabled, 
+                       architecture, quantization, file_size_bytes, enabled, 
                        is_deprecated, is_active, capabilities, parameters, 
-                       validation_status, validation_issues, created_at, updated_at
+                       validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
             "#,
         )
         .bind(model_id)
@@ -155,11 +155,11 @@ impl ModelOperations {
             architecture: row.get("architecture"),
             quantization: row.get("quantization"),
             file_size_bytes: row.get("file_size_bytes"),
-            checksum: row.get("checksum"),
             validation_status: row.get("validation_status"),
             validation_issues: row.get("validation_issues"),
             device_type: row.get("device_type"),
             device_ids: row.get("device_ids"),
+            port: row.get("port"),
         };
 
         Ok(model)
@@ -172,9 +172,9 @@ impl ModelOperations {
     ) -> Result<Option<ModelDb>, sqlx::Error> {
         let row = sqlx::query(
             "SELECT id, provider_id, name, alias, description, 
-                    architecture, quantization, file_size_bytes, checksum, enabled, 
+                    architecture, quantization, file_size_bytes, enabled, 
                     is_deprecated, is_active, capabilities, parameters, 
-                    validation_status, validation_issues, created_at, updated_at
+                    validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
              FROM models WHERE id = $1",
         )
         .bind(model_id)
@@ -191,8 +191,7 @@ impl ModelOperations {
                 architecture: row.get("architecture"),
                 quantization: row.get("quantization"),
                 file_size_bytes: row.get("file_size_bytes"),
-                checksum: row.get("checksum"),
-                enabled: row.get("enabled"),
+                    enabled: row.get("enabled"),
                 is_deprecated: row.get("is_deprecated"),
                 is_active: row.get("is_active"),
                 capabilities: row.get("capabilities"),
@@ -203,6 +202,7 @@ impl ModelOperations {
                 updated_at: row.get("updated_at"),
                 device_type: row.get("device_type"),
                 device_ids: row.get("device_ids"),
+                port: row.get("port"),
             };
             Ok(Some(model))
         } else {
@@ -222,9 +222,9 @@ impl ModelOperations {
         let rows = sqlx::query(
             r#"
             SELECT id, provider_id, name, alias, description, 
-                   architecture, quantization, file_size_bytes, checksum, enabled, 
+                   architecture, quantization, file_size_bytes, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
-                   validation_status, validation_issues, created_at, updated_at
+                   validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
             FROM models 
             WHERE provider_id = $1 
             ORDER BY created_at DESC 
@@ -248,8 +248,7 @@ impl ModelOperations {
                 architecture: row.get("architecture"),
                 quantization: row.get("quantization"),
                 file_size_bytes: row.get("file_size_bytes"),
-                checksum: row.get("checksum"),
-                enabled: row.get("enabled"),
+                    enabled: row.get("enabled"),
                 is_deprecated: row.get("is_deprecated"),
                 is_active: row.get("is_active"),
                 capabilities: row.get("capabilities"),
@@ -260,6 +259,7 @@ impl ModelOperations {
                 updated_at: row.get("updated_at"),
                 device_type: row.get("device_type"),
                 device_ids: row.get("device_ids"),
+                port: row.get("port"),
             };
             models.push(model);
         }
@@ -333,20 +333,22 @@ impl ModelOperations {
         Ok(())
     }
 
-    /// Update model checksum
-    pub async fn update_model_checksum(
+    // Note: update_model_checksum method removed (checksum functionality removed for performance)
+
+    /// Update model port (for running Candle models)
+    pub async fn update_model_port(
         pool: &PgPool,
         model_id: &Uuid,
-        checksum: &str,
+        port: Option<i32>,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE models 
-            SET checksum = $1, updated_at = $2
+            SET port = $1, updated_at = $2
             WHERE id = $3
             "#,
         )
-        .bind(checksum)
+        .bind(port)
         .bind(Utc::now())
         .bind(model_id)
         .execute(pool)
@@ -380,7 +382,6 @@ impl ModelOperations {
         file_path: &str,
         file_size_bytes: i64,
         file_type: &str,
-        checksum: &str,
     ) -> Result<ModelFileDb, sqlx::Error> {
         let file_id = Uuid::new_v4();
         let now = Utc::now();
@@ -389,11 +390,11 @@ impl ModelOperations {
             r#"
             INSERT INTO model_files (
                 id, model_id, filename, file_path, file_size_bytes, 
-                file_type, checksum, upload_status, uploaded_at
+                file_type, upload_status, uploaded_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9
+                $1, $2, $3, $4, $5, $6, $7, $8
             ) RETURNING id, model_id, filename, file_path, file_size_bytes, 
-                       file_type, checksum, upload_status, uploaded_at
+                       file_type, upload_status, uploaded_at
             "#,
         )
         .bind(file_id)
@@ -402,7 +403,6 @@ impl ModelOperations {
         .bind(file_path)
         .bind(file_size_bytes)
         .bind(file_type)
-        .bind(checksum)
         .bind("completed")
         .bind(now)
         .fetch_one(pool)
@@ -415,7 +415,6 @@ impl ModelOperations {
             file_path: row.get("file_path"),
             file_size_bytes: row.get("file_size_bytes"),
             file_type: row.get("file_type"),
-            checksum: row.get("checksum"),
             upload_status: row.get("upload_status"),
             uploaded_at: row.get("uploaded_at"),
         };
@@ -430,7 +429,7 @@ impl ModelOperations {
     ) -> Result<Vec<ModelFileDb>, sqlx::Error> {
         let rows = sqlx::query(
             "SELECT id, model_id, filename, file_path, file_size_bytes, 
-                    file_type, checksum, upload_status, uploaded_at
+                    file_type, upload_status, uploaded_at
              FROM model_files WHERE model_id = $1 ORDER BY uploaded_at ASC",
         )
         .bind(model_id)
@@ -446,7 +445,6 @@ impl ModelOperations {
                 file_path: row.get("file_path"),
                 file_size_bytes: row.get("file_size_bytes"),
                 file_type: row.get("file_type"),
-                checksum: row.get("checksum"),
                 upload_status: row.get("upload_status"),
                 uploaded_at: row.get("uploaded_at"),
             };

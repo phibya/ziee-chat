@@ -439,7 +439,7 @@ export function ProvidersSettings() {
 
     try {
       // Handle Candle uploads differently - they're already processed
-      if (modelData.type === 'candle-upload') {
+      if (modelData.type === 'candle_server-upload') {
         // For Candle uploads, just refresh the providers list
         await loadProviders()
         setIsAddModelModalOpen(false)

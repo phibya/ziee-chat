@@ -122,7 +122,7 @@ CREATE TABLE configurations (
 CREATE TABLE providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    provider_type VARCHAR(50) NOT NULL CHECK (provider_type IN ('candle', 'openai', 'anthropic', 'groq', 'gemini', 'mistral', 'custom')),
+    provider_type VARCHAR(50) NOT NULL CHECK (provider_type IN ('candle_server', 'openai', 'anthropic', 'groq', 'gemini', 'mistral', 'custom')),
     enabled BOOLEAN DEFAULT FALSE,
     api_key TEXT,
     base_url VARCHAR(512),
@@ -151,7 +151,7 @@ CREATE TABLE models (
     description TEXT,
     enabled BOOLEAN DEFAULT TRUE,
     is_deprecated BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT FALSE, -- For candle start/stop state
+    is_active BOOLEAN DEFAULT FALSE, -- For candle_server start/stop state
     capabilities JSONB DEFAULT '{}',
     parameters JSONB DEFAULT '{}',
     -- Candle-specific fields
@@ -569,7 +569,7 @@ VALUES (
 
 -- Insert default model providers
 INSERT INTO providers (name, provider_type, enabled, is_default, base_url, settings) VALUES
-('Candle', 'candle', false, true, null, '{"device": "cpu", "autoUnloadOldModels": true, "parallelOperations": 1, "cpuThreads": -1, "huggingFaceAccessToken": "", "contextShift": false, "continuousBatching": false, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true}'),
+('Candle', 'candle_server', false, true, null, '{"device": "cpu", "autoUnloadOldModels": true, "parallelOperations": 1, "cpuThreads": -1, "huggingFaceAccessToken": "", "contextShift": false, "continuousBatching": false, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true}'),
 ('OpenAI', 'openai', false, true, 'https://api.openai.com/v1', '{}'),
 ('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1', '{}'),
 ('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1', '{}'),
@@ -605,12 +605,12 @@ COMMENT ON TABLE project_conversations IS 'Links conversations to projects';
 COMMENT ON COLUMN user_groups.permissions IS 'AWS-style permissions stored as JSON array. Supports wildcards like "users::*", "groups::*", and "*"';
 COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g., "appearance.theme", "appearance.fontSize")';
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
-COMMENT ON COLUMN providers.provider_type IS 'Type of provider: candle, openai, anthropic, groq, gemini, mistral, custom';
+COMMENT ON COLUMN providers.provider_type IS 'Type of provider: candle_server, openai, anthropic, groq, gemini, mistral, custom';
 COMMENT ON COLUMN models.device_type IS 'Device type for model execution: cpu, cuda, metal, etc.';
 COMMENT ON COLUMN models.device_ids IS 'JSON array of device IDs for multi-GPU setups';
 COMMENT ON COLUMN models.name IS 'Unique model identifier within a provider';
 COMMENT ON COLUMN models.alias IS 'Human-readable display name (can be duplicated across providers)';
-COMMENT ON COLUMN models.is_active IS 'Whether the model is currently running (for candle models)';
+COMMENT ON COLUMN models.is_active IS 'Whether the model is currently running (for candle_server models)';
 COMMENT ON COLUMN models.architecture IS 'Model architecture type (e.g., llama, mistral, gemma) - for Candle models only';
 COMMENT ON COLUMN models.quantization IS 'Quantization format (e.g., q4_0, q8_0, fp16, fp32) - for Candle models only';
 COMMENT ON COLUMN models.file_size_bytes IS 'Total size of all model files in bytes - for Candle models only';

@@ -42,6 +42,11 @@ pub fn run() {
 
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
+            // Clear temp directory on startup
+            if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+                eprintln!("Failed to clear temp directory on startup: {}", e);
+            }
+
             if let Err(e) = database::initialize_database().await {
                 eprintln!("Failed to initialize database: {}", e);
                 std::process::exit(1);
@@ -66,6 +71,11 @@ pub fn run() {
             // Wait for shutdown signal
             let _ = rx.await;
 
+            // Clear temp directory on shutdown
+            if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+                eprintln!("Failed to clear temp directory on shutdown: {}", e);
+            }
+
             // Cleanup database
             database::cleanup_database().await;
 
@@ -81,6 +91,13 @@ pub fn run() {
             .setup(move |app| {
                 // Create the API router
                 let api_router = route::create_rest_router();
+
+                // Clear temp directory on startup
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+                        eprintln!("Failed to clear temp directory on startup: {}", e);
+                    }
+                });
 
                 // Initialize database
                 tauri::async_runtime::spawn(async move {
@@ -106,8 +123,13 @@ pub fn run() {
             })
             .on_window_event(|_window, event| {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    // Cleanup database before closing
+                    // Clear temp directory and cleanup database before closing
                     let handle = tauri::async_runtime::spawn(async move {
+                        // Clear temp directory on shutdown
+                        if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+                            eprintln!("Failed to clear temp directory on shutdown: {}", e);
+                        }
+
                         database::cleanup_database().await;
                     });
 

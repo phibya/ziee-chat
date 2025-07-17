@@ -353,11 +353,11 @@ pub struct ModelDb {
     pub architecture: Option<String>,
     pub quantization: Option<String>,
     pub file_size_bytes: Option<i64>,
-    pub checksum: Option<String>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<serde_json::Value>,
     pub device_type: Option<String>, // cpu, cuda, metal, etc.
     pub device_ids: Option<serde_json::Value>, // JSON array of device IDs for multi-GPU
+    pub port: Option<i32>,           // Port number where the model server is running
 }
 
 impl ModelDb {
@@ -692,11 +692,11 @@ pub struct Model {
     pub architecture: Option<String>,
     pub quantization: Option<String>,
     pub file_size_bytes: Option<i64>,
-    pub checksum: Option<String>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<Vec<String>>,
     pub device_type: Option<String>,     // cpu, cuda, metal, etc.
-    pub device_ids: Option<Vec<String>>, // Array of device IDs for multi-GPU
+    pub device_ids: Option<Vec<i32>>, // Array of device IDs for multi-GPU
+    pub port: Option<i32>,               // Port number where the model server is running
     pub files: Option<Vec<ModelFileInfo>>,
 }
 
@@ -732,7 +732,7 @@ pub struct CreateModelRequest {
     pub enabled: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
     pub device_type: Option<String>,
-    pub device_ids: Option<Vec<String>>,
+    pub device_ids: Option<Vec<i32>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -745,13 +745,13 @@ pub struct UpdateModelRequest {
     pub capabilities: Option<serde_json::Value>,
     pub parameters: Option<serde_json::Value>,
     pub device_type: Option<String>,
-    pub device_ids: Option<Vec<String>>,
+    pub device_ids: Option<Vec<i32>>,
 }
 
 // Device detection structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
-    pub id: String, // Device identifier - UUID for CUDA GPUs, or descriptive ID for other devices
+    pub id: String, // Device identifier - :0, :1
     pub name: String,
     pub device_type: String,       // cpu, cuda, metal
     pub memory_total: Option<u64>, // Total memory in bytes
@@ -1267,7 +1267,6 @@ pub struct ModelFileDb {
     pub file_path: String,
     pub file_size_bytes: i64,
     pub file_type: String,
-    pub checksum: String,
     pub upload_status: String,
     pub uploaded_at: DateTime<Utc>,
 }
@@ -1277,7 +1276,6 @@ pub struct ModelFileInfo {
     pub filename: String,
     pub file_size_bytes: i64,
     pub file_type: String,
-    pub checksum: Option<String>,
     pub uploaded_at: DateTime<Utc>,
 }
 
@@ -1351,7 +1349,6 @@ impl Model {
                     filename: f.filename,
                     file_size_bytes: f.file_size_bytes,
                     file_type: f.file_type,
-                    checksum: Some(f.checksum),
                     uploaded_at: f.uploaded_at,
                 })
                 .collect()
@@ -1360,7 +1357,7 @@ impl Model {
         let device_ids = model_db
             .device_ids
             .as_ref()
-            .and_then(|v| serde_json::from_value::<Vec<String>>(v.clone()).ok());
+            .and_then(|v| serde_json::from_value::<Vec<i32>>(v.clone()).ok());
 
         Self {
             id: model_db.id,
@@ -1377,11 +1374,11 @@ impl Model {
             architecture: model_db.architecture,
             quantization: model_db.quantization,
             file_size_bytes: model_db.file_size_bytes,
-            checksum: model_db.checksum,
             validation_status: model_db.validation_status,
             validation_issues,
             device_type: model_db.device_type,
             device_ids,
+            port: model_db.port,
             files: file_infos,
         }
     }

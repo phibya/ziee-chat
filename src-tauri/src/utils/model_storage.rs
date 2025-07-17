@@ -32,7 +32,6 @@ pub struct ModelFile {
     pub filename: String,
     pub size_bytes: u64,
     pub file_type: ModelFileType,
-    pub checksum: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,7 +50,6 @@ pub struct TempFile {
     pub filename: String,
     pub file_path: String,
     pub size_bytes: u64,
-    pub checksum: String,
     pub is_main_file: bool,
 }
 
@@ -60,7 +58,6 @@ pub struct CommittedFile {
     pub filename: String,
     pub file_path: String,
     pub size_bytes: u64,
-    pub checksum: String,
     pub is_main_file: bool,
 }
 
@@ -165,7 +162,6 @@ impl ModelStorage {
             filename: filename.to_string(),
             size_bytes,
             file_type,
-            checksum: Some(Self::calculate_checksum(data)),
         })
     }
 
@@ -221,7 +217,10 @@ impl ModelStorage {
     }
 
     /// Get total storage size for a provider
-    pub async fn get_provider_storage_size(&self, provider_id: &Uuid) -> Result<u64, ModelStorageError> {
+    pub async fn get_provider_storage_size(
+        &self,
+        provider_id: &Uuid,
+    ) -> Result<u64, ModelStorageError> {
         let provider_path = self.base_path.join(provider_id.to_string());
 
         if !provider_path.exists() {
@@ -257,16 +256,21 @@ impl ModelStorage {
         }
 
         // Check for model weight files
-        let mut read_dir = tokio::fs::read_dir(&model_path).await
+        let mut read_dir = tokio::fs::read_dir(&model_path)
+            .await
             .map_err(|e| ModelStorageError::Io(e))?;
-        
+
         let mut has_weights = false;
-        while let Some(entry) = read_dir.next_entry().await
-            .map_err(|e| ModelStorageError::Io(e))? {
+        while let Some(entry) = read_dir
+            .next_entry()
+            .await
+            .map_err(|e| ModelStorageError::Io(e))?
+        {
             let filename = entry.file_name().to_string_lossy().to_lowercase();
             if filename.ends_with(".safetensors")
                 || filename.ends_with(".bin")
-                || filename.ends_with(".pth") {
+                || filename.ends_with(".pth")
+            {
                 has_weights = true;
                 break;
             }
@@ -301,13 +305,7 @@ impl ModelStorage {
         }
     }
 
-    /// Calculate SHA256 checksum
-    fn calculate_checksum(data: &[u8]) -> String {
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(data);
-        format!("{:x}", hasher.finalize())
-    }
+    // Note: Checksum calculation removed for performance
 
     /// Calculate directory size recursively
     async fn calculate_directory_size(path: &Path) -> Result<u64, std::io::Error> {
@@ -413,7 +411,6 @@ impl ModelStorage {
             filename: safe_filename,
             file_path: file_path.to_string_lossy().to_string(),
             size_bytes: data.len() as u64,
-            checksum: Self::calculate_checksum(data),
             is_main_file: false, // This will be set by the caller
         })
     }
@@ -465,13 +462,12 @@ impl ModelStorage {
 
         // Read file to calculate checksum
         let data = tokio::fs::read(&permanent_path).await?;
-        let checksum = Self::calculate_checksum(&data);
+        // Note: Checksum calculation removed for performance
 
         Ok(CommittedFile {
             filename,
             file_path: Self::to_relative_path(&permanent_path)?,
             size_bytes: data.len() as u64,
-            checksum,
             is_main_file: false, // This will be set by the caller
         })
     }
@@ -489,6 +485,49 @@ impl ModelStorage {
         // a different cleanup strategy or track session files differently
         println!("Note: Session-based cleanup not implemented with flat temp structure");
         println!("Consider implementing periodic cleanup of old temp files instead");
+
+        Ok(())
+    }
+
+    /// Clear all temporary files from the temp directory
+    /// Called during app startup and shutdown to ensure clean state
+    pub async fn clear_temp_directory() -> Result<(), ModelStorageError> {
+        let temp_path = crate::APP_DATA_DIR.join("temp");
+
+        if !temp_path.exists() {
+            return Ok(()); // Nothing to clean up
+        }
+
+        println!("Clearing temp directory: {}", temp_path.display());
+
+        // Remove all files in the temp directory
+        let mut read_dir = tokio::fs::read_dir(&temp_path).await?;
+        let mut removed_count = 0;
+        let mut error_count = 0;
+
+        while let Some(entry) = read_dir.next_entry().await? {
+            let file_path = entry.path();
+            match tokio::fs::remove_file(&file_path).await {
+                Ok(()) => {
+                    removed_count += 1;
+                    println!("Removed temp file: {}", file_path.display());
+                }
+                Err(e) => {
+                    error_count += 1;
+                    eprintln!("Failed to remove temp file {}: {}", file_path.display(), e);
+                }
+            }
+        }
+
+        if removed_count > 0 {
+            println!(
+                "Temp directory cleanup complete: {} files removed",
+                removed_count
+            );
+        }
+        if error_count > 0 {
+            println!("Temp directory cleanup had {} errors", error_count);
+        }
 
         Ok(())
     }
@@ -566,7 +605,7 @@ impl ModelUtils {
 
     /// Check if model directory exists using the same logic as candle_models::ModelUtils
     pub fn model_exists(model_path: &str) -> bool {
-        crate::ai::candle::models::ModelUtils::model_exists(model_path)
+        crate::ai::candle_server::models::ModelUtils::model_exists(model_path)
     }
 
     /// Verify model exists or return ModelNotFound error
@@ -586,7 +625,7 @@ impl ModelUtils {
     /// Discover available models in a directory using ModelDiscovery
     pub fn discover_models(
         path: &str,
-    ) -> Result<Vec<crate::ai::candle::models::ModelConfig>, std::io::Error> {
-        crate::ai::candle::models::ModelDiscovery::scan_models_directory(path)
+    ) -> Result<Vec<crate::ai::candle_server::models::ModelConfig>, std::io::Error> {
+        crate::ai::candle_server::models::ModelDiscovery::scan_models_directory(path)
     }
 }

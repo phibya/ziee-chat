@@ -1,7 +1,7 @@
 use axum::{
-  extract::{Multipart, Path, Query},
-  response::Json,
-  Extension,
+    extract::{Multipart, Path, Query},
+    response::Json,
+    Extension,
 };
 use serde::Deserialize;
 use sqlx::Row;
@@ -9,8 +9,8 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::api::{
-  errors::{ApiResult, AppError, ErrorCode},
-  middleware::AuthenticatedUser,
+    errors::{ApiResult, AppError, ErrorCode},
+    middleware::AuthenticatedUser,
 };
 use crate::database::{get_database_pool, model_operations::ModelOperations, models::*};
 
@@ -42,7 +42,6 @@ pub struct ProcessedFile {
     pub filename: String,
     pub file_type: String,
     pub size_bytes: u64,
-    pub checksum: String,
     pub validation_issues: Vec<String>,
     pub is_main_file: bool,
 }
@@ -103,18 +102,7 @@ pub async fn upload_model_file(
                     .await
                 {
                     Ok(model_file) => {
-                        if let Some(checksum) = model_file.checksum {
-                            // Update model checksum in database
-                            ModelOperations::update_model_checksum(
-                                pool.as_ref(),
-                                &model_id,
-                                &checksum,
-                            )
-                            .await
-                            .map_err(AppError::database_error)?;
-
-                            println!("Updated model checksum: {}", checksum);
-                        }
+                        // Note: Checksum calculation removed for performance
                     }
                     Err(e) => {
                         eprintln!("Failed to save model file: {}", e);
@@ -280,7 +268,6 @@ pub async fn upload_model_file_multipart(
                     filename: filename.clone(),
                     file_type: file_type.to_string(),
                     size_bytes: file_data.len() as u64,
-                    checksum: temp_file.checksum,
                     validation_issues,
                     is_main_file: filename == main_filename,
                 });
@@ -319,7 +306,7 @@ pub async fn commit_uploaded_files(
         .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
-    // Validate provider exists and is of type 'candle'
+    // Validate provider exists and is of type 'candle_server'
     let provider_row = sqlx::query("SELECT id, provider_type FROM providers WHERE id = $1")
         .bind(request.provider_id)
         .fetch_optional(pool.as_ref())
@@ -330,7 +317,7 @@ pub async fn commit_uploaded_files(
         .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
 
     let provider_type: String = provider_row.get("provider_type");
-    if provider_type != "candle" {
+    if provider_type != "candle_server" {
         return Err(AppError::new(
             ErrorCode::ValidInvalidInput,
             "Only Candle providers support model uploads",
@@ -391,7 +378,7 @@ pub async fn commit_uploaded_files(
 
     // Move temp files to permanent storage and create file records
     let mut total_size = 0u64;
-    let mut main_checksum: Option<String> = None;
+    // Note: Checksum calculation removed for performance
 
     for temp_file_id in &request.selected_files {
         match storage
@@ -417,15 +404,11 @@ pub async fn commit_uploaded_files(
                     &committed_file.file_path,
                     committed_file.size_bytes as i64,
                     file_type_str,
-                    &committed_file.checksum,
                 )
                 .await
                 .map_err(AppError::database_error)?;
 
-                // Use the main file's checksum as the model checksum
-                if committed_file.is_main_file {
-                    main_checksum = Some(committed_file.checksum.clone());
-                }
+                // Note: Checksum calculation removed for performance
 
                 println!(
                     "Committed file: {} -> {}",
@@ -442,12 +425,7 @@ pub async fn commit_uploaded_files(
         }
     }
 
-    // Update model with total size and checksum
-    if let Some(checksum) = main_checksum {
-        ModelOperations::update_model_checksum(pool.as_ref(), &model_db.id, &checksum)
-            .await
-            .map_err(AppError::database_error)?;
-    }
+    // Update model with total size (checksum removed for performance)
 
     // Update validation status to completed and enable the model
     ModelOperations::update_model_validation(
@@ -624,7 +602,9 @@ pub async fn validate_model(
     }
 
     // Get and validate model size
-    if let Ok(model_size) = crate::ai::candle::models::ModelUtils::get_model_size(&model_path) {
+    if let Ok(model_size) =
+        crate::ai::candle_server::models::ModelUtils::get_model_size(&model_path)
+    {
         let formatted_size = crate::utils::model_storage::ModelUtils::format_model_size(model_size);
         println!("Model size: {}", formatted_size);
 
@@ -633,7 +613,7 @@ pub async fn validate_model(
         let model_path_buf = crate::APP_DATA_DIR.join(&model_path);
         if let Ok(mut read_dir) = tokio::fs::read_dir(&model_path_buf).await {
             let mut weight_files_size: u64 = 0;
-            
+
             while let Ok(Some(entry)) = read_dir.next_entry().await {
                 if let Ok(file_name) = entry.file_name().into_string() {
                     let file_type = determine_file_type(&file_name.to_lowercase());
@@ -682,7 +662,7 @@ pub async fn validate_model(
     }
 
     // List available models in the directory
-    if let Ok(model_list) = crate::ai::candle::models::ModelUtils::list_models(&model_path) {
+    if let Ok(model_list) = crate::ai::candle_server::models::ModelUtils::list_models(&model_path) {
         println!("Available models: {:?}", model_list);
         if model_list.is_empty() {
             validation_issues.push("No model directories found".to_string());

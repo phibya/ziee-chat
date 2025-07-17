@@ -164,7 +164,7 @@ export interface TestProviderProxyResponse {
 
 // Device detection types
 export interface DeviceInfo {
-  id: string // Device identifier - UUID for CUDA GPUs, or descriptive ID for other devices
+  id: number
   name: string
   device_type: string // cpu, cuda, metal
   memory_total?: number // Total memory in bytes

@@ -12,16 +12,12 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::ai::{
+    core::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
     providers::{
-        anthropic::AnthropicProvider,
-        custom::CustomProvider,
-        gemini::GeminiProvider,
-        groq::GroqProvider,
-        mistral::MistralProvider,
+        anthropic::AnthropicProvider, candle::CandleProvider, custom::CustomProvider,
+        gemini::GeminiProvider, groq::GroqProvider, mistral::MistralProvider,
         openai::OpenAIProvider,
     },
-    candle::candle::CandleProvider,
-    core::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
 };
 use crate::api::errors::ErrorCode;
 use crate::api::middleware::AuthenticatedUser;
@@ -353,20 +349,20 @@ pub async fn send_message_stream(
         let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
 
         // Create AI provider with model ID for Candle providers
-        let ai_provider = match create_ai_provider_with_model_id(&provider, Some(request.model_id))
-        {
-            Ok(provider) => provider,
-            Err(e) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: format!("Error creating AI provider: {}", e),
-                        code: ErrorCode::SystemInternalError.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
-                return;
-            }
-        };
+        let ai_provider =
+            match create_ai_provider_with_model_id(&provider, Some(request.model_id)).await {
+                Ok(provider) => provider,
+                Err(e) => {
+                    let _ = tx.send(Ok(Event::default().event("error").data(
+                        &serde_json::to_string(&StreamErrorData {
+                            error: format!("Error creating AI provider: {}", e),
+                            code: ErrorCode::SystemInternalError.as_str().to_string(),
+                        })
+                        .unwrap_or_default(),
+                    )));
+                    return;
+                }
+            };
 
         // Check if provider supports streaming
         if !ai_provider.supports_streaming() {
@@ -624,7 +620,7 @@ async fn stream_ai_response(
     };
 
     // Create AI provider with model ID for Candle providers
-    let ai_provider = match create_ai_provider_with_model_id(&provider, Some(model_id)) {
+    let ai_provider = match create_ai_provider_with_model_id(&provider, Some(model_id)).await {
         Ok(provider) => provider,
         Err(e) => {
             let _ = tx.send(Ok(Event::default().event("error").data(
@@ -692,7 +688,7 @@ async fn stream_ai_response(
                             // Send chunk to client
                             let _ = tx.send(Ok(Event::default().event("chunk").data(
                                 &serde_json::to_string(&StreamChunkData {
-                                    delta: content,
+                                    delta: content.clone(),
                                     message_id: None,
                                 })
                                 .unwrap_or_default(),
@@ -1019,14 +1015,14 @@ fn create_proxy_config(
 }
 
 /// Helper function to create AI provider instances
-fn create_ai_provider(
+async fn create_ai_provider(
     provider: &crate::database::models::Provider,
 ) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
-    create_ai_provider_with_model_id(provider, None)
+    create_ai_provider_with_model_id(provider, None).await
 }
 
 /// Helper function to create AI provider instances with optional model ID for Candle providers
-fn create_ai_provider_with_model_id(
+async fn create_ai_provider_with_model_id(
     provider: &crate::database::models::Provider,
     model_id: Option<Uuid>,
 ) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
@@ -1084,21 +1080,28 @@ fn create_ai_provider_with_model_id(
             )?;
             Ok(Box::new(custom_provider))
         }
-        "candle" => {
-            let mut candle_provider = CandleProvider::new(
-                provider
-                    .base_url
-                    .clone()
-                    .unwrap_or_else(|| "./models".to_string()), // model_path
-                "llama".to_string(), // model_type - could be made configurable
-                crate::ai::candle::DeviceType::Cpu, // device_type - could be made configurable
-                proxy_config,
-            )?;
+        "candle_server" => {
+            // For Candle providers, we need model information to get the port
+            let model_id = model_id.ok_or("Model ID is required for Candle providers")?;
 
-            // Set the model ID if provided (for Candle providers)
-            if let Some(id) = model_id {
-                candle_provider.set_model_id(id);
-            }
+            // Get the model information from database to get the port
+            let model =
+                match crate::database::queries::providers::get_model_db_by_id(model_id).await {
+                    Ok(Some(model)) => model,
+                    Ok(None) => return Err("Model not found".into()),
+                    Err(e) => {
+                        eprintln!("Failed to get model {}: {}", model_id, e);
+                        return Err("Database operation failed".into());
+                    }
+                };
+
+            // Check if the model has a port (meaning it's running)
+            let port = model
+                .port
+                .ok_or("Model is not running. Please start the model first.")?;
+
+            // Create the Candle provider with the model's port and name
+            let candle_provider = CandleProvider::new(port as u16, model.name.clone())?;
 
             Ok(Box::new(candle_provider))
         }
@@ -1167,7 +1170,7 @@ async fn generate_and_update_conversation_title(
         }];
 
         // Create AI provider instance
-        let ai_provider = create_ai_provider_with_model_id(provider, Some(model.id))?;
+        let ai_provider = create_ai_provider_with_model_id(provider, Some(model.id)).await?;
 
         // For title generation, use specific parameters optimized for titles
         // Don't use assistant parameters as this is an internal system function

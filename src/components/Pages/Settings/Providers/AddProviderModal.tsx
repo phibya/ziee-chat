@@ -109,7 +109,7 @@ export function AddProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-candle providers */}
+        {/* API Configuration for non-candle_server providers */}
         {providerType !== 'candle' && <ApiConfigurationSection />}
 
         {/* Candle Configuration */}

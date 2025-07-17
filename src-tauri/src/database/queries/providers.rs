@@ -283,7 +283,7 @@ pub async fn create_model(
     let model_row: ModelDb = sqlx::query_as(
     "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, device_type, device_ids)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues, device_type, device_ids"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, validation_status, validation_issues, device_type, device_ids, port"
   )
     .bind(model_id)
     .bind(provider_id)
@@ -321,7 +321,7 @@ pub async fn update_model(
              device_ids = COALESCE($10, device_ids),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, checksum, validation_status, validation_issues, device_type, device_ids"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, validation_status, validation_issues, device_type, device_ids, port"
   )
     .bind(model_id)
     .bind(&request.name)

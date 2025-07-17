@@ -90,7 +90,7 @@ export function EditProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-candle providers */}
+        {/* API Configuration for non-candle_server providers */}
         {provider.type !== 'candle' && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title={t('providers.apiConfiguration')}>

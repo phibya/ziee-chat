@@ -4,6 +4,7 @@
 //! including OpenAI, Anthropic, Groq, Gemini, Mistral, and custom providers.
 
 pub mod anthropic;
+pub mod candle;
 pub mod custom;
 pub mod gemini;
 pub mod groq;
@@ -13,6 +14,7 @@ pub mod openai_compatible;
 pub mod openai_types;
 
 pub use anthropic::*;
+pub use candle::*;
 pub use custom::*;
 pub use gemini::*;
 pub use groq::*;

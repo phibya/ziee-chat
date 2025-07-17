@@ -83,7 +83,7 @@ pub async fn create_provider(
 ) -> ApiResult<Json<Provider>> {
     // Validate provider type
     let valid_types = [
-        "candle",
+        "candle_server",
         "openai",
         "anthropic",
         "groq",
@@ -98,9 +98,9 @@ pub async fn create_provider(
         ));
     }
 
-    // Validate requirements for enabling non-candle providers
+    // Validate requirements for enabling non-candle_server providers
     if let Some(true) = request.enabled {
-        if request.provider_type != "candle" {
+        if request.provider_type != "candle_server" {
             // Check API key
             if request.api_key.is_none() || request.api_key.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: API key is required");
@@ -157,7 +157,7 @@ pub async fn update_provider(
         match providers::get_provider_by_id(provider_id).await {
             Ok(Some(current_provider)) => {
                 // Check if provider type requires API key and base URL
-                if current_provider.provider_type != "candle" {
+                if current_provider.provider_type != "candle_server" {
                     // Check API key
                     let api_key = request
                         .api_key
@@ -345,19 +345,22 @@ pub async fn delete_model(
     };
 
     // If it's a Candle provider, handle model shutdown and file deletion
-    if provider.provider_type == "candle" {
+    if provider.provider_type == "candle_server" {
         // First, stop the model if it's running
-        let model_manager = crate::ai::candle::management::get_model_manager();
-        if model_manager.is_model_running(model_id).await {
-            println!("Stopping running model {} before deletion", model_id);
-            match model_manager.stop_model(model_id).await {
-                Ok(()) => {
-                    println!("Successfully stopped model {} for deletion", model_id);
-                }
-                Err(e) => {
-                    eprintln!("Warning: Failed to stop running model {}: {}", model_id, e);
-                    // Continue with deletion anyway
-                }
+        let model_manager = crate::ai::candle_server::management::get_model_manager();
+        let model_path = model.get_model_path();
+
+        println!(
+            "Checking and cleaning up model {} before deletion",
+            model_id
+        );
+        match model_manager.check_and_cleanup_model(&model_path).await {
+            Ok(()) => {
+                println!("Successfully cleaned up model {} for deletion", model_id);
+            }
+            Err(e) => {
+                eprintln!("Warning: Failed to cleanup model {}: {}", model_id, e);
+                // Continue with deletion anyway
             }
         }
 
@@ -578,23 +581,14 @@ pub async fn start_model(
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     // Get the model from database
-    let pool = crate::database::get_database_pool().map_err(|e| {
-        eprintln!("Failed to get database pool: {}", e);
-        AppError::internal_error("Database operation failed")
-    })?;
-    let pool = pool.as_ref();
-
-    let model_row: Option<crate::database::models::ModelDb> =
-        sqlx::query_as("SELECT * FROM models WHERE id = $1")
-            .bind(model_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| {
-                eprintln!("Failed to get model {}: {}", model_id, e);
-                AppError::internal_error("Database operation failed")
-            })?;
-
-    let model = model_row.ok_or_else(|| AppError::not_found("Model"))?;
+    let model = match providers::get_model_db_by_id(model_id).await {
+        Ok(Some(model)) => model,
+        Ok(None) => return Err(AppError::not_found("Model")),
+        Err(e) => {
+            eprintln!("Failed to get model {}: {}", model_id, e);
+            return Err(AppError::internal_error("Database operation failed"));
+        }
+    };
 
     // Get the provider to check if it's a Candle provider
     let provider = match providers::get_provider_by_id(model.provider_id).await {
@@ -606,66 +600,54 @@ pub async fn start_model(
         }
     };
 
-    if provider.provider_type != "candle" {
+    if provider.provider_type != "candle_server" {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only Candle models can be started",
         ));
     }
 
-    // Check if model is actually running (with cleanup of stale processes)
-    let model_manager = crate::ai::candle::management::get_model_manager();
+    // Check if model is actually running
+    let model_manager = crate::ai::candle_server::management::get_model_manager();
     let model_path = model.get_model_path();
 
-    match model_manager
-        .check_and_cleanup_model(model_id, &model_path)
-        .await
-    {
-        Ok(true) => {
-            // Model is actually running, update its active status in database
-            println!(
-                "Model {} is already running, updating active status in database",
-                model_id
-            );
+    if model_manager.is_model_running(&model_path).await {
+        // Model is already running, update its active status in database
+        println!(
+            "Model {} is already running, updating active status in database",
+            model_id
+        );
 
-            match providers::update_model(
-                model_id,
-                UpdateModelRequest {
-                    name: None,
-                    alias: None,
-                    description: None,
-                    parameters: None,
-                    enabled: None,
-                    is_active: Some(true),
-                    capabilities: None,
-                    device_type: None,
-                    device_ids: None,
-                },
-            )
-            .await
-            {
-                Ok(_) => {
-                    println!("Successfully updated model {} active status", model_id);
-                    return Ok(StatusCode::OK);
-                }
-                Err(e) => {
-                    eprintln!("Failed to update model {} active status: {}", model_id, e);
-                    return Err(AppError::internal_error("Failed to update model status"));
-                }
+        match providers::update_model(
+            model_id,
+            UpdateModelRequest {
+                name: None,
+                alias: None,
+                description: None,
+                parameters: None,
+                enabled: None,
+                is_active: Some(true),
+                capabilities: None,
+                device_type: None,
+                device_ids: None,
+            },
+        )
+        .await
+        {
+            Ok(_) => {
+                println!("Successfully updated model {} active status", model_id);
+                return Ok(StatusCode::OK);
             }
-        }
-        Ok(false) => {
-            // Model is not running, we can proceed with starting it
-        }
-        Err(e) => {
-            eprintln!("Error checking model status: {}", e);
-            // If we can't determine status, assume it's safe to proceed
+            Err(e) => {
+                eprintln!("Failed to update model {} active status: {}", model_id, e);
+                return Err(AppError::internal_error("Failed to update model status"));
+            }
         }
     }
 
     // Validate that the model files exist
     let model_path = model.get_model_path();
-    if !crate::ai::candle::models::ModelUtils::model_exists(&model_path) {
+    if !crate::ai::candle_server::models::ModelUtils::model_exists(&model_path) {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Model files not found or invalid",
@@ -673,12 +655,54 @@ pub async fn start_model(
     }
 
     // Start the model server process
-    match model_manager.start_model(&model).await {
-        Ok(crate::ai::candle::management::ModelStartResult::Started(port)) => {
+    // Convert device_ids from database JSON format to Vec<i32>
+    let device_ids = model
+        .device_ids
+        .as_ref()
+        .and_then(|v| serde_json::from_value::<Vec<i32>>(v.clone()).ok())
+        .filter(|ids| !ids.is_empty());
+
+    // Convert device_type from string to DeviceType enum
+    let device_type = match model.device_type.as_deref() {
+        Some("cpu") => crate::ai::candle_server::DeviceType::Cpu,
+        Some("cuda") => crate::ai::candle_server::DeviceType::Cuda,
+        Some("metal") => crate::ai::candle_server::DeviceType::Metal,
+        _ => crate::ai::candle_server::DeviceType::Cpu, // Default to CPU if not specified or unknown
+    };
+
+    match model_manager
+        .start_model(
+            &model_id.to_string(),
+            model.get_model_path(),
+            model.architecture.clone().unwrap_or_else(|| "llama".to_string()), // Use model architecture or default to llama
+            device_type, // Use actual device type from model
+            device_ids,  // Pass device_ids from model
+            // Additional parameters (using defaults for now)
+            None, // verbose
+            None, // max_num_seqs (default: 256)
+            None, // block_size (default: 32)
+            None, // weight_file
+            None, // dtype
+            None, // kvcache_mem_gpu (default: 4096)
+            None, // kvcache_mem_cpu (default: 128)
+            None, // record_conversation
+            None, // holding_time (default: 500)
+            None, // multi_process
+            None, // log
+        )
+        .await
+    {
+        Ok(crate::ai::candle_server::management::ModelStartResult::Started(port)) => {
             println!("Model {} started successfully on port {}", model_id, port);
 
-            // Update model status in database
-            match providers::update_model(
+            // Update model status and port in database
+            let pool = crate::database::get_database_pool().map_err(|e| {
+                eprintln!("Failed to get database pool: {}", e);
+                AppError::internal_error("Database operation failed")
+            })?;
+
+            // Update both active status and port
+            let update_status_result = providers::update_model(
                 model_id,
                 UpdateModelRequest {
                     name: None,
@@ -692,30 +716,47 @@ pub async fn start_model(
                     device_ids: None,
                 },
             )
-            .await
-            {
-                Ok(Some(_)) => Ok(StatusCode::OK),
-                Ok(None) => {
-                    // Model started but database update failed, try to stop the model
-                    let _ = model_manager.stop_model(model_id).await;
+            .await;
+
+            let update_port_result =
+                crate::database::model_operations::ModelOperations::update_model_port(
+                    pool.as_ref(),
+                    &model_id,
+                    Some(port as i32),
+                )
+                .await;
+
+            match (update_status_result, update_port_result) {
+                (Ok(Some(_)), Ok(_)) => {
+                    println!("Successfully updated model {} status and port", model_id);
+                    Ok(StatusCode::OK)
+                }
+                (Ok(None), _) => {
+                    // Model started but not found in database, try to stop the model
+                    let _ = model_manager.stop_model(&model.get_model_path()).await;
                     Err(AppError::not_found("Model"))
                 }
-                Err(e) => {
-                    eprintln!("Failed to update model status {}: {}", model_id, e);
+                (Err(e), _) | (_, Err(e)) => {
+                    eprintln!("Failed to update model {} status/port: {}", model_id, e);
                     // Model started but database update failed, try to stop the model
-                    let _ = model_manager.stop_model(model_id).await;
+                    let _ = model_manager.stop_model(&model.get_model_path()).await;
                     Err(AppError::internal_error("Database operation failed"))
                 }
             }
         }
-        Ok(crate::ai::candle::management::ModelStartResult::AlreadyRunning(port)) => {
+        Ok(crate::ai::candle_server::management::ModelStartResult::AlreadyRunning(port)) => {
             println!(
                 "Model {} is already running on port {}, updating database status",
                 model_id, port
             );
 
-            // Update model status in database to ensure it's marked as active
-            match providers::update_model(
+            // Update model status and port in database to ensure they're correct
+            let pool = crate::database::get_database_pool().map_err(|e| {
+                eprintln!("Failed to get database pool: {}", e);
+                AppError::internal_error("Database operation failed")
+            })?;
+
+            let update_status_result = providers::update_model(
                 model_id,
                 UpdateModelRequest {
                     name: None,
@@ -729,18 +770,27 @@ pub async fn start_model(
                     device_ids: None,
                 },
             )
-            .await
-            {
-                Ok(Some(_)) => {
-                    println!("Successfully updated model {} active status", model_id);
+            .await;
+
+            let update_port_result =
+                crate::database::model_operations::ModelOperations::update_model_port(
+                    pool.as_ref(),
+                    &model_id,
+                    Some(port as i32),
+                )
+                .await;
+
+            match (update_status_result, update_port_result) {
+                (Ok(Some(_)), Ok(_)) => {
+                    println!("Successfully updated model {} status and port", model_id);
                     Ok(StatusCode::OK)
                 }
-                Ok(None) => {
+                (Ok(None), _) => {
                     eprintln!("Model {} not found in database", model_id);
                     Err(AppError::not_found("Model"))
                 }
-                Err(e) => {
-                    eprintln!("Failed to update model {} active status: {}", model_id, e);
+                (Err(e), _) | (_, Err(e)) => {
+                    eprintln!("Failed to update model {} status/port: {}", model_id, e);
                     Err(AppError::internal_error("Database operation failed"))
                 }
             }
@@ -761,23 +811,14 @@ pub async fn stop_model(
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     // Get the model from database
-    let pool = crate::database::get_database_pool().map_err(|e| {
-        eprintln!("Failed to get database pool: {}", e);
-        AppError::internal_error("Database operation failed")
-    })?;
-    let pool = pool.as_ref();
-
-    let model_row: Option<crate::database::models::ModelDb> =
-        sqlx::query_as("SELECT * FROM models WHERE id = $1")
-            .bind(model_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(|e| {
-                eprintln!("Failed to get model {}: {}", model_id, e);
-                AppError::internal_error("Database operation failed")
-            })?;
-
-    let model = model_row.ok_or_else(|| AppError::not_found("Model"))?;
+    let model = match providers::get_model_db_by_id(model_id).await {
+        Ok(Some(model)) => model,
+        Ok(None) => return Err(AppError::not_found("Model")),
+        Err(e) => {
+            eprintln!("Failed to get model {}: {}", model_id, e);
+            return Err(AppError::internal_error("Database operation failed"));
+        }
+    };
 
     // Get the provider to check if it's a Candle provider
     let provider = match providers::get_provider_by_id(model.provider_id).await {
@@ -789,7 +830,7 @@ pub async fn stop_model(
         }
     };
 
-    if provider.provider_type != "candle" {
+    if provider.provider_type != "candle_server" {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only Candle models can be stopped",
@@ -797,15 +838,23 @@ pub async fn stop_model(
     }
 
     // Check if model is running
-    let model_manager = crate::ai::candle::management::get_model_manager();
-    if !model_manager.is_model_running(model_id).await {
+    let model_manager = crate::ai::candle_server::management::get_model_manager();
+    if !model_manager
+        .is_model_running(&model.get_model_path())
+        .await
+    {
         // Model is not running, but we should still update the database to ensure consistency
         println!(
-            "Model {} is not running, updating database status",
+            "Model {} is not running, updating database status and clearing port",
             model_id
         );
 
-        return match providers::update_model(
+        let pool = crate::database::get_database_pool().map_err(|e| {
+            eprintln!("Failed to get database pool: {}", e);
+            AppError::internal_error("Database operation failed")
+        })?;
+
+        let update_status_result = providers::update_model(
             model_id,
             UpdateModelRequest {
                 name: None,
@@ -819,24 +868,44 @@ pub async fn stop_model(
                 device_ids: None,
             },
         )
-        .await
-        {
-            Ok(Some(_)) => Ok(StatusCode::OK),
-            Ok(None) => Err(AppError::not_found("Model")),
-            Err(e) => {
-                eprintln!("Failed to update model status {}: {}", model_id, e);
+        .await;
+
+        let clear_port_result =
+            crate::database::model_operations::ModelOperations::update_model_port(
+                pool.as_ref(),
+                &model_id,
+                None, // Clear the port
+            )
+            .await;
+
+        return match (update_status_result, clear_port_result) {
+            (Ok(Some(_)), Ok(_)) => {
+                println!(
+                    "Successfully updated model {} status and cleared port",
+                    model_id
+                );
+                Ok(StatusCode::OK)
+            }
+            (Ok(None), _) => Err(AppError::not_found("Model")),
+            (Err(e), _) | (_, Err(e)) => {
+                eprintln!("Failed to update model {} status/port: {}", model_id, e);
                 Err(AppError::internal_error("Database operation failed"))
             }
         };
     }
 
     // Stop the model server process
-    match model_manager.stop_model(model_id).await {
+    match model_manager.stop_model(&model.get_model_path()).await {
         Ok(()) => {
             println!("Model {} stopped successfully", model_id);
 
-            // Update model status in database
-            match providers::update_model(
+            // Update model status and clear port in database
+            let pool = crate::database::get_database_pool().map_err(|e| {
+                eprintln!("Failed to get database pool: {}", e);
+                AppError::internal_error("Database operation failed")
+            })?;
+
+            let update_status_result = providers::update_model(
                 model_id,
                 UpdateModelRequest {
                     name: None,
@@ -850,12 +919,27 @@ pub async fn stop_model(
                     device_ids: None,
                 },
             )
-            .await
-            {
-                Ok(Some(_)) => Ok(StatusCode::OK),
-                Ok(None) => Err(AppError::not_found("Model")),
-                Err(e) => {
-                    eprintln!("Failed to update model status {}: {}", model_id, e);
+            .await;
+
+            let clear_port_result =
+                crate::database::model_operations::ModelOperations::update_model_port(
+                    pool.as_ref(),
+                    &model_id,
+                    None, // Clear the port
+                )
+                .await;
+
+            match (update_status_result, clear_port_result) {
+                (Ok(Some(_)), Ok(_)) => {
+                    println!(
+                        "Successfully updated model {} status and cleared port",
+                        model_id
+                    );
+                    Ok(StatusCode::OK)
+                }
+                (Ok(None), _) => Err(AppError::not_found("Model")),
+                (Err(e), _) | (_, Err(e)) => {
+                    eprintln!("Failed to update model {} status/port: {}", model_id, e);
                     Err(AppError::internal_error("Database operation failed"))
                 }
             }
@@ -970,6 +1054,6 @@ pub async fn list_provider_models(
 pub async fn get_available_devices(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult<Json<AvailableDevicesResponse>> {
-    let devices_response = crate::ai::candle::device_detection::detect_available_devices();
+    let devices_response = crate::ai::core::device_detection::detect_available_devices();
     Ok(Json(devices_response))
 }

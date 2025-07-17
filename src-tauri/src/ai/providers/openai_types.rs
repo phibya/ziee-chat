@@ -28,7 +28,7 @@ pub struct ChatCompletionRequest {
 }
 
 fn default_model() -> String {
-    "candle-model".to_string()
+    "candle_server-model".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
