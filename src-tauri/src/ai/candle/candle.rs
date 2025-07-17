@@ -216,7 +216,7 @@ impl CandleProvider {
             .model_id
             .ok_or_else(|| CandleError::ConfigError("Model ID not set".to_string()))?;
 
-        let model_manager = super::model_manager::get_model_manager();
+        let model_manager = super::management::get_model_manager();
 
         if !model_manager.is_model_running(model_id).await {
             return Err(CandleError::ModelNotRunning(model_id));
@@ -365,7 +365,7 @@ impl CandleProvider {
         }
 
         // Load tokenizer using ModelFactory
-        let tokenizer = super::candle_models::ModelFactory::load_tokenizer(
+        let tokenizer = super::models::ModelFactory::load_tokenizer(
             &self.config.model_type,
             &self.config.model_path,
         )?;
@@ -388,8 +388,8 @@ impl CandleProvider {
 
     async fn load_llama_model(
         &self,
-    ) -> Result<super::candle_models::LlamaModelWrapper, CandleError> {
-        super::candle_models::LlamaModelWrapper::load(&self.config.model_path, &self.device)
+    ) -> Result<super::models::LlamaModelWrapper, CandleError> {
+        super::models::LlamaModelWrapper::load(&self.config.model_path, &self.device)
     }
 
     fn format_chat_prompt(&self, messages: &[ChatMessage]) -> String {

@@ -6,7 +6,7 @@ use serde_json;
 use std::path::Path;
 use tokenizers::Tokenizer;
 
-use super::candle::{CandleError, CandleModel};
+use super::super::candle::{CandleError, CandleModel};
 
 /// Check if two devices are the same by comparing their debug representation
 /// This is a workaround since Device doesn't implement PartialEq

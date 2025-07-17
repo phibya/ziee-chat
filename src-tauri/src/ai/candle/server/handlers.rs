@@ -1,5 +1,5 @@
-use super::candle::{CandleError, CandleModel};
-use super::candle_models::ModelFactory;
+use super::super::candle::{CandleError, CandleModel};
+use super::super::models::ModelFactory;
 use crate::ai::providers::openai_types::*;
 use axum::{
     extract::{Path, State},

@@ -624,7 +624,7 @@ pub async fn validate_model(
     }
 
     // Get and validate model size
-    if let Ok(model_size) = crate::ai::candle::candle_models::ModelUtils::get_model_size(&model_path) {
+    if let Ok(model_size) = crate::ai::candle::models::ModelUtils::get_model_size(&model_path) {
         let formatted_size = crate::utils::model_storage::ModelUtils::format_model_size(model_size);
         println!("Model size: {}", formatted_size);
 
@@ -682,7 +682,7 @@ pub async fn validate_model(
     }
 
     // List available models in the directory
-    if let Ok(model_list) = crate::ai::candle::candle_models::ModelUtils::list_models(&model_path) {
+    if let Ok(model_list) = crate::ai::candle::models::ModelUtils::list_models(&model_path) {
         println!("Available models: {:?}", model_list);
         if model_list.is_empty() {
             validation_issues.push("No model directories found".to_string());

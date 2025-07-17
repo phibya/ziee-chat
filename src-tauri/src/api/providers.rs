@@ -347,7 +347,7 @@ pub async fn delete_model(
     // If it's a Candle provider, handle model shutdown and file deletion
     if provider.provider_type == "candle" {
         // First, stop the model if it's running
-        let model_manager = crate::ai::candle::model_manager::get_model_manager();
+        let model_manager = crate::ai::candle::management::get_model_manager();
         if model_manager.is_model_running(model_id).await {
             println!("Stopping running model {} before deletion", model_id);
             match model_manager.stop_model(model_id).await {
@@ -614,7 +614,7 @@ pub async fn start_model(
     }
 
     // Check if model is actually running (with cleanup of stale processes)
-    let model_manager = crate::ai::candle::model_manager::get_model_manager();
+    let model_manager = crate::ai::candle::management::get_model_manager();
     let model_path = model.get_model_path();
 
     match model_manager
@@ -665,7 +665,7 @@ pub async fn start_model(
 
     // Validate that the model files exist
     let model_path = model.get_model_path();
-    if !crate::ai::candle::candle_models::ModelUtils::model_exists(&model_path) {
+    if !crate::ai::candle::models::ModelUtils::model_exists(&model_path) {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Model files not found or invalid",
@@ -674,7 +674,7 @@ pub async fn start_model(
 
     // Start the model server process
     match model_manager.start_model(&model).await {
-        Ok(crate::ai::candle::model_manager::ModelStartResult::Started(port)) => {
+        Ok(crate::ai::candle::management::ModelStartResult::Started(port)) => {
             println!("Model {} started successfully on port {}", model_id, port);
 
             // Update model status in database
@@ -708,7 +708,7 @@ pub async fn start_model(
                 }
             }
         }
-        Ok(crate::ai::candle::model_manager::ModelStartResult::AlreadyRunning(port)) => {
+        Ok(crate::ai::candle::management::ModelStartResult::AlreadyRunning(port)) => {
             println!(
                 "Model {} is already running on port {}, updating database status",
                 model_id, port
@@ -797,7 +797,7 @@ pub async fn stop_model(
     }
 
     // Check if model is running
-    let model_manager = crate::ai::candle::model_manager::get_model_manager();
+    let model_manager = crate::ai::candle::management::get_model_manager();
     if !model_manager.is_model_running(model_id).await {
         // Model is not running, but we should still update the database to ensure consistency
         println!(

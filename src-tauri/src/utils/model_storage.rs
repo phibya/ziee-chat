@@ -566,7 +566,7 @@ impl ModelUtils {
 
     /// Check if model directory exists using the same logic as candle_models::ModelUtils
     pub fn model_exists(model_path: &str) -> bool {
-        crate::ai::candle::candle_models::ModelUtils::model_exists(model_path)
+        crate::ai::candle::models::ModelUtils::model_exists(model_path)
     }
 
     /// Verify model exists or return ModelNotFound error
@@ -586,7 +586,7 @@ impl ModelUtils {
     /// Discover available models in a directory using ModelDiscovery
     pub fn discover_models(
         path: &str,
-    ) -> Result<Vec<crate::ai::candle::candle_config::ModelConfig>, std::io::Error> {
-        crate::ai::candle::candle_config::ModelDiscovery::scan_models_directory(path)
+    ) -> Result<Vec<crate::ai::candle::models::ModelConfig>, std::io::Error> {
+        crate::ai::candle::models::ModelDiscovery::scan_models_directory(path)
     }
 }
