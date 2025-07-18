@@ -347,8 +347,8 @@ pub async fn delete_model(
     // If it's a Candle provider, handle model shutdown and file deletion
     if provider.provider_type == "candle" {
         // First, stop the model if it's running
-        let model_manager = crate::ai::candle_server::management::get_model_manager();
-        let model_path = model.get_model_path();
+        let model_manager = crate::ai::get_model_manager();
+        let model_path = model.get_model_absolute_path();
 
         println!(
             "Checking and cleaning up model {} before deletion",
@@ -608,7 +608,7 @@ pub async fn start_model(
     }
 
     // Check if model is actually running
-    let model_manager = crate::ai::candle_server::management::get_model_manager();
+    let model_manager = crate::ai::get_model_manager();
     let model_path = model.get_model_path();
 
     if model_manager.is_model_running(&model_path).await {
@@ -648,8 +648,8 @@ pub async fn start_model(
     let model_with_settings = crate::database::models::Model::from_db(model.clone(), None);
 
     // Validate that the model files exist
-    let model_path = model_with_settings.get_model_path(&model.provider_id);
-    if !crate::ai::candle_server::models::ModelUtils::model_exists(&model_path) {
+    let model_path = model_with_settings.get_model_path();
+    if !crate::ai::models::ModelUtils::model_exists(&model_path) {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Model files not found or invalid",
@@ -664,16 +664,16 @@ pub async fn start_model(
 
     // Convert device_type from string to DeviceType enum
     let device_type = match settings.device_type.as_deref() {
-        Some("cpu") => crate::ai::candle_server::DeviceType::Cpu,
-        Some("cuda") => crate::ai::candle_server::DeviceType::Cuda,
-        Some("metal") => crate::ai::candle_server::DeviceType::Metal,
-        _ => crate::ai::candle_server::DeviceType::Cpu, // Default to CPU if not specified or unknown
+        Some("cpu") => candle_server::DeviceType::Cpu,
+        Some("cuda") => candle_server::DeviceType::Cuda,
+        Some("metal") => candle_server::DeviceType::Metal,
+        _ => candle_server::DeviceType::Cpu, // Default to CPU if not specified or unknown
     };
 
     match model_manager
         .start_model(
             &model_id.to_string(),
-            model_path,
+            model_with_settings.get_model_absolute_path(),
             settings
                 .architecture
                 .clone()
@@ -695,7 +695,7 @@ pub async fn start_model(
         )
         .await
     {
-        Ok(crate::ai::candle_server::management::ModelStartResult::Started(port)) => {
+        Ok(crate::ai::ModelStartResult::Started(port)) => {
             println!("Model {} started successfully on port {}", model_id, port);
 
             // Update model status and port in database
@@ -746,7 +746,7 @@ pub async fn start_model(
                 }
             }
         }
-        Ok(crate::ai::candle_server::management::ModelStartResult::AlreadyRunning(port)) => {
+        Ok(crate::ai::ModelStartResult::AlreadyRunning(port)) => {
             println!(
                 "Model {} is already running on port {}, updating database status",
                 model_id, port
@@ -839,9 +839,9 @@ pub async fn stop_model(
     }
 
     // Check if model is running
-    let model_manager = crate::ai::candle_server::management::get_model_manager();
+    let model_manager = crate::ai::get_model_manager();
     if !model_manager
-        .is_model_running(&model.get_model_path())
+        .is_model_running(&model.get_model_absolute_path())
         .await
     {
         // Model is not running, but we should still update the database to ensure consistency
@@ -895,7 +895,10 @@ pub async fn stop_model(
     }
 
     // Stop the model server process
-    match model_manager.stop_model(&model.get_model_path()).await {
+    match model_manager
+        .stop_model(&model.get_model_absolute_path())
+        .await
+    {
         Ok(()) => {
             println!("Model {} stopped successfully", model_id);
 

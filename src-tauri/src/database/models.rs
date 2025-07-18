@@ -1,3 +1,4 @@
+use crate::APP_DATA_DIR;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -369,6 +370,13 @@ impl ModelDb {
     pub fn get_model_path(&self) -> String {
         format!("models/{}/{}", self.provider_id, self.id)
     }
+
+    pub fn get_model_absolute_path(&self) -> String {
+        APP_DATA_DIR
+            .join(self.get_model_path())
+            .to_string_lossy()
+            .to_string()
+    }
 }
 
 // API structures for model providers
@@ -593,6 +601,7 @@ impl Provider {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Model {
     pub id: Uuid,
+    pub provider_id: Uuid,
     pub name: String,
     pub alias: String,
     pub description: Option<String>,
@@ -1242,8 +1251,15 @@ pub struct ModelStatusCounts {
 
 impl Model {
     /// Get the model path using the pattern {provider_id}/{id}
-    pub fn get_model_path(&self, provider_id: &Uuid) -> String {
-        format!("models/{}/{}", provider_id, self.id)
+    pub fn get_model_path(&self) -> String {
+        format!("models/{}/{}", self.provider_id, self.id)
+    }
+
+    pub fn get_model_absolute_path(&self) -> String {
+        APP_DATA_DIR
+            .join(self.get_model_path())
+            .to_string_lossy()
+            .to_string()
     }
 
     pub fn from_db(model_db: ModelDb, files: Option<Vec<ModelFileDb>>) -> Self {
@@ -1266,6 +1282,7 @@ impl Model {
 
         Self {
             id: model_db.id,
+            provider_id: model_db.provider_id,
             name: model_db.name,
             alias: model_db.alias,
             description: model_db.description,
