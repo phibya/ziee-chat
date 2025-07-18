@@ -1,10 +1,11 @@
-import { Button, Form, Modal } from 'antd'
+import { Button, Card, Flex, Form, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Model, ProviderType } from '../../../../types/api/provider'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
 import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
+import { ModelSettingsSection } from './shared/ModelSettingsSection'
 import { BASIC_MODEL_FIELDS, CANDLE_PARAMETERS } from './shared/constants'
 
 interface EditModelModalProps {
@@ -32,15 +33,12 @@ export function EditModelModal({
         name: model.name,
         alias: model.alias,
         description: model.description,
-        path: model.path,
-        device_type: model.device_type,
-        device_ids: model.device_ids || [],
-        vision: model.capabilities?.vision,
-        audio: model.capabilities?.audio,
-        tools: model.capabilities?.tools,
-        codeInterpreter: model.capabilities?.codeInterpreter,
+        capabilities: model.capabilities || {},
         parameters: model.parameters || {},
+        settings: model.settings || {},
       })
+
+      console.log({ model, f: form.getFieldsValue() })
     }
   }, [model, open, form])
 
@@ -52,20 +50,7 @@ export function EditModelModal({
       const modelData = {
         ...model,
         ...values,
-        capabilities: {
-          vision: values.vision || false,
-          audio: values.audio || false,
-          tools: values.tools || false,
-          codeInterpreter: values.codeInterpreter || false,
-        },
       }
-
-      // Remove capability checkboxes from main data
-      delete modelData.vision
-      delete modelData.audio
-      delete modelData.tools
-      delete modelData.codeInterpreter
-
       await onSubmit(modelData)
     } catch (error) {
       console.error('Failed to update model:', error)
@@ -98,16 +83,19 @@ export function EditModelModal({
       <Form form={form} layout="vertical">
         <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
 
-        {providerType === 'candle' && <DeviceSelectionSection />}
+        <Flex className={`flex-col gap-3`}>
+          <ModelCapabilitiesSection />
 
-        <ModelCapabilitiesSection />
+          {providerType === 'candle' && <DeviceSelectionSection />}
 
-        {providerType === 'candle' && (
-          <ModelParametersSection
-            title={t('providers.parameters')}
-            parameters={CANDLE_PARAMETERS}
-          />
-        )}
+          {providerType === 'candle' && <ModelSettingsSection />}
+
+          {providerType === 'candle' && (
+            <Card title={t('providers.parameters')} size={'small'}>
+              <ModelParametersSection parameters={CANDLE_PARAMETERS} />
+            </Card>
+          )}
+        </Flex>
       </Form>
     </Modal>
   )

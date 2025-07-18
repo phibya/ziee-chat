@@ -40,7 +40,6 @@ import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
 import { ProviderProxySettingsForm } from './ProviderProxySettings'
-import { CandleConfigurationSection } from './shared/CandleConfigurationSection'
 import { useProvidersStore } from '../../../../store/providers'
 
 const { Title, Text } = Typography
@@ -242,7 +241,6 @@ export function ProvidersSettings() {
       form.setFieldsValue({
         api_key: currentProvider.api_key,
         base_url: currentProvider.base_url,
-        settings: currentProvider.settings,
       })
       nameForm.setFieldsValue({
         name: currentProvider.name,
@@ -320,16 +318,6 @@ export function ProvidersSettings() {
       console.error('Failed to update provider:', error)
       // Error is handled by the store
     }
-  }
-
-  const handleSettingsChange = (changedValues: any) => {
-    if (!currentProvider || !canEditProviders) return
-
-    setHasUnsavedChanges(true)
-    setPendingSettings((prev: any) => ({
-      ...prev,
-      settings: { ...currentProvider.settings, ...changedValues },
-    }))
   }
 
   const handleSaveSettings = async () => {
@@ -439,7 +427,7 @@ export function ProvidersSettings() {
 
     try {
       // Handle Candle uploads differently - they're already processed
-      if (modelData.type === 'candle_server-upload') {
+      if (modelData.type === 'candle-upload') {
         // For Candle uploads, just refresh the providers list
         await loadProviders()
         setIsAddModelModalOpen(false)
@@ -881,27 +869,26 @@ export function ProvidersSettings() {
                 actions={
                   canEditProviders
                     ? [
-                        currentProvider.type === 'candle' &&
-                          currentProvider.enabled && (
-                            <Button
-                              key="start-stop"
-                              type={model.is_active ? 'default' : 'primary'}
-                              size={isMobile ? 'small' : 'middle'}
-                              loading={modelOperations[model.id] || false}
-                              disabled={modelOperations[model.id] || false}
-                              onClick={() =>
-                                handleStartStopModel(model.id, !model.is_active)
-                              }
-                            >
-                              {modelOperations[model.id]
-                                ? model.is_active
-                                  ? 'Stopping...'
-                                  : 'Starting...'
-                                : model.is_active
-                                  ? 'Stop'
-                                  : 'Start'}
-                            </Button>
-                          ),
+                        currentProvider.type === 'candle' && (
+                          <Button
+                            key="start-stop"
+                            type={model.is_active ? 'default' : 'primary'}
+                            size={isMobile ? 'small' : 'middle'}
+                            loading={modelOperations[model.id] || false}
+                            disabled={modelOperations[model.id] || false}
+                            onClick={() =>
+                              handleStartStopModel(model.id, !model.is_active)
+                            }
+                          >
+                            {modelOperations[model.id]
+                              ? model.is_active
+                                ? 'Stopping...'
+                                : 'Starting...'
+                              : model.is_active
+                                ? 'Stop'
+                                : 'Start'}
+                          </Button>
+                        ),
                         <Button
                           key="edit"
                           type="text"
@@ -985,36 +972,6 @@ export function ProvidersSettings() {
               disabled={!canEditProviders}
             />
           )}
-
-        {/* Candle Specific Settings */}
-        {currentProvider.type === 'candle' && currentProvider.settings && (
-          <Form
-            layout="vertical"
-            initialValues={currentProvider.settings}
-            onValuesChange={handleSettingsChange}
-          >
-            <Card
-              title={t('providers.configuration')}
-              extra={
-                canEditProviders && (
-                  <Button
-                    type="primary"
-                    onClick={handleSaveSettings}
-                    disabled={!hasUnsavedChanges}
-                  >
-                    Save
-                  </Button>
-                )
-              }
-            >
-              <CandleConfigurationSection
-                disabled={!canEditProviders}
-                useNestedSettings={false}
-                wrapInCard={false}
-              />
-            </Card>
-          </Form>
-        )}
       </Flex>
     )
   }

@@ -1,13 +1,4 @@
-import {
-  Card,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Select,
-  Space,
-  Switch,
-} from 'antd'
+import { Card, Form, Input, Modal, Space, Switch } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
@@ -38,7 +29,6 @@ export function EditProviderModal({
         enabled: provider.enabled,
         api_key: provider.api_key,
         base_url: provider.base_url,
-        settings: provider.settings,
       })
     }
   }, [provider, open, form])
@@ -90,7 +80,7 @@ export function EditProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-candle_server providers */}
+        {/* API Configuration for non-candle providers */}
         {provider.type !== 'candle' && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title={t('providers.apiConfiguration')}>
@@ -126,112 +116,6 @@ export function EditProviderModal({
               </Form.Item>
             </Card>
           </Space>
-        )}
-
-        {/* Candle Configuration */}
-        {provider.type === 'candle' && (
-          <Card size="small" title={t('providers.candleConfiguration')}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Form.Item
-                name={['settings', 'autoUnloadOldModels']}
-                label={t('providers.autoUnloadOldModels')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'contextShift']}
-                label={t('providers.contextShift')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'continuousBatching']}
-                label={t('providers.continuousBatching')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'parallelOperations']}
-                label={t('providers.parallelOperations')}
-              >
-                <InputNumber min={1} max={16} style={{ width: '100%' }} />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'cpuThreads']}
-                label={t('providers.cpuThreads')}
-              >
-                <InputNumber
-                  placeholder={t('providers.cpuThreadsPlaceholder')}
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'threadsBatch']}
-                label={t('providers.threadsBatch')}
-              >
-                <InputNumber
-                  placeholder={t('providers.threadsBatchPlaceholder')}
-                  style={{ width: '100%' }}
-                />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'flashAttention']}
-                label={t('providers.flashAttention')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'caching']}
-                label={t('providers.caching')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'kvCacheType']}
-                label={t('providers.kvCacheType')}
-              >
-                <Select
-                  options={[
-                    { value: 'q8_0', label: 'q8_0' },
-                    { value: 'q4_0', label: 'q4_0' },
-                    { value: 'q4_1', label: 'q4_1' },
-                    { value: 'q5_0', label: 'q5_0' },
-                    { value: 'q5_1', label: 'q5_1' },
-                  ]}
-                />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'mmap']}
-                label={t('providers.mmap')}
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-
-              <Form.Item
-                name={['settings', 'huggingFaceAccessToken']}
-                label={t('providers.huggingFaceAccessToken')}
-              >
-                <Input.Password
-                  placeholder={t('providers.huggingFaceTokenPlaceholder')}
-                />
-              </Form.Item>
-            </Space>
-          </Card>
         )}
       </Form>
     </Modal>

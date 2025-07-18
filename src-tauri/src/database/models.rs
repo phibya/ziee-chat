@@ -289,7 +289,7 @@ pub struct ProviderDb {
     pub enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: serde_json::Value,
+    // Settings removed - now stored per-model
     pub is_default: bool,
     pub proxy_settings: serde_json::Value,
     pub created_at: DateTime<Utc>,
@@ -297,23 +297,30 @@ pub struct ProviderDb {
 }
 
 impl ProviderDb {
-    /// Parse the settings JSON into a typed ProviderSettings struct
-    pub fn parse_settings(&self) -> Result<ProviderSettings, String> {
-        if self.settings.is_null() {
-            return Ok(ProviderSettings::default());
-        }
-
-        serde_json::from_value(self.settings.clone())
-            .map_err(|e| format!("Failed to parse provider settings: {}", e))
+    /// Provider settings have been moved to individual models
+    /// This method is deprecated and will be removed in a future version
+    #[deprecated(
+        note = "Provider settings moved to individual models. Use Model.get_settings() instead."
+    )]
+    pub fn parse_settings(&self) -> Result<ModelSettings, String> {
+        Ok(ModelSettings::default())
     }
 
-    /// Get the settings for this provider, or return default settings if parsing fails
-    pub fn get_settings(&self) -> ProviderSettings {
-        self.parse_settings().unwrap_or_default()
+    /// Provider settings have been moved to individual models
+    /// This method is deprecated and will be removed in a future version
+    #[deprecated(
+        note = "Provider settings moved to individual models. Use Model.get_settings() instead."
+    )]
+    pub fn get_settings(&self) -> ModelSettings {
+        ModelSettings::default()
     }
 
-    /// Get validated settings, returning an error if invalid
-    pub fn get_validated_settings(&self) -> Result<ProviderSettings, String> {
+    /// Provider settings have been moved to individual models
+    /// This method is deprecated and will be removed in a future version
+    #[deprecated(
+        note = "Provider settings moved to individual models. Use Model.get_validated_settings() instead."
+    )]
+    pub fn get_validated_settings(&self) -> Result<ModelSettings, String> {
         let settings = self.parse_settings()?;
         settings.validate()?;
         Ok(settings)
@@ -350,13 +357,10 @@ pub struct ModelDb {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     // Additional fields for Candle models (NULL for other providers)
-    pub architecture: Option<String>,
-    pub quantization: Option<String>,
     pub file_size_bytes: Option<i64>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<serde_json::Value>,
-    pub device_type: Option<String>, // cpu, cuda, metal, etc.
-    pub device_ids: Option<serde_json::Value>, // JSON array of device IDs for multi-GPU
+    pub settings: serde_json::Value, // Model performance and device settings as JSONB
     pub port: Option<i32>,           // Port number where the model server is running
 }
 
@@ -392,253 +396,156 @@ pub struct ProviderProxySettings {
     pub host_ssl: bool,
 }
 
-/// Typed settings for model provider performance and batching configuration
+/// Typed settings for individual model performance and batching configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ProviderSettings {
-    /// Enable context shift to handle long prompts by shifting the context window
+pub struct ModelSettings {
+    /// Set verbose mode (print all requests)
     #[serde(default)]
-    pub enable_context_shift: bool,
+    pub verbose: bool,
 
-    /// Enable continuous batching for improved throughput
+    /// Maximum number of sequences to allow (default: 256)
+    #[serde(default = "default_max_num_seqs")]
+    pub max_num_seqs: usize,
+
+    /// Size of a block (default: 32)
+    #[serde(default = "default_block_size")]
+    pub block_size: usize,
+
+    /// Available GPU memory for kvcache in MB (default: 4096)
+    #[serde(default = "default_kvcache_mem_gpu")]
+    pub kvcache_mem_gpu: usize,
+
+    /// Available CPU memory for kvcache in MB (default: 128)
+    #[serde(default = "default_kvcache_mem_cpu")]
+    pub kvcache_mem_cpu: usize,
+
+    /// Record conversation (default: false, the client needs to record chat history)
     #[serde(default)]
-    pub enable_continuous_batching: bool,
+    pub record_conversation: bool,
 
-    /// Number of threads for batch processing (default: 4)
-    #[serde(default = "default_batch_threads")]
-    pub batch_threads: usize,
+    /// Maximum waiting time for processing parallel requests in milliseconds (default: 500)
+    /// A larger value means the engine can hold more requests and process them in a single generation call
+    #[serde(default = "default_holding_time")]
+    pub holding_time: usize,
 
-    /// Batch size for continuous batching (default: 4)
-    #[serde(default = "default_batch_size")]
-    pub batch_size: usize,
+    /// Whether the program runs in multiprocess or multithread mode for parallel inference (default: false)
+    #[serde(default)]
+    pub multi_process: bool,
 
-    /// Batch timeout in milliseconds (default: 10)
-    #[serde(default = "default_batch_timeout_ms")]
-    pub batch_timeout_ms: u64,
+    /// Enable logging (default: false)
+    #[serde(default)]
+    pub log: bool,
 
-    /// Maximum number of concurrent requests (default: 32)
-    #[serde(default = "default_max_concurrent_requests")]
-    pub max_concurrent_requests: usize,
+    /// Model architecture (llama, mistral, etc.)
+    pub architecture: Option<String>,
 
-    /// Maximum number of prompts that can be processed simultaneously by the model (default: 8)
-    #[serde(default = "default_max_concurrent_prompts")]
-    pub max_concurrent_prompts: usize,
+    /// Device type (cpu, cuda, metal, etc.)
+    pub device_type: Option<String>,
 
-    /// Number of CPU threads to use for inference when device type is cpu (default: 4)
-    #[serde(default = "default_cpu_threads")]
-    pub cpu_threads: usize,
-
-    /// Enable flash attention support for optimized memory usage and faster inference (default: false)
-    #[serde(default = "default_flash_attention")]
-    pub flash_attention: bool,
-
-    /// KV Cache Type for controlling memory usage and precision trade-off (default: f16)
-    #[serde(default = "default_kv_cache_type")]
-    pub kv_cache_type: String,
-
-    /// Enable Paged Attention for efficient memory usage and better batching performance (default: false)
-    #[serde(default = "default_paged_attention")]
-    pub paged_attention: bool,
-
-    /// Enable Memory Mapping (mmap) for efficient model file loading and reduced RAM usage (default: true)
-    #[serde(default = "default_mmap")]
-    pub mmap: bool,
-
-    /// Enable auto unloading of model from memory when idle to free up memory usage (default: false)
-    #[serde(default = "default_auto_unload_model")]
-    pub auto_unload_model: bool,
-
-    /// Minutes of inactivity before auto unloading the model (default: 10 minutes)
-    #[serde(default = "default_auto_unload_minutes")]
-    pub auto_unload_minutes: u64,
-
-    /// Request timeout in seconds (default: 300)
-    #[serde(default = "default_request_timeout_seconds")]
-    pub request_timeout_seconds: u64,
-
-    /// Enable request queuing when server is busy (default: true)
-    #[serde(default = "default_enable_request_queuing")]
-    pub enable_request_queuing: bool,
-
-    /// Maximum queue size for pending requests (default: 100)
-    #[serde(default = "default_max_queue_size")]
-    pub max_queue_size: usize,
+    /// Array of device IDs for multi-GPU
+    pub device_ids: Option<Vec<i32>>,
 }
 
-// Default value functions for ProviderSettings
-fn default_batch_threads() -> usize {
-    4
+// Default value functions for ModelSettings
+fn default_max_num_seqs() -> usize {
+    256
 }
-fn default_batch_size() -> usize {
-    4
-}
-fn default_batch_timeout_ms() -> u64 {
-    10
-}
-fn default_max_concurrent_requests() -> usize {
+fn default_block_size() -> usize {
     32
 }
-fn default_max_concurrent_prompts() -> usize {
-    8
+fn default_kvcache_mem_gpu() -> usize {
+    4096
 }
-fn default_cpu_threads() -> usize {
-    4
+fn default_kvcache_mem_cpu() -> usize {
+    128
 }
-fn default_flash_attention() -> bool {
-    false
-}
-fn default_kv_cache_type() -> String {
-    "f16".to_string()
-}
-fn default_paged_attention() -> bool {
-    false
-}
-fn default_mmap() -> bool {
-    true
-}
-fn default_auto_unload_model() -> bool {
-    false
-}
-fn default_auto_unload_minutes() -> u64 {
-    10
-}
-fn default_request_timeout_seconds() -> u64 {
-    300
-}
-fn default_enable_request_queuing() -> bool {
-    true
-}
-fn default_max_queue_size() -> usize {
-    100
+fn default_holding_time() -> usize {
+    500
 }
 
-impl ProviderSettings {
-    /// Create a new ProviderSettings with default values
+impl ModelSettings {
+    /// Create a new ModelSettings with default values
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create ProviderSettings optimized for high throughput
+    /// Create ModelSettings optimized for high throughput
     pub fn high_throughput() -> Self {
         Self {
-            enable_context_shift: true,
-            enable_continuous_batching: true,
-            batch_threads: 8,
-            batch_size: 8,
-            batch_timeout_ms: 20,
-            max_concurrent_requests: 64,
-            max_concurrent_prompts: 16,
-            cpu_threads: 8,
-            flash_attention: true,
-            kv_cache_type: "f16".to_string(),
-            paged_attention: true,
-            mmap: true,
-            auto_unload_model: false, // High throughput scenarios keep models loaded
-            auto_unload_minutes: 30,  // Longer timeout for high throughput
-            request_timeout_seconds: 300,
-            enable_request_queuing: true,
-            max_queue_size: 200,
+            verbose: false,
+            max_num_seqs: 512,
+            block_size: 64,
+            kvcache_mem_gpu: 8192,
+            kvcache_mem_cpu: 256,
+            record_conversation: false,
+            holding_time: 1000,
+            multi_process: true,
+            log: false,
+            architecture: None,
+            device_type: Some("cpu".to_string()),
+            device_ids: None,
         }
     }
 
-    /// Create ProviderSettings optimized for low latency
+    /// Create ModelSettings optimized for low latency
     pub fn low_latency() -> Self {
         Self {
-            enable_context_shift: false,
-            enable_continuous_batching: false,
-            batch_threads: 2,
-            batch_size: 1,
-            batch_timeout_ms: 5,
-            max_concurrent_requests: 16,
-            max_concurrent_prompts: 4,
-            cpu_threads: 2,
-            flash_attention: false,
-            kv_cache_type: "f32".to_string(),
-            paged_attention: false,
-            mmap: false,
-            auto_unload_model: true, // Low latency benefits from memory management
-            auto_unload_minutes: 5,  // Quick unload for memory efficiency
-            request_timeout_seconds: 60,
-            enable_request_queuing: false,
-            max_queue_size: 32,
+            verbose: false,
+            max_num_seqs: 128,
+            block_size: 16,
+            kvcache_mem_gpu: 2048,
+            kvcache_mem_cpu: 64,
+            record_conversation: false,
+            holding_time: 100,
+            multi_process: false,
+            log: false,
+            architecture: None,
+            device_type: Some("cpu".to_string()),
+            device_ids: None,
         }
     }
 
     /// Validate the settings and return errors if any
     pub fn validate(&self) -> Result<(), String> {
-        if self.batch_threads == 0 {
-            return Err("batch_threads must be greater than 0".to_string());
+        if self.max_num_seqs == 0 {
+            return Err("max_num_seqs must be greater than 0".to_string());
         }
 
-        if self.batch_size == 0 {
-            return Err("batch_size must be greater than 0".to_string());
+        if self.block_size == 0 {
+            return Err("block_size must be greater than 0".to_string());
         }
 
-        if self.batch_timeout_ms == 0 {
-            return Err("batch_timeout_ms must be greater than 0".to_string());
+        if self.kvcache_mem_gpu == 0 {
+            return Err("kvcache_mem_gpu must be greater than 0".to_string());
         }
 
-        if self.max_concurrent_requests == 0 {
-            return Err("max_concurrent_requests must be greater than 0".to_string());
+        if self.kvcache_mem_cpu == 0 {
+            return Err("kvcache_mem_cpu must be greater than 0".to_string());
         }
 
-        if self.max_concurrent_prompts == 0 {
-            return Err("max_concurrent_prompts must be greater than 0".to_string());
-        }
-
-        if self.cpu_threads == 0 {
-            return Err("cpu_threads must be greater than 0".to_string());
-        }
-
-        // Validate KV cache type
-        match self.kv_cache_type.to_lowercase().as_str() {
-            "f32" | "f16" | "bf16" | "i8" | "auto" => {}
-            _ => {
-                return Err(format!(
-                    "Invalid kv_cache_type '{}'. Must be one of: f32, f16, bf16, i8, auto",
-                    self.kv_cache_type
-                ))
-            }
-        }
-
-        // Paged attention validation (boolean, no explicit validation needed but we can add warnings)
-        if self.paged_attention && !self.enable_continuous_batching {
-            return Err(
-                "paged_attention requires enable_continuous_batching to be true".to_string(),
-            );
-        }
-
-        if self.request_timeout_seconds == 0 {
-            return Err("request_timeout_seconds must be greater than 0".to_string());
-        }
-
-        if self.max_queue_size == 0 {
-            return Err("max_queue_size must be greater than 0".to_string());
-        }
-
-        // Auto unload validation
-        if self.auto_unload_minutes == 0 {
-            return Err("auto_unload_minutes must be greater than 0".to_string());
+        if self.holding_time == 0 {
+            return Err("holding_time must be greater than 0".to_string());
         }
 
         // Reasonable limits
-        if self.batch_threads > 32 {
-            return Err("batch_threads should not exceed 32".to_string());
+        if self.max_num_seqs > 2048 {
+            return Err("max_num_seqs should not exceed 2048".to_string());
         }
 
-        if self.batch_size > 64 {
-            return Err("batch_size should not exceed 64".to_string());
+        if self.block_size > 512 {
+            return Err("block_size should not exceed 512".to_string());
         }
 
-        if self.batch_timeout_ms > 10000 {
-            return Err("batch_timeout_ms should not exceed 10000ms".to_string());
+        if self.kvcache_mem_gpu > 65536 {
+            return Err("kvcache_mem_gpu should not exceed 65536MB (64GB)".to_string());
         }
 
-        if self.max_concurrent_requests > 1000 {
-            return Err("max_concurrent_requests should not exceed 1000".to_string());
+        if self.kvcache_mem_cpu > 16384 {
+            return Err("kvcache_mem_cpu should not exceed 16384MB (16GB)".to_string());
         }
 
-        if self.max_queue_size > 1000 {
-            return Err("max_queue_size should not exceed 1000".to_string());
+        if self.holding_time > 30000 {
+            return Err("holding_time should not exceed 30000ms (30 seconds)".to_string());
         }
 
         Ok(())
@@ -654,7 +561,7 @@ pub struct Provider {
     pub enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<ProviderSettings>,
+    // Settings removed - now stored per-model in Model.settings
     pub proxy_settings: Option<ProviderProxySettings>,
     pub is_default: bool,
     pub created_at: DateTime<Utc>,
@@ -662,13 +569,21 @@ pub struct Provider {
 }
 
 impl Provider {
-    /// Get the settings for this provider, or return default settings if none are set
-    pub fn get_settings(&self) -> ProviderSettings {
-        self.settings.clone().unwrap_or_default()
+    /// Provider settings have been moved to individual models
+    /// Use Model.get_settings() instead for model-specific performance settings
+    #[deprecated(
+        note = "Provider settings moved to individual models. Use Model.get_settings() instead."
+    )]
+    pub fn get_settings(&self) -> ModelSettings {
+        ModelSettings::default()
     }
 
-    /// Get validated settings, returning an error if invalid
-    pub fn get_validated_settings(&self) -> Result<ProviderSettings, String> {
+    /// Provider settings have been moved to individual models
+    /// Use Model.get_validated_settings() instead for model-specific performance settings
+    #[deprecated(
+        note = "Provider settings moved to individual models. Use Model.get_validated_settings() instead."
+    )]
+    pub fn get_validated_settings(&self) -> Result<ModelSettings, String> {
         let settings = self.get_settings();
         settings.validate()?;
         Ok(settings)
@@ -689,14 +604,11 @@ pub struct Model {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     // Additional fields for Candle models (None for other providers)
-    pub architecture: Option<String>,
-    pub quantization: Option<String>,
     pub file_size_bytes: Option<i64>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<Vec<String>>,
-    pub device_type: Option<String>,     // cpu, cuda, metal, etc.
-    pub device_ids: Option<Vec<i32>>, // Array of device IDs for multi-GPU
-    pub port: Option<i32>,               // Port number where the model server is running
+    pub port: Option<i32>, // Port number where the model server is running
+    pub settings: Option<ModelSettings>, // Model-specific performance settings
     pub files: Option<Vec<ModelFileInfo>>,
 }
 
@@ -709,7 +621,7 @@ pub struct CreateProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<ProviderSettings>,
+    // Settings removed - now configured per-model
     pub proxy_settings: Option<ProviderProxySettings>,
 }
 
@@ -719,7 +631,7 @@ pub struct UpdateProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub settings: Option<ProviderSettings>,
+    // Settings removed - now configured per-model
     pub proxy_settings: Option<ProviderProxySettings>,
 }
 
@@ -731,8 +643,7 @@ pub struct CreateModelRequest {
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
-    pub device_type: Option<String>,
-    pub device_ids: Option<Vec<i32>>,
+    pub settings: Option<ModelSettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -744,14 +655,13 @@ pub struct UpdateModelRequest {
     pub is_active: Option<bool>,
     pub capabilities: Option<serde_json::Value>,
     pub parameters: Option<serde_json::Value>,
-    pub device_type: Option<String>,
-    pub device_ids: Option<Vec<i32>>,
+    pub settings: Option<ModelSettings>,
 }
 
 // Device detection structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
-    pub id: String, // Device identifier - :0, :1
+    pub id: i32, // Device index (0, 1, 2, etc.)
     pub name: String,
     pub device_type: String,       // cpu, cuda, metal
     pub memory_total: Option<u64>, // Total memory in bytes
@@ -1354,11 +1264,6 @@ impl Model {
                 .collect()
         });
 
-        let device_ids = model_db
-            .device_ids
-            .as_ref()
-            .and_then(|v| serde_json::from_value::<Vec<i32>>(v.clone()).ok());
-
         Self {
             id: model_db.id,
             name: model_db.name,
@@ -1371,15 +1276,24 @@ impl Model {
             parameters: Some(model_db.parameters),
             created_at: model_db.created_at,
             updated_at: model_db.updated_at,
-            architecture: model_db.architecture,
-            quantization: model_db.quantization,
             file_size_bytes: model_db.file_size_bytes,
             validation_status: model_db.validation_status,
             validation_issues,
-            device_type: model_db.device_type,
-            device_ids,
             port: model_db.port,
+            settings: serde_json::from_value(model_db.settings).ok(), // Parse settings from database JSON
             files: file_infos,
         }
+    }
+
+    /// Get the model settings, or return default settings if none are set
+    pub fn get_settings(&self) -> ModelSettings {
+        self.settings.clone().unwrap_or_default()
+    }
+
+    /// Get the model settings and validate them
+    pub fn get_validated_settings(&self) -> Result<ModelSettings, String> {
+        let settings = self.get_settings();
+        settings.validate()?;
+        Ok(settings)
     }
 }

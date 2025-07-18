@@ -1080,7 +1080,7 @@ async fn create_ai_provider_with_model_id(
             )?;
             Ok(Box::new(custom_provider))
         }
-        "candle_server" => {
+        "candle" => {
             // For Candle providers, we need model information to get the port
             let model_id = model_id.ok_or("Model ID is required for Candle providers")?;
 

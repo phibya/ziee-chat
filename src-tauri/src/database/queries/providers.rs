@@ -9,12 +9,45 @@ use crate::database::{
     },
 };
 
+/// Helper function to create default model settings
+fn default_model_settings() -> serde_json::Value {
+    serde_json::json!({
+        "verbose": false,
+        "max_num_seqs": 256,
+        "block_size": 32,
+        "kvcache_mem_gpu": 4096,
+        "kvcache_mem_cpu": 128,
+        "record_conversation": false,
+        "holding_time": 500,
+        "multi_process": false,
+        "log": false,
+        "device_type": "cpu",
+        "device_ids": []
+    })
+}
+
+/// Helper function to create default model parameters
+fn default_model_parameters() -> serde_json::Value {
+    serde_json::json!({
+        "contextSize": 4096,
+        "gpuLayers": -1,
+        "temperature": 0.7,
+        "topK": 40,
+        "topP": 0.95,
+        "minP": 0.05,
+        "repeatLastN": 64,
+        "repeatPenalty": 1.1,
+        "presencePenalty": 0.0,
+        "frequencyPenalty": 0.0
+    })
+}
+
 pub async fn get_provider_by_id(provider_id: Uuid) -> Result<Option<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
     let provider_row: Option<ProviderDb> = sqlx::query_as(
-    "SELECT id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at
+    "SELECT id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at
          FROM providers 
          WHERE id = $1"
   )
@@ -24,7 +57,6 @@ pub async fn get_provider_by_id(provider_id: Uuid) -> Result<Option<Provider>, s
 
     match provider_row {
         Some(provider_db) => {
-            let settings = provider_db.get_settings();
             let proxy_settings = provider_db.get_proxy_settings();
             Ok(Some(Provider {
                 id: provider_db.id,
@@ -33,7 +65,7 @@ pub async fn get_provider_by_id(provider_id: Uuid) -> Result<Option<Provider>, s
                 enabled: provider_db.enabled,
                 api_key: provider_db.api_key,
                 base_url: provider_db.base_url,
-                settings: Some(settings),
+                // Settings removed - now stored per-model
                 proxy_settings: Some(proxy_settings),
                 is_default: provider_db.is_default,
                 created_at: provider_db.created_at,
@@ -50,9 +82,9 @@ pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider,
     let provider_id = Uuid::new_v4();
 
     let provider_row: ProviderDb = sqlx::query_as(
-    "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
+    "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+         RETURNING id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at"
   )
     .bind(provider_id)
     .bind(&request.name)
@@ -60,13 +92,11 @@ pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider,
     .bind(request.enabled.unwrap_or(false))
     .bind(&request.api_key)
     .bind(&request.base_url)
-    .bind(serde_json::to_value(request.settings.unwrap_or_default()).unwrap_or(serde_json::json!({})))
     .bind(false) // Custom providers are never default
     .bind(serde_json::to_value(request.proxy_settings.unwrap_or_default()).unwrap_or(serde_json::json!({})))
     .fetch_one(pool)
     .await?;
 
-    let settings = provider_row.get_settings();
     Ok(Provider {
         id: provider_row.id,
         name: provider_row.name,
@@ -74,7 +104,7 @@ pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider,
         enabled: provider_row.enabled,
         api_key: provider_row.api_key,
         base_url: provider_row.base_url,
-        settings: Some(settings),
+        // Settings removed - now stored per-model
         proxy_settings: Some(ProviderProxySettings {
             enabled: false,
             url: String::new(),
@@ -106,25 +136,22 @@ pub async fn update_provider(
              enabled = COALESCE($3, enabled),
              api_key = COALESCE($4, api_key),
              base_url = COALESCE($5, base_url),
-             settings = COALESCE($6, settings),
-             proxy_settings = COALESCE($7, proxy_settings),
+             proxy_settings = COALESCE($6, proxy_settings),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
+         RETURNING id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at"
   )
     .bind(provider_id)
     .bind(&request.name)
     .bind(request.enabled)
     .bind(&request.api_key)
     .bind(&request.base_url)
-    .bind(serde_json::to_value(&request.settings).unwrap_or(serde_json::json!({})))
     .bind(serde_json::to_value(&request.proxy_settings).unwrap_or(serde_json::json!({})))
     .fetch_optional(pool)
     .await?;
 
     match provider_row {
         Some(provider_db) => {
-            let settings = provider_db.get_settings();
             let proxy_settings = provider_db.get_proxy_settings();
             Ok(Some(Provider {
                 id: provider_db.id,
@@ -133,7 +160,7 @@ pub async fn update_provider(
                 enabled: provider_db.enabled,
                 api_key: provider_db.api_key,
                 base_url: provider_db.base_url,
-                settings: Some(settings),
+                // Settings removed - now stored per-model
                 proxy_settings: Some(proxy_settings),
                 is_default: provider_db.is_default,
                 created_at: provider_db.created_at,
@@ -186,9 +213,9 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
     let cloned_name = format!("{} (Clone)", original_provider.name);
 
     let provider_row: ProviderDb = sqlx::query_as(
-    "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, settings, is_default, proxy_settings, created_at, updated_at"
+    "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+         RETURNING id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at"
   )
     .bind(new_provider_id)
     .bind(&cloned_name)
@@ -196,7 +223,6 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
     .bind(false) // Cloned providers are disabled by default
     .bind(&original_provider.api_key)
     .bind(&original_provider.base_url)
-    .bind(serde_json::to_value(&original_provider.settings).unwrap_or(serde_json::json!({})))
     .bind(false) // Cloned providers are never default
     .bind(serde_json::to_value(&original_provider.proxy_settings).unwrap_or(serde_json::json!({})))
     .fetch_one(pool)
@@ -209,8 +235,8 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
     for model in &original_models {
         let cloned_model_id = Uuid::new_v4();
         sqlx::query(
-      "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+      "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, settings)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
     )
       .bind(cloned_model_id)
       .bind(new_provider_id)
@@ -220,11 +246,11 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
       .bind(false) // Cloned models are disabled by default
       .bind(model.capabilities.as_ref().unwrap_or(&serde_json::json!({})))
       .bind(model.parameters.as_ref().unwrap_or(&serde_json::json!({})))
+      .bind(model.settings.as_ref().map(|s| serde_json::to_value(s).unwrap_or(serde_json::json!({}))).unwrap_or(serde_json::json!({}))) // Clone settings
       .execute(pool)
       .await?;
     }
 
-    let settings = provider_row.get_settings();
     Ok(Some(Provider {
         id: provider_row.id,
         name: provider_row.name,
@@ -232,7 +258,7 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
         enabled: provider_row.enabled,
         api_key: provider_row.api_key,
         base_url: provider_row.base_url,
-        settings: Some(settings),
+        // Settings removed - now stored per-model
         proxy_settings: Some(ProviderProxySettings {
             enabled: false,
             url: String::new(),
@@ -280,10 +306,17 @@ pub async fn create_model(
     let pool = pool.as_ref();
     let model_id = Uuid::new_v4();
 
+    // Use settings from request or default settings
+    let settings = if let Some(request_settings) = &request.settings {
+        serde_json::to_value(request_settings).unwrap_or_else(|_| default_model_settings())
+    } else {
+        default_model_settings()
+    };
+
     let model_row: ModelDb = sqlx::query_as(
-    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, device_type, device_ids)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, validation_status, validation_issues, device_type, device_ids, port"
+    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port"
   )
     .bind(model_id)
     .bind(provider_id)
@@ -292,10 +325,9 @@ pub async fn create_model(
     .bind(&request.description)
     .bind(request.enabled.unwrap_or(true))
     .bind(request.capabilities.unwrap_or(serde_json::json!({})))
-    .bind(serde_json::json!({}))
-    .bind(&request.device_type)
-    .bind(request.device_ids.map(|ids| serde_json::to_value(ids).unwrap_or(serde_json::json!([]))))
-    .fetch_one(pool)
+    .bind(default_model_parameters())
+    .bind(settings)
+      .fetch_one(pool)
     .await?;
 
     Ok(Model::from_db(model_row, None))
@@ -308,6 +340,49 @@ pub async fn update_model(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
+    // First, get the current model to merge settings
+    let current_model: Option<ModelDb> = sqlx::query_as(
+        "SELECT * FROM models WHERE id = $1"
+    )
+    .bind(model_id)
+    .fetch_optional(pool)
+    .await?;
+
+    let updated_settings = if let Some(current) = &current_model {
+        let mut settings = current.settings.clone();
+        
+        // Merge all settings from the request if provided, except architecture (protected)
+        if let Some(request_settings) = &request.settings {
+            if let Ok(request_settings_json) = serde_json::to_value(request_settings) {
+                if let Some(request_obj) = request_settings_json.as_object() {
+                    if let Some(settings_obj) = settings.as_object_mut() {
+                        // Merge all fields from request settings into current settings
+                        // except architecture which is protected from updates
+                        for (key, value) in request_obj {
+                            if key != "architecture" {
+                                settings_obj.insert(key.clone(), value.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        settings
+    } else {
+        // Model not found, create new settings from request
+        if let Some(request_settings) = &request.settings {
+            let mut new_settings = serde_json::to_value(request_settings).unwrap_or(serde_json::json!({}));
+            // Remove architecture from new settings as it should only be set during creation
+            if let Some(settings_obj) = new_settings.as_object_mut() {
+                settings_obj.remove("architecture");
+            }
+            new_settings
+        } else {
+            serde_json::json!({})
+        }
+    };
+
     let model_row: Option<ModelDb> = sqlx::query_as(
     "UPDATE models
          SET name = COALESCE($2, name),
@@ -317,11 +392,10 @@ pub async fn update_model(
              is_active = COALESCE($6, is_active),
              capabilities = COALESCE($7, capabilities),
              parameters = COALESCE($8, parameters),
-             device_type = COALESCE($9, device_type),
-             device_ids = COALESCE($10, device_ids),
+             settings = COALESCE($9, settings),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, architecture, quantization, file_size_bytes, validation_status, validation_issues, device_type, device_ids, port"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port"
   )
     .bind(model_id)
     .bind(&request.name)
@@ -331,8 +405,7 @@ pub async fn update_model(
     .bind(request.is_active)
     .bind(&request.capabilities)
     .bind(&request.parameters)
-    .bind(&request.device_type)
-    .bind(request.device_ids.as_ref().map(|ids| serde_json::to_value(ids).unwrap_or(serde_json::json!([]))))
+    .bind(&updated_settings)
     .fetch_optional(pool)
     .await?;
 

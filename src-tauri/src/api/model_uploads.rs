@@ -4,7 +4,6 @@ use axum::{
     Extension,
 };
 use serde::Deserialize;
-use sqlx::Row;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -306,18 +305,13 @@ pub async fn commit_uploaded_files(
         .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
-    // Validate provider exists and is of type 'candle_server'
-    let provider_row = sqlx::query("SELECT id, provider_type FROM providers WHERE id = $1")
-        .bind(request.provider_id)
-        .fetch_optional(pool.as_ref())
+    // Validate provider exists and is of type 'candle'
+    let provider = crate::database::queries::providers::get_provider_by_id(request.provider_id)
         .await
-        .map_err(AppError::database_error)?;
-
-    let provider_row = provider_row
+        .map_err(AppError::database_error)?
         .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
 
-    let provider_type: String = provider_row.get("provider_type");
-    if provider_type != "candle_server" {
+    if provider.provider_type != "candle" {
         return Err(AppError::new(
             ErrorCode::ValidInvalidInput,
             "Only Candle providers support model uploads",
@@ -349,13 +343,12 @@ pub async fn commit_uploaded_files(
         description: request.description,
         enabled: Some(false),
         capabilities: Some(serde_json::json!({})),
-        device_type: None,
-        device_ids: None,
+        settings: None,
     };
 
     println!("Processing model with file format: {}", file_format);
 
-    let model_db = ModelOperations::create_candle_model(pool.as_ref(), &create_request, Some(&architecture))
+    let model_db = ModelOperations::create_candle_model(pool.as_ref(), &create_request, &architecture)
     .await
     .map_err(|e| {
       // Handle unique constraint violation for (provider_id, name)

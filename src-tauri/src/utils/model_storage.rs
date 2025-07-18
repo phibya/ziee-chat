@@ -21,7 +21,6 @@ pub struct ModelMetadata {
     pub name: String,
     pub architecture: String,
     pub parameters: Option<String>,
-    pub quantization: Option<String>,
     pub size_bytes: u64,
     pub uploaded_at: chrono::DateTime<chrono::Utc>,
     pub files: Vec<ModelFile>,

@@ -1,4 +1,4 @@
-use crate::database::models::{DeviceInfo, AvailableDevicesResponse};
+use crate::database::models::{AvailableDevicesResponse, DeviceInfo};
 use std::process::Command;
 
 /// Detect available compute devices on the system
@@ -9,7 +9,7 @@ pub fn detect_available_devices() -> AvailableDevicesResponse {
 
     // Always add CPU device
     devices.push(DeviceInfo {
-        id: "cpu".to_string(),
+        id: 0, // CPU always gets ID 0
         name: "CPU".to_string(),
         device_type: "cpu".to_string(),
         memory_total: get_system_memory(),
@@ -64,15 +64,8 @@ fn detect_cuda_devices() -> Option<Vec<DeviceInfo>> {
                         parts[3].parse::<u64>().ok().map(|m| m * 1024 * 1024), // Convert MB to bytes
                         parts[4].parse::<u64>().ok().map(|m| m * 1024 * 1024), // Convert MB to bytes
                     ) {
-                        // Use UUID as device ID if available, otherwise fallback to cuda:index format
-                        let device_id = if !uuid.is_empty() && uuid != "N/A" {
-                            uuid.clone()
-                        } else {
-                            format!("cuda:{}", index)
-                        };
-
                         devices.push(DeviceInfo {
-                            id: device_id,
+                            id: index as i32,
                             name: format!("CUDA Device {} ({})", index, parts[1]),
                             device_type: "cuda".to_string(),
                             memory_total,
@@ -108,7 +101,7 @@ fn detect_metal_devices() -> Option<Vec<DeviceInfo>> {
                 if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(&output_str) {
                     if let Some(displays) = json_data["SPDisplaysDataType"].as_array() {
                         let mut devices = Vec::new();
-                        
+
                         for (index, display) in displays.iter().enumerate() {
                             if let Some(gpu_name) = display["sppci_model"].as_str() {
                                 // Estimate memory for Metal devices (this is simplified)
@@ -122,7 +115,7 @@ fn detect_metal_devices() -> Option<Vec<DeviceInfo>> {
                                     .unwrap_or(8192); // Default to 8GB if can't detect
 
                                 devices.push(DeviceInfo {
-                                    id: format!("metal:{}", index),
+                                    id: index as i32,
                                     name: format!("Metal GPU ({})", gpu_name),
                                     device_type: "metal".to_string(),
                                     memory_total: Some(memory_mb * 1024 * 1024), // Convert MB to bytes
@@ -140,7 +133,7 @@ fn detect_metal_devices() -> Option<Vec<DeviceInfo>> {
 
                 // Fallback: Assume Metal is available on macOS
                 Some(vec![DeviceInfo {
-                    id: "metal:0".to_string(),
+                    id: 0,
                     name: "Metal GPU".to_string(),
                     device_type: "metal".to_string(),
                     memory_total: Some(8 * 1024 * 1024 * 1024), // Default 8GB
@@ -160,10 +153,8 @@ fn detect_metal_devices() -> Option<Vec<DeviceInfo>> {
 fn get_system_memory() -> Option<u64> {
     #[cfg(target_os = "macos")]
     {
-        let output = Command::new("sysctl")
-            .args(&["-n", "hw.memsize"])
-            .output();
-        
+        let output = Command::new("sysctl").args(&["-n", "hw.memsize"]).output();
+
         if let Ok(output) = output {
             let output_str = String::from_utf8_lossy(&output.stdout);
             return output_str.trim().parse::<u64>().ok();
@@ -191,7 +182,7 @@ fn get_system_memory() -> Option<u64> {
         let output = Command::new("wmic")
             .args(&["computersystem", "get", "TotalPhysicalMemory", "/value"])
             .output();
-        
+
         if let Ok(output) = output {
             let output_str = String::from_utf8_lossy(&output.stdout);
             for line in output_str.lines() {
@@ -211,14 +202,13 @@ fn get_system_memory() -> Option<u64> {
 fn get_available_memory() -> Option<u64> {
     #[cfg(target_os = "macos")]
     {
-        let output = Command::new("vm_stat")
-            .output();
-        
+        let output = Command::new("vm_stat").output();
+
         if let Ok(output) = output {
             let output_str = String::from_utf8_lossy(&output.stdout);
             let mut free_pages = 0u64;
             let mut page_size = 4096u64; // Default page size
-            
+
             for line in output_str.lines() {
                 if line.contains("page size of") {
                     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -238,7 +228,7 @@ fn get_available_memory() -> Option<u64> {
                     }
                 }
             }
-            
+
             return Some(free_pages * page_size);
         }
     }
@@ -270,11 +260,11 @@ mod tests {
     #[test]
     fn test_detect_available_devices() {
         let response = detect_available_devices();
-        
+
         // Should always have at least CPU
         assert!(!response.devices.is_empty());
         assert!(response.devices.iter().any(|d| d.device_type == "cpu"));
-        
+
         // Default device type should be valid
         assert!(["cpu", "cuda", "metal"].contains(&response.default_device_type.as_str()));
     }
@@ -283,7 +273,7 @@ mod tests {
     fn test_get_system_memory() {
         let memory = get_system_memory();
         assert!(memory.is_some());
-        
+
         if let Some(mem) = memory {
             // Should be at least 1GB
             assert!(mem >= 1024 * 1024 * 1024);

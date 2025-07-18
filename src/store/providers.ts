@@ -103,6 +103,7 @@ interface ProvidersState {
     fileFormat: string,
     capabilities: ModelCapabilities,
     selectedFileIds: string[],
+    settings?: any,
   ) => Promise<void>
 
   // Legacy upload actions (deprecated)
@@ -340,6 +341,8 @@ export const useProvidersStore = create<ProvidersState>()(
           model_id: modelId,
           ...data,
         })
+
+        console.log({ data, model })
 
         set(state => ({
           modelsByProvider: Object.keys(state.modelsByProvider).reduce(
@@ -728,6 +731,7 @@ export const useProvidersStore = create<ProvidersState>()(
       fileFormat: string,
       capabilities: ModelCapabilities,
       selectedFileIds: string[],
+      settings?: any,
     ): Promise<void> => {
       try {
         set({ creating: true, error: null })
@@ -742,6 +746,7 @@ export const useProvidersStore = create<ProvidersState>()(
           file_format: fileFormat,
           capabilities,
           selected_files: selectedFileIds,
+          settings,
         })
 
         // Update models state to include the new model

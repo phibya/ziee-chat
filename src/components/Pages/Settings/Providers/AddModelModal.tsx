@@ -20,8 +20,6 @@ import { ProviderType } from '../../../../types/api/provider'
 import { useProvidersStore } from '../../../../store/providers'
 import { useShallow } from 'zustand/react/shallow'
 import { UploadOutlined } from '@ant-design/icons'
-import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
-import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { UploadProgress } from './UploadProgress'
 import { BASIC_MODEL_FIELDS, CANDLE_MODEL_FIELDS } from './shared/constants'
@@ -171,10 +169,11 @@ export function AddModelModal({
             modelId, // Auto-generated model ID
             values.alias, // Display name
             values.description,
-            values.architecture,
+            values.settings.architecture,
             values.file_format,
             values.capabilities, // Include capabilities from form
             selectedFileIds,
+            values.settings, // Include model settings from form
           )
 
           message.success(t('providers.modelFolderUploadedSuccessfully'))
@@ -195,7 +194,7 @@ export function AddModelModal({
         onClose()
 
         // Step 6: Trigger parent refresh (if needed)
-        await onSubmit({ type: 'candle_server-upload', success: true })
+        await onSubmit({ type: 'candle-upload', success: true })
       } else {
         // For other providers, use the existing workflow
         const modelData = {
@@ -238,12 +237,14 @@ export function AddModelModal({
         alias: 'TinyLlama Chat Model', // Only display name for Candle models
         description:
           'Small 1.1B parameter chat model for quick testing (~637MB)',
-        architecture: 'llama',
         file_format: 'safetensors',
         model_source: 'huggingface',
         hf_repo: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0',
         hf_filename: 'model.safetensors',
         hf_branch: 'main',
+        settings: {
+          architecture: DEFAULT_CANDLE_ARCHITECTURE,
+        },
       })
       update() // Force re-render to update form watchers
     }
@@ -660,20 +661,12 @@ export function AddModelModal({
         form={form}
         layout="vertical"
         initialValues={{
-          architecture: DEFAULT_CANDLE_ARCHITECTURE,
           file_format: DEFAULT_CANDLE_FILE_TYPE,
           model_source: 'upload',
           local_folder_path: '',
           local_filename: '',
-          device_type: 'cpu', // Default to CPU
-          device_ids: [],
-          parameters: {
-            temperature: 0.7,
-            top_p: 0.9,
-            top_k: 50,
-            max_tokens: 512,
-            repeat_penalty: 1.1,
-            repeat_last_n: 64,
+          settings: {
+            architecture: DEFAULT_CANDLE_ARCHITECTURE,
           },
         }}
       >
@@ -685,7 +678,7 @@ export function AddModelModal({
 
         {providerType === 'candle' && (
           <Form.Item
-            name="architecture"
+            name={['settings', 'architecture']}
             label={t('providers.modelArchitecture')}
             rules={[
               {
@@ -938,10 +931,6 @@ export function AddModelModal({
             </Form.Item>
           </>
         )}
-
-        {providerType === 'candle' && <DeviceSelectionSection />}
-
-        <ModelCapabilitiesSection />
       </Form>
 
       {/* Upload Progress */}

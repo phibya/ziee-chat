@@ -83,7 +83,7 @@ pub async fn create_provider(
 ) -> ApiResult<Json<Provider>> {
     // Validate provider type
     let valid_types = [
-        "candle_server",
+        "candle",
         "openai",
         "anthropic",
         "groq",
@@ -100,7 +100,7 @@ pub async fn create_provider(
 
     // Validate requirements for enabling non-candle_server providers
     if let Some(true) = request.enabled {
-        if request.provider_type != "candle_server" {
+        if request.provider_type != "candle" {
             // Check API key
             if request.api_key.is_none() || request.api_key.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: API key is required");
@@ -157,7 +157,7 @@ pub async fn update_provider(
         match providers::get_provider_by_id(provider_id).await {
             Ok(Some(current_provider)) => {
                 // Check if provider type requires API key and base URL
-                if current_provider.provider_type != "candle_server" {
+                if current_provider.provider_type != "candle" {
                     // Check API key
                     let api_key = request
                         .api_key
@@ -345,7 +345,7 @@ pub async fn delete_model(
     };
 
     // If it's a Candle provider, handle model shutdown and file deletion
-    if provider.provider_type == "candle_server" {
+    if provider.provider_type == "candle" {
         // First, stop the model if it's running
         let model_manager = crate::ai::candle_server::management::get_model_manager();
         let model_path = model.get_model_path();
@@ -600,7 +600,7 @@ pub async fn start_model(
         }
     };
 
-    if provider.provider_type != "candle_server" {
+    if provider.provider_type != "candle" {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only Candle models can be started",
@@ -628,8 +628,7 @@ pub async fn start_model(
                 enabled: None,
                 is_active: Some(true),
                 capabilities: None,
-                device_type: None,
-                device_ids: None,
+                settings: None,
             },
         )
         .await
@@ -645,8 +644,11 @@ pub async fn start_model(
         }
     }
 
+    // Convert ModelDb to Model to access settings
+    let model_with_settings = crate::database::models::Model::from_db(model.clone(), None);
+
     // Validate that the model files exist
-    let model_path = model.get_model_path();
+    let model_path = model_with_settings.get_model_path(&model.provider_id);
     if !crate::ai::candle_server::models::ModelUtils::model_exists(&model_path) {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
@@ -655,15 +657,13 @@ pub async fn start_model(
     }
 
     // Start the model server process
-    // Convert device_ids from database JSON format to Vec<i32>
-    let device_ids = model
-        .device_ids
-        .as_ref()
-        .and_then(|v| serde_json::from_value::<Vec<i32>>(v.clone()).ok())
-        .filter(|ids| !ids.is_empty());
+
+    // Get device configuration from model settings
+    let settings = model_with_settings.get_settings();
+    let device_ids = settings.device_ids.filter(|ids| !ids.is_empty());
 
     // Convert device_type from string to DeviceType enum
-    let device_type = match model.device_type.as_deref() {
+    let device_type = match settings.device_type.as_deref() {
         Some("cpu") => crate::ai::candle_server::DeviceType::Cpu,
         Some("cuda") => crate::ai::candle_server::DeviceType::Cuda,
         Some("metal") => crate::ai::candle_server::DeviceType::Metal,
@@ -673,8 +673,11 @@ pub async fn start_model(
     match model_manager
         .start_model(
             &model_id.to_string(),
-            model.get_model_path(),
-            model.architecture.clone().unwrap_or_else(|| "llama".to_string()), // Use model architecture or default to llama
+            model_path,
+            settings
+                .architecture
+                .clone()
+                .unwrap_or_else(|| "llama".to_string()), // Use model architecture or default to llama
             device_type, // Use actual device type from model
             device_ids,  // Pass device_ids from model
             // Additional parameters (using defaults for now)
@@ -712,8 +715,7 @@ pub async fn start_model(
                     enabled: None,
                     is_active: Some(true),
                     capabilities: None,
-                    device_type: None,
-                    device_ids: None,
+                    settings: None,
                 },
             )
             .await;
@@ -766,8 +768,7 @@ pub async fn start_model(
                     enabled: None,
                     is_active: Some(true),
                     capabilities: None,
-                    device_type: None,
-                    device_ids: None,
+                    settings: None,
                 },
             )
             .await;
@@ -830,7 +831,7 @@ pub async fn stop_model(
         }
     };
 
-    if provider.provider_type != "candle_server" {
+    if provider.provider_type != "candle" {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only Candle models can be stopped",
@@ -864,8 +865,7 @@ pub async fn stop_model(
                 enabled: None,
                 is_active: Some(false),
                 capabilities: None,
-                device_type: None,
-                device_ids: None,
+                settings: None,
             },
         )
         .await;
@@ -915,8 +915,7 @@ pub async fn stop_model(
                     enabled: None,
                     is_active: Some(false),
                     capabilities: None,
-                    device_type: None,
-                    device_ids: None,
+                    settings: None,
                 },
             )
             .await;
@@ -969,8 +968,7 @@ pub async fn enable_model(
             enabled: Some(true),
             is_active: None,
             capabilities: None,
-            device_type: None,
-            device_ids: None,
+            settings: None,
         },
     )
     .await
@@ -999,8 +997,7 @@ pub async fn disable_model(
             enabled: Some(false),
             is_active: None,
             capabilities: None,
-            device_type: None,
-            device_ids: None,
+            settings: None,
         },
     )
     .await

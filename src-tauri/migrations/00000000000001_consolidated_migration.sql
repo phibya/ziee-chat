@@ -1,13 +1,15 @@
 -- CONSOLIDATED DATABASE MIGRATION
 -- This migration contains the complete database schema with all updates
 -- Consolidated from multiple migrations for clean database initialization
--- Date: 2025-07-16
+-- Date: 2025-07-17
 -- IMPORTANT: This replaces all previous migration files
 --
 -- Consolidated changes:
 -- - Removed path column from models table (models paths are determined by pattern)
--- - Added device_type and device_ids fields to models table for device configuration
 -- - Replaced individual proxy columns with proxy_settings JSONB column
+-- - Removed checksum columns from models and model_files tables for performance
+-- - Removed settings column from providers table (moved to models table)
+-- - Added settings column to models table for model-specific performance settings
 
 -- ===============================
 -- 1. UTILITY FUNCTIONS
@@ -122,11 +124,11 @@ CREATE TABLE configurations (
 CREATE TABLE providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    provider_type VARCHAR(50) NOT NULL CHECK (provider_type IN ('candle_server', 'openai', 'anthropic', 'groq', 'gemini', 'mistral', 'custom')),
+    provider_type VARCHAR(50) NOT NULL CHECK (provider_type IN ('candle', 'openai', 'anthropic', 'groq', 'gemini', 'mistral', 'custom')),
     enabled BOOLEAN DEFAULT FALSE,
     api_key TEXT,
     base_url VARCHAR(512),
-    settings JSONB DEFAULT '{}',
+    -- Settings removed - now stored per-model in models.settings JSONB column
     is_default BOOLEAN DEFAULT FALSE,
     proxy_settings JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -151,14 +153,11 @@ CREATE TABLE models (
     description TEXT,
     enabled BOOLEAN DEFAULT TRUE,
     is_deprecated BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT FALSE, -- For candle_server start/stop state
+    is_active BOOLEAN DEFAULT FALSE, -- For candle start/stop state
     capabilities JSONB DEFAULT '{}',
     parameters JSONB DEFAULT '{}',
     -- Candle-specific fields
-    architecture VARCHAR(100),
-    quantization VARCHAR(50),
     file_size_bytes BIGINT,
-    checksum VARCHAR(64),
     validation_status VARCHAR(50) CHECK (validation_status IN (
         'pending',        -- Initial status when model is created
         'await_upload',   -- For local folder uploads waiting for files
@@ -172,9 +171,10 @@ CREATE TABLE models (
         'validation_warning' -- Downloaded but with validation warnings
     )),
     validation_issues JSONB,
-    -- Device configuration fields
-    device_type VARCHAR(50),
-    device_ids JSONB,
+    -- Model performance and device settings moved to settings JSONB field
+    settings JSONB DEFAULT '{}',
+    -- Port number where the model server is running (for candle models)
+    port INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT models_alias_not_empty CHECK (alias != ''),
@@ -193,7 +193,6 @@ CREATE TABLE model_files (
     file_path VARCHAR(1000) NOT NULL,
     file_size_bytes BIGINT NOT NULL,
     file_type VARCHAR(50) NOT NULL,
-    checksum VARCHAR(64) NOT NULL,
     upload_status VARCHAR(50) DEFAULT 'pending' CHECK (upload_status IN ('pending', 'uploading', 'completed', 'failed')),
     uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(model_id, filename)
@@ -378,9 +377,7 @@ CREATE INDEX idx_providers_enabled ON providers(enabled);
 CREATE INDEX idx_models_provider_id ON models(provider_id);
 CREATE INDEX idx_models_enabled ON models(enabled);
 CREATE INDEX idx_models_validation_status ON models(validation_status);
-CREATE INDEX idx_models_architecture ON models(architecture);
 CREATE INDEX idx_models_file_size_bytes ON models(file_size_bytes);
-CREATE INDEX idx_models_device_type ON models(device_type);
 
 CREATE INDEX idx_model_files_model_id ON model_files(model_id);
 CREATE INDEX idx_model_files_upload_status ON model_files(upload_status);
@@ -568,13 +565,13 @@ VALUES (
 );
 
 -- Insert default model providers
-INSERT INTO providers (name, provider_type, enabled, is_default, base_url, settings) VALUES
-('Candle', 'candle_server', false, true, null, '{"device": "cpu", "autoUnloadOldModels": true, "parallelOperations": 1, "cpuThreads": -1, "huggingFaceAccessToken": "", "contextShift": false, "continuousBatching": false, "threadsBatch": -1, "flashAttention": true, "caching": true, "kvCacheType": "q8_0", "mmap": true}'),
-('OpenAI', 'openai', false, true, 'https://api.openai.com/v1', '{}'),
-('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1', '{}'),
-('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1', '{}'),
-('Gemini', 'gemini', false, true, 'https://generativelanguage.googleapis.com/v1beta/openai', '{}'),
-('Mistral', 'mistral', false, true, 'https://api.mistral.ai', '{}');
+INSERT INTO providers (name, provider_type, enabled, is_default, base_url) VALUES
+('Candle', 'candle', false, true, null),
+('OpenAI', 'openai', false, true, 'https://api.openai.com/v1'),
+('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1'),
+('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1'),
+('Gemini', 'gemini', false, true, 'https://generativelanguage.googleapis.com/v1beta/openai'),
+('Mistral', 'mistral', false, true, 'https://api.mistral.ai');
 
 -- Insert default template assistant
 INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_default, is_active) VALUES 
@@ -605,24 +602,23 @@ COMMENT ON TABLE project_conversations IS 'Links conversations to projects';
 COMMENT ON COLUMN user_groups.permissions IS 'AWS-style permissions stored as JSON array. Supports wildcards like "users::*", "groups::*", and "*"';
 COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g., "appearance.theme", "appearance.fontSize")';
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
-COMMENT ON COLUMN providers.provider_type IS 'Type of provider: candle_server, openai, anthropic, groq, gemini, mistral, custom';
-COMMENT ON COLUMN models.device_type IS 'Device type for model execution: cpu, cuda, metal, etc.';
-COMMENT ON COLUMN models.device_ids IS 'JSON array of device IDs for multi-GPU setups';
+COMMENT ON COLUMN providers.provider_type IS 'Type of provider: candle, openai, anthropic, groq, gemini, mistral, custom';
 COMMENT ON COLUMN models.name IS 'Unique model identifier within a provider';
 COMMENT ON COLUMN models.alias IS 'Human-readable display name (can be duplicated across providers)';
-COMMENT ON COLUMN models.is_active IS 'Whether the model is currently running (for candle_server models)';
-COMMENT ON COLUMN models.architecture IS 'Model architecture type (e.g., llama, mistral, gemma) - for Candle models only';
-COMMENT ON COLUMN models.quantization IS 'Quantization format (e.g., q4_0, q8_0, fp16, fp32) - for Candle models only';
+COMMENT ON COLUMN models.is_active IS 'Whether the model is currently running (for candle models)';
 COMMENT ON COLUMN models.file_size_bytes IS 'Total size of all model files in bytes - for Candle models only';
-COMMENT ON COLUMN models.checksum IS 'SHA-256 checksum of the model files for integrity verification - for Candle models only';
 COMMENT ON COLUMN models.validation_status IS 'Status of model validation and processing - for Candle models only';
 COMMENT ON COLUMN models.validation_issues IS 'JSON array of validation issues if any - for Candle models only';
 COMMENT ON COLUMN providers.proxy_settings IS 'JSON object containing all proxy configuration settings including enabled, url, username, password, no_proxy, SSL settings, etc.';
 COMMENT ON COLUMN model_files.filename IS 'Original filename of the uploaded file';
 COMMENT ON COLUMN model_files.file_path IS 'Storage path of the file in the filesystem';
 COMMENT ON COLUMN model_files.file_type IS 'Type of file (e.g., model, tokenizer, config, safetensors)';
-COMMENT ON COLUMN model_files.checksum IS 'SHA-256 checksum of this specific file';
 COMMENT ON COLUMN model_files.upload_status IS 'Upload status: pending, uploading, completed, failed';
+COMMENT ON TABLE models IS 'Individual models within each provider (unified table for all model types)';
+COMMENT ON TABLE model_files IS 'Individual files that make up models';
+COMMENT ON TABLE providers IS 'Model providers (connection/authentication only, settings moved to individual models)';
+COMMENT ON COLUMN models.port IS 'Port number where the model server is running (for Candle models only)';
+COMMENT ON COLUMN models.settings IS 'Model-specific performance settings (moved from providers table)';
 COMMENT ON COLUMN assistants.is_template IS 'Whether this assistant is a template (admin-created) that can be cloned by users';
 COMMENT ON COLUMN assistants.is_default IS 'Whether this template assistant is automatically cloned for new users';
 COMMENT ON COLUMN assistants.created_by IS 'User who created this assistant (NULL for system/template assistants)';

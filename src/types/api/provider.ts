@@ -24,37 +24,44 @@ export interface ModelParameters {
   frequencyPenalty?: number
 }
 
+export interface ModelSettings {
+  /// Set verbose mode (print all requests)
+  verbose?: boolean
+  /// Maximum number of sequences to allow (default: 256)
+  max_num_seqs?: number
+  /// Size of a block (default: 32)
+  block_size?: number
+  /// Available GPU memory for kvcache in MB (default: 4096)
+  kvcache_mem_gpu?: number
+  /// Available CPU memory for kvcache in MB (default: 128)
+  kvcache_mem_cpu?: number
+  /// Record conversation (default: false, the client needs to record chat history)
+  record_conversation?: boolean
+  /// Maximum waiting time for processing parallel requests in milliseconds (default: 500)
+  holding_time?: number
+  /// Whether the program runs in multiprocess or multithread mode for parallel inference (default: false)
+  multi_process?: boolean
+  /// Enable logging (default: false)
+  log?: boolean
+  /// Model architecture (llama, mistral, etc.)
+  architecture?: string
+  /// Device type (cpu, cuda, metal, etc.)
+  device_type?: string
+  /// Array of device IDs for multi-GPU
+  device_ids?: number[]
+}
+
 export interface Model {
   id: string
   name: string
   alias: string
   description?: string
-  path?: string // For Candle models
   is_deprecated?: boolean
   is_active?: boolean
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  device_type?: string // cpu, cuda, metal, etc.
-  device_ids?: string[] // Array of device IDs for multi-GPU
-}
-
-export interface ProviderSettings {
-  // Candle specific settings
-  autoUnloadOldModels?: boolean
-  contextShift?: boolean
-  continuousBatching?: boolean
-  parallelOperations?: number
-  cpuThreads?: number
-  threadsBatch?: number
-  flashAttention?: boolean
-  caching?: boolean
-  kvCacheType?: string
-  mmap?: boolean
-  huggingFaceAccessToken?: string
-
-  // Custom settings for other providers
-  [key: string]: any
+  settings?: ModelSettings // Model-specific performance settings
 }
 
 export interface ProviderProxySettings {
@@ -78,7 +85,6 @@ export interface Provider {
   enabled: boolean
   api_key?: string
   base_url?: string
-  settings?: ProviderSettings
   proxy_settings?: ProviderProxySettings
   is_default?: boolean
   created_at?: string
@@ -100,8 +106,6 @@ export interface CreateProviderRequest {
   enabled?: boolean
   api_key?: string
   base_url?: string
-  settings?: ProviderSettings
-  proxy_settings?: ProviderProxySettings
 }
 
 export interface UpdateProviderRequest {
@@ -109,7 +113,6 @@ export interface UpdateProviderRequest {
   enabled?: boolean
   api_key?: string
   base_url?: string
-  settings?: ProviderSettings
   proxy_settings?: ProviderProxySettings
 }
 
@@ -133,8 +136,7 @@ export interface AddModelToProviderRequest {
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  device_type?: string
-  device_ids?: string[]
+  settings?: ModelSettings
 }
 
 export interface UpdateModelRequest {
@@ -146,8 +148,7 @@ export interface UpdateModelRequest {
   is_active?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  device_type?: string
-  device_ids?: string[]
+  settings?: ModelSettings
 }
 
 export interface RemoveModelFromProviderRequest {

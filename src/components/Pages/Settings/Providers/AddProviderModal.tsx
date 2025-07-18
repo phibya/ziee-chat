@@ -9,7 +9,7 @@ import {
   PROVIDER_DEFAULTS,
   SUPPORTED_PROVIDERS,
 } from '../../../../constants/providers'
-import { ApiConfigurationSection, CandleConfigurationSection } from './shared'
+import { ApiConfigurationSection } from './shared'
 
 interface AddProviderModalProps {
   open: boolean
@@ -40,7 +40,7 @@ export function AddProviderModal({
   const handleTypeChange = (type: ProviderType) => {
     setProviderType(type)
     // Reset form when type changes
-    form.resetFields(['api_key', 'base_url', 'settings'])
+    form.resetFields(['api_key', 'base_url'])
 
     // Set default values based on provider type
     const defaults = getDefaultValues(type)
@@ -109,11 +109,8 @@ export function AddProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-candle_server providers */}
+        {/* API Configuration for non-candle providers */}
         {providerType !== 'candle' && <ApiConfigurationSection />}
-
-        {/* Candle Configuration */}
-        {providerType === 'candle' && <CandleConfigurationSection />}
       </Form>
     </Modal>
   )

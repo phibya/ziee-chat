@@ -1,7 +1,5 @@
-import { Form, Space, Switch, Typography } from 'antd'
+import { Card, Form, Space, Switch } from 'antd'
 import { useTranslation } from 'react-i18next'
-
-const { Title } = Typography
 
 interface ModelCapabilitiesSectionProps {
   capabilities?: ('vision' | 'audio' | 'tools' | 'codeInterpreter')[]
@@ -13,8 +11,7 @@ export function ModelCapabilitiesSection({
   const { t } = useTranslation()
 
   return (
-    <>
-      <Title level={5}>{t('providers.capabilities')}</Title>
+    <Card title={t('providers.capabilities')} size={'small'}>
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
         {capabilities.includes('vision') && (
           <div
@@ -26,7 +23,7 @@ export function ModelCapabilitiesSection({
           >
             <span>{t('providers.vision')}</span>
             <Form.Item
-              name="vision"
+              name={['capabilities', 'vision']}
               valuePropName="checked"
               style={{ marginBottom: 0 }}
             >
@@ -45,7 +42,7 @@ export function ModelCapabilitiesSection({
           >
             <span>{t('providers.audio')}</span>
             <Form.Item
-              name="audio"
+              name={['capabilities', 'audio']}
               valuePropName="checked"
               style={{ marginBottom: 0 }}
             >
@@ -64,7 +61,7 @@ export function ModelCapabilitiesSection({
           >
             <span>{t('providers.tools')}</span>
             <Form.Item
-              name="tools"
+              name={['capabilities', 'tools']}
               valuePropName="checked"
               style={{ marginBottom: 0 }}
             >
@@ -83,7 +80,7 @@ export function ModelCapabilitiesSection({
           >
             <span>{t('providers.codeInterpreter')}</span>
             <Form.Item
-              name="codeInterpreter"
+              name={['capabilities', 'codeInterpreter']}
               valuePropName="checked"
               style={{ marginBottom: 0 }}
             >
@@ -92,6 +89,6 @@ export function ModelCapabilitiesSection({
           </div>
         )}
       </Space>
-    </>
+    </Card>
   )
 }

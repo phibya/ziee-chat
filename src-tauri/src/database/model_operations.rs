@@ -6,6 +6,48 @@ use uuid::Uuid;
 pub struct ModelOperations;
 
 impl ModelOperations {
+    /// Create default model settings
+    fn default_model_settings() -> serde_json::Value {
+        serde_json::json!({
+            "verbose": false,
+            "max_num_seqs": 256,
+            "block_size": 32,
+            "kvcache_mem_gpu": 4096,
+            "kvcache_mem_cpu": 128,
+            "record_conversation": false,
+            "holding_time": 500,
+            "multi_process": false,
+            "log": false,
+            "device_type": "cpu",
+            "device_ids": []
+        })
+    }
+
+    /// Create default model parameters
+    fn default_model_parameters() -> serde_json::Value {
+        serde_json::json!({
+            "contextSize": 4096,
+            "gpuLayers": -1,
+            "temperature": 0.7,
+            "topK": 40,
+            "topP": 0.95,
+            "minP": 0.05,
+            "repeatLastN": 64,
+            "repeatPenalty": 1.1,
+            "presencePenalty": 0.0,
+            "frequencyPenalty": 0.0
+        })
+    }
+
+    /// Create default model capabilities
+    fn default_model_capabilities() -> serde_json::Value {
+        serde_json::json!({
+            "vision": false,
+            "audio": false,
+            "tools": false,
+            "code_interpreter": false
+        })
+    }
     /// Create a new model record (works for both regular and Candle models)
     pub async fn create_model(
         pool: &PgPool,
@@ -14,30 +56,21 @@ impl ModelOperations {
         let model_id = Uuid::new_v4();
         let now = Utc::now();
 
-        let default_capabilities = serde_json::json!({
-            "vision": false,
-            "audio": false,
-            "tools": false,
-            "code_interpreter": false
-        });
-
-        let default_parameters = serde_json::json!({});
-
-        let capabilities = request.capabilities.clone().unwrap_or(default_capabilities);
+        let capabilities = request.capabilities.clone().unwrap_or_else(Self::default_model_capabilities);
 
         let row = sqlx::query(
             r#"
             INSERT INTO models (
                 id, provider_id, name, alias, description, 
-                architecture, quantization, file_size_bytes, enabled, 
+                file_size_bytes, enabled, 
                 is_deprecated, is_active, capabilities, parameters, 
-                validation_status, created_at, updated_at
+                validation_status, settings, created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
             ) RETURNING id, provider_id, name, alias, description, 
-                       architecture, quantization, file_size_bytes, enabled, 
+                       file_size_bytes, enabled, 
                        is_deprecated, is_active, capabilities, parameters, 
-                       validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
+                       validation_status, validation_issues, settings, port, created_at, updated_at
             "#,
         )
         .bind(model_id)
@@ -45,15 +78,14 @@ impl ModelOperations {
         .bind(&request.name)
         .bind(&request.alias)
         .bind(&request.description)
-        .bind(None::<String>) // architecture - NULL for non-Candle models
-        .bind(None::<String>) // quantization - NULL for non-Candle models
         .bind(0i64)
         .bind(request.enabled.unwrap_or(false))
         .bind(false)
         .bind(false)
         .bind(&capabilities)
-        .bind(&default_parameters)
+        .bind(Self::default_model_parameters())
         .bind("pending")
+        .bind(Self::default_model_settings()) // Default settings for regular models
         .bind(now)
         .bind(now)
         .fetch_one(pool)
@@ -72,52 +104,44 @@ impl ModelOperations {
             parameters: row.get("parameters"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
-            architecture: row.get("architecture"),
-            quantization: row.get("quantization"),
             file_size_bytes: row.get("file_size_bytes"),
             validation_status: row.get("validation_status"),
             validation_issues: row.get("validation_issues"),
-            device_type: row.get("device_type"),
-            device_ids: row.get("device_ids"),
+            settings: row.get("settings"),
             port: row.get("port"),
         };
 
         Ok(model)
     }
 
-    /// Create a Candle model with architecture support
+    /// Create a Candle model with required architecture and default settings
     pub async fn create_candle_model(
         pool: &PgPool,
         request: &CreateModelRequest,
-        architecture: Option<&str>,
+        architecture: &str, // Architecture is required for Candle models
     ) -> Result<ModelDb, sqlx::Error> {
         let model_id = Uuid::new_v4();
         let now = Utc::now();
 
-        let default_capabilities = serde_json::json!({
-            "vision": false,
-            "audio": false,
-            "tools": false,
-            "code_interpreter": false
-        });
+        let capabilities = request.capabilities.clone().unwrap_or_else(Self::default_model_capabilities);
 
-        let default_parameters = serde_json::json!({});
-
-        let capabilities = request.capabilities.clone().unwrap_or(default_capabilities);
+        // Create model settings with architecture and defaults
+        let mut model_settings = Self::default_model_settings();
+        model_settings["architecture"] = serde_json::Value::String(architecture.to_string());
 
         let row = sqlx::query(
             r#"
             INSERT INTO models (
                 id, provider_id, name, alias, description, 
-                architecture, quantization, file_size_bytes, enabled, 
+                file_size_bytes, enabled, 
                 is_deprecated, is_active, capabilities, parameters, 
-                validation_status, created_at, updated_at
+                validation_status, settings, created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
             ) RETURNING id, provider_id, name, alias, description, 
-                       architecture, quantization, file_size_bytes, enabled, 
+                       file_size_bytes, enabled, 
                        is_deprecated, is_active, capabilities, parameters, 
-                       validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
+                       validation_status, validation_issues, settings, port, created_at, updated_at
             "#,
         )
         .bind(model_id)
@@ -125,15 +149,14 @@ impl ModelOperations {
         .bind(&request.name)
         .bind(&request.alias)
         .bind(&request.description)
-        .bind(architecture)
-        .bind(None::<String>) // quantization removed
         .bind(0i64)
         .bind(request.enabled.unwrap_or(false))
         .bind(false)
         .bind(false)
         .bind(capabilities)
-        .bind(default_parameters)
+        .bind(Self::default_model_parameters())
         .bind("pending")
+        .bind(model_settings) // Model settings with architecture
         .bind(now)
         .bind(now)
         .fetch_one(pool)
@@ -152,13 +175,10 @@ impl ModelOperations {
             parameters: row.get("parameters"),
             created_at: row.get("created_at"),
             updated_at: row.get("updated_at"),
-            architecture: row.get("architecture"),
-            quantization: row.get("quantization"),
             file_size_bytes: row.get("file_size_bytes"),
             validation_status: row.get("validation_status"),
             validation_issues: row.get("validation_issues"),
-            device_type: row.get("device_type"),
-            device_ids: row.get("device_ids"),
+            settings: row.get("settings"),
             port: row.get("port"),
         };
 
@@ -172,9 +192,9 @@ impl ModelOperations {
     ) -> Result<Option<ModelDb>, sqlx::Error> {
         let row = sqlx::query(
             "SELECT id, provider_id, name, alias, description, 
-                    architecture, quantization, file_size_bytes, enabled, 
+                    file_size_bytes, enabled, 
                     is_deprecated, is_active, capabilities, parameters, 
-                    validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
+                    validation_status, validation_issues, settings, port, created_at, updated_at
              FROM models WHERE id = $1",
         )
         .bind(model_id)
@@ -188,20 +208,17 @@ impl ModelOperations {
                 name: row.get("name"),
                 alias: row.get("alias"),
                 description: row.get("description"),
-                architecture: row.get("architecture"),
-                quantization: row.get("quantization"),
                 file_size_bytes: row.get("file_size_bytes"),
-                    enabled: row.get("enabled"),
+                enabled: row.get("enabled"),
                 is_deprecated: row.get("is_deprecated"),
                 is_active: row.get("is_active"),
                 capabilities: row.get("capabilities"),
                 parameters: row.get("parameters"),
                 validation_status: row.get("validation_status"),
                 validation_issues: row.get("validation_issues"),
+                settings: row.get("settings"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-                device_type: row.get("device_type"),
-                device_ids: row.get("device_ids"),
                 port: row.get("port"),
             };
             Ok(Some(model))
@@ -222,9 +239,9 @@ impl ModelOperations {
         let rows = sqlx::query(
             r#"
             SELECT id, provider_id, name, alias, description, 
-                   architecture, quantization, file_size_bytes, enabled, 
+                   file_size_bytes, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
-                   validation_status, validation_issues, device_type, device_ids, port, created_at, updated_at
+                   validation_status, validation_issues, settings, port, created_at, updated_at
             FROM models 
             WHERE provider_id = $1 
             ORDER BY created_at DESC 
@@ -245,20 +262,17 @@ impl ModelOperations {
                 name: row.get("name"),
                 alias: row.get("alias"),
                 description: row.get("description"),
-                architecture: row.get("architecture"),
-                quantization: row.get("quantization"),
                 file_size_bytes: row.get("file_size_bytes"),
-                    enabled: row.get("enabled"),
+                enabled: row.get("enabled"),
                 is_deprecated: row.get("is_deprecated"),
                 is_active: row.get("is_active"),
                 capabilities: row.get("capabilities"),
                 parameters: row.get("parameters"),
                 validation_status: row.get("validation_status"),
                 validation_issues: row.get("validation_issues"),
+                settings: row.get("settings"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-                device_type: row.get("device_type"),
-                device_ids: row.get("device_ids"),
                 port: row.get("port"),
             };
             models.push(model);

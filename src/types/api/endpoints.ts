@@ -39,6 +39,7 @@ import {
   CreateProviderRequest,
   Model,
   ModelCapabilities,
+  ModelSettings,
   Provider,
   ProviderListResponse,
   ProviderProxySettings,
@@ -302,6 +303,7 @@ export type ApiEndpointParameters = {
     file_format: string
     capabilities?: ModelCapabilities
     selected_files: string[]
+    settings?: ModelSettings
   }
   // Assistant endpoints - User
   'Assistant.list': { page?: number; per_page?: number }

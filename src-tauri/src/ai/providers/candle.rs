@@ -6,7 +6,7 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 use crate::ai::core::providers::{
-  AIProvider, ChatRequest, ChatResponse, StreamingChunk, StreamingResponse, Usage,
+    AIProvider, ChatRequest, ChatResponse, StreamingChunk, StreamingResponse, Usage,
 };
 
 #[derive(Debug, Clone)]
@@ -204,6 +204,6 @@ impl AIProvider for CandleProvider {
     }
 
     fn provider_name(&self) -> &'static str {
-        "candle_server"
+        "candle"
     }
 }

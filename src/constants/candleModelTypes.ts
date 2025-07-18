@@ -85,8 +85,7 @@ export const CANDLE_FILE_TYPES: ModelFileType[] = [
   {
     key: 'gguf',
     label: 'GGUF (.gguf)',
-    description:
-      'GGML Universal Format for quantized models (llama.cpp compatible)',
+    description: 'GGML Universal Format for quantized models',
     extensions: ['.gguf'],
     mimeTypes: ['application/octet-stream'],
   },
