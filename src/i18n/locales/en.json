@@ -338,7 +338,6 @@
     "addProviderTitle": "Add Provider",
     "editProvider": "Edit Provider",
     "cloneProvider": "Clone Provider",
-    "deleteProvider": "Delete Provider",
     "enableProvider": "Enable Provider",
     "disableProvider": "Disable Provider",
     "providerName": "Provider Name",

@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateModelRequest, CreateProviderRequest, Model, ModelDb, Provider,
+        CreateModelRequest, CreateProviderRequest, Model, Provider,
         UpdateModelRequest, UpdateProviderRequest,
     },
 };
@@ -200,7 +200,7 @@ pub async fn get_models_for_provider(provider_id: Uuid) -> Result<Vec<Model>, sq
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_rows: Vec<ModelDb> = sqlx::query_as(
+    let model_rows: Vec<Model> = sqlx::query_as(
         "SELECT *
          FROM models 
          WHERE provider_id = $1 
@@ -210,10 +210,7 @@ pub async fn get_models_for_provider(provider_id: Uuid) -> Result<Vec<Model>, sq
     .fetch_all(pool)
     .await?;
 
-    Ok(model_rows
-        .into_iter()
-        .map(|model_db| Model::from_db(model_db, None))
-        .collect())
+    Ok(model_rows)
 }
 
 pub async fn create_model(
@@ -231,10 +228,10 @@ pub async fn create_model(
         default_model_settings()
     };
 
-    let model_row: ModelDb = sqlx::query_as(
+    let model_row: Model = sqlx::query_as(
     "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port, pid"
   )
     .bind(model_id)
     .bind(provider_id)
@@ -248,7 +245,7 @@ pub async fn create_model(
       .fetch_one(pool)
     .await?;
 
-    Ok(Model::from_db(model_row, None))
+    Ok(model_row)
 }
 
 pub async fn update_model(
@@ -259,7 +256,7 @@ pub async fn update_model(
     let pool = pool.as_ref();
 
     // First, get the current model to merge settings
-    let current_model: Option<ModelDb> = sqlx::query_as(
+    let current_model: Option<Model> = sqlx::query_as(
         "SELECT * FROM models WHERE id = $1"
     )
     .bind(model_id)
@@ -267,41 +264,34 @@ pub async fn update_model(
     .await?;
 
     let updated_settings = if let Some(current) = &current_model {
-        let mut settings = current.settings.clone();
-        
-        // Merge all settings from the request if provided, except architecture (protected)
         if let Some(request_settings) = &request.settings {
-            if let Ok(request_settings_json) = serde_json::to_value(request_settings) {
-                if let Some(request_obj) = request_settings_json.as_object() {
-                    if let Some(settings_obj) = settings.as_object_mut() {
-                        // Merge all fields from request settings into current settings
-                        // except architecture which is protected from updates
-                        for (key, value) in request_obj {
-                            if key != "architecture" {
-                                settings_obj.insert(key.clone(), value.clone());
-                            }
-                        }
-                    }
-                }
+            // Merge current settings with request settings
+            let mut merged_settings = current.get_settings();
+            
+            // Update all fields except architecture (protected)
+            if let Some(device_type) = &request_settings.device_type {
+                merged_settings.device_type = Some(device_type.clone());
             }
+            if let Some(device_ids) = &request_settings.device_ids {
+                merged_settings.device_ids = Some(device_ids.clone());
+            }
+            // ... merge other settings as needed
+            
+            serde_json::to_value(merged_settings).unwrap_or(serde_json::json!({}))
+        } else {
+            // No new settings provided, keep current
+            serde_json::to_value(current.get_settings()).unwrap_or(serde_json::json!({}))
         }
-        
-        settings
     } else {
-        // Model not found, create new settings from request
+        // Model not found, use request settings or default
         if let Some(request_settings) = &request.settings {
-            let mut new_settings = serde_json::to_value(request_settings).unwrap_or(serde_json::json!({}));
-            // Remove architecture from new settings as it should only be set during creation
-            if let Some(settings_obj) = new_settings.as_object_mut() {
-                settings_obj.remove("architecture");
-            }
-            new_settings
+            serde_json::to_value(request_settings).unwrap_or(serde_json::json!({}))
         } else {
             serde_json::json!({})
         }
     };
 
-    let model_row: Option<ModelDb> = sqlx::query_as(
+    let model_row: Option<Model> = sqlx::query_as(
     "UPDATE models
          SET name = COALESCE($2, name),
              alias = COALESCE($3, alias),
@@ -313,7 +303,7 @@ pub async fn update_model(
              settings = COALESCE($9, settings),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port, pid"
   )
     .bind(model_id)
     .bind(&request.name)
@@ -327,10 +317,7 @@ pub async fn update_model(
     .fetch_optional(pool)
     .await?;
 
-    match model_row {
-        Some(model_db) => Ok(Some(Model::from_db(model_db, None))),
-        None => Ok(None),
-    }
+    Ok(model_row)
 }
 
 pub async fn delete_model(model_id: Uuid) -> Result<bool, sqlx::Error> {
@@ -349,7 +336,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_row: Option<ModelDb> = sqlx::query_as(
+    let model_row: Option<Model> = sqlx::query_as(
         "SELECT *
          FROM models 
          WHERE id = $1",
@@ -358,10 +345,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     .fetch_optional(pool)
     .await?;
 
-    match model_row {
-        Some(model_db) => Ok(Some(Model::from_db(model_db, None))),
-        None => Ok(None),
-    }
+    Ok(model_row)
 }
 
 /// Get the provider_id for a given model_id
@@ -380,14 +364,14 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
     }
 }
 
-/// Get the model database record for deletion operations (returns ModelDb with provider_id)
+/// Get the model database record for deletion operations (returns Model with provider_id)
 pub async fn get_model_db_by_id(
     model_id: Uuid,
-) -> Result<Option<crate::database::models::ModelDb>, sqlx::Error> {
+) -> Result<Option<crate::database::models::Model>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_row: Option<crate::database::models::ModelDb> =
+    let model_row: Option<crate::database::models::Model> =
         sqlx::query_as("SELECT * FROM models WHERE id = $1")
             .bind(model_id)
             .fetch_optional(pool)

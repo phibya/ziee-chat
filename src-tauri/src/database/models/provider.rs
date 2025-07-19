@@ -73,16 +73,6 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Provider {
 }
 
 impl Provider {
-    /// Parse the proxy_settings JSON into a typed ProviderProxySettings struct
-    pub fn parse_proxy_settings_json(proxy_settings: &serde_json::Value) -> Result<ProviderProxySettings, String> {
-        if proxy_settings.is_null() {
-            return Ok(ProviderProxySettings::default());
-        }
-
-        serde_json::from_value(proxy_settings.clone())
-            .map_err(|e| format!("Failed to parse proxy settings: {}", e))
-    }
-
     /// Get the proxy settings for this provider, or return default settings if parsing fails
     pub fn get_proxy_settings(&self) -> ProviderProxySettings {
         self.proxy_settings.clone().unwrap_or_default()

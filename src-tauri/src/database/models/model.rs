@@ -1,38 +1,8 @@
 use crate::APP_DATA_DIR;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, Row};
 use uuid::Uuid;
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct ModelDb {
-    pub id: Uuid,
-    pub provider_id: Uuid,
-    pub name: String,
-    pub alias: String,
-    pub description: Option<String>,
-    pub enabled: bool,
-    pub is_deprecated: bool,
-    pub is_active: bool,
-    pub capabilities: serde_json::Value,
-    pub parameters: serde_json::Value,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    // Additional fields for Candle models (NULL for other providers)
-    pub file_size_bytes: Option<i64>,
-    pub validation_status: Option<String>,
-    pub validation_issues: Option<serde_json::Value>,
-    pub settings: serde_json::Value, // Model performance and device settings as JSONB
-    pub port: Option<i32>,           // Port number where the model server is running
-    pub pid: Option<i32>,            // Process ID of the running model server
-}
-
-impl ModelDb {
-    /// Get the model path using the pattern {provider_id}/{id}
-    pub fn get_model_path(&self) -> String {
-        format!("models/{}/{}", self.provider_id, self.id)
-    }
-}
 
 /// Typed settings for individual model performance and batching configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -310,6 +280,66 @@ pub struct Model {
     pub files: Option<Vec<ModelFileInfo>>,
 }
 
+impl FromRow<'_, sqlx::postgres::PgRow> for Model {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        // Parse capabilities JSON
+        let capabilities_json: serde_json::Value = row.try_get("capabilities")?;
+        let capabilities = if capabilities_json.is_null() {
+            None
+        } else {
+            Some(capabilities_json)
+        };
+
+        // Parse parameters JSON
+        let parameters_json: serde_json::Value = row.try_get("parameters")?;
+        let parameters = if parameters_json.is_null() {
+            None
+        } else {
+            Some(parameters_json)
+        };
+
+        // Parse settings JSON
+        let settings_json: serde_json::Value = row.try_get("settings")?;
+        let settings = if settings_json.is_null() {
+            None
+        } else {
+            Some(serde_json::from_value(settings_json).map_err(|e| {
+                sqlx::Error::ColumnDecode {
+                    index: "settings".into(),
+                    source: Box::new(e),
+                }
+            })?)
+        };
+
+        // Parse validation_issues JSON
+        let validation_issues_json: Option<serde_json::Value> = row.try_get("validation_issues")?;
+        let validation_issues = validation_issues_json
+            .and_then(|v| serde_json::from_value::<Vec<String>>(v).ok());
+
+        Ok(Model {
+            id: row.try_get("id")?,
+            provider_id: row.try_get("provider_id")?,
+            name: row.try_get("name")?,
+            alias: row.try_get("alias")?,
+            description: row.try_get("description")?,
+            enabled: row.try_get("enabled")?,
+            is_deprecated: row.try_get("is_deprecated")?,
+            is_active: row.try_get("is_active")?,
+            capabilities,
+            parameters,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+            file_size_bytes: row.try_get("file_size_bytes")?,
+            validation_status: row.try_get("validation_status")?,
+            validation_issues,
+            port: row.try_get("port")?,
+            pid: row.try_get("pid")?,
+            settings,
+            files: None, // Files need to be loaded separately
+        })
+    }
+}
+
 // Request/Response structures for models
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateModelRequest {
@@ -419,13 +449,9 @@ impl Model {
             .to_string()
     }
 
-    pub fn from_db(model_db: ModelDb, files: Option<Vec<ModelFileDb>>) -> Self {
-        let validation_issues = model_db
-            .validation_issues
-            .as_ref()
-            .and_then(|v| serde_json::from_value::<Vec<String>>(v.clone()).ok());
-
-        let file_infos = files.map(|files| {
+    /// Set files from ModelFileDb structs
+    pub fn with_files(mut self, files: Option<Vec<ModelFileDb>>) -> Self {
+        self.files = files.map(|files| {
             files
                 .into_iter()
                 .map(|f| ModelFileInfo {
@@ -436,28 +462,7 @@ impl Model {
                 })
                 .collect()
         });
-
-        Self {
-            id: model_db.id,
-            provider_id: model_db.provider_id,
-            name: model_db.name,
-            alias: model_db.alias,
-            description: model_db.description,
-            enabled: model_db.enabled,
-            is_deprecated: model_db.is_deprecated,
-            is_active: model_db.is_active,
-            capabilities: Some(model_db.capabilities),
-            parameters: Some(model_db.parameters),
-            created_at: model_db.created_at,
-            updated_at: model_db.updated_at,
-            file_size_bytes: model_db.file_size_bytes,
-            validation_status: model_db.validation_status,
-            validation_issues,
-            port: model_db.port,
-            pid: model_db.pid,
-            settings: serde_json::from_value(model_db.settings).ok(), // Parse settings from database JSON
-            files: file_infos,
-        }
+        self
     }
 
     /// Get the model settings, or return default settings if none are set

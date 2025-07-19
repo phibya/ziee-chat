@@ -1,6 +1,6 @@
 use crate::database::models::*;
 use chrono::Utc;
-use sqlx::Row;
+use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 pub struct ModelOperations;
@@ -53,7 +53,7 @@ impl ModelOperations {
     pub async fn create_candle_model(
         request: &CreateModelRequest,
         architecture: &str, // Architecture is required for Candle models
-    ) -> Result<ModelDb, sqlx::Error> {
+    ) -> Result<Model, sqlx::Error> {
         let pool = crate::database::get_database_pool()?;
         let model_id = Uuid::new_v4();
         let now = Utc::now();
@@ -100,34 +100,14 @@ impl ModelOperations {
         .fetch_one(pool.as_ref())
         .await?;
 
-        let model = ModelDb {
-            id: row.get("id"),
-            provider_id: row.get("provider_id"),
-            name: row.get("name"),
-            alias: row.get("alias"),
-            description: row.get("description"),
-            enabled: row.get("enabled"),
-            is_deprecated: row.get("is_deprecated"),
-            is_active: row.get("is_active"),
-            capabilities: row.get("capabilities"),
-            parameters: row.get("parameters"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            file_size_bytes: row.get("file_size_bytes"),
-            validation_status: row.get("validation_status"),
-            validation_issues: row.get("validation_issues"),
-            settings: row.get("settings"),
-            port: row.get("port"),
-            pid: row.get("pid"),
-        };
-
+        let model: Model = Model::from_row(&row)?;
         Ok(model)
     }
 
     /// Get model by ID
-    pub async fn get_model_by_id(model_id: &Uuid) -> Result<Option<ModelDb>, sqlx::Error> {
+    pub async fn get_model_by_id(model_id: &Uuid) -> Result<Option<Model>, sqlx::Error> {
         let pool = crate::database::get_database_pool()?;
-        let row = sqlx::query(
+        let model: Option<Model> = sqlx::query_as(
             "SELECT id, provider_id, name, alias, description, 
                     file_size_bytes, enabled, 
                     is_deprecated, is_active, capabilities, parameters, 
@@ -138,31 +118,7 @@ impl ModelOperations {
         .fetch_optional(pool.as_ref())
         .await?;
 
-        if let Some(row) = row {
-            let model = ModelDb {
-                id: row.get("id"),
-                provider_id: row.get("provider_id"),
-                name: row.get("name"),
-                alias: row.get("alias"),
-                description: row.get("description"),
-                file_size_bytes: row.get("file_size_bytes"),
-                enabled: row.get("enabled"),
-                is_deprecated: row.get("is_deprecated"),
-                is_active: row.get("is_active"),
-                capabilities: row.get("capabilities"),
-                parameters: row.get("parameters"),
-                validation_status: row.get("validation_status"),
-                validation_issues: row.get("validation_issues"),
-                settings: row.get("settings"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-                port: row.get("port"),
-                pid: row.get("pid"),
-            };
-            Ok(Some(model))
-        } else {
-            Ok(None)
-        }
+        Ok(model)
     }
 
     /// Update model validation status and issues
@@ -341,11 +297,11 @@ impl ModelOperations {
 
     /// Get all models with their files for full response
     pub async fn get_model_with_files(model_id: &Uuid) -> Result<Option<Model>, sqlx::Error> {
-        let model_db = Self::get_model_by_id(model_id).await?;
+        let model = Self::get_model_by_id(model_id).await?;
 
-        if let Some(model_db) = model_db {
+        if let Some(model) = model {
             let files = Self::get_model_files(model_id).await?;
-            Ok(Some(Model::from_db(model_db, Some(files))))
+            Ok(Some(model.with_files(Some(files))))
         } else {
             Ok(None)
         }

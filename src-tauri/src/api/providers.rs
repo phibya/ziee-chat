@@ -631,8 +631,8 @@ pub async fn start_model(
         }
     }
 
-    // Convert ModelDb to Model to access settings
-    let model_with_settings = crate::database::models::Model::from_db(model.clone(), None);
+    // Use the model directly (it's already a Model struct)
+    let model_with_settings = model.clone();
 
     // Validate that the model files exist
     let model_path = model_with_settings.get_model_path();

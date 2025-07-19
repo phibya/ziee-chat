@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@import './classless.css';
+@import "tailwindcss";
+@import "./classless.css";
 
 .ant-menu-vertical {
   border-inline-end: none !important;
