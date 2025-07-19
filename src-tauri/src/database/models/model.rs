@@ -15,16 +15,13 @@ pub struct ModelSettings {
 
     // Sequence and memory management
     /// Maximum running sequences at any time (--max-seqs)
-    #[serde(default = "default_max_num_seqs")]
-    pub max_seqs: usize,
+    pub max_seqs: Option<usize>,
     /// Maximum sequence length (--max-seq-len)
     pub max_seq_len: Option<usize>,
     /// Use no KV cache (--no-kv-cache)
-    #[serde(default)]
-    pub no_kv_cache: bool,
+    pub no_kv_cache: Option<bool>,
     /// Truncate sequences that exceed max length (--truncate-sequence)
-    #[serde(default)]
-    pub truncate_sequence: bool,
+    pub truncate_sequence: Option<bool>,
 
     // PagedAttention configuration
     /// GPU memory for KV cache in MBs (--pa-gpu-mem)
@@ -34,19 +31,15 @@ pub struct ModelSettings {
     /// Total context length for KV cache (--pa-ctxt-len)
     pub paged_ctxt_len: Option<usize>,
     /// PagedAttention block size (--pa-blk-size)
-    #[serde(default = "default_block_size")]
-    pub paged_attn_block_size: usize,
+    pub paged_attn_block_size: Option<usize>,
     /// Disable PagedAttention on CUDA (--no-paged-attn)
-    #[serde(default)]
-    pub no_paged_attn: bool,
+    pub no_paged_attn: Option<bool>,
     /// Enable PagedAttention on Metal (--paged-attn)
-    #[serde(default)]
-    pub paged_attn: bool,
+    pub paged_attn: Option<bool>,
 
     // Performance optimization
     /// Number of prefix caches to hold (--prefix-cache-n)
-    #[serde(default = "default_prefix_cache_n")]
-    pub prefix_cache_n: usize,
+    pub prefix_cache_n: Option<usize>,
     /// Prompt batching chunk size (--prompt-batchsize)
     pub prompt_chunksize: Option<usize>,
 
@@ -69,62 +62,12 @@ pub struct ModelSettings {
     pub max_num_images: Option<usize>,
     /// Maximum image edge length (--max-image-length)
     pub max_image_length: Option<usize>,
-
-    // Local configuration settings from frontend
-    /// Auto unload old models when loading new ones
-    #[serde(default)]
-    pub auto_unload_old_models: bool,
-    /// Enable context shift
-    #[serde(default)]
-    pub context_shift: bool,
-    /// Enable continuous batching
-    #[serde(default)]
-    pub continuous_batching: bool,
-    /// Number of parallel operations (1-16)
-    #[serde(default = "default_parallel_operations")]
-    pub parallel_operations: usize,
-    /// Number of CPU threads (auto if None)
-    pub cpu_threads: Option<usize>,
-    /// Number of threads for batch processing (same as cpu_threads if None)
-    pub threads_batch: Option<usize>,
-    /// Enable flash attention
-    #[serde(default)]
-    pub flash_attention: bool,
-    /// Enable caching (inverse of no_kv_cache)
-    #[serde(default = "default_caching")]
-    pub caching: bool,
-    /// KV cache type (q8_0, q4_0, q4_1, q5_0, q5_1)
-    pub kv_cache_type: Option<String>,
-    /// Enable memory mapping
-    #[serde(default)]
-    pub mmap: bool,
-    /// Hugging Face access token
-    pub hugging_face_access_token: Option<String>,
 }
 
-// Default value functions for ModelSettings
-fn default_max_num_seqs() -> usize {
-    16 // Updated to match mistralrs-server default
-}
-
-fn default_block_size() -> usize {
-    32
-}
-
-fn default_prefix_cache_n() -> usize {
-    16 // Default prefix cache
-}
-
-fn default_parallel_operations() -> usize {
-    4 // Default parallel operations
-}
-
-fn default_caching() -> bool {
-    true // Enable caching by default
-}
+// Default value functions for ModelSettings - removed since all fields are now optional
 
 impl ModelSettings {
-    /// Create a new ModelSettings with default values
+    /// Create a new ModelSettings with all None values (auto-load configuration)
     pub fn new() -> Self {
         Self::default()
     }
@@ -134,17 +77,17 @@ impl ModelSettings {
         Self {
             device_type: Some("cuda".to_string()),
             device_ids: None,
-            max_seqs: 64,
+            max_seqs: Some(64),
             max_seq_len: Some(8192),
-            no_kv_cache: false,
-            truncate_sequence: false,
+            no_kv_cache: Some(false),
+            truncate_sequence: Some(false),
             paged_attn_gpu_mem: Some(8192),
             paged_attn_gpu_mem_usage: Some(0.9),
             paged_ctxt_len: Some(8192),
-            paged_attn_block_size: 64,
-            no_paged_attn: false,
-            paged_attn: true,
-            prefix_cache_n: 32,
+            paged_attn_block_size: Some(64),
+            no_paged_attn: Some(false),
+            paged_attn: Some(true),
+            prefix_cache_n: Some(32),
             prompt_chunksize: Some(1024),
             dtype: Some("f16".to_string()),
             in_situ_quant: None,
@@ -153,17 +96,6 @@ impl ModelSettings {
             max_edge: None,
             max_num_images: None,
             max_image_length: None,
-            auto_unload_old_models: false,
-            context_shift: false,
-            continuous_batching: true,
-            parallel_operations: 8,
-            cpu_threads: None,
-            threads_batch: None,
-            flash_attention: true,
-            caching: true,
-            kv_cache_type: Some("q4_0".to_string()),
-            mmap: true,
-            hugging_face_access_token: None,
         }
     }
 
@@ -172,17 +104,17 @@ impl ModelSettings {
         Self {
             device_type: Some("metal".to_string()),
             device_ids: None,
-            max_seqs: 16,
+            max_seqs: Some(16),
             max_seq_len: Some(2048),
-            no_kv_cache: false,
-            truncate_sequence: true,
+            no_kv_cache: Some(false),
+            truncate_sequence: Some(true),
             paged_attn_gpu_mem: Some(2048),
             paged_attn_gpu_mem_usage: Some(0.7),
             paged_ctxt_len: Some(2048),
-            paged_attn_block_size: 16,
-            no_paged_attn: false,
-            paged_attn: true,
-            prefix_cache_n: 8,
+            paged_attn_block_size: Some(16),
+            no_paged_attn: Some(false),
+            paged_attn: Some(true),
+            prefix_cache_n: Some(8),
             prompt_chunksize: Some(512),
             dtype: Some("f16".to_string()),
             in_situ_quant: None,
@@ -191,33 +123,36 @@ impl ModelSettings {
             max_edge: None,
             max_num_images: None,
             max_image_length: None,
-            auto_unload_old_models: true,
-            context_shift: true,
-            continuous_batching: false,
-            parallel_operations: 2,
-            cpu_threads: None,
-            threads_batch: None,
-            flash_attention: false,
-            caching: true,
-            kv_cache_type: Some("q8_0".to_string()),
-            mmap: false,
-            hugging_face_access_token: None,
         }
     }
 
     /// Validate the settings and return errors if any
     pub fn validate(&self) -> Result<(), String> {
-        if self.max_seqs == 0 {
-            return Err("max_seqs must be greater than 0".to_string());
+        // Only validate fields that are Some (configured)
+        if let Some(max_seqs) = self.max_seqs {
+            if max_seqs == 0 {
+                return Err("max_seqs must be greater than 0".to_string());
+            }
+            if max_seqs > 2048 {
+                return Err("max_seqs should not exceed 2048".to_string());
+            }
         }
 
-        if self.paged_attn_block_size == 0 {
-            return Err("paged_attn_block_size must be greater than 0".to_string());
+        if let Some(paged_attn_block_size) = self.paged_attn_block_size {
+            if paged_attn_block_size == 0 {
+                return Err("paged_attn_block_size must be greater than 0".to_string());
+            }
+            if paged_attn_block_size > 512 {
+                return Err("paged_attn_block_size should not exceed 512".to_string());
+            }
         }
 
         if let Some(gpu_mem) = self.paged_attn_gpu_mem {
             if gpu_mem == 0 {
                 return Err("paged_attn_gpu_mem must be greater than 0".to_string());
+            }
+            if gpu_mem > 65536 {
+                return Err("paged_attn_gpu_mem should not exceed 65536MB (64GB)".to_string());
             }
         }
 
@@ -227,22 +162,9 @@ impl ModelSettings {
             }
         }
 
-        if self.prefix_cache_n == 0 {
-            return Err("prefix_cache_n must be greater than 0".to_string());
-        }
-
-        // Reasonable limits
-        if self.max_seqs > 2048 {
-            return Err("max_seqs should not exceed 2048".to_string());
-        }
-
-        if self.paged_attn_block_size > 512 {
-            return Err("paged_attn_block_size should not exceed 512".to_string());
-        }
-
-        if let Some(gpu_mem) = self.paged_attn_gpu_mem {
-            if gpu_mem > 65536 {
-                return Err("paged_attn_gpu_mem should not exceed 65536MB (64GB)".to_string());
+        if let Some(prefix_cache_n) = self.prefix_cache_n {
+            if prefix_cache_n == 0 {
+                return Err("prefix_cache_n must be greater than 0".to_string());
             }
         }
 

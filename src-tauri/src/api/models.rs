@@ -190,7 +190,7 @@ pub async fn start_model(
         );
 
         // Update model runtime info (PID and port)
-        match crate::database::model_operations::ModelOperations::update_model_runtime_info(
+        match crate::database::queries::models::update_model_runtime_info(
             &model_id,
             Some(pid as i32),
             Some(port as i32),
@@ -242,24 +242,22 @@ pub async fn start_model(
     // Set model type based on architecture or use run (auto-loader) as default
     params.command = "run".to_string();
 
-    // Apply settings from model configuration
-    params.max_seqs = Some(settings.max_seqs);
-    if let Some(max_seq_len) = settings.max_seq_len {
-        params.max_seq_len = Some(max_seq_len);
-    }
-    params.no_kv_cache = settings.no_kv_cache;
-    params.truncate_sequence = settings.truncate_sequence;
+    // Apply settings from model configuration (only if specified)
+    params.max_seqs = settings.max_seqs;
+    params.max_seq_len = settings.max_seq_len;
+    params.no_kv_cache = settings.no_kv_cache.unwrap_or(false);
+    params.truncate_sequence = settings.truncate_sequence.unwrap_or(false);
 
     // PagedAttention settings
     params.paged_attn_gpu_mem = settings.paged_attn_gpu_mem;
     params.paged_attn_gpu_mem_usage = settings.paged_attn_gpu_mem_usage;
     params.paged_ctxt_len = settings.paged_ctxt_len;
-    params.paged_attn_block_size = Some(settings.paged_attn_block_size);
-    params.no_paged_attn = settings.no_paged_attn;
-    params.paged_attn = settings.paged_attn;
+    params.paged_attn_block_size = settings.paged_attn_block_size;
+    params.no_paged_attn = settings.no_paged_attn.unwrap_or(false);
+    params.paged_attn = settings.paged_attn.unwrap_or(false);
 
     // Performance settings
-    params.prefix_cache_n = Some(settings.prefix_cache_n);
+    params.prefix_cache_n = settings.prefix_cache_n;
     params.prompt_chunksize = settings.prompt_chunksize;
 
     // Model configuration
@@ -277,7 +275,7 @@ pub async fn start_model(
             println!("Model {} started successfully on port {}", model_id, port);
 
             let update_port_result =
-                crate::database::model_operations::ModelOperations::update_model_runtime_info(
+                crate::database::queries::models::update_model_runtime_info(
                     &model_id,
                     Some(pid as i32),
                     Some(port as i32),
@@ -305,7 +303,7 @@ pub async fn start_model(
             );
 
             let update_port_result =
-                crate::database::model_operations::ModelOperations::update_model_runtime_info(
+                crate::database::queries::models::update_model_runtime_info(
                     &model_id,
                     Some(pid as i32),
                     Some(port as i32),
@@ -376,7 +374,7 @@ pub async fn stop_model(
         );
 
         let clear_port_result =
-            crate::database::model_operations::ModelOperations::update_model_runtime_info(
+            crate::database::queries::models::update_model_runtime_info(
                 &model_id, None, // Clear the port
                 None, // Clear the PID
                 false,
@@ -397,7 +395,7 @@ pub async fn stop_model(
 
     // Get the PID and port from the database for this specific model
     let runtime_info =
-        match crate::database::model_operations::ModelOperations::get_model_runtime_info(&model_id)
+        match crate::database::queries::models::get_model_runtime_info(&model_id)
             .await
         {
             Ok(Some((pid, port))) => (pid as u32, port as u16),
@@ -420,7 +418,7 @@ pub async fn stop_model(
             println!("Model {} stopped successfully", model_id);
 
             let clear_port_result =
-                crate::database::model_operations::ModelOperations::update_model_runtime_info(
+                crate::database::queries::models::update_model_runtime_info(
                     &model_id, None,  // Clear the port
                     None,  // Clear the PID
                     false, // Set is_active to false

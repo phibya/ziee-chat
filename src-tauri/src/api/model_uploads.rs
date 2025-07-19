@@ -11,7 +11,7 @@ use crate::api::{
     errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
-use crate::database::{model_operations::ModelOperations, models::*};
+use crate::database::{models::*, queries::models};
 
 #[derive(Deserialize)]
 pub struct UpdateModelStatusRequest {
@@ -66,7 +66,7 @@ pub async fn upload_model_file(
     Json(request): Json<UploadFileRequest>,
 ) -> ApiResult<Json<ModelUploadResponse>> {
     // Get model info
-    let model = ModelOperations::get_model_by_id(&model_id)
+    let model = models::get_model_by_id(model_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
@@ -113,7 +113,7 @@ pub async fn upload_model_file(
     }
 
     // Update model status to indicate file processing
-    ModelOperations::update_model_validation(
+    models::update_model_validation(
         &model_id,
         "processing",
         None,
@@ -344,7 +344,7 @@ pub async fn commit_uploaded_files(
 
     println!("Processing model with file format: {}", file_format);
 
-    let model_db = ModelOperations::create_local_model(&create_request, &architecture)
+    let model_db = models::create_local_model(&create_request, &architecture)
     .await
     .map_err(|e| {
       // Handle unique constraint violation for (provider_id, name)
@@ -386,7 +386,7 @@ pub async fn commit_uploaded_files(
                 let file_type = determine_model_file_type(&committed_file.filename).to_string();
                 let file_type_str = file_type.as_str();
 
-                ModelOperations::create_model_file(
+                models::create_model_file(
                     &model_db.id,
                     &committed_file.filename,
                     &committed_file.file_path,
@@ -416,7 +416,7 @@ pub async fn commit_uploaded_files(
     // Update model with total size (checksum removed for performance)
 
     // Update validation status to completed and enable the model
-    ModelOperations::update_model_validation(
+    models::update_model_validation(
         &model_db.id,
         "completed",
         None,
@@ -425,7 +425,7 @@ pub async fn commit_uploaded_files(
     .await
     .map_err(AppError::database_error)?;
 
-    ModelOperations::update_model_status(
+    models::update_model_status(
         &model_db.id,
         Some(true), // enabled = true
         None,       // don't change is_active
@@ -442,7 +442,7 @@ pub async fn commit_uploaded_files(
     }
 
     // Return the created model
-    let model = ModelOperations::get_model_with_files(&model_db.id)
+    let model = models::get_model_with_files(&model_db.id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
@@ -550,12 +550,12 @@ pub async fn validate_model(
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<Json<ModelValidationResult>> {
     // Get model and files
-    let model = ModelOperations::get_model_by_id(&model_id)
+    let model = models::get_model_by_id(model_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
 
-    let _files = ModelOperations::get_model_files(&model_id)
+    let _files = models::get_model_files(&model_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?;
 
@@ -655,7 +655,7 @@ pub async fn validate_model(
     let validation_status = if is_valid { "valid" } else { "invalid" };
 
     // Update validation status in database
-    ModelOperations::update_model_validation(
+    models::update_model_validation(
         &model_id,
         validation_status,
         Some(&validation_issues),
@@ -682,12 +682,12 @@ pub async fn update_model_status(
     Json(request): Json<UpdateModelStatusRequest>,
 ) -> ApiResult<Json<Model>> {
     // Update model status
-    ModelOperations::update_model_status(&model_id, request.enabled, request.is_active)
+    models::update_model_status(&model_id, request.enabled, request.is_active)
         .await
         .map_err(AppError::database_error)?;
 
     // Return updated model
-    let model = ModelOperations::get_model_with_files(&model_id)
+    let model = models::get_model_with_files(&model_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
@@ -711,7 +711,7 @@ pub async fn get_storage_stats(
         })?;
 
     // Get stats from database
-    let mut stats = ModelOperations::get_provider_storage_stats(&provider_id)
+    let mut stats = models::get_provider_storage_stats(&provider_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?;
 
