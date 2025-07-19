@@ -132,6 +132,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserEmail {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PasswordService {
     pub bcrypt: String, // bcrypt hash of the password
+    pub salt: String,   // random salt used for hashing
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -278,7 +279,7 @@ impl User {
         user_db: UserDb,
         emails: Vec<UserEmail>,
         services: Vec<UserServiceDb>,
-        login_tokens: Vec<UserLoginTokenDb>,
+        _login_tokens: Vec<UserLoginTokenDb>,
         groups: Vec<UserGroup>,
     ) -> Self {
         let mut user = User {

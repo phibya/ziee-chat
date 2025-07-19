@@ -11,6 +11,7 @@ use crate::database::{
     models::{ResetPasswordRequest, UpdateUserRequest},
     queries::users,
 };
+use crate::utils::password;
 
 #[derive(Deserialize)]
 pub struct UserHello {
@@ -97,16 +98,16 @@ pub async fn reset_user_password(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<ResetPasswordRequest>,
 ) -> Result<StatusCode, StatusCode> {
-    // Hash the password
-    let password_hash = match bcrypt::hash(&request.new_password, bcrypt::DEFAULT_COST) {
-        Ok(hash) => hash,
+    // Hash the password with random salt
+    let password_service = match password::hash_password(&request.new_password) {
+        Ok(service) => service,
         Err(e) => {
             eprintln!("Error hashing password: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 
-    match users::reset_user_password(request.user_id, password_hash).await {
+    match users::reset_user_password_with_service(request.user_id, password_service).await {
         Ok(true) => Ok(StatusCode::OK),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -135,19 +136,19 @@ pub async fn create_user(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<crate::database::models::CreateUserRequest>,
 ) -> Result<Json<crate::database::models::User>, StatusCode> {
-    // Hash the password
-    let password_hash = match bcrypt::hash(&request.password, bcrypt::DEFAULT_COST) {
-        Ok(hash) => hash,
+    // Hash the password with random salt
+    let password_service = match password::hash_password(&request.password) {
+        Ok(service) => service,
         Err(e) => {
             eprintln!("Error hashing password: {}", e);
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
 
-    match users::create_user(
+    match users::create_user_with_password_service(
         request.username.clone(),
         request.email.clone(),
-        Some(password_hash),
+        Some(password_service),
         None,
     )
     .await

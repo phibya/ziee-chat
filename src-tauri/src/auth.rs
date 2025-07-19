@@ -1,4 +1,3 @@
-use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rand::Rng;
@@ -7,6 +6,7 @@ use uuid::Uuid;
 
 use crate::database::models::*;
 use crate::database::queries::users;
+use crate::utils::password;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -51,15 +51,6 @@ impl AuthService {
         Self::new(AuthConfig::default())
     }
 
-    /// Hash password using bcrypt
-    pub fn hash_password(&self, password: &str) -> Result<String, bcrypt::BcryptError> {
-        hash(password, DEFAULT_COST)
-    }
-
-    /// Verify password against hash
-    pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool, bcrypt::BcryptError> {
-        verify(password, hash)
-    }
 
     /// Generate JWT token for user
     pub fn generate_token(&self, user: &User) -> Result<String, jsonwebtoken::errors::Error> {
@@ -116,9 +107,8 @@ impl AuthService {
             return Ok(None);
         };
 
-        // Verify password
-        if !self
-            .verify_password(password, &password_service.bcrypt)
+        // Verify password with salt
+        if !password::verify_password(password, password_service)
             .map_err(|e| e.to_string())?
         {
             return Ok(None);
@@ -155,16 +145,15 @@ impl AuthService {
             return Err(format!("Email '{}' is already registered", request.email));
         }
 
-        // Hash password
-        let password_hash = self
-            .hash_password(&request.password)
+        // Hash password with salt
+        let password_service = password::hash_password(&request.password)
             .map_err(|e| e.to_string())?;
 
         // Create user
-        let user = users::create_user(
+        let user = users::create_user_with_password_service(
             request.username,
             request.email,
-            Some(password_hash),
+            Some(password_service),
             request.profile,
         )
         .await

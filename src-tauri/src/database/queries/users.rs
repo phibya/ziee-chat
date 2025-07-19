@@ -3,108 +3,6 @@ use crate::database::models::*;
 use sqlx::Row;
 use uuid::Uuid;
 
-pub async fn create_user(
-    username: String,
-    email: String,
-    password_hash: Option<String>,
-    profile: Option<serde_json::Value>,
-) -> Result<User, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let mut tx = pool.begin().await?;
-
-    // Check if this is the first user in the system
-    let user_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
-        .fetch_one(&mut *tx)
-        .await?;
-    let is_first_user = user_count.0 == 0;
-
-    // Insert user
-    let user_row = sqlx::query(
-    "INSERT INTO users (username, profile, is_protected) VALUES ($1, $2, $3) RETURNING id, username, created_at, profile, is_active, is_protected, last_login_at, updated_at"
-  )
-    .bind(&username)
-    .bind(&profile)
-    .bind(is_first_user) // Mark first user as protected
-    .fetch_one(&mut *tx)
-    .await?;
-
-    let user_db = UserDb {
-        id: user_row.get("id"),
-        username: user_row.get("username"),
-        created_at: user_row.get("created_at"),
-        profile: user_row.get("profile"),
-        is_active: user_row.get("is_active"),
-        is_protected: user_row.get("is_protected"),
-        last_login_at: user_row.get("last_login_at"),
-        updated_at: user_row.get("updated_at"),
-    };
-
-    // Insert email
-    let email_row = sqlx::query(
-    "INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3) RETURNING id, user_id, address, verified, created_at"
-  )
-    .bind(user_db.id)
-    .bind(&email)
-    .bind(false)
-    .fetch_one(&mut *tx)
-    .await?;
-
-    let email_db = UserEmail {
-        id: email_row.get("id"),
-        user_id: email_row.get("user_id"),
-        address: email_row.get("address"),
-        verified: email_row.get("verified"),
-        created_at: email_row.get("created_at"),
-    };
-
-    // Insert password service if provided
-    let mut services = Vec::new();
-    if let Some(password_hash) = password_hash {
-        let password_service = serde_json::json!({
-            "bcrypt": password_hash
-        });
-
-        let service_row = sqlx::query(
-      "INSERT INTO user_services (user_id, service_name, service_data) VALUES ($1, $2, $3) RETURNING id, user_id, service_name, service_data, created_at"
-    )
-      .bind(user_db.id)
-      .bind("password")
-      .bind(&password_service)
-      .fetch_one(&mut *tx)
-      .await?;
-
-        let service_db = UserServiceDb {
-            id: service_row.get("id"),
-            user_id: service_row.get("user_id"),
-            service_name: service_row.get("service_name"),
-            service_data: service_row.get("service_data"),
-            created_at: service_row.get("created_at"),
-        };
-
-        services.push(service_db);
-    }
-
-    tx.commit().await?;
-
-    let user = User::from_db_parts(user_db, vec![email_db], services, vec![], vec![]);
-
-    // Automatically assign new user to default user group
-    if let Err(e) =
-        crate::database::queries::user_groups::assign_user_to_default_group(user.id).await
-    {
-        eprintln!("Warning: Failed to assign user to default group: {}", e);
-    }
-
-    // Clone default assistants for new user
-    if let Err(e) = clone_default_assistants_for_user(user.id).await {
-        eprintln!(
-            "Warning: Failed to clone default assistants for user: {}",
-            e
-        );
-    }
-
-    Ok(user)
-}
 
 /// Clone default assistants for a new user
 async fn clone_default_assistants_for_user(user_id: Uuid) -> Result<(), sqlx::Error> {
@@ -395,34 +293,6 @@ pub async fn update_user(
     get_user_by_id(user_id).await
 }
 
-// Reset user password
-pub async fn reset_user_password(
-    user_id: Uuid,
-    password_hash: String,
-) -> Result<bool, sqlx::Error> {
-    let pool = get_database_pool()?;
-
-    let password_service = serde_json::json!({
-        "bcrypt": password_hash
-    });
-
-    let result = sqlx::query(
-        r#"
-        INSERT INTO user_services (user_id, service_name, service_data)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (user_id, service_name)
-        DO UPDATE SET service_data = $3
-        "#,
-    )
-    .bind(user_id)
-    .bind("password")
-    .bind(&password_service)
-    .execute(&*pool)
-    .await?;
-
-    Ok(result.rows_affected() > 0)
-}
-
 // Update last login time
 // Toggle user active status
 pub async fn toggle_user_active(user_id: Uuid) -> Result<bool, sqlx::Error> {
@@ -476,6 +346,140 @@ pub async fn delete_user(user_id: Uuid) -> Result<bool, sqlx::Error> {
         .bind(user_id)
         .execute(&*pool)
         .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+// Create user with PasswordService (includes salt)
+pub async fn create_user_with_password_service(
+    username: String,
+    email: String,
+    password_service: Option<PasswordService>,
+    profile: Option<serde_json::Value>,
+) -> Result<User, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let mut tx = pool.begin().await?;
+
+    // Check if this is the first user in the system
+    let user_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(&mut *tx)
+        .await?;
+    let is_first_user = user_count.0 == 0;
+
+    // Insert user
+    let user_row = sqlx::query(
+    "INSERT INTO users (username, profile, is_protected) VALUES ($1, $2, $3) RETURNING id, username, created_at, profile, is_active, is_protected, last_login_at, updated_at"
+  )
+    .bind(&username)
+    .bind(&profile)
+    .bind(is_first_user) // Mark first user as protected
+    .fetch_one(&mut *tx)
+    .await?;
+
+    let user_db = UserDb {
+        id: user_row.get("id"),
+        username: user_row.get("username"),
+        created_at: user_row.get("created_at"),
+        profile: user_row.get("profile"),
+        is_active: user_row.get("is_active"),
+        is_protected: user_row.get("is_protected"),
+        last_login_at: user_row.get("last_login_at"),
+        updated_at: user_row.get("updated_at"),
+    };
+
+    // Insert email
+    let email_row = sqlx::query(
+    "INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3) RETURNING id, user_id, address, verified, created_at"
+  )
+    .bind(user_db.id)
+    .bind(&email)
+    .bind(false)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    let email_db = UserEmail {
+        id: email_row.get("id"),
+        user_id: email_row.get("user_id"),
+        address: email_row.get("address"),
+        verified: email_row.get("verified"),
+        created_at: email_row.get("created_at"),
+    };
+
+    // Insert password service if provided
+    let mut services = Vec::new();
+    if let Some(password_service) = password_service {
+        let password_service_json = serde_json::json!({
+            "bcrypt": password_service.bcrypt,
+            "salt": password_service.salt
+        });
+
+        let service_row = sqlx::query(
+      "INSERT INTO user_services (user_id, service_name, service_data) VALUES ($1, $2, $3) RETURNING id, user_id, service_name, service_data, created_at"
+    )
+      .bind(user_db.id)
+      .bind("password")
+      .bind(&password_service_json)
+      .fetch_one(&mut *tx)
+      .await?;
+
+        let service_db = UserServiceDb {
+            id: service_row.get("id"),
+            user_id: service_row.get("user_id"),
+            service_name: service_row.get("service_name"),
+            service_data: service_row.get("service_data"),
+            created_at: service_row.get("created_at"),
+        };
+
+        services.push(service_db);
+    }
+
+    tx.commit().await?;
+
+    let user = User::from_db_parts(user_db, vec![email_db], services, vec![], vec![]);
+
+    // Automatically assign new user to default user group
+    if let Err(e) =
+        crate::database::queries::user_groups::assign_user_to_default_group(user.id).await
+    {
+        eprintln!("Warning: Failed to assign user to default group: {}", e);
+    }
+
+    // Clone default assistants for new user
+    if let Err(e) = clone_default_assistants_for_user(user.id).await {
+        eprintln!(
+            "Warning: Failed to clone default assistants for user: {}",
+            e
+        );
+    }
+
+    Ok(user)
+}
+
+// Reset user password with PasswordService (includes salt)
+pub async fn reset_user_password_with_service(
+    user_id: Uuid,
+    password_service: PasswordService,
+) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+
+    let password_service_json = serde_json::json!({
+        "bcrypt": password_service.bcrypt,
+        "salt": password_service.salt
+    });
+
+    let result = sqlx::query(
+        r#"
+        INSERT INTO user_services (user_id, service_name, service_data)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (user_id, service_name)
+        DO UPDATE SET service_data = $3
+        "#,
+    )
+    .bind(user_id)
+    .bind("password")
+    .bind(&password_service_json)
+    .execute(&*pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
