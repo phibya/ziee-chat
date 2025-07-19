@@ -6,6 +6,7 @@ pub mod configuration;
 pub mod errors;
 pub mod middleware;
 pub mod model_uploads;
+pub mod models;
 pub mod permissions;
 pub mod projects;
 pub mod providers;

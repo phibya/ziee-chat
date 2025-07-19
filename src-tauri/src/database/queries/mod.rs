@@ -2,6 +2,7 @@ pub mod assistants;
 pub mod branches;
 pub mod chat;
 pub mod configuration;
+pub mod models;
 pub mod projects;
 pub mod providers;
 pub mod user_group_providers;

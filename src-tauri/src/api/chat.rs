@@ -28,7 +28,8 @@ use crate::database::{
     queries::{
         assistants::get_assistant_by_id,
         chat,
-        providers::{get_model_by_id, get_provider_by_id, get_provider_id_by_model_id},
+        models::{get_model_by_id, get_provider_id_by_model_id},
+        providers::get_provider_by_id,
     },
 };
 
@@ -1077,7 +1078,7 @@ async fn create_ai_provider_with_model_id(
             let model_id = model_id.ok_or("Model ID is required for Candle providers")?;
 
             // Get the model information from database to get the port
-            let model = match crate::database::queries::providers::get_model_by_id(model_id).await {
+            let model = match crate::database::queries::models::get_model_by_id(model_id).await {
                 Ok(Some(model)) => model,
                 Ok(None) => return Err("Model not found".into()),
                 Err(e) => {
