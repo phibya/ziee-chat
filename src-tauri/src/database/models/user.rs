@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 // Database table structures (for direct DB operations)
@@ -14,15 +14,6 @@ pub struct UserDb {
     pub is_protected: bool,
     pub last_login_at: Option<DateTime<Utc>>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserEmailDb {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub address: String,
-    pub verified: bool,
-    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -42,30 +33,6 @@ pub struct UserLoginTokenDb {
     pub when_created: i64,
     pub expires_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
-}
-
-// User settings table structure
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserSettingDb {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub key: String,
-    pub value: serde_json::Value,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-// User groups database table structure
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserGroupDb {
-    pub id: Uuid,
-    pub name: String,
-    pub description: Option<String>,
-    pub permissions: serde_json::Value,
-    pub is_protected: bool,
-    pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -116,30 +83,50 @@ pub struct UserGroup {
     pub updated_at: DateTime<Utc>,
 }
 
+impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserGroup {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            description: row.try_get("description")?,
+            permissions: row.try_get("permissions")?,
+            provider_ids: Vec::new(), // Loaded separately via joins
+            is_protected: row.try_get("is_protected")?,
+            is_active: row.try_get("is_active")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
+}
+
+impl UserGroup {
+    /// Set provider IDs for this group (used after loading from DB)
+    pub fn with_provider_ids(mut self, provider_ids: Vec<Uuid>) -> Self {
+        self.provider_ids = provider_ids;
+        self
+    }
+}
+
 // Email structure for the emails array
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserEmail {
+    pub id: Uuid,
+    pub user_id: Uuid,
     pub address: String,
     pub verified: bool,
+    pub created_at: DateTime<Utc>,
 }
 
-// Login token structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LoginToken {
-    pub token: String,
-    pub when: i64, // Unix timestamp in milliseconds
-}
-
-// Service structures for the services object
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FacebookService {
-    pub id: String,
-    pub access_token: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResumeService {
-    pub login_tokens: Vec<LoginToken>,
+impl FromRow<'_, sqlx::postgres::PgRow> for UserEmail {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserEmail {
+            id: row.try_get("id")?,
+            user_id: row.try_get("user_id")?,
+            address: row.try_get("address")?,
+            verified: row.try_get("verified")?,
+            created_at: row.try_get("created_at")?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -149,8 +136,6 @@ pub struct PasswordService {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UserServices {
-    pub facebook: Option<FacebookService>,
-    pub resume: Option<ResumeService>,
     pub password: Option<PasswordService>,
 }
 
@@ -163,6 +148,19 @@ pub struct UserSetting {
     pub value: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl FromRow<'_, sqlx::postgres::PgRow> for UserSetting {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserSetting {
+            id: row.try_get("id")?,
+            user_id: row.try_get("user_id")?,
+            key: row.try_get("key")?,
+            value: row.try_get("value")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
 }
 
 // Helper structures for API requests
@@ -278,21 +276,15 @@ impl User {
     // Convert from database structures to Meteor-like User
     pub fn from_db_parts(
         user_db: UserDb,
-        emails: Vec<UserEmailDb>,
+        emails: Vec<UserEmail>,
         services: Vec<UserServiceDb>,
         login_tokens: Vec<UserLoginTokenDb>,
-        groups: Vec<UserGroupDb>,
+        groups: Vec<UserGroup>,
     ) -> Self {
         let mut user = User {
             id: user_db.id,
             username: user_db.username,
-            emails: emails
-                .into_iter()
-                .map(|e| UserEmail {
-                    address: e.address,
-                    verified: e.verified,
-                })
-                .collect(),
+            emails,
             created_at: user_db.created_at,
             profile: user_db.profile,
             services: UserServices::default(),
@@ -300,32 +292,12 @@ impl User {
             is_protected: user_db.is_protected,
             last_login_at: user_db.last_login_at,
             updated_at: user_db.updated_at,
-            groups: groups
-                .into_iter()
-                .map(|g| UserGroup {
-                    id: g.id,
-                    name: g.name,
-                    description: g.description,
-                    permissions: g.permissions,
-                    provider_ids: vec![], // TODO: Fetch actual provider IDs asynchronously
-                    is_protected: g.is_protected,
-                    is_active: g.is_active,
-                    created_at: g.created_at,
-                    updated_at: g.updated_at,
-                })
-                .collect(),
+            groups,
         };
 
         // Build services from database records
         for service in services {
             match service.service_name.as_str() {
-                "facebook" => {
-                    if let Ok(fb_service) =
-                        serde_json::from_value::<FacebookService>(service.service_data)
-                    {
-                        user.services.facebook = Some(fb_service);
-                    }
-                }
                 "password" => {
                     if let Ok(pwd_service) =
                         serde_json::from_value::<PasswordService>(service.service_data)
@@ -335,21 +307,6 @@ impl User {
                 }
                 _ => {}
             }
-        }
-
-        // Add login tokens to resume service
-        if !login_tokens.is_empty() {
-            let tokens: Vec<LoginToken> = login_tokens
-                .into_iter()
-                .map(|t| LoginToken {
-                    token: t.token,
-                    when: t.when_created,
-                })
-                .collect();
-
-            user.services.resume = Some(ResumeService {
-                login_tokens: tokens,
-            });
         }
 
         user

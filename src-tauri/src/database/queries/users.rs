@@ -49,7 +49,7 @@ pub async fn create_user(
     .fetch_one(&mut *tx)
     .await?;
 
-    let email_db = UserEmailDb {
+    let email_db = UserEmail {
         id: email_row.get("id"),
         user_id: email_row.get("user_id"),
         address: email_row.get("address"),
@@ -156,9 +156,9 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
             .fetch_all(&*pool)
             .await?;
 
-    let emails: Vec<UserEmailDb> = email_rows
+    let emails: Vec<UserEmail> = email_rows
         .into_iter()
-        .map(|row| UserEmailDb {
+        .map(|row| UserEmail {
             id: row.get("id"),
             user_id: row.get("user_id"),
             address: row.get("address"),

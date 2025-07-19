@@ -72,24 +72,16 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Provider {
     }
 }
 
-impl Provider {
-    /// Get the proxy settings for this provider, or return default settings if parsing fails
-    pub fn get_proxy_settings(&self) -> ProviderProxySettings {
-        self.proxy_settings.clone().unwrap_or_default()
-    }
-}
-
-// Request/Response structures for providers
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateProviderRequest {
     pub name: String,
-    #[serde(rename = "type")]
-    pub provider_type: String,
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    // Settings removed - now configured per-model
     pub proxy_settings: Option<ProviderProxySettings>,
+    #[serde(rename = "type")]
+    pub provider_type: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,7 +90,6 @@ pub struct UpdateProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    // Settings removed - now configured per-model
     pub proxy_settings: Option<ProviderProxySettings>,
 }
 

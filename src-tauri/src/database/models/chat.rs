@@ -3,65 +3,6 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-// Assistants structures
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct AssistantDb {
-    pub id: Uuid,
-    pub name: String,
-    pub description: Option<String>,
-    pub instructions: Option<String>,
-    pub parameters: serde_json::Value,
-    pub created_by: Option<Uuid>,
-    pub is_template: bool,
-    pub is_default: bool,
-    pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Assistant {
-    pub id: Uuid,
-    pub name: String,
-    pub description: Option<String>,
-    pub instructions: Option<String>,
-    pub parameters: Option<serde_json::Value>,
-    pub created_by: Option<Uuid>,
-    pub is_template: bool,
-    pub is_default: bool,
-    pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateAssistantRequest {
-    pub name: String,
-    pub description: Option<String>,
-    pub instructions: Option<String>,
-    pub parameters: Option<serde_json::Value>,
-    pub is_template: Option<bool>,
-    pub is_default: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateAssistantRequest {
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub instructions: Option<String>,
-    pub parameters: Option<serde_json::Value>,
-    pub is_template: Option<bool>,
-    pub is_default: Option<bool>,
-    pub is_active: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AssistantListResponse {
-    pub assistants: Vec<Assistant>,
-    pub total: i64,
-    pub page: i32,
-    pub per_page: i32,
-}
 
 // Chat structures
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]

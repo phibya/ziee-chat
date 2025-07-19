@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        Assistant, AssistantDb, AssistantListResponse, CreateAssistantRequest,
+        Assistant, AssistantListResponse, CreateAssistantRequest,
         UpdateAssistantRequest,
     },
 };
@@ -17,7 +17,7 @@ pub async fn create_assistant(
     let pool = pool.as_ref();
     let assistant_id = Uuid::new_v4();
 
-    let assistant_row: AssistantDb = sqlx::query_as(
+    let assistant_row: Assistant = sqlx::query_as(
         "INSERT INTO assistants (id, name, description, instructions, parameters, created_by, is_template, is_default) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
          RETURNING id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at"
@@ -40,19 +40,7 @@ pub async fn create_assistant(
     .fetch_one(pool)
     .await?;
 
-    Ok(Assistant {
-        id: assistant_row.id,
-        name: assistant_row.name,
-        description: assistant_row.description,
-        instructions: assistant_row.instructions,
-        parameters: Some(assistant_row.parameters),
-        created_by: assistant_row.created_by,
-        is_template: assistant_row.is_template,
-        is_default: assistant_row.is_default,
-        is_active: assistant_row.is_active,
-        created_at: assistant_row.created_at,
-        updated_at: assistant_row.updated_at,
-    })
+    Ok(assistant_row)
 }
 
 /// Get assistant by ID
@@ -63,7 +51,7 @@ pub async fn get_assistant_by_id(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let assistant_row: Option<AssistantDb> = sqlx::query_as(
+    let assistant_row: Option<Assistant> = sqlx::query_as(
         "SELECT id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants 
          WHERE id = $1 AND is_active = true AND (is_template = true OR created_by = $2)"
@@ -73,22 +61,7 @@ pub async fn get_assistant_by_id(
     .fetch_optional(pool)
     .await?;
 
-    match assistant_row {
-        Some(assistant_db) => Ok(Some(Assistant {
-            id: assistant_db.id,
-            name: assistant_db.name,
-            description: assistant_db.description,
-            instructions: assistant_db.instructions,
-            parameters: Some(assistant_db.parameters),
-            created_by: assistant_db.created_by,
-            is_template: assistant_db.is_template,
-            is_default: assistant_db.is_default,
-            is_active: assistant_db.is_active,
-            created_at: assistant_db.created_at,
-            updated_at: assistant_db.updated_at,
-        })),
-        None => Ok(None),
-    }
+    Ok(assistant_row)
 }
 
 /// List assistants with pagination
@@ -136,7 +109,7 @@ pub async fn list_assistants(
     let total = total_row.0;
 
     // Get assistants
-    let assistant_rows: Vec<AssistantDb> = if admin_view {
+    let assistant_rows: Vec<Assistant> = if admin_view {
         sqlx::query_as(query)
             .bind(per_page)
             .bind(offset)
@@ -151,22 +124,7 @@ pub async fn list_assistants(
             .await?
     };
 
-    let assistants = assistant_rows
-        .into_iter()
-        .map(|assistant_db| Assistant {
-            id: assistant_db.id,
-            name: assistant_db.name,
-            description: assistant_db.description,
-            instructions: assistant_db.instructions,
-            parameters: Some(assistant_db.parameters),
-            created_by: assistant_db.created_by,
-            is_template: assistant_db.is_template,
-            is_default: assistant_db.is_default,
-            is_active: assistant_db.is_active,
-            created_at: assistant_db.created_at,
-            updated_at: assistant_db.updated_at,
-        })
-        .collect();
+    let assistants = assistant_rows;
 
     Ok(AssistantListResponse {
         assistants,
@@ -207,7 +165,7 @@ pub async fn update_assistant(
         where_clause
     );
 
-    let assistant_row: Option<AssistantDb> = if is_admin {
+    let assistant_row: Option<Assistant> = if is_admin {
         sqlx::query_as(&query)
             .bind(assistant_id)
             .bind(&request.name)
@@ -234,22 +192,7 @@ pub async fn update_assistant(
             .await?
     };
 
-    match assistant_row {
-        Some(assistant_db) => Ok(Some(Assistant {
-            id: assistant_db.id,
-            name: assistant_db.name,
-            description: assistant_db.description,
-            instructions: assistant_db.instructions,
-            parameters: Some(assistant_db.parameters),
-            created_by: assistant_db.created_by,
-            is_template: assistant_db.is_template,
-            is_default: assistant_db.is_default,
-            is_active: assistant_db.is_active,
-            created_at: assistant_db.created_at,
-            updated_at: assistant_db.updated_at,
-        })),
-        None => Ok(None),
-    }
+    Ok(assistant_row)
 }
 
 /// Delete assistant
@@ -282,7 +225,7 @@ pub async fn get_default_assistants() -> Result<Vec<Assistant>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let assistant_rows: Vec<AssistantDb> = sqlx::query_as(
+    let assistant_rows: Vec<Assistant> = sqlx::query_as(
         "SELECT id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants 
          WHERE is_template = true AND is_default = true AND is_active = true"
@@ -290,22 +233,7 @@ pub async fn get_default_assistants() -> Result<Vec<Assistant>, sqlx::Error> {
     .fetch_all(pool)
     .await?;
 
-    let assistants = assistant_rows
-        .into_iter()
-        .map(|assistant_db| Assistant {
-            id: assistant_db.id,
-            name: assistant_db.name,
-            description: assistant_db.description,
-            instructions: assistant_db.instructions,
-            parameters: Some(assistant_db.parameters),
-            created_by: assistant_db.created_by,
-            is_template: assistant_db.is_template,
-            is_default: assistant_db.is_default,
-            is_active: assistant_db.is_active,
-            created_at: assistant_db.created_at,
-            updated_at: assistant_db.updated_at,
-        })
-        .collect();
+    let assistants = assistant_rows;
 
     Ok(assistants)
 }
@@ -319,7 +247,7 @@ pub async fn clone_assistant_for_user(
     let pool = pool.as_ref();
 
     // First get the template assistant
-    let template: Option<AssistantDb> = sqlx::query_as(
+    let template: Option<Assistant> = sqlx::query_as(
         "SELECT id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants 
          WHERE id = $1 AND is_template = true AND is_active = true"
@@ -332,7 +260,7 @@ pub async fn clone_assistant_for_user(
 
     // Create a new assistant for the user based on the template
     let assistant_id = Uuid::new_v4();
-    let assistant_row: AssistantDb = sqlx::query_as(
+    let assistant_row: Assistant = sqlx::query_as(
         "INSERT INTO assistants (id, name, description, instructions, parameters, created_by, is_template, is_default, is_active) 
          VALUES ($1, $2, $3, $4, $5, $6, false, false, true) 
          RETURNING id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at"
@@ -346,19 +274,7 @@ pub async fn clone_assistant_for_user(
     .fetch_one(pool)
     .await?;
 
-    Ok(Assistant {
-        id: assistant_row.id,
-        name: assistant_row.name,
-        description: assistant_row.description,
-        instructions: assistant_row.instructions,
-        parameters: Some(assistant_row.parameters),
-        created_by: assistant_row.created_by,
-        is_template: assistant_row.is_template,
-        is_default: assistant_row.is_default,
-        is_active: assistant_row.is_active,
-        created_at: assistant_row.created_at,
-        updated_at: assistant_row.updated_at,
-    })
+    Ok(assistant_row)
 }
 
 /// Get default assistant (keep for compatibility)
@@ -366,7 +282,7 @@ pub async fn get_default_assistant() -> Result<Option<Assistant>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let assistant_row: Option<AssistantDb> = sqlx::query_as(
+    let assistant_row: Option<Assistant> = sqlx::query_as(
         "SELECT id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants 
          WHERE name = 'Default Assistant' AND is_template = true AND is_active = true 
@@ -375,20 +291,5 @@ pub async fn get_default_assistant() -> Result<Option<Assistant>, sqlx::Error> {
     .fetch_optional(pool)
     .await?;
 
-    match assistant_row {
-        Some(assistant_db) => Ok(Some(Assistant {
-            id: assistant_db.id,
-            name: assistant_db.name,
-            description: assistant_db.description,
-            instructions: assistant_db.instructions,
-            parameters: Some(assistant_db.parameters),
-            created_by: assistant_db.created_by,
-            is_template: assistant_db.is_template,
-            is_default: assistant_db.is_default,
-            is_active: assistant_db.is_active,
-            created_at: assistant_db.created_at,
-            updated_at: assistant_db.updated_at,
-        })),
-        None => Ok(None),
-    }
+    Ok(assistant_row)
 }

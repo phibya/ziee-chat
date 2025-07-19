@@ -1,12 +1,12 @@
-use crate::database::models::UserSettingDb;
+use crate::database::models::UserSetting;
 use uuid::Uuid;
 
 pub async fn get_user_setting(
     user_id: &Uuid,
     key: &str,
-) -> Result<Option<UserSettingDb>, sqlx::Error> {
+) -> Result<Option<UserSetting>, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    sqlx::query_as::<_, UserSettingDb>(
+    sqlx::query_as::<_, UserSetting>(
         "SELECT id, user_id, key, value, created_at, updated_at FROM user_settings WHERE user_id = $1 AND key = $2"
     )
     .bind(user_id)
@@ -15,9 +15,9 @@ pub async fn get_user_setting(
     .await
 }
 
-pub async fn get_user_settings(user_id: &Uuid) -> Result<Vec<UserSettingDb>, sqlx::Error> {
+pub async fn get_user_settings(user_id: &Uuid) -> Result<Vec<UserSetting>, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    sqlx::query_as::<_, UserSettingDb>(
+    sqlx::query_as::<_, UserSetting>(
         "SELECT id, user_id, key, value, created_at, updated_at FROM user_settings WHERE user_id = $1 ORDER BY key"
     )
     .bind(user_id)
@@ -29,9 +29,9 @@ pub async fn set_user_setting(
     user_id: &Uuid,
     key: &str,
     value: &serde_json::Value,
-) -> Result<UserSettingDb, sqlx::Error> {
+) -> Result<UserSetting, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    sqlx::query_as::<_, UserSettingDb>(
+    sqlx::query_as::<_, UserSetting>(
         r#"
         INSERT INTO user_settings (user_id, key, value, updated_at)
         VALUES ($1, $2, $3, NOW())

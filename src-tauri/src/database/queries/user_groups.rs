@@ -284,7 +284,7 @@ pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<boo
     Ok(result.rows_affected() > 0)
 }
 
-pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroupDb>, sqlx::Error> {
+pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
     let rows = sqlx::query(
@@ -301,11 +301,12 @@ pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroupDb>, sqlx::Er
 
     let groups = rows
         .into_iter()
-        .map(|row| UserGroupDb {
+        .map(|row| UserGroup {
             id: row.get("id"),
             name: row.get("name"),
             description: row.get("description"),
             permissions: row.get("permissions"),
+            provider_ids: Vec::new(), // Loaded separately
             is_protected: row.get("is_protected"),
             is_active: row.get("is_active"),
             created_at: row.get("created_at"),

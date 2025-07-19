@@ -187,7 +187,7 @@ impl ModelOperations {
         file_path: &str,
         file_size_bytes: i64,
         file_type: &str,
-    ) -> Result<ModelFileDb, sqlx::Error> {
+    ) -> Result<ModelFile, sqlx::Error> {
         let pool = crate::database::get_database_pool()?;
         let file_id = Uuid::new_v4();
         let now = Utc::now();
@@ -214,7 +214,7 @@ impl ModelOperations {
         .fetch_one(pool.as_ref())
         .await?;
 
-        let file = ModelFileDb {
+        let file = ModelFile {
             id: row.get("id"),
             model_id: row.get("model_id"),
             filename: row.get("filename"),
@@ -229,7 +229,7 @@ impl ModelOperations {
     }
 
     /// Get files for a model
-    pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFileDb>, sqlx::Error> {
+    pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFile>, sqlx::Error> {
         let pool = crate::database::get_database_pool()?;
         let rows = sqlx::query(
             "SELECT id, model_id, filename, file_path, file_size_bytes, 
@@ -242,7 +242,7 @@ impl ModelOperations {
 
         let mut files = Vec::new();
         for row in rows {
-            let file = ModelFileDb {
+            let file = ModelFile {
                 id: row.get("id"),
                 model_id: row.get("model_id"),
                 filename: row.get("filename"),

@@ -9,9 +9,6 @@ pub mod model_operations;
 pub mod models;
 pub mod queries;
 
-// Re-export all model types for convenience
-pub use models::*;
-
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();
 static POSTGRESQL_INSTANCE: OnceCell<Arc<Mutex<PostgreSQL>>> = OnceCell::const_new();
 static CLEANUP_REGISTERED: AtomicBool = AtomicBool::new(false);

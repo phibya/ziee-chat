@@ -303,18 +303,18 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
         let settings = if settings_json.is_null() {
             None
         } else {
-            Some(serde_json::from_value(settings_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
+            Some(
+                serde_json::from_value(settings_json).map_err(|e| sqlx::Error::ColumnDecode {
                     index: "settings".into(),
                     source: Box::new(e),
-                }
-            })?)
+                })?,
+            )
         };
 
         // Parse validation_issues JSON
         let validation_issues_json: Option<serde_json::Value> = row.try_get("validation_issues")?;
-        let validation_issues = validation_issues_json
-            .and_then(|v| serde_json::from_value::<Vec<String>>(v).ok());
+        let validation_issues =
+            validation_issues_json.and_then(|v| serde_json::from_value::<Vec<String>>(v).ok());
 
         Ok(Model {
             id: row.try_get("id")?,
@@ -366,7 +366,7 @@ pub struct UpdateModelRequest {
 
 // Model file tracking for uploaded files
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct ModelFileDb {
+pub struct ModelFile {
     pub id: Uuid,
     pub model_id: Uuid,
     pub filename: String,
@@ -450,7 +450,7 @@ impl Model {
     }
 
     /// Set files from ModelFileDb structs
-    pub fn with_files(mut self, files: Option<Vec<ModelFileDb>>) -> Self {
+    pub fn with_files(mut self, files: Option<Vec<ModelFile>>) -> Self {
         self.files = files.map(|files| {
             files
                 .into_iter()
