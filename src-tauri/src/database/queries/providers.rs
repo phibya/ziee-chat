@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateModelRequest, CreateProviderRequest, Model, Provider,
-        UpdateModelRequest, UpdateProviderRequest,
+        CreateModelRequest, CreateProviderRequest, Model, Provider, UpdateModelRequest,
+        UpdateProviderRequest,
     },
 };
 
@@ -138,65 +138,8 @@ pub async fn delete_provider(provider_id: Uuid) -> Result<Result<bool, String>, 
         None => Ok(Ok(false)), // Provider not found
     }
 }
-
-pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    // First get the original provider
-    let original_provider = match get_provider_by_id(provider_id).await? {
-        Some(provider) => provider,
-        None => return Ok(None),
-    };
-
-    // Create a new provider with cloned data
-    let new_provider_id = Uuid::new_v4();
-    let cloned_name = format!("{} (Clone)", original_provider.name);
-
-    let provider_row: Provider = sqlx::query_as(
-    "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at"
-  )
-    .bind(new_provider_id)
-    .bind(&cloned_name)
-    .bind(&original_provider.provider_type)
-    .bind(false) // Cloned providers are disabled by default
-    .bind(&original_provider.api_key)
-    .bind(&original_provider.base_url)
-    .bind(false) // Cloned providers are never default
-    .bind(serde_json::to_value(&original_provider.proxy_settings).unwrap_or(serde_json::json!({})))
-    .fetch_one(pool)
-    .await?;
-
-    // Get models from the original provider to clone them
-    let original_models = get_models_for_provider(original_provider.id).await?;
-
-    // Clone all models from the original provider
-    for model in &original_models {
-        let cloned_model_id = Uuid::new_v4();
-        sqlx::query(
-      "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, settings)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
-    )
-      .bind(cloned_model_id)
-      .bind(new_provider_id)
-      .bind(&model.name)
-      .bind(&model.alias)
-      .bind(&model.description)
-      .bind(false) // Cloned models are disabled by default
-      .bind(model.capabilities.as_ref().unwrap_or(&serde_json::json!({})))
-      .bind(model.parameters.as_ref().unwrap_or(&serde_json::json!({})))
-      .bind(model.settings.as_ref().map(|s| serde_json::to_value(s).unwrap_or(serde_json::json!({}))).unwrap_or(serde_json::json!({}))) // Clone settings
-      .execute(pool)
-      .await?;
-    }
-
-    Ok(Some(provider_row))
-}
-
 // Model queries
-pub async fn get_models_for_provider(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
+pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -256,18 +199,16 @@ pub async fn update_model(
     let pool = pool.as_ref();
 
     // First, get the current model to merge settings
-    let current_model: Option<Model> = sqlx::query_as(
-        "SELECT * FROM models WHERE id = $1"
-    )
-    .bind(model_id)
-    .fetch_optional(pool)
-    .await?;
+    let current_model: Option<Model> = sqlx::query_as("SELECT * FROM models WHERE id = $1")
+        .bind(model_id)
+        .fetch_optional(pool)
+        .await?;
 
     let updated_settings = if let Some(current) = &current_model {
         if let Some(request_settings) = &request.settings {
             // Merge current settings with request settings
             let mut merged_settings = current.get_settings();
-            
+
             // Update all fields except architecture (protected)
             if let Some(device_type) = &request_settings.device_type {
                 merged_settings.device_type = Some(device_type.clone());
@@ -276,7 +217,7 @@ pub async fn update_model(
                 merged_settings.device_ids = Some(device_ids.clone());
             }
             // ... merge other settings as needed
-            
+
             serde_json::to_value(merged_settings).unwrap_or(serde_json::json!({}))
         } else {
             // No new settings provided, keep current
@@ -362,20 +303,4 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
         Some(row) => Ok(Some(row.get("provider_id"))),
         None => Ok(None),
     }
-}
-
-/// Get the model database record for deletion operations (returns Model with provider_id)
-pub async fn get_model_db_by_id(
-    model_id: Uuid,
-) -> Result<Option<crate::database::models::Model>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let model_row: Option<crate::database::models::Model> =
-        sqlx::query_as("SELECT * FROM models WHERE id = $1")
-            .bind(model_id)
-            .fetch_optional(pool)
-            .await?;
-
-    Ok(model_row)
 }

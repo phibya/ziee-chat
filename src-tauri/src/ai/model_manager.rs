@@ -1,9 +1,23 @@
 use reqwest;
+use std::collections::HashMap;
 use std::fs::metadata;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, RwLock};
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
+
+// Structure to hold process information
+#[derive(Debug)]
+struct ModelProcess {
+    child: Child,
+    pid: u32,
+    port: u16,
+}
+
+// Global registry to track running model processes with their child handles
+static MODEL_REGISTRY: std::sync::LazyLock<Arc<RwLock<HashMap<Uuid, ModelProcess>>>> =
+    std::sync::LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 #[derive(Debug, Clone)]
 pub enum ModelStartResult {
@@ -407,8 +421,8 @@ fn is_process_running(pid: u32) -> bool {
     }
 }
 
-/// Find mistralrs-server process running with the specified model ID
-async fn find_model_server_process(model_id: &Uuid) -> Option<(u32, u16)> {
+/// Find any mistralrs-server process (for fallback when registry is out of sync)
+async fn find_any_model_server_process() -> Option<(u32, u16)> {
     #[cfg(unix)]
     {
         // Use ps to get all processes with their command lines
@@ -430,13 +444,11 @@ async fn find_model_server_process(model_id: &Uuid) -> Option<(u32, u16)> {
                             if let Ok(pid) = line[..space_idx].trim().parse::<u32>() {
                                 let command_line = &line[space_idx..];
 
-                                // Check if this process is running our model ID
-                                if command_line.contains(&format!("model-uuid:{}", model_id)) {
-                                    // Extract port from command line (look for --port argument)
-                                    if let Some(port) = extract_port_from_command_line(command_line)
-                                    {
-                                        return Some((pid, port));
-                                    }
+                                // Extract port from command line (look for --port argument)
+                                if let Some(port) = extract_port_from_command_line(command_line) {
+                                    // For now, we'll use a simpler approach - store running models in memory
+                                    // and match by port. The environment variable is still useful for debugging.
+                                    return Some((pid, port));
                                 }
                             }
                         }
@@ -464,9 +476,7 @@ async fn find_model_server_process(model_id: &Uuid) -> Option<(u32, u16)> {
 
                 for line in output_str.lines().skip(1) {
                     // Skip header line
-                    if line.contains("mistralrs-server")
-                        && line.contains(&format!("model-uuid:{}", model_id))
-                    {
+                    if line.contains("mistralrs-server") {
                         // Parse CSV format: Node,CommandLine,ProcessId
                         let parts: Vec<&str> = line.split(',').collect();
                         if parts.len() >= 3 {
@@ -555,29 +565,71 @@ fn is_model_server_process(pid: u32) -> bool {
     }
 }
 
-/// Check if a model is running by model ID by examining the process list
+/// Check if a model is running by model ID by examining the registry and process list
 /// Returns (pid, port) if the model is running and healthy, None otherwise
 pub async fn is_model_running(model_id: &Uuid) -> Option<(u32, u16)> {
-    // Find mistralrs-server process with this model ID from process list
-    if let Some((pid, port)) = find_model_server_process(model_id).await {
+    // First check our registry
+    let registry_entry = {
+        if let Ok(registry) = MODEL_REGISTRY.read() {
+            registry.get(model_id).map(|p| (p.pid, p.port))
+        } else {
+            None
+        }
+    };
+
+    if let Some((pid, port)) = registry_entry {
         // Verify the process is actually running and healthy
         if is_process_running(pid) && is_model_server_process(pid) {
             // Check server health
             match check_model_server_health(port).await {
                 Ok(()) => {
                     println!(
-                        "Model {} is running and healthy on PID {} port {}",
+                        "Model {} is running and healthy on PID {} port {} (from registry)",
                         model_id, pid, port
                     );
-                    Some((pid, port))
+                    return Some((pid, port));
                 }
                 Err(e) => {
                     println!("Model {} health check failed: {}", model_id, e);
-                    None
+                    // Remove from registry if health check fails
+                    if let Ok(mut registry) = MODEL_REGISTRY.write() {
+                        registry.remove(model_id);
+                    }
+                    return None;
                 }
             }
         } else {
             println!("Process {} for model {} is not responding", pid, model_id);
+            // Remove from registry if process is not running
+            if let Ok(mut registry) = MODEL_REGISTRY.write() {
+                registry.remove(model_id);
+            }
+        }
+    }
+
+    // Fallback: scan all mistralrs-server processes
+    // This is less reliable but handles cases where registry is out of sync
+    if let Some((pid, port)) = find_any_model_server_process().await {
+        // Verify the process is actually running and healthy
+        if is_process_running(pid) && is_model_server_process(pid) {
+            // Check server health
+            match check_model_server_health(port).await {
+                Ok(()) => {
+                    println!(
+                        "Found running model server on PID {} port {} (process scan)",
+                        pid, port
+                    );
+                    // Note: We can't add to registry here since we don't have the child process handle
+                    // This is just a fallback for orphaned processes
+                    Some((pid, port))
+                }
+                Err(e) => {
+                    println!("Model server health check failed: {}", e);
+                    None
+                }
+            }
+        } else {
+            println!("Process {} is not responding", pid);
             None
         }
     } else {
@@ -984,9 +1036,9 @@ pub async fn start_model(
         }
     }
 
-    // Add our internal model UUID as an additional argument for process identification
+    // Add our internal model UUID as an environment variable for process identification
     // This helps us identify which process belongs to which model
-    command.arg("--").arg(format!("model-uuid:{}", model_id));
+    command.env("MODEL_UUID", model_id.to_string());
 
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
 
@@ -1015,11 +1067,8 @@ pub async fn start_model(
             return Err(format!("mistralrs-server process failed to start: {}", status).into());
         }
         Ok(None) => {
-            // Process is still running, detach it
+            // Process is still running, we'll store it properly in the registry later
             println!("mistralrs-server process is running, waiting for health check...");
-            // We don't want to wait for the child process, so we detach it
-            // The process will continue running independently
-            std::mem::forget(child);
         }
         Err(e) => {
             eprintln!("Failed to check mistralrs-server process status: {}", e);
@@ -1049,11 +1098,21 @@ pub async fn start_model(
 
     println!("Model server is healthy and ready on port {}", port);
 
+    // Register the process in our registry
+    if let Ok(mut registry) = MODEL_REGISTRY.write() {
+        let model_process = ModelProcess { child, pid, port };
+        registry.insert(*model_id, model_process);
+        println!(
+            "Registered model {} with PID {} on port {}",
+            model_id, pid, port
+        );
+    }
+
     Ok(ModelStartResult::Started { port, pid })
 }
 
 pub async fn stop_model(
-    model_id: &uuid::Uuid,
+    model_id: &Uuid,
     pid: u32,
     port: u16,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -1062,6 +1121,37 @@ pub async fn stop_model(
         model_id, pid, port
     );
 
+    // First try to get the child process from our registry and kill it properly
+    if let Ok(mut registry) = MODEL_REGISTRY.write() {
+        if let Some(mut model_process) = registry.remove(model_id) {
+            println!("Found child process in registry, terminating gracefully...");
+            
+            // Try to kill the child process gracefully first
+            match model_process.child.kill() {
+                Ok(()) => {
+                    println!("Sent kill signal to child process");
+                    
+                    // Wait for the process to exit and collect its status to prevent zombies
+                    match model_process.child.wait() {
+                        Ok(status) => {
+                            println!("Child process exited with status: {}", status);
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            eprintln!("Error waiting for child process: {}", e);
+                            // Continue with system-level termination as fallback
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error killing child process: {}", e);
+                    // Continue with system-level termination as fallback
+                }
+            }
+        }
+    }
+
+    // Fallback: system-level process termination for orphaned processes
     // Verify that the process is actually running and is a mistralrs server
     if !is_process_running(pid) {
         println!("Process {} is not running", pid);
@@ -1099,8 +1189,8 @@ pub async fn stop_model(
         }
 
         // Wait for graceful shutdown with timeout
-        let graceful_timeout_ms = 5000; // 5 seconds
-        let check_interval_ms = 200; // Check every 200ms
+        let graceful_timeout_ms = 20000; // 20 seconds
+        let check_interval_ms = 500; // Check every 200ms
         let max_checks = graceful_timeout_ms / check_interval_ms;
 
         for check in 0..max_checks {
@@ -1211,6 +1301,13 @@ pub async fn stop_model(
 
     println!("Process {} terminated successfully", pid);
 
+    // Clean up any remaining registry entry (in case it wasn't removed earlier)
+    if let Ok(mut registry) = MODEL_REGISTRY.write() {
+        if registry.remove(model_id).is_some() {
+            println!("Cleaned up remaining registry entry for model {}", model_id);
+        }
+    }
+
     Ok(())
 }
 
@@ -1222,8 +1319,115 @@ pub async fn check_and_cleanup_model(
     if let Some((pid, port)) = is_model_running(model_id).await {
         // Model is running, stop it
         stop_model(model_id, pid, port).await?;
+    } else {
+        // Even if not running, clean up from registry in case of stale entries
+        if let Ok(mut registry) = MODEL_REGISTRY.write() {
+            if let Some(mut model_process) = registry.remove(model_id) {
+                println!("Cleaning up stale registry entry for model {}", model_id);
+                // Try to wait on the child process to clean up any zombies
+                let _ = model_process.child.wait();
+            }
+        }
     }
 
+    Ok(())
+}
+
+/// Clean up dead processes and prevent zombie processes
+/// This should be called periodically to maintain process hygiene
+pub async fn cleanup_dead_processes() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if let Ok(mut registry) = MODEL_REGISTRY.write() {
+        let mut dead_processes = Vec::new();
+        
+        // Check each process in the registry
+        for (model_id, model_process) in registry.iter_mut() {
+            // Try to check if the child process has exited without blocking
+            match model_process.child.try_wait() {
+                Ok(Some(status)) => {
+                    println!("Process {} for model {} has exited with status: {}", 
+                            model_process.pid, model_id, status);
+                    dead_processes.push(*model_id);
+                }
+                Ok(None) => {
+                    // Process is still running, check if it's actually alive via system call
+                    if !is_process_running(model_process.pid) {
+                        println!("Process {} for model {} appears dead but child handle didn't detect it", 
+                                model_process.pid, model_id);
+                        dead_processes.push(*model_id);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error checking process {} for model {}: {}", 
+                             model_process.pid, model_id, e);
+                    dead_processes.push(*model_id);
+                }
+            }
+        }
+        
+        // Remove dead processes from registry and wait on them to prevent zombies
+        for model_id in dead_processes {
+            if let Some(mut model_process) = registry.remove(&model_id) {
+                println!("Cleaning up dead process {} for model {}", model_process.pid, model_id);
+                // Wait on the child process to collect its exit status and prevent zombies
+                let _ = model_process.child.wait();
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Start a background task that periodically cleans up dead processes
+/// This should be called once when the application starts
+pub fn start_process_cleanup_task() {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(30)); // Check every 30 seconds
+        loop {
+            interval.tick().await;
+            if let Err(e) = cleanup_dead_processes().await {
+                eprintln!("Error during process cleanup: {}", e);
+            }
+        }
+    });
+    println!("Started background process cleanup task");
+}
+
+/// Cleanup all running model processes on application shutdown
+/// This should be called when the application is shutting down to prevent orphaned processes
+pub async fn cleanup_all_processes() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!("Cleaning up all running model processes...");
+    
+    if let Ok(mut registry) = MODEL_REGISTRY.write() {
+        let model_ids: Vec<Uuid> = registry.keys().cloned().collect();
+        
+        for model_id in model_ids {
+            if let Some(mut model_process) = registry.remove(&model_id) {
+                println!("Terminating process {} for model {}", model_process.pid, model_id);
+                
+                // Try to kill the process gracefully
+                if let Err(e) = model_process.child.kill() {
+                    eprintln!("Error killing process {} for model {}: {}", 
+                             model_process.pid, model_id, e);
+                }
+                
+                // Wait for the process to exit and collect its status
+                match model_process.child.wait() {
+                    Ok(status) => {
+                        println!("Process {} for model {} exited with status: {}", 
+                                model_process.pid, model_id, status);
+                    }
+                    Err(e) => {
+                        eprintln!("Error waiting for process {} for model {}: {}", 
+                                 model_process.pid, model_id, e);
+                    }
+                }
+            }
+        }
+        
+        registry.clear();
+        println!("All model processes cleaned up");
+    }
+    
     Ok(())
 }
 

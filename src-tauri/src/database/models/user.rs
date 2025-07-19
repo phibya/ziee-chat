@@ -99,14 +99,6 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
     }
 }
 
-impl UserGroup {
-    /// Set provider IDs for this group (used after loading from DB)
-    pub fn with_provider_ids(mut self, provider_ids: Vec<Uuid>) -> Self {
-        self.provider_ids = provider_ids;
-        self
-    }
-}
-
 // Email structure for the emails array
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserEmail {
@@ -311,5 +303,11 @@ impl User {
         }
 
         user
+    }
+
+    /// Create a sanitized version of the user without sensitive services data
+    pub fn sanitized(mut self) -> Self {
+        self.services = UserServices::default();
+        self
     }
 }

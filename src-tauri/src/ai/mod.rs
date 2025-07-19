@@ -9,7 +9,7 @@ pub mod model_manager;
 pub mod models;
 pub mod providers;
 
-// Define local types that were previously from candle_server
+// Define local types that were previously from local_server
 #[derive(Debug, Clone)]
 pub enum DeviceType {
     Cpu,
@@ -26,12 +26,15 @@ pub enum ModelSelected {
     Phi,
 }
 
-// Re-export specific items from candle_server to avoid conflicts
+// Re-export specific items from local_server to avoid conflicts
 pub use core::device_detection;
 // Re-export commonly used items for convenience
 pub use core::{
   build_http_client, AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig,
   StreamingChunk, StreamingResponse, Usage,
 };
-pub use model_manager::{ModelStartResult, ModelStartParams, is_model_running, start_model, stop_model, check_and_cleanup_model};
+pub use model_manager::{
+  check_and_cleanup_model, is_model_running, start_model, stop_model, ModelStartParams,
+  ModelStartResult,
+};
 pub use providers::*;

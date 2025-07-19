@@ -73,7 +73,7 @@ impl LocalProvider {
 
     fn build_request(&self, request: &ChatRequest, stream: bool) -> serde_json::Value {
         json!({
-            "model": self.model_name,
+            "model": "default".to_string(), // Use "default" for local provider
             "messages": request.messages,
             "temperature": request.temperature.unwrap_or(0.7),
             "max_tokens": request.max_tokens.unwrap_or(4096),
@@ -204,6 +204,6 @@ impl AIProvider for LocalProvider {
     }
 
     fn provider_name(&self) -> &'static str {
-        "candle"
+        "local"
     }
 }

@@ -46,7 +46,11 @@ pub async fn list_users(
     let per_page = params.per_page.unwrap_or(20);
 
     match users::list_users(page, per_page).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(mut response) => {
+            // Sanitize users in the response
+            response.users = response.users.into_iter().map(|user| user.sanitized()).collect();
+            Ok(Json(response))
+        },
         Err(e) => {
             eprintln!("Error listing users: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -60,7 +64,7 @@ pub async fn get_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<crate::database::models::User>, StatusCode> {
     match users::get_user_by_id(user_id).await {
-        Ok(Some(user)) => Ok(Json(user)),
+        Ok(Some(user)) => Ok(Json(user.sanitized())),
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Error getting user: {}", e);
@@ -84,7 +88,7 @@ pub async fn update_user(
     )
     .await
     {
-        Ok(Some(user)) => Ok(Json(user)),
+        Ok(Some(user)) => Ok(Json(user.sanitized())),
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Error updating user: {}", e);
@@ -153,7 +157,7 @@ pub async fn create_user(
     )
     .await
     {
-        Ok(user) => Ok(Json(user)),
+        Ok(user) => Ok(Json(user.sanitized())),
         Err(e) => {
             eprintln!("Error creating user: {}", e);
             if e.to_string().contains("duplicate key") {

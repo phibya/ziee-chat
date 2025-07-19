@@ -739,7 +739,7 @@ pub async fn search_conversations(
             SELECT DISTINCT ON (conversation_id)
                 conversation_id, content
             FROM messages
-            WHERE role = 'assistant' AND is_active_branch = true
+            WHERE role = 'assistant'
             ORDER BY conversation_id, created_at DESC
         ) latest_msg ON c.id = latest_msg.conversation_id
         WHERE c.user_id = $1
@@ -815,7 +815,7 @@ pub async fn generate_conversation_title(conversation_id: Uuid) -> Result<String
         r#"
         SELECT content
         FROM messages
-        WHERE conversation_id = $1 AND role = 'user' AND is_active_branch = true
+        WHERE conversation_id = $1 AND role = 'user'
         ORDER BY created_at ASC
         LIMIT 1
         "#,

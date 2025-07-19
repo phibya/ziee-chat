@@ -1072,20 +1072,19 @@ async fn create_ai_provider_with_model_id(
             )?;
             Ok(Box::new(custom_provider))
         }
-        "candle" => {
+        "local" => {
             // For Candle providers, we need model information to get the port
             let model_id = model_id.ok_or("Model ID is required for Candle providers")?;
 
             // Get the model information from database to get the port
-            let model =
-                match crate::database::queries::providers::get_model_db_by_id(model_id).await {
-                    Ok(Some(model)) => model,
-                    Ok(None) => return Err("Model not found".into()),
-                    Err(e) => {
-                        eprintln!("Failed to get model {}: {}", model_id, e);
-                        return Err("Database operation failed".into());
-                    }
-                };
+            let model = match crate::database::queries::providers::get_model_by_id(model_id).await {
+                Ok(Some(model)) => model,
+                Ok(None) => return Err("Model not found".into()),
+                Err(e) => {
+                    eprintln!("Failed to get model {}: {}", model_id, e);
+                    return Err("Database operation failed".into());
+                }
+            };
 
             // Check if the model has a port (meaning it's running)
             let port = model
@@ -1093,9 +1092,9 @@ async fn create_ai_provider_with_model_id(
                 .ok_or("Model is not running. Please start the model first.")?;
 
             // Create the Candle provider with the model's port and name
-            let candle_provider = LocalProvider::new(port as u16, model.name.clone())?;
+            let local_provider = LocalProvider::new(port as u16, model.name.clone())?;
 
-            Ok(Box::new(candle_provider))
+            Ok(Box::new(local_provider))
         }
         _ => Err(format!("Unsupported provider type: {}", provider.provider_type).into()),
     }

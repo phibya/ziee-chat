@@ -301,13 +301,13 @@ pub async fn commit_uploaded_files(
         .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
 
-    // Validate provider exists and is of type 'candle'
+    // Validate provider exists and is of type 'local'
     let provider = crate::database::queries::providers::get_provider_by_id(request.provider_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
 
-    if provider.provider_type != "candle" {
+    if provider.provider_type != "local" {
         return Err(AppError::new(
             ErrorCode::ValidInvalidInput,
             "Only Candle providers support model uploads",
@@ -344,7 +344,7 @@ pub async fn commit_uploaded_files(
 
     println!("Processing model with file format: {}", file_format);
 
-    let model_db = ModelOperations::create_candle_model(&create_request, &architecture)
+    let model_db = ModelOperations::create_local_model(&create_request, &architecture)
     .await
     .map_err(|e| {
       // Handle unique constraint violation for (provider_id, name)

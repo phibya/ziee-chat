@@ -84,7 +84,7 @@ pub async fn create_provider(
 ) -> ApiResult<Json<Provider>> {
     // Validate provider type
     let valid_types = [
-        "candle",
+        "local",
         "openai",
         "anthropic",
         "groq",
@@ -99,9 +99,9 @@ pub async fn create_provider(
         ));
     }
 
-    // Validate requirements for enabling non-candle_server providers
+    // Validate requirements for enabling non-local_server providers
     if let Some(true) = request.enabled {
-        if request.provider_type != "candle" {
+        if request.provider_type != "local" {
             // Check API key
             if request.api_key.is_none() || request.api_key.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: API key is required");
@@ -158,7 +158,7 @@ pub async fn update_provider(
         match providers::get_provider_by_id(provider_id).await {
             Ok(Some(current_provider)) => {
                 // Check if provider type requires API key and base URL
-                if current_provider.provider_type != "candle" {
+                if current_provider.provider_type != "local" {
                     // Check API key
                     let api_key = request
                         .api_key
@@ -205,7 +205,8 @@ pub async fn update_provider(
                 }
 
                 // Check if provider has any models
-                let provider_models = match providers::get_models_for_provider(provider_id).await {
+                let provider_models = match providers::get_models_by_provider_id(provider_id).await
+                {
                     Ok(models) => models,
                     Err(e) => {
                         eprintln!(
@@ -270,20 +271,6 @@ pub async fn delete_provider(
     }
 }
 
-pub async fn clone_provider(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path(provider_id): Path<Uuid>,
-) -> ApiResult<Json<Provider>> {
-    match providers::clone_provider(provider_id).await {
-        Ok(Some(provider)) => Ok(Json(provider)),
-        Ok(None) => Err(AppError::not_found("Resource")),
-        Err(e) => {
-            eprintln!("Failed to clone model provider {}: {}", provider_id, e);
-            Err(AppError::internal_error("Database operation failed"))
-        }
-    }
-}
-
 // Model endpoints
 pub async fn create_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
@@ -321,12 +308,13 @@ pub async fn update_model(
     }
 }
 
+#[axum::debug_handler]
 pub async fn delete_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     // Get the model database record using proper database query
-    let model = match providers::get_model_db_by_id(model_id).await {
+    let model = match providers::get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
         Ok(None) => return Err(AppError::not_found("Model")),
         Err(e) => {
@@ -346,7 +334,7 @@ pub async fn delete_model(
     };
 
     // If it's a Candle provider, handle model shutdown and file deletion
-    if provider.provider_type == "candle" {
+    if provider.provider_type == "local" {
         // First, stop the model if it's running
         println!(
             "Checking and cleaning up model {} before deletion",
@@ -574,12 +562,13 @@ pub async fn get_provider_groups(
 }
 
 // Start a Candle model
+#[axum::debug_handler]
 pub async fn start_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     // Get the model from database
-    let model = match providers::get_model_db_by_id(model_id).await {
+    let model = match providers::get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
         Ok(None) => return Err(AppError::not_found("Model")),
         Err(e) => {
@@ -598,7 +587,7 @@ pub async fn start_model(
         }
     };
 
-    if provider.provider_type != "candle" {
+    if provider.provider_type != "local" {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only Candle models can be started",
@@ -759,12 +748,13 @@ pub async fn start_model(
 }
 
 // Stop a Candle model
+#[axum::debug_handler]
 pub async fn stop_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     // Get the model from database
-    let model = match providers::get_model_db_by_id(model_id).await {
+    let model = match providers::get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
         Ok(None) => return Err(AppError::not_found("Model")),
         Err(e) => {
@@ -783,7 +773,7 @@ pub async fn stop_model(
         }
     };
 
-    if provider.provider_type != "candle" {
+    if provider.provider_type != "local" {
         return Err(AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only Candle models can be stopped",
@@ -956,7 +946,7 @@ pub async fn list_provider_models(
     }
 
     // Get models for the provider
-    match providers::get_models_for_provider(provider_id).await {
+    match providers::get_models_by_provider_id(provider_id).await {
         Ok(models) => Ok(Json(models)),
         Err(e) => {
             eprintln!("Failed to get models for provider {}: {}", provider_id, e);

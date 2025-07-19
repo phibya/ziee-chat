@@ -181,12 +181,6 @@ pub fn admin_routes() -> Router {
             )),
         )
         .route(
-            "/api/admin/providers/{provider_id}/clone",
-            post(api::providers::clone_provider).layer(middleware::from_fn(
-                api::middleware::providers_create_middleware,
-            )),
-        )
-        .route(
             "/api/admin/providers/{provider_id}/test-proxy",
             post(api::providers::test_provider_proxy_connection).layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,

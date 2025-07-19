@@ -50,7 +50,7 @@ impl ModelOperations {
     }
 
     /// Create a Candle model with required architecture and default settings
-    pub async fn create_candle_model(
+    pub async fn create_local_model(
         request: &CreateModelRequest,
         architecture: &str, // Architecture is required for Candle models
     ) -> Result<Model, sqlx::Error> {

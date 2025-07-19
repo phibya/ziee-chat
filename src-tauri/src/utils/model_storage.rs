@@ -593,7 +593,7 @@ impl ModelUtils {
         Ok(())
     }
 
-    /// Check if model directory exists using the same logic as candle_models::ModelUtils
+    /// Check if model directory exists using the same logic as local_models::ModelUtils
     pub fn model_exists(model_path: &str) -> bool {
         crate::ai::models::ModelUtils::model_exists(model_path)
     }

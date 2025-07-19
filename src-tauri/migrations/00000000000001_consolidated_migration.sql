@@ -568,7 +568,7 @@ VALUES (
 
 -- Insert default model providers
 INSERT INTO providers (name, provider_type, enabled, is_default, base_url) VALUES
-('Candle', 'local', false, true, null),
+('Local', 'local', false, true, null),
 ('OpenAI', 'openai', false, true, 'https://api.openai.com/v1'),
 ('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1'),
 ('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1'),

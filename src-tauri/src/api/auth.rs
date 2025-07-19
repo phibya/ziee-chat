@@ -87,7 +87,7 @@ pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<
 
                     Ok(Json(AuthResponse {
                         token,
-                        user,
+                        user: user.sanitized(),
                         expires_at,
                     }))
                 }
@@ -110,7 +110,7 @@ pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult<Json<AuthResp
             Ok(login_response) => {
                 return Ok(Json(AuthResponse {
                     token: login_response.token,
-                    user: login_response.user,
+                    user: login_response.user.sanitized(),
                     expires_at: login_response.expires_at,
                 }));
             }
@@ -127,7 +127,7 @@ pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult<Json<AuthResp
     {
         Ok(Some(login_response)) => Ok(Json(AuthResponse {
             token: login_response.token,
-            user: login_response.user,
+            user: login_response.user.sanitized(),
             expires_at: login_response.expires_at,
         })),
         Ok(None) => Err(AppError::invalid_credentials()),
@@ -167,7 +167,7 @@ pub async fn logout(req: Request) -> ApiResult<StatusCode> {
 pub async fn me(
     axum::Extension(auth_user): axum::Extension<crate::api::middleware::AuthenticatedUser>,
 ) -> ApiResult<Json<User>> {
-    Ok(Json(auth_user.user))
+    Ok(Json(auth_user.user.sanitized()))
 }
 
 /// Register endpoint (for web app only)
@@ -210,7 +210,7 @@ pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<
 
                     Ok(Json(AuthResponse {
                         token,
-                        user,
+                        user: user.sanitized(),
                         expires_at,
                     }))
                 }
