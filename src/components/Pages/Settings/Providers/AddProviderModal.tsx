@@ -26,7 +26,7 @@ export function AddProviderModal({
 }: AddProviderModalProps) {
   const { t } = useTranslation()
   const [form] = Form.useForm()
-  const [providerType, setProviderType] = useState<ProviderType>('candle')
+  const [providerType, setProviderType] = useState<ProviderType>('local')
 
   const handleSubmit = async () => {
     try {
@@ -66,9 +66,9 @@ export function AddProviderModal({
         form={form}
         layout="vertical"
         initialValues={{
-          type: 'candle',
+          type: 'local',
           enabled: true,
-          ...getDefaultValues('candle'),
+          ...getDefaultValues('local'),
         }}
       >
         <Form.Item
@@ -109,8 +109,8 @@ export function AddProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-candle providers */}
-        {providerType !== 'candle' && <ApiConfigurationSection />}
+        {/* API Configuration for non-local providers */}
+        {providerType !== 'local' && <ApiConfigurationSection />}
       </Form>
     </Modal>
   )

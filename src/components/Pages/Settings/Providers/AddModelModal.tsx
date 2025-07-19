@@ -22,13 +22,13 @@ import { useShallow } from 'zustand/react/shallow'
 import { UploadOutlined } from '@ant-design/icons'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { UploadProgress } from './UploadProgress'
-import { BASIC_MODEL_FIELDS, CANDLE_MODEL_FIELDS } from './shared/constants'
+import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from './shared/constants'
 import {
-  CANDLE_ARCHITECTURE_OPTIONS,
-  CANDLE_FILE_TYPE_OPTIONS,
-  DEFAULT_CANDLE_ARCHITECTURE,
-  DEFAULT_CANDLE_FILE_TYPE,
-} from '../../../../constants/candleModelTypes'
+  DEFAULT_LOCAL_ARCHITECTURE,
+  DEFAULT_LOCAL_FILE_TYPE,
+  LOCAL_ARCHITECTURE_OPTIONS,
+  LOCAL_FILE_TYPE_OPTIONS,
+} from '../../../../constants/localModelTypes'
 
 interface AddModelModalProps {
   open: boolean
@@ -73,7 +73,7 @@ export function AddModelModal({
 
   // Get values from form instead of separate state
   const selectedFileFormat =
-    Form.useWatch('file_format', form) || DEFAULT_CANDLE_FILE_TYPE
+    Form.useWatch('file_format', form) || DEFAULT_LOCAL_FILE_TYPE
   const modelSource = Form.useWatch('model_source', form) || 'upload'
 
   const {
@@ -106,8 +106,8 @@ export function AddModelModal({
       clearUploadProgress() // Clear any previous upload progress
       const values = await form.validateFields()
 
-      if (providerType === 'candle') {
-        // Auto-generate model ID from display name for Candle models
+      if (providerType === 'local') {
+        // Auto-generate model ID from display name for Local models
         const modelId = generateModelId(values.alias || 'model')
 
         if (values.model_source === 'upload') {
@@ -194,7 +194,7 @@ export function AddModelModal({
         onClose()
 
         // Step 6: Trigger parent refresh (if needed)
-        await onSubmit({ type: 'candle-upload', success: true })
+        await onSubmit({ type: 'local-upload', success: true })
       } else {
         // For other providers, use the existing workflow
         const modelData = {
@@ -231,10 +231,10 @@ export function AddModelModal({
 
   // Pre-fill form with tiny model for quick testing
   useEffect(() => {
-    if (open && providerType === 'candle') {
+    if (open && providerType === 'local') {
       // Set form values for quick testing with a tiny chat model
       form.setFieldsValue({
-        alias: 'TinyLlama Chat Model', // Only display name for Candle models
+        alias: 'TinyLlama Chat Model', // Only display name for Local models
         description:
           'Small 1.1B parameter chat model for quick testing (~637MB)',
         file_format: 'safetensors',
@@ -243,7 +243,7 @@ export function AddModelModal({
         hf_filename: 'model.safetensors',
         hf_branch: 'main',
         settings: {
-          architecture: DEFAULT_CANDLE_ARCHITECTURE,
+          architecture: DEFAULT_LOCAL_ARCHITECTURE,
         },
       })
       update() // Force re-render to update form watchers
@@ -661,22 +661,22 @@ export function AddModelModal({
         form={form}
         layout="vertical"
         initialValues={{
-          file_format: DEFAULT_CANDLE_FILE_TYPE,
+          file_format: DEFAULT_LOCAL_FILE_TYPE,
           model_source: 'upload',
           local_folder_path: '',
           local_filename: '',
           settings: {
-            architecture: DEFAULT_CANDLE_ARCHITECTURE,
+            architecture: DEFAULT_LOCAL_ARCHITECTURE,
           },
         }}
       >
         <ModelParametersSection
           parameters={
-            providerType === 'candle' ? CANDLE_MODEL_FIELDS : BASIC_MODEL_FIELDS
+            providerType === 'local' ? LOCAL_MODEL_FIELDS : BASIC_MODEL_FIELDS
           }
         />
 
-        {providerType === 'candle' && (
+        {providerType === 'local' && (
           <Form.Item
             name={['settings', 'architecture']}
             label={t('providers.modelArchitecture')}
@@ -689,7 +689,7 @@ export function AddModelModal({
           >
             <Select
               placeholder={t('providers.selectModelArchitecture')}
-              options={CANDLE_ARCHITECTURE_OPTIONS.map(option => ({
+              options={LOCAL_ARCHITECTURE_OPTIONS.map(option => ({
                 value: option.value,
                 label: option.label,
                 description: option.description,
@@ -706,7 +706,7 @@ export function AddModelModal({
           </Form.Item>
         )}
 
-        {providerType === 'candle' && (
+        {providerType === 'local' && (
           <Form.Item
             name="model_source"
             label={t('providers.modelSource')}
@@ -732,7 +732,7 @@ export function AddModelModal({
           </Form.Item>
         )}
 
-        {providerType === 'candle' && (
+        {providerType === 'local' && (
           <Form.Item
             name="file_format"
             label={t('providers.fileFormat')}
@@ -746,7 +746,7 @@ export function AddModelModal({
             <Select
               placeholder={t('providers.selectFileFormat')}
               onChange={handleFileFormatChange}
-              options={CANDLE_FILE_TYPE_OPTIONS.map(option => ({
+              options={LOCAL_FILE_TYPE_OPTIONS.map(option => ({
                 value: option.value,
                 label: option.label,
                 description: option.description,
@@ -763,7 +763,7 @@ export function AddModelModal({
           </Form.Item>
         )}
 
-        {providerType === 'candle' && modelSource === 'upload' && (
+        {providerType === 'local' && modelSource === 'upload' && (
           <>
             <Form.Item
               name="local_folder_path"
@@ -876,7 +876,7 @@ export function AddModelModal({
           </>
         )}
 
-        {providerType === 'candle' && modelSource === 'huggingface' && (
+        {providerType === 'local' && modelSource === 'huggingface' && (
           <>
             <Form.Item
               name="hf_repo"

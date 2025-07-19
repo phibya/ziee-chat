@@ -46,7 +46,7 @@ const { Title, Text } = Typography
 const { Sider, Content } = Layout
 
 const PROVIDER_ICONS: Record<ProviderType, string> = {
-  candle: '🕯',
+  local: '🕯',
   openai: '🤖',
   anthropic: '🤖',
   groq: '⚡',
@@ -161,7 +161,7 @@ export function ProvidersSettings() {
     if (provider.enabled) return true // Already enabled
     const providerModels = modelsByProvider[provider.id] || []
     if (providerModels.length === 0) return false
-    if (provider.type === 'candle') return true
+    if (provider.type === 'local') return true
     if (!provider.api_key || provider.api_key.trim() === '') return false
     if (!provider.base_url || provider.base_url.trim() === '') return false
     try {
@@ -177,7 +177,7 @@ export function ProvidersSettings() {
     const providerModels = modelsByProvider[provider.id] || []
     if (providerModels.length === 0)
       return 'No models available. Add at least one model first.'
-    if (provider.type === 'candle') return null
+    if (provider.type === 'local') return null
     if (!provider.api_key || provider.api_key.trim() === '')
       return 'API key is required'
     if (!provider.base_url || provider.base_url.trim() === '')
@@ -275,14 +275,14 @@ export function ProvidersSettings() {
               `Cannot enable "${provider.name}" - No models available`,
             )
           } else if (
-            provider.type !== 'candle' &&
+            provider.type !== 'local' &&
             (!provider.api_key || provider.api_key.trim() === '')
           ) {
             message.error(
               `Cannot enable "${provider.name}" - API key is required`,
             )
           } else if (
-            provider.type !== 'candle' &&
+            provider.type !== 'local' &&
             (!provider.base_url || provider.base_url.trim() === '')
           ) {
             message.error(
@@ -426,9 +426,9 @@ export function ProvidersSettings() {
     if (!currentProvider) return
 
     try {
-      // Handle Candle uploads differently - they're already processed
-      if (modelData.type === 'candle-upload') {
-        // For Candle uploads, just refresh the providers list
+      // Handle Local uploads differently - they're already processed
+      if (modelData.type === 'local-upload') {
+        // For Local uploads, just refresh the providers list
         await loadProviders()
         setIsAddModelModalOpen(false)
         message.success(t('providers.modelAdded'))
@@ -524,7 +524,7 @@ export function ProvidersSettings() {
   }
 
   const handleStartStopModel = async (modelId: string, is_active: boolean) => {
-    if (!currentProvider || currentProvider.type !== 'candle') return
+    if (!currentProvider || currentProvider.type !== 'local') return
 
     try {
       if (is_active) {
@@ -761,7 +761,7 @@ export function ProvidersSettings() {
         )}
 
         {/* API Configuration */}
-        {currentProvider.type !== 'candle' && (
+        {currentProvider.type !== 'local' && (
           <Form
             form={form}
             layout="vertical"
@@ -869,7 +869,7 @@ export function ProvidersSettings() {
                 actions={
                   canEditProviders
                     ? [
-                        currentProvider.type === 'candle' && (
+                        currentProvider.type === 'local' && (
                           <Button
                             key="start-stop"
                             type={model.is_active ? 'default' : 'primary'}
@@ -962,16 +962,15 @@ export function ProvidersSettings() {
           />
         </Card>
 
-        {/* Proxy Settings - For non-Candle providers */}
-        {currentProvider.type !== 'candle' &&
-          currentProvider.proxy_settings && (
-            <ProviderProxySettingsForm
-              providerId={currentProvider.id}
-              initialSettings={currentProvider.proxy_settings}
-              onSave={handleProxySettingsSave}
-              disabled={!canEditProviders}
-            />
-          )}
+        {/* Proxy Settings - For non-Local providers */}
+        {currentProvider.type !== 'local' && currentProvider.proxy_settings && (
+          <ProviderProxySettingsForm
+            providerId={currentProvider.id}
+            initialSettings={currentProvider.proxy_settings}
+            onSave={handleProxySettingsSave}
+            disabled={!canEditProviders}
+          />
+        )}
       </Flex>
     )
   }

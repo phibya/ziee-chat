@@ -33,8 +33,8 @@ impl Default for AuthConfig {
 }
 
 fn generate_jwt_secret() -> String {
-    let mut rng = rand::thread_rng();
-    let secret: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
+    let mut rng = rand::rng();
+    let secret: Vec<u8> = (0..32).map(|_| rng.random()).collect();
     hex::encode(secret)
 }
 
@@ -91,8 +91,8 @@ impl AuthService {
 
     /// Generate a random login token
     pub fn generate_login_token(&self) -> String {
-        let mut rng = rand::thread_rng();
-        let token: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
+        let mut rng = rand::rng();
+        let token: Vec<u8> = (0..32).map(|_| rng.random()).collect();
         hex::encode(token)
     }
 

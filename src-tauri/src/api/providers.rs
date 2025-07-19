@@ -6,6 +6,7 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::ai::DeviceType;
 use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
@@ -347,14 +348,11 @@ pub async fn delete_model(
     // If it's a Candle provider, handle model shutdown and file deletion
     if provider.provider_type == "candle" {
         // First, stop the model if it's running
-        let model_manager = crate::ai::get_model_manager();
-        let model_path = model.get_model_absolute_path();
-
         println!(
             "Checking and cleaning up model {} before deletion",
             model_id
         );
-        match model_manager.check_and_cleanup_model(&model_path).await {
+        match crate::ai::check_and_cleanup_model(&model_id).await {
             Ok(()) => {
                 println!("Successfully cleaned up model {} for deletion", model_id);
             }
@@ -608,38 +606,27 @@ pub async fn start_model(
     }
 
     // Check if model is actually running
-    let model_manager = crate::ai::get_model_manager();
-    let model_path = model.get_model_path();
-
-    if model_manager.is_model_running(&model_path).await {
-        // Model is already running, update its active status in database
+    if let Some((pid, port)) = crate::ai::is_model_running(&model_id).await {
+        // Model is already running, update its active status, port, and pid in database
         println!(
-            "Model {} is already running, updating active status in database",
-            model_id
+            "Model {} is already running on PID {} port {}, updating database",
+            model_id, pid, port
         );
 
-        match providers::update_model(
-            model_id,
-            UpdateModelRequest {
-                name: None,
-                alias: None,
-                description: None,
-                parameters: None,
-                enabled: None,
-                is_active: Some(true),
-                capabilities: None,
-                settings: None,
-            },
+        // Update model runtime info (PID and port)
+        match crate::database::model_operations::ModelOperations::update_model_runtime_info(
+            &model_id,
+            Some(pid as i32),
+            Some(port as i32),
+            true, // Set is_active to true
         )
         .await
         {
             Ok(_) => {
-                println!("Successfully updated model {} active status", model_id);
-                return Ok(StatusCode::OK);
+                println!("Successfully updated model {} runtime info", model_id);
             }
             Err(e) => {
-                eprintln!("Failed to update model {} active status: {}", model_id, e);
-                return Err(AppError::internal_error("Failed to update model status"));
+                eprintln!("Failed to update model {} runtime info: {}", model_id, e);
             }
         }
     }
@@ -664,134 +651,99 @@ pub async fn start_model(
 
     // Convert device_type from string to DeviceType enum
     let device_type = match settings.device_type.as_deref() {
-        Some("cpu") => candle_server::DeviceType::Cpu,
-        Some("cuda") => candle_server::DeviceType::Cuda,
-        Some("metal") => candle_server::DeviceType::Metal,
-        _ => candle_server::DeviceType::Cpu, // Default to CPU if not specified or unknown
+        Some("cpu") => DeviceType::Cpu,
+        Some("cuda") => DeviceType::Cuda,
+        Some("metal") => DeviceType::Metal,
+        _ => DeviceType::Cpu, // Default to CPU if not specified or unknown
     };
 
-    match model_manager
-        .start_model(
-            &model_id.to_string(),
-            model_with_settings.get_model_absolute_path(),
-            settings
-                .architecture
-                .clone()
-                .unwrap_or_else(|| "llama".to_string()), // Use model architecture or default to llama
-            device_type, // Use actual device type from model
-            device_ids,  // Pass device_ids from model
-            // Additional parameters (using defaults for now)
-            None, // verbose
-            None, // max_num_seqs (default: 256)
-            None, // block_size (default: 32)
-            None, // weight_file
-            None, // dtype
-            None, // kvcache_mem_gpu (default: 4096)
-            None, // kvcache_mem_cpu (default: 128)
-            None, // record_conversation
-            None, // holding_time (default: 500)
-            None, // multi_process
-            None, // log
-        )
-        .await
-    {
-        Ok(crate::ai::ModelStartResult::Started(port)) => {
+    // Create ModelStartParams from model settings
+    let mut params = crate::ai::ModelStartParams::default();
+    params.model_path = model_with_settings.get_model_absolute_path();
+    params.device_type = device_type;
+    params.device_ids = device_ids;
+
+    // Set model type based on architecture or use run (auto-loader) as default
+    params.command = "run".to_string();
+
+    // Apply settings from model configuration
+    params.max_seqs = Some(settings.max_seqs);
+    if let Some(max_seq_len) = settings.max_seq_len {
+        params.max_seq_len = Some(max_seq_len);
+    }
+    params.no_kv_cache = settings.no_kv_cache;
+    params.truncate_sequence = settings.truncate_sequence;
+
+    // PagedAttention settings
+    params.paged_attn_gpu_mem = settings.paged_attn_gpu_mem;
+    params.paged_attn_gpu_mem_usage = settings.paged_attn_gpu_mem_usage;
+    params.paged_ctxt_len = settings.paged_ctxt_len;
+    params.paged_attn_block_size = Some(settings.paged_attn_block_size);
+    params.no_paged_attn = settings.no_paged_attn;
+    params.paged_attn = settings.paged_attn;
+
+    // Performance settings
+    params.prefix_cache_n = Some(settings.prefix_cache_n);
+    params.prompt_chunksize = settings.prompt_chunksize;
+
+    // Model configuration
+    params.dtype = settings.dtype.clone();
+    params.in_situ_quant = settings.in_situ_quant.clone();
+    params.seed = settings.seed;
+
+    // Vision parameters
+    params.max_edge = settings.max_edge;
+    params.max_num_images = settings.max_num_images;
+    params.max_image_length = settings.max_image_length;
+
+    match crate::ai::start_model(&model_id, params).await {
+        Ok(crate::ai::ModelStartResult::Started { port, pid }) => {
             println!("Model {} started successfully on port {}", model_id, port);
 
-            // Update model status and port in database
-            let pool = crate::database::get_database_pool().map_err(|e| {
-                eprintln!("Failed to get database pool: {}", e);
-                AppError::internal_error("Database operation failed")
-            })?;
-
-            // Update both active status and port
-            let update_status_result = providers::update_model(
-                model_id,
-                UpdateModelRequest {
-                    name: None,
-                    alias: None,
-                    description: None,
-                    parameters: None,
-                    enabled: None,
-                    is_active: Some(true),
-                    capabilities: None,
-                    settings: None,
-                },
-            )
-            .await;
-
             let update_port_result =
-                crate::database::model_operations::ModelOperations::update_model_port(
-                    pool.as_ref(),
+                crate::database::model_operations::ModelOperations::update_model_runtime_info(
                     &model_id,
+                    Some(pid as i32),
                     Some(port as i32),
+                    true,
                 )
                 .await;
 
-            match (update_status_result, update_port_result) {
-                (Ok(Some(_)), Ok(_)) => {
-                    println!("Successfully updated model {} status and port", model_id);
+            match update_port_result {
+                Ok(_) => {
+                    println!("Successfully updated model {} runtime info", model_id);
                     Ok(StatusCode::OK)
                 }
-                (Ok(None), _) => {
-                    // Model started but not found in database, try to stop the model
-                    let _ = model_manager.stop_model(&model.get_model_path()).await;
-                    Err(AppError::not_found("Model"))
-                }
-                (Err(e), _) | (_, Err(e)) => {
-                    eprintln!("Failed to update model {} status/port: {}", model_id, e);
-                    // Model started but database update failed, try to stop the model
-                    let _ = model_manager.stop_model(&model.get_model_path()).await;
+                Err(e) => {
+                    eprintln!("Failed to update model {} runtime info: {}", model_id, e);
+                    // If update fails, try to stop the model
+                    let _ = crate::ai::stop_model(&model_id, pid, port).await;
                     Err(AppError::internal_error("Database operation failed"))
                 }
             }
         }
-        Ok(crate::ai::ModelStartResult::AlreadyRunning(port)) => {
+        Ok(crate::ai::ModelStartResult::AlreadyRunning { port, pid }) => {
             println!(
                 "Model {} is already running on port {}, updating database status",
                 model_id, port
             );
 
-            // Update model status and port in database to ensure they're correct
-            let pool = crate::database::get_database_pool().map_err(|e| {
-                eprintln!("Failed to get database pool: {}", e);
-                AppError::internal_error("Database operation failed")
-            })?;
-
-            let update_status_result = providers::update_model(
-                model_id,
-                UpdateModelRequest {
-                    name: None,
-                    alias: None,
-                    description: None,
-                    parameters: None,
-                    enabled: None,
-                    is_active: Some(true),
-                    capabilities: None,
-                    settings: None,
-                },
-            )
-            .await;
-
             let update_port_result =
-                crate::database::model_operations::ModelOperations::update_model_port(
-                    pool.as_ref(),
+                crate::database::model_operations::ModelOperations::update_model_runtime_info(
                     &model_id,
+                    Some(pid as i32),
                     Some(port as i32),
+                    true, // Set is_active to true
                 )
                 .await;
 
-            match (update_status_result, update_port_result) {
-                (Ok(Some(_)), Ok(_)) => {
-                    println!("Successfully updated model {} status and port", model_id);
+            match update_port_result {
+                Ok(_) => {
+                    println!("Successfully updated model {} port", model_id);
                     Ok(StatusCode::OK)
                 }
-                (Ok(None), _) => {
-                    eprintln!("Model {} not found in database", model_id);
-                    Err(AppError::not_found("Model"))
-                }
-                (Err(e), _) | (_, Err(e)) => {
-                    eprintln!("Failed to update model {} status/port: {}", model_id, e);
+                Err(e) => {
+                    eprintln!("Failed to update model {} port: {}", model_id, e);
                     Err(AppError::internal_error("Database operation failed"))
                 }
             }
@@ -839,109 +791,72 @@ pub async fn stop_model(
     }
 
     // Check if model is running
-    let model_manager = crate::ai::get_model_manager();
-    if !model_manager
-        .is_model_running(&model.get_model_absolute_path())
-        .await
-    {
+    if crate::ai::is_model_running(&model_id).await.is_none() {
         // Model is not running, but we should still update the database to ensure consistency
         println!(
             "Model {} is not running, updating database status and clearing port",
             model_id
         );
 
-        let pool = crate::database::get_database_pool().map_err(|e| {
-            eprintln!("Failed to get database pool: {}", e);
-            AppError::internal_error("Database operation failed")
-        })?;
-
-        let update_status_result = providers::update_model(
-            model_id,
-            UpdateModelRequest {
-                name: None,
-                alias: None,
-                description: None,
-                parameters: None,
-                enabled: None,
-                is_active: Some(false),
-                capabilities: None,
-                settings: None,
-            },
-        )
-        .await;
-
         let clear_port_result =
-            crate::database::model_operations::ModelOperations::update_model_port(
-                pool.as_ref(),
-                &model_id,
-                None, // Clear the port
+            crate::database::model_operations::ModelOperations::update_model_runtime_info(
+                &model_id, None, // Clear the port
+                None, // Clear the PID
+                false,
             )
             .await;
 
-        return match (update_status_result, clear_port_result) {
-            (Ok(Some(_)), Ok(_)) => {
-                println!(
-                    "Successfully updated model {} status and cleared port",
-                    model_id
-                );
+        return match clear_port_result {
+            Ok(_) => {
+                println!("Successfully cleared model {} port and status", model_id);
                 Ok(StatusCode::OK)
             }
-            (Ok(None), _) => Err(AppError::not_found("Model")),
-            (Err(e), _) | (_, Err(e)) => {
-                eprintln!("Failed to update model {} status/port: {}", model_id, e);
+            Err(e) => {
+                eprintln!("Failed to clear model {} port: {}", model_id, e);
                 Err(AppError::internal_error("Database operation failed"))
             }
         };
     }
 
-    // Stop the model server process
-    match model_manager
-        .stop_model(&model.get_model_absolute_path())
-        .await
-    {
+    // Get the PID and port from the database for this specific model
+    let runtime_info =
+        match crate::database::model_operations::ModelOperations::get_model_runtime_info(&model_id)
+            .await
+        {
+            Ok(Some((pid, port))) => (pid as u32, port as u16),
+            Ok(None) => {
+                println!(
+                    "Model {} has no runtime info, may already be stopped",
+                    model_id
+                );
+                return Ok(StatusCode::OK);
+            }
+            Err(e) => {
+                eprintln!("Failed to get model runtime info: {}", e);
+                return Err(AppError::internal_error("Database operation failed"));
+            }
+        };
+
+    // Stop the model server process with specific PID and port
+    match crate::ai::stop_model(&model_id, runtime_info.0, runtime_info.1).await {
         Ok(()) => {
             println!("Model {} stopped successfully", model_id);
 
-            // Update model status and clear port in database
-            let pool = crate::database::get_database_pool().map_err(|e| {
-                eprintln!("Failed to get database pool: {}", e);
-                AppError::internal_error("Database operation failed")
-            })?;
-
-            let update_status_result = providers::update_model(
-                model_id,
-                UpdateModelRequest {
-                    name: None,
-                    alias: None,
-                    description: None,
-                    parameters: None,
-                    enabled: None,
-                    is_active: Some(false),
-                    capabilities: None,
-                    settings: None,
-                },
-            )
-            .await;
-
             let clear_port_result =
-                crate::database::model_operations::ModelOperations::update_model_port(
-                    pool.as_ref(),
-                    &model_id,
-                    None, // Clear the port
+                crate::database::model_operations::ModelOperations::update_model_runtime_info(
+                    &model_id, None,  // Clear the port
+                    None,  // Clear the PID
+                    false, // Set is_active to false
                 )
                 .await;
 
-            match (update_status_result, clear_port_result) {
-                (Ok(Some(_)), Ok(_)) => {
-                    println!(
-                        "Successfully updated model {} status and cleared port",
-                        model_id
-                    );
+            match clear_port_result {
+                Ok(_) => {
+                    println!("Successfully cleared model {} port and status", model_id);
                     Ok(StatusCode::OK)
                 }
-                (Ok(None), _) => Err(AppError::not_found("Model")),
-                (Err(e), _) | (_, Err(e)) => {
-                    eprintln!("Failed to update model {} status/port: {}", model_id, e);
+                Err(e) => {
+                    eprintln!("Failed to clear model {} port: {}", model_id, e);
                     Err(AppError::internal_error("Database operation failed"))
                 }
             }

@@ -9,10 +9,22 @@ pub mod model_manager;
 pub mod models;
 pub mod providers;
 
-// Re-export specific items from candle_server crate to avoid conflicts
-pub use candle_server::{
-  get_model_loader, hub_load_local_safetensors, DeviceType, ModelSelected, SpecificConfig,
-};
+// Define local types that were previously from candle_server
+#[derive(Debug, Clone)]
+pub enum DeviceType {
+    Cpu,
+    Cuda,
+    Metal,
+}
+
+#[derive(Debug, Clone)]
+pub enum ModelSelected {
+    Llama,
+    Mistral,
+    Gemma,
+    Qwen,
+    Phi,
+}
 
 // Re-export specific items from candle_server to avoid conflicts
 pub use core::device_detection;
@@ -21,5 +33,5 @@ pub use core::{
   build_http_client, AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig,
   StreamingChunk, StreamingResponse, Usage,
 };
-pub use model_manager::{get_model_manager, ModelLockInfo, ModelManager, ModelStartResult};
+pub use model_manager::{ModelStartResult, ModelStartParams, is_model_running, start_model, stop_model, check_and_cleanup_model};
 pub use providers::*;

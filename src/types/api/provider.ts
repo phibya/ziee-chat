@@ -11,7 +11,7 @@ export interface ModelCapabilities {
 }
 
 export interface ModelParameters {
-  // Candle specific parameters
+  // Local specific parameters
   contextSize?: number
   gpuLayers?: number
   temperature?: number
@@ -92,7 +92,7 @@ export interface Provider {
 }
 
 export type ProviderType =
-  | 'candle'
+  | 'local'
   | 'openai'
   | 'anthropic'
   | 'groq'

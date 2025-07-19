@@ -82,12 +82,12 @@ interface ProvidersState {
   addModel: (providerId: string, data: Partial<Model>) => Promise<Model>
   updateModel: (modelId: string, data: Partial<Model>) => Promise<Model>
   deleteModel: (modelId: string) => Promise<void>
-  startModel: (modelId: string) => Promise<void> // For Candle
-  stopModel: (modelId: string) => Promise<void> // For Candle
+  startModel: (modelId: string) => Promise<void> // For Local
+  stopModel: (modelId: string) => Promise<void> // For Local
   enableModel: (modelId: string) => Promise<void>
   disableModel: (modelId: string) => Promise<void>
 
-  // Upload model actions (for Candle) - New multi-step workflow
+  // Upload model actions (for Local) - New multi-step workflow
   uploadMultipleFiles: (
     providerId: string,
     files: File[],

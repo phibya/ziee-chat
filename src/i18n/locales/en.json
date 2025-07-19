@@ -371,7 +371,7 @@
     "baseUrl": "Base URL",
     "baseUrlRequired": "Please enter base URL",
     "baseUrlPlaceholder": "Base URL",
-    "candleConfiguration": "Candle Configuration",
+    "localConfiguration": "Local Configuration",
     "autoUnloadOldModels": "Auto-Unload Old Models",
     "contextShift": "Context Shift",
     "continuousBatching": "Continuous Batching",

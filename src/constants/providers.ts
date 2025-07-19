@@ -26,7 +26,7 @@ export interface ProviderDefaults {
 }
 
 export const SUPPORTED_PROVIDERS: ProviderOption[] = [
-  { value: 'candle', label: 'Candle' },
+  { value: 'local', label: 'Local' },
   { value: 'openai', label: 'OpenAI' },
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'groq', label: 'Groq' },
@@ -51,7 +51,7 @@ export const PROVIDER_DEFAULTS: Record<ProviderType, ProviderDefaults> = {
   mistral: {
     base_url: 'https://api.mistral.ai',
   },
-  candle: {
+  local: {
     settings: {
       device: 'cpu',
       autoUnloadOldModels: true,

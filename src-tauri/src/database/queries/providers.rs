@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateModelRequest, CreateProviderRequest, Model, ModelDb, Provider, ProviderDb,
-        ProviderProxySettings, UpdateModelRequest, UpdateProviderRequest,
+        CreateModelRequest, CreateProviderRequest, Model, ModelDb, Provider,
+        UpdateModelRequest, UpdateProviderRequest,
     },
 };
 
@@ -46,7 +46,7 @@ pub async fn get_provider_by_id(provider_id: Uuid) -> Result<Option<Provider>, s
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_row: Option<ProviderDb> = sqlx::query_as(
+    let provider_row: Option<Provider> = sqlx::query_as(
     "SELECT id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at
          FROM providers 
          WHERE id = $1"
@@ -55,25 +55,7 @@ pub async fn get_provider_by_id(provider_id: Uuid) -> Result<Option<Provider>, s
     .fetch_optional(pool)
     .await?;
 
-    match provider_row {
-        Some(provider_db) => {
-            let proxy_settings = provider_db.get_proxy_settings();
-            Ok(Some(Provider {
-                id: provider_db.id,
-                name: provider_db.name,
-                provider_type: provider_db.provider_type,
-                enabled: provider_db.enabled,
-                api_key: provider_db.api_key,
-                base_url: provider_db.base_url,
-                // Settings removed - now stored per-model
-                proxy_settings: Some(proxy_settings),
-                is_default: provider_db.is_default,
-                created_at: provider_db.created_at,
-                updated_at: provider_db.updated_at,
-            }))
-        }
-        None => Ok(None),
-    }
+    Ok(provider_row)
 }
 
 pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider, sqlx::Error> {
@@ -81,7 +63,7 @@ pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider,
     let pool = pool.as_ref();
     let provider_id = Uuid::new_v4();
 
-    let provider_row: ProviderDb = sqlx::query_as(
+    let provider_row: Provider = sqlx::query_as(
     "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
          RETURNING id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at"
@@ -97,30 +79,7 @@ pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider,
     .fetch_one(pool)
     .await?;
 
-    Ok(Provider {
-        id: provider_row.id,
-        name: provider_row.name,
-        provider_type: provider_row.provider_type,
-        enabled: provider_row.enabled,
-        api_key: provider_row.api_key,
-        base_url: provider_row.base_url,
-        // Settings removed - now stored per-model
-        proxy_settings: Some(ProviderProxySettings {
-            enabled: false,
-            url: String::new(),
-            username: String::new(),
-            password: String::new(),
-            no_proxy: String::new(),
-            ignore_ssl_certificates: false,
-            proxy_ssl: false,
-            proxy_host_ssl: false,
-            peer_ssl: false,
-            host_ssl: false,
-        }),
-        is_default: provider_row.is_default,
-        created_at: provider_row.created_at,
-        updated_at: provider_row.updated_at,
-    })
+    Ok(provider_row)
 }
 
 pub async fn update_provider(
@@ -130,7 +89,7 @@ pub async fn update_provider(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_row: Option<ProviderDb> = sqlx::query_as(
+    let provider_row: Option<Provider> = sqlx::query_as(
     "UPDATE providers
          SET name = COALESCE($2, name),
              enabled = COALESCE($3, enabled),
@@ -150,25 +109,7 @@ pub async fn update_provider(
     .fetch_optional(pool)
     .await?;
 
-    match provider_row {
-        Some(provider_db) => {
-            let proxy_settings = provider_db.get_proxy_settings();
-            Ok(Some(Provider {
-                id: provider_db.id,
-                name: provider_db.name,
-                provider_type: provider_db.provider_type,
-                enabled: provider_db.enabled,
-                api_key: provider_db.api_key,
-                base_url: provider_db.base_url,
-                // Settings removed - now stored per-model
-                proxy_settings: Some(proxy_settings),
-                is_default: provider_db.is_default,
-                created_at: provider_db.created_at,
-                updated_at: provider_db.updated_at,
-            }))
-        }
-        None => Ok(None),
-    }
+    Ok(provider_row)
 }
 
 pub async fn delete_provider(provider_id: Uuid) -> Result<Result<bool, String>, sqlx::Error> {
@@ -212,7 +153,7 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
     let new_provider_id = Uuid::new_v4();
     let cloned_name = format!("{} (Clone)", original_provider.name);
 
-    let provider_row: ProviderDb = sqlx::query_as(
+    let provider_row: Provider = sqlx::query_as(
     "INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
          RETURNING id, name, provider_type, enabled, api_key, base_url, is_default, proxy_settings, created_at, updated_at"
@@ -251,30 +192,7 @@ pub async fn clone_provider(provider_id: Uuid) -> Result<Option<Provider>, sqlx:
       .await?;
     }
 
-    Ok(Some(Provider {
-        id: provider_row.id,
-        name: provider_row.name,
-        provider_type: provider_row.provider_type,
-        enabled: provider_row.enabled,
-        api_key: provider_row.api_key,
-        base_url: provider_row.base_url,
-        // Settings removed - now stored per-model
-        proxy_settings: Some(ProviderProxySettings {
-            enabled: false,
-            url: String::new(),
-            username: String::new(),
-            password: String::new(),
-            no_proxy: String::new(),
-            ignore_ssl_certificates: false,
-            proxy_ssl: false,
-            proxy_host_ssl: false,
-            peer_ssl: false,
-            host_ssl: false,
-        }),
-        is_default: provider_row.is_default,
-        created_at: provider_row.created_at,
-        updated_at: provider_row.updated_at,
-    }))
+    Ok(Some(provider_row))
 }
 
 // Model queries

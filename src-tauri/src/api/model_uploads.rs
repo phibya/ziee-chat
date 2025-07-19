@@ -11,7 +11,7 @@ use crate::api::{
     errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
-use crate::database::{get_database_pool, model_operations::ModelOperations, models::*};
+use crate::database::{model_operations::ModelOperations, models::*};
 
 #[derive(Deserialize)]
 pub struct UpdateModelStatusRequest {
@@ -65,12 +65,10 @@ pub async fn upload_model_file(
     Path(model_id): Path<Uuid>,
     Json(request): Json<UploadFileRequest>,
 ) -> ApiResult<Json<ModelUploadResponse>> {
-    let pool = get_database_pool()?;
-
     // Get model info
-    let model = ModelOperations::get_model_by_id(pool.as_ref(), &model_id)
+    let model = ModelOperations::get_model_by_id(&model_id)
         .await
-        .map_err(AppError::database_error)?
+        .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
 
     // Initialize storage
@@ -100,7 +98,7 @@ pub async fn upload_model_file(
                     .save_model_file(&model.provider_id, &model_id, &request.filename, &file_data)
                     .await
                 {
-                    Ok(model_file) => {
+                    Ok(_) => {
                         // Note: Checksum calculation removed for performance
                     }
                     Err(e) => {
@@ -116,7 +114,6 @@ pub async fn upload_model_file(
 
     // Update model status to indicate file processing
     ModelOperations::update_model_validation(
-        pool.as_ref(),
         &model_id,
         "processing",
         None,
@@ -261,7 +258,7 @@ pub async fn upload_model_file_multipart(
             .save_temp_file(&temp_session_id, &temp_file_id, &filename, &file_data)
             .await
         {
-            Ok(temp_file) => {
+            Ok(_temp_file) => {
                 processed_files.push(ProcessedFile {
                     temp_file_id,
                     filename: filename.clone(),
@@ -300,7 +297,6 @@ pub async fn commit_uploaded_files(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CommitUploadRequest>,
 ) -> ApiResult<Json<Model>> {
-    let pool = get_database_pool()?;
     let storage = ModelStorage::new()
         .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
@@ -308,7 +304,7 @@ pub async fn commit_uploaded_files(
     // Validate provider exists and is of type 'candle'
     let provider = crate::database::queries::providers::get_provider_by_id(request.provider_id)
         .await
-        .map_err(AppError::database_error)?
+        .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
 
     if provider.provider_type != "candle" {
@@ -323,7 +319,7 @@ pub async fn commit_uploaded_files(
     let model_path = storage.get_model_path(&request.provider_id, &model_id);
 
     // Convert absolute path to relative path for database storage
-    let _relative_model_path = match ModelStorage::to_relative_path(&model_path) {
+    let _relative_model_path = match ModelStorage::get_relative_path(&model_path) {
         Ok(path) => path,
         Err(e) => {
             eprintln!("Warning: Failed to convert model path to relative: {}", e);
@@ -348,16 +344,16 @@ pub async fn commit_uploaded_files(
 
     println!("Processing model with file format: {}", file_format);
 
-    let model_db = ModelOperations::create_candle_model(pool.as_ref(), &create_request, &architecture)
+    let model_db = ModelOperations::create_candle_model(&create_request, &architecture)
     .await
     .map_err(|e| {
       // Handle unique constraint violation for (provider_id, name)
-      match &e {
-        sqlx::Error::Database(db_err) if db_err.constraint() == Some("models_provider_id_name_unique") => {
-          AppError::new(ErrorCode::ValidInvalidInput,
-                        format!("Model ID '{}' already exists for this provider. Please use a different model ID.", model_name))
-        }
-        _ => AppError::database_error(e)
+      let error_str = e.to_string();
+      if error_str.contains("models_provider_id_name_unique") {
+        AppError::new(ErrorCode::ValidInvalidInput,
+                      format!("Model ID '{}' already exists for this provider. Please use a different model ID.", model_name))
+      } else {
+        AppError::internal_error(&error_str)
       }
     })?;
 
@@ -391,7 +387,6 @@ pub async fn commit_uploaded_files(
                 let file_type_str = file_type.as_str();
 
                 ModelOperations::create_model_file(
-                    pool.as_ref(),
                     &model_db.id,
                     &committed_file.filename,
                     &committed_file.file_path,
@@ -399,7 +394,7 @@ pub async fn commit_uploaded_files(
                     file_type_str,
                 )
                 .await
-                .map_err(AppError::database_error)?;
+                .map_err(|e| AppError::internal_error(&e.to_string()))?;
 
                 // Note: Checksum calculation removed for performance
 
@@ -422,7 +417,6 @@ pub async fn commit_uploaded_files(
 
     // Update validation status to completed and enable the model
     ModelOperations::update_model_validation(
-        pool.as_ref(),
         &model_db.id,
         "completed",
         None,
@@ -432,7 +426,6 @@ pub async fn commit_uploaded_files(
     .map_err(AppError::database_error)?;
 
     ModelOperations::update_model_status(
-        pool.as_ref(),
         &model_db.id,
         Some(true), // enabled = true
         None,       // don't change is_active
@@ -449,9 +442,9 @@ pub async fn commit_uploaded_files(
     }
 
     // Return the created model
-    let model = ModelOperations::get_model_with_files(pool.as_ref(), &model_db.id)
+    let model = ModelOperations::get_model_with_files(&model_db.id)
         .await
-        .map_err(AppError::database_error)?
+        .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
 
     Ok(Json(model))
@@ -556,17 +549,15 @@ pub async fn validate_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
 ) -> ApiResult<Json<ModelValidationResult>> {
-    let pool = get_database_pool()?;
-
     // Get model and files
-    let model = ModelOperations::get_model_by_id(pool.as_ref(), &model_id)
+    let model = ModelOperations::get_model_by_id(&model_id)
         .await
-        .map_err(AppError::database_error)?
+        .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
 
-    let _files = ModelOperations::get_model_files(pool.as_ref(), &model_id)
+    let _files = ModelOperations::get_model_files(&model_id)
         .await
-        .map_err(AppError::database_error)?;
+        .map_err(|e| AppError::internal_error(&e.to_string()))?;
 
     // Initialize storage
     let storage = ModelStorage::new()
@@ -665,7 +656,6 @@ pub async fn validate_model(
 
     // Update validation status in database
     ModelOperations::update_model_validation(
-        pool.as_ref(),
         &model_id,
         validation_status,
         Some(&validation_issues),
@@ -691,22 +681,15 @@ pub async fn update_model_status(
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateModelStatusRequest>,
 ) -> ApiResult<Json<Model>> {
-    let pool = get_database_pool()?;
-
     // Update model status
-    ModelOperations::update_model_status(
-        pool.as_ref(),
-        &model_id,
-        request.enabled,
-        request.is_active,
-    )
-    .await
-    .map_err(AppError::database_error)?;
+    ModelOperations::update_model_status(&model_id, request.enabled, request.is_active)
+        .await
+        .map_err(AppError::database_error)?;
 
     // Return updated model
-    let model = ModelOperations::get_model_with_files(pool.as_ref(), &model_id)
+    let model = ModelOperations::get_model_with_files(&model_id)
         .await
-        .map_err(AppError::database_error)?
+        .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
 
     Ok(Json(model))
@@ -717,8 +700,6 @@ pub async fn get_storage_stats(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<HashMap<String, String>>,
 ) -> ApiResult<Json<ModelStorageInfo>> {
-    let pool = get_database_pool()?;
-
     let provider_id = params
         .get("provider_id")
         .and_then(|id| Uuid::parse_str(id).ok())
@@ -730,9 +711,9 @@ pub async fn get_storage_stats(
         })?;
 
     // Get stats from database
-    let mut stats = ModelOperations::get_provider_storage_stats(pool.as_ref(), &provider_id)
+    let mut stats = ModelOperations::get_provider_storage_stats(&provider_id)
         .await
-        .map_err(AppError::database_error)?;
+        .map_err(|e| AppError::internal_error(&e.to_string()))?;
 
     // Enhanced stats using ModelStorage
     let storage = ModelStorage::new()

@@ -6,7 +6,7 @@ import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
 import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { ModelSettingsSection } from './shared/ModelSettingsSection'
-import { BASIC_MODEL_FIELDS, CANDLE_PARAMETERS } from './shared/constants'
+import { BASIC_MODEL_FIELDS, LOCAL_PARAMETERS } from './shared/constants'
 
 interface EditModelModalProps {
   open: boolean
@@ -86,13 +86,13 @@ export function EditModelModal({
         <Flex className={`flex-col gap-3`}>
           <ModelCapabilitiesSection />
 
-          {providerType === 'candle' && <DeviceSelectionSection />}
+          {providerType === 'local' && <DeviceSelectionSection />}
 
-          {providerType === 'candle' && <ModelSettingsSection />}
+          {providerType === 'local' && <ModelSettingsSection />}
 
-          {providerType === 'candle' && (
+          {providerType === 'local' && (
             <Card title={t('providers.parameters')} size={'small'}>
-              <ModelParametersSection parameters={CANDLE_PARAMETERS} />
+              <ModelParametersSection parameters={LOCAL_PARAMETERS} />
             </Card>
           )}
         </Flex>

@@ -146,7 +146,7 @@ export const ApiEndpoints = {
   'Models.disable': 'POST /api/admin/models/{model_id}/disable',
   'Providers.testProxy': 'POST /api/admin/providers/{provider_id}/test-proxy',
   'Admin.getAvailableDevices': 'GET /api/admin/devices',
-  // Model Upload endpoints for Candle
+  // Model Upload endpoints for Local
   'ModelUploads.create': 'POST /api/admin/uploaded-models',
   'ModelUploads.get': 'GET /api/admin/uploaded-models/{model_id}',
   'ModelUploads.update': 'PUT /api/admin/uploaded-models/{model_id}',

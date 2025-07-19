@@ -12,8 +12,6 @@ pub enum ModelStorageError {
     ModelNotFound(String),
     #[error("Model already exists: {0}")]
     ModelAlreadyExists(String),
-    #[error("Environment error: {0}")]
-    Environment(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -57,7 +55,6 @@ pub struct CommittedFile {
     pub filename: String,
     pub file_path: String,
     pub size_bytes: u64,
-    pub is_main_file: bool,
 }
 
 pub struct ModelStorage {
@@ -328,7 +325,7 @@ impl ModelStorage {
     }
 
     /// Convert absolute file path to relative path (relative to APP_DATA_DIR)
-    pub fn to_relative_path(absolute_path: &Path) -> Result<String, ModelStorageError> {
+    pub fn get_relative_path(absolute_path: &Path) -> Result<String, ModelStorageError> {
         let app_data_path = crate::APP_DATA_DIR.clone();
 
         match absolute_path.strip_prefix(&app_data_path) {
@@ -342,11 +339,6 @@ impl ModelStorage {
                     .to_string())
             }
         }
-    }
-
-    /// Convert relative path to absolute path (relative to APP_DATA_DIR)
-    pub fn to_absolute_path(relative_path: &str) -> Result<PathBuf, ModelStorageError> {
-        Ok(crate::APP_DATA_DIR.join(relative_path))
     }
 
     /// Save file to temporary storage
@@ -465,9 +457,8 @@ impl ModelStorage {
 
         Ok(CommittedFile {
             filename,
-            file_path: Self::to_relative_path(&permanent_path)?,
+            file_path: Self::get_relative_path(&permanent_path)?,
             size_bytes: data.len() as u64,
-            is_main_file: false, // This will be set by the caller
         })
     }
 

@@ -58,7 +58,7 @@ fn detect_cuda_devices() -> Option<Vec<DeviceInfo>> {
             for line in output_str.lines() {
                 let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
                 if parts.len() >= 5 {
-                    if let (Ok(index), uuid, memory_total, memory_free) = (
+                    if let (Ok(index), _uuid, memory_total, memory_free) = (
                         parts[0].parse::<usize>(),
                         parts[2].to_string(),
                         parts[3].parse::<u64>().ok().map(|m| m * 1024 * 1024), // Convert MB to bytes

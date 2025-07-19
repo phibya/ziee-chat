@@ -1,6 +1,6 @@
 use crate::database::models::*;
 use chrono::Utc;
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use uuid::Uuid;
 
 pub struct ModelOperations;
@@ -48,82 +48,20 @@ impl ModelOperations {
             "code_interpreter": false
         })
     }
-    /// Create a new model record (works for both regular and Candle models)
-    pub async fn create_model(
-        pool: &PgPool,
-        request: &CreateModelRequest,
-    ) -> Result<ModelDb, sqlx::Error> {
-        let model_id = Uuid::new_v4();
-        let now = Utc::now();
-
-        let capabilities = request.capabilities.clone().unwrap_or_else(Self::default_model_capabilities);
-
-        let row = sqlx::query(
-            r#"
-            INSERT INTO models (
-                id, provider_id, name, alias, description, 
-                file_size_bytes, enabled, 
-                is_deprecated, is_active, capabilities, parameters, 
-                validation_status, settings, created_at, updated_at
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
-            ) RETURNING id, provider_id, name, alias, description, 
-                       file_size_bytes, enabled, 
-                       is_deprecated, is_active, capabilities, parameters, 
-                       validation_status, validation_issues, settings, port, created_at, updated_at
-            "#,
-        )
-        .bind(model_id)
-        .bind(&request.provider_id)
-        .bind(&request.name)
-        .bind(&request.alias)
-        .bind(&request.description)
-        .bind(0i64)
-        .bind(request.enabled.unwrap_or(false))
-        .bind(false)
-        .bind(false)
-        .bind(&capabilities)
-        .bind(Self::default_model_parameters())
-        .bind("pending")
-        .bind(Self::default_model_settings()) // Default settings for regular models
-        .bind(now)
-        .bind(now)
-        .fetch_one(pool)
-        .await?;
-
-        let model = ModelDb {
-            id: row.get("id"),
-            provider_id: row.get("provider_id"),
-            name: row.get("name"),
-            alias: row.get("alias"),
-            description: row.get("description"),
-            enabled: row.get("enabled"),
-            is_deprecated: row.get("is_deprecated"),
-            is_active: row.get("is_active"),
-            capabilities: row.get("capabilities"),
-            parameters: row.get("parameters"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            file_size_bytes: row.get("file_size_bytes"),
-            validation_status: row.get("validation_status"),
-            validation_issues: row.get("validation_issues"),
-            settings: row.get("settings"),
-            port: row.get("port"),
-        };
-
-        Ok(model)
-    }
 
     /// Create a Candle model with required architecture and default settings
     pub async fn create_candle_model(
-        pool: &PgPool,
         request: &CreateModelRequest,
         architecture: &str, // Architecture is required for Candle models
     ) -> Result<ModelDb, sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
         let model_id = Uuid::new_v4();
         let now = Utc::now();
 
-        let capabilities = request.capabilities.clone().unwrap_or_else(Self::default_model_capabilities);
+        let capabilities = request
+            .capabilities
+            .clone()
+            .unwrap_or_else(Self::default_model_capabilities);
 
         // Create model settings with architecture and defaults
         let mut model_settings = Self::default_model_settings();
@@ -141,7 +79,7 @@ impl ModelOperations {
             ) RETURNING id, provider_id, name, alias, description, 
                        file_size_bytes, enabled, 
                        is_deprecated, is_active, capabilities, parameters, 
-                       validation_status, validation_issues, settings, port, created_at, updated_at
+                       validation_status, validation_issues, settings, port, pid, created_at, updated_at
             "#,
         )
         .bind(model_id)
@@ -159,7 +97,7 @@ impl ModelOperations {
         .bind(model_settings) // Model settings with architecture
         .bind(now)
         .bind(now)
-        .fetch_one(pool)
+        .fetch_one(pool.as_ref())
         .await?;
 
         let model = ModelDb {
@@ -180,25 +118,24 @@ impl ModelOperations {
             validation_issues: row.get("validation_issues"),
             settings: row.get("settings"),
             port: row.get("port"),
+            pid: row.get("pid"),
         };
 
         Ok(model)
     }
 
     /// Get model by ID
-    pub async fn get_model_by_id(
-        pool: &PgPool,
-        model_id: &Uuid,
-    ) -> Result<Option<ModelDb>, sqlx::Error> {
+    pub async fn get_model_by_id(model_id: &Uuid) -> Result<Option<ModelDb>, sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
         let row = sqlx::query(
             "SELECT id, provider_id, name, alias, description, 
                     file_size_bytes, enabled, 
                     is_deprecated, is_active, capabilities, parameters, 
-                    validation_status, validation_issues, settings, port, created_at, updated_at
+                    validation_status, validation_issues, settings, port, pid, created_at, updated_at
              FROM models WHERE id = $1",
         )
         .bind(model_id)
-        .fetch_optional(pool)
+        .fetch_optional(pool.as_ref())
         .await?;
 
         if let Some(row) = row {
@@ -220,6 +157,7 @@ impl ModelOperations {
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
                 port: row.get("port"),
+                pid: row.get("pid"),
             };
             Ok(Some(model))
         } else {
@@ -227,75 +165,14 @@ impl ModelOperations {
         }
     }
 
-    /// List models for a provider with pagination
-    pub async fn list_models_for_provider(
-        pool: &PgPool,
-        provider_id: &Uuid,
-        page: i32,
-        per_page: i32,
-    ) -> Result<(Vec<ModelDb>, i64), sqlx::Error> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(
-            r#"
-            SELECT id, provider_id, name, alias, description, 
-                   file_size_bytes, enabled, 
-                   is_deprecated, is_active, capabilities, parameters, 
-                   validation_status, validation_issues, settings, port, created_at, updated_at
-            FROM models 
-            WHERE provider_id = $1 
-            ORDER BY created_at DESC 
-            LIMIT $2 OFFSET $3
-            "#,
-        )
-        .bind(provider_id)
-        .bind(per_page as i64)
-        .bind(offset as i64)
-        .fetch_all(pool)
-        .await?;
-
-        let mut models = Vec::new();
-        for row in rows {
-            let model = ModelDb {
-                id: row.get("id"),
-                provider_id: row.get("provider_id"),
-                name: row.get("name"),
-                alias: row.get("alias"),
-                description: row.get("description"),
-                file_size_bytes: row.get("file_size_bytes"),
-                enabled: row.get("enabled"),
-                is_deprecated: row.get("is_deprecated"),
-                is_active: row.get("is_active"),
-                capabilities: row.get("capabilities"),
-                parameters: row.get("parameters"),
-                validation_status: row.get("validation_status"),
-                validation_issues: row.get("validation_issues"),
-                settings: row.get("settings"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
-                port: row.get("port"),
-            };
-            models.push(model);
-        }
-
-        let total_row = sqlx::query("SELECT COUNT(*) as count FROM models WHERE provider_id = $1")
-            .bind(provider_id)
-            .fetch_one(pool)
-            .await?;
-
-        let total: i64 = total_row.get("count");
-
-        Ok((models, total))
-    }
-
     /// Update model validation status and issues
     pub async fn update_model_validation(
-        pool: &PgPool,
         model_id: &Uuid,
         validation_status: &str,
         validation_issues: Option<&Vec<String>>,
         file_size_bytes: Option<i64>,
     ) -> Result<(), sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
         let issues_json = validation_issues
             .map(|issues| serde_json::to_value(issues).unwrap_or(serde_json::Value::Null))
             .unwrap_or(serde_json::Value::Null);
@@ -315,7 +192,7 @@ impl ModelOperations {
         .bind(file_size_bytes)
         .bind(Utc::now())
         .bind(model_id)
-        .execute(pool)
+        .execute(pool.as_ref())
         .await?;
 
         Ok(())
@@ -323,11 +200,11 @@ impl ModelOperations {
 
     /// Update model status (enabled/active)
     pub async fn update_model_status(
-        pool: &PgPool,
         model_id: &Uuid,
         enabled: Option<bool>,
         is_active: Option<bool>,
     ) -> Result<(), sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
         sqlx::query(
             r#"
             UPDATE models 
@@ -341,62 +218,21 @@ impl ModelOperations {
         .bind(is_active)
         .bind(Utc::now())
         .bind(model_id)
-        .execute(pool)
+        .execute(pool.as_ref())
         .await?;
-
-        Ok(())
-    }
-
-    // Note: update_model_checksum method removed (checksum functionality removed for performance)
-
-    /// Update model port (for running Candle models)
-    pub async fn update_model_port(
-        pool: &PgPool,
-        model_id: &Uuid,
-        port: Option<i32>,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            r#"
-            UPDATE models 
-            SET port = $1, updated_at = $2
-            WHERE id = $3
-            "#,
-        )
-        .bind(port)
-        .bind(Utc::now())
-        .bind(model_id)
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Delete model and its files
-    pub async fn delete_model(pool: &PgPool, model_id: &Uuid) -> Result<(), sqlx::Error> {
-        // Delete model files first (foreign key constraint)
-        sqlx::query("DELETE FROM model_files WHERE model_id = $1")
-            .bind(model_id)
-            .execute(pool)
-            .await?;
-
-        // Delete the model
-        sqlx::query("DELETE FROM models WHERE id = $1")
-            .bind(model_id)
-            .execute(pool)
-            .await?;
 
         Ok(())
     }
 
     /// Create a model file record
     pub async fn create_model_file(
-        pool: &PgPool,
         model_id: &Uuid,
         filename: &str,
         file_path: &str,
         file_size_bytes: i64,
         file_type: &str,
     ) -> Result<ModelFileDb, sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
         let file_id = Uuid::new_v4();
         let now = Utc::now();
 
@@ -419,7 +255,7 @@ impl ModelOperations {
         .bind(file_type)
         .bind("completed")
         .bind(now)
-        .fetch_one(pool)
+        .fetch_one(pool.as_ref())
         .await?;
 
         let file = ModelFileDb {
@@ -437,17 +273,15 @@ impl ModelOperations {
     }
 
     /// Get files for a model
-    pub async fn get_model_files(
-        pool: &PgPool,
-        model_id: &Uuid,
-    ) -> Result<Vec<ModelFileDb>, sqlx::Error> {
+    pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFileDb>, sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
         let rows = sqlx::query(
             "SELECT id, model_id, filename, file_path, file_size_bytes, 
                     file_type, upload_status, uploaded_at
              FROM model_files WHERE model_id = $1 ORDER BY uploaded_at ASC",
         )
         .bind(model_id)
-        .fetch_all(pool)
+        .fetch_all(pool.as_ref())
         .await?;
 
         let mut files = Vec::new();
@@ -470,9 +304,9 @@ impl ModelOperations {
 
     /// Get storage statistics for a provider
     pub async fn get_provider_storage_stats(
-        pool: &PgPool,
         provider_id: &Uuid,
     ) -> Result<ModelStorageInfo, sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
         let row = sqlx::query(
             r#"
             SELECT 
@@ -488,7 +322,7 @@ impl ModelOperations {
             "#,
         )
         .bind(provider_id)
-        .fetch_one(pool)
+        .fetch_one(pool.as_ref())
         .await?;
 
         Ok(ModelStorageInfo {
@@ -505,70 +339,69 @@ impl ModelOperations {
         })
     }
 
-    /// Update model metadata
-    pub async fn update_model(
-        pool: &PgPool,
-        model_id: &Uuid,
-        request: &UpdateModelRequest,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            r#"
-            UPDATE models 
-            SET name = COALESCE($1, name),
-                alias = COALESCE($2, alias),
-                description = COALESCE($3, description),
-                enabled = COALESCE($4, enabled),
-                capabilities = COALESCE($5, capabilities),
-                parameters = COALESCE($6, parameters),
-                updated_at = $7
-            WHERE id = $8
-            "#,
-        )
-        .bind(&request.name)
-        .bind(&request.alias)
-        .bind(&request.description)
-        .bind(request.enabled)
-        .bind(&request.capabilities)
-        .bind(&request.parameters)
-        .bind(Utc::now())
-        .bind(model_id)
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
     /// Get all models with their files for full response
-    pub async fn get_model_with_files(
-        pool: &PgPool,
-        model_id: &Uuid,
-    ) -> Result<Option<Model>, sqlx::Error> {
-        let model_db = Self::get_model_by_id(pool, model_id).await?;
+    pub async fn get_model_with_files(model_id: &Uuid) -> Result<Option<Model>, sqlx::Error> {
+        let model_db = Self::get_model_by_id(model_id).await?;
 
         if let Some(model_db) = model_db {
-            let files = Self::get_model_files(pool, model_id).await?;
+            let files = Self::get_model_files(model_id).await?;
             Ok(Some(Model::from_db(model_db, Some(files))))
         } else {
             Ok(None)
         }
     }
 
-    /// List all models with their files for a provider
-    pub async fn list_models_with_files_for_provider(
-        pool: &PgPool,
-        provider_id: &Uuid,
-        page: i32,
-        per_page: i32,
-    ) -> Result<(Vec<Model>, i64), sqlx::Error> {
-        let (model_dbs, total) =
-            Self::list_models_for_provider(pool, provider_id, page, per_page).await?;
+    /// Update model runtime information (PID and port)
+    pub async fn update_model_runtime_info(
+        model_id: &Uuid,
+        pid: Option<i32>,
+        port: Option<i32>,
+        is_active: bool,
+    ) -> Result<(), sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
+        sqlx::query(
+            r#"
+            UPDATE models 
+            SET pid = $2, port = $3, is_active = $4, updated_at = $5
+            WHERE id = $1
+            "#,
+        )
+        .bind(model_id)
+        .bind(pid)
+        .bind(port)
+        .bind(is_active)
+        .bind(Utc::now())
+        .execute(pool.as_ref())
+        .await?;
 
-        let mut models = Vec::new();
-        for model_db in model_dbs {
-            let files = Self::get_model_files(pool, &model_db.id).await?;
-            models.push(Model::from_db(model_db, Some(files)));
+        Ok(())
+    }
+
+    /// Get model runtime information by model ID
+    pub async fn get_model_runtime_info(
+        model_id: &Uuid,
+    ) -> Result<Option<(i32, i32)>, sqlx::Error> {
+        let pool = crate::database::get_database_pool()?;
+        let row = sqlx::query(
+            r#"
+            SELECT pid, port
+            FROM models
+            WHERE id = $1
+            "#,
+        )
+        .bind(model_id)
+        .fetch_optional(pool.as_ref())
+        .await?;
+
+        if let Some(row) = row {
+            if let (Some(pid), Some(port)) = (
+                row.get::<Option<i32>, _>("pid"),
+                row.get::<Option<i32>, _>("port"),
+            ) {
+                return Ok(Some((pid, port)));
+            }
         }
 
-        Ok((models, total))
+        Ok(None)
     }
 }

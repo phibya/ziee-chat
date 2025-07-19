@@ -1,6 +1,6 @@
 import { ParameterFieldConfig } from './ModelParameterField'
 
-export const CANDLE_PARAMETERS: ParameterFieldConfig[] = [
+export const LOCAL_PARAMETERS: ParameterFieldConfig[] = [
   {
     name: ['parameters', 'temperature'],
     label: 'Temperature',
@@ -83,7 +83,7 @@ export const BASIC_MODEL_FIELDS: ParameterFieldConfig[] = [
   },
 ]
 
-export const CANDLE_MODEL_FIELDS: ParameterFieldConfig[] = [
+export const LOCAL_MODEL_FIELDS: ParameterFieldConfig[] = [
   {
     name: 'alias',
     label: 'Display Name',

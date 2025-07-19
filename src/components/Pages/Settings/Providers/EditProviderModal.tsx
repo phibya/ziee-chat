@@ -80,8 +80,8 @@ export function EditProviderModal({
           <Switch />
         </Form.Item>
 
-        {/* API Configuration for non-candle providers */}
-        {provider.type !== 'candle' && (
+        {/* API Configuration for non-local providers */}
+        {provider.type !== 'local' && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title={t('providers.apiConfiguration')}>
               <Form.Item

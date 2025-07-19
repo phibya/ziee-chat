@@ -1,889 +1,1231 @@
-use chrono;
 use reqwest;
-use serde::{Deserialize, Serialize};
-use std::fs;
 use std::fs::metadata;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use tokio::time::{sleep, Duration};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelLockInfo {
-    pub pid: u32,
-    pub port: u16,
-    pub model_path: String,
-    pub started_at: String,
-}
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub enum ModelStartResult {
-    Started(u16),
-    AlreadyRunning(u16),
+    Started { port: u16, pid: u32 },
+    AlreadyRunning { port: u16, pid: u32 },
 }
 
-#[derive(Debug, Clone)]
-pub struct ModelManager {}
-
-impl ModelManager {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    /// Get the lock file path for a model
-    fn get_lock_file_path(&self, model_path: &str) -> std::path::PathBuf {
-        Path::new(model_path).join(".model.lock")
-    }
-
-    /// Check if port is already in use using system commands
-    fn is_port_in_use(&self, port: u16) -> bool {
-        #[cfg(unix)]
+/// Check if port is already in use using system commands
+fn is_port_in_use(port: u16) -> bool {
+    #[cfg(unix)]
+    {
+        // Use lsof to check if port is in use
+        match Command::new("lsof")
+            .arg("-i")
+            .arg(format!(":{}", port))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
         {
-            // Use lsof to check if port is in use
-            match Command::new("lsof")
-                .arg("-i")
-                .arg(format!(":{}", port))
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .output()
-            {
-                Ok(output) => !output.stdout.is_empty(),
-                Err(_) => {
-                    // Fallback to netstat if lsof is not available
-                    match Command::new("netstat")
-                        .arg("-an")
-                        .stdout(Stdio::piped())
-                        .stderr(Stdio::null())
-                        .output()
-                    {
-                        Ok(output) => {
-                            let output_str = String::from_utf8_lossy(&output.stdout);
-                            output_str.lines().any(|line| {
-                                line.contains(&format!(":{}", port))
-                                    && (line.contains("LISTEN") || line.contains("ESTABLISHED"))
-                            })
-                        }
-                        Err(_) => false, // If both commands fail, assume port is free
+            Ok(output) => !output.stdout.is_empty(),
+            Err(_) => {
+                // Fallback to netstat if lsof is not available
+                match Command::new("netstat")
+                    .arg("-an")
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .output()
+                {
+                    Ok(output) => {
+                        let output_str = String::from_utf8_lossy(&output.stdout);
+                        output_str.lines().any(|line| {
+                            line.contains(&format!(":{}", port))
+                                && (line.contains("LISTEN") || line.contains("ESTABLISHED"))
+                        })
                     }
+                    Err(_) => false, // If both commands fail, assume port is free
                 }
             }
         }
+    }
+    #[cfg(windows)]
+    {
+        // Use netstat on Windows
+        match Command::new("netstat")
+            .arg("-an")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                output_str.lines().any(|line| {
+                    line.contains(&format!(":{}", port))
+                        && (line.contains("LISTENING") || line.contains("ESTABLISHED"))
+                })
+            }
+            Err(_) => false, // If command fails, assume port is free
+        }
+    }
+}
+
+/// Find an available port starting from a given port
+fn find_available_port(start_port: u16) -> Option<u16> {
+    for port in start_port..start_port + 100 {
+        if !is_port_in_use(port) {
+            return Some(port);
+        }
+    }
+    None
+}
+
+/// Calculate the total size of model files in bytes
+/// Handles models with multiple weight files (sharded models)
+fn calculate_model_size(model_path: &str) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
+    let model_dir = Path::new(model_path);
+    let mut total_size = 0u64;
+    let mut model_files = Vec::new();
+
+    if model_dir.is_dir() {
+        // If it's a directory, sum up all files recursively
+        scan_model_files(model_dir, &mut total_size, &mut model_files)?;
+    } else if model_dir.is_file() {
+        // If it's a single file, get its size
+        let file_size = metadata(model_dir)?.len();
+        total_size = file_size;
+        model_files.push((model_dir.to_path_buf(), file_size));
+    }
+
+    // Log summary of found model files
+    println!(
+        "Found {} model file(s) with total size: {} bytes ({:.2} GB)",
+        model_files.len(),
+        total_size,
+        total_size as f64 / (1024.0 * 1024.0 * 1024.0)
+    );
+
+    // Log details of large models or models with multiple files
+    if model_files.len() > 1 || total_size > 1_000_000_000 {
+        // > 1GB
+        println!("Model file breakdown:");
+        for (path, size) in &model_files {
+            let size_gb = *size as f64 / (1024.0 * 1024.0 * 1024.0);
+            println!("  - {} ({:.2} GB)", path.display(), size_gb);
+        }
+    }
+
+    Ok(total_size)
+}
+
+/// Recursively scan for model files in a directory
+fn scan_model_files(
+    dir: &Path,
+    total_size: &mut u64,
+    model_files: &mut Vec<(std::path::PathBuf, u64)>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Some(file_name) = path.file_name() {
+                let file_name_str = file_name.to_string_lossy().to_lowercase();
+
+                // Check for model files by extension and common patterns
+                if is_model_file(&path, &file_name_str) {
+                    let file_size = metadata(&path)?.len();
+                    *total_size += file_size;
+                    model_files.push((path.clone(), file_size));
+
+                    // Log individual files for debugging
+                    let size_mb = file_size as f64 / (1024.0 * 1024.0);
+                    if size_mb > 100.0 {
+                        // Log files > 100MB
+                        println!("Found model file: {} ({:.1} MB)", path.display(), size_mb);
+                    }
+                }
+            }
+        } else if path.is_dir() {
+            // Recursively check subdirectories
+            scan_model_files(&path, total_size, model_files)?;
+        }
+    }
+    Ok(())
+}
+
+/// Check if a file is a model weight file
+fn is_model_file(path: &Path, file_name_lower: &str) -> bool {
+    // Check by extension
+    if let Some(extension) = path.extension() {
+        let ext = extension.to_string_lossy().to_lowercase();
+        if ext == "safetensors"
+            || ext == "bin"
+            || ext == "gguf"
+            || ext == "pt"
+            || ext == "pth"
+            || ext == "onnx"
+            || ext == "tflite"
+        {
+            return true;
+        }
+    }
+
+    // Check for common sharded model patterns
+    // Examples: model-00001-of-00002.safetensors, pytorch_model-00001-of-00002.bin
+    if file_name_lower.contains("model")
+        && (file_name_lower.contains("-of-") || file_name_lower.contains("shard"))
+        && (file_name_lower.ends_with(".safetensors")
+            || file_name_lower.ends_with(".bin")
+            || file_name_lower.ends_with(".pt"))
+    {
+        return true;
+    }
+
+    // Check for specific model file patterns
+    if file_name_lower == "pytorch_model.bin"
+        || file_name_lower == "model.safetensors"
+        || file_name_lower == "consolidated.00.pth"
+    {
+        return true;
+    }
+
+    // Skip config files
+    if file_name_lower == "params.json" || file_name_lower == "config.json" {
+        return false;
+    }
+
+    // Check for weight files with numeric suffixes (e.g., model.00.safetensors)
+    if file_name_lower.starts_with("model.")
+        && file_name_lower.chars().any(|c| c.is_ascii_digit())
+        && (file_name_lower.ends_with(".safetensors") || file_name_lower.ends_with(".bin"))
+    {
+        return true;
+    }
+
+    false
+}
+
+/// Calculate timeout based on model size
+/// Base timeout: 2 minutes (120 seconds)
+/// Additional time: 30 seconds per GB
+/// Maximum timeout: 30 minutes (1800 seconds)
+/// Minimum timeout: 2 minutes (120 seconds)
+fn calculate_timeout_for_model_size(model_size_bytes: u64) -> u64 {
+    const BASE_TIMEOUT: u64 = 120; // 2 minutes
+    const SECONDS_PER_GB: u64 = 30; // 30 seconds per GB
+    const MAX_TIMEOUT: u64 = 1800; // 30 minutes
+    const MIN_TIMEOUT: u64 = 120; // 2 minutes
+
+    let size_gb = model_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    let additional_time = (size_gb * SECONDS_PER_GB as f64) as u64;
+    let calculated_timeout = BASE_TIMEOUT + additional_time;
+
+    // Clamp between min and max
+    let timeout = calculated_timeout.clamp(MIN_TIMEOUT, MAX_TIMEOUT);
+
+    println!(
+        "Model size: {:.2} GB, calculated timeout: {} seconds ({:.1} minutes)",
+        size_gb,
+        timeout,
+        timeout as f64 / 60.0
+    );
+
+    timeout
+}
+
+/// Get the path to the mistralrs-server binary
+fn get_model_server_binary_path(
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+    // Get the current executable's directory
+    let current_exe = std::env::current_exe()?;
+    let current_dir = current_exe.parent().ok_or("Cannot get parent directory")?;
+
+    // Look for mistralrs-server binary in the same directory
+    let model_server_path = current_dir.join("mistralrs-server");
+
+    // Check if the binary exists
+    if model_server_path.exists() {
+        Ok(model_server_path)
+    } else {
+        // Try with .exe extension on Windows
         #[cfg(windows)]
         {
-            // Use netstat on Windows
-            match Command::new("netstat")
-                .arg("-an")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .output()
-            {
-                Ok(output) => {
-                    let output_str = String::from_utf8_lossy(&output.stdout);
-                    output_str.lines().any(|line| {
-                        line.contains(&format!(":{}", port))
-                            && (line.contains("LISTENING") || line.contains("ESTABLISHED"))
-                    })
-                }
-                Err(_) => false, // If command fails, assume port is free
+            let model_server_exe = current_dir.join("mistralrs-server.exe");
+            if model_server_exe.exists() {
+                return Ok(model_server_exe);
             }
         }
+
+        // Fallback: look in mistralrs-server/target/debug or target/release
+        let mistralrs_debug = current_dir.join("mistralrs-server/target/debug/mistralrs-server");
+        if mistralrs_debug.exists() {
+            return Ok(mistralrs_debug);
+        }
+
+        let mistralrs_release =
+            current_dir.join("mistralrs-server/target/release/mistralrs-server");
+        if mistralrs_release.exists() {
+            return Ok(mistralrs_release);
+        }
+
+        // Also check in our target directory
+        let target_debug = current_dir.join("../target/debug/mistralrs-server");
+        if target_debug.exists() {
+            return Ok(target_debug);
+        }
+
+        let target_release = current_dir.join("../target/release/mistralrs-server");
+        if target_release.exists() {
+            return Ok(target_release);
+        }
+
+        Err("mistralrs-server binary not found".into())
     }
+}
 
-    /// Find an available port starting from a given port
-    fn find_available_port(&self, start_port: u16) -> Option<u16> {
-        for port in start_port..start_port + 100 {
-            if !self.is_port_in_use(port) {
-                return Some(port);
+/// Check if the model server is healthy (quick health check without timeout)
+async fn check_model_server_health(
+    port: u16,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let health_url = format!("http://127.0.0.1:{}/health", port);
+    let client = reqwest::Client::new();
+
+    // Quick health check with short timeout
+    let response = tokio::time::timeout(
+        Duration::from_secs(3), // 3 second timeout
+        client.get(&health_url).send(),
+    )
+    .await;
+
+    match response {
+        Ok(Ok(resp)) => {
+            if resp.status().is_success() {
+                Ok(())
+            } else {
+                Err(format!("Health check failed with status: {}", resp.status()).into())
             }
         }
-        None
+        Ok(Err(e)) => Err(format!("Health check request failed: {}", e).into()),
+        Err(_) => Err("Health check timed out".into()),
     }
+}
 
-    /// Calculate the total size of model files in bytes
-    /// Handles models with multiple weight files (sharded models)
-    fn calculate_model_size(
-        &self,
-        model_path: &str,
-    ) -> Result<u64, Box<dyn std::error::Error + Send + Sync>> {
-        let model_dir = Path::new(model_path);
-        let mut total_size = 0u64;
-        let mut model_files = Vec::new();
+/// Check if the model server is healthy and ready (with timeout for startup)
+async fn wait_for_model_health(
+    port: u16,
+    timeout_seconds: u64,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let health_url = format!("http://127.0.0.1:{}/health", port);
+    let models_url = format!("http://127.0.0.1:{}/v1/models", port);
 
-        if model_dir.is_dir() {
-            // If it's a directory, sum up all files recursively
-            self.scan_model_files(model_dir, &mut total_size, &mut model_files)?;
-        } else if model_dir.is_file() {
-            // If it's a single file, get its size
-            let file_size = metadata(model_dir)?.len();
-            total_size = file_size;
-            model_files.push((model_dir.to_path_buf(), file_size));
+    let client = reqwest::Client::new();
+    let start_time = std::time::Instant::now();
+    let timeout_duration = Duration::from_secs(timeout_seconds);
+
+    println!(
+        "Waiting for mistralrs-server to be healthy at {} (timeout: {} minutes)",
+        health_url,
+        timeout_seconds / 60
+    );
+
+    loop {
+        if start_time.elapsed() > timeout_duration {
+            return Err(format!(
+                "Model server health check timed out after {} seconds ({} minutes)",
+                timeout_seconds,
+                timeout_seconds / 60
+            )
+            .into());
         }
 
-        // Log summary of found model files
-        println!(
-            "Found {} model file(s) with total size: {} bytes ({:.2} GB)",
-            model_files.len(),
-            total_size,
-            total_size as f64 / (1024.0 * 1024.0 * 1024.0)
-        );
+        // Check health endpoint
+        match client.get(&health_url).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    println!("Model server is healthy, checking if models are loaded...");
 
-        // Log details of large models or models with multiple files
-        if model_files.len() > 1 || total_size > 1_000_000_000 {
-            // > 1GB
-            println!("Model file breakdown:");
-            for (path, size) in &model_files {
-                let size_gb = *size as f64 / (1024.0 * 1024.0 * 1024.0);
-                println!("  - {} ({:.2} GB)", path.display(), size_gb);
-            }
-        }
-
-        Ok(total_size)
-    }
-
-    /// Recursively scan for model files in a directory
-    fn scan_model_files(
-        &self,
-        dir: &Path,
-        total_size: &mut u64,
-        model_files: &mut Vec<(std::path::PathBuf, u64)>,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        for entry in std::fs::read_dir(dir)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.is_file() {
-                if let Some(file_name) = path.file_name() {
-                    let file_name_str = file_name.to_string_lossy().to_lowercase();
-
-                    // Check for model files by extension and common patterns
-                    if self.is_model_file(&path, &file_name_str) {
-                        let file_size = metadata(&path)?.len();
-                        *total_size += file_size;
-                        model_files.push((path.clone(), file_size));
-
-                        // Log individual files for debugging
-                        let size_mb = file_size as f64 / (1024.0 * 1024.0);
-                        if size_mb > 100.0 {
-                            // Log files > 100MB
-                            println!("Found model file: {} ({:.1} MB)", path.display(), size_mb);
-                        }
-                    }
-                }
-            } else if path.is_dir() {
-                // Recursively check subdirectories
-                self.scan_model_files(&path, total_size, model_files)?;
-            }
-        }
-        Ok(())
-    }
-
-    /// Check if a file is a model weight file
-    fn is_model_file(&self, path: &Path, file_name_lower: &str) -> bool {
-        // Check by extension
-        if let Some(extension) = path.extension() {
-            let ext = extension.to_string_lossy().to_lowercase();
-            if ext == "safetensors"
-                || ext == "bin"
-                || ext == "gguf"
-                || ext == "pt"
-                || ext == "pth"
-                || ext == "onnx"
-                || ext == "tflite"
-            {
-                return true;
-            }
-        }
-
-        // Check for common sharded model patterns
-        // Examples: model-00001-of-00002.safetensors, pytorch_model-00001-of-00002.bin
-        if file_name_lower.contains("model")
-            && (file_name_lower.contains("-of-") || file_name_lower.contains("shard"))
-            && (file_name_lower.ends_with(".safetensors")
-                || file_name_lower.ends_with(".bin")
-                || file_name_lower.ends_with(".pt"))
-        {
-            return true;
-        }
-
-        // Check for specific model file patterns
-        if file_name_lower == "pytorch_model.bin"
-            || file_name_lower == "model.safetensors"
-            || file_name_lower == "consolidated.00.pth"
-        {
-            return true;
-        }
-
-        // Skip config files
-        if file_name_lower == "params.json" || file_name_lower == "config.json" {
-            return false;
-        }
-
-        // Check for weight files with numeric suffixes (e.g., model.00.safetensors)
-        if file_name_lower.starts_with("model.")
-            && file_name_lower.chars().any(|c| c.is_ascii_digit())
-            && (file_name_lower.ends_with(".safetensors") || file_name_lower.ends_with(".bin"))
-        {
-            return true;
-        }
-
-        false
-    }
-
-    /// Calculate timeout based on model size
-    /// Base timeout: 2 minutes (120 seconds)
-    /// Additional time: 30 seconds per GB
-    /// Maximum timeout: 30 minutes (1800 seconds)
-    /// Minimum timeout: 2 minutes (120 seconds)
-    fn calculate_timeout_for_model_size(&self, model_size_bytes: u64) -> u64 {
-        const BASE_TIMEOUT: u64 = 120; // 2 minutes
-        const SECONDS_PER_GB: u64 = 30; // 30 seconds per GB
-        const MAX_TIMEOUT: u64 = 1800; // 30 minutes
-        const MIN_TIMEOUT: u64 = 120; // 2 minutes
-
-        let size_gb = model_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
-        let additional_time = (size_gb * SECONDS_PER_GB as f64) as u64;
-        let calculated_timeout = BASE_TIMEOUT + additional_time;
-
-        // Clamp between min and max
-        let timeout = calculated_timeout.clamp(MIN_TIMEOUT, MAX_TIMEOUT);
-
-        println!(
-            "Model size: {:.2} GB, calculated timeout: {} seconds ({:.1} minutes)",
-            size_gb,
-            timeout,
-            timeout as f64 / 60.0
-        );
-
-        timeout
-    }
-
-    /// Get the path to the candle-server binary
-    fn get_model_server_binary_path(
-        &self,
-    ) -> Result<std::path::PathBuf, Box<dyn std::error::Error + Send + Sync>> {
-        // Get the current executable's directory
-        let current_exe = std::env::current_exe()?;
-        let current_dir = current_exe.parent().ok_or("Cannot get parent directory")?;
-
-        // Look for candle-server binary in the same directory
-        let model_server_path = current_dir.join("candle-server");
-
-        // Check if the binary exists
-        if model_server_path.exists() {
-            Ok(model_server_path)
-        } else {
-            // Try with .exe extension on Windows
-            #[cfg(windows)]
-            {
-                let model_server_exe = current_dir.join("candle-server.exe");
-                if model_server_exe.exists() {
-                    return Ok(model_server_exe);
-                }
-            }
-
-            // Fallback: look in target/debug or target/release
-            let target_debug = current_dir.join("../target/debug/candle-server");
-            if target_debug.exists() {
-                return Ok(target_debug);
-            }
-
-            let target_release = current_dir.join("../target/release/candle-server");
-            if target_release.exists() {
-                return Ok(target_release);
-            }
-
-            Err("candle-server binary not found".into())
-        }
-    }
-
-    /// Check if the model server is healthy and ready
-    async fn wait_for_model_health(
-        &self,
-        port: u16,
-        timeout_seconds: u64,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let health_url = format!("http://127.0.0.1:{}/health", port);
-        let ready_url = format!("http://127.0.0.1:{}/ready", port);
-
-        let client = reqwest::Client::new();
-        let start_time = std::time::Instant::now();
-        let timeout_duration = Duration::from_secs(timeout_seconds);
-
-        println!(
-            "Waiting for model server to be healthy at {} (timeout: {} minutes)",
-            health_url,
-            timeout_seconds / 60
-        );
-
-        loop {
-            if start_time.elapsed() > timeout_duration {
-                return Err(format!(
-                    "Model server health check timed out after {} seconds ({} minutes)",
-                    timeout_seconds,
-                    timeout_seconds / 60
-                )
-                .into());
-            }
-
-            // Check health endpoint
-            match client.get(&health_url).send().await {
-                Ok(response) => {
-                    if response.status().is_success() {
-                        println!("Model server is healthy, checking ready status...");
-
-                        // Check ready endpoint
-                        match client.get(&ready_url).send().await {
-                            Ok(ready_response) => {
-                                if ready_response.status().is_success() {
-                                    println!("Model server is ready!");
-                                    return Ok(());
-                                } else {
-                                    println!(
-                                        "Model server is healthy but not ready yet (status: {})",
-                                        ready_response.status()
+                    // Check models endpoint to verify the server is fully operational
+                    match client.get(&models_url).send().await {
+                        Ok(models_response) => {
+                            if models_response.status().is_success() {
+                                println!("Model server is ready and models are accessible!");
+                                return Ok(());
+                            } else {
+                                println!(
+                                        "Model server is healthy but models not yet accessible (status: {})",
+                                        models_response.status()
                                     );
-                                }
-                            }
-                            Err(e) => {
-                                println!("Ready endpoint not accessible yet: {}", e);
                             }
                         }
-                    } else {
-                        println!(
-                            "Model server health check failed with status: {}",
-                            response.status()
-                        );
+                        Err(e) => {
+                            println!("Models endpoint not accessible yet: {}", e);
+                        }
                     }
-                }
-                Err(e) => {
-                    println!("Health check request failed: {}", e);
+                } else {
+                    println!(
+                        "Model server health check failed with status: {}",
+                        response.status()
+                    );
                 }
             }
-
-            // Wait before retrying
-            sleep(Duration::from_millis(500)).await;
+            Err(e) => {
+                println!("Health check request failed: {}", e);
+            }
         }
-    }
 
-    /// Check if a process is running by PID (enhanced version)
-    fn is_process_running(&self, pid: u32) -> bool {
-        #[cfg(unix)]
+        // Wait before retrying
+        sleep(Duration::from_millis(500)).await;
+    }
+}
+
+/// Check if a process is running by PID (enhanced version)
+fn is_process_running(pid: u32) -> bool {
+    #[cfg(unix)]
+    {
+        match Command::new("kill")
+            .arg("-0")
+            .arg(pid.to_string())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
         {
-            match Command::new("kill")
-                .arg("-0")
-                .arg(pid.to_string())
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-            {
-                Ok(status) => status.success(),
-                Err(_) => false,
-            }
-        }
-        #[cfg(windows)]
-        {
-            match Command::new("tasklist")
-                .arg("/FI")
-                .arg(format!("PID eq {}", pid))
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .output()
-            {
-                Ok(output) => {
-                    let output_str = String::from_utf8_lossy(&output.stdout);
-                    output_str.contains(&pid.to_string())
-                }
-                Err(_) => false,
-            }
-        }
-    }
-
-    /// Check if a process is actually a model server by examining its command line
-    fn is_model_server_process(&self, pid: u32) -> bool {
-        #[cfg(unix)]
-        {
-            // Try to get the process command line using ps
-            match Command::new("ps")
-                .arg("-p")
-                .arg(pid.to_string())
-                .arg("-o")
-                .arg("comm=")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .output()
-            {
-                Ok(output) => {
-                    let output_str = String::from_utf8_lossy(&output.stdout);
-                    // Check if the process name contains "candle-server"
-                    output_str.contains("candle-server")
-                }
-                Err(_) => {
-                    // If ps fails, assume it's valid (fallback to less strict validation)
-                    true
-                }
-            }
-        }
-        #[cfg(windows)]
-        {
-            // Try to get the process image name using tasklist
-            match Command::new("tasklist")
-                .arg("/FI")
-                .arg(format!("PID eq {}", pid))
-                .arg("/FO")
-                .arg("CSV")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null())
-                .output()
-            {
-                Ok(output) => {
-                    let output_str = String::from_utf8_lossy(&output.stdout);
-                    // Check if the process name contains "candle-server"
-                    output_str.contains("candle-server")
-                }
-                Err(_) => {
-                    // If tasklist fails, assume it's valid (fallback to less strict validation)
-                    true
-                }
-            }
-        }
-    }
-
-    /// Read lock file information
-    async fn read_lock_file(
-        &self,
-        model_path: &str,
-    ) -> Result<ModelLockInfo, Box<dyn std::error::Error + Send + Sync>> {
-        let lock_file_path = self.get_lock_file_path(model_path);
-        let content = fs::read_to_string(&lock_file_path)?;
-        let lock_info: ModelLockInfo = serde_json::from_str(&content)?;
-        Ok(lock_info)
-    }
-
-    /// Write lock file information
-    async fn write_lock_file(
-        &self,
-        model_path: &str,
-        lock_info: &ModelLockInfo,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let lock_file_path = self.get_lock_file_path(model_path);
-        let content = serde_json::to_string_pretty(lock_info)?;
-        fs::write(&lock_file_path, content)?;
-        println!("Created lock file at: {}", lock_file_path.display());
-        Ok(())
-    }
-
-    /// Create a lock file for the model (public version)
-    pub async fn create_lock_file(
-        &self,
-        model_path: &str,
-        port: u16,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let lock_info = ModelLockInfo {
-            pid: std::process::id(),
-            port,
-            model_path: model_path.to_string(),
-            started_at: chrono::Utc::now().to_rfc3339(),
-        };
-
-        self.write_lock_file(model_path, &lock_info).await
-    }
-
-    /// Remove lock file
-    async fn remove_lock_file(
-        &self,
-        model_path: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let lock_file_path = self.get_lock_file_path(model_path);
-        if lock_file_path.exists() {
-            fs::remove_file(&lock_file_path)?;
-            println!("Removed lock file at: {}", lock_file_path.display());
-        }
-        Ok(())
-    }
-
-    /// Remove lock file (public version)
-    pub async fn remove_lock_file_public(
-        &self,
-        model_path: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        self.remove_lock_file(model_path).await
-    }
-
-    pub async fn is_model_running(&self, model_path: &str) -> bool {
-        // Check lock file with enhanced validation
-        match self.is_model_already_running(model_path).await {
-            Ok(true) => true,
-            Ok(false) => false,
+            Ok(status) => status.success(),
             Err(_) => false,
         }
     }
-
-    /// Enhanced check if a model is already running with comprehensive validation
-    pub async fn is_model_already_running(
-        &self,
-        model_path: &str,
-    ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-        let lock_file_path = self.get_lock_file_path(model_path);
-
-        if !lock_file_path.exists() {
-            return Ok(false);
+    #[cfg(windows)]
+    {
+        match Command::new("tasklist")
+            .arg("/FI")
+            .arg(format!("PID eq {}", pid))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                output_str.contains(&pid.to_string())
+            }
+            Err(_) => false,
         }
-
-        let content = fs::read_to_string(&lock_file_path)?;
-        let lock_info: ModelLockInfo = serde_json::from_str(&content)?;
-
-        // First check if the process is still running
-        let process_exists = self.is_process_running(lock_info.pid);
-
-        if !process_exists {
-            // Process is dead, remove stale lock file
-            println!(
-                "Removing stale lock file for dead process {}",
-                lock_info.pid
-            );
-            let _ = fs::remove_file(&lock_file_path);
-            return Ok(false);
-        }
-
-        // Process exists, now check if it's actually using the expected port
-        let port_in_use = self.is_port_in_use(lock_info.port);
-
-        if !port_in_use {
-            // Process exists but port is not in use, likely crashed or not a model server
-            println!(
-                "Process {} exists but port {} is not in use, removing stale lock file",
-                lock_info.pid, lock_info.port
-            );
-            let _ = fs::remove_file(&lock_file_path);
-            return Ok(false);
-        }
-
-        // Additional validation: check if the process is actually our model server
-        if !self.is_model_server_process(lock_info.pid) {
-            println!(
-                "Process {} is not a model server, removing stale lock file",
-                lock_info.pid
-            );
-            let _ = fs::remove_file(&lock_file_path);
-            return Ok(false);
-        }
-
-        println!(
-            "Model already running with PID {} on port {}",
-            lock_info.pid, lock_info.port
-        );
-        Ok(true)
     }
+}
 
-    pub async fn start_model(
-        &self,
-        model_id: &str,
-        model_path: String,
-        model_type: String,
-        device_type: crate::ai::DeviceType,
-        device_ids: Option<Vec<i32>>,
-        verbose: Option<bool>,
-        max_num_seqs: Option<usize>,
-        block_size: Option<usize>,
-        weight_file: Option<String>,
-        dtype: Option<String>,
-        kvcache_mem_gpu: Option<usize>,
-        kvcache_mem_cpu: Option<usize>,
-        record_conversation: Option<bool>,
-        holding_time: Option<usize>,
-        multi_process: Option<bool>,
-        log: Option<bool>,
-    ) -> Result<ModelStartResult, Box<dyn std::error::Error + Send + Sync>> {
-        // Check if already running using enhanced lock file validation
-        if self.is_model_running(&model_path).await {
-            // Model is running, get the port from lock file
-            if let Ok(lock_info) = self.read_lock_file(&model_path).await {
-                return Ok(ModelStartResult::AlreadyRunning(lock_info.port));
-            }
-        }
+/// Find mistralrs-server process running with the specified model ID
+async fn find_model_server_process(model_id: &Uuid) -> Option<(u32, u16)> {
+    #[cfg(unix)]
+    {
+        // Use ps to get all processes with their command lines
+        match Command::new("ps")
+            .arg("-eo")
+            .arg("pid,command")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
 
-        // Find an available port
-        let port = self
-            .find_available_port(8080)
-            .ok_or("No available port found")?;
+                for line in output_str.lines().skip(1) {
+                    // Skip header line
+                    if line.contains("mistralrs-server") {
+                        // Parse the line to get PID and check if it contains our model ID
+                        if let Some(space_idx) = line.find(' ') {
+                            if let Ok(pid) = line[..space_idx].trim().parse::<u32>() {
+                                let command_line = &line[space_idx..];
 
-        // Get the candle-server binary path
-        let binary_path = self.get_model_server_binary_path()?;
-
-        // Build the command arguments
-        let mut command = Command::new(&binary_path);
-        command
-            .arg("--port")
-            .arg(port.to_string())
-            .arg("--model-id")
-            .arg(model_id)
-            .arg("--weight-path")
-            .arg(ModelUtils::get_model_absolute_path(&model_path));
-
-        // Add verbose flag if specified
-        if verbose.unwrap_or(false) {
-            command.arg("--verbose");
-        }
-
-        // Add max-num-seqs if specified (default: 256)
-        if let Some(max_seqs) = max_num_seqs {
-            command.arg("--max-num-seqs").arg(max_seqs.to_string());
-        }
-
-        // Add block-size if specified (default: 32)
-        if let Some(block_sz) = block_size {
-            command.arg("--block-size").arg(block_sz.to_string());
-        }
-
-        // Add weight-file if specified (for quantized models)
-        if let Some(weight_f) = weight_file {
-            command.arg("--weight-file").arg(weight_f);
-        }
-
-        // Add dtype if specified
-        if let Some(dt) = dtype {
-            command.arg("--dtype").arg(dt);
-        }
-
-        // Add CPU flag if device type is CPU
-        if matches!(device_type, crate::ai::DeviceType::Cpu) {
-            command.arg("--cpu");
-        }
-
-        // Add kvcache-mem-gpu if specified (default: 4096)
-        if let Some(kvcache_gpu) = kvcache_mem_gpu {
-            command
-                .arg("--kvcache-mem-gpu")
-                .arg(kvcache_gpu.to_string());
-        }
-
-        // Add kvcache-mem-cpu if specified (default: 128)
-        if let Some(kvcache_cpu) = kvcache_mem_cpu {
-            command
-                .arg("--kvcache-mem-cpu")
-                .arg(kvcache_cpu.to_string());
-        }
-
-        // Add record-conversation flag if specified
-        if record_conversation.unwrap_or(false) {
-            command.arg("--record-conversation");
-        }
-
-        // Add device IDs if provided (for GPU usage)
-        if let Some(ids) = device_ids {
-            if !ids.is_empty() {
-                let device_ids_str = ids
-                    .iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<_>>()
-                    .join(",");
-                command.arg("--device-ids").arg(device_ids_str);
-            }
-        }
-
-        // Add holding-time if specified (default: 500)
-        if let Some(hold_time) = holding_time {
-            command.arg("--holding-time").arg(hold_time.to_string());
-        }
-
-        // Add multi-process flag if specified
-        if multi_process.unwrap_or(false) {
-            command.arg("--multi-process");
-        }
-
-        // Add log flag if specified
-        if log.unwrap_or(false) {
-            command.arg("--log");
-        }
-
-        // Add the model type as a subcommand (e.g., "llama")
-        command.arg(&model_type.to_lowercase());
-
-        command.stdout(Stdio::piped()).stderr(Stdio::piped());
-
-        println!("Starting candle-server process: {:?}", command);
-
-        // Spawn the process
-        let mut child = command.spawn()?;
-        let pid = child.id();
-
-        println!(
-            "candle-server process spawned with PID: {}, port: {}",
-            pid, port
-        );
-
-        // Wait a bit to ensure the process has started successfully
-        sleep(Duration::from_millis(100)).await;
-
-        // Check if the process is still running
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                // Process has already exited
-                eprintln!(
-                    "candle-server process exited immediately with status: {}",
-                    status
-                );
-                let _ = self.remove_lock_file(&model_path).await;
-                return Err(format!("candle-server process failed to start: {}", status).into());
-            }
-            Ok(None) => {
-                // Process is still running, detach it
-                println!("candle-server process is running, waiting for health check...");
-                // We don't want to wait for the child process, so we detach it
-                // The process will continue running independently
-                std::mem::forget(child);
-            }
-            Err(e) => {
-                eprintln!("Failed to check candle-server process status: {}", e);
-                let _ = self.remove_lock_file(&model_path).await;
-                return Err(format!("Failed to check process status: {}", e).into());
-            }
-        }
-
-        // Calculate timeout based on model size
-        let timeout_seconds = match self.calculate_model_size(&model_path) {
-            Ok(size) => self.calculate_timeout_for_model_size(size),
-            Err(e) => {
-                eprintln!(
-                    "Failed to calculate model size: {}, using default timeout of 20 minutes",
-                    e
-                );
-                1200 // Default to 20 minutes if we can't calculate size
-            }
-        };
-
-        // Wait for the model server to be healthy and ready
-        if let Err(e) = self.wait_for_model_health(port, timeout_seconds).await {
-            eprintln!("Model server health check failed: {}", e);
-            // Try to stop the process if health check fails
-            let _ = self.stop_model(&model_path).await;
-            return Err(format!("Model server failed to become healthy: {}", e).into());
-        }
-
-        println!("Model server is healthy and ready on port {}", port);
-        Ok(ModelStartResult::Started(port))
-    }
-
-    pub async fn stop_model(
-        &self,
-        model_path: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Read lock file to get process information
-        let lock_info = match self.read_lock_file(model_path).await {
-            Ok(info) => info,
-            Err(_) => {
-                // No lock file found, model is not running
-                return Ok(());
-            }
-        };
-
-        // Check if the process is still running
-        if self.is_process_running(lock_info.pid) {
-            println!(
-                "Terminating candle-server process with PID: {}",
-                lock_info.pid
-            );
-
-            // Try to terminate the process gracefully first
-            #[cfg(unix)]
-            {
-                use nix::sys::signal::{self, Signal};
-                use nix::unistd::Pid;
-
-                // Send SIGTERM first for graceful shutdown
-                let pid = Pid::from_raw(lock_info.pid as i32);
-                if let Err(e) = signal::kill(pid, Signal::SIGTERM) {
-                    eprintln!("Failed to send SIGTERM to process {}: {}", lock_info.pid, e);
-                }
-
-                // Wait a bit for graceful shutdown
-                sleep(Duration::from_millis(1000)).await;
-
-                // Check if process is still running
-                if self.is_process_running(lock_info.pid) {
-                    eprintln!(
-                        "Process {} did not respond to SIGTERM, sending SIGKILL",
-                        lock_info.pid
-                    );
-                    if let Err(e) = signal::kill(pid, Signal::SIGKILL) {
-                        eprintln!("Failed to send SIGKILL to process {}: {}", lock_info.pid, e);
-                    }
-                }
-            }
-
-            #[cfg(windows)]
-            {
-                // On Windows, use taskkill command
-                let output = Command::new("taskkill")
-                    .arg("/PID")
-                    .arg(lock_info.pid.to_string())
-                    .arg("/F") // Force terminate
-                    .output();
-
-                match output {
-                    Ok(result) => {
-                        if !result.status.success() {
-                            let stderr = String::from_utf8_lossy(&result.stderr);
-                            eprintln!("Failed to terminate process {}: {}", lock_info.pid, stderr);
+                                // Check if this process is running our model ID
+                                if command_line.contains(&format!("model-uuid:{}", model_id)) {
+                                    // Extract port from command line (look for --port argument)
+                                    if let Some(port) = extract_port_from_command_line(command_line)
+                                    {
+                                        return Some((pid, port));
+                                    }
+                                }
+                            }
                         }
                     }
-                    Err(e) => {
-                        eprintln!(
-                            "Failed to execute taskkill for process {}: {}",
-                            lock_info.pid, e
-                        );
+                }
+            }
+            Err(_) => return None,
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        // Use wmic to get process command lines on Windows
+        match Command::new("wmic")
+            .arg("process")
+            .arg("get")
+            .arg("processid,commandline")
+            .arg("/format:csv")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+
+                for line in output_str.lines().skip(1) {
+                    // Skip header line
+                    if line.contains("mistralrs-server")
+                        && line.contains(&format!("model-uuid:{}", model_id))
+                    {
+                        // Parse CSV format: Node,CommandLine,ProcessId
+                        let parts: Vec<&str> = line.split(',').collect();
+                        if parts.len() >= 3 {
+                            if let Ok(pid) = parts[2].trim().parse::<u32>() {
+                                let command_line = parts[1];
+
+                                // Extract port from command line
+                                if let Some(port) = extract_port_from_command_line(command_line) {
+                                    return Some((pid, port));
+                                }
+                            }
+                        }
                     }
                 }
             }
+            Err(_) => return None,
+        }
+    }
 
-            // Wait a bit more to ensure process is terminated
-            sleep(Duration::from_millis(500)).await;
+    None
+}
 
-            if self.is_process_running(lock_info.pid) {
-                eprintln!(
-                    "Process {} is still running after termination attempt",
-                    lock_info.pid
-                );
-            } else {
-                println!("Process {} terminated successfully", lock_info.pid);
+/// Extract port number from mistralrs-server command line
+fn extract_port_from_command_line(command_line: &str) -> Option<u16> {
+    // Look for --port argument
+    if let Some(port_idx) = command_line.find("--port") {
+        let after_port = &command_line[port_idx + 6..]; // Skip "--port"
+
+        // Find the next argument (port number)
+        for word in after_port.split_whitespace() {
+            if let Ok(port) = word.parse::<u16>() {
+                return Some(port);
             }
         }
-
-        // Remove lock file
-        self.remove_lock_file(model_path).await?;
-
-        Ok(())
     }
+    None
+}
 
-    pub async fn get_model_port(&self, model_path: &str) -> Option<u16> {
-        // Get port from lock file
-        if let Ok(lock_info) = self.read_lock_file(model_path).await {
-            Some(lock_info.port)
+/// Check if a process is actually a mistral server by examining its command line
+fn is_model_server_process(pid: u32) -> bool {
+    #[cfg(unix)]
+    {
+        // Try to get the process command line using ps
+        match Command::new("ps")
+            .arg("-p")
+            .arg(pid.to_string())
+            .arg("-o")
+            .arg("comm=")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                // Check if the process name contains "mistralrs-server"
+                output_str.contains("mistralrs-server")
+            }
+            Err(_) => {
+                // If ps fails, assume it's valid (fallback to less strict validation)
+                true
+            }
+        }
+    }
+    #[cfg(windows)]
+    {
+        // Try to get the process image name using tasklist
+        match Command::new("tasklist")
+            .arg("/FI")
+            .arg(format!("PID eq {}", pid))
+            .arg("/FO")
+            .arg("CSV")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                // Check if the process name contains "mistralrs-server"
+                output_str.contains("mistralrs-server")
+            }
+            Err(_) => {
+                // If tasklist fails, assume it's valid (fallback to less strict validation)
+                true
+            }
+        }
+    }
+}
+
+/// Check if a model is running by model ID by examining the process list
+/// Returns (pid, port) if the model is running and healthy, None otherwise
+pub async fn is_model_running(model_id: &Uuid) -> Option<(u32, u16)> {
+    // Find mistralrs-server process with this model ID from process list
+    if let Some((pid, port)) = find_model_server_process(model_id).await {
+        // Verify the process is actually running and healthy
+        if is_process_running(pid) && is_model_server_process(pid) {
+            // Check server health
+            match check_model_server_health(port).await {
+                Ok(()) => {
+                    println!(
+                        "Model {} is running and healthy on PID {} port {}",
+                        model_id, pid, port
+                    );
+                    Some((pid, port))
+                }
+                Err(e) => {
+                    println!("Model {} health check failed: {}", model_id, e);
+                    None
+                }
+            }
         } else {
+            println!("Process {} for model {} is not responding", pid, model_id);
             None
         }
+    } else {
+        None
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ModelStartParams {
+    // Core model configuration
+    pub model_path: String,
+    pub command: String, // "plain", "gguf", "run", "vision-plain", etc.
+    pub model_id_name: Option<String>, // For --model-id in subcommands
+    pub tokenizer_json: Option<String>,
+    pub arch: Option<String>,
+
+    // Quantization and weights
+    pub quantized_filename: Option<String>, // For GGUF models
+    pub weight_file: Option<String>,
+    pub dtype: Option<String>,
+    pub in_situ_quant: Option<String>, // --isq parameter
+
+    // Device and performance
+    pub device_type: crate::ai::DeviceType,
+    pub device_ids: Option<Vec<i32>>,
+    pub num_device_layers: Option<Vec<String>>, // Per-device layer distribution
+    pub cpu: bool,
+
+    // Sequence and memory management
+    pub max_seqs: Option<usize>,
+    pub max_seq_len: Option<usize>,
+    pub no_kv_cache: bool,
+    pub truncate_sequence: bool,
+
+    // PagedAttention configuration
+    pub paged_attn_gpu_mem: Option<usize>,
+    pub paged_attn_gpu_mem_usage: Option<f32>,
+    pub paged_ctxt_len: Option<usize>,
+    pub paged_attn_block_size: Option<usize>,
+    pub no_paged_attn: bool,
+    pub paged_attn: bool,
+
+    // Chat and templates
+    pub chat_template: Option<String>,
+    pub jinja_explicit: Option<String>,
+
+    // Performance and optimization
+    pub prompt_chunksize: Option<usize>,
+    pub prefix_cache_n: Option<usize>,
+
+    // Vision model parameters
+    pub max_edge: Option<usize>,
+    pub max_num_images: Option<usize>,
+    pub max_image_length: Option<usize>,
+
+    // Server configuration
+    pub serve_ip: Option<String>,
+    pub seed: Option<u64>,
+    pub log_file: Option<String>,
+
+    // Search capabilities
+    pub enable_search: bool,
+    pub search_bert_model: Option<String>,
+
+    // Interactive and thinking
+    pub interactive_mode: bool,
+    pub enable_thinking: bool,
+
+    // Token source for authentication
+    pub token_source: Option<String>,
+}
+
+impl Default for ModelStartParams {
+    fn default() -> Self {
+        Self {
+            model_path: String::new(),
+            command: "run".to_string(), // Use auto-loader by default
+            model_id_name: None,
+            tokenizer_json: None,
+            arch: None,
+            quantized_filename: None,
+            weight_file: None,
+            dtype: None,
+            in_situ_quant: None,
+            device_type: crate::ai::DeviceType::Cpu,
+            device_ids: None,
+            num_device_layers: None,
+            cpu: false,
+            max_seqs: None,    // Will use mistralrs default
+            max_seq_len: None, // Will use model default
+            no_kv_cache: false,
+            truncate_sequence: false,
+            paged_attn_gpu_mem: None,
+            paged_attn_gpu_mem_usage: None,
+            paged_ctxt_len: None,
+            paged_attn_block_size: None,
+            no_paged_attn: false,
+            paged_attn: false,
+            chat_template: None,
+            jinja_explicit: None,
+            prompt_chunksize: None,
+            prefix_cache_n: None,
+            max_edge: None,
+            max_num_images: None,
+            max_image_length: None,
+            serve_ip: None,
+            seed: None,
+            log_file: None,
+            enable_search: false,
+            search_bert_model: None,
+            interactive_mode: false,
+            enable_thinking: false,
+            token_source: None,
+        }
+    }
+}
+
+pub async fn start_model(
+    model_id: &Uuid,
+    params: ModelStartParams,
+) -> Result<ModelStartResult, Box<dyn std::error::Error + Send + Sync>> {
+    // Check if already running using process inspection
+    if let Some((pid, port)) = is_model_running(model_id).await {
+        return Ok(ModelStartResult::AlreadyRunning { port, pid });
     }
 
-    pub async fn check_and_cleanup_model(
-        &self,
-        model_path: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Check if model is running using enhanced lock file validation
-        if self.is_model_running(model_path).await {
-            // Model is running, stop it
-            self.stop_model(model_path).await?;
-        } else {
-            // Model is not running, but clean up any stale lock files
-            let _ = self.remove_lock_file(model_path).await;
-        }
-        Ok(())
+    // Find an available port
+    let port = find_available_port(8080).ok_or("No available port found")?;
+
+    // Get the mistralrs-server binary path
+    let binary_path = get_model_server_binary_path()?;
+
+    // Build the command arguments for mistralrs-server
+    let mut command = Command::new(&binary_path);
+
+    // Add global arguments first
+
+    // Server configuration
+    command.arg("--port").arg(port.to_string());
+
+    if let Some(ip) = &params.serve_ip {
+        command.arg("--serve-ip").arg(ip);
     }
+
+    // Seed for reproducibility
+    if let Some(seed) = params.seed {
+        command.arg("--seed").arg(seed.to_string());
+    }
+
+    // Logging
+    let log_path = if let Some(log_file) = &params.log_file {
+        log_file.clone()
+    } else {
+        let log_dir = APP_DATA_DIR.join("logs/models");
+        if !log_dir.exists() {
+            std::fs::create_dir_all(&log_dir)?;
+        }
+        log_dir
+            .join(format!("{}.log", model_id))
+            .to_string_lossy()
+            .to_string()
+    };
+    command.arg("--log").arg(log_path);
+
+    // Sequence management
+    if params.truncate_sequence {
+        command.arg("--truncate-sequence");
+    }
+
+    if let Some(max_seqs) = params.max_seqs {
+        command.arg("--max-seqs").arg(max_seqs.to_string());
+    }
+
+    if params.no_kv_cache {
+        command.arg("--no-kv-cache");
+    }
+
+    // Device configuration
+    if params.cpu || matches!(params.device_type, crate::ai::DeviceType::Cpu) {
+        command.arg("--cpu");
+    }
+
+    // Device layers configuration - use explicit num_device_layers or generate from device_ids
+    if let Some(layers) = &params.num_device_layers {
+        command.arg("--num-device-layers").arg(layers.join(";"));
+    } else if let Some(ids) = &params.device_ids {
+        if !ids.is_empty()
+            && !params.cpu
+            && !matches!(params.device_type, crate::ai::DeviceType::Cpu)
+        {
+            let device_layers_str = ids
+                .iter()
+                .enumerate()
+                .map(|(_i, id)| format!("{}:32", id)) // 32 layers per device by default
+                .collect::<Vec<_>>()
+                .join(";");
+            command.arg("--num-device-layers").arg(device_layers_str);
+        }
+    }
+
+    // In-situ quantization
+    if let Some(isq) = &params.in_situ_quant {
+        command.arg("--isq").arg(isq);
+    }
+
+    // PagedAttention configuration
+    if let Some(gpu_mem) = params.paged_attn_gpu_mem {
+        command.arg("--pa-gpu-mem").arg(gpu_mem.to_string());
+    }
+
+    if let Some(gpu_mem_usage) = params.paged_attn_gpu_mem_usage {
+        command
+            .arg("--pa-gpu-mem-usage")
+            .arg(gpu_mem_usage.to_string());
+    }
+
+    if let Some(ctxt_len) = params.paged_ctxt_len {
+        command.arg("--pa-ctxt-len").arg(ctxt_len.to_string());
+    }
+
+    if let Some(block_size) = params.paged_attn_block_size {
+        command.arg("--pa-blk-size").arg(block_size.to_string());
+    }
+
+    if params.no_paged_attn {
+        command.arg("--no-paged-attn");
+    }
+
+    if params.paged_attn {
+        command.arg("--paged-attn");
+    }
+
+    // Performance optimization
+    if let Some(prefix_cache) = params.prefix_cache_n {
+        command
+            .arg("--prefix-cache-n")
+            .arg(prefix_cache.to_string());
+    }
+
+    if let Some(prompt_chunk) = params.prompt_chunksize {
+        command
+            .arg("--prompt-batchsize")
+            .arg(prompt_chunk.to_string());
+    }
+
+    // Chat templates
+    if let Some(chat_template) = &params.chat_template {
+        command.arg("--chat-template").arg(chat_template);
+    }
+
+    if let Some(jinja) = &params.jinja_explicit {
+        command.arg("--jinja-explicit").arg(jinja);
+    }
+
+    // Token source
+    if let Some(token_source) = &params.token_source {
+        command.arg("--token-source").arg(token_source);
+    }
+
+    // Interactive mode and thinking
+    if params.interactive_mode {
+        command.arg("--interactive-mode");
+    }
+
+    // Search capabilities
+    if params.enable_search {
+        command.arg("--enable-search");
+    }
+
+    if let Some(bert_model) = &params.search_bert_model {
+        command.arg("--search-bert-model").arg(bert_model);
+    }
+
+    if params.enable_thinking {
+        command.arg("--enable-thinking");
+    }
+
+    // Add the model subcommand based on model type
+    let model_path_absolute = ModelUtils::get_model_absolute_path(&params.model_path);
+
+    match params.command.to_lowercase().as_str() {
+        "plain" => {
+            command.arg("plain");
+            command.arg("--model-id");
+            if let Some(model_id_name) = &params.model_id_name {
+                command.arg(model_id_name);
+            } else {
+                command.arg(&model_path_absolute);
+            }
+
+            // Add plain-specific parameters
+            if let Some(tokenizer) = &params.tokenizer_json {
+                command.arg("--tokenizer-json").arg(tokenizer);
+            }
+            if let Some(arch) = &params.arch {
+                command.arg("--arch").arg(arch);
+            }
+            if let Some(dtype) = &params.dtype {
+                command.arg("--dtype").arg(dtype);
+            }
+            if let Some(max_seq_len) = params.max_seq_len {
+                command.arg("--max-seq-len").arg(max_seq_len.to_string());
+            }
+        }
+        "gguf" => {
+            command.arg("gguf");
+            command
+                .arg("--quantized-model-id")
+                .arg(&model_path_absolute);
+
+            if let Some(filename) = &params.quantized_filename {
+                command.arg("--quantized-filename").arg(filename);
+            } else {
+                // Default GGUF filename patterns
+                command.arg("--quantized-filename").arg("*.gguf");
+            }
+
+            // Add GGUF-specific parameters
+            if let Some(dtype) = &params.dtype {
+                command.arg("--dtype").arg(dtype);
+            }
+            if let Some(max_seq_len) = params.max_seq_len {
+                command.arg("--max-seq-len").arg(max_seq_len.to_string());
+            }
+        }
+        "run" => {
+            command.arg("run");
+            command.arg("--model-id");
+            if let Some(model_id_name) = &params.model_id_name {
+                command.arg(model_id_name);
+            } else {
+                command.arg(&model_path_absolute);
+            }
+
+            // Add run-specific parameters (auto-loader)
+            if let Some(dtype) = &params.dtype {
+                command.arg("--dtype").arg(dtype);
+            }
+            if let Some(max_seq_len) = params.max_seq_len {
+                command.arg("--max-seq-len").arg(max_seq_len.to_string());
+            }
+        }
+        "vision-plain" => {
+            command.arg("vision-plain");
+            command.arg("--model-id");
+            if let Some(model_id_name) = &params.model_id_name {
+                command.arg(model_id_name);
+            } else {
+                command.arg(&model_path_absolute);
+            }
+
+            // Add vision-specific parameters
+            if let Some(max_edge) = params.max_edge {
+                command.arg("--max-edge").arg(max_edge.to_string());
+            }
+            if let Some(max_images) = params.max_num_images {
+                command.arg("--max-num-images").arg(max_images.to_string());
+            }
+            if let Some(max_image_len) = params.max_image_length {
+                command
+                    .arg("--max-image-length")
+                    .arg(max_image_len.to_string());
+            }
+            if let Some(dtype) = &params.dtype {
+                command.arg("--dtype").arg(dtype);
+            }
+            if let Some(max_seq_len) = params.max_seq_len {
+                command.arg("--max-seq-len").arg(max_seq_len.to_string());
+            }
+        }
+        "x-lora" => {
+            command.arg("x-lora");
+            command.arg("--model-id");
+            if let Some(model_id_name) = &params.model_id_name {
+                command.arg(model_id_name);
+            } else {
+                command.arg(&model_path_absolute);
+            }
+            // X-LoRA specific parameters would go here
+        }
+        "lora" => {
+            command.arg("lora");
+            command.arg("--model-id");
+            if let Some(model_id_name) = &params.model_id_name {
+                command.arg(model_id_name);
+            } else {
+                command.arg(&model_path_absolute);
+            }
+            // LoRA specific parameters would go here
+        }
+        "toml" => {
+            command.arg("toml");
+            command.arg("--toml-path").arg(&model_path_absolute);
+        }
+        _ => {
+            // Default to run (auto-loader) for unknown model types
+            command.arg("run");
+            command.arg("--model-id");
+            if let Some(model_id_name) = &params.model_id_name {
+                command.arg(model_id_name);
+            } else {
+                command.arg(&model_path_absolute);
+            }
+        }
+    }
+
+    // Add our internal model UUID as an additional argument for process identification
+    // This helps us identify which process belongs to which model
+    command.arg("--").arg(format!("model-uuid:{}", model_id));
+
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    println!("Starting mistralrs-server process: {:?}", command);
+
+    // Spawn the process
+    let mut child = command.spawn()?;
+    let pid = child.id();
+
+    println!(
+        "mistralrs-server process spawned with PID: {}, port: {}",
+        pid, port
+    );
+
+    // Wait a bit to ensure the process has started successfully
+    sleep(Duration::from_millis(100)).await;
+
+    // Check if the process is still running
+    match child.try_wait() {
+        Ok(Some(status)) => {
+            // Process has already exited
+            eprintln!(
+                "mistralrs-server process exited immediately with status: {}",
+                status
+            );
+            return Err(format!("mistralrs-server process failed to start: {}", status).into());
+        }
+        Ok(None) => {
+            // Process is still running, detach it
+            println!("mistralrs-server process is running, waiting for health check...");
+            // We don't want to wait for the child process, so we detach it
+            // The process will continue running independently
+            std::mem::forget(child);
+        }
+        Err(e) => {
+            eprintln!("Failed to check mistralrs-server process status: {}", e);
+            return Err(format!("Failed to check process status: {}", e).into());
+        }
+    }
+
+    // Calculate timeout based on model size
+    let timeout_seconds = match calculate_model_size(&params.model_path) {
+        Ok(size) => calculate_timeout_for_model_size(size),
+        Err(e) => {
+            eprintln!(
+                "Failed to calculate model size: {}, using default timeout of 20 minutes",
+                e
+            );
+            1200 // Default to 20 minutes if we can't calculate size
+        }
+    };
+
+    // Wait for the model server to be healthy and ready
+    if let Err(e) = wait_for_model_health(port, timeout_seconds).await {
+        eprintln!("Model server health check failed: {}", e);
+        // Try to stop the process if health check fails
+        let _ = stop_model(model_id, pid, port).await;
+        return Err(format!("Model server failed to become healthy: {}", e).into());
+    }
+
+    println!("Model server is healthy and ready on port {}", port);
+
+    Ok(ModelStartResult::Started { port, pid })
+}
+
+pub async fn stop_model(
+    model_id: &uuid::Uuid,
+    pid: u32,
+    port: u16,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!(
+        "Stopping mistralrs-server with model_id: {}, PID: {}, port: {}",
+        model_id, pid, port
+    );
+
+    // Verify that the process is actually running and is a mistralrs server
+    if !is_process_running(pid) {
+        println!("Process {} is not running", pid);
+        return Ok(());
+    }
+
+    // Verify that the process is actually a mistralrs server
+    if !is_model_server_process(pid) {
+        println!("Process {} is not a mistralrs server", pid);
+        return Err("Process is not a mistralrs server".into());
+    }
+
+    // Verify that the port is actually in use (additional validation)
+    if !is_port_in_use(port) {
+        println!(
+            "Port {} is not in use, process {} may be unresponsive",
+            port, pid
+        );
+    }
+
+    println!("Sending graceful termination signal to process {}", pid);
+
+    // Try to terminate the process gracefully first
+    #[cfg(unix)]
+    {
+        use nix::sys::signal::{self, Signal};
+        use nix::unistd::Pid;
+
+        let pid_nix = Pid::from_raw(pid as i32);
+
+        // Send SIGTERM first for graceful shutdown
+        if let Err(e) = signal::kill(pid_nix, Signal::SIGTERM) {
+            eprintln!("Failed to send SIGTERM to process {}: {}", pid, e);
+            return Err(format!("Failed to send termination signal: {}", e).into());
+        }
+
+        // Wait for graceful shutdown with timeout
+        let graceful_timeout_ms = 5000; // 5 seconds
+        let check_interval_ms = 200; // Check every 200ms
+        let max_checks = graceful_timeout_ms / check_interval_ms;
+
+        for check in 0..max_checks {
+            sleep(Duration::from_millis(check_interval_ms)).await;
+
+            if !is_process_running(pid) {
+                println!(
+                    "Process {} terminated gracefully after {}ms",
+                    pid,
+                    (check + 1) * check_interval_ms
+                );
+                break;
+            }
+
+            // If this is the last check, force kill
+            if check == max_checks - 1 {
+                println!(
+                    "Process {} did not respond to SIGTERM after {}ms, sending SIGKILL",
+                    pid, graceful_timeout_ms
+                );
+
+                if let Err(e) = signal::kill(pid_nix, Signal::SIGKILL) {
+                    eprintln!("Failed to send SIGKILL to process {}: {}", pid, e);
+                    return Err(format!("Failed to force kill process: {}", e).into());
+                }
+
+                // Wait a bit more for force kill to take effect
+                sleep(Duration::from_millis(1000)).await;
+
+                if is_process_running(pid) {
+                    eprintln!("Process {} is still running after SIGKILL", pid);
+                    return Err("Process could not be terminated".into());
+                } else {
+                    println!("Process {} force killed successfully", pid);
+                }
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        // On Windows, try graceful termination first
+        let graceful_result = Command::new("taskkill")
+            .arg("/PID")
+            .arg(pid.to_string())
+            .output();
+
+        match graceful_result {
+            Ok(result) => {
+                if result.status.success() {
+                    // Wait for graceful shutdown
+                    let mut graceful_success = false;
+                    for _ in 0..25 {
+                        // Check for 5 seconds (25 * 200ms)
+                        sleep(Duration::from_millis(200)).await;
+                        if !is_process_running(pid) {
+                            graceful_success = true;
+                            println!("Process {} terminated gracefully", pid);
+                            break;
+                        }
+                    }
+
+                    if !graceful_success {
+                        println!(
+                            "Process {} did not terminate gracefully, force killing",
+                            pid
+                        );
+                        // Force terminate
+                        let force_result = Command::new("taskkill")
+                            .arg("/PID")
+                            .arg(pid.to_string())
+                            .arg("/F") // Force terminate
+                            .output();
+
+                        match force_result {
+                            Ok(force_res) => {
+                                if !force_res.status.success() {
+                                    let stderr = String::from_utf8_lossy(&force_res.stderr);
+                                    return Err(format!(
+                                        "Failed to force terminate process {}: {}",
+                                        pid, stderr
+                                    )
+                                    .into());
+                                }
+                            }
+                            Err(e) => {
+                                return Err(
+                                    format!("Failed to execute force taskkill: {}", e).into()
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    let stderr = String::from_utf8_lossy(&result.stderr);
+                    return Err(format!("Failed to terminate process {}: {}", pid, stderr).into());
+                }
+            }
+            Err(e) => {
+                return Err(format!("Failed to execute taskkill: {}", e).into());
+            }
+        }
+    }
+
+    // Final verification that process is stopped
+    if is_process_running(pid) {
+        return Err("Process is still running after termination attempts".into());
+    }
+
+    println!("Process {} terminated successfully", pid);
+
+    Ok(())
+}
+
+/// Stop and cleanup a specific model by ID
+pub async fn check_and_cleanup_model(
+    model_id: &Uuid,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Check if model is running and get its runtime info
+    if let Some((pid, port)) = is_model_running(model_id).await {
+        // Model is running, stop it
+        stop_model(model_id, pid, port).await?;
+    }
+
+    Ok(())
 }
 
 use crate::ai::models::ModelUtils;
-use std::sync::OnceLock;
-
-static MODEL_MANAGER: OnceLock<ModelManager> = OnceLock::new();
-
-pub fn get_model_manager() -> &'static ModelManager {
-    MODEL_MANAGER.get_or_init(|| ModelManager::new())
-}
+use crate::APP_DATA_DIR;

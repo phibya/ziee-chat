@@ -14,9 +14,8 @@ use uuid::Uuid;
 use crate::ai::{
     core::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
     providers::{
-        anthropic::AnthropicProvider, candle::CandleProvider, custom::CustomProvider,
-        gemini::GeminiProvider, groq::GroqProvider, mistral::MistralProvider,
-        openai::OpenAIProvider,
+        anthropic::AnthropicProvider, custom::CustomProvider, gemini::GeminiProvider,
+        groq::GroqProvider, local::LocalProvider, mistral::MistralProvider, openai::OpenAIProvider,
     },
 };
 use crate::api::errors::ErrorCode;
@@ -1014,13 +1013,6 @@ fn create_proxy_config(
     }
 }
 
-/// Helper function to create AI provider instances
-async fn create_ai_provider(
-    provider: &crate::database::models::Provider,
-) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
-    create_ai_provider_with_model_id(provider, None).await
-}
-
 /// Helper function to create AI provider instances with optional model ID for Candle providers
 async fn create_ai_provider_with_model_id(
     provider: &crate::database::models::Provider,
@@ -1101,7 +1093,7 @@ async fn create_ai_provider_with_model_id(
                 .ok_or("Model is not running. Please start the model first.")?;
 
             // Create the Candle provider with the model's port and name
-            let candle_provider = CandleProvider::new(port as u16, model.name.clone())?;
+            let candle_provider = LocalProvider::new(port as u16, model.name.clone())?;
 
             Ok(Box::new(candle_provider))
         }
