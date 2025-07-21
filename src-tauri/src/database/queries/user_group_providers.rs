@@ -221,7 +221,7 @@ async fn get_all_providers() -> Result<Vec<Provider>, sqlx::Error> {
     let pool = pool.as_ref();
 
     let provider_ids: Vec<(Uuid,)> =
-        sqlx::query_as("SELECT id FROM providers ORDER BY is_default DESC, created_at ASC")
+        sqlx::query_as("SELECT id FROM providers ORDER BY built_in DESC, created_at ASC")
             .fetch_all(pool)
             .await?;
 

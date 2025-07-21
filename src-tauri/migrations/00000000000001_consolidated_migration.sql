@@ -129,7 +129,7 @@ CREATE TABLE providers (
     api_key TEXT,
     base_url VARCHAR(512),
     -- Settings removed - now stored per-model in models.settings JSONB column
-    is_default BOOLEAN DEFAULT FALSE,
+    built_in BOOLEAN DEFAULT FALSE,
     proxy_settings JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -586,7 +586,7 @@ VALUES (
 );
 
 -- Insert default model providers
-INSERT INTO providers (name, provider_type, enabled, is_default, base_url) VALUES
+INSERT INTO providers (name, provider_type, enabled, built_in, base_url) VALUES
 ('Local', 'local', false, true, null),
 ('OpenAI', 'openai', false, true, 'https://api.openai.com/v1'),
 ('Anthropic', 'anthropic', false, true, 'https://api.anthropic.com/v1'),

@@ -25,7 +25,7 @@ export interface Provider {
   api_key?: string
   base_url?: string
   proxy_settings?: ProviderProxySettings
-  is_default?: boolean
+  built_in?: boolean
   created_at?: string
   updated_at?: string
 }

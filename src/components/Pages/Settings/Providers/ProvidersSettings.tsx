@@ -577,7 +577,7 @@ export function ProvidersSettings() {
         icon: <DeleteOutlined />,
         label: t('buttons.delete'),
         onClick: () => handleDeleteProvider(provider.id),
-        disabled: provider.is_default,
+        disabled: provider.built_in,
       })
     }
 
