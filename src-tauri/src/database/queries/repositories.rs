@@ -122,17 +122,18 @@ pub async fn create_default_repositories() -> Result<(), sqlx::Error> {
     let pool = pool.as_ref();
 
     // Check if Hugging Face repository already exists
-    let exists: Option<(Uuid,)> = sqlx::query_as(
+    let hf_exists: Option<(Uuid,)> = sqlx::query_as(
         "SELECT id FROM repositories WHERE name = 'Hugging Face Hub' AND built_in = true"
     )
     .fetch_optional(pool)
     .await?;
 
-    if exists.is_none() {
+    if hf_exists.is_none() {
         // Create Hugging Face built-in repository
         let huggingface_id = Uuid::new_v4();
         let auth_config = serde_json::json!({
-            "api_key": ""
+            "api_key": "",
+            "auth_test_api_endpoint": "https://huggingface.co/api/whoami"
         });
 
         sqlx::query(
@@ -144,6 +145,37 @@ pub async fn create_default_repositories() -> Result<(), sqlx::Error> {
         .bind("Hugging Face Hub")
         .bind("https://huggingface.co")
         .bind("api_key")
+        .bind(&auth_config)
+        .bind(true)
+        .bind(true)
+        .execute(pool)
+        .await?;
+    }
+
+    // Check if GitHub repository already exists
+    let gh_exists: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM repositories WHERE name = 'GitHub' AND built_in = true"
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if gh_exists.is_none() {
+        // Create GitHub built-in repository
+        let github_id = Uuid::new_v4();
+        let auth_config = serde_json::json!({
+            "token": "",
+            "auth_test_api_endpoint": "https://api.github.com/user"
+        });
+
+        sqlx::query(
+            "INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (name) DO NOTHING"
+        )
+        .bind(github_id)
+        .bind("GitHub")
+        .bind("https://api.github.com")
+        .bind("bearer_token")
         .bind(&auth_config)
         .bind(true)
         .bind(true)

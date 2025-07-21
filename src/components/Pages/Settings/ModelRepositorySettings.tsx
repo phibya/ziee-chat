@@ -5,7 +5,7 @@ import {
   EyeInvisibleOutlined,
   EyeTwoTone,
   PlusOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons";
 import {
   App,
   Button,
@@ -19,26 +19,26 @@ import {
   Space,
   Switch,
   Typography,
-} from 'antd'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import { isDesktopApp } from '../../../api/core'
-import { Permission, usePermissions } from '../../../permissions'
-import { useRepositoriesStore } from '../../../store/repositories'
-import { Repository } from '../../../types/api/repository'
+} from "antd";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
+import { isDesktopApp } from "../../../api/core";
+import { Permission, usePermissions } from "../../../permissions";
+import { useRepositoriesStore } from "../../../store/repositories";
+import { Repository } from "../../../types/api/repository";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 export function ModelRepositorySettings() {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
-  const [repositoryForm] = Form.useForm()
-  const [isRepositoryModalOpen, setIsRepositoryModalOpen] = useState(false)
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const { hasPermission } = usePermissions();
+  const [repositoryForm] = Form.useForm();
+  const [isRepositoryModalOpen, setIsRepositoryModalOpen] = useState(false);
   const [editingRepository, setEditingRepository] = useState<Repository | null>(
     null,
-  )
+  );
 
   // Use repository store
   const {
@@ -52,7 +52,7 @@ export function ModelRepositorySettings() {
     deleteRepository,
     testConnection,
   } = useRepositoriesStore(
-    useShallow(state => ({
+    useShallow((state) => ({
       repositories: state.repositories,
       creating: state.creating,
       updating: state.updating,
@@ -63,34 +63,34 @@ export function ModelRepositorySettings() {
       deleteRepository: state.deleteRepository,
       testConnection: state.testConnection,
     })),
-  )
+  );
 
   // Check permissions
   const canViewRepositories =
-    isDesktopApp || hasPermission(Permission.config.repositories.read)
+    isDesktopApp || hasPermission(Permission.config.repositories.read);
   const canEditRepositories =
-    isDesktopApp || hasPermission(Permission.config.repositories.edit)
+    isDesktopApp || hasPermission(Permission.config.repositories.edit);
 
   // If user doesn't have view permissions, don't render the component
   if (!canViewRepositories) {
     return (
       <div className="max-w-4xl">
-        <div style={{ padding: '24px', textAlign: 'center' }}>
+        <div style={{ padding: "24px", textAlign: "center" }}>
           <Title level={3}>Access Denied</Title>
           <Text type="secondary">
             You do not have permission to view model repository settings.
           </Text>
         </div>
       </div>
-    )
+    );
   }
 
   // Load repositories when component mounts
   useEffect(() => {
-    loadRepositories().catch(error => {
-      console.error('Failed to load repositories:', error)
-    })
-  }, [loadRepositories])
+    loadRepositories().catch((error) => {
+      console.error("Failed to load repositories:", error);
+    });
+  }, [loadRepositories]);
 
   // Update repository form when editing
   useEffect(() => {
@@ -103,43 +103,47 @@ export function ModelRepositorySettings() {
         username: editingRepository.auth_config?.username,
         password: editingRepository.auth_config?.password,
         token: editingRepository.auth_config?.token,
+        auth_test_api_endpoint:
+          editingRepository.auth_config?.auth_test_api_endpoint,
         enabled: editingRepository.enabled,
-      })
+      });
     } else if (!editingRepository && isRepositoryModalOpen) {
       repositoryForm.setFieldsValue({
-        auth_type: 'none',
+        auth_type: "none",
         enabled: true,
-      })
+      });
     }
-  }, [editingRepository, isRepositoryModalOpen, repositoryForm])
+  }, [editingRepository, isRepositoryModalOpen, repositoryForm]);
 
   const testRepositoryConnection = async (repository: Repository) => {
     if (!canEditRepositories) {
-      message.error('You do not have permission to test repository connections')
-      return
+      message.error(
+        "You do not have permission to test repository connections",
+      );
+      return;
     }
 
     // Validate required fields based on auth type
     if (
-      repository.auth_type === 'api_key' &&
+      repository.auth_type === "api_key" &&
       !repository.auth_config?.api_key
     ) {
-      message.warning('Please enter an API key first')
-      return
+      message.warning("Please enter an API key first");
+      return;
     }
     if (
-      repository.auth_type === 'basic_auth' &&
+      repository.auth_type === "basic_auth" &&
       (!repository.auth_config?.username || !repository.auth_config?.password)
     ) {
-      message.warning('Please enter username and password first')
-      return
+      message.warning("Please enter username and password first");
+      return;
     }
     if (
-      repository.auth_type === 'bearer_token' &&
+      repository.auth_type === "bearer_token" &&
       !repository.auth_config?.token
     ) {
-      message.warning('Please enter a bearer token first')
-      return
+      message.warning("Please enter a bearer token first");
+      return;
     }
 
     try {
@@ -148,54 +152,58 @@ export function ModelRepositorySettings() {
         url: repository.url,
         auth_type: repository.auth_type,
         auth_config: repository.auth_config,
-      })
+      });
 
       if (result.success) {
-        message.success(`Connection to ${repository.name} successful!`)
+        message.success(`Connection to ${repository.name} successful!`);
       } else {
         message.error(
           result.message || `Connection to ${repository.name} failed`,
-        )
+        );
       }
     } catch (error: any) {
-      console.error('Repository connection test failed:', error)
-      message.error(error?.message || `Connection to ${repository.name} failed`)
+      console.error("Repository connection test failed:", error);
+      message.error(
+        error?.message || `Connection to ${repository.name} failed`,
+      );
     }
-  }
+  };
 
   const testRepositoryFromForm = async () => {
     if (!canEditRepositories) {
-      message.error('You do not have permission to test repository connections')
-      return
+      message.error(
+        "You do not have permission to test repository connections",
+      );
+      return;
     }
 
-    const values = repositoryForm.getFieldsValue()
+    const values = repositoryForm.getFieldsValue();
 
     // Validate required fields
     if (!values.name) {
-      message.warning('Please enter a repository name first')
-      return
+      message.warning("Please enter a repository name first");
+      return;
     }
     if (!values.url) {
-      message.warning('Please enter a repository URL first')
-      return
+      message.warning("Please enter a repository URL first");
+      return;
     }
 
     // Validate auth fields based on type
-    if (values.auth_type === 'api_key' && !values.api_key) {
-      message.warning('Please enter an API key first')
-      return
+    if (values.auth_type === "api_key" && !values.api_key) {
+      message.warning("Please enter an API key first");
+      return;
     }
     if (
-      values.auth_type === 'basic_auth' &&
+      values.auth_type === "basic_auth" &&
       (!values.username || !values.password)
     ) {
-      message.warning('Please enter username and password first')
-      return
+      message.warning("Please enter username and password first");
+      return;
     }
-    if (values.auth_type === 'bearer_token' && !values.token) {
-      message.warning('Please enter a bearer token first')
-      return
+    if (values.auth_type === "bearer_token" && !values.token) {
+      message.warning("Please enter a bearer token first");
+      return;
     }
 
     try {
@@ -208,57 +216,58 @@ export function ModelRepositorySettings() {
           username: values.username,
           password: values.password,
           token: values.token,
+          auth_test_api_endpoint: values.auth_test_api_endpoint,
         },
-      })
+      });
 
       if (result.success) {
-        message.success(`Connection to ${values.name} successful!`)
+        message.success(`Connection to ${values.name} successful!`);
       } else {
-        message.error(result.message || `Connection to ${values.name} failed`)
+        message.error(result.message || `Connection to ${values.name} failed`);
       }
     } catch (error: any) {
-      console.error('Repository connection test failed:', error)
-      message.error(error?.message || `Connection to ${values.name} failed`)
+      console.error("Repository connection test failed:", error);
+      message.error(error?.message || `Connection to ${values.name} failed`);
     }
-  }
+  };
 
   // Repository management functions
   const handleAddRepository = () => {
-    setEditingRepository(null)
-    setIsRepositoryModalOpen(true)
-  }
+    setEditingRepository(null);
+    setIsRepositoryModalOpen(true);
+  };
 
   const handleEditRepository = (repository: Repository) => {
-    setEditingRepository(repository)
-    setIsRepositoryModalOpen(true)
-  }
+    setEditingRepository(repository);
+    setIsRepositoryModalOpen(true);
+  };
 
   const handleDeleteRepository = async (repositoryId: string) => {
     if (!canEditRepositories) {
-      message.error('You do not have permission to modify repository settings')
-      return
+      message.error("You do not have permission to modify repository settings");
+      return;
     }
 
     // Don't allow deleting built-in repositories
-    const repo = repositories.find(r => r.id === repositoryId)
+    const repo = repositories.find((r) => r.id === repositoryId);
     if (repo?.built_in) {
-      message.warning('Built-in repositories cannot be deleted')
-      return
+      message.warning("Built-in repositories cannot be deleted");
+      return;
     }
 
     try {
-      await deleteRepository(repositoryId)
-      message.success('Repository removed successfully')
+      await deleteRepository(repositoryId);
+      message.success("Repository removed successfully");
     } catch (error: any) {
-      console.error('Failed to delete repository:', error)
-      message.error(error?.message || 'Failed to delete repository')
+      console.error("Failed to delete repository:", error);
+      message.error(error?.message || "Failed to delete repository");
     }
-  }
+  };
 
   const handleRepositorySubmit = async (values: any) => {
     if (!canEditRepositories) {
-      message.error('You do not have permission to modify repository settings')
-      return
+      message.error("You do not have permission to modify repository settings");
+      return;
     }
 
     const repositoryData = {
@@ -270,58 +279,59 @@ export function ModelRepositorySettings() {
         username: values.username,
         password: values.password,
         token: values.token,
+        auth_test_api_endpoint: values.auth_test_api_endpoint,
       },
       enabled: values.enabled ?? true,
-    }
+    };
 
     try {
       if (editingRepository) {
         // Update existing repository
-        await updateRepository(editingRepository.id, repositoryData)
-        message.success('Repository updated successfully')
+        await updateRepository(editingRepository.id, repositoryData);
+        message.success("Repository updated successfully");
       } else {
         // Add new repository
-        await createRepository(repositoryData)
-        message.success('Repository added successfully')
+        await createRepository(repositoryData);
+        message.success("Repository added successfully");
       }
 
-      setIsRepositoryModalOpen(false)
-      repositoryForm.resetFields()
+      setIsRepositoryModalOpen(false);
+      repositoryForm.resetFields();
     } catch (error: any) {
-      console.error('Failed to save repository:', error)
-      message.error(error?.message || 'Failed to save repository')
+      console.error("Failed to save repository:", error);
+      message.error(error?.message || "Failed to save repository");
     }
-  }
+  };
 
   const handleRepositoryCancel = () => {
-    setIsRepositoryModalOpen(false)
-    setEditingRepository(null)
-    repositoryForm.resetFields()
-  }
+    setIsRepositoryModalOpen(false);
+    setEditingRepository(null);
+    repositoryForm.resetFields();
+  };
 
   const handleToggleRepository = async (
     repositoryId: string,
     enabled: boolean,
   ) => {
     if (!canEditRepositories) {
-      message.error('You do not have permission to modify repository settings')
-      return
+      message.error("You do not have permission to modify repository settings");
+      return;
     }
 
     try {
-      await updateRepository(repositoryId, { enabled })
+      await updateRepository(repositoryId, { enabled });
     } catch (error: any) {
-      console.error('Failed to toggle repository:', error)
-      message.error(error?.message || 'Failed to toggle repository')
+      console.error("Failed to toggle repository:", error);
+      message.error(error?.message || "Failed to toggle repository");
     }
-  }
+  };
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
       <div className="mb-6">
-        <Title level={2}>{t('settings.modelRepository.title')}</Title>
+        <Title level={2}>{t("settings.modelRepository.title")}</Title>
         <Text type="secondary">
-          {t('settings.modelRepository.description')}
+          {t("settings.modelRepository.description")}
         </Text>
       </div>
 
@@ -372,7 +382,7 @@ export function ModelRepositorySettings() {
                             <Switch
                               key="toggle"
                               checked={repository.enabled}
-                              onChange={checked =>
+                              onChange={(checked) =>
                                 handleToggleRepository(repository.id, checked)
                               }
                             />,
@@ -440,15 +450,15 @@ export function ModelRepositorySettings() {
                         <Flex className="flex-col gap-1">
                           <Text type="secondary">{repository.url}</Text>
                           <Text type="secondary" className="text-xs">
-                            Authentication:{' '}
-                            {repository.auth_type === 'none'
-                              ? 'None'
-                              : repository.auth_type === 'api_key'
-                                ? 'API Key'
-                                : repository.auth_type === 'basic_auth'
-                                  ? 'Basic Auth'
-                                  : repository.auth_type === 'bearer_token'
-                                    ? 'Bearer Token'
+                            Authentication:{" "}
+                            {repository.auth_type === "none"
+                              ? "None"
+                              : repository.auth_type === "api_key"
+                                ? "API Key"
+                                : repository.auth_type === "basic_auth"
+                                  ? "Basic Auth"
+                                  : repository.auth_type === "bearer_token"
+                                    ? "Bearer Token"
                                     : repository.auth_type}
                           </Text>
                         </Flex>
@@ -464,7 +474,7 @@ export function ModelRepositorySettings() {
 
       {/* Repository Add/Edit Modal */}
       <Modal
-        title={editingRepository ? 'Edit Repository' : 'Add Repository'}
+        title={editingRepository ? "Edit Repository" : "Add Repository"}
         open={isRepositoryModalOpen}
         onCancel={handleRepositoryCancel}
         footer={null}
@@ -480,7 +490,7 @@ export function ModelRepositorySettings() {
             name="name"
             label="Repository Name"
             rules={[
-              { required: true, message: 'Please enter a repository name' },
+              { required: true, message: "Please enter a repository name" },
             ]}
           >
             <Input placeholder="My Custom Repository" />
@@ -490,8 +500,8 @@ export function ModelRepositorySettings() {
             name="url"
             label="Repository URL"
             rules={[
-              { required: true, message: 'Please enter a repository URL' },
-              { type: 'url', message: 'Please enter a valid URL' },
+              { required: true, message: "Please enter a repository URL" },
+              { type: "url", message: "Please enter a valid URL" },
             ]}
           >
             <Input placeholder="https://your-custom-repo.com/models" />
@@ -512,30 +522,30 @@ export function ModelRepositorySettings() {
             </Select>
           </Form.Item>
 
-          <Form.Item dependencies={['auth_type']} noStyle>
+          <Form.Item dependencies={["auth_type"]} noStyle>
             {({ getFieldValue }) => {
-              const authType = getFieldValue('auth_type')
+              const authType = getFieldValue("auth_type");
 
-              if (authType === 'api_key') {
+              if (authType === "api_key") {
                 return (
                   <Form.Item
                     name="api_key"
                     label="API Key"
                     rules={[
-                      { required: true, message: 'Please enter your API key' },
+                      { required: true, message: "Please enter your API key" },
                     ]}
                   >
                     <Input.Password
                       placeholder="Enter your API key"
-                      iconRender={visible =>
+                      iconRender={(visible) =>
                         visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                       }
                     />
                   </Form.Item>
-                )
+                );
               }
 
-              if (authType === 'basic_auth') {
+              if (authType === "basic_auth") {
                 return (
                   <>
                     <Form.Item
@@ -544,7 +554,7 @@ export function ModelRepositorySettings() {
                       rules={[
                         {
                           required: true,
-                          message: 'Please enter your username',
+                          message: "Please enter your username",
                         },
                       ]}
                     >
@@ -556,22 +566,22 @@ export function ModelRepositorySettings() {
                       rules={[
                         {
                           required: true,
-                          message: 'Please enter your password',
+                          message: "Please enter your password",
                         },
                       ]}
                     >
                       <Input.Password
                         placeholder="Enter your password"
-                        iconRender={visible =>
+                        iconRender={(visible) =>
                           visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                         }
                       />
                     </Form.Item>
                   </>
-                )
+                );
               }
 
-              if (authType === 'bearer_token') {
+              if (authType === "bearer_token") {
                 return (
                   <Form.Item
                     name="token"
@@ -579,49 +589,58 @@ export function ModelRepositorySettings() {
                     rules={[
                       {
                         required: true,
-                        message: 'Please enter your bearer token',
+                        message: "Please enter your bearer token",
                       },
                     ]}
                   >
                     <Input.Password
                       placeholder="Enter your bearer token"
-                      iconRender={visible =>
+                      iconRender={(visible) =>
                         visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                       }
                     />
                   </Form.Item>
-                )
+                );
               }
 
-              return null
+              return null;
             }}
+          </Form.Item>
+
+          <Form.Item
+            name="auth_test_api_endpoint"
+            label="Authentication Test Endpoint"
+            tooltip="Custom endpoint to test authentication. If not provided, the main repository URL will be used for testing."
+          >
+            <Input placeholder="https://api.example.com/auth/test" />
           </Form.Item>
 
           {/* Test Connection Section */}
           <Form.Item
             dependencies={[
-              'url',
-              'auth_type',
-              'api_key',
-              'username',
-              'password',
-              'token',
+              "url",
+              "auth_type",
+              "api_key",
+              "username",
+              "password",
+              "token",
+              "auth_test_api_endpoint",
             ]}
             noStyle
           >
             {({ getFieldValue }) => {
-              const authType = getFieldValue('auth_type')
-              const url = getFieldValue('url')
+              const authType = getFieldValue("auth_type");
+              const url = getFieldValue("url");
 
               // Only show test button if URL is provided and auth is configured (if needed)
               const showTestButton =
                 url &&
-                (authType === 'none' ||
-                  (authType === 'api_key' && getFieldValue('api_key')) ||
-                  (authType === 'basic_auth' &&
-                    getFieldValue('username') &&
-                    getFieldValue('password')) ||
-                  (authType === 'bearer_token' && getFieldValue('token')))
+                (authType === "none" ||
+                  (authType === "api_key" && getFieldValue("api_key")) ||
+                  (authType === "basic_auth" &&
+                    getFieldValue("username") &&
+                    getFieldValue("password")) ||
+                  (authType === "bearer_token" && getFieldValue("token")));
 
               if (showTestButton) {
                 return (
@@ -641,10 +660,10 @@ export function ModelRepositorySettings() {
                       </Button>
                     </div>
                   </Form.Item>
-                )
+                );
               }
 
-              return null
+              return null;
             }}
           </Form.Item>
 
@@ -663,7 +682,7 @@ export function ModelRepositorySettings() {
                 htmlType="submit"
                 loading={creating || updating}
               >
-                {editingRepository ? 'Update' : 'Add'} Repository
+                {editingRepository ? "Update" : "Add"} Repository
               </Button>
               <Button onClick={handleRepositoryCancel}>Cancel</Button>
             </Space>
@@ -671,5 +690,5 @@ export function ModelRepositorySettings() {
         </Form>
       </Modal>
     </Space>
-  )
+  );
 }

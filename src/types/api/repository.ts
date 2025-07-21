@@ -8,6 +8,7 @@ export interface RepositoryAuthConfig {
   username?: string
   password?: string
   token?: string
+  auth_test_api_endpoint?: string
 }
 
 export interface Repository {

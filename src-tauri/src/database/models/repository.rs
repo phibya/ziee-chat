@@ -9,6 +9,7 @@ pub struct RepositoryAuthConfig {
     pub username: Option<String>,
     pub password: Option<String>,
     pub token: Option<String>,
+    pub auth_test_api_endpoint: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

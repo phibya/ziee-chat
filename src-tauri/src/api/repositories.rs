@@ -10,9 +10,8 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        CreateRepositoryRequest, Repository, RepositoryListResponse, 
-        TestRepositoryConnectionRequest, TestRepositoryConnectionResponse, 
-        UpdateRepositoryRequest
+        CreateRepositoryRequest, Repository, RepositoryListResponse,
+        TestRepositoryConnectionRequest, TestRepositoryConnectionResponse, UpdateRepositoryRequest,
     },
     queries::repositories,
 };
@@ -98,7 +97,9 @@ pub async fn create_repository(
     if let Some(auth_config) = &request.auth_config {
         match request.auth_type.as_str() {
             "api_key" => {
-                if auth_config.api_key.is_none() || auth_config.api_key.as_ref().unwrap().trim().is_empty() {
+                if auth_config.api_key.is_none()
+                    || auth_config.api_key.as_ref().unwrap().trim().is_empty()
+                {
                     return Err(AppError::new(
                         crate::api::errors::ErrorCode::ValidInvalidInput,
                         "API key is required for api_key authentication",
@@ -106,8 +107,11 @@ pub async fn create_repository(
                 }
             }
             "basic_auth" => {
-                if auth_config.username.is_none() || auth_config.username.as_ref().unwrap().trim().is_empty() ||
-                   auth_config.password.is_none() || auth_config.password.as_ref().unwrap().trim().is_empty() {
+                if auth_config.username.is_none()
+                    || auth_config.username.as_ref().unwrap().trim().is_empty()
+                    || auth_config.password.is_none()
+                    || auth_config.password.as_ref().unwrap().trim().is_empty()
+                {
                     return Err(AppError::new(
                         crate::api::errors::ErrorCode::ValidInvalidInput,
                         "Username and password are required for basic_auth authentication",
@@ -115,7 +119,9 @@ pub async fn create_repository(
                 }
             }
             "bearer_token" => {
-                if auth_config.token.is_none() || auth_config.token.as_ref().unwrap().trim().is_empty() {
+                if auth_config.token.is_none()
+                    || auth_config.token.as_ref().unwrap().trim().is_empty()
+                {
                     return Err(AppError::new(
                         crate::api::errors::ErrorCode::ValidInvalidInput,
                         "Bearer token is required for bearer_token authentication",
@@ -181,14 +187,21 @@ pub async fn update_repository(
     };
 
     // Validate auth fields based on auth type (use current or new values)
-    let auth_type = request.auth_type.as_ref().unwrap_or(&current_repository.auth_type);
+    let auth_type = request
+        .auth_type
+        .as_ref()
+        .unwrap_or(&current_repository.auth_type);
     if let Some(auth_config) = &request.auth_config {
         match auth_type.as_str() {
             "api_key" => {
-                if auth_config.api_key.is_none() || auth_config.api_key.as_ref().unwrap().trim().is_empty() {
+                if auth_config.api_key.is_none()
+                    || auth_config.api_key.as_ref().unwrap().trim().is_empty()
+                {
                     // Check if current repository has api_key
                     if let Some(current_auth) = &current_repository.auth_config {
-                        if current_auth.api_key.is_none() || current_auth.api_key.as_ref().unwrap().trim().is_empty() {
+                        if current_auth.api_key.is_none()
+                            || current_auth.api_key.as_ref().unwrap().trim().is_empty()
+                        {
                             return Err(AppError::new(
                                 crate::api::errors::ErrorCode::ValidInvalidInput,
                                 "API key is required for api_key authentication",
@@ -203,13 +216,24 @@ pub async fn update_repository(
                 }
             }
             "basic_auth" => {
-                let username = auth_config.username.as_ref()
-                    .or_else(|| current_repository.auth_config.as_ref().and_then(|a| a.username.as_ref()));
-                let password = auth_config.password.as_ref()
-                    .or_else(|| current_repository.auth_config.as_ref().and_then(|a| a.password.as_ref()));
-                
-                if username.is_none() || username.unwrap().trim().is_empty() ||
-                   password.is_none() || password.unwrap().trim().is_empty() {
+                let username = auth_config.username.as_ref().or_else(|| {
+                    current_repository
+                        .auth_config
+                        .as_ref()
+                        .and_then(|a| a.username.as_ref())
+                });
+                let password = auth_config.password.as_ref().or_else(|| {
+                    current_repository
+                        .auth_config
+                        .as_ref()
+                        .and_then(|a| a.password.as_ref())
+                });
+
+                if username.is_none()
+                    || username.unwrap().trim().is_empty()
+                    || password.is_none()
+                    || password.unwrap().trim().is_empty()
+                {
                     return Err(AppError::new(
                         crate::api::errors::ErrorCode::ValidInvalidInput,
                         "Username and password are required for basic_auth authentication",
@@ -217,9 +241,13 @@ pub async fn update_repository(
                 }
             }
             "bearer_token" => {
-                let token = auth_config.token.as_ref()
-                    .or_else(|| current_repository.auth_config.as_ref().and_then(|a| a.token.as_ref()));
-                    
+                let token = auth_config.token.as_ref().or_else(|| {
+                    current_repository
+                        .auth_config
+                        .as_ref()
+                        .and_then(|a| a.token.as_ref())
+                });
+
                 if token.is_none() || token.unwrap().trim().is_empty() {
                     return Err(AppError::new(
                         crate::api::errors::ErrorCode::ValidInvalidInput,
@@ -295,15 +323,31 @@ async fn test_repository_connectivity(
     request: &TestRepositoryConnectionRequest,
 ) -> Result<(), String> {
     // Create a reqwest client with timeout
-    let mut client_builder = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30));
+    let client_builder = reqwest::Client::builder().timeout(std::time::Duration::from_secs(30));
 
-    let client = client_builder.build().map_err(|e| {
-        format!("Failed to create HTTP client: {}", e)
-    })?;
+    let client = client_builder
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+    // Determine the test URL - use auth_test_api_endpoint if provided, otherwise use the main URL
+    let test_url = if let Some(auth_config) = &request.auth_config {
+        if let Some(ref test_endpoint) = auth_config.auth_test_api_endpoint {
+            if !test_endpoint.trim().is_empty() {
+                test_endpoint
+            } else {
+                &request.url
+            }
+        } else {
+            &request.url
+        }
+    } else {
+        &request.url
+    };
 
     // Build the request with authentication
-    let mut req_builder = client.get(&request.url);
+    let mut req_builder = client.get(test_url);
+
+    println!("{}", test_url);
 
     if let Some(auth_config) = &request.auth_config {
         match request.auth_type.as_str() {
@@ -311,7 +355,8 @@ async fn test_repository_connectivity(
                 if let Some(api_key) = &auth_config.api_key {
                     // For Hugging Face, use Bearer token format
                     if request.url.contains("huggingface.co") {
-                        req_builder = req_builder.header("Authorization", format!("Bearer {}", api_key));
+                        req_builder =
+                            req_builder.header("Authorization", format!("Bearer {}", api_key));
                     } else {
                         // For other APIs, use X-API-Key header (common pattern)
                         req_builder = req_builder.header("X-API-Key", api_key);
@@ -319,7 +364,9 @@ async fn test_repository_connectivity(
                 }
             }
             "basic_auth" => {
-                if let (Some(username), Some(password)) = (&auth_config.username, &auth_config.password) {
+                if let (Some(username), Some(password)) =
+                    (&auth_config.username, &auth_config.password)
+                {
                     req_builder = req_builder.basic_auth(username, Some(password));
                 }
             }
@@ -336,11 +383,8 @@ async fn test_repository_connectivity(
     match req_builder.send().await {
         Ok(response) => {
             let status = response.status();
-            if status.is_success() || status.is_redirection() || status == 401 || status == 403 {
-                // Consider 401/403 as successful connection (authentication issue, not connection)
-                Ok(())
-            } else if status == 404 {
-                // 404 is also considered a successful connection (URL accessible but resource not found)
+            if status == 200 {
+                // Only consider HTTP 200 as successful
                 Ok(())
             } else {
                 Err(format!("HTTP request failed with status: {}", status))

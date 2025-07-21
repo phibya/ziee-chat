@@ -1,16 +1,3 @@
--- CONSOLIDATED DATABASE MIGRATION
--- This migration contains the complete database schema with all updates
--- Consolidated from multiple migrations for clean database initialization
--- Date: 2025-07-17
--- IMPORTANT: This replaces all previous migration files
---
--- Consolidated changes:
--- - Removed path column from models table (models paths are determined by pattern)
--- - Replaced individual proxy columns with proxy_settings JSONB column
--- - Removed checksum columns from models and model_files tables for performance
--- - Removed settings column from providers table (moved to models table)
--- - Added settings column to models table for model-specific performance settings
-
 -- ===============================
 -- 1. UTILITY FUNCTIONS
 -- ===============================
@@ -591,9 +578,10 @@ INSERT INTO providers (name, provider_type, enabled, built_in, base_url) VALUES
 ('Gemini', 'gemini', false, true, 'https://generativelanguage.googleapis.com/v1beta/openai'),
 ('Mistral', 'mistral', false, true, 'https://api.mistral.ai');
 
--- Insert default repository (Hugging Face Hub)
+-- Insert default repositories (Hugging Face Hub and GitHub)
 INSERT INTO repositories (name, url, auth_type, auth_config, enabled, built_in) VALUES
-('Hugging Face Hub', 'https://huggingface.co', 'api_key', '{"api_key": ""}', true, true);
+('Hugging Face Hub', 'https://huggingface.co', 'api_key', '{"api_key": "", "auth_test_api_endpoint": "https://huggingface.co/api/whoami-v2"}', true, true),
+('GitHub', 'https://api.github.com', 'bearer_token', '{"token": "", "auth_test_api_endpoint": "https://api.github.com/user"}', true, true);
 
 -- Insert default template assistant
 INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_default, is_active) VALUES 
