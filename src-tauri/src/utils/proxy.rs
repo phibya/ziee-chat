@@ -1,27 +1,11 @@
+use crate::database::models::ProxySettings;
 use reqwest;
-use serde::{Deserialize, Serialize};
-
-/// Common proxy configuration for testing
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProxyConfig {
-    pub enabled: bool,
-    pub url: String,
-    pub username: String,
-    pub password: String,
-    pub no_proxy: String,
-    pub ignore_ssl_certificates: bool,
-    pub proxy_ssl: bool,
-    pub proxy_host_ssl: bool,
-    pub peer_ssl: bool,
-    pub host_ssl: bool,
-}
+use reqwest::NoProxy;
 
 /// Test proxy connectivity using a common HTTP test endpoint
-pub async fn test_proxy_connectivity(proxy_config: &ProxyConfig) -> Result<(), String> {
-    // Check if proxy is meant to be enabled
-    if !proxy_config.enabled {
-        return Err("Proxy is not enabled".to_string());
-    }
+pub async fn test_proxy_connectivity(proxy_config: &ProxySettings) -> Result<(), String> {
+    // Note: We don't check if proxy is enabled here, as this function is used for testing
+    // The caller should decide whether to test based on enabled status
 
     // Validate proxy URL format
     if proxy_config.url.trim().is_empty() {
@@ -41,11 +25,15 @@ pub async fn test_proxy_connectivity(proxy_config: &ProxyConfig) -> Result<(), S
         proxy_builder = proxy_builder.basic_auth(&proxy_config.username, &proxy_config.password);
     }
 
+    // Handle no_proxy list - domains that should bypass the proxy
+    if !proxy_config.no_proxy.trim().is_empty() {
+        proxy_builder = proxy_builder.no_proxy(NoProxy::from_string(&proxy_config.no_proxy));
+    }
+
     // Build the client with proxy and SSL settings
     let mut client_builder = reqwest::Client::builder()
         .proxy(proxy_builder)
-        .timeout(std::time::Duration::from_secs(30)) // Increased timeout for proxy connections
-        .no_proxy(); // Disable system proxy to ensure we only use our configured proxy
+        .timeout(std::time::Duration::from_secs(30)); // Increased timeout for proxy connections
 
     // Configure SSL verification based on settings
     if proxy_config.ignore_ssl_certificates {
@@ -59,19 +47,13 @@ pub async fn test_proxy_connectivity(proxy_config: &ProxyConfig) -> Result<(), S
         // Future implementations might need more granular control
     }
 
-    // Handle no_proxy list - domains that should bypass the proxy
-    if !proxy_config.no_proxy.trim().is_empty() {
-        // Parse the no_proxy list (comma-separated domains)
-        // This is handled by the proxy configuration itself
-        // The actual implementation would depend on the proxy behavior
-    }
-
     let client = client_builder
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
     // Test the proxy by making a request to a reliable endpoint
     // Using httpbin.org as it's a simple testing service that returns IP info
+    // Try HTTP first for better compatibility with local proxies
     let test_url = "https://httpbin.org/ip";
 
     match client.get(test_url).send().await {
@@ -111,42 +93,6 @@ pub async fn test_proxy_connectivity(proxy_config: &ProxyConfig) -> Result<(), S
             } else {
                 Err(format!("Network request failed: {}", e))
             }
-        }
-    }
-}
-
-/// Convert from configuration.rs TestProxyConnectionRequest
-impl From<&crate::api::configuration::TestProxyConnectionRequest> for ProxyConfig {
-    fn from(request: &crate::api::configuration::TestProxyConnectionRequest) -> Self {
-        ProxyConfig {
-            enabled: request.enabled,
-            url: request.url.clone(),
-            username: request.username.clone(),
-            password: request.password.clone(),
-            no_proxy: request.no_proxy.clone(),
-            ignore_ssl_certificates: request.ignore_ssl_certificates,
-            proxy_ssl: request.proxy_ssl,
-            proxy_host_ssl: request.proxy_host_ssl,
-            peer_ssl: request.peer_ssl,
-            host_ssl: request.host_ssl,
-        }
-    }
-}
-
-/// Convert from providers.rs ProviderProxySettings
-impl From<&crate::database::models::ProviderProxySettings> for ProxyConfig {
-    fn from(settings: &crate::database::models::ProviderProxySettings) -> Self {
-        ProxyConfig {
-            enabled: settings.enabled,
-            url: settings.url.clone(),
-            username: settings.username.clone(),
-            password: settings.password.clone(),
-            no_proxy: settings.no_proxy.clone(),
-            ignore_ssl_certificates: settings.ignore_ssl_certificates,
-            proxy_ssl: settings.proxy_ssl,
-            proxy_host_ssl: settings.proxy_host_ssl,
-            peer_ssl: settings.peer_ssl,
-            host_ssl: settings.host_ssl,
         }
     }
 }

@@ -62,10 +62,6 @@ export interface ProviderListResponse {
   per_page: number
 }
 
-export interface TestProviderProxyResponse {
-  success: boolean
-  message: string
-}
 
 // Device detection types
 export interface DeviceInfo {

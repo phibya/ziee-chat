@@ -11,7 +11,7 @@ use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
         AvailableDevicesResponse, CreateProviderRequest, Provider,
-        ProviderListResponse, ProviderProxySettings, TestProviderProxyResponse,
+        ProviderListResponse,
         UpdateProviderRequest, UserGroup,
     },
     queries::{models, providers, user_group_providers},
@@ -271,59 +271,6 @@ pub async fn delete_provider(
 }
 
 
-// Test proxy connection for model provider
-pub async fn test_provider_proxy_connection(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path(_provider_id): Path<Uuid>,
-    Json(request): Json<ProviderProxySettings>,
-) -> ApiResult<Json<TestProviderProxyResponse>> {
-    // Test the proxy connection by making a simple HTTP request through the proxy
-    match test_proxy_connectivity_for_provider(&request).await {
-        Ok(()) => Ok(Json(TestProviderProxyResponse {
-            success: true,
-            message: "Proxy connection successful".to_string(),
-        })),
-        Err(e) => Ok(Json(TestProviderProxyResponse {
-            success: false,
-            message: format!("Proxy connection failed: {}", e),
-        })),
-    }
-}
-
-async fn test_proxy_connectivity_for_provider(
-    proxy_config: &ProviderProxySettings,
-) -> ApiResult<()> {
-    // Use the common proxy testing utility
-    let common_config = crate::utils::proxy::ProxyConfig::from(proxy_config);
-    
-    match crate::utils::proxy::test_proxy_connectivity(&common_config).await {
-        Ok(()) => Ok(()),
-        Err(error_msg) => {
-            // Convert String error to AppError based on error content
-            if error_msg.contains("Proxy is not enabled") {
-                Err(AppError::new(
-                    crate::api::errors::ErrorCode::ValidInvalidInput,
-                    &error_msg,
-                ))
-            } else if error_msg.contains("Invalid proxy URL format") || error_msg.contains("Proxy URL is empty") {
-                Err(AppError::new(
-                    crate::api::errors::ErrorCode::ValidInvalidInput,
-                    &error_msg,
-                ))
-            } else if error_msg.contains("Failed to create") {
-                Err(AppError::new(
-                    crate::api::errors::ErrorCode::SystemInternalError,
-                    &error_msg,
-                ))
-            } else {
-                Err(AppError::new(
-                    crate::api::errors::ErrorCode::SystemExternalServiceError,
-                    &error_msg,
-                ))
-            }
-        }
-    }
-}
 
 // Get groups that have access to a model provider
 pub async fn get_provider_groups(

@@ -1,8 +1,18 @@
 import {
+  CopyOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  EditOutlined,
+  EyeInvisibleOutlined,
+  EyeTwoTone,
+  MenuOutlined,
+  PlusOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
+import {
   App,
   Button,
   Card,
-  Divider,
   Dropdown,
   Empty,
   Flex,
@@ -21,27 +31,16 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  CopyOutlined,
-  DeleteOutlined,
-  DownOutlined,
-  EditOutlined,
-  EyeInvisibleOutlined,
-  EyeTwoTone,
-  MenuOutlined,
-  PlusOutlined,
-  SettingOutlined,
-} from '@ant-design/icons'
 import { useShallow } from 'zustand/react/shallow'
-import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
-import { Provider, ProviderType } from '../../../../types/api/provider'
+import { Permission, usePermissions } from '../../../../permissions'
+import { useProvidersStore } from '../../../../store/providers'
 import { Model } from '../../../../types/api/model'
-import { AddProviderModal } from './AddProviderModal'
+import { Provider, ProviderType } from '../../../../types/api/provider'
 import { AddModelModal } from './AddModelModal'
+import { AddProviderModal } from './AddProviderModal'
 import { EditModelModal } from './EditModelModal'
 import { ProviderProxySettingsForm } from './ProviderProxySettings'
-import { useProvidersStore } from '../../../../store/providers'
 
 const { Title, Text } = Typography
 const { Sider, Content } = Layout
@@ -786,7 +785,7 @@ export function ProvidersSettings() {
                 )
               }
             >
-              <Flex className={'flex-col gap-2'}>
+              <Flex className={'flex-col gap-3'}>
                 <div>
                   <Title level={5}>API Key</Title>
                   <Text type="secondary">
@@ -817,8 +816,6 @@ export function ProvidersSettings() {
                     />
                   </Form.Item>
                 </div>
-
-                <Divider style={{ margin: 0 }} />
 
                 <div>
                   <Title level={5}>Base URL</Title>
@@ -966,7 +963,6 @@ export function ProvidersSettings() {
         {/* Proxy Settings - For non-Local providers */}
         {currentProvider.type !== 'local' && currentProvider.proxy_settings && (
           <ProviderProxySettingsForm
-            providerId={currentProvider.id}
             initialSettings={currentProvider.proxy_settings}
             onSave={handleProxySettingsSave}
             disabled={!canEditProviders}

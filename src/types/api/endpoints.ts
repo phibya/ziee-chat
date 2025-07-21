@@ -8,8 +8,8 @@ import {
   AssistantListResponse,
   CreateAssistantRequest,
   UpdateAssistantRequest,
-} from "./assistant";
-import { AuthResponse, InitResponse, LoginRequest } from "./auth";
+} from './assistant'
+import { AuthResponse, InitResponse, LoginRequest } from './auth'
 import {
   Conversation,
   ConversationListResponse,
@@ -20,7 +20,7 @@ import {
   SendMessageRequest,
   SwitchBranchRequest,
   UpdateConversationRequest,
-} from "./chat";
+} from './chat'
 import {
   ProxySettingsResponse,
   TestProxyConnectionRequest,
@@ -28,18 +28,18 @@ import {
   UpdateProxySettingsRequest,
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
-} from "./config.ts";
+} from './config.ts'
 import {
   DefaultLanguageResponse,
   UpdateDefaultLanguageRequest,
-} from "./globalConfig";
+} from './globalConfig'
 import {
   AddModelToProviderRequest,
   Model,
   ModelCapabilities,
   ModelSettings,
   UpdateModelRequest,
-} from "./model";
+} from './model'
 import {
   CreateProjectRequest,
   Project,
@@ -50,15 +50,14 @@ import {
   UpdateProjectRequest,
   UploadDocumentRequest,
   UploadDocumentResponse,
-} from "./projects";
+} from './projects'
 import {
   AvailableDevicesResponse,
   CreateProviderRequest,
   Provider,
   ProviderListResponse,
-  ProviderProxySettings,
   UpdateProviderRequest,
-} from "./provider";
+} from './provider'
 import {
   CreateRepositoryRequest,
   Repository,
@@ -66,7 +65,7 @@ import {
   TestRepositoryConnectionRequest,
   TestRepositoryConnectionResponse,
   UpdateRepositoryRequest,
-} from "./repository";
+} from './repository'
 import {
   AssignUserToGroupRequest,
   CreateUserGroupRequest,
@@ -77,13 +76,13 @@ import {
   User,
   UserGroup,
   UserListResponse,
-} from "./user";
-import { UserGroupListResponse } from "./userGroup.ts";
+} from './user'
+import { UserGroupListResponse } from './userGroup.ts'
 import {
   UserSetting,
   UserSettingRequest,
   UserSettingsResponse,
-} from "./userSettings";
+} from './userSettings'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -130,7 +129,7 @@ export const ApiEndpoints = {
   'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
-  'Admin.testProxyConnection': 'POST /api/admin/config/proxy/test',
+  'Utils.testProxy': 'POST /api/utils/test-proxy',
   // User settings management
   'UserSettings.getAll': 'GET /api/user/settings',
   'UserSettings.get': 'GET /api/user/settings/{key}',
@@ -153,7 +152,6 @@ export const ApiEndpoints = {
   'Models.stop': 'POST /api/admin/models/{model_id}/stop',
   'Models.enable': 'POST /api/admin/models/{model_id}/enable',
   'Models.disable': 'POST /api/admin/models/{model_id}/disable',
-  'Providers.testProxy': 'POST /api/admin/providers/{provider_id}/test-proxy',
   'Admin.getAvailableDevices': 'GET /api/admin/devices',
   // Model Upload endpoints for Local
   'ModelUploads.create': 'POST /api/admin/uploaded-models',
@@ -267,7 +265,7 @@ export type ApiEndpointParameters = {
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
   'Admin.getProxySettings': void
   'Admin.updateProxySettings': UpdateProxySettingsRequest
-  'Admin.testProxyConnection': TestProxyConnectionRequest
+  'Utils.testProxy': TestProxyConnectionRequest
   // User settings management
   'UserSettings.getAll': void
   'UserSettings.get': { key: string }
@@ -290,9 +288,6 @@ export type ApiEndpointParameters = {
   'Models.stop': { model_id: string }
   'Models.enable': { model_id: string }
   'Models.disable': { model_id: string }
-  'Providers.testProxy': {
-    provider_id: string
-  } & ProviderProxySettings
   'Admin.getAvailableDevices': void
   // Model Upload parameters
   'ModelUploads.create': {
@@ -435,7 +430,7 @@ export type ApiEndpointResponses = {
   'Admin.updateDefaultLanguage': DefaultLanguageResponse
   'Admin.getProxySettings': ProxySettingsResponse
   'Admin.updateProxySettings': ProxySettingsResponse
-  'Admin.testProxyConnection': TestProxyConnectionResponse
+  'Utils.testProxy': TestProxyConnectionResponse
   // User settings management
   'UserSettings.getAll': UserSettingsResponse
   'UserSettings.get': UserSetting
@@ -458,7 +453,6 @@ export type ApiEndpointResponses = {
   'Models.stop': { success: boolean; message: string }
   'Models.enable': { success: boolean; message: string }
   'Models.disable': { success: boolean; message: string }
-  'Providers.testProxy': TestProxyConnectionResponse
   'Admin.getAvailableDevices': AvailableDevicesResponse
   // Model Upload responses
   'ModelUploads.create': {

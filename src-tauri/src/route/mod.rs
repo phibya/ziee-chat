@@ -1,8 +1,10 @@
 mod admin;
 mod auth;
 mod chat;
+mod config;
 mod projects;
 mod user;
+mod utils;
 
 use crate::api;
 use axum::routing::get;
@@ -13,14 +15,8 @@ pub fn create_rest_router() -> Router {
     // Public routes (no authentication required)
     let public_routes = Router::new()
         .merge(auth::auth_routes())
-        .route(
-            "/api/config/user-registration",
-            get(api::configuration::get_user_registration_status),
-        )
-        .route(
-            "/api/config/default-language",
-            get(api::configuration::get_default_language_public),
-        )
+        .merge(config::config_routes())
+        .merge(utils::utils_routes())
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }));
 
     // Protected routes requiring authentication

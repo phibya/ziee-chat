@@ -4,6 +4,7 @@ pub mod config;
 pub mod model;
 pub mod project;
 pub mod provider;
+pub mod proxy;
 pub mod repository;
 pub mod user;
 
@@ -14,5 +15,6 @@ pub use config::*;
 pub use model::*;
 pub use project::*;
 pub use provider::*;
+pub use proxy::*;
 pub use repository::*;
 pub use user::*;

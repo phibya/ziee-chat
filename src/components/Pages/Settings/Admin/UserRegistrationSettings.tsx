@@ -1,9 +1,8 @@
+import { App, Card, Form, Switch, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { App, Card, Form, Switch, Typography } from 'antd'
 import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
-import { PageContainer } from '../../../common/PageContainer'
 import { useAdminStore } from '../../../../store/admin'
 
 const { Text } = Typography
@@ -80,28 +79,26 @@ export function UserRegistrationSettings() {
   }
 
   return (
-    <PageContainer>
-      <Card title={t('admin.userRegistration')} className="mb-6">
-        <Form
-          form={form}
-          onValuesChange={handleFormChange}
-          initialValues={{ enabled: registrationEnabled }}
-        >
-          <div className="flex justify-between items-center">
+    <Card title={t('admin.userRegistration')}>
+      <Form
+        form={form}
+        onValuesChange={handleFormChange}
+        initialValues={{ enabled: registrationEnabled }}
+      >
+        <div className="flex justify-between items-center">
+          <div>
+            <Text strong>Enable User Registration</Text>
             <div>
-              <Text strong>Enable User Registration</Text>
-              <div>
-                <Text type="secondary">
-                  Allow new users to register for accounts
-                </Text>
-              </div>
+              <Text type="secondary">
+                Allow new users to register for accounts
+              </Text>
             </div>
-            <Form.Item name="enabled" valuePropName="checked" className="mb-0">
-              <Switch loading={loading} size="default" />
-            </Form.Item>
           </div>
-        </Form>
-      </Card>
-    </PageContainer>
+          <Form.Item name="enabled" valuePropName="checked" className="mb-0">
+            <Switch loading={loading} size="default" />
+          </Form.Item>
+        </div>
+      </Form>
+    </Card>
   )
 }

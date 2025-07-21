@@ -1,4 +1,6 @@
 use crate::database::models::ConfigurationDb;
+use crate::database::models::proxy::ProxySettings;
+use serde_json::Value;
 
 pub async fn get_configuration(name: &str) -> Result<Option<ConfigurationDb>, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
@@ -12,7 +14,7 @@ pub async fn get_configuration(name: &str) -> Result<Option<ConfigurationDb>, sq
 
 pub async fn set_configuration(
     name: &str,
-    value: &str,
+    value: &Value,
     description: Option<&str>,
 ) -> Result<ConfigurationDb, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
@@ -34,17 +36,44 @@ pub async fn set_configuration(
     .await
 }
 
-pub async fn is_app_initialized() -> Result<bool, sqlx::Error> {
-    match get_configuration("is_initialized").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(false),
+// Helper function to get a configuration value as a specific type
+pub async fn get_config_value<T>(name: &str) -> Result<Option<T>, sqlx::Error>
+where
+    T: serde::de::DeserializeOwned,
+{
+    match get_configuration(name).await? {
+        Some(config) => match serde_json::from_value(config.value) {
+            Ok(value) => Ok(Some(value)),
+            Err(_) => Ok(None),
+        },
+        None => Ok(None),
     }
 }
 
+// Helper function to set a configuration value from any serializable type
+pub async fn set_config_value<T>(
+    name: &str,
+    value: &T,
+    description: Option<&str>,
+) -> Result<ConfigurationDb, sqlx::Error>
+where
+    T: serde::Serialize,
+{
+    let json_value = match serde_json::to_value(value) {
+        Ok(val) => val,
+        Err(_) => return Err(sqlx::Error::Protocol("Failed to serialize value".to_string())),
+    };
+    set_configuration(name, &json_value, description).await
+}
+
+pub async fn is_app_initialized() -> Result<bool, sqlx::Error> {
+    Ok(get_config_value::<bool>("is_initialized").await?.unwrap_or(false))
+}
+
 pub async fn mark_app_initialized() -> Result<(), sqlx::Error> {
-    set_configuration(
+    set_config_value(
         "is_initialized",
-        "true",
+        &true,
         Some("Indicates whether the application has been initialized"),
     )
     .await?;
@@ -52,16 +81,13 @@ pub async fn mark_app_initialized() -> Result<(), sqlx::Error> {
 }
 
 pub async fn is_user_registration_enabled() -> Result<bool, sqlx::Error> {
-    match get_configuration("enable_user_registration").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(true), // Default to enabled if not set
-    }
+    Ok(get_config_value::<bool>("enable_user_registration").await?.unwrap_or(true))
 }
 
 pub async fn set_user_registration_enabled(enabled: bool) -> Result<(), sqlx::Error> {
-    set_configuration(
+    set_config_value(
         "enable_user_registration",
-        if enabled { "true" } else { "false" },
+        &enabled,
         Some("Controls whether new user registration is enabled"),
     )
     .await?;
@@ -69,184 +95,131 @@ pub async fn set_user_registration_enabled(enabled: bool) -> Result<(), sqlx::Er
 }
 
 pub async fn get_default_language() -> Result<String, sqlx::Error> {
-    match get_configuration("appearance.defaultLanguage").await? {
-        Some(config) => Ok(config.value),
-        None => Ok("en".to_string()), // Default to English if not set
-    }
+    Ok(get_config_value::<String>("appearance.defaultLanguage").await?.unwrap_or("en".to_string()))
 }
 
 pub async fn set_default_language(language: &str) -> Result<(), sqlx::Error> {
-    set_configuration(
+    set_config_value(
         "appearance.defaultLanguage",
-        language,
+        &language,
         Some("Default language for the application when user language preference is not set"),
     )
     .await?;
     Ok(())
 }
 
-// HTTP Proxy configuration functions
+// HTTP Proxy configuration functions - using single JSON object
+pub async fn get_proxy_settings() -> Result<ProxySettings, sqlx::Error> {
+    Ok(get_config_value::<ProxySettings>("proxy").await?.unwrap_or_default())
+}
+
+pub async fn set_proxy_settings(settings: &ProxySettings) -> Result<(), sqlx::Error> {
+    set_config_value(
+        "proxy",
+        settings,
+        Some("Global HTTP proxy configuration"),
+    )
+    .await?;
+    Ok(())
+}
+
+// Backward compatibility functions - these extract individual fields from the ProxySettings
 pub async fn is_proxy_enabled() -> Result<bool, sqlx::Error> {
-    match get_configuration("proxy.enabled").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(false),
-    }
+    Ok(get_proxy_settings().await?.enabled)
 }
 
 pub async fn set_proxy_enabled(enabled: bool) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.enabled",
-        if enabled { "true" } else { "false" },
-        Some("Enable global HTTP proxy for the application"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.enabled = enabled;
+    set_proxy_settings(&settings).await
 }
 
 pub async fn get_proxy_url() -> Result<String, sqlx::Error> {
-    match get_configuration("proxy.url").await? {
-        Some(config) => Ok(config.value),
-        None => Ok("".to_string()),
-    }
+    Ok(get_proxy_settings().await?.url)
 }
 
 pub async fn set_proxy_url(url: &str) -> Result<(), sqlx::Error> {
-    set_configuration("proxy.url", url, Some("Global HTTP proxy URL")).await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.url = url.to_string();
+    set_proxy_settings(&settings).await
 }
 
 pub async fn get_proxy_username() -> Result<String, sqlx::Error> {
-    match get_configuration("proxy.username").await? {
-        Some(config) => Ok(config.value),
-        None => Ok("".to_string()),
-    }
+    Ok(get_proxy_settings().await?.username)
 }
 
 pub async fn set_proxy_username(username: &str) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.username",
-        username,
-        Some("Global HTTP proxy username"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.username = username.to_string();
+    set_proxy_settings(&settings).await
 }
 
 pub async fn get_proxy_password() -> Result<String, sqlx::Error> {
-    match get_configuration("proxy.password").await? {
-        Some(config) => Ok(config.value),
-        None => Ok("".to_string()),
-    }
+    Ok(get_proxy_settings().await?.password)
 }
 
 pub async fn set_proxy_password(password: &str) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.password",
-        password,
-        Some("Global HTTP proxy password"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.password = password.to_string();
+    set_proxy_settings(&settings).await
 }
 
 pub async fn is_proxy_ignore_ssl_certificates() -> Result<bool, sqlx::Error> {
-    match get_configuration("proxy.ignoreSslCertificates").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(false),
-    }
+    Ok(get_proxy_settings().await?.ignore_ssl_certificates)
 }
 
 pub async fn set_proxy_ignore_ssl_certificates(enabled: bool) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.ignoreSslCertificates",
-        if enabled { "true" } else { "false" },
-        Some("Ignore SSL certificates for proxy"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.ignore_ssl_certificates = enabled;
+    set_proxy_settings(&settings).await
 }
 
 pub async fn is_proxy_ssl() -> Result<bool, sqlx::Error> {
-    match get_configuration("proxy.proxySsl").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(false),
-    }
+    Ok(get_proxy_settings().await?.proxy_ssl)
 }
 
 pub async fn set_proxy_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.proxySsl",
-        if enabled { "true" } else { "false" },
-        Some("Validate SSL certificate when connecting to proxy"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.proxy_ssl = enabled;
+    set_proxy_settings(&settings).await
 }
 
 pub async fn is_proxy_host_ssl() -> Result<bool, sqlx::Error> {
-    match get_configuration("proxy.proxyHostSsl").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(false),
-    }
+    Ok(get_proxy_settings().await?.proxy_host_ssl)
 }
 
 pub async fn set_proxy_host_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.proxyHostSsl",
-        if enabled { "true" } else { "false" },
-        Some("Validate SSL certificate of proxy host"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.proxy_host_ssl = enabled;
+    set_proxy_settings(&settings).await
 }
 
 pub async fn is_peer_ssl() -> Result<bool, sqlx::Error> {
-    match get_configuration("proxy.peerSsl").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(false),
-    }
+    Ok(get_proxy_settings().await?.peer_ssl)
 }
 
 pub async fn set_peer_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.peerSsl",
-        if enabled { "true" } else { "false" },
-        Some("Validate SSL certificates of peer connections"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.peer_ssl = enabled;
+    set_proxy_settings(&settings).await
 }
 
 pub async fn is_host_ssl() -> Result<bool, sqlx::Error> {
-    match get_configuration("proxy.hostSsl").await? {
-        Some(config) => Ok(config.value == "true"),
-        None => Ok(false),
-    }
+    Ok(get_proxy_settings().await?.host_ssl)
 }
 
 pub async fn set_host_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.hostSsl",
-        if enabled { "true" } else { "false" },
-        Some("Validate SSL certificates of destination hosts"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.host_ssl = enabled;
+    set_proxy_settings(&settings).await
 }
 
 pub async fn get_proxy_no_proxy() -> Result<String, sqlx::Error> {
-    match get_configuration("proxy.noProxy").await? {
-        Some(config) => Ok(config.value),
-        None => Ok("".to_string()),
-    }
+    Ok(get_proxy_settings().await?.no_proxy)
 }
 
 pub async fn set_proxy_no_proxy(no_proxy: &str) -> Result<(), sqlx::Error> {
-    set_configuration(
-        "proxy.noProxy",
-        no_proxy,
-        Some("Global HTTP proxy no-proxy list (comma-separated)"),
-    )
-    .await?;
-    Ok(())
+    let mut settings = get_proxy_settings().await?;
+    settings.no_proxy = no_proxy.to_string();
+    set_proxy_settings(&settings).await
 }

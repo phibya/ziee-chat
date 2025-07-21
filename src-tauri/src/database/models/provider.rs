@@ -3,30 +3,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-// API structures for model providers
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ProviderProxySettings {
-    #[serde(default)]
-    pub enabled: bool,
-    #[serde(default)]
-    pub url: String,
-    #[serde(default)]
-    pub username: String,
-    #[serde(default)]
-    pub password: String,
-    #[serde(default)]
-    pub no_proxy: String,
-    #[serde(default)]
-    pub ignore_ssl_certificates: bool,
-    #[serde(default)]
-    pub proxy_ssl: bool,
-    #[serde(default)]
-    pub proxy_host_ssl: bool,
-    #[serde(default)]
-    pub peer_ssl: bool,
-    #[serde(default)]
-    pub host_ssl: bool,
-}
+use super::proxy::ProxySettings;
+
+// Re-export ProxySettings as ProviderProxySettings for backward compatibility
+pub type ProviderProxySettings = ProxySettings;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Provider {
@@ -38,7 +18,7 @@ pub struct Provider {
     pub api_key: Option<String>,
     pub base_url: Option<String>,
     pub built_in: bool,
-    pub proxy_settings: Option<ProviderProxySettings>,
+    pub proxy_settings: Option<ProxySettings>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -79,7 +59,7 @@ pub struct CreateProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub proxy_settings: Option<ProviderProxySettings>,
+    pub proxy_settings: Option<ProxySettings>,
     #[serde(rename = "type")]
     pub provider_type: String,
 }
@@ -90,7 +70,7 @@ pub struct UpdateProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
-    pub proxy_settings: Option<ProviderProxySettings>,
+    pub proxy_settings: Option<ProxySettings>,
 }
 
 // Device detection structures
@@ -119,8 +99,3 @@ pub struct ProviderListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TestProviderProxyResponse {
-    pub success: bool,
-    pub message: String,
-}

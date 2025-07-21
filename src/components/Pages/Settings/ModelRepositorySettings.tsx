@@ -153,7 +153,9 @@ export function ModelRepositorySettings() {
       if (result.success) {
         message.success(`Connection to ${repository.name} successful!`)
       } else {
-        message.error(result.message || `Connection to ${repository.name} failed`)
+        message.error(
+          result.message || `Connection to ${repository.name} failed`,
+        )
       }
     } catch (error: any) {
       console.error('Repository connection test failed:', error)

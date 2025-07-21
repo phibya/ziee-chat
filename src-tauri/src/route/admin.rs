@@ -143,12 +143,6 @@ pub fn admin_routes() -> Router {
                 api::middleware::config_proxy_edit_middleware,
             )),
         )
-        .route(
-            "/api/admin/config/proxy/test",
-            post(api::configuration::test_proxy_connection).layer(middleware::from_fn(
-                api::middleware::config_proxy_read_middleware,
-            )),
-        )
         // Model provider routes
         .route(
             "/api/admin/providers",
@@ -178,12 +172,6 @@ pub fn admin_routes() -> Router {
             "/api/admin/providers/{provider_id}",
             delete(api::providers::delete_provider).layer(middleware::from_fn(
                 api::middleware::providers_delete_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/providers/{provider_id}/test-proxy",
-            post(api::providers::test_provider_proxy_connection).layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
             )),
         )
         .route(

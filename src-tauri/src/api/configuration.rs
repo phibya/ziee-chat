@@ -221,9 +221,9 @@ pub async fn update_proxy_settings(
     }))
 }
 
-// Admin endpoint to test proxy connection
-pub async fn test_proxy_connection(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
+
+// Public endpoint to test proxy connection (no authentication required)
+pub async fn test_proxy_connection_public(
     Json(request): Json<TestProxyConnectionRequest>,
 ) -> Result<Json<TestProxyConnectionResponse>, StatusCode> {
     // Allow testing proxy even when not enabled - only check URL is provided
@@ -250,12 +250,10 @@ pub async fn test_proxy_connection(
 }
 
 async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> Result<(), String> {
-    // Check if proxy is meant to be enabled
-    if !proxy_config.enabled {
-        return Ok(()); // If proxy is disabled, consider it a success
-    }
-
+    // Always test the proxy configuration regardless of enabled status
+    // This allows users to test settings before enabling them
+    
     // Use the common proxy testing utility
-    let common_config = crate::utils::proxy::ProxyConfig::from(proxy_config);
+    let common_config = crate::database::models::ProxySettings::from(proxy_config);
     crate::utils::proxy::test_proxy_connectivity(&common_config).await
 }

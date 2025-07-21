@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { Assistant } from '../types/api/assistant'
 import { CreateUserGroupRequest, User, UserGroup } from '../types/api/user'
+import { UpdateProxySettingsRequest } from '../types/api/config'
 
 // Using API types now - User and UserGroup imported above
 
@@ -14,13 +15,7 @@ interface GroupMember {
   joined_at: string
 }
 
-interface ProxySettings {
-  enabled: boolean
-  host: string
-  port: number
-  username?: string
-  password?: string
-}
+type ProxySettings = UpdateProxySettingsRequest
 
 interface AdminState {
   // Users
@@ -44,7 +39,6 @@ interface AdminState {
   // Proxy settings
   proxySettings: ProxySettings | null
   loadingProxySettings: boolean
-  testingProxy: boolean
 
   // Global states
   creating: boolean
@@ -80,7 +74,6 @@ interface AdminState {
   // Proxy settings
   loadProxySettings: () => Promise<void>
   updateProxySettings: (settings: ProxySettings) => Promise<void>
-  testProxyConnection: () => Promise<boolean>
 
   // Language settings
   updateDefaultLanguage: (language: string) => Promise<void>
@@ -104,7 +97,6 @@ export const useAdminStore = create<AdminState>()(
     loadingRegistrationSettings: false,
     proxySettings: null,
     loadingProxySettings: false,
-    testingProxy: false,
     creating: false,
     updating: false,
     deleting: false,
@@ -523,10 +515,15 @@ export const useAdminStore = create<AdminState>()(
         set({
           proxySettings: {
             enabled: settings.enabled,
-            host: settings.url || '',
-            port: 0,
+            url: settings.url,
             username: settings.username,
             password: settings.password,
+            no_proxy: settings.no_proxy,
+            ignore_ssl_certificates: settings.ignore_ssl_certificates,
+            proxy_ssl: settings.proxy_ssl,
+            proxy_host_ssl: settings.proxy_host_ssl,
+            peer_ssl: settings.peer_ssl,
+            host_ssl: settings.host_ssl,
           },
           loadingProxySettings: false,
         })
@@ -546,7 +543,7 @@ export const useAdminStore = create<AdminState>()(
       try {
         set({ updating: true, error: null })
 
-        await ApiClient.Admin.updateProxySettings(settings as any)
+        await ApiClient.Admin.updateProxySettings(settings)
 
         set({
           proxySettings: settings,
@@ -564,28 +561,6 @@ export const useAdminStore = create<AdminState>()(
       }
     },
 
-    testProxyConnection: async () => {
-      try {
-        set({ testingProxy: true, error: null })
-
-        const result = await ApiClient.Admin.testProxyConnection(
-          get().proxySettings as any,
-        )
-
-        set({ testingProxy: false })
-
-        return result.success
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to test proxy connection',
-          testingProxy: false,
-        })
-        throw error
-      }
-    },
 
     updateDefaultLanguage: async (language: string) => {
       try {

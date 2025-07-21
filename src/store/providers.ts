@@ -48,7 +48,6 @@ interface ProvidersState {
   creating: boolean
   updating: boolean
   deleting: boolean
-  testingProxy: boolean
   loadingModels: Record<string, boolean> // Track loading state for provider models
   modelOperations: Record<string, boolean> // Track loading state for individual models
 
@@ -123,7 +122,6 @@ interface ProvidersState {
   cancelUpload: () => void
 
   // Proxy actions
-  testProxy: (providerId: string, proxySettings: any) => Promise<boolean>
 
   // Utility actions
   clearError: () => void
@@ -140,7 +138,6 @@ export const useProvidersStore = create<ProvidersState>()(
     creating: false,
     updating: false,
     deleting: false,
-    testingProxy: false,
     loadingModels: {},
     modelOperations: {},
     uploading: false,
@@ -512,27 +509,6 @@ export const useProvidersStore = create<ProvidersState>()(
       }
     },
 
-    testProxy: async (providerId: string, proxySettings: any) => {
-      try {
-        set({ testingProxy: true, error: null })
-
-        const result = await ApiClient.Providers.testProxy({
-          provider_id: providerId,
-          ...proxySettings,
-        })
-
-        set({ testingProxy: false })
-
-        return result.success
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to test proxy',
-          testingProxy: false,
-        })
-        throw error
-      }
-    },
 
     // New multi-step upload workflow
     uploadMultipleFiles: async (

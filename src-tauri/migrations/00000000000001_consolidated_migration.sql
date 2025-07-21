@@ -110,7 +110,7 @@ CREATE TABLE user_settings (
 CREATE TABLE configurations (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
-    value TEXT NOT NULL,
+    value JSONB NOT NULL,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -380,6 +380,7 @@ CREATE INDEX idx_user_group_providers_provider_id ON user_group_providers(provid
 
 -- Configuration indexes
 CREATE INDEX idx_configurations_name ON configurations(name);
+CREATE INDEX idx_configurations_value ON configurations USING GIN(value);
 
 -- User settings indexes
 CREATE INDEX idx_user_settings_user_id ON user_settings(user_id);
@@ -491,6 +492,11 @@ CREATE TRIGGER update_user_settings_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_configurations_updated_at
+    BEFORE UPDATE ON configurations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_providers_updated_at 
     BEFORE UPDATE ON providers
     FOR EACH ROW 
@@ -553,17 +559,8 @@ CREATE TRIGGER update_project_documents_updated_at_trigger
 INSERT INTO configurations (name, value, description) VALUES 
     ('is_initialized', 'false', 'Indicates whether the application has been initialized'),
     ('enable_user_registration', 'true', 'Controls whether new user registration is enabled'),
-    ('appearance.defaultLanguage', 'en', 'Default language for the application when user language preference is not set'),
-    ('proxy.enabled', 'false', 'Enable global HTTP proxy for the application'),
-    ('proxy.url', '', 'Global HTTP proxy URL'),
-    ('proxy.username', '', 'Global HTTP proxy username'),
-    ('proxy.password', '', 'Global HTTP proxy password'),
-    ('proxy.noProxy', '', 'Global HTTP proxy no-proxy list (comma-separated)'),
-    ('proxy.ignoreSslCertificates', 'false', 'Ignore SSL certificates for proxy'),
-    ('proxy.proxySsl', 'false', 'Validate SSL certificate when connecting to proxy'),
-    ('proxy.proxyHostSsl', 'false', 'Validate SSL certificate of proxy host'),
-    ('proxy.peerSsl', 'false', 'Validate SSL certificates of peer connections'),
-    ('proxy.hostSsl', 'false', 'Validate SSL certificates of destination hosts');
+    ('appearance.defaultLanguage', '"en"', 'Default language for the application when user language preference is not set'),
+    ('proxy', '{"enabled": false, "url": "", "username": "", "password": "", "no_proxy": "", "ignore_ssl_certificates": false, "proxy_ssl": false, "proxy_host_ssl": false, "peer_ssl": false, "host_ssl": false}', 'Global HTTP proxy configuration');
 
 -- Create default admin group with wildcard permissions
 INSERT INTO user_groups (name, description, permissions, is_protected, is_active)

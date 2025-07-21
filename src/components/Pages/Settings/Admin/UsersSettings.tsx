@@ -1,5 +1,11 @@
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import {
+  EditOutlined,
+  ExclamationCircleOutlined,
+  LockOutlined,
+  PlusOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
 import {
   App,
   Badge,
@@ -20,25 +26,19 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import {
-  EditOutlined,
-  ExclamationCircleOutlined,
-  LockOutlined,
-  PlusOutlined,
-  TeamOutlined,
-  UserOutlined,
-} from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../../api/core.ts'
+import { Permission, usePermissions } from '../../../../permissions'
+import { useAdminStore } from '../../../../store/admin'
 import {
   ResetPasswordRequest,
   UpdateUserRequest,
   User,
   UserGroup,
 } from '../../../../types'
-import { Permission, usePermissions } from '../../../../permissions'
-import { useAdminStore } from '../../../../store/admin'
 import { PageContainer } from '../../../common/PageContainer'
 import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
@@ -380,10 +380,16 @@ export function UsersSettings() {
         </div>
 
         {/* User Registration Settings */}
-        <Flex vertical className="gap-6">
+        <Flex vertical className="gap-3">
           <UserRegistrationSettings />
 
-          <Card>
+          <Card
+            styles={{
+              body: {
+                padding: '0',
+              },
+            }}
+          >
             <Table
               columns={columns}
               dataSource={users}
