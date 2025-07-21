@@ -293,119 +293,32 @@ pub async fn test_provider_proxy_connection(
 async fn test_proxy_connectivity_for_provider(
     proxy_config: &ProviderProxySettings,
 ) -> ApiResult<()> {
-    // Validate proxy URL format
-    if proxy_config.url.trim().is_empty() {
-        return Err(AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Proxy URL is empty",
-        ));
-    }
-
-    // Parse and validate the proxy URL
-    let _proxy_url = reqwest::Url::parse(&proxy_config.url).map_err(|e| {
-        AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            format!("Invalid proxy URL format: {}", e),
-        )
-    })?;
-
-    // Create a reqwest client with proxy configuration
-    let mut proxy_builder = reqwest::Proxy::all(&proxy_config.url).map_err(|e| {
-        AppError::new(
-            crate::api::errors::ErrorCode::SystemInternalError,
-            format!("Failed to create proxy: {}", e),
-        )
-    })?;
-
-    // Add authentication if provided
-    if !proxy_config.username.is_empty() {
-        proxy_builder = proxy_builder.basic_auth(&proxy_config.username, &proxy_config.password);
-    }
-
-    // Build the client with proxy and SSL settings
-    let mut client_builder = reqwest::Client::builder()
-        .proxy(proxy_builder)
-        .timeout(std::time::Duration::from_secs(30)) // Increased timeout for proxy connections
-        .no_proxy(); // Disable system proxy to ensure we only use our configured proxy
-
-    // Configure SSL verification based on settings
-    if proxy_config.ignore_ssl_certificates {
-        client_builder = client_builder.danger_accept_invalid_certs(true);
-    }
-
-    // Handle other SSL settings
-    if proxy_config.proxy_ssl {
-        // Additional proxy SSL configuration if needed
-    }
-
-    let client = client_builder.build().map_err(|e| {
-        AppError::new(
-            crate::api::errors::ErrorCode::SystemInternalError,
-            format!("Failed to create HTTP client: {}", e),
-        )
-    })?;
-
-    // Test the proxy by making a request to a reliable endpoint
-    // Using httpbin.org as it's a simple testing service that returns IP info
-    let test_url = if proxy_config.enabled {
-        "https://httpbin.org/ip"
-    } else {
-        return Err(AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Proxy is not enabled",
-        ));
-    };
-
-    match client.get(test_url).send().await {
-        Ok(response) => {
-            if response.status().is_success() {
-                // Try to read the response to ensure it's valid
-                match response.text().await {
-                    Ok(body) => {
-                        // Verify the response contains expected IP information
-                        if body.contains("origin") {
-                            Ok(())
-                        } else {
-                            Err(AppError::new(
-                                crate::api::errors::ErrorCode::SystemExternalServiceError,
-                                format!("Unexpected response format: {}", body),
-                            ))
-                        }
-                    }
-                    Err(e) => Err(AppError::new(
-                        crate::api::errors::ErrorCode::SystemExternalServiceError,
-                        format!("Failed to read response body: {}", e),
-                    )),
-                }
-            } else {
+    // Use the common proxy testing utility
+    let common_config = crate::utils::proxy::ProxyConfig::from(proxy_config);
+    
+    match crate::utils::proxy::test_proxy_connectivity(&common_config).await {
+        Ok(()) => Ok(()),
+        Err(error_msg) => {
+            // Convert String error to AppError based on error content
+            if error_msg.contains("Proxy is not enabled") {
                 Err(AppError::new(
-                    crate::api::errors::ErrorCode::SystemExternalServiceError,
-                    format!("HTTP request failed with status: {}", response.status()),
+                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                    &error_msg,
                 ))
-            }
-        }
-        Err(e) => {
-            // Check if it's a proxy-related error
-            let error_msg = e.to_string();
-            if error_msg.contains("proxy") || error_msg.contains("CONNECT") {
+            } else if error_msg.contains("Invalid proxy URL format") || error_msg.contains("Proxy URL is empty") {
                 Err(AppError::new(
-                    crate::api::errors::ErrorCode::SystemExternalServiceError,
-                    format!("Proxy connection failed: {}", e),
+                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                    &error_msg,
                 ))
-            } else if error_msg.contains("timeout") {
+            } else if error_msg.contains("Failed to create") {
                 Err(AppError::new(
-                    crate::api::errors::ErrorCode::SystemExternalServiceError,
-                    "Proxy connection timed out",
-                ))
-            } else if error_msg.contains("dns") {
-                Err(AppError::new(
-                    crate::api::errors::ErrorCode::SystemExternalServiceError,
-                    format!("DNS resolution failed (check proxy settings): {}", e),
+                    crate::api::errors::ErrorCode::SystemInternalError,
+                    &error_msg,
                 ))
             } else {
                 Err(AppError::new(
                     crate::api::errors::ErrorCode::SystemExternalServiceError,
-                    format!("Network request failed: {}", e),
+                    &error_msg,
                 ))
             }
         }
