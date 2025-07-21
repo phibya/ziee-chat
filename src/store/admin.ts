@@ -561,7 +561,6 @@ export const useAdminStore = create<AdminState>()(
       }
     },
 
-
     updateDefaultLanguage: async (language: string) => {
       try {
         set({ updating: true, error: null })

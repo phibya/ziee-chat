@@ -509,7 +509,6 @@ export const useProvidersStore = create<ProvidersState>()(
       }
     },
 
-
     // New multi-step upload workflow
     uploadMultipleFiles: async (
       providerId: string,

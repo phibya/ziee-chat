@@ -1092,7 +1092,7 @@ async fn create_ai_provider_with_model_id(
                 .port
                 .ok_or("Model is not running. Please start the model first.")?;
 
-            // Create the Candle provider with the model's port and name
+            // Create the Local provider with the model's port and name (no proxy for local connections)
             let local_provider = LocalProvider::new(port as u16, model.name.clone())?;
 
             Ok(Box::new(local_provider))

@@ -1,6 +1,6 @@
+use crate::ai::core::provider_base::{build_http_client_with_config, HttpClientConfig};
+use crate::ai::core::providers::ProxyConfig;
 use crate::database::models::ProxySettings;
-use reqwest;
-use reqwest::NoProxy;
 
 /// Test proxy connectivity using a common HTTP test endpoint
 pub async fn test_proxy_connectivity(proxy_config: &ProxySettings) -> Result<(), String> {
@@ -12,44 +12,36 @@ pub async fn test_proxy_connectivity(proxy_config: &ProxySettings) -> Result<(),
         return Err("Proxy URL is empty".to_string());
     }
 
-    // Parse and validate the proxy URL
-    let _proxy_url = reqwest::Url::parse(&proxy_config.url)
-        .map_err(|e| format!("Invalid proxy URL format: {}", e))?;
+    // Convert ProxySettings to ProxyConfig for use with common client builder
+    let proxy_config_converted = ProxyConfig {
+        enabled: true, // Always enabled for testing
+        url: proxy_config.url.clone(),
+        username: if proxy_config.username.is_empty() {
+            None
+        } else {
+            Some(proxy_config.username.clone())
+        },
+        password: if proxy_config.password.is_empty() {
+            None
+        } else {
+            Some(proxy_config.password.clone())
+        },
+        no_proxy: proxy_config
+            .no_proxy
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect(),
+        ignore_ssl_certificates: proxy_config.ignore_ssl_certificates,
+    };
 
-    // Create a reqwest client with proxy configuration
-    let mut proxy_builder = reqwest::Proxy::all(&proxy_config.url)
-        .map_err(|e| format!("Failed to create proxy: {}", e))?;
-
-    // Add authentication if provided
-    if !proxy_config.username.is_empty() {
-        proxy_builder = proxy_builder.basic_auth(&proxy_config.username, &proxy_config.password);
-    }
-
-    // Handle no_proxy list - domains that should bypass the proxy
-    if !proxy_config.no_proxy.trim().is_empty() {
-        proxy_builder = proxy_builder.no_proxy(NoProxy::from_string(&proxy_config.no_proxy));
-    }
-
-    // Build the client with proxy and SSL settings
-    let mut client_builder = reqwest::Client::builder()
-        .proxy(proxy_builder)
-        .timeout(std::time::Duration::from_secs(30)); // Increased timeout for proxy connections
-
-    // Configure SSL verification based on settings
-    if proxy_config.ignore_ssl_certificates {
-        client_builder = client_builder.danger_accept_invalid_certs(true);
-    }
-
-    // Apply additional SSL settings if needed
-    if proxy_config.proxy_ssl || proxy_config.host_ssl || proxy_config.peer_ssl {
-        // These fields control specific SSL verification aspects
-        // For now, we use ignore_ssl_certificates as a general flag
-        // Future implementations might need more granular control
-    }
-
-    let client = client_builder
-        .build()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+    // Use the common HTTP client builder with proxy testing configuration
+    let client = build_http_client_with_config(
+        "https://httpbin.org/ip", // Test URL for proxy validation
+        Some(&proxy_config_converted),
+        &HttpClientConfig::for_proxy_testing(),
+    )
+    .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
     // Test the proxy by making a request to a reliable endpoint
     // Using httpbin.org as it's a simple testing service that returns IP info

@@ -61,8 +61,10 @@ impl LocalProvider {
         port: u16,
         model_name: String,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let client = Client::new();
         let base_url = format!("http://127.0.0.1:{}", port);
+        
+        // Local providers don't use proxy - they connect to localhost
+        let client = Client::new();
 
         Ok(Self {
             client,

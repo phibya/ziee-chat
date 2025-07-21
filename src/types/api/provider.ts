@@ -62,7 +62,6 @@ export interface ProviderListResponse {
   per_page: number
 }
 
-
 // Device detection types
 export interface DeviceInfo {
   id: number

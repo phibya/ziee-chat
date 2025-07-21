@@ -12,7 +12,6 @@ export function ProviderProxySettingsForm({
   onSave,
   disabled = false,
 }: ProviderProxySettingsProps) {
-
   return (
     <ProxySettingsForm
       initialSettings={initialSettings}

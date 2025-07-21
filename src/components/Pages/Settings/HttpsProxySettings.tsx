@@ -44,7 +44,6 @@ export function HttpsProxySettings() {
     await updateProxySettings(values)
   }
 
-
   if (loading && !proxySettings) {
     return (
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -59,10 +58,7 @@ export function HttpsProxySettings() {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Title level={3}>{t('proxy.title')}</Title>
-      <ProxySettingsForm
-        initialSettings={proxySettings}
-        onSave={handleSave}
-      />
+      <ProxySettingsForm initialSettings={proxySettings} onSave={handleSave} />
     </Space>
   )
 }

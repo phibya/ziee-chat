@@ -1,5 +1,8 @@
-import { TestProxyConnectionRequest, TestProxyConnectionResponse } from "../types";
-import { ApiClient } from "./client";
+import {
+  TestProxyConnectionRequest,
+  TestProxyConnectionResponse,
+} from '../types'
+import { ApiClient } from './client'
 
 /**
  * Tests a proxy configuration and returns detailed response
