@@ -1,42 +1,14 @@
+use chrono::Utc;
 use sqlx::Row;
 use uuid::Uuid;
-use chrono::Utc;
 
 use crate::database::{
     get_database_pool,
-    models::{CreateModelRequest, Model, UpdateModelRequest, ModelFile, ModelStorageInfo, ModelStatusCounts},
+    models::{
+        CreateModelRequest, Model, ModelFile, ModelStatusCounts, ModelStorageInfo,
+        UpdateModelRequest,
+    },
 };
-
-/// Helper function to create default model settings (empty for auto-load)
-fn default_model_settings() -> serde_json::Value {
-    serde_json::json!({})
-}
-
-/// Helper function to create default model parameters
-fn default_model_parameters() -> serde_json::Value {
-    serde_json::json!({
-        "contextSize": 4096,
-        "gpuLayers": -1,
-        "temperature": 0.7,
-        "topK": 40,
-        "topP": 0.95,
-        "minP": 0.05,
-        "repeatLastN": 64,
-        "repeatPenalty": 1.1,
-        "presencePenalty": 0.0,
-        "frequencyPenalty": 0.0
-    })
-}
-
-/// Helper function to create default model capabilities
-fn default_model_capabilities() -> serde_json::Value {
-    serde_json::json!({
-        "vision": false,
-        "audio": false,
-        "tools": false,
-        "code_interpreter": false
-    })
-}
 
 pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -63,13 +35,6 @@ pub async fn create_model(
     let pool = pool.as_ref();
     let model_id = Uuid::new_v4();
 
-    // Use settings from request or default settings
-    let settings = if let Some(request_settings) = &request.settings {
-        serde_json::to_value(request_settings).unwrap_or_else(|_| default_model_settings())
-    } else {
-        default_model_settings()
-    };
-
     let model_row: Model = sqlx::query_as(
     "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
@@ -81,9 +46,9 @@ pub async fn create_model(
     .bind(&request.alias)
     .bind(&request.description)
     .bind(request.enabled.unwrap_or(true))
-    .bind(request.capabilities.unwrap_or(serde_json::json!({})))
-    .bind(default_model_parameters())
-    .bind(settings)
+    .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
+    .bind(serde_json::json!({}))
+    .bind(serde_json::json!({}))
       .fetch_one(pool)
     .await?;
 
@@ -96,40 +61,6 @@ pub async fn update_model(
 ) -> Result<Option<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-
-    // First, get the current model to merge settings
-    let current_model: Option<Model> = sqlx::query_as("SELECT * FROM models WHERE id = $1")
-        .bind(model_id)
-        .fetch_optional(pool)
-        .await?;
-
-    let updated_settings = if let Some(current) = &current_model {
-        if let Some(request_settings) = &request.settings {
-            // Merge current settings with request settings
-            let mut merged_settings = current.get_settings();
-
-            // Update all fields except architecture (protected)
-            if let Some(device_type) = &request_settings.device_type {
-                merged_settings.device_type = Some(device_type.clone());
-            }
-            if let Some(device_ids) = &request_settings.device_ids {
-                merged_settings.device_ids = Some(device_ids.clone());
-            }
-            // ... merge other settings as needed
-
-            serde_json::to_value(merged_settings).unwrap_or(serde_json::json!({}))
-        } else {
-            // No new settings provided, keep current
-            serde_json::to_value(current.get_settings()).unwrap_or(serde_json::json!({}))
-        }
-    } else {
-        // Model not found, use request settings or default
-        if let Some(request_settings) = &request.settings {
-            serde_json::to_value(request_settings).unwrap_or(serde_json::json!({}))
-        } else {
-            serde_json::json!({})
-        }
-    };
 
     let model_row: Option<Model> = sqlx::query_as(
     "UPDATE models
@@ -151,9 +82,9 @@ pub async fn update_model(
     .bind(&request.description)
     .bind(request.enabled)
     .bind(request.is_active)
-    .bind(&request.capabilities)
-    .bind(&request.parameters)
-    .bind(&updated_settings)
+    .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
+    .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})))
+    .bind(request.settings.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or_else(|| serde_json::json!({})))
     .fetch_optional(pool)
     .await?;
 
@@ -205,23 +136,11 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
 }
 
 /// Create a Candle model with required architecture and default settings
-pub async fn create_local_model(
-    request: &CreateModelRequest,
-    architecture: &str, // Architecture is required for Candle models
-) -> Result<Model, sqlx::Error> {
+pub async fn create_local_model(request: &CreateModelRequest) -> Result<Model, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let model_id = Uuid::new_v4();
     let now = Utc::now();
-
-    let capabilities = request
-        .capabilities
-        .clone()
-        .unwrap_or_else(default_model_capabilities);
-
-    // Create model settings with architecture and defaults
-    let mut model_settings = default_model_settings();
-    model_settings["architecture"] = serde_json::Value::String(architecture.to_string());
 
     let model: Model = sqlx::query_as(
         r#"
@@ -247,10 +166,16 @@ pub async fn create_local_model(
     .bind(request.enabled.unwrap_or(false))
     .bind(false)
     .bind(false)
-    .bind(capabilities)
-    .bind(default_model_parameters())
+    .bind(
+        request
+            .capabilities
+            .as_ref()
+            .map(|c| serde_json::to_value(c).unwrap())
+            .unwrap_or_else(|| serde_json::json!({})),
+    )
+    .bind(serde_json::json!({}))
     .bind("pending")
-    .bind(model_settings) // Model settings with architecture
+    .bind(serde_json::json!({})) // Model settings with architecture
     .bind(now)
     .bind(now)
     .fetch_one(pool)
@@ -478,9 +403,7 @@ pub async fn update_model_runtime_info(
 }
 
 /// Get model runtime information by model ID
-pub async fn get_model_runtime_info(
-    model_id: &Uuid,
-) -> Result<Option<(i32, i32)>, sqlx::Error> {
+pub async fn get_model_runtime_info(model_id: &Uuid) -> Result<Option<(i32, i32)>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let row = sqlx::query(

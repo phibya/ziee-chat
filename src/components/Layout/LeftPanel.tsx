@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Button,
@@ -109,7 +109,7 @@ export function LeftPanel({
           {
             key: 'chat-history',
             icon: <HistoryOutlined />,
-            label: t('navigation.chats'),
+            label: <Link to="/chat-history">{t('navigation.chats')}</Link>,
             onClick: () => {
               navigate('/chat-history')
               onItemClick?.()
@@ -118,7 +118,7 @@ export function LeftPanel({
           {
             key: 'projects',
             icon: <FolderOutlined />,
-            label: t('navigation.projects'),
+            label: <Link to="/projects">{t('navigation.projects')}</Link>,
             onClick: () => {
               navigate('/projects')
               onItemClick?.()
@@ -127,7 +127,7 @@ export function LeftPanel({
           {
             key: 'artifacts',
             icon: <BlockOutlined />,
-            label: t('navigation.artifacts'),
+            label: <Link to="/artifacts">{t('navigation.artifacts')}</Link>,
             onClick: () => {
               navigate('/artifacts')
               onItemClick?.()
@@ -161,7 +161,7 @@ export function LeftPanel({
           {
             key: 'hub',
             icon: <AppstoreOutlined />,
-            label: t('navigation.hub'),
+            label: <Link to="/hub">{t('navigation.hub')}</Link>,
             onClick: () => {
               navigate('/hub')
               onItemClick?.()
@@ -170,7 +170,7 @@ export function LeftPanel({
           {
             key: 'assistants',
             icon: <RobotOutlined />,
-            label: t('navigation.assistants'),
+            label: <Link to="/assistants">{t('navigation.assistants')}</Link>,
             onClick: () => {
               navigate('/assistants')
               onItemClick?.()
@@ -179,7 +179,7 @@ export function LeftPanel({
           {
             key: 'settings',
             icon: <SettingOutlined />,
-            label: t('navigation.settings'),
+            label: <Link to="/settings">{t('navigation.settings')}</Link>,
             onClick: () => {
               navigate('/settings')
               onItemClick?.()

@@ -1,3 +1,4 @@
+import { UploadOutlined } from '@ant-design/icons'
 import {
   App,
   Button,
@@ -16,19 +17,13 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdate } from 'react-use'
-import { ProviderType } from '../../../../types/api/provider'
-import { useProvidersStore } from '../../../../store/providers'
 import { useShallow } from 'zustand/react/shallow'
-import { UploadOutlined } from '@ant-design/icons'
+import { LOCAL_FILE_TYPE_OPTIONS } from '../../../../constants/localModelTypes.ts'
+import { useProvidersStore } from '../../../../store/providers'
+import { ProviderType } from '../../../../types/api/provider'
+import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from './shared/constants'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { UploadProgress } from './UploadProgress'
-import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from './shared/constants'
-import {
-  DEFAULT_LOCAL_ARCHITECTURE,
-  DEFAULT_LOCAL_FILE_TYPE,
-  LOCAL_ARCHITECTURE_OPTIONS,
-  LOCAL_FILE_TYPE_OPTIONS,
-} from '../../../../constants/localModelTypes'
 
 interface AddModelModalProps {
   open: boolean
@@ -72,8 +67,7 @@ export function AddModelModal({
   }
 
   // Get values from form instead of separate state
-  const selectedFileFormat =
-    Form.useWatch('file_format', form) || DEFAULT_LOCAL_FILE_TYPE
+  const selectedFileFormat = Form.useWatch('file_format', form) || 'safetensors'
   const modelSource = Form.useWatch('model_source', form) || 'upload'
 
   const {
@@ -169,7 +163,6 @@ export function AddModelModal({
             modelId, // Auto-generated model ID
             values.alias, // Display name
             values.description,
-            values.settings.architecture,
             values.file_format,
             values.capabilities, // Include capabilities from form
             selectedFileIds,
@@ -242,9 +235,7 @@ export function AddModelModal({
         hf_repo: 'TinyLlama/TinyLlama-1.1B-Chat-v1.0',
         hf_filename: 'model.safetensors',
         hf_branch: 'main',
-        settings: {
-          architecture: DEFAULT_LOCAL_ARCHITECTURE,
-        },
+        settings: {},
       })
       update() // Force re-render to update form watchers
     }
@@ -661,13 +652,11 @@ export function AddModelModal({
         form={form}
         layout="vertical"
         initialValues={{
-          file_format: DEFAULT_LOCAL_FILE_TYPE,
+          file_format: 'safetensors',
           model_source: 'upload',
           local_folder_path: '',
           local_filename: '',
-          settings: {
-            architecture: DEFAULT_LOCAL_ARCHITECTURE,
-          },
+          settings: {},
         }}
       >
         <ModelParametersSection
@@ -675,36 +664,6 @@ export function AddModelModal({
             providerType === 'local' ? LOCAL_MODEL_FIELDS : BASIC_MODEL_FIELDS
           }
         />
-
-        {providerType === 'local' && (
-          <Form.Item
-            name={['settings', 'architecture']}
-            label={t('providers.modelArchitecture')}
-            rules={[
-              {
-                required: true,
-                message: t('providers.modelArchitectureRequired'),
-              },
-            ]}
-          >
-            <Select
-              placeholder={t('providers.selectModelArchitecture')}
-              options={LOCAL_ARCHITECTURE_OPTIONS.map(option => ({
-                value: option.value,
-                label: option.label,
-                description: option.description,
-              }))}
-              optionRender={option => (
-                <div className={'flex flex-col'}>
-                  <Typography.Text>{option.label}</Typography.Text>
-                  <Typography.Text type="secondary">
-                    {option.data.description}
-                  </Typography.Text>
-                </div>
-              )}
-            />
-          </Form.Item>
-        )}
 
         {providerType === 'local' && (
           <Form.Item

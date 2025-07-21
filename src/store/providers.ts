@@ -1,18 +1,14 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import {
-  CreateProviderRequest,
-  Model,
-  ModelCapabilities,
-  Provider,
-} from '../types/api/provider'
+import { getAuthToken, getBaseUrl } from '../api/core'
 import {
   uploadFile,
   uploadFilesConcurrent,
   UploadProgress,
 } from '../api/fileUpload'
-import { getAuthToken, getBaseUrl } from '../api/core'
+import { CreateProviderRequest, Provider } from '../types/api/provider'
+import { Model, ModelCapabilities } from '../types/api/model'
 
 // Type definitions are now imported from the API types
 
@@ -99,7 +95,6 @@ interface ProvidersState {
     name: string,
     alias: string,
     description: string | undefined,
-    architecture: string,
     fileFormat: string,
     capabilities: ModelCapabilities,
     selectedFileIds: string[],
@@ -112,7 +107,6 @@ interface ProvidersState {
     name: string,
     alias: string,
     description?: string,
-    architecture?: string,
     fileFormat?: string,
     metadata?: any,
   ) => Promise<{ id: string }>
@@ -727,7 +721,6 @@ export const useProvidersStore = create<ProvidersState>()(
       name: string,
       alias: string,
       description: string | undefined,
-      architecture: string,
       fileFormat: string,
       capabilities: ModelCapabilities,
       selectedFileIds: string[],
@@ -742,7 +735,6 @@ export const useProvidersStore = create<ProvidersState>()(
           name,
           alias,
           description,
-          architecture,
           file_format: fileFormat,
           capabilities,
           selected_files: selectedFileIds,
@@ -779,7 +771,6 @@ export const useProvidersStore = create<ProvidersState>()(
       name: string,
       alias: string,
       description?: string,
-      architecture?: string,
       fileFormat?: string,
       metadata?: any,
     ) => {
@@ -791,7 +782,6 @@ export const useProvidersStore = create<ProvidersState>()(
           name,
           alias,
           description,
-          architecture: architecture || 'llama', // Default to llama if not specified
           file_format: fileFormat,
           metadata: metadata,
         })

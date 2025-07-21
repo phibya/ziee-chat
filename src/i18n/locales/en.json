@@ -466,7 +466,6 @@
     "modelDownloadStarted": "Model download started",
     "modelArchitecture": "Model Architecture",
     "modelArchitectureRequired": "Please select model architecture",
-    "selectModelArchitecture": "Select model architecture",
     "modelSource": "Model Source",
     "modelSourceRequired": "Please select model source",
     "uploadFile": "Upload File",

@@ -3,56 +3,13 @@
  * Centralized location for all API request/response types
  */
 
-import { AuthResponse, InitResponse, LoginRequest } from './auth'
-import {
-  AssignUserToGroupRequest,
-  CreateUserGroupRequest,
-  CreateUserRequest,
-  ResetPasswordRequest,
-  UpdateUserGroupRequest,
-  UpdateUserRequest,
-  User,
-  UserGroup,
-  UserListResponse,
-} from './user'
-import {
-  ProxySettingsResponse,
-  TestProxyConnectionRequest,
-  TestProxyConnectionResponse,
-  UpdateProxySettingsRequest,
-  UpdateUserRegistrationRequest,
-  UserRegistrationStatusResponse,
-} from './config.ts'
-import {
-  DefaultLanguageResponse,
-  UpdateDefaultLanguageRequest,
-} from './globalConfig'
-import { UserGroupListResponse } from './userGroup.ts'
-import {
-  UserSetting,
-  UserSettingRequest,
-  UserSettingsResponse,
-} from './userSettings'
-import {
-  AddModelToProviderRequest,
-  AvailableDevicesResponse,
-  CreateProviderRequest,
-  Model,
-  ModelCapabilities,
-  ModelSettings,
-  Provider,
-  ProviderListResponse,
-  ProviderProxySettings,
-  TestProviderProxyResponse,
-  UpdateModelRequest,
-  UpdateProviderRequest,
-} from './provider'
 import {
   Assistant,
   AssistantListResponse,
   CreateAssistantRequest,
   UpdateAssistantRequest,
 } from './assistant'
+import { AuthResponse, InitResponse, LoginRequest } from './auth'
 import {
   Conversation,
   ConversationListResponse,
@@ -65,6 +22,18 @@ import {
   UpdateConversationRequest,
 } from './chat'
 import {
+  ProxySettingsResponse,
+  TestProxyConnectionRequest,
+  TestProxyConnectionResponse,
+  UpdateProxySettingsRequest,
+  UpdateUserRegistrationRequest,
+  UserRegistrationStatusResponse,
+} from './config.ts'
+import {
+  DefaultLanguageResponse,
+  UpdateDefaultLanguageRequest,
+} from './globalConfig'
+import {
   CreateProjectRequest,
   Project,
   ProjectConversation,
@@ -75,6 +44,39 @@ import {
   UploadDocumentRequest,
   UploadDocumentResponse,
 } from './projects'
+import {
+  AvailableDevicesResponse,
+  CreateProviderRequest,
+  Provider,
+  ProviderListResponse,
+  ProviderProxySettings,
+  TestProviderProxyResponse,
+  UpdateProviderRequest,
+} from './provider'
+import {
+  AddModelToProviderRequest,
+  Model,
+  ModelCapabilities,
+  ModelSettings,
+  UpdateModelRequest,
+} from './model'
+import {
+  AssignUserToGroupRequest,
+  CreateUserGroupRequest,
+  CreateUserRequest,
+  ResetPasswordRequest,
+  UpdateUserGroupRequest,
+  UpdateUserRequest,
+  User,
+  UserGroup,
+  UserListResponse,
+} from './user'
+import { UserGroupListResponse } from './userGroup.ts'
+import {
+  UserSetting,
+  UserSettingRequest,
+  UserSettingsResponse,
+} from './userSettings'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -280,7 +282,6 @@ export type ApiEndpointParameters = {
     name: string
     alias: string
     description?: string
-    architecture: string
     file_format?: string
     metadata?: any
   }
@@ -299,7 +300,6 @@ export type ApiEndpointParameters = {
     name: string
     alias: string
     description?: string
-    architecture: string
     file_format: string
     capabilities?: ModelCapabilities
     selected_files: string[]
@@ -438,7 +438,6 @@ export type ApiEndpointResponses = {
     name: string
     alias: string
     description?: string
-    architecture: string
     file_format?: string
   }
   'ModelUploads.get': {

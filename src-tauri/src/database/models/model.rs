@@ -4,6 +4,156 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
+/// Model capabilities configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ModelCapabilities {
+    /// Vision capability - can process images
+    pub vision: Option<bool>,
+    /// Audio capability - can process audio
+    pub audio: Option<bool>,
+    /// Tools capability - can use function calling/tools
+    pub tools: Option<bool>,
+    /// Code interpreter capability
+    pub code_interpreter: Option<bool>,
+}
+
+impl ModelCapabilities {
+    /// Create new capabilities with all disabled
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create capabilities for a vision model
+    pub fn vision_enabled() -> Self {
+        Self {
+            vision: Some(true),
+            audio: Some(false),
+            tools: Some(false),
+            code_interpreter: Some(false),
+        }
+    }
+
+    /// Create capabilities for a code model
+    pub fn code_enabled() -> Self {
+        Self {
+            vision: Some(false),
+            audio: Some(false),
+            tools: Some(true),
+            code_interpreter: Some(true),
+        }
+    }
+}
+
+/// Model parameters for inference configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ModelParameters {
+    // Context and generation parameters
+    /// Context size for the model
+    pub context_size: Option<u32>,
+    /// Number of GPU layers to offload (-1 for all)
+    pub gpu_layers: Option<i32>,
+    
+    // Sampling parameters
+    /// Temperature for randomness (0.0-2.0)
+    pub temperature: Option<f32>,
+    /// Top-K sampling parameter
+    pub top_k: Option<u32>,
+    /// Top-P (nucleus) sampling parameter (0.0-1.0)
+    pub top_p: Option<f32>,
+    /// Min-P sampling parameter (0.0-1.0)
+    pub min_p: Option<f32>,
+    
+    // Repetition control
+    /// Number of last tokens to consider for repetition penalty
+    pub repeat_last_n: Option<u32>,
+    /// Repetition penalty (1.0 = no penalty)
+    pub repeat_penalty: Option<f32>,
+    /// Presence penalty for new tokens
+    pub presence_penalty: Option<f32>,
+    /// Frequency penalty for repeated tokens
+    pub frequency_penalty: Option<f32>,
+}
+
+impl ModelParameters {
+    /// Create new parameters with default values
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Create parameters optimized for creative text generation
+    pub fn creative() -> Self {
+        Self {
+            context_size: Some(4096),
+            gpu_layers: Some(-1),
+            temperature: Some(0.8),
+            top_k: Some(40),
+            top_p: Some(0.95),
+            min_p: Some(0.05),
+            repeat_last_n: Some(64),
+            repeat_penalty: Some(1.1),
+            presence_penalty: Some(0.0),
+            frequency_penalty: Some(0.0),
+        }
+    }
+
+    /// Create parameters optimized for precise/factual generation
+    pub fn precise() -> Self {
+        Self {
+            context_size: Some(4096),
+            gpu_layers: Some(-1),
+            temperature: Some(0.2),
+            top_k: Some(20),
+            top_p: Some(0.9),
+            min_p: Some(0.1),
+            repeat_last_n: Some(64),
+            repeat_penalty: Some(1.05),
+            presence_penalty: Some(0.1),
+            frequency_penalty: Some(0.1),
+        }
+    }
+
+    /// Validate the parameters and return errors if any
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(temp) = self.temperature {
+            if temp < 0.0 || temp > 2.0 {
+                return Err("temperature must be between 0.0 and 2.0".to_string());
+            }
+        }
+
+        if let Some(top_p) = self.top_p {
+            if top_p < 0.0 || top_p > 1.0 {
+                return Err("top_p must be between 0.0 and 1.0".to_string());
+            }
+        }
+
+        if let Some(min_p) = self.min_p {
+            if min_p < 0.0 || min_p > 1.0 {
+                return Err("min_p must be between 0.0 and 1.0".to_string());
+            }
+        }
+
+        if let Some(repeat_penalty) = self.repeat_penalty {
+            if repeat_penalty < 0.0 || repeat_penalty > 2.0 {
+                return Err("repeat_penalty must be between 0.0 and 2.0".to_string());
+            }
+        }
+
+        if let Some(presence_penalty) = self.presence_penalty {
+            if presence_penalty < -2.0 || presence_penalty > 2.0 {
+                return Err("presence_penalty must be between -2.0 and 2.0".to_string());
+            }
+        }
+
+        if let Some(frequency_penalty) = self.frequency_penalty {
+            if frequency_penalty < -2.0 || frequency_penalty > 2.0 {
+                return Err("frequency_penalty must be between -2.0 and 2.0".to_string());
+            }
+        }
+
+        Ok(())
+    }
+}
+
 /// Typed settings for individual model performance and batching configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelSettings {
@@ -48,8 +198,6 @@ pub struct ModelSettings {
     pub dtype: Option<String>,
     /// In-situ quantization method (--isq)
     pub in_situ_quant: Option<String>,
-    /// Model architecture override (--arch for plain models)
-    pub architecture: Option<String>,
 
     // Reproducibility
     /// Seed for reproducible generation (--seed)
@@ -91,7 +239,6 @@ impl ModelSettings {
             prompt_chunksize: Some(1024),
             dtype: Some("f16".to_string()),
             in_situ_quant: None,
-            architecture: None,
             seed: None,
             max_edge: None,
             max_num_images: None,
@@ -118,7 +265,6 @@ impl ModelSettings {
             prompt_chunksize: Some(512),
             dtype: Some("f16".to_string()),
             in_situ_quant: None,
-            architecture: None,
             seed: None,
             max_edge: None,
             max_num_images: None,
@@ -188,8 +334,8 @@ pub struct Model {
     pub enabled: bool,
     pub is_deprecated: bool,
     pub is_active: bool,
-    pub capabilities: Option<serde_json::Value>,
-    pub parameters: Option<serde_json::Value>,
+    pub capabilities: Option<ModelCapabilities>,
+    pub parameters: Option<ModelParameters>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     // Additional fields for Candle models (None for other providers)
@@ -209,7 +355,12 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
         let capabilities = if capabilities_json.is_null() {
             None
         } else {
-            Some(capabilities_json)
+            Some(
+                serde_json::from_value(capabilities_json).map_err(|e| sqlx::Error::ColumnDecode {
+                    index: "capabilities".into(),
+                    source: Box::new(e),
+                })?,
+            )
         };
 
         // Parse parameters JSON
@@ -217,7 +368,12 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
         let parameters = if parameters_json.is_null() {
             None
         } else {
-            Some(parameters_json)
+            Some(
+                serde_json::from_value(parameters_json).map_err(|e| sqlx::Error::ColumnDecode {
+                    index: "parameters".into(),
+                    source: Box::new(e),
+                })?,
+            )
         };
 
         // Parse settings JSON
@@ -270,7 +426,7 @@ pub struct CreateModelRequest {
     pub alias: String,
     pub description: Option<String>,
     pub enabled: Option<bool>,
-    pub capabilities: Option<serde_json::Value>,
+    pub capabilities: Option<ModelCapabilities>,
     pub settings: Option<ModelSettings>,
 }
 
@@ -281,8 +437,8 @@ pub struct UpdateModelRequest {
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub is_active: Option<bool>,
-    pub capabilities: Option<serde_json::Value>,
-    pub parameters: Option<serde_json::Value>,
+    pub capabilities: Option<ModelCapabilities>,
+    pub parameters: Option<ModelParameters>,
     pub settings: Option<ModelSettings>,
 }
 

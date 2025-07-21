@@ -52,7 +52,6 @@ pub struct CommitUploadRequest {
     pub name: String,
     pub alias: String,
     pub description: Option<String>,
-    pub architecture: String,
     pub file_format: String,
     pub selected_files: Vec<Uuid>, // temp_file_ids to commit
 }
@@ -330,7 +329,6 @@ pub async fn commit_uploaded_files(
 
     // Create model request
     let model_name = request.name.clone();
-    let architecture = request.architecture.clone();
     let file_format = request.file_format.clone();
     let create_request = crate::database::models::CreateModelRequest {
         provider_id: request.provider_id,
@@ -338,13 +336,13 @@ pub async fn commit_uploaded_files(
         alias: request.alias,
         description: request.description,
         enabled: Some(false),
-        capabilities: Some(serde_json::json!({})),
+        capabilities: Some(crate::database::models::ModelCapabilities::new()),
         settings: None,
     };
 
     println!("Processing model with file format: {}", file_format);
 
-    let model_db = models::create_local_model(&create_request, &architecture)
+    let model_db = models::create_local_model(&create_request)
     .await
     .map_err(|e| {
       // Handle unique constraint violation for (provider_id, name)
@@ -416,14 +414,9 @@ pub async fn commit_uploaded_files(
     // Update model with total size (checksum removed for performance)
 
     // Update validation status to completed and enable the model
-    models::update_model_validation(
-        &model_db.id,
-        "completed",
-        None,
-        Some(total_size as i64),
-    )
-    .await
-    .map_err(AppError::database_error)?;
+    models::update_model_validation(&model_db.id, "completed", None, Some(total_size as i64))
+        .await
+        .map_err(AppError::database_error)?;
 
     models::update_model_status(
         &model_db.id,
@@ -655,14 +648,9 @@ pub async fn validate_model(
     let validation_status = if is_valid { "valid" } else { "invalid" };
 
     // Update validation status in database
-    models::update_model_validation(
-        &model_id,
-        validation_status,
-        Some(&validation_issues),
-        None,
-    )
-    .await
-    .map_err(AppError::database_error)?;
+    models::update_model_validation(&model_id, validation_status, Some(&validation_issues), None)
+        .await
+        .map_err(AppError::database_error)?;
 
     // Create validation result
     let validation_result = ModelValidationResult {

@@ -35,7 +35,8 @@ import {
 import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
-import { Model, Provider, ProviderType } from '../../../../types/api/provider'
+import { Provider, ProviderType } from '../../../../types/api/provider'
+import { Model } from '../../../../types/api/model'
 import { AddProviderModal } from './AddProviderModal'
 import { AddModelModal } from './AddModelModal'
 import { EditModelModal } from './EditModelModal'
@@ -949,7 +950,7 @@ export function ProvidersSettings() {
                           {model.capabilities.tools && (
                             <Text type="secondary">🔧 Tools</Text>
                           )}
-                          {model.capabilities.codeInterpreter && (
+                          {model.capabilities.code_interpreter && (
                             <Text type="secondary">💻 Code</Text>
                           )}
                         </Space>

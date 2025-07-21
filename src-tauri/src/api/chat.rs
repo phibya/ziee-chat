@@ -1225,7 +1225,7 @@ async fn generate_and_update_conversation_title(
 /// Merge model and assistant parameters with assistant parameters taking priority
 /// Only include parameters that are actually defined (not null)
 fn merge_parameters(
-    model_params: &Option<serde_json::Value>,
+    model_params: &Option<crate::database::models::ModelParameters>,
     assistant_params: &Option<serde_json::Value>,
 ) -> (
     Option<f64>, // temperature
@@ -1241,21 +1241,21 @@ fn merge_parameters(
     let mut presence_penalty = None;
 
     // First, extract from model parameters
-    if let Some(model_obj) = model_params.as_ref().and_then(|p| p.as_object()) {
-        if let Some(temp) = model_obj.get("temperature").and_then(|t| t.as_f64()) {
-            temperature = Some(temp);
+    if let Some(model_params) = model_params {
+        if let Some(temp) = model_params.temperature {
+            temperature = Some(temp as f64);
         }
-        if let Some(max_tok) = model_obj.get("max_tokens").and_then(|t| t.as_i64()) {
-            max_tokens = Some(max_tok as u32);
+        if let Some(context_size) = model_params.context_size {
+            max_tokens = Some(context_size);
         }
-        if let Some(top_p_val) = model_obj.get("top_p").and_then(|t| t.as_f64()) {
-            top_p = Some(top_p_val);
+        if let Some(top_p_val) = model_params.top_p {
+            top_p = Some(top_p_val as f64);
         }
-        if let Some(freq_pen) = model_obj.get("frequency_penalty").and_then(|t| t.as_f64()) {
-            frequency_penalty = Some(freq_pen);
+        if let Some(freq_pen) = model_params.frequency_penalty {
+            frequency_penalty = Some(freq_pen as f64);
         }
-        if let Some(pres_pen) = model_obj.get("presence_penalty").and_then(|t| t.as_f64()) {
-            presence_penalty = Some(pres_pen);
+        if let Some(pres_pen) = model_params.presence_penalty {
+            presence_penalty = Some(pres_pen as f64);
         }
     }
 

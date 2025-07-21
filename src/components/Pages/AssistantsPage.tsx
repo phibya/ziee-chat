@@ -1,55 +1,34 @@
-import React, { useEffect, useState } from 'react'
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  RobotOutlined,
+} from '@ant-design/icons'
 import {
   App,
   Avatar,
   Button,
   Card,
   Col,
-  Form,
-  Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Row,
-  Select,
   Space,
-  Switch,
   Table,
   Tag,
   Tooltip,
   Typography,
 } from 'antd'
-import {
-  CodeOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  FormOutlined,
-  PlusOutlined,
-  RobotOutlined,
-} from '@ant-design/icons'
-import { useShallow } from 'zustand/react/shallow'
-import { Assistant } from '../../types/api/assistant'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PageContainer } from '../common/PageContainer'
+import { useShallow } from 'zustand/react/shallow'
 import { useAssistantsStore } from '../../store/assistants'
+import { Assistant } from '../../types/api/assistant'
+import { PageContainer } from '../common/PageContainer'
+import { AssistantFormModal } from '../shared/AssistantFormModal'
 
 const { Title, Text } = Typography
-const { TextArea } = Input
-
-interface AssistantFormData {
-  name: string
-  description?: string
-  instructions?: string
-  parameters?: string
-  is_active?: boolean
-}
-
-interface ParameterFormField {
-  name: string
-  type: 'string' | 'number' | 'boolean'
-  value: any
-}
 
 export const AssistantsPage: React.FC = () => {
   const { t } = useTranslation()
@@ -57,7 +36,7 @@ export const AssistantsPage: React.FC = () => {
 
   // Assistants store
   const {
-    assistants,
+    assistants: allAssistants,
     adminAssistants: templateAssistants,
     loading,
     creating,
@@ -86,18 +65,14 @@ export const AssistantsPage: React.FC = () => {
     })),
   )
 
+  const assistants = allAssistants.filter(a => !a.is_template)
+
   const [modalVisible, setModalVisible] = useState(false)
   const [templateModalVisible, setTemplateModalVisible] = useState(false)
   const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(
     null,
   )
   const [cloneSource, setCloneSource] = useState<Assistant | null>(null)
-  const [form] = Form.useForm<AssistantFormData>()
-  const [parameterMode, setParameterMode] = useState<'json' | 'form'>('json')
-  const [parameterFormFields, setParameterFormFields] = useState<
-    ParameterFormField[]
-  >([])
-  const [parameterJson, setParameterJson] = useState('')
 
   useEffect(() => {
     loadAssistants()
@@ -111,19 +86,13 @@ export const AssistantsPage: React.FC = () => {
     }
   }, [error, message, clearError])
 
-  const handleCreateEdit = async (values: AssistantFormData) => {
+  const handleFormSubmit = async (values: any) => {
     try {
-      // Get parameters from current mode
-      let parametersString = values.parameters
-      if (parameterMode === 'form') {
-        parametersString = convertFormToJson(parameterFormFields)
-      }
-
       const requestData = {
         name: values.name,
         description: values.description || '',
         instructions: values.instructions || '',
-        parameters: parametersString ? JSON.parse(parametersString) : {},
+        parameters: values.parameters ? JSON.parse(values.parameters) : {},
         is_enabled: values.is_active ?? true,
       }
 
@@ -131,24 +100,24 @@ export const AssistantsPage: React.FC = () => {
         await updateAssistant(editingAssistant.id, requestData)
         message.success(t('assistants.assistantUpdated'))
       } else if (cloneSource) {
-        await createAssistant({
-          ...requestData,
-          // Note: clone_from is not supported by the API yet
-        })
+        await createAssistant(requestData)
         message.success(t('assistants.assistantCloned'))
       } else {
         await createAssistant(requestData)
         message.success(t('assistants.assistantCreated'))
       }
 
-      setModalVisible(false)
-      setEditingAssistant(null)
-      setCloneSource(null)
-      form.resetFields()
+      handleModalClose()
     } catch (error) {
       // Error is already handled by the store
       console.error('Failed to save assistant:', error)
     }
+  }
+
+  const handleModalClose = () => {
+    setModalVisible(false)
+    setEditingAssistant(null)
+    setCloneSource(null)
   }
 
   const handleDelete = async (assistant: Assistant) => {
@@ -164,45 +133,12 @@ export const AssistantsPage: React.FC = () => {
   const handleEdit = (assistant: Assistant) => {
     setEditingAssistant(assistant)
     setCloneSource(null)
-    const parametersJson = assistant.parameters
-      ? JSON.stringify(assistant.parameters, null, 2)
-      : ''
-    form.setFieldsValue({
-      name: assistant.name,
-      description: assistant.description,
-      instructions: assistant.instructions,
-      parameters: parametersJson,
-      is_active: assistant.is_active,
-    })
-    setParameterJson(parametersJson)
-    convertJsonToForm(parametersJson)
-    setParameterMode('json')
     setModalVisible(true)
   }
 
   const handleCreate = () => {
     setEditingAssistant(null)
     setCloneSource(null)
-    form.resetFields()
-    const defaultParams = JSON.stringify(
-      {
-        stream: true,
-        temperature: 0.7,
-        frequency_penalty: 0.7,
-        presence_penalty: 0.7,
-        top_p: 0.95,
-        top_k: 2,
-      },
-      null,
-      2,
-    )
-    form.setFieldsValue({
-      is_active: true,
-      parameters: defaultParams,
-    })
-    setParameterJson(defaultParams)
-    convertJsonToForm(defaultParams)
-    setParameterMode('json')
     setModalVisible(true)
   }
 
@@ -213,91 +149,8 @@ export const AssistantsPage: React.FC = () => {
   const handleSelectTemplateAssistant = (assistant: Assistant) => {
     setCloneSource(assistant)
     setEditingAssistant(null)
-    const parametersJson = assistant.parameters
-      ? JSON.stringify(assistant.parameters, null, 2)
-      : ''
-    form.setFieldsValue({
-      name: `${assistant.name} (Copy)`,
-      description: assistant.description,
-      instructions: assistant.instructions,
-      parameters: parametersJson,
-      is_active: true,
-    })
-    setParameterJson(parametersJson)
-    convertJsonToForm(parametersJson)
     setTemplateModalVisible(false)
     setModalVisible(true)
-  }
-
-  const convertJsonToForm = (jsonString: string) => {
-    if (!jsonString.trim()) {
-      setParameterFormFields([])
-      return
-    }
-
-    try {
-      const parsed = JSON.parse(jsonString)
-      const fields: ParameterFormField[] = Object.entries(parsed).map(
-        ([key, value]) => ({
-          name: key,
-          type:
-            typeof value === 'number'
-              ? 'number'
-              : typeof value === 'boolean'
-                ? 'boolean'
-                : 'string',
-          value,
-        }),
-      )
-      setParameterFormFields(fields)
-    } catch {
-      setParameterFormFields([])
-    }
-  }
-
-  const convertFormToJson = (fields: ParameterFormField[]) => {
-    const obj: any = {}
-    fields.forEach(field => {
-      if (field.name.trim()) {
-        obj[field.name] = field.value
-      }
-    })
-    return JSON.stringify(obj, null, 2)
-  }
-
-  const handleParameterModeChange = (mode: 'json' | 'form') => {
-    if (mode === 'form' && parameterMode === 'json') {
-      // Convert JSON to form
-      convertJsonToForm(parameterJson)
-    } else if (mode === 'json' && parameterMode === 'form') {
-      // Convert form to JSON
-      const jsonString = convertFormToJson(parameterFormFields)
-      setParameterJson(jsonString)
-      form.setFieldsValue({ parameters: jsonString })
-    }
-    setParameterMode(mode)
-  }
-
-  const handleFormFieldChange = (
-    index: number,
-    field: keyof ParameterFormField,
-    value: any,
-  ) => {
-    const newFields = [...parameterFormFields]
-    newFields[index] = { ...newFields[index], [field]: value }
-    setParameterFormFields(newFields)
-  }
-
-  const addFormField = () => {
-    setParameterFormFields([
-      ...parameterFormFields,
-      { name: '', type: 'string', value: '' },
-    ])
-  }
-
-  const removeFormField = (index: number) => {
-    const newFields = parameterFormFields.filter((_, i) => i !== index)
-    setParameterFormFields(newFields)
   }
 
   const renderAssistantCard = (assistant: Assistant) => (
@@ -409,203 +262,14 @@ export const AssistantsPage: React.FC = () => {
         </Col>
       </Row>
 
-      <Modal
-        title={
-          editingAssistant
-            ? 'Edit Assistant'
-            : cloneSource
-              ? 'Clone Assistant'
-              : 'Create Assistant'
-        }
-        open={modalVisible}
-        onCancel={() => {
-          setModalVisible(false)
-          setEditingAssistant(null)
-          setCloneSource(null)
-          form.resetFields()
-        }}
-        footer={null}
-        width={800}
-        maskClosable={false}
-      >
-        <Form form={form} onFinish={handleCreateEdit} layout="vertical">
-          <Form.Item
-            name="name"
-            label={t('labels.name')}
-            rules={[{ required: true, message: 'Please enter a name' }]}
-          >
-            <Input placeholder={t('forms.enterAssistantName')} />
-          </Form.Item>
-
-          <Form.Item name="description" label={t('labels.description')}>
-            <Input.TextArea
-              placeholder={t('forms.enterAssistantDescription')}
-              rows={2}
-            />
-          </Form.Item>
-
-          <Form.Item name="instructions" label={t('labels.instructions')}>
-            <TextArea
-              placeholder={t('forms.enterAssistantInstructions')}
-              rows={6}
-            />
-          </Form.Item>
-
-          <Form.Item label={t('labels.parameters')}>
-            <div className="mb-3">
-              <Space>
-                <Button
-                  type={parameterMode === 'json' ? 'primary' : 'default'}
-                  size="small"
-                  icon={<CodeOutlined />}
-                  onClick={() => handleParameterModeChange('json')}
-                >
-                  JSON
-                </Button>
-                <Button
-                  type={parameterMode === 'form' ? 'primary' : 'default'}
-                  size="small"
-                  icon={<FormOutlined />}
-                  onClick={() => handleParameterModeChange('form')}
-                >
-                  Form
-                </Button>
-              </Space>
-            </div>
-
-            {parameterMode === 'json' ? (
-              <Form.Item
-                name="parameters"
-                rules={[
-                  {
-                    validator: (_, value) => {
-                      if (!value) return Promise.resolve()
-                      try {
-                        JSON.parse(value)
-                        return Promise.resolve()
-                      } catch {
-                        return Promise.reject('Invalid JSON format')
-                      }
-                    },
-                  },
-                ]}
-              >
-                <TextArea
-                  value={parameterJson}
-                  onChange={e => {
-                    setParameterJson(e.target.value)
-                    form.setFieldsValue({ parameters: e.target.value })
-                  }}
-                  placeholder={t('forms.enterParametersJson')}
-                  rows={8}
-                  style={{ fontFamily: 'monospace' }}
-                />
-              </Form.Item>
-            ) : (
-              <div>
-                <div className="space-y-3">
-                  {parameterFormFields.map((field, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <Input
-                        placeholder={t('forms.fieldName')}
-                        value={field.name}
-                        onChange={e =>
-                          handleFormFieldChange(index, 'name', e.target.value)
-                        }
-                        style={{ width: 150 }}
-                      />
-                      <Select
-                        value={field.type}
-                        onChange={value =>
-                          handleFormFieldChange(index, 'type', value)
-                        }
-                        style={{ width: 100 }}
-                      >
-                        <Select.Option value="string">String</Select.Option>
-                        <Select.Option value="number">Number</Select.Option>
-                        <Select.Option value="boolean">Boolean</Select.Option>
-                      </Select>
-                      {field.type === 'boolean' ? (
-                        <Switch
-                          checked={field.value}
-                          onChange={checked =>
-                            handleFormFieldChange(index, 'value', checked)
-                          }
-                        />
-                      ) : field.type === 'number' ? (
-                        <InputNumber
-                          value={field.value}
-                          onChange={value =>
-                            handleFormFieldChange(index, 'value', value || 0)
-                          }
-                          style={{ width: 120 }}
-                        />
-                      ) : (
-                        <Input
-                          value={field.value}
-                          onChange={e =>
-                            handleFormFieldChange(
-                              index,
-                              'value',
-                              e.target.value,
-                            )
-                          }
-                          style={{ width: 120 }}
-                        />
-                      )}
-                      <Button
-                        type="text"
-                        danger
-                        onClick={() => removeFormField(index)}
-                        icon={<DeleteOutlined />}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  type="dashed"
-                  onClick={addFormField}
-                  className="mt-3"
-                  icon={<PlusOutlined />}
-                >
-                  Add Field
-                </Button>
-              </div>
-            )}
-          </Form.Item>
-
-          <Form.Item
-            name="is_active"
-            label={t('labels.active')}
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-
-          <Form.Item>
-            <Space>
-              <Button
-                type="primary"
-                htmlType="submit"
-                loading={creating || updating}
-              >
-                {editingAssistant ? 'Update' : cloneSource ? 'Clone' : 'Create'}
-              </Button>
-              <Button
-                onClick={() => {
-                  setModalVisible(false)
-                  setEditingAssistant(null)
-                  setCloneSource(null)
-                  form.resetFields()
-                }}
-                disabled={creating || updating}
-              >
-                Cancel
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+      <AssistantFormModal
+        visible={modalVisible}
+        editingAssistant={editingAssistant}
+        cloneSource={cloneSource}
+        loading={creating || updating}
+        onSubmit={handleFormSubmit}
+        onCancel={handleModalClose}
+      />
 
       {/* Template Assistants Modal */}
       <Modal

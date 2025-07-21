@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { App, Button, Input, Modal, theme, Tooltip, Typography } from 'antd'
 import {
   DeleteOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
   MessageOutlined,
 } from '@ant-design/icons'
+import { App, Button, Input, Modal, theme, Tooltip, Typography } from 'antd'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ConversationSummary } from '../../types/api/chat'
-import { useConversationsStore } from '../../store'
+import { useNavigate, Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
+import { useConversationsStore } from '../../store'
+import { ConversationSummary } from '../../types/api/chat'
 
 const { confirm } = Modal
 
@@ -123,10 +123,12 @@ export function RecentConversations({
             placement="right"
             mouseEnterDelay={0.5}
           >
-            <div
-              onClick={() => handleConversationClick(conversation.id)}
-              className="cursor-pointer"
-            />
+            <Link to={`/conversation/${conversation.id}`}>
+              <div
+                onClick={() => handleConversationClick(conversation.id)}
+                className="cursor-pointer"
+              />
+            </Link>
           </Tooltip>
         ))}
       </div>
@@ -163,20 +165,14 @@ export function RecentConversations({
               </div>
             ) : (
               <>
-                <Typography.Text
-                  ellipsis
-                  onClick={() => handleConversationClick(conversation.id)}
-                >
-                  {conversation.title}
-                </Typography.Text>
-
-                {/*/!* Last message preview *!/*/}
-                {/*{conversation.last_message && (*/}
-                {/*  <Typography.Text type="secondary" ellipsis>*/}
-                {/*    {conversation.last_message.substring(0, 50)}*/}
-                {/*    {conversation.last_message.length > 50 ? '...' : ''}*/}
-                {/*  </Typography.Text>*/}
-                {/*)}*/}
+                <Link to={`/conversation/${conversation.id}`}>
+                  <Typography.Text
+                    ellipsis
+                    onClick={() => handleConversationClick(conversation.id)}
+                  >
+                    {conversation.title}
+                  </Typography.Text>
+                </Link>
 
                 {/* Action buttons - only visible on hover */}
                 <div
