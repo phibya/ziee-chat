@@ -204,6 +204,43 @@ pub fn admin_routes() -> Router {
                 api::middleware::providers_read_middleware,
             )),
         )
+        // Repository routes
+        .route(
+            "/api/admin/repositories",
+            get(api::repositories::list_repositories).layer(middleware::from_fn(
+                api::middleware::repositories_read_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/repositories",
+            post(api::repositories::create_repository).layer(middleware::from_fn(
+                api::middleware::repositories_create_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/repositories/{repository_id}",
+            get(api::repositories::get_repository).layer(middleware::from_fn(
+                api::middleware::repositories_read_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/repositories/{repository_id}",
+            put(api::repositories::update_repository).layer(middleware::from_fn(
+                api::middleware::repositories_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/repositories/{repository_id}",
+            delete(api::repositories::delete_repository).layer(middleware::from_fn(
+                api::middleware::repositories_delete_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/repositories/test",
+            post(api::repositories::test_repository_connection).layer(middleware::from_fn(
+                api::middleware::repositories_read_middleware,
+            )),
+        )
         // Model routes
         .route(
             "/api/admin/providers/{provider_id}/models",

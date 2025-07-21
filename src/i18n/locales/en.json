@@ -107,6 +107,11 @@
     "appearance": "Appearance",
     "privacy": "Privacy",
     "providers": "Providers",
+    "modelRepository": {
+      "title": "Model Repository",
+      "description": "Configure access tokens and settings for model repositories like Hugging Face Hub",
+      "settingsSaved": "Model repository settings saved successfully"
+    },
     "shortcuts": "Shortcuts",
     "hardware": "Hardware",
     "localApiServer": "Local API Server",

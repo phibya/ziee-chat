@@ -26,6 +26,7 @@ import {
   HardwareSettings,
   HttpsProxySettings,
   LocalApiServerSettings,
+  ModelRepositorySettings,
   PrivacySettings,
   ProvidersSettings,
   ShortcutsSettings,
@@ -93,6 +94,13 @@ function App() {
                       element={<ProvidersSettings />}
                     />
                   </>
+                )}
+                {(isDesktopApp ||
+                  hasPermission(Permission.config.repositories.read)) && (
+                  <Route
+                    path="repositories"
+                    element={<ModelRepositorySettings />}
+                  />
                 )}
                 <Route path="shortcuts" element={<ShortcutsSettings />} />
                 <Route path="hardware" element={<HardwareSettings />} />

@@ -5,6 +5,7 @@ pub mod configuration;
 pub mod models;
 pub mod projects;
 pub mod providers;
+pub mod repositories;
 pub mod user_group_providers;
 pub mod user_groups;
 pub mod user_settings;

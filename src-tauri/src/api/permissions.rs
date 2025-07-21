@@ -33,6 +33,12 @@ pub mod permissions {
     pub const PROVIDERS_DELETE: &str = "config::providers::delete";
     pub const PROVIDERS_CREATE: &str = "config::providers::create";
 
+    // Repository permissions
+    pub const REPOSITORIES_READ: &str = "config::repositories::read";
+    pub const REPOSITORIES_EDIT: &str = "config::repositories::edit";
+    pub const REPOSITORIES_DELETE: &str = "config::repositories::delete";
+    pub const REPOSITORIES_CREATE: &str = "config::repositories::create";
+
     // Wildcard permissions
     pub const ALL: &str = "*";
 }

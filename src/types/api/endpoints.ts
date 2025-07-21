@@ -61,6 +61,14 @@ import {
   UpdateModelRequest,
 } from './model'
 import {
+  CreateRepositoryRequest,
+  Repository,
+  RepositoryListResponse,
+  TestRepositoryConnectionRequest,
+  TestRepositoryConnectionResponse,
+  UpdateRepositoryRequest,
+} from './repository'
+import {
   AssignUserToGroupRequest,
   CreateUserGroupRequest,
   CreateUserRequest,
@@ -199,6 +207,17 @@ export const ApiEndpoints = {
     'POST /api/projects/{project_id}/conversations/{conversation_id}',
   'Projects.unlinkConversation':
     'DELETE /api/projects/{project_id}/conversations/{conversation_id}',
+  // Repository endpoints
+  'Repositories.list': 'GET /api/repositories',
+  'Repositories.get': 'GET /api/repositories/{repository_id}',
+  'Repositories.testConnection': 'POST /api/repositories/test',
+  // Admin repository endpoints
+  'Admin.listRepositories': 'GET /api/admin/repositories',
+  'Admin.getRepository': 'GET /api/admin/repositories/{repository_id}',
+  'Admin.createRepository': 'POST /api/admin/repositories',
+  'Admin.updateRepository': 'PUT /api/admin/repositories/{repository_id}',
+  'Admin.deleteRepository': 'DELETE /api/admin/repositories/{repository_id}',
+  'Admin.testRepositoryConnection': 'POST /api/admin/repositories/test',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -349,6 +368,17 @@ export type ApiEndpointParameters = {
   'Projects.deleteDocument': { project_id: string; document_id: string }
   'Projects.linkConversation': { project_id: string; conversation_id: string }
   'Projects.unlinkConversation': { project_id: string; conversation_id: string }
+  // Repository endpoints
+  'Repositories.list': { page?: number; per_page?: number }
+  'Repositories.get': { repository_id: string }
+  'Repositories.testConnection': TestRepositoryConnectionRequest
+  // Admin repository endpoints
+  'Admin.listRepositories': { page?: number; per_page?: number }
+  'Admin.getRepository': { repository_id: string }
+  'Admin.createRepository': CreateRepositoryRequest
+  'Admin.updateRepository': { repository_id: string } & UpdateRepositoryRequest
+  'Admin.deleteRepository': { repository_id: string }
+  'Admin.testRepositoryConnection': TestRepositoryConnectionRequest
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -508,6 +538,17 @@ export type ApiEndpointResponses = {
   'Projects.deleteDocument': void
   'Projects.linkConversation': ProjectConversation
   'Projects.unlinkConversation': void
+  // Repository endpoints
+  'Repositories.list': RepositoryListResponse
+  'Repositories.get': Repository
+  'Repositories.testConnection': TestRepositoryConnectionResponse
+  // Admin repository endpoints
+  'Admin.listRepositories': RepositoryListResponse
+  'Admin.getRepository': Repository
+  'Admin.createRepository': Repository
+  'Admin.updateRepository': Repository
+  'Admin.deleteRepository': void
+  'Admin.testRepositoryConnection': TestRepositoryConnectionResponse
 }
 
 // Type helpers

@@ -1,8 +1,5 @@
-import { Button, Drawer, Layout, Menu, theme, Typography } from 'antd'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
+  CloudDownloadOutlined,
   ExperimentOutlined,
   EyeOutlined,
   LockOutlined,
@@ -14,6 +11,10 @@ import {
   ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons'
+import { Button, Drawer, Layout, Menu, theme, Typography } from 'antd'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { isDesktopApp } from '../../api/core'
 import { Permission, usePermissions } from '../../permissions'
 import { PageContainer } from '../common/PageContainer.tsx'
@@ -69,8 +70,14 @@ export function SettingsPage() {
             icon: <ToolOutlined />,
             label: t('settings.providers'),
           },
+          {
+            key: 'repositories',
+            icon: <CloudDownloadOutlined />,
+            label: t('settings.modelRepository.title'),
+          },
         ]
       : []),
+
     {
       key: 'shortcuts',
       icon: <SlidersOutlined />,
@@ -117,6 +124,9 @@ export function SettingsPage() {
         const hasProviderManagement = hasPermission(
           Permission.config.providers.read,
         )
+        const hasRepositoryManagement = hasPermission(
+          Permission.config.repositories.read,
+        )
         const hasProxyManagement = hasPermission(Permission.config.proxy.read)
         const hasAssistantsManagement = hasPermission(
           Permission.config.assistants.read,
@@ -127,6 +137,7 @@ export function SettingsPage() {
           hasGroupManagement ||
           hasAppearanceManagement ||
           hasProviderManagement ||
+          hasRepositoryManagement ||
           hasProxyManagement ||
           hasAssistantsManagement
         ) {
@@ -161,6 +172,14 @@ export function SettingsPage() {
               key: 'providers',
               icon: <ToolOutlined />,
               label: t('settings.providers'),
+            })
+          }
+
+          if (hasRepositoryManagement) {
+            items.push({
+              key: 'repositories',
+              icon: <CloudDownloadOutlined />,
+              label: t('settings.modelRepository.title'),
             })
           }
 

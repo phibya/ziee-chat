@@ -67,4 +67,23 @@ pub fn user_routes() -> Router {
             get(api::assistants::get_default_assistant)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
+        // Repository routes - User endpoints (read-only for users)
+        .route(
+            "/api/repositories",
+            get(api::repositories::list_repositories).layer(middleware::from_fn(
+                api::middleware::repositories_read_middleware,
+            )),
+        )
+        .route(
+            "/api/repositories/{repository_id}",
+            get(api::repositories::get_repository).layer(middleware::from_fn(
+                api::middleware::repositories_read_middleware,
+            )),
+        )
+        .route(
+            "/api/repositories/test",
+            post(api::repositories::test_repository_connection).layer(middleware::from_fn(
+                api::middleware::repositories_read_middleware,
+            )),
+        )
 }

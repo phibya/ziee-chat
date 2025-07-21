@@ -47,14 +47,20 @@ export const PermissionDescription = {
   'config::proxy::edit': 'Allows configuring proxy settings',
   // Model provider permissions
   'config::providers::*': 'Grants all model provider configuration permissions',
+  'config::providers::read': 'Allows viewing model provider settings',
+  'config::providers::edit':
+    'Allows configuring model providers and their settings',
+  // Model repository permissions
+  'config::repositories::*':
+    'Grants all model repository configuration permissions',
+  'config::repositories::read': 'Allows viewing model repository settings',
+  'config::repositories::edit':
+    'Allows configuring model repository access tokens and settings',
   // Assistants permissions
   'config::assistants::*': 'Grants all assistants configuration permissions',
   'config::assistants::read': 'Allows viewing assistants settings',
   'config::assistants::edit':
     'Allows creating, editing, and managing assistants',
-  'config::providers::read': 'Allows viewing model provider settings',
-  'config::providers::edit':
-    'Allows configuring model providers and their settings',
   // Chat permissions
   'chat::use': 'Allows using chat functionality',
   // Profile permissions

@@ -135,6 +135,20 @@ CREATE TABLE providers (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create repositories table for model repositories (Hugging Face, etc.)
+CREATE TABLE repositories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    url VARCHAR(512) NOT NULL,
+    auth_type VARCHAR(50) NOT NULL CHECK (auth_type IN ('none', 'api_key', 'basic_auth', 'bearer_token')),
+    auth_config JSONB DEFAULT '{}',
+    enabled BOOLEAN DEFAULT TRUE,
+    built_in BOOLEAN DEFAULT FALSE, -- true for built-in repositories like Hugging Face
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(name)
+);
+
 -- Create user group model provider relationships
 CREATE TABLE user_group_providers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -482,6 +496,11 @@ CREATE TRIGGER update_providers_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_repositories_updated_at 
+    BEFORE UPDATE ON repositories
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_models_updated_at 
     BEFORE UPDATE ON models
     FOR EACH ROW 
@@ -574,6 +593,10 @@ INSERT INTO providers (name, provider_type, enabled, is_default, base_url) VALUE
 ('Groq', 'groq', false, true, 'https://api.groq.com/openai/v1'),
 ('Gemini', 'gemini', false, true, 'https://generativelanguage.googleapis.com/v1beta/openai'),
 ('Mistral', 'mistral', false, true, 'https://api.mistral.ai');
+
+-- Insert default repository (Hugging Face Hub)
+INSERT INTO repositories (name, url, auth_type, auth_config, enabled, built_in) VALUES
+('Hugging Face Hub', 'https://huggingface.co', 'api_key', '{"api_key": ""}', true, true);
 
 -- Insert default template assistant
 INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_default, is_active) VALUES 

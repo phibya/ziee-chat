@@ -327,3 +327,51 @@ pub async fn config_proxy_edit_middleware(
 
     Ok(next.run(req).await)
 }
+
+/// Middleware that checks for config::repositories::read permission
+pub async fn repositories_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+    if !check_permission(user, permissions::REPOSITORIES_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::repositories::edit permission
+pub async fn repositories_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+    if !check_permission(user, permissions::REPOSITORIES_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::repositories::create permission
+pub async fn repositories_create_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+    if !check_permission(user, permissions::REPOSITORIES_CREATE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::repositories::delete permission
+pub async fn repositories_delete_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+    if !check_permission(user, permissions::REPOSITORIES_DELETE) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+    Ok(next.run(req).await)
+}
