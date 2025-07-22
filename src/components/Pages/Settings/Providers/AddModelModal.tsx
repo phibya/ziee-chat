@@ -1014,15 +1014,10 @@ export function AddModelModal({
               </Typography.Text>
             </Flex>
             {downloadProgress && (
-              <div className="mt-2">
-                <Flex className="justify-between mb-1">
-                  <Typography.Text type="secondary">
-                    {downloadProgress.phase}: {downloadProgress.message}
-                  </Typography.Text>
-                  <Typography.Text type="secondary">
-                    {downloadProgress.current}/{downloadProgress.total}
-                  </Typography.Text>
-                </Flex>
+              <div className="mt-2 flex flex-col gap-1">
+                <Typography.Text type="secondary">
+                  {downloadProgress.message}
+                </Typography.Text>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
@@ -1031,6 +1026,9 @@ export function AddModelModal({
                     }}
                   />
                 </div>
+                {/*<Typography.Text type="secondary">*/}
+                {/*  {downloadProgress.current}/{downloadProgress.total}*/}
+                {/*</Typography.Text>*/}
               </div>
             )}
           </Card>

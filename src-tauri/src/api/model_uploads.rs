@@ -28,8 +28,8 @@ use crate::utils::model_storage::ModelStorage;
 #[derive(Serialize)]
 pub struct DownloadProgress {
     pub phase: String,
-    pub current: usize,
-    pub total: usize,
+    pub current: u64,
+    pub total: u64,
     pub message: String,
     pub model: Option<Model>,
 }
@@ -741,6 +741,11 @@ pub async fn download_and_commit_repository_files(
             tokio::spawn(async move {
                 let mut progress_rx = progress_rx;
                 while let Some(git_progress) = progress_rx.recv().await {
+                    // Skip the Git Complete phase - we'll send our own when model is created
+                    if matches!(git_progress.phase, crate::utils::git_service::GitPhase::Complete) {
+                        break;
+                    }
+
                     let progress = DownloadProgress {
                         phase: format!("{:?}", git_progress.phase),
                         current: git_progress.current,
@@ -753,24 +758,22 @@ pub async fn download_and_commit_repository_files(
                         break;
                     }
 
-                    // Check if we're complete or errored
-                    match git_progress.phase {
-                        crate::utils::git_service::GitPhase::Complete => break,
-                        crate::utils::git_service::GitPhase::Error => break,
-                        _ => {}
+                    // Check if we're errored
+                    if matches!(git_progress.phase, crate::utils::git_service::GitPhase::Error) {
+                        break;
                     }
                 }
             })
         };
 
-        // Clone repository
+        // Clone repository without LFS files
         let clone_result = git_service
-            .clone_repository(
+            .clone_repository_without_lfs(
                 &repository_url,
                 &repository_id,
                 request.repository_branch.as_deref(),
                 auth_token.as_deref(),
-                progress_tx,
+                progress_tx.clone(),
             )
             .await;
 
@@ -779,7 +782,106 @@ pub async fn download_and_commit_repository_files(
 
         match clone_result {
             Ok(cache_path) => {
-                // Send committing progress
+                // Step 1: Determine which files we need to copy
+                let _ = sse_tx.send(DownloadProgress {
+                    phase: "Analyzing".to_string(),
+                    current: 10,
+                    total: 100,
+                    message: "Analyzing repository files...".to_string(),
+                    model: None,
+                });
+
+                // List files in the repository
+                let source_files = match std::fs::read_dir(&cache_path) {
+                    Ok(entries) => {
+                        entries
+                            .filter_map(|entry| {
+                                entry.ok().and_then(|e| {
+                                    e.file_name().to_str().map(|s| s.to_string())
+                                })
+                            })
+                            .filter(|name| !name.starts_with('.'))
+                            .collect::<Vec<String>>()
+                    }
+                    Err(e) => {
+                        let _ = sse_tx.send(DownloadProgress {
+                            phase: "Error".to_string(),
+                            current: 0,
+                            total: 100,
+                            message: format!("Failed to read repository directory: {}", e),
+                            model: None,
+                        });
+                        return;
+                    }
+                };
+
+                // Determine which files to copy based on main filename
+                let files_to_copy = match determine_files_to_copy(&source_files, &main_filename) {
+                    Ok(files) => files,
+                    Err(e) => {
+                        let _ = sse_tx.send(DownloadProgress {
+                            phase: "Error".to_string(),
+                            current: 0,
+                            total: 100,
+                            message: format!("Failed to determine files to copy: {}", e),
+                            model: None,
+                        });
+                        return;
+                    }
+                };
+
+                println!("Files to copy: {:?}", files_to_copy);
+
+                // Step 2: Pull LFS files if needed
+                let _ = sse_tx.send(DownloadProgress {
+                    phase: "Downloading".to_string(),
+                    current: 20,
+                    total: 100,
+                    message: "Checking for LFS files...".to_string(),
+                    model: None,
+                });
+
+                // Create a new progress channel for LFS downloads
+                let (lfs_progress_tx, mut lfs_progress_rx) = mpsc::unbounded_channel::<GitProgress>();
+                let sse_tx_clone = sse_tx.clone();
+                
+                // Spawn task to convert LFS progress to SSE progress
+                let lfs_progress_task = tokio::spawn(async move {
+                    while let Some(git_progress) = lfs_progress_rx.recv().await {
+                        let progress = DownloadProgress {
+                            phase: "Downloading".to_string(),
+                            current: git_progress.current,
+                            total: git_progress.total,
+                            message: git_progress.message,
+                            model: None,
+                        };
+                        if sse_tx_clone.send(progress).is_err() {
+                            break;
+                        }
+                    }
+                });
+
+                // Pull only the LFS files we need
+                if let Err(e) = git_service.pull_lfs_files(
+                    &cache_path,
+                    &files_to_copy,
+                    auth_token.as_deref(),
+                    lfs_progress_tx,
+                ).await {
+                    let _ = sse_tx.send(DownloadProgress {
+                        phase: "Error".to_string(),
+                        current: 0,
+                        total: 100,
+                        message: format!("Failed to download LFS files: {}", e),
+                        model: None,
+                    });
+                    return;
+                }
+
+                // Wait for LFS progress task
+                let _ = lfs_progress_task.await;
+
+                // Step 3: Create model with the files
                 let _ = sse_tx.send(DownloadProgress {
                     phase: "Committing".to_string(),
                     current: 90,

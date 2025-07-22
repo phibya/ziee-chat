@@ -656,7 +656,6 @@ export const useProvidersStore = create<ProvidersState>()(
             let isRejected = false;
             await ApiClient.Admin.downloadFromRepository(request, {
               SSE: (event: string, data: any) => {
-                console.log({ event, data });
                 if (event === "progress") {
                   set({
                     downloadProgress: {
