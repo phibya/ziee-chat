@@ -1,35 +1,377 @@
 use axum::{
-    extract::{Multipart, Path, Query},
+    extract::Multipart,
+    http::StatusCode,
+    response::sse::{Event, KeepAlive, Sse},
     response::Json,
+    response::Response,
     Extension,
 };
-use serde::Deserialize;
-use std::collections::HashMap;
+use futures_util::{Stream, StreamExt};
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::api::{
     errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
-use crate::database::{models::*, queries::models};
+use crate::database::{
+    models::*,
+    queries::{models, repositories},
+};
+use crate::utils::git_service::{GitProgress, GitService};
 
-#[derive(Deserialize)]
-pub struct UpdateModelStatusRequest {
-    enabled: Option<bool>,
-    is_active: Option<bool>,
-}
 use crate::utils::model_storage::ModelStorage;
 
-#[derive(Deserialize)]
-pub struct UploadFileRequest {
-    filename: String,
-    file_size: u64,
+#[derive(Serialize)]
+pub struct DownloadProgress {
+    pub phase: String,
+    pub current: usize,
+    pub total: usize,
+    pub message: String,
+    pub model: Option<Model>,
+}
+
+/// Shared model creation and file processing logic
+async fn create_model_with_files(
+    storage: &ModelStorage,
+    provider_id: Uuid,
+    name: String,
+    alias: String,
+    description: Option<String>,
+    file_format: String,
+    main_filename: String,
+    source_dir: PathBuf,
+    capabilities: Option<ModelCapabilities>,
+    settings: Option<ModelSettings>,
+) -> Result<Model, AppError> {
+    // Validate provider exists and is of type 'local'
+    let provider = crate::database::queries::providers::get_provider_by_id(provider_id)
+        .await
+        .map_err(|e| AppError::internal_error(&e.to_string()))?
+        .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
+
+    if provider.provider_type != "local" {
+        return Err(AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Only Local providers support model uploads",
+        ));
+    }
+
+    // Generate model ID first (but don't create in database yet)
+    let model_id = Uuid::new_v4();
+    let model_name = name.clone();
+
+    println!("Processing model with file format: {}", file_format);
+
+    // Create storage directory
+    storage
+        .create_model_directory(&provider_id, &model_id)
+        .await
+        .map_err(|e| {
+            AppError::internal_error(format!("Failed to create storage directory: {}", e))
+        })?;
+
+    // print source directory
+    println!("Source directory for model files: {}", source_dir.display());
+
+    // List all files in the source directory
+    let source_files = match tokio::fs::read_dir(&source_dir).await {
+        Ok(mut entries) => {
+            let mut files = Vec::new();
+            while let Some(entry) = entries.next_entry().await.map_err(|e| {
+                AppError::internal_error(format!("Failed to read directory entry: {}", e))
+            })? {
+                if entry
+                    .file_type()
+                    .await
+                    .map_err(|e| {
+                        AppError::internal_error(format!("Failed to get file type: {}", e))
+                    })?
+                    .is_file()
+                {
+                    files.push(entry.file_name().to_string_lossy().to_string());
+                }
+            }
+            files
+        }
+        Err(e) => {
+            return Err(AppError::internal_error(format!(
+                "Failed to read source directory: {}",
+                e
+            )));
+        }
+    };
+
+    if source_files.is_empty() {
+        return Err(AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "No files found in source directory",
+        ));
+    }
+
+    // Determine which files to copy based on file format and main filename
+    let files_to_copy = determine_files_to_copy(&source_files, &main_filename, &file_format)?;
+
+    if files_to_copy.is_empty() {
+        return Err(AppError::new(
+            ErrorCode::ValidInvalidInput,
+            format!(
+                "No relevant files found for main filename: {}",
+                main_filename
+            ),
+        ));
+    }
+
+    println!(
+        "Found {} files to copy: {:?}",
+        files_to_copy.len(),
+        files_to_copy
+    );
+
+    // Copy the necessary files to the model directory and collect file info
+    let mut total_size = 0u64;
+    let file_count = files_to_copy.len();
+    let mut file_records = Vec::new();
+
+    for filename in &files_to_copy {
+        let source_path = source_dir.join(filename);
+        let dest_path = storage
+            .get_model_path(&provider_id, &model_id)
+            .join(filename);
+
+        // Get file size
+        let metadata = tokio::fs::metadata(&source_path).await.map_err(|e| {
+            AppError::internal_error(format!(
+                "Failed to get file metadata for {}: {}",
+                filename, e
+            ))
+        })?;
+        let file_size = metadata.len();
+        total_size += file_size;
+
+        // Copy the file
+        tokio::fs::copy(&source_path, &dest_path)
+            .await
+            .map_err(|e| {
+                AppError::internal_error(format!("Failed to copy file {}: {}", filename, e))
+            })?;
+
+        // Collect file information for database insertion later
+        let file_type = determine_model_file_type(filename).to_string();
+        let relative_path = format!("models/{}/{}/{}", provider_id, model_id, filename);
+
+        file_records.push((
+            filename.clone(),
+            relative_path.clone(),
+            file_size,
+            file_type.clone(),
+        ));
+
+        println!(
+            "Copied file: {} -> {} ({} bytes)",
+            filename, relative_path, file_size
+        );
+    }
+
+    // Now that all files are processed successfully, create the model in the database
+    let create_request = CreateModelRequest {
+        provider_id,
+        name,
+        alias,
+        description,
+        enabled: Some(true), // Enable immediately since everything succeeded
+        capabilities: capabilities.or_else(|| Some(ModelCapabilities::new())),
+        settings,
+    };
+
+    // Create the model record with the pre-generated ID
+    let _model_db = models::create_local_model(&model_id, &create_request)
+        .await
+        .map_err(|e| {
+            let error_str = e.to_string();
+            if error_str.contains("models_provider_id_name_unique") {
+                AppError::new(ErrorCode::ValidInvalidInput,
+                              format!("Model ID '{}' already exists for this provider. Please use a different model ID.", model_name))
+            } else {
+                AppError::internal_error(&error_str)
+            }
+        })?;
+
+    // Create all file records in the database
+    for (filename, relative_path, file_size, file_type) in file_records {
+        models::create_model_file(
+            &model_id,
+            &filename,
+            &relative_path,
+            file_size as i64,
+            &file_type,
+        )
+        .await
+        .map_err(|e| AppError::internal_error(&e.to_string()))?;
+    }
+
+    // Update model with total size and validation status
+    models::update_model_validation(&model_id, "completed", None, Some(total_size as i64))
+        .await
+        .map_err(AppError::database_error)?;
+
+    // Return the created model with files
+    let model = models::get_model_with_files(&model_id)
+        .await
+        .map_err(|e| AppError::internal_error(&e.to_string()))?
+        .ok_or_else(|| AppError::not_found("Model"))?;
+
+    println!(
+        "Model created successfully: {} files, {} total size",
+        file_count, total_size
+    );
+
+    Ok(model)
+}
+
+/// Determine which files to copy based on main filename and file format
+fn determine_files_to_copy(
+    source_files: &[String],
+    main_filename: &str,
+    file_format: &str,
+) -> Result<Vec<String>, AppError> {
+    let mut files_to_copy = Vec::new();
+
+    // Check if main_filename exists in source files
+    if !source_files.contains(&main_filename.to_string()) {
+        return Err(AppError::new(
+            ErrorCode::ValidInvalidInput,
+            format!(
+                "Main filename '{}' not found in source directory",
+                main_filename
+            ),
+        ));
+    }
+
+    match file_format.to_lowercase().as_str() {
+        "gguf" => {
+            // For GGUF models, usually single file or with additional files
+            files_to_copy.push(main_filename.to_string());
+
+            // Add related files (tokenizer, config, etc.)
+            for file in source_files {
+                if file != main_filename
+                    && is_related_file(file, &["tokenizer", "config", "vocab", "merges"])
+                {
+                    files_to_copy.push(file.clone());
+                }
+            }
+        }
+        "safetensors" => {
+            // For safetensors, check if it's a single file or sharded
+            if main_filename.contains("index") || main_filename.contains(".json") {
+                // Index file - copy all related safetensors files
+                files_to_copy.push(main_filename.to_string());
+
+                // Add all safetensors files
+                for file in source_files {
+                    if file.ends_with(".safetensors") {
+                        files_to_copy.push(file.clone());
+                    }
+                }
+
+                // Add configuration files
+                for file in source_files {
+                    if is_config_or_tokenizer_file(file) {
+                        files_to_copy.push(file.clone());
+                    }
+                }
+            } else {
+                // Single safetensors file
+                files_to_copy.push(main_filename.to_string());
+
+                // Add related configuration files
+                for file in source_files {
+                    if file != main_filename && is_config_or_tokenizer_file(file) {
+                        files_to_copy.push(file.clone());
+                    }
+                }
+            }
+        }
+        "pytorch" | "bin" => {
+            // For PyTorch models, check if it's an index file
+            if main_filename.contains("index") || main_filename.contains(".json") {
+                // Index file - copy all related .bin files
+                files_to_copy.push(main_filename.to_string());
+
+                // Add all .bin files
+                for file in source_files {
+                    if file.ends_with(".bin") || file.ends_with(".pt") || file.ends_with(".pth") {
+                        files_to_copy.push(file.clone());
+                    }
+                }
+
+                // Add configuration files
+                for file in source_files {
+                    if is_config_or_tokenizer_file(file) {
+                        files_to_copy.push(file.clone());
+                    }
+                }
+            } else {
+                // Single model file
+                files_to_copy.push(main_filename.to_string());
+
+                // Add related configuration files
+                for file in source_files {
+                    if file != main_filename && is_config_or_tokenizer_file(file) {
+                        files_to_copy.push(file.clone());
+                    }
+                }
+            }
+        }
+        _ => {
+            // For unknown formats, copy the main file and any configuration files
+            files_to_copy.push(main_filename.to_string());
+
+            // Add related configuration files
+            for file in source_files {
+                if file != main_filename && is_config_or_tokenizer_file(file) {
+                    files_to_copy.push(file.clone());
+                }
+            }
+        }
+    }
+
+    // Remove duplicates and sort
+    files_to_copy.sort();
+    files_to_copy.dedup();
+
+    Ok(files_to_copy)
+}
+
+/// Check if a file is a configuration or tokenizer file
+fn is_config_or_tokenizer_file(filename: &str) -> bool {
+    let filename_lower = filename.to_lowercase();
+    filename_lower.ends_with("config.json")
+        || filename_lower.ends_with("tokenizer.json")
+        || filename_lower.ends_with("tokenizer_config.json")
+        || filename_lower.ends_with("vocab.json")
+        || filename_lower.ends_with("merges.txt")
+        || filename_lower.ends_with("special_tokens_map.json")
+        || filename_lower.ends_with("vocab.txt")
+        || filename_lower.ends_with("spiece.model")
+        || filename_lower == "generation_config.json"
+}
+
+/// Check if a file is related based on name patterns
+fn is_related_file(filename: &str, patterns: &[&str]) -> bool {
+    let filename_lower = filename.to_lowercase();
+    patterns
+        .iter()
+        .any(|pattern| filename_lower.contains(pattern))
 }
 
 #[derive(Debug, serde::Serialize)]
 pub struct UploadFilesResponse {
     pub session_id: Uuid,
-    pub files: Vec<ProcessedFile>,
     pub total_size_bytes: u64,
     pub main_filename: String,
     pub provider_id: Uuid,
@@ -37,7 +379,6 @@ pub struct UploadFilesResponse {
 
 #[derive(Debug, serde::Serialize)]
 pub struct ProcessedFile {
-    pub temp_file_id: Uuid,
     pub filename: String,
     pub file_type: String,
     pub size_bytes: u64,
@@ -53,90 +394,31 @@ pub struct CommitUploadRequest {
     pub alias: String,
     pub description: Option<String>,
     pub file_format: String,
-    pub selected_files: Vec<Uuid>, // temp_file_ids to commit
+    pub capabilities: Option<ModelCapabilities>,
+    pub settings: Option<ModelSettings>,
+    pub main_filename: String,
 }
 
-// create_model function removed - use upload_model_file_multipart and commit_uploaded_files workflow instead
-
-/// Upload model file
-pub async fn upload_model_file(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path(model_id): Path<Uuid>,
-    Json(request): Json<UploadFileRequest>,
-) -> ApiResult<Json<ModelUploadResponse>> {
-    // Get model info
-    let model = models::get_model_by_id(model_id)
-        .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?
-        .ok_or_else(|| AppError::not_found("Model"))?;
-
-    // Initialize storage
-    let storage = ModelStorage::new()
-        .await
-        .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
-
-    // Get the model directory path using {provider_id}/{id} pattern
-    let model_path = format!("models/{}/{}", model.provider_id, model_id);
-    let file_path = crate::APP_DATA_DIR
-        .join(&model_path)
-        .join(&request.filename);
-
-    // For local folder uploads, we expect the files to already be accessible
-    // This is a simplified implementation - in production you'd handle actual file uploads
-    println!(
-        "Processing upload for file: {} ({}bytes)",
-        request.filename, request.file_size
-    );
-
-    // Calculate checksum if file exists
-    if file_path.exists() {
-        match std::fs::read(&file_path) {
-            Ok(file_data) => {
-                // Save the file through ModelStorage which will calculate checksum
-                match storage
-                    .save_model_file(&model.provider_id, &model_id, &request.filename, &file_data)
-                    .await
-                {
-                    Ok(_) => {
-                        // Note: Checksum calculation removed for performance
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to save model file: {}", e);
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("Failed to read file for checksum: {}", e);
-            }
-        }
-    }
-
-    // Update model status to indicate file processing
-    models::update_model_validation(
-        &model_id,
-        "processing",
-        None,
-        Some(request.file_size as i64),
-    )
-    .await
-    .map_err(AppError::database_error)?;
-
-    let response = ModelUploadResponse {
-        model_id,
-        upload_url: None,
-        chunk_uploaded: true,
-        upload_complete: true,
-        next_chunk_index: None,
-    };
-
-    Ok(Json(response))
+#[derive(Deserialize)]
+pub struct DownloadFromRepositoryRequest {
+    pub provider_id: Uuid,
+    pub repository_id: Uuid,
+    pub repository_path: String, // e.g., "microsoft/DialoGPT-medium"
+    pub repository_branch: Option<String>, // e.g., "main"
+    pub name: String,            // model ID
+    pub alias: String,           // display name
+    pub description: Option<String>,
+    pub file_format: String,
+    pub main_filename: String,
+    pub capabilities: Option<ModelCapabilities>,
+    pub settings: Option<ModelSettings>,
 }
 
-/// Upload multiple model files in a single multipart request
-pub async fn upload_model_file_multipart(
+/// Upload multiple model files and auto-commit as a model
+pub async fn upload_multiple_files_and_commit(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
-) -> ApiResult<Json<UploadFilesResponse>> {
+) -> ApiResult<Json<Model>> {
     let storage = ModelStorage::new()
         .await
         .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
@@ -144,6 +426,12 @@ pub async fn upload_model_file_multipart(
     let mut uploaded_files = Vec::new();
     let mut main_filename: Option<String> = None;
     let mut provider_id: Option<Uuid> = None;
+    let mut name: Option<String> = None;
+    let mut alias: Option<String> = None;
+    let mut description: Option<String> = None;
+    let mut file_format: Option<String> = None;
+    let mut capabilities: Option<ModelCapabilities> = None;
+    let mut settings: Option<ModelSettings> = None;
 
     // Process multipart form data
     while let Some(field) = multipart.next_field().await.map_err(|e| {
@@ -204,6 +492,74 @@ pub async fn upload_model_file_multipart(
                     )
                 })?);
             }
+            "name" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read name: {}", e),
+                    )
+                })?;
+                name = Some(value);
+            }
+            "alias" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read alias: {}", e),
+                    )
+                })?;
+                alias = Some(value);
+            }
+            "description" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read description: {}", e),
+                    )
+                })?;
+                description = if value.is_empty() { None } else { Some(value) };
+            }
+            "file_format" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read file_format: {}", e),
+                    )
+                })?;
+                file_format = Some(value);
+            }
+            "capabilities" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read capabilities: {}", e),
+                    )
+                })?;
+                if !value.is_empty() {
+                    capabilities = serde_json::from_str(&value).map_err(|e| {
+                        AppError::new(
+                            ErrorCode::ValidInvalidInput,
+                            format!("Invalid capabilities JSON: {}", e),
+                        )
+                    })?;
+                }
+            }
+            "settings" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read settings: {}", e),
+                    )
+                })?;
+                if !value.is_empty() {
+                    settings = serde_json::from_str(&value).map_err(|e| {
+                        AppError::new(
+                            ErrorCode::ValidInvalidInput,
+                            format!("Invalid settings JSON: {}", e),
+                        )
+                    })?;
+                }
+            }
             _ => {
                 // Skip unknown fields
                 continue;
@@ -233,40 +589,53 @@ pub async fn upload_model_file_multipart(
         )
     })?;
 
+    let name = name.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing name in multipart request",
+        )
+    })?;
+
+    let alias = alias.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing alias in multipart request",
+        )
+    })?;
+
+    let file_format = file_format.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing file_format in multipart request",
+        )
+    })?;
+
     println!(
-        "Processing multipart upload: {} files, main file: {}",
+        "Processing multipart upload: {} files, main file: {}, name: {}, alias: {}",
         uploaded_files.len(),
-        main_filename
+        main_filename,
+        name,
+        alias
     );
 
     // Step 1: Upload files to temporary storage
     let temp_session_id = Uuid::new_v4();
-    let mut processed_files = Vec::new();
     let mut total_size = 0u64;
 
     for (filename, file_data) in uploaded_files {
         total_size += file_data.len() as u64;
 
-        // Step 2: Check and validate files
-        let file_type = determine_model_file_type(&filename);
-        let validation_issues = validate_file_content(&filename, &file_data);
+        // Check and validate files
+        let _file_type = determine_model_file_type(&filename);
+        let _validation_issues = validate_file_content(&filename, &file_data);
 
-        // Step 3: Save files to temporary storage
+        // Save files to temporary storage
         let temp_file_id = Uuid::new_v4();
         match storage
             .save_temp_file(&temp_session_id, &temp_file_id, &filename, &file_data)
             .await
         {
             Ok(_temp_file) => {
-                processed_files.push(ProcessedFile {
-                    temp_file_id,
-                    filename: filename.clone(),
-                    file_type: file_type.to_string(),
-                    size_bytes: file_data.len() as u64,
-                    validation_issues,
-                    is_main_file: filename == main_filename,
-                });
-
                 println!("Saved temp file: {} (ID: {})", filename, temp_file_id);
             }
             Err(e) => {
@@ -279,168 +648,216 @@ pub async fn upload_model_file_multipart(
         }
     }
 
-    // Step 4: Return file IDs and metadata to client
-    let response = UploadFilesResponse {
-        session_id: temp_session_id,
-        files: processed_files,
-        total_size_bytes: total_size,
-        main_filename,
+    println!(
+        "Files uploaded successfully, total size: {} bytes",
+        total_size
+    );
+
+    // Step 2: Auto-commit the uploaded files as a model
+    let source_dir = crate::APP_DATA_DIR
+        .join("temp")
+        .join(temp_session_id.to_string());
+
+    // Create model using the existing function
+    let model = create_model_with_files(
+        &storage,
         provider_id,
-    };
-
-    Ok(Json(response))
-}
-
-/// Commit uploaded files as a model
-pub async fn commit_uploaded_files(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Json(request): Json<CommitUploadRequest>,
-) -> ApiResult<Json<Model>> {
-    let storage = ModelStorage::new()
-        .await
-        .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
-
-    // Validate provider exists and is of type 'local'
-    let provider = crate::database::queries::providers::get_provider_by_id(request.provider_id)
-        .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?
-        .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
-
-    if provider.provider_type != "local" {
-        return Err(AppError::new(
-            ErrorCode::ValidInvalidInput,
-            "Only Candle providers support model uploads",
-        ));
-    }
-
-    // Create the model record
-    let model_id = Uuid::new_v4();
-    let model_path = storage.get_model_path(&request.provider_id, &model_id);
-
-    // Convert absolute path to relative path for database storage
-    let _relative_model_path = match ModelStorage::get_relative_path(&model_path) {
-        Ok(path) => path,
-        Err(e) => {
-            eprintln!("Warning: Failed to convert model path to relative: {}", e);
-            // Fallback to just the directory name
-            format!("models/{}/{}", request.provider_id, model_id)
-        }
-    };
-
-    // Create model request
-    let model_name = request.name.clone();
-    let file_format = request.file_format.clone();
-    let create_request = crate::database::models::CreateModelRequest {
-        provider_id: request.provider_id,
-        name: request.name,
-        alias: request.alias,
-        description: request.description,
-        enabled: Some(false),
-        capabilities: Some(crate::database::models::ModelCapabilities::new()),
-        settings: None,
-    };
-
-    println!("Processing model with file format: {}", file_format);
-
-    let model_db = models::create_local_model(&create_request)
-    .await
-    .map_err(|e| {
-      // Handle unique constraint violation for (provider_id, name)
-      let error_str = e.to_string();
-      if error_str.contains("models_provider_id_name_unique") {
-        AppError::new(ErrorCode::ValidInvalidInput,
-                      format!("Model ID '{}' already exists for this provider. Please use a different model ID.", model_name))
-      } else {
-        AppError::internal_error(&error_str)
-      }
-    })?;
-
-    // Create storage directory
-    storage
-        .create_model_directory(&request.provider_id, &model_db.id)
-        .await
-        .map_err(|e| {
-            AppError::internal_error(format!("Failed to create storage directory: {}", e))
-        })?;
-
-    // Move temp files to permanent storage and create file records
-    let mut total_size = 0u64;
-    // Note: Checksum calculation removed for performance
-
-    for temp_file_id in &request.selected_files {
-        match storage
-            .commit_temp_file(
-                &request.session_id,
-                temp_file_id,
-                &request.provider_id,
-                &model_db.id,
-            )
-            .await
-        {
-            Ok(committed_file) => {
-                total_size += committed_file.size_bytes;
-
-                // Create model file record
-                let file_type = determine_model_file_type(&committed_file.filename).to_string();
-                let file_type_str = file_type.as_str();
-
-                models::create_model_file(
-                    &model_db.id,
-                    &committed_file.filename,
-                    &committed_file.file_path,
-                    committed_file.size_bytes as i64,
-                    file_type_str,
-                )
-                .await
-                .map_err(|e| AppError::internal_error(&e.to_string()))?;
-
-                // Note: Checksum calculation removed for performance
-
-                println!(
-                    "Committed file: {} -> {}",
-                    committed_file.filename, committed_file.file_path
-                );
-            }
-            Err(e) => {
-                println!("Failed to commit temp file {}: {}", temp_file_id, e);
-                return Err(AppError::internal_error(format!(
-                    "Failed to commit file: {}",
-                    e
-                )));
-            }
-        }
-    }
-
-    // Update model with total size (checksum removed for performance)
-
-    // Update validation status to completed and enable the model
-    models::update_model_validation(&model_db.id, "completed", None, Some(total_size as i64))
-        .await
-        .map_err(AppError::database_error)?;
-
-    models::update_model_status(
-        &model_db.id,
-        Some(true), // enabled = true
-        None,       // don't change is_active
+        name,
+        alias,
+        description,
+        file_format,
+        main_filename,
+        source_dir,
+        capabilities,
+        settings,
     )
     .await
-    .map_err(AppError::database_error)?;
+    .map_err(|e| {
+        AppError::internal_error(format!("Failed to create model from uploaded files: {}", e))
+    })?;
 
-    // Clean up temp files
-    if let Err(e) = storage.cleanup_temp_session(&request.session_id).await {
-        println!(
-            "Warning: Failed to cleanup temp session {}: {}",
-            request.session_id, e
-        );
-    }
-
-    // Return the created model
-    let model = models::get_model_with_files(&model_db.id)
-        .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?
-        .ok_or_else(|| AppError::not_found("Model"))?;
+    println!("Model created successfully: {} ({})", model.alias, model.id);
 
     Ok(Json(model))
+}
+
+/// Download model from repository and commit files with SSE progress streaming
+pub async fn download_and_commit_repository_files(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Json(request): Json<DownloadFromRepositoryRequest>,
+) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, Response> {
+    // Get repository information
+    let repository = match repositories::get_repository_by_id(request.repository_id).await {
+        Ok(Some(repo)) => repo,
+        Ok(None) => {
+            let error_response = Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body("Repository not found".into())
+                .unwrap();
+            return Err(error_response);
+        }
+        Err(e) => {
+            let error_response = Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(format!("Database error: {}", e).into())
+                .unwrap();
+            return Err(error_response);
+        }
+    };
+
+    // Build repository URL
+    let repository_url =
+        GitService::build_repository_url(&repository.url, &request.repository_path);
+
+    // Create progress channels
+    let (progress_tx, progress_rx) = mpsc::unbounded_channel::<GitProgress>();
+    let (sse_tx, sse_rx) = mpsc::unbounded_channel::<DownloadProgress>();
+
+    // Create git service
+    let git_service = GitService::new();
+
+    // Clone the repository with authentication
+    let auth_token = repository
+        .auth_config
+        .as_ref()
+        .and_then(|config| config.token.clone());
+    let provider_id = request.provider_id;
+    let name = request.name.clone();
+    let alias = request.alias.clone();
+    let description = request.description.clone();
+    let file_format = request.file_format.clone();
+    let main_filename = request.main_filename.clone();
+    let capabilities = request.capabilities.clone();
+    let settings = request.settings.clone();
+    let repository_id = request.repository_id;
+
+    // Spawn task to handle git progress and auto-commit
+    tokio::spawn(async move {
+        // Convert git progress to SSE progress
+        let progress_task = {
+            let sse_tx = sse_tx.clone();
+            tokio::spawn(async move {
+                let mut progress_rx = progress_rx;
+                while let Some(git_progress) = progress_rx.recv().await {
+                    let progress = DownloadProgress {
+                        phase: format!("{:?}", git_progress.phase),
+                        current: git_progress.current,
+                        total: git_progress.total,
+                        message: git_progress.message,
+                        model: None,
+                    };
+
+                    if sse_tx.send(progress).is_err() {
+                        break;
+                    }
+
+                    // Check if we're complete or errored
+                    match git_progress.phase {
+                        crate::utils::git_service::GitPhase::Complete => break,
+                        crate::utils::git_service::GitPhase::Error => break,
+                        _ => {}
+                    }
+                }
+            })
+        };
+
+        // Clone repository
+        let clone_result = git_service
+            .clone_repository(
+                &repository_url,
+                &repository_id,
+                request.repository_branch.as_deref(),
+                auth_token.as_deref(),
+                progress_tx,
+            )
+            .await;
+
+        // Wait for progress task to complete
+        let _ = progress_task.await;
+
+        match clone_result {
+            Ok(cache_path) => {
+                // Send committing progress
+                let _ = sse_tx.send(DownloadProgress {
+                    phase: "Committing".to_string(),
+                    current: 90,
+                    total: 100,
+                    message: "Creating model from downloaded files...".to_string(),
+                    model: None,
+                });
+
+                // Create storage and commit the repository files
+                let storage_result = ModelStorage::new().await;
+                match storage_result {
+                    Ok(storage) => {
+                        match create_model_with_files(
+                            &storage,
+                            provider_id,
+                            name,
+                            alias,
+                            description,
+                            file_format,
+                            main_filename,
+                            cache_path,
+                            capabilities,
+                            settings,
+                        )
+                        .await
+                        {
+                            Ok(model) => {
+                                // Send final success with model
+                                let _ = sse_tx.send(DownloadProgress {
+                                    phase: "Complete".to_string(),
+                                    current: 100,
+                                    total: 100,
+                                    message: "Model created successfully".to_string(),
+                                    model: Some(model),
+                                });
+                            }
+                            Err(e) => {
+                                // Send error
+                                let _ = sse_tx.send(DownloadProgress {
+                                    phase: "Error".to_string(),
+                                    current: 0,
+                                    total: 100,
+                                    message: format!("Failed to create model: {}", e),
+                                    model: None,
+                                });
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        // Send storage error
+                        let _ = sse_tx.send(DownloadProgress {
+                            phase: "Error".to_string(),
+                            current: 0,
+                            total: 100,
+                            message: format!("Storage initialization failed: {}", e),
+                            model: None,
+                        });
+                    }
+                }
+            }
+            Err(e) => {
+                // Send download error
+                let _ = sse_tx.send(DownloadProgress {
+                    phase: "Error".to_string(),
+                    current: 0,
+                    total: 100,
+                    message: format!("Download failed: {}", e),
+                    model: None,
+                });
+            }
+        }
+    });
+
+    // Create SSE stream
+    let stream = UnboundedReceiverStream::new(sse_rx).map(|progress| {
+        let json = serde_json::to_string(&progress).unwrap_or_else(|_| "{}".to_string());
+        Ok(Event::default().data(json))
+    });
+
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 /// Determine model file type based on filename
@@ -456,6 +873,15 @@ fn determine_model_file_type(filename: &str) -> ModelFileType {
         || filename_lower.ends_with(".ggml")
     {
         return ModelFileType::WeightFile;
+    }
+
+    // Index files (for sharded models)
+    if filename_lower.contains("index") && filename_lower.ends_with(".json")
+        || filename_lower == "pytorch_model.bin.index.json"
+        || filename_lower == "model.safetensors.index.json"
+        || filename_lower.ends_with(".index.json")
+    {
+        return ModelFileType::IndexFile;
     }
 
     // Configuration files
@@ -537,218 +963,13 @@ fn validate_file_content(filename: &str, file_data: &[u8]) -> Vec<String> {
     issues
 }
 
-/// Validate model
-pub async fn validate_model(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path(model_id): Path<Uuid>,
-) -> ApiResult<Json<ModelValidationResult>> {
-    // Get model and files
-    let model = models::get_model_by_id(model_id)
-        .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?
-        .ok_or_else(|| AppError::not_found("Model"))?;
-
-    let _files = models::get_model_files(&model_id)
-        .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?;
-
-    // Initialize storage
-    let storage = ModelStorage::new()
-        .await
-        .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
-
-    // Validate model using both storage and utils
-    let mut validation_issues = storage
-        .validate_model(&model.provider_id, &model_id)
-        .await
-        .map_err(|e| AppError::internal_error(format!("Validation failed: {}", e)))?;
-
-    // Additional validation using ModelUtils
-    let model_path = format!("models/{}/{}", model.provider_id, model_id);
-
-    // Validate model name
-    if let Err(e) = crate::utils::model_storage::ModelUtils::validate_model_name(&model.name) {
-        validation_issues.push(format!("Invalid model name: {}", e));
-    }
-
-    // Check if model exists using verification function
-    if let Err(e) =
-        crate::utils::model_storage::ModelUtils::verify_model_exists(&model_path, &model.name)
-    {
-        validation_issues.push(format!("Model verification failed: {}", e));
-    }
-
-    // Get and validate model size
-    if let Ok(model_size) = crate::ai::models::ModelUtils::get_model_size(&model_path) {
-        let formatted_size = crate::utils::model_storage::ModelUtils::format_model_size(model_size);
-        println!("Model size: {}", formatted_size);
-
-        // Only warn if the total model weight files are extremely small
-        // Count only actual weight files, not config/tokenizer files
-        let model_path_buf = crate::APP_DATA_DIR.join(&model_path);
-        if let Ok(mut read_dir) = tokio::fs::read_dir(&model_path_buf).await {
-            let mut weight_files_size: u64 = 0;
-
-            while let Ok(Some(entry)) = read_dir.next_entry().await {
-                if let Ok(file_name) = entry.file_name().into_string() {
-                    let file_type = determine_file_type(&file_name.to_lowercase());
-                    if matches!(file_type, ModelFileType::WeightFile) {
-                        if let Ok(metadata) = entry.metadata().await {
-                            weight_files_size += metadata.len();
-                        }
-                    }
-                }
-            }
-
-            if weight_files_size > 0 && weight_files_size < 100 * 1024 {
-                // Less than 100KB of weight files
-                validation_issues
-                    .push("Model weight files appear to be very small (< 100KB)".to_string());
-            }
-        }
-    }
-
-    // Extract and validate model info from config.json if present
-    let config_path = crate::APP_DATA_DIR.join(&model_path).join("config.json");
-    if config_path.exists() {
-        if let Ok(config_content) = tokio::fs::read_to_string(&config_path).await {
-            match crate::utils::model_storage::ModelUtils::extract_model_info(&config_content) {
-                Ok((extracted_name, _description)) => {
-                    println!("Extracted model info: name={}", extracted_name);
-                }
-                Err(e) => {
-                    validation_issues.push(format!("Invalid config.json: {}", e));
-                }
-            }
-        }
-    }
-
-    // Discover and validate model using ModelDiscovery
-    match crate::utils::model_storage::ModelUtils::discover_models(&model_path) {
-        Ok(discovered_models) => {
-            println!("Discovered {} models in directory", discovered_models.len());
-            if discovered_models.is_empty() {
-                validation_issues.push("No valid models found in directory".to_string());
-            }
-        }
-        Err(e) => {
-            validation_issues.push(format!("Model discovery failed: {}", e));
-        }
-    }
-
-    // List available models in the directory
-    if let Ok(model_list) = crate::ai::models::ModelUtils::list_models(&model_path) {
-        println!("Available models: {:?}", model_list);
-        if model_list.is_empty() {
-            validation_issues.push("No model directories found".to_string());
-        }
-    }
-
-    let is_valid = validation_issues.is_empty();
-    let validation_status = if is_valid { "valid" } else { "invalid" };
-
-    // Update validation status in database
-    models::update_model_validation(&model_id, validation_status, Some(&validation_issues), None)
-        .await
-        .map_err(AppError::database_error)?;
-
-    // Create validation result
-    let validation_result = ModelValidationResult {
-        is_valid,
-        issues: validation_issues.clone(),
-        required_files: vec!["tokenizer.json".to_string(), "config.json".to_string()],
-        present_files: vec![], // Would be populated in a real implementation
-    };
-
-    Ok(Json(validation_result))
-}
-
-/// Update model status
-pub async fn update_model_status(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path(model_id): Path<Uuid>,
-    Json(request): Json<UpdateModelStatusRequest>,
-) -> ApiResult<Json<Model>> {
-    // Update model status
-    models::update_model_status(&model_id, request.enabled, request.is_active)
-        .await
-        .map_err(AppError::database_error)?;
-
-    // Return updated model
-    let model = models::get_model_with_files(&model_id)
-        .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?
-        .ok_or_else(|| AppError::not_found("Model"))?;
-
-    Ok(Json(model))
-}
-
-/// Get storage statistics
-pub async fn get_storage_stats(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Query(params): Query<HashMap<String, String>>,
-) -> ApiResult<Json<ModelStorageInfo>> {
-    let provider_id = params
-        .get("provider_id")
-        .and_then(|id| Uuid::parse_str(id).ok())
-        .ok_or_else(|| {
-            AppError::new(
-                ErrorCode::ValidInvalidInput,
-                "provider_id parameter required",
-            )
-        })?;
-
-    // Get stats from database
-    let mut stats = models::get_provider_storage_stats(&provider_id)
-        .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?;
-
-    // Enhanced stats using ModelStorage
-    let storage = ModelStorage::new()
-        .await
-        .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
-
-    // Get actual storage size from filesystem
-    if let Ok(actual_size) = storage.get_provider_storage_size(&provider_id).await {
-        stats.total_storage_bytes = actual_size as u64;
-        println!(
-            "Provider {} actual storage size: {} bytes",
-            provider_id, actual_size
-        );
-    }
-
-    // List all models in storage
-    if let Ok(stored_models) = storage.list_provider_models(&provider_id).await {
-        println!(
-            "Found {} models in storage for provider {}",
-            stored_models.len(),
-            provider_id
-        );
-
-        // Validate each model and update stats if needed
-        for (model_id, _metadata) in &stored_models {
-            match storage.validate_model(&provider_id, model_id).await {
-                Ok(issues) => {
-                    if !issues.is_empty() {
-                        println!("Model {} has validation issues: {:?}", model_id, issues);
-                    }
-                }
-                Err(e) => {
-                    println!("Failed to validate model {}: {}", model_id, e);
-                }
-            }
-        }
-    }
-
-    Ok(Json(stats))
-}
-
 // Hugging Face download functions removed - will be implemented later
 
 /// File type classification for validation
 #[derive(Debug, PartialEq)]
 enum ModelFileType {
     WeightFile,    // .bin, .safetensors, .gguf, etc.
+    IndexFile,     // index.json files for sharded models
     ConfigFile,    // config.json, config_*
     TokenizerFile, // tokenizer.json, tokenizer_config.json
     VocabFile,     // vocab.json, merges.txt, special_tokens_map.json
@@ -759,6 +980,7 @@ impl std::fmt::Display for ModelFileType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ModelFileType::WeightFile => write!(f, "weight"),
+            ModelFileType::IndexFile => write!(f, "index"),
             ModelFileType::ConfigFile => write!(f, "config"),
             ModelFileType::TokenizerFile => write!(f, "tokenizer"),
             ModelFileType::VocabFile => write!(f, "vocab"),

@@ -136,10 +136,9 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
 }
 
 /// Create a Candle model with required architecture and default settings
-pub async fn create_local_model(request: &CreateModelRequest) -> Result<Model, sqlx::Error> {
+pub async fn create_local_model(model_id: &Uuid, request: &CreateModelRequest) -> Result<Model, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    let model_id = Uuid::new_v4();
     let now = Utc::now();
 
     let model: Model = sqlx::query_as(
@@ -157,7 +156,7 @@ pub async fn create_local_model(request: &CreateModelRequest) -> Result<Model, s
                    validation_status, validation_issues, settings, port, pid, created_at, updated_at
         "#,
     )
-    .bind(model_id)
+    .bind(*model_id)
     .bind(&request.provider_id)
     .bind(&request.name)
     .bind(&request.alias)

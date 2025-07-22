@@ -258,11 +258,12 @@ export function ProvidersSettings() {
     }
 
     try {
-      const updatedProvider = await updateProvider(providerId, {
+      await updateProvider(providerId, {
         enabled: enabled,
       })
+      const provider = providers.find(p => p.id === providerId)
       message.success(
-        `${updatedProvider.name} ${enabled ? 'enabled' : 'disabled'}`,
+        `${provider?.name || 'Provider'} ${enabled ? 'enabled' : 'disabled'}`,
       )
     } catch (error: any) {
       console.error('Failed to update provider:', error)
@@ -399,10 +400,7 @@ export function ProvidersSettings() {
     }
 
     try {
-      await cloneProvider(
-        providerId,
-        `${providers.find(p => p.id === providerId)?.name} (Clone)`,
-      )
+      await cloneProvider(providerId)
       message.success(t('providers.providerCloned'))
     } catch (error) {
       console.error('Failed to clone provider:', error)

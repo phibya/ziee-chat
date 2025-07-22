@@ -1,116 +1,89 @@
-import { Alert, Button, Card, List, Progress, Typography } from 'antd'
 import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   LoadingOutlined,
-  StopOutlined,
-} from '@ant-design/icons'
-import { useTranslation } from 'react-i18next'
+} from "@ant-design/icons";
+import { Alert, Card, List, Progress, Typography } from "antd";
+import { useTranslation } from "react-i18next";
 
-const { Text, Title } = Typography
+const { Text, Title } = Typography;
 
 export interface FileUploadProgress {
-  filename: string
-  progress: number
-  status: 'pending' | 'uploading' | 'completed' | 'error'
-  error?: string
-  size?: number
+  filename: string;
+  progress: number;
+  status: "pending" | "uploading" | "completed" | "error";
+  error?: string;
+  size?: number;
 }
 
 export interface UploadProgressProps {
-  files: FileUploadProgress[]
-  overallProgress: number
-  isUploading: boolean
-  onCancel?: () => void
-  showDetails?: boolean
+  files: FileUploadProgress[];
+  overallProgress: number;
+  isUploading: boolean;
+  showDetails?: boolean;
 }
 
 export function UploadProgress({
   files,
   overallProgress,
   isUploading,
-  onCancel,
   showDetails = true,
 }: UploadProgressProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
-  const completedFiles = files.filter(f => f.status === 'completed').length
-  const errorFiles = files.filter(f => f.status === 'error').length
-  const totalFiles = files.length
+  const completedFiles = files.filter((f) => f.status === "completed").length;
+  const errorFiles = files.filter((f) => f.status === "error").length;
+  const totalFiles = files.length;
 
-  const getStatusIcon = (status: FileUploadProgress['status']) => {
+  const getStatusIcon = (status: FileUploadProgress["status"]) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircleOutlined style={{ color: '#52c41a' }} />
-      case 'error':
-        return <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />
-      case 'uploading':
-        return <LoadingOutlined style={{ color: '#1890ff' }} />
+      case "completed":
+        return <CheckCircleOutlined style={{ color: "#52c41a" }} />;
+      case "error":
+        return <ExclamationCircleOutlined style={{ color: "#ff4d4f" }} />;
+      case "uploading":
+        return <LoadingOutlined style={{ color: "#1890ff" }} />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const formatFileSize = (bytes?: number) => {
-    if (!bytes) return ''
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(1024))
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
-  }
+    if (!bytes) return "";
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+  };
 
   return (
-    <Card title={t('providers.uploadProgress')} className="w-full">
+    <Card title={t("providers.uploadProgress")} className="w-full">
       {/* Overall Progress */}
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
           <Title level={5} className="mb-0">
             {isUploading
-              ? t('providers.uploadingFiles')
+              ? t("providers.uploadingFiles")
               : completedFiles === totalFiles
-                ? t('providers.uploadComplete')
-                : t('providers.uploadStopped')}
+                ? t("providers.uploadComplete")
+                : t("providers.uploadStopped")}
           </Title>
-          {isUploading && onCancel && (
-            <Button
-              icon={<StopOutlined />}
-              onClick={onCancel}
-              size="small"
-              danger
-            >
-              {t('common.cancel')}
-            </Button>
-          )}
         </div>
 
         <Progress
           percent={overallProgress}
           status={
-            errorFiles > 0 ? 'exception' : isUploading ? 'active' : 'success'
+            errorFiles > 0 ? "exception" : isUploading ? "active" : "success"
           }
           format={() => `${completedFiles}/${totalFiles} files`}
         />
-
-        <div className="flex justify-between mt-1">
-          <Text type="secondary">
-            {t('providers.filesCompleted', {
-              completed: completedFiles,
-              total: totalFiles,
-            })}
-          </Text>
-          {errorFiles > 0 && (
-            <Text type="danger">
-              {t('providers.filesWithErrors', { errors: errorFiles })}
-            </Text>
-          )}
-        </div>
       </div>
 
       {/* Error Summary */}
       {errorFiles > 0 && (
         <Alert
           type="warning"
-          message={t('providers.uploadErrors')}
-          description={t('providers.uploadErrorsDescription', {
+          message={t("providers.uploadErrors")}
+          description={t("providers.uploadErrorsDescription", {
             count: errorFiles,
           })}
           className="mb-4"
@@ -121,11 +94,11 @@ export function UploadProgress({
       {/* File Details */}
       {showDetails && (
         <div>
-          <Title level={5}>{t('providers.fileDetails')}</Title>
+          <Title level={5}>{t("providers.fileDetails")}</Title>
           <List
             size="small"
             dataSource={files}
-            renderItem={file => (
+            renderItem={(file) => (
               <List.Item>
                 <div className="w-full">
                   <div className="flex justify-between items-center mb-1">
@@ -141,13 +114,13 @@ export function UploadProgress({
                       )}
                     </div>
                     <Text type="secondary" className="text-xs">
-                      {file.status === 'uploading'
+                      {file.status === "uploading"
                         ? `${file.progress}%`
                         : t(`providers.status.${file.status}`)}
                     </Text>
                   </div>
 
-                  {file.status === 'uploading' && (
+                  {file.status === "uploading" && (
                     <Progress
                       percent={file.progress}
                       size="small"
@@ -168,5 +141,5 @@ export function UploadProgress({
         </div>
       )}
     </Card>
-  )
+  );
 }

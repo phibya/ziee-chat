@@ -306,41 +306,16 @@ pub fn admin_routes() -> Router {
                 api::middleware::groups_delete_middleware,
             )),
         )
-        // Model upload routes for Candle models removed - use upload-multipart and commit-upload workflow
         .route(
-            "/api/admin/uploaded-models/{model_id}/upload",
-            post(api::model_uploads::upload_model_file).layer(middleware::from_fn(
+            "/api/admin/uploaded-models/upload-and-commit",
+            post(api::model_uploads::upload_multiple_files_and_commit).layer(middleware::from_fn(
                 api::middleware::providers_edit_middleware,
             )),
         )
         .route(
-            "/api/admin/uploaded-models/upload-multipart",
-            post(api::model_uploads::upload_model_file_multipart).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/uploaded-models/commit-upload",
-            post(api::model_uploads::commit_uploaded_files).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/uploaded-models/{model_id}/validate",
-            post(api::model_uploads::validate_model).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/uploaded-models/{model_id}/status",
-            put(api::model_uploads::update_model_status).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
-        )
-        .route(
-            "/api/admin/uploaded-models/storage-stats",
-            get(api::model_uploads::get_storage_stats).layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
-            )),
+            "/api/admin/models/download-from-repository",
+            post(api::model_uploads::download_and_commit_repository_files).layer(
+                middleware::from_fn(api::middleware::providers_edit_middleware),
+            ),
         )
 }

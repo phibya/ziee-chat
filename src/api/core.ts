@@ -1,228 +1,403 @@
-import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from '../types'
-
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from "@tauri-apps/api/core";
+import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from "../types";
 
 // Import getAuthToken function (avoiding circular import)
 export const getAuthToken = () => {
   // eslint-disable-next-line no-undef
-  const authData = localStorage.getItem('auth-storage')
+  const authData = localStorage.getItem("auth-storage");
   if (authData) {
-    const parsed = JSON.parse(authData)
-    return parsed.state?.token || null
+    const parsed = JSON.parse(authData);
+    return parsed.state?.token || null;
   }
-  return null
-}
+  return null;
+};
 
 //@ts-ignore
-export const isDesktopApp = !!window.__TAURI_INTERNALS__
+export const isDesktopApp = !!window.__TAURI_INTERNALS__;
 
 export const getBaseUrl = (function () {
-  let baseUrl: Promise<string>
+  let baseUrl: Promise<string>;
   //@ts-ignore
   return async function () {
     if (baseUrl) {
-      return baseUrl // Return existing promise if already created
+      return baseUrl; // Return existing promise if already created
     }
 
-    baseUrl = new Promise<string>(resolve => {
+    baseUrl = new Promise<string>((resolve) => {
       if (isDesktopApp) {
-        invoke('get_http_port')
-          .then(port => {
-            resolve(`http://localhost:${port as number}`)
+        invoke("get_http_port")
+          .then((port) => {
+            resolve(`http://localhost:${port as number}`);
           })
-          .catch(console.error)
+          .catch(console.error);
       } else {
         // For web, we can use the current origin
         //@ts-ignore
-        resolve(window.location.origin)
+        resolve(window.location.origin);
       }
-    })
-    return baseUrl
-  }
-})()
+    });
+    return baseUrl;
+  };
+})();
 
 // SSE streaming callback types
 export interface SSECallbacks {
-  onChunk?: (data: any) => void
-  onComplete?: (data: any) => void
-  onError?: (error: string) => void
+  onChunk?: (data: any) => void;
+  onComplete?: (data: any) => void;
+  onError?: (error: string) => void;
+}
+
+// Files upload progress callback type
+export interface FileUploadProgressCallback {
+  onProgress?: (
+    progress: number,
+    fileIndex: number,
+    overallProgress: number,
+  ) => void;
+  onComplete?: (response: any) => void;
+  onError?: (error: string, fileName?: string) => void;
 }
 
 // Type-safe callAsync function that maps URL to exact parameter and response types
 export const callAsync = async <U extends ApiEndpointUrl>(
   endpointUrl: U,
   params: ParameterByUrl<U>,
-  sseCallbacks?: SSECallbacks,
+  callbacks?: {
+    SSE?: SSECallbacks;
+    fileUploadProgress: FileUploadProgressCallback;
+  },
 ): Promise<ResponseByUrl<U>> => {
-  let bUrl = await getBaseUrl()
+  let bUrl = await getBaseUrl();
+
+  const { SSE: sseCallbacks, fileUploadProgress } = callbacks || {};
 
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+    // Check if params is FormData for file uploads
+    const isFormData = params instanceof FormData;
+
+    let headers: Record<string, string> = {};
+
+    // Don't set Content-Type for FormData - let browser set it with boundary
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
     }
 
     // Add auth token if available
-    const token = getAuthToken()
+    const token = getAuthToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const method = endpointUrl.split(' ')[0] as
-      | 'POST'
-      | 'GET'
-      | 'PUT'
-      | 'DELETE'
-      | 'PATCH'
-    let endpointPath = endpointUrl.replace(/^[A-Z]+\s+/, '').trim()
+    const method = endpointUrl.split(" ")[0] as
+      | "POST"
+      | "GET"
+      | "PUT"
+      | "DELETE"
+      | "PATCH";
+    let endpointPath = endpointUrl.replace(/^[A-Z]+\s+/, "").trim();
     //get {capture} from endpointPath
-    const captureMatches = (endpointPath.match(/{([^}]+)}/g) || []).map(match =>
-      match.slice(1, -1),
-    )
-    // Replace {capture} with actual values from params
-    captureMatches.forEach(capture => {
-      let c = capture.trim() as keyof typeof params
-      if (params[c] !== undefined) {
-        //@ts-ignore
-        endpointPath = endpointPath.replace(`{${capture}}`, params[c])
-        // delete params[c] // Remove from params to avoid sending it in body
-      } else {
-        throw new Error(`Missing required parameter: ${capture}`)
-      }
-    })
+    const captureMatches = (endpointPath.match(/{([^}]+)}/g) || []).map(
+      (match) => match.slice(1, -1),
+    );
 
-    const response = await fetch(`${bUrl}${endpointPath}`, {
-      method,
-      headers,
-      body:
-        ['POST', 'PUT', 'PATCH'].includes(method) && params !== undefined
-          ? JSON.stringify(params)
-          : undefined,
-    })
+    // For FormData, we need to handle path parameters differently
+    if (isFormData) {
+      // Replace {capture} with actual values from FormData entries
+      captureMatches.forEach((capture) => {
+        const value = (params as FormData).get(capture.trim());
+        if (value !== null) {
+          endpointPath = endpointPath.replace(`{${capture}}`, value.toString());
+        } else {
+          throw new Error(`Missing required parameter: ${capture}`);
+        }
+      });
+    } else {
+      // Replace {capture} with actual values from params object
+      captureMatches.forEach((capture) => {
+        let c = capture.trim() as keyof typeof params;
+        if (params[c] !== undefined) {
+          //@ts-ignore
+          endpointPath = endpointPath.replace(`{${capture}}`, params[c]);
+        } else {
+          throw new Error(`Missing required parameter: ${capture}`);
+        }
+      });
+    }
+
+    // Prepare the request body
+    let body: any = undefined;
+    if (["POST", "PUT", "PATCH"].includes(method) && params !== undefined) {
+      if (isFormData) {
+        body = params as FormData;
+      } else {
+        body = JSON.stringify(params);
+      }
+    }
+
+    let response: Response;
+
+    // Use XMLHttpRequest for FormData uploads with progress tracking
+    if (isFormData && fileUploadProgress && body) {
+      response = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Get file information from FormData
+        const formData = body as FormData;
+        const files: { name: string; file: File; size: number }[] = [];
+
+        // Extract files from FormData for progress tracking
+        for (const [key, value] of formData.entries()) {
+          if (value instanceof File) {
+            files.push({ name: key, file: value, size: value.size });
+          }
+        }
+
+        // Calculate cumulative file sizes for progress tracking
+        const fileCumsums: {
+          name: string;
+          startByte: number;
+          endByte: number;
+          size: number;
+        }[] = [];
+        let cumulativeSize = 0;
+
+        files.forEach((fileInfo) => {
+          const startByte = cumulativeSize;
+          const endByte = cumulativeSize + fileInfo.size;
+          fileCumsums.push({
+            name: fileInfo.name,
+            startByte,
+            endByte,
+            size: fileInfo.size,
+          });
+          cumulativeSize += fileInfo.size;
+        });
+
+        let lastReportedFileIndex = -1;
+
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            const bytesUploaded = event.loaded;
+            const totalBytes = event.total;
+            const overallProgress = Math.round((bytesUploaded / totalBytes) * 100);
+
+            // Find which file is currently being uploaded
+            let currentFileIndex = 0;
+            let fileProgress = 0;
+
+            for (let i = 0; i < fileCumsums.length; i++) {
+              const fileInfo = fileCumsums[i];
+
+              if (
+                bytesUploaded >= fileInfo.startByte &&
+                bytesUploaded <= fileInfo.endByte
+              ) {
+                currentFileIndex = i;
+
+                // Calculate progress within this specific file
+                const bytesUploadedInFile = bytesUploaded - fileInfo.startByte;
+                fileProgress = Math.round(
+                  (bytesUploadedInFile / fileInfo.size) * 100,
+                );
+                break;
+              } else if (bytesUploaded > fileInfo.endByte) {
+                // This file is completely uploaded
+                currentFileIndex = i;
+                fileProgress = 100;
+              }
+            }
+
+            // Report progress for all completed files that weren't reported yet
+            for (let i = lastReportedFileIndex + 1; i < currentFileIndex; i++) {
+              fileUploadProgress.onProgress?.(100, i, overallProgress);
+            }
+
+            // Report progress for the current file being uploaded
+            if (currentFileIndex >= lastReportedFileIndex) {
+              fileUploadProgress.onProgress?.(fileProgress, currentFileIndex, overallProgress);
+              lastReportedFileIndex = currentFileIndex;
+            }
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            // Create a Response-like object
+            const responseHeaders = new Headers();
+            xhr
+              .getAllResponseHeaders()
+              .split("\r\n")
+              .forEach((header) => {
+                const [key, value] = header.split(": ");
+                if (key && value) {
+                  responseHeaders.set(key, value);
+                }
+              });
+
+            const mockResponse = {
+              ok: xhr.status >= 200 && xhr.status < 300,
+              status: xhr.status,
+              statusText: xhr.statusText,
+              headers: responseHeaders,
+              text: () => Promise.resolve(xhr.responseText),
+              json: () => Promise.resolve(JSON.parse(xhr.responseText)),
+            } as Response;
+
+            resolve(mockResponse);
+          } else {
+            reject(new Error(`HTTP error! status: ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          fileUploadProgress.onError?.("Network error during file upload");
+          reject(new Error("Network error during file upload"));
+        });
+
+        xhr.open(method, `${bUrl}${endpointPath}`);
+
+        // Set headers (excluding Content-Type for FormData)
+        Object.entries(headers).forEach(([key, value]) => {
+          if (key !== "Content-Type") {
+            xhr.setRequestHeader(key, value);
+          }
+        });
+
+        xhr.send(body);
+      });
+    } else {
+      // Use fetch for non-FormData requests or when no progress tracking is needed
+      response = await fetch(`${bUrl}${endpointPath}`, {
+        method,
+        headers,
+        body,
+      });
+    }
 
     // Handle SSE streaming if callbacks are provided and response is text/event-stream
     if (
       sseCallbacks &&
-      response.headers.get('Content-Type')?.includes('text/event-stream')
+      response.headers.get("Content-Type")?.includes("text/event-stream")
     ) {
       if (!response.ok) {
-        const errorMessage = `HTTP error! status: ${response.status}`
-        sseCallbacks.onError?.(errorMessage)
-        throw new Error(errorMessage)
+        const errorMessage = `HTTP error! status: ${response.status}`;
+        sseCallbacks.onError?.(errorMessage);
+        throw new Error(errorMessage);
       }
 
-      const reader = response.body?.getReader()
+      const reader = response.body?.getReader();
       if (!reader) {
-        const error = 'No response body reader available'
-        sseCallbacks.onError?.(error)
-        throw new Error(error)
+        const error = "No response body reader available";
+        sseCallbacks.onError?.(error);
+        throw new Error(error);
       }
 
-      const decoder = new globalThis.TextDecoder()
-      let buffer = ''
+      const decoder = new globalThis.TextDecoder();
+      let buffer = "";
 
       try {
-        let currentEvent = ''
+        let currentEvent = "";
 
         while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+          const { done, value } = await reader.read();
+          if (done) break;
 
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || '' // Keep incomplete line in buffer
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
           for (const line of lines) {
-            if (line.trim() === '') {
+            if (line.trim() === "") {
               // Empty line indicates end of event, reset current event
-              currentEvent = ''
-              continue
+              currentEvent = "";
+              continue;
             }
 
-            if (line.startsWith('event: ')) {
-              currentEvent = line.slice(7).trim()
-            } else if (line.startsWith('data: ')) {
-              const data = line.slice(6)
+            if (line.startsWith("event: ")) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith("data: ")) {
+              const data = line.slice(6);
 
               // Handle special cases
-              if (data === 'start') {
-                continue // Skip start signal
+              if (data === "start") {
+                continue; // Skip start signal
               }
-              if (data === '[DONE]') {
-                break
+              if (data === "[DONE]") {
+                break;
               }
 
               try {
-                const parsed = JSON.parse(data)
+                const parsed = JSON.parse(data);
 
                 // Handle based on current event type
-                if (currentEvent === 'chunk') {
-                  sseCallbacks.onChunk?.(parsed)
-                } else if (currentEvent === 'complete') {
-                  sseCallbacks.onComplete?.(parsed)
-                } else if (currentEvent === 'error') {
-                  sseCallbacks.onError?.(parsed?.error || 'Stream error')
+                if (currentEvent === "chunk") {
+                  sseCallbacks.onChunk?.(parsed);
+                } else if (currentEvent === "complete") {
+                  sseCallbacks.onComplete?.(parsed);
+                } else if (currentEvent === "error") {
+                  sseCallbacks.onError?.(parsed?.error || "Stream error");
                 }
               } catch {
-                console.warn('Failed to parse SSE data:', data)
+                console.warn("Failed to parse SSE data:", data);
               }
             }
           }
         }
       } catch (error) {
         const errorMessage =
-          error instanceof Error ? error.message : 'Stream reading error'
-        sseCallbacks.onError?.(errorMessage)
-        throw error
+          error instanceof Error ? error.message : "Stream reading error";
+        sseCallbacks.onError?.(errorMessage);
+        throw error;
       } finally {
-        reader.releaseLock()
+        reader.releaseLock();
       }
 
       // For SSE streaming, return empty response since data is handled via callbacks
-      return {} as ResponseByUrl<U>
+      return {} as ResponseByUrl<U>;
     }
 
     // Parse the response as JSON
     if (!response.ok) {
-      let errorMessage = `HTTP error! status: ${response.status}`
+      let errorMessage = `HTTP error! status: ${response.status}`;
 
       // Handle 403 Forbidden specifically
       if (response.status === 403) {
         try {
           // Try to extract specific error message from response body
-          const errorResponse = await response.json()
+          const errorResponse = await response.json();
           if (errorResponse.error) {
-            errorMessage = errorResponse.error
+            errorMessage = errorResponse.error;
           } else {
-            errorMessage = 'Permission denied'
+            errorMessage = "Permission denied";
           }
         } catch {
           // If we can't parse the error response, use default permission denied message
-          errorMessage = 'Permission denied'
+          errorMessage = "Permission denied";
         }
       } else {
         try {
           // Try to extract error message from response body for other errors
-          const errorResponse = await response.json()
+          const errorResponse = await response.json();
           if (errorResponse.error) {
-            errorMessage = errorResponse.error
+            errorMessage = errorResponse.error;
           }
         } catch {
           // If we can't parse the error response, use the default message
         }
       }
 
-      throw new Error(errorMessage)
+      throw new Error(errorMessage);
     }
 
     //try to parse the response as JSON else return as text
-    if (response.headers.get('Content-Type')?.includes('application/json')) {
-      return (await response.json()) as ResponseByUrl<U>
+    if (response.headers.get("Content-Type")?.includes("application/json")) {
+      return (await response.json()) as ResponseByUrl<U>;
     } else {
-      const textResponse = await response.text()
-      return textResponse as unknown as ResponseByUrl<U> // Fallback to text if not JSON
+      const textResponse = await response.text();
+      return textResponse as unknown as ResponseByUrl<U>; // Fallback to text if not JSON
     }
   } catch (error) {
-    console.error(`Error calling endpoint ${endpointUrl}:`, error)
-    throw error // Re-throw to allow caller to handle it
+    console.error(`Error calling endpoint ${endpointUrl}:`, error);
+    throw error; // Re-throw to allow caller to handle it
   }
-}
+};

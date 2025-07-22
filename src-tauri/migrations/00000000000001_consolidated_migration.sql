@@ -581,7 +581,7 @@ INSERT INTO providers (name, provider_type, enabled, built_in, base_url) VALUES
 -- Insert default repositories (Hugging Face Hub and GitHub)
 INSERT INTO repositories (name, url, auth_type, auth_config, enabled, built_in) VALUES
 ('Hugging Face Hub', 'https://huggingface.co', 'api_key', '{"api_key": "", "auth_test_api_endpoint": "https://huggingface.co/api/whoami-v2"}', true, true),
-('GitHub', 'https://api.github.com', 'bearer_token', '{"token": "", "auth_test_api_endpoint": "https://api.github.com/user"}', true, true);
+('GitHub', 'https://github.com', 'bearer_token', '{"token": "", "auth_test_api_endpoint": "https://api.github.com/user"}', true, true);
 
 -- Insert default template assistant
 INSERT INTO assistants (name, description, instructions, parameters, created_by, is_template, is_default, is_active) VALUES 

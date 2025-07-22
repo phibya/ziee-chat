@@ -1,979 +1,677 @@
-import { create } from 'zustand'
-import { subscribeWithSelector } from 'zustand/middleware'
-import { ApiClient } from '../api/client'
-import { getAuthToken, getBaseUrl } from '../api/core'
+import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
+import { ApiClient } from "../api/client";
+import { Model, ModelCapabilities, ModelSettings } from "../types/api/model";
 import {
-  uploadFile,
-  uploadFilesConcurrent,
-  UploadProgress,
-} from '../api/fileUpload'
-import { CreateProviderRequest, Provider } from '../types/api/provider'
-import { Model, ModelCapabilities } from '../types/api/model'
+  CreateProviderRequest,
+  Provider,
+  UpdateProviderRequest,
+} from "../types/api/provider";
 
 // Type definitions are now imported from the API types
 
 export interface FileUploadProgress {
-  filename: string
-  progress: number
-  status: 'pending' | 'uploading' | 'completed' | 'error'
-  error?: string
-  size?: number
-}
-
-export interface ProcessedFile {
-  temp_file_id: string
-  filename: string
-  file_type: string
-  size_bytes: number
-  checksum: string
-  validation_issues: string[]
-  is_main_file: boolean
+  filename: string;
+  progress: number;
+  status: "pending" | "uploading" | "completed" | "error";
+  error?: string;
+  size?: number;
 }
 
 export interface UploadSession {
-  session_id: string
-  files: ProcessedFile[]
-  total_size_bytes: number
-  main_filename: string
-  provider_id: string
+  session_id: string;
+  total_size_bytes: number;
+  main_filename: string;
+  provider_id: string;
+}
+
+export interface UploadMultipleFilesRequest {
+  providerId: string;
+  files: File[];
+  mainFilename: string;
+  name: string;
+  alias: string;
+  description?: string;
+  fileFormat: string;
+  capabilities: ModelCapabilities;
+  settings?: ModelSettings;
 }
 
 interface ProvidersState {
   // Data
-  providers: Provider[]
-  modelsByProvider: Record<string, Model[]> // Store models by provider ID
+  providers: Provider[];
+  modelsByProvider: Record<string, Model[]>; // Store models by provider ID
 
   // Loading states
-  loading: boolean
-  creating: boolean
-  updating: boolean
-  deleting: boolean
-  loadingModels: Record<string, boolean> // Track loading state for provider models
-  modelOperations: Record<string, boolean> // Track loading state for individual models
+  loading: boolean;
+  creating: boolean;
+  updating: boolean;
+  deleting: boolean;
+  loadingModels: Record<string, boolean>; // Track loading state for provider models
+  modelOperations: Record<string, boolean>; // Track loading state for individual models
 
   // Upload states
-  uploading: boolean
-  uploadProgress: FileUploadProgress[]
-  overallUploadProgress: number
+  uploading: boolean;
+  uploadProgress: FileUploadProgress[];
+  overallUploadProgress: number;
 
   // Upload session state
-  uploadSession: UploadSession | null
-
-  // Internal state for upload control
-  _uploadXhr?: XMLHttpRequest | null
+  uploadSession: UploadSession | null;
 
   // Error state
-  error: string | null
+  error: string | null;
 
   // Actions
-  loadProviders: () => Promise<void>
-  createProvider: (data: CreateProviderRequest) => Promise<Provider>
-  updateProvider: (id: string, data: Partial<Provider>) => Promise<Provider>
-  deleteProvider: (id: string) => Promise<void>
-  cloneProvider: (id: string, name: string) => Promise<Provider>
+  loadProviders: () => Promise<void>;
+  createProvider: (provider: CreateProviderRequest) => Promise<Provider>;
+  updateProvider: (
+    id: string,
+    provider: UpdateProviderRequest,
+  ) => Promise<void>;
+  deleteProvider: (id: string) => Promise<void>;
+  cloneProvider: (id: string) => Promise<Provider>;
 
-  // Model actions
-  loadModels: (providerId: string) => Promise<void>
-  addModel: (providerId: string, data: Partial<Model>) => Promise<Model>
-  updateModel: (modelId: string, data: Partial<Model>) => Promise<Model>
-  deleteModel: (modelId: string) => Promise<void>
-  startModel: (modelId: string) => Promise<void> // For Local
-  stopModel: (modelId: string) => Promise<void> // For Local
-  enableModel: (modelId: string) => Promise<void>
-  disableModel: (modelId: string) => Promise<void>
-
-  // Upload model actions (for Local) - New multi-step workflow
-  uploadMultipleFiles: (
+  // Model actions (provider-specific)
+  loadProviderModels: (providerId: string) => Promise<void>;
+  loadModels: (providerId: string) => Promise<void>; // Alias for compatibility
+  addModelToProvider: (
     providerId: string,
-    files: File[],
-    mainFilename: string,
-  ) => Promise<UploadSession>
-  commitUploadedFiles: (
-    sessionId: string,
-    providerId: string,
-    name: string,
-    alias: string,
-    description: string | undefined,
-    fileFormat: string,
-    capabilities: ModelCapabilities,
-    selectedFileIds: string[],
-    settings?: any,
-  ) => Promise<void>
-
-  // Legacy upload actions (deprecated)
-  createUploadModel: (
-    providerId: string,
-    name: string,
-    alias: string,
-    description?: string,
-    fileFormat?: string,
-    metadata?: any,
-  ) => Promise<{ id: string }>
-  uploadModelFile: (modelId: string, file: File) => Promise<void>
-  uploadModelFiles: (
+    model: {
+      name: string;
+      alias: string;
+      description?: string;
+      enabled?: boolean;
+      capabilities?: ModelCapabilities;
+    },
+  ) => Promise<void>;
+  addModel: (providerId: string, data: Partial<Model>) => Promise<Model>; // Legacy compatibility
+  updateModel: (
     modelId: string,
-    files: File[],
-    mainFilename: string,
-  ) => Promise<void>
+    updates: { alias?: string; description?: string; enabled?: boolean },
+  ) => Promise<void>;
+  deleteModel: (modelId: string) => Promise<void>;
 
-  // Upload progress actions
-  clearUploadProgress: () => void
-  clearUploadSession: () => void
-  cancelUpload: () => void
+  // Upload model actions (for Local) - Upload and auto-commit
+  uploadMultipleFilesAndCommit: (
+    request: UploadMultipleFilesRequest,
+  ) => Promise<Model>;
 
-  // Proxy actions
+  // Model control actions (for Local)
+  startModel: (modelId: string) => Promise<void>; // For Local
+  stopModel: (modelId: string) => Promise<void>; // For Local
+  enableModel: (modelId: string) => Promise<void>;
+  disableModel: (modelId: string) => Promise<void>;
 
   // Utility actions
-  clearError: () => void
-  getProviderById: (id: string) => Provider | undefined
-  getModelById: (id: string) => Model | undefined
+  clearError: () => void;
+  cancelUpload: () => void;
+  getProviderById: (id: string) => Provider | undefined;
+  getModelById: (id: string) => Model | undefined;
 }
 
 export const useProvidersStore = create<ProvidersState>()(
-  subscribeWithSelector((set, get) => ({
-    // Initial state
-    providers: [],
-    modelsByProvider: {},
-    loading: false,
-    creating: false,
-    updating: false,
-    deleting: false,
-    loadingModels: {},
-    modelOperations: {},
-    uploading: false,
-    uploadProgress: [],
-    overallUploadProgress: 0,
-    uploadSession: null,
-    error: null,
+  subscribeWithSelector(
+    (set, get): ProvidersState => ({
+      // Initial state
+      providers: [],
+      modelsByProvider: {},
+      loading: false,
+      creating: false,
+      updating: false,
+      deleting: false,
+      loadingModels: {},
+      modelOperations: {},
+      uploading: false,
+      uploadProgress: [],
+      overallUploadProgress: 0,
+      uploadSession: null,
+      error: null,
 
-    loadProviders: async () => {
-      try {
-        set({ loading: true, error: null })
+      // Actions
+      loadProviders: async () => {
+        try {
+          set({ loading: true, error: null });
+          const response = await ApiClient.Providers.list({});
+          set({ providers: response.providers, loading: false });
+        } catch (error) {
+          set({
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to load providers",
+            loading: false,
+          });
+          throw error;
+        }
+      },
 
-        const response = await ApiClient.Providers.list({
-          page: 1,
-          per_page: 50,
-        })
+      createProvider: async (provider: CreateProviderRequest) => {
+        try {
+          set({ creating: true, error: null });
+          const newProvider = await ApiClient.Providers.create(provider);
+          set((state) => ({
+            providers: [...state.providers, newProvider],
+            creating: false,
+          }));
+          return newProvider;
+        } catch (error) {
+          set({
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to create provider",
+            creating: false,
+          });
+          throw error;
+        }
+      },
 
-        set({
-          providers: response.providers,
-          loading: false,
-        })
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to load model providers',
-          loading: false,
-        })
-        throw error
-      }
-    },
+      updateProvider: async (id: string, provider: UpdateProviderRequest) => {
+        try {
+          set({ updating: true, error: null });
+          const updatedProvider = await ApiClient.Providers.update({
+            provider_id: id,
+            ...provider,
+          });
+          set((state) => ({
+            providers: state.providers.map((p) =>
+              p.id === id ? updatedProvider : p,
+            ),
+            updating: false,
+          }));
+        } catch (error) {
+          set({
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to update provider",
+            updating: false,
+          });
+          throw error;
+        }
+      },
 
-    createProvider: async (data: CreateProviderRequest) => {
-      try {
-        set({ creating: true, error: null })
+      deleteProvider: async (id: string) => {
+        try {
+          set({ deleting: true, error: null });
+          await ApiClient.Providers.delete({ provider_id: id });
+          set((state) => ({
+            providers: state.providers.filter((p) => p.id !== id),
+            deleting: false,
+          }));
+        } catch (error) {
+          set({
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to delete provider",
+            deleting: false,
+          });
+          throw error;
+        }
+      },
 
-        const provider = await ApiClient.Providers.create(data)
+      cloneProvider: async (id: string) => {
+        try {
+          set({ creating: true, error: null });
+          const clonedProvider = await ApiClient.Providers.clone({
+            provider_id: id,
+          });
+          set((state) => ({
+            providers: [...state.providers, clonedProvider],
+            creating: false,
+          }));
+          return clonedProvider;
+        } catch (error) {
+          set({
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to clone provider",
+            creating: false,
+          });
+          throw error;
+        }
+      },
 
-        set(state => ({
-          providers: [...state.providers, provider],
-          creating: false,
-        }))
-
-        return provider
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to create provider',
-          creating: false,
-        })
-        throw error
-      }
-    },
-
-    updateProvider: async (id: string, data: Partial<Provider>) => {
-      try {
-        set({ updating: true, error: null })
-
-        const provider = await ApiClient.Providers.update({
-          provider_id: id,
-          ...data,
-        })
-
-        set(state => ({
-          providers: state.providers.map(p => (p.id === id ? provider : p)),
-          updating: false,
-        }))
-
-        return provider
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to update provider',
-          updating: false,
-        })
-        throw error
-      }
-    },
-
-    deleteProvider: async (id: string) => {
-      try {
-        set({ deleting: true, error: null })
-
-        await ApiClient.Providers.delete({ provider_id: id })
-
-        set(state => ({
-          providers: state.providers.filter(p => p.id !== id),
-          deleting: false,
-        }))
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to delete provider',
-          deleting: false,
-        })
-        throw error
-      }
-    },
-
-    cloneProvider: async (id: string, name: string) => {
-      try {
-        set({ creating: true, error: null })
-
-        const provider = await ApiClient.Providers.clone({
-          provider_id: id,
-          name: name,
-        } as any)
-
-        set(state => ({
-          providers: [...state.providers, provider],
-          creating: false,
-        }))
-
-        return provider
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to clone provider',
-          creating: false,
-        })
-        throw error
-      }
-    },
-
-    loadModels: async (providerId: string) => {
-      try {
-        set(state => ({
-          loadingModels: { ...state.loadingModels, [providerId]: true },
-          error: null,
-        }))
-
-        const models = await ApiClient.Providers.listModels({
-          provider_id: providerId,
-        })
-
-        set(state => ({
-          modelsByProvider: { ...state.modelsByProvider, [providerId]: models },
-          loadingModels: { ...state.loadingModels, [providerId]: false },
-        }))
-      } catch (error) {
-        set(state => ({
-          error:
-            error instanceof Error ? error.message : 'Failed to load models',
-          loadingModels: { ...state.loadingModels, [providerId]: false },
-        }))
-        throw error
-      }
-    },
-
-    addModel: async (providerId: string, data: Partial<Model>) => {
-      try {
-        set({ creating: true, error: null })
-
-        const model = await ApiClient.Providers.addModel({
-          provider_id: providerId,
-          ...data,
-        } as any)
-
-        set(state => ({
-          modelsByProvider: {
-            ...state.modelsByProvider,
-            [providerId]: [
-              ...(state.modelsByProvider[providerId] || []),
-              model,
-            ],
-          },
-          creating: false,
-        }))
-
-        return model
-      } catch (error) {
-        set({
-          error: error instanceof Error ? error.message : 'Failed to add model',
-          creating: false,
-        })
-        throw error
-      }
-    },
-
-    updateModel: async (modelId: string, data: Partial<Model>) => {
-      try {
-        set({ updating: true, error: null })
-
-        const model = await ApiClient.Models.update({
-          model_id: modelId,
-          ...data,
-        })
-
-        console.log({ data, model })
-
-        set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
-            (acc, providerId) => {
-              acc[providerId] = state.modelsByProvider[providerId].map(m =>
-                m.id === modelId ? model : m,
-              )
-              return acc
+      loadProviderModels: async (providerId: string) => {
+        try {
+          set((state) => ({
+            loadingModels: { ...state.loadingModels, [providerId]: true },
+            error: null,
+          }));
+          const models = await ApiClient.Providers.listModels({
+            provider_id: providerId,
+          });
+          set((state) => ({
+            modelsByProvider: {
+              ...state.modelsByProvider,
+              [providerId]: models,
             },
-            {} as Record<string, Model[]>,
-          ),
-          updating: false,
-        }))
+            loadingModels: { ...state.loadingModels, [providerId]: false },
+          }));
+        } catch (error) {
+          set((state) => ({
+            error:
+              error instanceof Error ? error.message : "Failed to load models",
+            loadingModels: { ...state.loadingModels, [providerId]: false },
+          }));
+          throw error;
+        }
+      },
 
-        return model
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to update model',
-          updating: false,
-        })
-        throw error
-      }
-    },
-
-    deleteModel: async (modelId: string) => {
-      try {
-        set({ deleting: true, error: null })
-
-        await ApiClient.Models.delete({ model_id: modelId })
-
-        set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
-            (acc, providerId) => {
-              acc[providerId] = state.modelsByProvider[providerId].filter(
-                m => m.id !== modelId,
-              )
-              return acc
+      addModelToProvider: async (
+        providerId: string,
+        model: {
+          name: string;
+          alias: string;
+          description?: string;
+          enabled?: boolean;
+          capabilities?: ModelCapabilities;
+        },
+      ) => {
+        try {
+          set({ creating: true, error: null });
+          const newModel = await ApiClient.Providers.addModel({
+            provider_id: providerId,
+            ...model,
+          });
+          set((state) => ({
+            modelsByProvider: {
+              ...state.modelsByProvider,
+              [providerId]: [
+                ...(state.modelsByProvider[providerId] || []),
+                newModel,
+              ],
             },
-            {} as Record<string, Model[]>,
-          ),
-          deleting: false,
-        }))
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to delete model',
-          deleting: false,
-        })
-        throw error
-      }
-    },
+            creating: false,
+          }));
+        } catch (error) {
+          set({
+            error:
+              error instanceof Error ? error.message : "Failed to add model",
+            creating: false,
+          });
+          throw error;
+        }
+      },
 
-    startModel: async (modelId: string) => {
-      try {
-        set(state => ({
-          modelOperations: { ...state.modelOperations, [modelId]: true },
-          error: null,
-        }))
+      updateModel: async (
+        modelId: string,
+        updates: { alias?: string; description?: string; enabled?: boolean },
+      ) => {
+        try {
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: true },
+            error: null,
+          }));
+          const updatedModel = await ApiClient.Models.update({
+            model_id: modelId,
+            ...updates,
+          });
+          // Update the model in the appropriate provider's list
+          set((state) => {
+            const newModelsByProvider = { ...state.modelsByProvider };
+            for (const providerId in newModelsByProvider) {
+              newModelsByProvider[providerId] = newModelsByProvider[
+                providerId
+              ].map((model) => (model.id === modelId ? updatedModel : model));
+            }
+            return {
+              modelsByProvider: newModelsByProvider,
+              modelOperations: { ...state.modelOperations, [modelId]: false },
+            };
+          });
+        } catch (error) {
+          set((state) => ({
+            error:
+              error instanceof Error ? error.message : "Failed to update model",
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+          throw error;
+        }
+      },
 
-        await ApiClient.Models.start({ model_id: modelId })
+      deleteModel: async (modelId: string) => {
+        try {
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: true },
+            error: null,
+          }));
+          await ApiClient.Models.delete({ model_id: modelId });
+          // Remove the model from all provider lists
+          set((state) => {
+            const newModelsByProvider = { ...state.modelsByProvider };
+            for (const providerId in newModelsByProvider) {
+              newModelsByProvider[providerId] = newModelsByProvider[
+                providerId
+              ].filter((model) => model.id !== modelId);
+            }
+            return {
+              modelsByProvider: newModelsByProvider,
+              modelOperations: { ...state.modelOperations, [modelId]: false },
+            };
+          });
+        } catch (error) {
+          set((state) => ({
+            error:
+              error instanceof Error ? error.message : "Failed to delete model",
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+          throw error;
+        }
+      },
 
-        // Update model status to starting
-        set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
-            (acc, providerId) => {
-              acc[providerId] = state.modelsByProvider[providerId].map(m =>
-                m.id === modelId ? { ...m, is_active: true } : m,
-              )
-              return acc
-            },
-            {} as Record<string, Model[]>,
-          ),
-          modelOperations: { ...state.modelOperations, [modelId]: false },
-        }))
-      } catch (error) {
-        set(state => ({
-          error:
-            error instanceof Error ? error.message : 'Failed to start model',
-          modelOperations: { ...state.modelOperations, [modelId]: false },
-        }))
-        throw error
-      }
-    },
+      startModel: async (modelId: string) => {
+        try {
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: true },
+            error: null,
+          }));
+          await ApiClient.Models.start({ model_id: modelId });
+          // Reload provider models to get updated state
+          const providers = get().providers;
+          for (const provider of providers) {
+            if (provider.type === "local") {
+              await get().loadProviderModels(provider.id);
+            }
+          }
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+        } catch (error) {
+          set((state) => ({
+            error:
+              error instanceof Error ? error.message : "Failed to start model",
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+          throw error;
+        }
+      },
 
-    stopModel: async (modelId: string) => {
-      try {
-        set(state => ({
-          modelOperations: { ...state.modelOperations, [modelId]: true },
-          error: null,
-        }))
+      stopModel: async (modelId: string) => {
+        try {
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: true },
+            error: null,
+          }));
+          await ApiClient.Models.stop({ model_id: modelId });
+          // Reload provider models to get updated state
+          const providers = get().providers;
+          for (const provider of providers) {
+            if (provider.type === "local") {
+              await get().loadProviderModels(provider.id);
+            }
+          }
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+        } catch (error) {
+          set((state) => ({
+            error:
+              error instanceof Error ? error.message : "Failed to stop model",
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+          throw error;
+        }
+      },
 
-        await ApiClient.Models.stop({ model_id: modelId })
+      enableModel: async (modelId: string) => {
+        try {
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: true },
+            error: null,
+          }));
+          await ApiClient.Models.enable({ model_id: modelId });
+          // Update the model status locally
+          set((state) => {
+            const newModelsByProvider = { ...state.modelsByProvider };
+            for (const providerId in newModelsByProvider) {
+              newModelsByProvider[providerId] = newModelsByProvider[
+                providerId
+              ].map((model) =>
+                model.id === modelId ? { ...model, enabled: true } : model,
+              );
+            }
+            return {
+              modelsByProvider: newModelsByProvider,
+              modelOperations: { ...state.modelOperations, [modelId]: false },
+            };
+          });
+        } catch (error) {
+          set((state) => ({
+            error:
+              error instanceof Error ? error.message : "Failed to enable model",
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+          throw error;
+        }
+      },
 
-        // Update model status to stopping
-        set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
-            (acc, providerId) => {
-              acc[providerId] = state.modelsByProvider[providerId].map(m =>
-                m.id === modelId ? { ...m, is_active: false } : m,
-              )
-              return acc
-            },
-            {} as Record<string, Model[]>,
-          ),
-          modelOperations: { ...state.modelOperations, [modelId]: false },
-        }))
-      } catch (error) {
-        set(state => ({
-          error:
-            error instanceof Error ? error.message : 'Failed to stop model',
-          modelOperations: { ...state.modelOperations, [modelId]: false },
-        }))
-        throw error
-      }
-    },
+      disableModel: async (modelId: string) => {
+        try {
+          set((state) => ({
+            modelOperations: { ...state.modelOperations, [modelId]: true },
+            error: null,
+          }));
+          await ApiClient.Models.disable({ model_id: modelId });
+          // Update the model status locally
+          set((state) => {
+            const newModelsByProvider = { ...state.modelsByProvider };
+            for (const providerId in newModelsByProvider) {
+              newModelsByProvider[providerId] = newModelsByProvider[
+                providerId
+              ].map((model) =>
+                model.id === modelId ? { ...model, enabled: false } : model,
+              );
+            }
+            return {
+              modelsByProvider: newModelsByProvider,
+              modelOperations: { ...state.modelOperations, [modelId]: false },
+            };
+          });
+        } catch (error) {
+          set((state) => ({
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to disable model",
+            modelOperations: { ...state.modelOperations, [modelId]: false },
+          }));
+          throw error;
+        }
+      },
 
-    enableModel: async (modelId: string) => {
-      try {
-        set({ updating: true, error: null })
-
-        await ApiClient.Models.enable({ model_id: modelId })
-
-        // Update model status to enabled
-        set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
-            (acc, providerId) => {
-              acc[providerId] = state.modelsByProvider[providerId].map(m =>
-                m.id === modelId ? { ...m, enabled: true } : m,
-              )
-              return acc
-            },
-            {} as Record<string, Model[]>,
-          ),
-          updating: false,
-        }))
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to enable model',
-          updating: false,
-        })
-        throw error
-      }
-    },
-
-    disableModel: async (modelId: string) => {
-      try {
-        set({ updating: true, error: null })
-
-        await ApiClient.Models.disable({ model_id: modelId })
-
-        // Update model status to disabled
-        set(state => ({
-          modelsByProvider: Object.keys(state.modelsByProvider).reduce(
-            (acc, providerId) => {
-              acc[providerId] = state.modelsByProvider[providerId].map(m =>
-                m.id === modelId ? { ...m, enabled: false } : m,
-              )
-              return acc
-            },
-            {} as Record<string, Model[]>,
-          ),
-          updating: false,
-        }))
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to disable model',
-          updating: false,
-        })
-        throw error
-      }
-    },
-
-    // New multi-step upload workflow
-    uploadMultipleFiles: async (
-      providerId: string,
-      files: File[],
-      mainFilename: string,
-    ): Promise<UploadSession> => {
-      try {
-        set({
-          uploading: true,
-          error: null,
-          uploadProgress: files.map(file => ({
-            filename: file.name,
-            progress: 0,
-            status: 'pending' as const,
-            size: file.size,
-          })),
-          overallUploadProgress: 0,
-          uploadSession: null,
-        })
-
-        // Create multipart form data
-        const formData = new FormData()
-
-        // Add provider_id and main_filename
-        formData.append('provider_id', providerId)
-        formData.append('main_filename', mainFilename)
-
-        // Add all files and calculate total size
-        let totalSize = 0
-        const fileSizes: number[] = []
-        files.forEach((file, index) => {
-          formData.append('files', file)
-          fileSizes[index] = file.size
-          totalSize += file.size
-        })
-
-        // Upload files to backend with simulated per-file progress
-        const baseUrl = await getBaseUrl()
-        const uploadSession: UploadSession = await new Promise(
-          (resolve, reject) => {
-            const xhr = new XMLHttpRequest()
-
-            // Store xhr for cancellation
-            set(state => ({ ...state, _uploadXhr: xhr }))
-
-            // Track overall upload progress and simulate individual file progress
-            xhr.upload.addEventListener('progress', event => {
-              if (event.lengthComputable) {
-                const bytesUploaded = event.loaded
-                const overallProgress = Math.round(
-                  (bytesUploaded / totalSize) * 100,
-                )
-
-                // Calculate which files have been uploaded based on bytes
-                let accumulatedBytes = 0
-                const fileProgresses: number[] = []
-
-                for (let i = 0; i < files.length; i++) {
-                  const fileStartBytes = accumulatedBytes
-                  const fileEndBytes = accumulatedBytes + fileSizes[i]
-
-                  if (bytesUploaded >= fileEndBytes) {
-                    // File is fully uploaded
-                    fileProgresses[i] = 100
-                  } else if (bytesUploaded > fileStartBytes) {
-                    // File is partially uploaded
-                    const fileProgress =
-                      ((bytesUploaded - fileStartBytes) / fileSizes[i]) * 100
-                    fileProgresses[i] = Math.round(fileProgress)
-                  } else {
-                    // File hasn't started uploading yet
-                    fileProgresses[i] = 0
-                  }
-
-                  accumulatedBytes += fileSizes[i]
-                }
-
-                // Update individual file progress
-                set(state => ({
-                  uploadProgress: state.uploadProgress.map((f, idx) => ({
-                    ...f,
-                    progress: fileProgresses[idx] || 0,
-                    status:
-                      fileProgresses[idx] === 100
-                        ? ('completed' as const)
-                        : fileProgresses[idx] > 0
-                          ? ('uploading' as const)
-                          : ('pending' as const),
-                  })),
-                  overallUploadProgress: overallProgress,
-                }))
-              }
-            })
-
-            // Handle completion
-            xhr.addEventListener('load', () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const response = JSON.parse(xhr.responseText)
-
-                  // Mark all files as completed
-                  set(state => ({
-                    uploadProgress: state.uploadProgress.map(f => ({
-                      ...f,
-                      progress: 100,
-                      status: 'completed' as const,
-                    })),
-                    overallUploadProgress: 100,
-                  }))
-
-                  resolve(response)
-                } catch {
-                  reject(new Error('Failed to parse response'))
-                }
-              } else {
-                // Try to get detailed error from response
-                let errorMessage = `Upload failed: ${xhr.status} ${xhr.statusText}`
-                try {
-                  const errorData = JSON.parse(xhr.responseText)
-                  if (errorData.error) {
-                    errorMessage = errorData.error
-                  }
-                } catch {
-                  // If we can't parse the error response, use the status text
-                }
-                reject(new Error(errorMessage))
-              }
-            })
-
-            // Handle errors
-            xhr.addEventListener('error', () => {
-              reject(new Error('Upload failed: Network error'))
-            })
-
-            // Handle timeout
-            xhr.addEventListener('timeout', () => {
-              reject(new Error('Upload failed: Timeout'))
-            })
-
-            // Handle abort (cancellation)
-            xhr.addEventListener('abort', () => {
-              reject(new Error('Upload cancelled'))
-            })
-
-            // Setup and send request
-            xhr.open(
-              'POST',
-              `${baseUrl}/api/admin/uploaded-models/upload-multipart`,
-            )
-            xhr.setRequestHeader('Authorization', `Bearer ${getAuthToken()}`)
-            xhr.timeout = 300000 // 5 minute timeout for large files
-            xhr.send(formData)
-          },
-        )
-
-        // Update final state
-        set({
-          uploading: false,
-          uploadSession,
-          _uploadXhr: null, // Clear xhr reference
-        })
-
-        return uploadSession
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to upload files',
-          uploading: false,
-          uploadProgress: files.map(file => ({
-            filename: file.name,
-            progress: 0,
-            status: 'error' as const,
-            error: error instanceof Error ? error.message : 'Upload failed',
-            size: file.size,
-          })),
-          _uploadXhr: null, // Clear xhr reference
-        })
-        throw error
-      }
-    },
-
-    commitUploadedFiles: async (
-      sessionId: string,
-      providerId: string,
-      name: string,
-      alias: string,
-      description: string | undefined,
-      fileFormat: string,
-      capabilities: ModelCapabilities,
-      selectedFileIds: string[],
-      settings?: any,
-    ): Promise<void> => {
-      try {
-        set({ creating: true, error: null })
-
-        const newModel = await ApiClient.ModelUploads.commitUpload({
-          session_id: sessionId,
-          provider_id: providerId,
+      // Upload and auto-commit workflow
+      uploadMultipleFilesAndCommit: async (
+        request: UploadMultipleFilesRequest,
+      ): Promise<Model> => {
+        const {
+          providerId,
+          files,
+          mainFilename,
           name,
           alias,
           description,
-          file_format: fileFormat,
+          fileFormat,
           capabilities,
-          selected_files: selectedFileIds,
           settings,
-        })
+        } = request;
 
-        // Update models state to include the new model
-        set(state => ({
-          modelsByProvider: {
-            ...state.modelsByProvider,
-            [providerId]: [
-              ...(state.modelsByProvider[providerId] || []),
-              newModel,
-            ],
-          },
-          creating: false,
-          uploadSession: null, // Clear the session after successful commit
-        }))
-
-        // Reload providers to get the latest state
-        await get().loadProviders()
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error ? error.message : 'Failed to commit upload',
-          creating: false,
-        })
-        throw error
-      }
-    },
-
-    createUploadModel: async (
-      providerId: string,
-      name: string,
-      alias: string,
-      description?: string,
-      fileFormat?: string,
-      metadata?: any,
-    ) => {
-      try {
-        set({ creating: true, error: null })
-
-        const response = await ApiClient.ModelUploads.create({
-          provider_id: providerId,
-          name,
-          alias,
-          description,
-          file_format: fileFormat,
-          metadata: metadata,
-        })
-
-        set({ creating: false })
-
-        return { id: response.id }
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to create upload model',
-          creating: false,
-        })
-        throw error
-      }
-    },
-
-    uploadModelFile: async (modelId: string, file: File) => {
-      try {
-        set({
-          uploading: true,
-          error: null,
-          uploadProgress: [
-            {
+        try {
+          set({
+            uploading: true,
+            error: null,
+            uploadProgress: files.map((file) => ({
               filename: file.name,
               progress: 0,
-              status: 'pending',
+              status: "pending" as const,
               size: file.size,
+            })),
+            overallUploadProgress: 0,
+          });
+
+          // Create multipart form data
+          const formData = new FormData();
+
+          // Add all required fields
+          formData.append("provider_id", providerId);
+          formData.append("main_filename", mainFilename);
+          formData.append("name", name);
+          formData.append("alias", alias);
+          if (description) {
+            formData.append("description", description);
+          }
+          formData.append("file_format", fileFormat);
+          if (capabilities) {
+            formData.append("capabilities", JSON.stringify(capabilities));
+          }
+          if (settings) {
+            formData.append("settings", JSON.stringify(settings));
+          }
+
+          // Add all files
+          files.forEach((file) => {
+            formData.append("files", file);
+          });
+
+          // Upload files and auto-commit
+          const model = await ApiClient.ModelUploads.uploadAndCommit(formData, {
+            fileUploadProgress: {
+              onProgress: (progress, fileIndex, overallProgress) => {
+                if (fileIndex !== undefined) {
+                  // Update specific file progress
+                  set((state) => {
+                    const newUploadProgress = [...state.uploadProgress];
+                    if (newUploadProgress[fileIndex]) {
+                      newUploadProgress[fileIndex] = {
+                        ...newUploadProgress[fileIndex],
+                        progress,
+                        status: progress === 100 ? "completed" : "uploading",
+                      };
+                    }
+
+                    return {
+                      uploadProgress: newUploadProgress,
+                      overallUploadProgress: overallProgress || 0,
+                    };
+                  });
+                }
+              },
+              onError: (error, fileName) => {
+                set((state) => ({
+                  uploadProgress: state.uploadProgress.map((file) =>
+                    fileName && file.filename === fileName
+                      ? { ...file, status: "error" as const, error }
+                      : file,
+                  ),
+                  error: error,
+                }));
+              },
             },
-          ],
-          overallUploadProgress: 0,
-        })
+          });
 
-        await uploadFile(modelId, file, file.name, {
-          onProgress: (progress: UploadProgress) => {
-            set(state => ({
-              uploadProgress: state.uploadProgress.map(f =>
-                f.filename === file.name
-                  ? { ...f, progress: progress.percentage, status: 'uploading' }
-                  : f,
-              ),
-              overallUploadProgress: progress.percentage,
-            }))
-          },
-          onComplete: () => {
-            set(state => ({
-              uploadProgress: state.uploadProgress.map(f =>
-                f.filename === file.name
-                  ? { ...f, progress: 100, status: 'completed' }
-                  : f,
-              ),
-              overallUploadProgress: 100,
-              uploading: false,
-            }))
-          },
-          onError: (error: string) => {
-            set(state => ({
-              uploadProgress: state.uploadProgress.map(f =>
-                f.filename === file.name ? { ...f, status: 'error', error } : f,
-              ),
-              uploading: false,
-              error,
-            }))
-          },
-        })
-      } catch (error) {
+          // Mark all files as completed
+          set((state) => ({
+            uploadProgress: state.uploadProgress.map((f) => ({
+              ...f,
+              progress: 100,
+              status: "completed" as const,
+            })),
+            overallUploadProgress: 100,
+            uploading: false,
+          }));
+
+          // Update models state to include the new model
+          set((state) => ({
+            modelsByProvider: {
+              ...state.modelsByProvider,
+              [request.providerId]: [
+                ...(state.modelsByProvider[request.providerId] || []),
+                model,
+              ],
+            },
+          }));
+
+          // Reload providers to get the latest state
+          await get().loadProviders();
+
+          return model;
+        } catch (error) {
+          set({
+            error:
+              error instanceof Error ? error.message : "Failed to upload files",
+            uploading: false,
+            uploadProgress: request.files.map((file) => ({
+              filename: file.name,
+              progress: 0,
+              status: "error" as const,
+              error: error instanceof Error ? error.message : "Upload failed",
+              size: file.size,
+            })),
+          });
+          throw error;
+        }
+      },
+
+      clearError: () => set({ error: null }),
+
+      cancelUpload: () => {
+        // For now, just reset the upload state
         set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to upload model file',
           uploading: false,
-        })
-        throw error
-      }
-    },
-
-    uploadModelFiles: async (
-      modelId: string,
-      files: File[],
-      mainFilename: string,
-    ) => {
-      try {
-        // Initialize upload progress for all files
-        const initialProgress: FileUploadProgress[] = files.map(file => ({
-          filename: file.name,
-          progress: 0,
-          status: 'pending' as const,
-          size: file.size,
-        }))
-
-        set({
-          uploading: true,
+          uploadProgress: [],
+          overallUploadProgress: 0,
           error: null,
-          uploadProgress: initialProgress,
-          overallUploadProgress: 0,
-        })
+        });
+      },
 
-        let uploadAborted = false
+      // Legacy compatibility functions
+      loadModels: async (providerId: string) => {
+        // Alias for loadProviderModels for backward compatibility
+        return get().loadProviderModels(providerId);
+      },
 
-        // Store abort controller for cancellation
-        const abortController = new AbortController()
-        set(state => ({ ...state, _abortController: abortController }))
+      addModel: async (
+        providerId: string,
+        data: Partial<Model>,
+      ): Promise<Model> => {
+        // Legacy compatibility - redirect to addModelToProvider
+        await get().addModelToProvider(providerId, {
+          name: data.name || "",
+          alias: data.alias || "",
+          description: data.description,
+          enabled: data.enabled,
+          capabilities: data.capabilities,
+        });
 
-        await uploadFilesConcurrent(modelId, files, mainFilename, 3, {
-          onFileProgress: (fileIndex: number, progress: UploadProgress) => {
-            if (uploadAborted) return
-
-            set(state => ({
-              uploadProgress: state.uploadProgress.map((f, i) =>
-                i === fileIndex
-                  ? { ...f, progress: progress.percentage, status: 'uploading' }
-                  : f,
-              ),
-            }))
-          },
-          onFileComplete: (fileIndex: number) => {
-            if (uploadAborted) return
-
-            set(state => ({
-              uploadProgress: state.uploadProgress.map((f, i) =>
-                i === fileIndex
-                  ? { ...f, progress: 100, status: 'completed' }
-                  : f,
-              ),
-            }))
-          },
-          onFileError: (fileIndex: number, error: string) => {
-            if (uploadAborted) return
-
-            set(state => ({
-              uploadProgress: state.uploadProgress.map((f, i) =>
-                i === fileIndex ? { ...f, status: 'error', error } : f,
-              ),
-            }))
-          },
-          onOverallProgress: (completedFiles: number, totalFiles: number) => {
-            if (uploadAborted) return
-
-            const overallProgress = Math.round(
-              (completedFiles / totalFiles) * 100,
-            )
-            set({ overallUploadProgress: overallProgress })
-          },
-          onAllComplete: () => {
-            if (!uploadAborted) {
-              set({ uploading: false, overallUploadProgress: 100 })
-            }
-          },
-        })
-      } catch (error) {
-        set({
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to upload model files',
-          uploading: false,
-        })
-        throw error
-      }
-    },
-
-    clearUploadProgress: () => {
-      set({
-        uploadProgress: [],
-        overallUploadProgress: 0,
-        uploading: false,
-      })
-    },
-
-    clearUploadSession: () => {
-      set({ uploadSession: null })
-    },
-
-    cancelUpload: () => {
-      set(state => {
-        // Abort XMLHttpRequest upload
-        const uploadXhr = (state as any)._uploadXhr
-        if (uploadXhr) {
-          uploadXhr.abort()
+        // Return the newly created model
+        const state = get();
+        const models = state.modelsByProvider[providerId] || [];
+        const newModel = models.find((model) => model.name === data.name);
+        if (!newModel) {
+          throw new Error("Failed to find newly created model");
         }
+        return newModel;
+      },
 
-        // Also handle legacy AbortController for backward compatibility
-        const abortController = (state as any)._abortController
-        if (abortController) {
-          abortController.abort()
+      // Utility functions
+      getProviderById: (id: string) => {
+        return get().providers.find((provider) => provider.id === id);
+      },
+
+      getModelById: (id: string) => {
+        const state = get();
+        for (const providerId in state.modelsByProvider) {
+          const model = state.modelsByProvider[providerId].find(
+            (model) => model.id === id,
+          );
+          if (model) {
+            return model;
+          }
         }
-
-        return {
-          uploading: false,
-          uploadProgress: state.uploadProgress.map(f =>
-            f.status === 'uploading' || f.status === 'pending'
-              ? { ...f, status: 'error', error: 'Upload cancelled' }
-              : f,
-          ),
-          _uploadXhr: null, // Clear the xhr reference
-        }
-      })
-    },
-
-    clearError: () => {
-      set({ error: null })
-    },
-
-    getProviderById: (id: string) => {
-      return get().providers.find(p => p.id === id)
-    },
-
-    getModelById: (id: string) => {
-      const { modelsByProvider } = get()
-      for (const providerId of Object.keys(modelsByProvider)) {
-        const model = modelsByProvider[providerId].find(m => m.id === id)
-        if (model) return model
-      }
-      return undefined
-    },
-  })),
-)
+        return undefined;
+      },
+    }),
+  ),
+);

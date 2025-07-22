@@ -8,8 +8,8 @@ import {
   AssistantListResponse,
   CreateAssistantRequest,
   UpdateAssistantRequest,
-} from './assistant'
-import { AuthResponse, InitResponse, LoginRequest } from './auth'
+} from "./assistant";
+import { AuthResponse, InitResponse, LoginRequest } from "./auth";
 import {
   Conversation,
   ConversationListResponse,
@@ -20,7 +20,7 @@ import {
   SendMessageRequest,
   SwitchBranchRequest,
   UpdateConversationRequest,
-} from './chat'
+} from "./chat";
 import {
   ProxySettingsResponse,
   TestProxyConnectionRequest,
@@ -28,18 +28,18 @@ import {
   UpdateProxySettingsRequest,
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
-} from './config.ts'
+} from "./config.ts";
 import {
   DefaultLanguageResponse,
   UpdateDefaultLanguageRequest,
-} from './globalConfig'
+} from "./globalConfig";
 import {
   AddModelToProviderRequest,
   Model,
   ModelCapabilities,
   ModelSettings,
   UpdateModelRequest,
-} from './model'
+} from "./model";
 import {
   CreateProjectRequest,
   Project,
@@ -50,14 +50,14 @@ import {
   UpdateProjectRequest,
   UploadDocumentRequest,
   UploadDocumentResponse,
-} from './projects'
+} from "./projects";
 import {
   AvailableDevicesResponse,
   CreateProviderRequest,
   Provider,
   ProviderListResponse,
   UpdateProviderRequest,
-} from './provider'
+} from "./provider";
 import {
   CreateRepositoryRequest,
   Repository,
@@ -65,7 +65,7 @@ import {
   TestRepositoryConnectionRequest,
   TestRepositoryConnectionResponse,
   UpdateRepositoryRequest,
-} from './repository'
+} from "./repository";
 import {
   AssignUserToGroupRequest,
   CreateUserGroupRequest,
@@ -76,13 +76,13 @@ import {
   User,
   UserGroup,
   UserListResponse,
-} from './user'
-import { UserGroupListResponse } from './userGroup.ts'
+} from "./user";
+import { UserGroupListResponse } from "./userGroup.ts";
 import {
   UserSetting,
   UserSettingRequest,
   UserSettingsResponse,
-} from './userSettings'
+} from "./userSettings";
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -154,14 +154,8 @@ export const ApiEndpoints = {
   'Models.disable': 'POST /api/admin/models/{model_id}/disable',
   'Admin.getAvailableDevices': 'GET /api/admin/devices',
   // Model Upload endpoints for Local
-  'ModelUploads.create': 'POST /api/admin/uploaded-models',
-  'ModelUploads.get': 'GET /api/admin/uploaded-models/{model_id}',
-  'ModelUploads.update': 'PUT /api/admin/uploaded-models/{model_id}',
-  'ModelUploads.delete': 'DELETE /api/admin/uploaded-models/{model_id}',
-  'ModelUploads.upload': 'POST /api/admin/uploaded-models/{model_id}/upload',
-  'ModelUploads.uploadMultipart':
-    'POST /api/admin/uploaded-models/upload-multipart',
-  'ModelUploads.commitUpload': 'POST /api/admin/uploaded-models/commit-upload',
+  'ModelUploads.uploadAndCommit':
+    'POST /api/admin/uploaded-models/upload-and-commit',
   // Assistant endpoints - User
   'Assistant.list': 'GET /api/assistants',
   'Assistant.create': 'POST /api/assistants',
@@ -215,6 +209,8 @@ export const ApiEndpoints = {
   'Admin.updateRepository': 'PUT /api/admin/repositories/{repository_id}',
   'Admin.deleteRepository': 'DELETE /api/admin/repositories/{repository_id}',
   'Admin.testRepositoryConnection': 'POST /api/admin/repositories/test',
+  'Admin.downloadFromRepository':
+    'POST /api/admin/models/download-from-repository',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -290,34 +286,7 @@ export type ApiEndpointParameters = {
   'Models.disable': { model_id: string }
   'Admin.getAvailableDevices': void
   // Model Upload parameters
-  'ModelUploads.create': {
-    provider_id: string
-    name: string
-    alias: string
-    description?: string
-    file_format?: string
-    metadata?: any
-  }
-  'ModelUploads.get': { model_id: string }
-  'ModelUploads.update': {
-    model_id: string
-    name?: string
-    description?: string
-  }
-  'ModelUploads.delete': { model_id: string }
-  'ModelUploads.upload': { model_id: string; file: File }
-  'ModelUploads.uploadMultipart': FormData
-  'ModelUploads.commitUpload': {
-    session_id: string
-    provider_id: string
-    name: string
-    alias: string
-    description?: string
-    file_format: string
-    capabilities?: ModelCapabilities
-    selected_files: string[]
-    settings?: ModelSettings
-  }
+  'ModelUploads.uploadAndCommit': FormData
   // Assistant endpoints - User
   'Assistant.list': { page?: number; per_page?: number }
   'Assistant.create': CreateAssistantRequest
@@ -373,6 +342,19 @@ export type ApiEndpointParameters = {
   'Admin.updateRepository': { repository_id: string } & UpdateRepositoryRequest
   'Admin.deleteRepository': { repository_id: string }
   'Admin.testRepositoryConnection': TestRepositoryConnectionRequest
+  'Admin.downloadFromRepository': {
+    provider_id: string
+    repository_id: string
+    repository_path: string
+    main_filename: string
+    repository_branch?: string
+    name: string
+    alias: string
+    description?: string
+    file_format: string
+    capabilities?: ModelCapabilities
+    settings?: ModelSettings
+  }
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -455,45 +437,7 @@ export type ApiEndpointResponses = {
   'Models.disable': { success: boolean; message: string }
   'Admin.getAvailableDevices': AvailableDevicesResponse
   // Model Upload responses
-  'ModelUploads.create': {
-    id: string
-    provider_id: string
-    name: string
-    alias: string
-    description?: string
-    file_format?: string
-  }
-  'ModelUploads.get': {
-    id: string
-    provider_id: string
-    name: string
-    description?: string
-    status: string
-  }
-  'ModelUploads.update': {
-    id: string
-    provider_id: string
-    name: string
-    description?: string
-  }
-  'ModelUploads.delete': void
-  'ModelUploads.upload': { message: string; file_id: string; size: number }
-  'ModelUploads.uploadMultipart': {
-    session_id: string
-    files: Array<{
-      temp_file_id: string
-      filename: string
-      file_type: string
-      size_bytes: number
-      checksum: string
-      validation_issues: string[]
-      is_main_file: boolean
-    }>
-    total_size_bytes: number
-    main_filename: string
-    provider_id: string
-  }
-  'ModelUploads.commitUpload': Model
+  'ModelUploads.uploadAndCommit': Model
   // Assistant endpoints - User
   'Assistant.list': AssistantListResponse
   'Assistant.create': Assistant
@@ -542,6 +486,7 @@ export type ApiEndpointResponses = {
   'Admin.updateRepository': Repository
   'Admin.deleteRepository': void
   'Admin.testRepositoryConnection': TestRepositoryConnectionResponse
+  'Admin.downloadFromRepository': Model
 }
 
 // Type helpers

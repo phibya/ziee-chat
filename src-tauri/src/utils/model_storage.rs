@@ -344,23 +344,24 @@ impl ModelStorage {
     /// Save file to temporary storage
     pub async fn save_temp_file(
         &self,
-        _session_id: &Uuid, // Not needed since filenames are unique
+        session_id: &Uuid,
         temp_file_id: &Uuid,
         filename: &str,
         data: &[u8],
     ) -> Result<TempFile, ModelStorageError> {
-        // Save directly to APP_DATA_DIR/temp/ since filenames are unique
+        // Save to APP_DATA_DIR/temp/session_id/safe_filename
         let temp_base = crate::APP_DATA_DIR.join("temp");
+        let session_dir = temp_base.join(session_id.to_string());
 
-        // Ensure temp directory exists
-        if !temp_base.exists() {
-            println!("Creating temp directory: {}", temp_base.display());
-            tokio::fs::create_dir_all(&temp_base).await.map_err(|e| {
+        // Ensure session temp directory exists
+        if !session_dir.exists() {
+            println!("Creating session temp directory: {}", session_dir.display());
+            tokio::fs::create_dir_all(&session_dir).await.map_err(|e| {
                 ModelStorageError::Io(std::io::Error::new(
                     e.kind(),
                     format!(
-                        "Failed to create temp directory {}: {}",
-                        temp_base.display(),
+                        "Failed to create session temp directory {}: {}",
+                        session_dir.display(),
                         e
                     ),
                 ))
@@ -369,6 +370,7 @@ impl ModelStorage {
 
         // Debug the input parameters
         println!("save_temp_file called with:");
+        println!("  session_id: {}", session_id);
         println!("  temp_file_id: {}", temp_file_id);
         println!("  filename: '{}'", filename);
 
@@ -379,15 +381,31 @@ impl ModelStorage {
             .replace("..", "_");
 
         println!("  safe_filename: '{}'", safe_filename);
-        println!("  temp_base: {}", temp_base.display());
+        println!("  session_dir: {}", session_dir.display());
 
-        let file_path = temp_base.join(format!("{}_{}", temp_file_id, safe_filename));
+        let file_path = session_dir.join(&safe_filename);
         println!("Saving temp file to: {}", file_path.display());
 
         tokio::fs::write(&file_path, data).await.map_err(|e| {
             ModelStorageError::Io(std::io::Error::new(
                 e.kind(),
                 format!("Failed to write file {}: {}", file_path.display(), e),
+            ))
+        })?;
+
+        // Create metadata file to map temp_file_id to original filename
+        let metadata = serde_json::json!({
+            "temp_file_id": temp_file_id,
+            "filename": filename,
+            "safe_filename": safe_filename,
+            "size_bytes": data.len()
+        });
+        
+        let metadata_path = session_dir.join(format!("{}.meta", temp_file_id));
+        tokio::fs::write(&metadata_path, metadata.to_string()).await.map_err(|e| {
+            ModelStorageError::Io(std::io::Error::new(
+                e.kind(),
+                format!("Failed to write metadata file {}: {}", metadata_path.display(), e),
             ))
         })?;
 
@@ -399,7 +417,7 @@ impl ModelStorage {
 
         Ok(TempFile {
             temp_file_id: *temp_file_id,
-            filename: safe_filename,
+            filename: filename.to_string(),
             file_path: file_path.to_string_lossy().to_string(),
             size_bytes: data.len() as u64,
             is_main_file: false, // This will be set by the caller
@@ -409,36 +427,35 @@ impl ModelStorage {
     /// Commit temporary file to permanent storage
     pub async fn commit_temp_file(
         &self,
-        _session_id: &Uuid, // Not needed since we search by temp_file_id
-        temp_file_id: &Uuid,
+        session_id: &Uuid,
+        filename: &str,
         provider_id: &Uuid,
         model_id: &Uuid,
     ) -> Result<CommittedFile, ModelStorageError> {
-        let temp_path = crate::APP_DATA_DIR.join("temp");
+        let session_temp_path = crate::APP_DATA_DIR.join("temp").join(session_id.to_string());
 
-        // Find the temp file
-        let mut read_dir = tokio::fs::read_dir(&temp_path).await?;
-        let mut temp_file_path = None;
-        let mut original_filename = None;
-
-        while let Some(entry) = read_dir.next_entry().await? {
-            let file_name = entry.file_name().to_string_lossy().to_string();
-
-            if file_name.starts_with(&format!("{}_", temp_file_id)) {
-                temp_file_path = Some(entry.path());
-                original_filename =
-                    Some(file_name.split('_').skip(1).collect::<Vec<_>>().join("_"));
-                break;
-            }
+        // Find the temp file in the session directory
+        if !session_temp_path.exists() {
+            return Err(ModelStorageError::ModelNotFound(format!(
+                "Session temp directory {} not found", 
+                session_id
+            )));
         }
 
-        let temp_file_path = temp_file_path.ok_or_else(|| {
-            ModelStorageError::ModelNotFound(format!("Temp file {} not found", temp_file_id))
-        })?;
-
-        let filename = original_filename.ok_or_else(|| {
-            ModelStorageError::InvalidModel("Could not extract filename from temp file".to_string())
-        })?;
+        // Sanitize filename the same way we did in save_temp_file
+        let safe_filename = filename
+            .replace('/', "_")
+            .replace('\\', "_")
+            .replace("..", "_");
+        
+        let temp_file_path = session_temp_path.join(&safe_filename);
+        
+        if !temp_file_path.exists() {
+            return Err(ModelStorageError::ModelNotFound(format!(
+                "Temp file '{}' not found in session {}", 
+                safe_filename, session_id
+            )));
+        }
 
         // Create permanent storage location
         let model_path = self.get_model_path(provider_id, model_id);
@@ -446,7 +463,7 @@ impl ModelStorage {
             tokio::fs::create_dir_all(&model_path).await?;
         }
 
-        let permanent_path = model_path.join(&filename);
+        let permanent_path = model_path.join(filename);
 
         // Move file from temp to permanent storage
         tokio::fs::rename(&temp_file_path, &permanent_path).await?;
@@ -456,27 +473,125 @@ impl ModelStorage {
         // Note: Checksum calculation removed for performance
 
         Ok(CommittedFile {
-            filename,
+            filename: filename.to_string(),
             file_path: Self::get_relative_path(&permanent_path)?,
             size_bytes: data.len() as u64,
         })
     }
 
-    /// Clean up temporary files for a session
-    pub async fn cleanup_temp_session(&self, _session_id: &Uuid) -> Result<(), ModelStorageError> {
-        let temp_path = crate::APP_DATA_DIR.join("temp");
+    /// List all files in a session directory
+    pub async fn list_session_files(&self, session_id: &Uuid) -> Result<Vec<String>, ModelStorageError> {
+        let session_temp_path = crate::APP_DATA_DIR.join("temp").join(session_id.to_string());
 
-        if !temp_path.exists() {
+        if !session_temp_path.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut files = Vec::new();
+        let mut read_dir = tokio::fs::read_dir(&session_temp_path).await?;
+        
+        while let Some(entry) = read_dir.next_entry().await? {
+            let entry_type = entry.file_type().await?;
+            if entry_type.is_file() {
+                if let Some(filename) = entry.file_name().to_str() {
+                    // Skip metadata files (.meta)
+                    if !filename.ends_with(".meta") {
+                        files.push(filename.to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(files)
+    }
+
+    /// List all files in a cache directory (for repository downloads)
+    pub async fn list_cache_files(&self, cache_path: &str) -> Result<Vec<String>, ModelStorageError> {
+        let cache_dir = crate::APP_DATA_DIR.join("caches").join(cache_path);
+
+        if !cache_dir.exists() {
+            return Err(ModelStorageError::ModelNotFound(format!(
+                "Cache directory not found: {}",
+                cache_dir.display()
+            )));
+        }
+
+        let mut files = Vec::new();
+        let mut read_dir = tokio::fs::read_dir(&cache_dir).await?;
+        
+        while let Some(entry) = read_dir.next_entry().await? {
+            let entry_type = entry.file_type().await?;
+            if entry_type.is_file() {
+                if let Some(filename) = entry.file_name().to_str() {
+                    // Include all files from cache directory
+                    files.push(filename.to_string());
+                }
+            }
+        }
+
+        Ok(files)
+    }
+
+    /// Copy a file from cache directory to permanent model storage
+    pub async fn commit_cache_file(
+        &self,
+        cache_path: &str,
+        filename: &str,
+        provider_id: &Uuid,
+        model_id: &Uuid,
+    ) -> Result<CommittedFile, ModelStorageError> {
+        let cache_dir = crate::APP_DATA_DIR.join("caches").join(cache_path);
+        let source_file_path = cache_dir.join(filename);
+        
+        if !source_file_path.exists() {
+            return Err(ModelStorageError::ModelNotFound(format!(
+                "Cache file '{}' not found in {}", 
+                filename, cache_dir.display()
+            )));
+        }
+
+        // Create permanent storage location
+        let model_path = self.get_model_path(provider_id, model_id);
+        if !model_path.exists() {
+            tokio::fs::create_dir_all(&model_path).await?;
+        }
+
+        let permanent_path = model_path.join(filename);
+
+        // Copy file from cache to permanent storage
+        tokio::fs::copy(&source_file_path, &permanent_path).await?;
+
+        // Read file to get size
+        let metadata = tokio::fs::metadata(&permanent_path).await?;
+        let size_bytes = metadata.len();
+
+        Ok(CommittedFile {
+            filename: filename.to_string(),
+            file_path: Self::get_relative_path(&permanent_path)?,
+            size_bytes,
+        })
+    }
+
+    /// Clean up temporary files for a session
+    pub async fn cleanup_temp_session(&self, session_id: &Uuid) -> Result<(), ModelStorageError> {
+        let session_temp_path = crate::APP_DATA_DIR.join("temp").join(session_id.to_string());
+
+        if !session_temp_path.exists() {
             return Ok(()); // Nothing to clean up
         }
 
-        // Find and delete files that belong to this session
-        // Since we don't track session->file mapping, we'll need to implement
-        // a different cleanup strategy or track session files differently
-        println!("Note: Session-based cleanup not implemented with flat temp structure");
-        println!("Consider implementing periodic cleanup of old temp files instead");
-
-        Ok(())
+        // Remove the entire session directory
+        println!("Cleaning up session temp directory: {}", session_temp_path.display());
+        match tokio::fs::remove_dir_all(&session_temp_path).await {
+            Ok(()) => {
+                println!("Successfully cleaned up session {}", session_id);
+                Ok(())
+            }
+            Err(e) => {
+                eprintln!("Failed to clean up session {}: {}", session_id, e);
+                Err(ModelStorageError::Io(e))
+            }
+        }
     }
 
     /// Clear all temporary files from the temp directory
@@ -490,33 +605,119 @@ impl ModelStorage {
 
         println!("Clearing temp directory: {}", temp_path.display());
 
-        // Remove all files in the temp directory
+        // Remove all session directories and files in the temp directory
         let mut read_dir = tokio::fs::read_dir(&temp_path).await?;
-        let mut removed_count = 0;
+        let mut removed_sessions = 0;
+        let mut removed_files = 0;
         let mut error_count = 0;
 
         while let Some(entry) = read_dir.next_entry().await? {
-            let file_path = entry.path();
-            match tokio::fs::remove_file(&file_path).await {
-                Ok(()) => {
-                    removed_count += 1;
-                    println!("Removed temp file: {}", file_path.display());
+            let entry_path = entry.path();
+            let entry_type = entry.file_type().await?;
+
+            if entry_type.is_dir() {
+                // Remove session directory
+                match tokio::fs::remove_dir_all(&entry_path).await {
+                    Ok(()) => {
+                        removed_sessions += 1;
+                        println!("Removed temp session directory: {}", entry_path.display());
+                    }
+                    Err(e) => {
+                        error_count += 1;
+                        eprintln!("Failed to remove temp session directory {}: {}", entry_path.display(), e);
+                    }
                 }
-                Err(e) => {
-                    error_count += 1;
-                    eprintln!("Failed to remove temp file {}: {}", file_path.display(), e);
+            } else {
+                // Remove individual files (legacy flat structure)
+                match tokio::fs::remove_file(&entry_path).await {
+                    Ok(()) => {
+                        removed_files += 1;
+                        println!("Removed temp file: {}", entry_path.display());
+                    }
+                    Err(e) => {
+                        error_count += 1;
+                        eprintln!("Failed to remove temp file {}: {}", entry_path.display(), e);
+                    }
                 }
             }
         }
 
-        if removed_count > 0 {
+        if removed_sessions > 0 || removed_files > 0 {
             println!(
-                "Temp directory cleanup complete: {} files removed",
-                removed_count
+                "Temp directory cleanup complete: {} session directories and {} files removed",
+                removed_sessions, removed_files
             );
         }
         if error_count > 0 {
             println!("Temp directory cleanup had {} errors", error_count);
+        }
+
+        Ok(())
+    }
+
+    /// Clean up old temp sessions that are older than the specified duration
+    /// Useful for preventing disk space issues from abandoned upload sessions
+    pub async fn cleanup_old_temp_sessions(max_age_hours: u64) -> Result<(), ModelStorageError> {
+        let temp_path = crate::APP_DATA_DIR.join("temp");
+
+        if !temp_path.exists() {
+            return Ok(()); // Nothing to clean up
+        }
+
+        let max_age = std::time::Duration::from_secs(max_age_hours * 3600);
+        let now = std::time::SystemTime::now();
+        
+        println!("Cleaning up temp sessions older than {} hours", max_age_hours);
+
+        let mut read_dir = tokio::fs::read_dir(&temp_path).await?;
+        let mut removed_sessions = 0;
+        let mut error_count = 0;
+
+        while let Some(entry) = read_dir.next_entry().await? {
+            let entry_path = entry.path();
+            let entry_type = entry.file_type().await?;
+
+            if entry_type.is_dir() {
+                // Check if this is a session directory (UUID format)
+                if let Some(dir_name) = entry_path.file_name().and_then(|n| n.to_str()) {
+                    if uuid::Uuid::parse_str(dir_name).is_ok() {
+                        // Get directory creation/modification time
+                        match tokio::fs::metadata(&entry_path).await {
+                            Ok(metadata) => {
+                                if let Ok(created) = metadata.created().or_else(|_| metadata.modified()) {
+                                    if let Ok(age) = now.duration_since(created) {
+                                        if age > max_age {
+                                            // Session is too old, remove it
+                                            match tokio::fs::remove_dir_all(&entry_path).await {
+                                                Ok(()) => {
+                                                    removed_sessions += 1;
+                                                    println!("Removed old temp session ({}h old): {}", 
+                                                        age.as_secs() / 3600, entry_path.display());
+                                                }
+                                                Err(e) => {
+                                                    error_count += 1;
+                                                    eprintln!("Failed to remove old temp session {}: {}", 
+                                                        entry_path.display(), e);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to get metadata for {}: {}", entry_path.display(), e);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if removed_sessions > 0 {
+            println!("Cleanup of old temp sessions complete: {} sessions removed", removed_sessions);
+        }
+        if error_count > 0 {
+            println!("Cleanup of old temp sessions had {} errors", error_count);
         }
 
         Ok(())

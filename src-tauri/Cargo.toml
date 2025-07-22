@@ -57,6 +57,8 @@ jsonwebtoken = "9.3"
 rand = "0.9.1"
 hex = "0.4"
 thiserror = "2.0.12"
+git2 = { version = "0.19", features = ["vendored-openssl"] }
+eventsource-stream = "0.2"
 
 ## Add mistralrs dependencies
 mistralrs-core = { git = "https://github.com/EricLBuehler/mistral.rs.git" }
