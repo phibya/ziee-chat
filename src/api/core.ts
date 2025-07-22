@@ -40,13 +40,6 @@ export const getBaseUrl = (function () {
   };
 })();
 
-// SSE streaming callback types
-export interface SSECallbacks {
-  onChunk?: (data: any) => void;
-  onComplete?: (data: any) => void;
-  onError?: (error: string) => void;
-}
-
 // Files upload progress callback type
 export interface FileUploadProgressCallback {
   onProgress?: (
@@ -63,8 +56,8 @@ export const callAsync = async <U extends ApiEndpointUrl>(
   endpointUrl: U,
   params: ParameterByUrl<U>,
   callbacks?: {
-    SSE?: SSECallbacks;
-    fileUploadProgress: FileUploadProgressCallback;
+    SSE?: (event: string, data: any) => void;
+    fileUploadProgress?: FileUploadProgressCallback;
   },
 ): Promise<ResponseByUrl<U>> => {
   let bUrl = await getBaseUrl();
@@ -179,7 +172,9 @@ export const callAsync = async <U extends ApiEndpointUrl>(
           if (event.lengthComputable) {
             const bytesUploaded = event.loaded;
             const totalBytes = event.total;
-            const overallProgress = Math.round((bytesUploaded / totalBytes) * 100);
+            const overallProgress = Math.round(
+              (bytesUploaded / totalBytes) * 100,
+            );
 
             // Find which file is currently being uploaded
             let currentFileIndex = 0;
@@ -214,7 +209,11 @@ export const callAsync = async <U extends ApiEndpointUrl>(
 
             // Report progress for the current file being uploaded
             if (currentFileIndex >= lastReportedFileIndex) {
-              fileUploadProgress.onProgress?.(fileProgress, currentFileIndex, overallProgress);
+              fileUploadProgress.onProgress?.(
+                fileProgress,
+                currentFileIndex,
+                overallProgress,
+              );
               lastReportedFileIndex = currentFileIndex;
             }
           }
@@ -281,14 +280,12 @@ export const callAsync = async <U extends ApiEndpointUrl>(
     ) {
       if (!response.ok) {
         const errorMessage = `HTTP error! status: ${response.status}`;
-        sseCallbacks.onError?.(errorMessage);
         throw new Error(errorMessage);
       }
 
       const reader = response.body?.getReader();
       if (!reader) {
         const error = "No response body reader available";
-        sseCallbacks.onError?.(error);
         throw new Error(error);
       }
 
@@ -317,39 +314,21 @@ export const callAsync = async <U extends ApiEndpointUrl>(
               currentEvent = line.slice(7).trim();
             } else if (line.startsWith("data: ")) {
               const data = line.slice(6);
-
-              // Handle special cases
-              if (data === "start") {
-                continue; // Skip start signal
-              }
-              if (data === "[DONE]") {
-                break;
-              }
+              let parsed = data;
 
               try {
-                const parsed = JSON.parse(data);
-
-                // Handle based on current event type
-                if (currentEvent === "chunk") {
-                  sseCallbacks.onChunk?.(parsed);
-                } else if (currentEvent === "complete") {
-                  sseCallbacks.onComplete?.(parsed);
-                } else if (currentEvent === "error") {
-                  sseCallbacks.onError?.(parsed?.error || "Stream error");
-                }
+                parsed = JSON.parse(data);
               } catch {
-                console.warn("Failed to parse SSE data:", data);
+                //do nothing, keep as string
               }
+
+              sseCallbacks?.(currentEvent, parsed);
             }
           }
         }
       } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Stream reading error";
-        sseCallbacks.onError?.(errorMessage);
-        throw error;
-      } finally {
         reader.releaseLock();
+        throw error;
       }
 
       // For SSE streaming, return empty response since data is handled via callbacks

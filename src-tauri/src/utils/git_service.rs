@@ -1,10 +1,11 @@
-use git2::{Repository, Cred, RemoteCallbacks, FetchOptions, build::RepoBuilder};
-use std::path::Path;
+use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks, Repository};
+use serde::Serialize;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
-use serde::Serialize;
 use uuid::Uuid;
+use std::process::Command;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct GitProgress {
@@ -42,6 +43,14 @@ pub struct GitService {
     cache_dir: std::path::PathBuf,
 }
 
+/// LFS pointer information
+#[derive(Debug, Clone)]
+struct LfsPointer {
+    oid: String,
+    size: u64,
+    path: PathBuf,
+}
+
 impl GitService {
     pub fn new() -> Self {
         let cache_dir = crate::APP_DATA_DIR.join("caches");
@@ -71,13 +80,75 @@ impl GitService {
         auth_token: Option<&str>,
         progress_tx: mpsc::UnboundedSender<GitProgress>,
     ) -> Result<std::path::PathBuf, GitError> {
+        // print debug information
+        println!(
+            "Cloning repository: {}, ID: {}, Branch: {:?}, Auth Token: {:?}",
+            repository_url, repository_id, branch, auth_token
+        );
         // Generate cache key based on repository_id, URL, and branch
         let cache_key = Self::generate_cache_key(repository_id, repository_url, branch);
         let repo_cache_dir = self.cache_dir.join(cache_key);
-        
-        // Remove existing repository if it exists
-        if repo_cache_dir.exists() {
-            tokio::fs::remove_dir_all(&repo_cache_dir).await?;
+
+        // Check if the cache folder already exists and is a valid git repository
+        if repo_cache_dir.exists() && repo_cache_dir.join(".git").exists() {
+            println!("Repository cache already exists at: {:?}", repo_cache_dir);
+
+            // Check and fetch LFS files for cached repository
+            let _ = progress_tx.send(GitProgress {
+                phase: GitPhase::CheckingOut,
+                current: 90,
+                total: 100,
+                message: "Checking for LFS files in cached repository...".to_string(),
+            });
+
+            // Scan for LFS pointers
+            let repo_cache_dir_clone = repo_cache_dir.clone();
+            let progress_tx_clone = progress_tx.clone();
+            let auth_token_clone = auth_token.map(|s| s.to_string());
+
+            let lfs_result = tokio::task::spawn_blocking(move || {
+                // Use tokio runtime to run async function in blocking context
+                let rt = tokio::runtime::Handle::current();
+                rt.block_on(async {
+                    if let Ok(lfs_pointers) =
+                        Self::scan_for_lfs_pointers(&repo_cache_dir_clone).await
+                    {
+                        if !lfs_pointers.is_empty() {
+                            println!(
+                                "Found {} LFS pointers in cached repository",
+                                lfs_pointers.len()
+                            );
+                            if let Err(e) = Self::fetch_lfs_files(
+                                &repo_cache_dir_clone,
+                                lfs_pointers,
+                                &progress_tx_clone,
+                                auth_token_clone.as_deref(),
+                            )
+                            .await
+                            {
+                                // Return the error if LFS fetch fails
+                                return Err(e);
+                            }
+                        }
+                    }
+                    Ok(())
+                })
+            })
+            .await
+            .map_err(|e| GitError::Git(git2::Error::from_str(&e.to_string())))?;
+
+            // Check if LFS fetch failed
+            lfs_result?;
+
+            // Send completion message
+            let _ = progress_tx.send(GitProgress {
+                phase: GitPhase::Complete,
+                current: 100,
+                total: 100,
+                message: "Using existing repository cache with LFS files".to_string(),
+            });
+
+            return Ok(repo_cache_dir);
         }
 
         // Ensure cache directory exists
@@ -98,7 +169,9 @@ impl GitService {
                 auth_token.as_deref(),
                 progress_tx_clone,
             )
-        }).await.map_err(|e| GitError::Git(git2::Error::from_str(&e.to_string())))?;
+        })
+        .await
+        .map_err(|e| GitError::Git(git2::Error::from_str(&e.to_string())))?;
 
         match result {
             Ok(_) => {
@@ -130,7 +203,7 @@ impl GitService {
         progress_tx: mpsc::UnboundedSender<GitProgress>,
     ) -> Result<(), GitError> {
         let mut callbacks = RemoteCallbacks::new();
-        
+
         // Set up authentication
         callbacks.credentials(|_url, username_from_url, _allowed_types| {
             if let Some(token) = auth_token {
@@ -200,13 +273,53 @@ impl GitService {
         // Perform the clone using RepoBuilder
         let mut builder = RepoBuilder::new();
         builder.fetch_options(fetch_options);
-        
+
         // Set branch if specified
         if let Some(branch_name) = branch {
             builder.branch(branch_name);
         }
-        
+
         builder.clone(repository_url, target_dir)?;
+
+        // Check if git LFS is needed and fetch LFS files
+        // Send LFS progress message
+        let _ = progress_tx.send(GitProgress {
+            phase: GitPhase::CheckingOut,
+            current: 95,
+            total: 100,
+            message: "Checking for LFS files...".to_string(),
+        });
+
+        // Scan for LFS pointers using async runtime
+        let target_dir_pathbuf = target_dir.to_path_buf();
+        let progress_tx_clone = progress_tx.clone();
+        let auth_token_clone = auth_token.map(|s| s.to_string());
+
+        // Create a temporary runtime for async operations
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| GitError::Git(git2::Error::from_str(&e.to_string())))?;
+
+        let lfs_result = rt.block_on(async {
+            if let Ok(lfs_pointers) = Self::scan_for_lfs_pointers(&target_dir_pathbuf).await {
+                if !lfs_pointers.is_empty() {
+                    println!("Found {} LFS pointers in repository", lfs_pointers.len());
+                    if let Err(e) = Self::fetch_lfs_files(
+                        &target_dir_pathbuf,
+                        lfs_pointers,
+                        &progress_tx_clone,
+                        auth_token_clone.as_deref(),
+                    )
+                    .await
+                    {
+                        return Err(e);
+                    }
+                }
+            }
+            Ok(())
+        });
+
+        // Check if LFS fetch failed and propagate the error
+        lfs_result?;
 
         Ok(())
     }
@@ -230,7 +343,7 @@ impl GitService {
         progress_tx: mpsc::UnboundedSender<GitProgress>,
     ) -> Result<(), GitError> {
         let repo_path = self.get_cache_path(repository_id);
-        
+
         if !repo_path.exists() {
             return Err(GitError::NotFound("Repository not cached".to_string()));
         }
@@ -241,7 +354,9 @@ impl GitService {
         // Run git operations in a blocking task
         let result = tokio::task::spawn_blocking(move || {
             Self::update_repository_blocking(&repo_path, auth_token.as_deref(), progress_tx_clone)
-        }).await.map_err(|e| GitError::Git(git2::Error::from_str(&e.to_string())))?;
+        })
+        .await
+        .map_err(|e| GitError::Git(git2::Error::from_str(&e.to_string())))?;
 
         match result {
             Ok(_) => {
@@ -271,7 +386,7 @@ impl GitService {
         progress_tx: mpsc::UnboundedSender<GitProgress>,
     ) -> Result<(), GitError> {
         let repo = Repository::open(repo_path)?;
-        
+
         // Send connecting message
         let _ = progress_tx.send(GitProgress {
             phase: GitPhase::Connecting,
@@ -352,7 +467,7 @@ impl GitService {
     pub fn build_repository_url(base_url: &str, repository_path: &str) -> String {
         // Remove trailing slash from base_url
         let base_url = base_url.trim_end_matches('/');
-        
+
         match base_url {
             url if url.contains("github.com") => {
                 format!("{}/{}.git", base_url, repository_path)
@@ -364,5 +479,205 @@ impl GitService {
                 format!("{}/{}.git", base_url, repository_path)
             }
         }
+    }
+
+    /// Check if a file is an LFS pointer
+    fn is_lfs_pointer(content: &[u8]) -> bool {
+        // LFS pointers start with "version https://git-lfs.github.com/spec/v1"
+        content.starts_with(b"version https://git-lfs.github.com/spec/v1")
+    }
+
+    /// Parse LFS pointer content
+    fn parse_lfs_pointer(content: &str) -> Option<(String, u64)> {
+        let mut oid = None;
+        let mut size = None;
+
+        for line in content.lines() {
+            if let Some(oid_value) = line.strip_prefix("oid sha256:") {
+                oid = Some(oid_value.to_string());
+            } else if let Some(size_str) = line.strip_prefix("size ") {
+                if let Ok(size_value) = size_str.parse::<u64>() {
+                    size = Some(size_value);
+                }
+            }
+        }
+
+        match (oid, size) {
+            (Some(o), Some(s)) => Some((o, s)),
+            _ => None,
+        }
+    }
+
+    /// Scan repository for LFS pointers
+    async fn scan_for_lfs_pointers(repo_path: &Path) -> Result<Vec<LfsPointer>, GitError> {
+        let mut lfs_pointers = Vec::new();
+
+        // Open the repository
+        let repo = Repository::open(repo_path)?;
+        let head = repo.head()?;
+        let tree = head.peel_to_tree()?;
+
+        // Walk the tree and check each file
+        tree.walk(git2::TreeWalkMode::PreOrder, |root, entry| {
+            if entry.kind() == Some(git2::ObjectType::Blob) {
+                let path = PathBuf::from(root).join(entry.name().unwrap_or(""));
+                let full_path = repo_path.join(&path);
+
+                // Check if the file might be an LFS pointer (small size is a good indicator)
+                if let Ok(metadata) = std::fs::metadata(&full_path) {
+                    if metadata.len() < 1024 {
+                        // LFS pointers are typically under 1KB
+                        if let Ok(content) = std::fs::read(&full_path) {
+                            if Self::is_lfs_pointer(&content) {
+                                if let Ok(content_str) = String::from_utf8(content) {
+                                    if let Some((oid, size)) = Self::parse_lfs_pointer(&content_str)
+                                    {
+                                        lfs_pointers.push(LfsPointer {
+                                            oid,
+                                            size,
+                                            path: path.clone(),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            git2::TreeWalkResult::Ok
+        })?;
+
+        Ok(lfs_pointers)
+    }
+
+    /// Get the git-lfs binary path from the build directory
+    fn get_git_lfs_binary_path() -> Result<PathBuf, GitError> {
+        // Get the executable directory
+        let exe_path = std::env::current_exe()
+            .map_err(|e| GitError::Io(e))?;
+        let exe_dir = exe_path.parent()
+            .ok_or_else(|| GitError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Failed to get executable directory"
+            )))?;
+        
+        // Determine the binary name based on the platform
+        let binary_name = if cfg!(windows) {
+            "git-lfs.exe"
+        } else {
+            "git-lfs"
+        };
+        
+        let binary_path = exe_dir.join(binary_name);
+        
+        // Check if the binary exists
+        if !binary_path.exists() {
+            return Err(GitError::Io(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("git-lfs binary not found at {:?}", binary_path)
+            )));
+        }
+        
+        Ok(binary_path)
+    }
+
+    /// Fetch LFS files using the embedded git-lfs binary
+    async fn fetch_lfs_files(
+        repo_path: &Path,
+        lfs_pointers: Vec<LfsPointer>,
+        progress_tx: &mpsc::UnboundedSender<GitProgress>,
+        auth_token: Option<&str>,
+    ) -> Result<(), GitError> {
+        if lfs_pointers.is_empty() {
+            return Ok(());
+        }
+
+        println!("Found {} LFS pointer files to fetch", lfs_pointers.len());
+
+        // Get the git-lfs binary path
+        let git_lfs_path = Self::get_git_lfs_binary_path()?;
+        println!("Using git-lfs binary at: {:?}", git_lfs_path);
+
+        let total_files = lfs_pointers.len();
+        
+        // Change to the repository directory
+        let original_dir = std::env::current_dir()
+            .map_err(|e| GitError::Io(e))?;
+        std::env::set_current_dir(repo_path)
+            .map_err(|e| GitError::Io(e))?;
+
+        // Set up authentication environment variables if needed
+        let mut env_vars = Vec::new();
+        if let Some(token) = auth_token {
+            if token.contains(':') {
+                // Basic auth format: username:password
+                let parts: Vec<&str> = token.splitn(2, ':').collect();
+                if parts.len() == 2 {
+                    env_vars.push(("GIT_ASKPASS", "echo"));
+                    env_vars.push(("GIT_USERNAME", parts[0]));
+                    env_vars.push(("GIT_PASSWORD", parts[1]));
+                }
+            } else {
+                // Bearer token
+                env_vars.push(("GIT_ASKPASS", "echo"));
+                env_vars.push(("GIT_PASSWORD", token));
+            }
+        }
+
+        // Run git lfs pull to fetch all LFS files
+        let _ = progress_tx.send(GitProgress {
+            phase: GitPhase::CheckingOut,
+            current: 92,
+            total: 100,
+            message: format!("Fetching {} LFS files...", total_files),
+        });
+
+        let mut cmd = Command::new(&git_lfs_path);
+        cmd.args(&["pull"]);
+        
+        // Add environment variables
+        for (key, value) in env_vars {
+            cmd.env(key, value);
+        }
+
+        println!("Running git lfs pull...");
+        let output = cmd.output()
+            .map_err(|e| GitError::Io(e))?;
+
+        // Restore original directory
+        std::env::set_current_dir(original_dir)
+            .map_err(|e| GitError::Io(e))?;
+
+        if !output.status.success() {
+            let error_msg = format!(
+                "git lfs pull failed: {}\nstderr: {}",
+                output.status,
+                String::from_utf8_lossy(&output.stderr)
+            );
+            println!("{}", error_msg);
+
+            // Send error progress update
+            let _ = progress_tx.send(GitProgress {
+                phase: GitPhase::Error,
+                current: 0,
+                total: 100,
+                message: error_msg.clone(),
+            });
+
+            return Err(GitError::Git(git2::Error::from_str(&error_msg)));
+        }
+
+        println!("git lfs pull output: {}", String::from_utf8_lossy(&output.stdout));
+
+        // All files fetched successfully
+        let _ = progress_tx.send(GitProgress {
+            phase: GitPhase::CheckingOut,
+            current: 98,
+            total: 100,
+            message: format!("Successfully fetched all {} LFS files", total_files),
+        });
+
+        Ok(())
     }
 }

@@ -4,7 +4,7 @@ import {
   ApiEndpointResponses,
   ApiEndpoints,
 } from "../types";
-import { callAsync, FileUploadProgressCallback, SSECallbacks } from "./core";
+import { callAsync, FileUploadProgressCallback } from "./core";
 
 // Helper types for automatic namespace/method extraction
 type ExtractNamespace<T extends string> = T extends `${infer N}.${string}`
@@ -28,7 +28,7 @@ type NamespaceMethods<N extends Namespaces> = Evaluate<{
   [K in ApiEndpoint as K extends `${N}.${infer M}` ? M : never]: (
     params: ResolveParams<K>,
     callbacks?: {
-      SSE?: SSECallbacks;
+      SSE?: (event: string, data: any) => void;
       fileUploadProgress?: FileUploadProgressCallback;
     },
   ) => Promise<ResolveResponse<K>>;
@@ -56,8 +56,8 @@ function createApiClient(): ApiClientType {
     client[namespace][method] = async (
       params: any,
       callbacks?: {
-        SSE?: SSECallbacks;
-        fileUploadProgress: FileUploadProgressCallback;
+        SSE?: (event: string, data: any) => void;
+        fileUploadProgress?: FileUploadProgressCallback;
       },
     ) => {
       return callAsync(ApiEndpoints[endpointKey], params, callbacks);

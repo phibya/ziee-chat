@@ -26,13 +26,13 @@ export interface UploadSession {
 }
 
 export interface UploadMultipleFilesRequest {
-  providerId: string;
+  provider_id: string;
   files: File[];
-  mainFilename: string;
+  main_filename: string;
   name: string;
   alias: string;
   description?: string;
-  fileFormat: string;
+  file_format: string;
   capabilities: ModelCapabilities;
   settings?: ModelSettings;
 }
@@ -54,6 +54,15 @@ interface ProvidersState {
   uploading: boolean;
   uploadProgress: FileUploadProgress[];
   overallUploadProgress: number;
+
+  // Download states (for repository downloads)
+  downloading: boolean;
+  downloadProgress: {
+    phase: string;
+    current: number;
+    total: number;
+    message: string;
+  } | null;
 
   // Upload session state
   uploadSession: UploadSession | null;
@@ -96,6 +105,21 @@ interface ProvidersState {
     request: UploadMultipleFilesRequest,
   ) => Promise<Model>;
 
+  // Download model from repository with SSE progress tracking
+  downloadFromRepository: (request: {
+    provider_id: string;
+    repository_id: string;
+    repository_path: string;
+    main_filename: string;
+    repository_branch?: string;
+    name: string;
+    alias: string;
+    description?: string;
+    file_format: string;
+    capabilities?: ModelCapabilities;
+    settings?: ModelSettings;
+  }) => Promise<void>;
+
   // Model control actions (for Local)
   startModel: (modelId: string) => Promise<void>; // For Local
   stopModel: (modelId: string) => Promise<void>; // For Local
@@ -124,6 +148,8 @@ export const useProvidersStore = create<ProvidersState>()(
       uploading: false,
       uploadProgress: [],
       overallUploadProgress: 0,
+      downloading: false,
+      downloadProgress: null,
       uploadSession: null,
       error: null,
 
@@ -487,13 +513,13 @@ export const useProvidersStore = create<ProvidersState>()(
         request: UploadMultipleFilesRequest,
       ): Promise<Model> => {
         const {
-          providerId,
+          provider_id,
           files,
-          mainFilename,
+          main_filename,
           name,
           alias,
           description,
-          fileFormat,
+          file_format,
           capabilities,
           settings,
         } = request;
@@ -515,14 +541,14 @@ export const useProvidersStore = create<ProvidersState>()(
           const formData = new FormData();
 
           // Add all required fields
-          formData.append("provider_id", providerId);
-          formData.append("main_filename", mainFilename);
+          formData.append("provider_id", provider_id);
+          formData.append("main_filename", main_filename);
           formData.append("name", name);
           formData.append("alias", alias);
           if (description) {
             formData.append("description", description);
           }
-          formData.append("file_format", fileFormat);
+          formData.append("file_format", file_format);
           if (capabilities) {
             formData.append("capabilities", JSON.stringify(capabilities));
           }
@@ -586,15 +612,12 @@ export const useProvidersStore = create<ProvidersState>()(
           set((state) => ({
             modelsByProvider: {
               ...state.modelsByProvider,
-              [request.providerId]: [
-                ...(state.modelsByProvider[request.providerId] || []),
+              [request.provider_id]: [
+                ...(state.modelsByProvider[request.provider_id] || []),
                 model,
-              ],
+              ].filter((e) => !!e),
             },
           }));
-
-          // Reload providers to get the latest state
-          await get().loadProviders();
 
           return model;
         } catch (error) {
@@ -614,14 +637,94 @@ export const useProvidersStore = create<ProvidersState>()(
         }
       },
 
+      // Download model from repository with SSE progress tracking
+      downloadFromRepository: async (request) => {
+        set({
+          downloading: true,
+          downloadProgress: {
+            phase: "Starting",
+            current: 0,
+            total: 100,
+            message: "Initializing repository download...",
+          },
+          error: null,
+        });
+
+        try {
+          // biome-ignore lint/suspicious/noAsyncPromiseExecutor: <explanation>
+          await new Promise<void>(async (resolve, reject) => {
+            let isRejected = false;
+            await ApiClient.Admin.downloadFromRepository(request, {
+              SSE: (event: string, data: any) => {
+                console.log({ event, data });
+                if (event === "progress") {
+                  set({
+                    downloadProgress: {
+                      phase: data.phase,
+                      current: data.current,
+                      total: data.total,
+                      message: data.message || "Downloading...",
+                    },
+                  });
+                } else if (event === "complete") {
+                  set({
+                    downloading: false,
+                    downloadProgress: null,
+                  });
+
+                  let model = data.model as Model;
+
+                  set((state) => ({
+                    modelsByProvider: {
+                      ...state.modelsByProvider,
+                      [request.provider_id]: [
+                        ...(state.modelsByProvider[request.provider_id] || []),
+                        model,
+                      ].filter((e) => !!e),
+                    },
+                  }));
+
+                  resolve();
+                } else if (event === "error") {
+                  set({
+                    downloading: false,
+                    downloadProgress: null,
+                    error: data.message || "Download failed",
+                  });
+                  !isRejected &&
+                    reject(new Error(data.message || "Download failed"));
+                  isRejected = true;
+                }
+              },
+            }).catch((e) => {
+              console.error("Download error:", e);
+              !isRejected && reject(e);
+              isRejected = true;
+            });
+          });
+        } catch (error) {
+          set({
+            downloading: false,
+            downloadProgress: null,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to download from repository",
+          });
+          throw error;
+        }
+      },
+
       clearError: () => set({ error: null }),
 
       cancelUpload: () => {
-        // For now, just reset the upload state
+        // Reset both upload and download states
         set({
           uploading: false,
           uploadProgress: [],
           overallUploadProgress: 0,
+          downloading: false,
+          downloadProgress: null,
           error: null,
         });
       },

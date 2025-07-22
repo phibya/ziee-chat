@@ -97,7 +97,9 @@ export function AddModelModal({
     uploading,
     uploadProgress,
     overallUploadProgress,
-    loadProviders,
+    downloading,
+    downloadProgress,
+    downloadFromRepository,
     clearError,
     cancelUpload,
   } = useProvidersStore(
@@ -106,7 +108,9 @@ export function AddModelModal({
       uploading: state.uploading,
       uploadProgress: state.uploadProgress,
       overallUploadProgress: state.overallUploadProgress,
-      loadProviders: state.loadProviders,
+      downloading: state.downloading,
+      downloadProgress: state.downloadProgress,
+      downloadFromRepository: state.downloadFromRepository,
       clearError: state.clearError,
       cancelUpload: state.cancelUpload,
     })),
@@ -166,22 +170,19 @@ export function AddModelModal({
 
           // Upload and auto-commit the files as a model in a single request
           await uploadMultipleFilesAndCommit({
-            providerId,
+            provider_id: providerId,
             files: filesToUpload,
-            mainFilename: values.main_filename,
+            main_filename: values.main_filename,
             name: modelId, // Auto-generated model ID
             alias: values.alias, // Display name
             description: values.description,
-            fileFormat: values.file_format,
+            file_format: values.file_format,
             capabilities: values.capabilities, // Include capabilities from form
             settings: values.settings, // Include model settings from form
           });
 
           message.success(t("providers.modelFolderUploadedSuccessfully"));
 
-          // Step 4: Refresh model list of that provider
-          await loadProviders();
-          
           // Clear upload progress after successful upload
           cancelUpload();
         } else if (values.model_source === "repository") {
@@ -205,9 +206,9 @@ export function AddModelModal({
             return;
           }
 
-          // Call the repository download API
+          // Call the repository download API through store
           try {
-            await ApiClient.Admin.downloadFromRepository({
+            await downloadFromRepository({
               provider_id: providerId,
               repository_id: values.repository_id,
               repository_path: values.repository_path,
@@ -221,9 +222,11 @@ export function AddModelModal({
               settings: values.settings || {},
             });
 
-            message.success(t("providers.modelDownloadFromRepositoryStarted"));
+            message.success(
+              t("providers.modelDownloadFromRepositoryCompleted"),
+            );
           } catch (error) {
-            console.error("Failed to start repository download:", error);
+            console.error("Failed to download from repository:", error);
             message.error(t("providers.modelDownloadFromRepositoryFailed"));
             return;
           }
@@ -285,7 +288,7 @@ export function AddModelModal({
           "Small 1.1B parameter chat model for quick testing (~637MB)",
         file_format: "safetensors",
         model_source: "repository",
-        repository_path: "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+        repository_path: "meta-llama/Llama-3.1-8B-Instruct",
         main_filename: "model.safetensors",
         repository_branch: "main",
         settings: {},
@@ -917,21 +920,6 @@ export function AddModelModal({
                     </Typography.Text>
                   </div>
                 )}
-                onChange={(value) => {
-                  form.setFieldValue("repository_id", value);
-                  // Auto-select Hugging Face Hub if it's available
-                  const selectedRepo = repositories.find(
-                    (repo) => repo.id === value,
-                  );
-                  if (selectedRepo?.name === "Hugging Face Hub") {
-                    form.setFieldsValue({
-                      repository_path: "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-                      main_filename: "model.safetensors",
-                      repository_branch: "main",
-                    });
-                  }
-                  update();
-                }}
               />
             </Form.Item>
 
@@ -1013,6 +1001,39 @@ export function AddModelModal({
             isUploading={uploading}
             showDetails={true}
           />
+        </div>
+      )}
+
+      {/* Download Progress */}
+      {(downloading || downloadProgress) && (
+        <div className="mt-4">
+          <Card size="small">
+            <Flex className="gap-2 items-center">
+              <Typography.Text strong>
+                Repository Download Progress
+              </Typography.Text>
+            </Flex>
+            {downloadProgress && (
+              <div className="mt-2">
+                <Flex className="justify-between mb-1">
+                  <Typography.Text type="secondary">
+                    {downloadProgress.phase}: {downloadProgress.message}
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    {downloadProgress.current}/{downloadProgress.total}
+                  </Typography.Text>
+                </Flex>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </Card>
         </div>
       )}
     </Modal>

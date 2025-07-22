@@ -112,8 +112,8 @@ async fn create_model_with_files(
         ));
     }
 
-    // Determine which files to copy based on file format and main filename
-    let files_to_copy = determine_files_to_copy(&source_files, &main_filename, &file_format)?;
+    // Determine which files to copy based on main filename and index files
+    let files_to_copy = determine_files_to_copy(&source_files, &main_filename)?;
 
     if files_to_copy.is_empty() {
         return Err(AppError::new(
@@ -232,117 +232,107 @@ async fn create_model_with_files(
     Ok(model)
 }
 
-/// Determine which files to copy based on main filename and file format
+/// Determine which files to copy based on main filename and index files
 fn determine_files_to_copy(
     source_files: &[String],
     main_filename: &str,
-    file_format: &str,
 ) -> Result<Vec<String>, AppError> {
     let mut files_to_copy = Vec::new();
 
-    // Check if main_filename exists in source files
-    if !source_files.contains(&main_filename.to_string()) {
+    // First, check if main_filename ends with .json (if so, it might be an index file already)
+    let main_is_json = main_filename.to_lowercase().ends_with(".json");
+    
+    // If main file doesn't end with .json, look for {main_filename}.index.json
+    let index_filename = if !main_is_json {
+        format!("{}.index.json", main_filename)
+    } else {
+        // If main file is already JSON, it might be the index file
+        main_filename.to_string()
+    };
+
+    // Always check for index file first
+    let index_exists = !main_is_json && source_files.contains(&index_filename);
+    let main_exists = source_files.contains(&main_filename.to_string());
+    
+    // Check if index file exists first
+    if index_exists {
+        println!("Found index file: {}", index_filename);
+        
+        // Add the index file itself
+        files_to_copy.push(index_filename.clone());
+        
+        // Parse the index file to get weight files
+        // Since we're in the determine_files_to_copy function which doesn't have async context,
+        // we'll need to identify weight files by pattern matching based on the index file name
+        
+        // For sharded models, weight files typically follow patterns like:
+        // - model-00001-of-00004.safetensors
+        // - pytorch_model-00001-of-00005.bin
+        // We'll add all files that match the base pattern
+        
+        let base_name = main_filename.trim_end_matches(".safetensors")
+            .trim_end_matches(".bin")
+            .trim_end_matches(".pt")
+            .trim_end_matches(".pth");
+        
+        // Add all weight files that match the sharding pattern
+        for file in source_files {
+            if file.starts_with(base_name) && 
+               (file.contains("-of-") || file.contains("_of_")) &&
+               (file.ends_with(".safetensors") || file.ends_with(".bin") || 
+                file.ends_with(".pt") || file.ends_with(".pth")) {
+                files_to_copy.push(file.clone());
+            }
+        }
+    } else if main_is_json && (main_filename.contains("index") || main_filename.ends_with(".index.json")) {
+        // Main file is already an index file
+        println!("Main file is an index file: {}", main_filename);
+        
+        files_to_copy.push(main_filename.to_string());
+        
+        // Extract base name from index file
+        let base_name = main_filename
+            .replace(".index.json", "")
+            .replace("_index.json", "")
+            .replace("-index.json", "");
+        
+        // Add all related weight files
+        for file in source_files {
+            if file.starts_with(&base_name) && 
+               file != main_filename &&
+               (file.ends_with(".safetensors") || file.ends_with(".bin") || 
+                file.ends_with(".pt") || file.ends_with(".pth")) {
+                files_to_copy.push(file.clone());
+            }
+        }
+    } else if main_exists {
+        // No index file found but main file exists - only copy the main weight file
+        println!("No index file found for {}. Only copying main file.", main_filename);
+        files_to_copy.push(main_filename.to_string());
+    } else {
+        // Neither index file nor main file exists - throw error
         return Err(AppError::new(
             ErrorCode::ValidInvalidInput,
             format!(
-                "Main filename '{}' not found in source directory",
-                main_filename
+                "Neither '{}' nor '{}' found in source directory",
+                main_filename,
+                if !main_is_json { &index_filename } else { main_filename }
             ),
         ));
     }
 
-    match file_format.to_lowercase().as_str() {
-        "gguf" => {
-            // For GGUF models, usually single file or with additional files
-            files_to_copy.push(main_filename.to_string());
-
-            // Add related files (tokenizer, config, etc.)
-            for file in source_files {
-                if file != main_filename
-                    && is_related_file(file, &["tokenizer", "config", "vocab", "merges"])
-                {
-                    files_to_copy.push(file.clone());
-                }
-            }
-        }
-        "safetensors" => {
-            // For safetensors, check if it's a single file or sharded
-            if main_filename.contains("index") || main_filename.contains(".json") {
-                // Index file - copy all related safetensors files
-                files_to_copy.push(main_filename.to_string());
-
-                // Add all safetensors files
-                for file in source_files {
-                    if file.ends_with(".safetensors") {
-                        files_to_copy.push(file.clone());
-                    }
-                }
-
-                // Add configuration files
-                for file in source_files {
-                    if is_config_or_tokenizer_file(file) {
-                        files_to_copy.push(file.clone());
-                    }
-                }
-            } else {
-                // Single safetensors file
-                files_to_copy.push(main_filename.to_string());
-
-                // Add related configuration files
-                for file in source_files {
-                    if file != main_filename && is_config_or_tokenizer_file(file) {
-                        files_to_copy.push(file.clone());
-                    }
-                }
-            }
-        }
-        "pytorch" | "bin" => {
-            // For PyTorch models, check if it's an index file
-            if main_filename.contains("index") || main_filename.contains(".json") {
-                // Index file - copy all related .bin files
-                files_to_copy.push(main_filename.to_string());
-
-                // Add all .bin files
-                for file in source_files {
-                    if file.ends_with(".bin") || file.ends_with(".pt") || file.ends_with(".pth") {
-                        files_to_copy.push(file.clone());
-                    }
-                }
-
-                // Add configuration files
-                for file in source_files {
-                    if is_config_or_tokenizer_file(file) {
-                        files_to_copy.push(file.clone());
-                    }
-                }
-            } else {
-                // Single model file
-                files_to_copy.push(main_filename.to_string());
-
-                // Add related configuration files
-                for file in source_files {
-                    if file != main_filename && is_config_or_tokenizer_file(file) {
-                        files_to_copy.push(file.clone());
-                    }
-                }
-            }
-        }
-        _ => {
-            // For unknown formats, copy the main file and any configuration files
-            files_to_copy.push(main_filename.to_string());
-
-            // Add related configuration files
-            for file in source_files {
-                if file != main_filename && is_config_or_tokenizer_file(file) {
-                    files_to_copy.push(file.clone());
-                }
-            }
+    // Always add configuration and tokenizer files regardless of sharding
+    for file in source_files {
+        if is_config_or_tokenizer_file(file) && !files_to_copy.contains(&file.to_string()) {
+            files_to_copy.push(file.clone());
         }
     }
 
     // Remove duplicates and sort
     files_to_copy.sort();
     files_to_copy.dedup();
+
+    println!("Files to copy: {:?}", files_to_copy);
 
     Ok(files_to_copy)
 }
@@ -361,13 +351,6 @@ fn is_config_or_tokenizer_file(filename: &str) -> bool {
         || filename_lower == "generation_config.json"
 }
 
-/// Check if a file is related based on name patterns
-fn is_related_file(filename: &str, patterns: &[&str]) -> bool {
-    let filename_lower = filename.to_lowercase();
-    patterns
-        .iter()
-        .any(|pattern| filename_lower.contains(pattern))
-}
 
 #[derive(Debug, serde::Serialize)]
 pub struct UploadFilesResponse {
@@ -716,11 +699,30 @@ pub async fn download_and_commit_repository_files(
     // Create git service
     let git_service = GitService::new();
 
-    // Clone the repository with authentication
-    let auth_token = repository
-        .auth_config
-        .as_ref()
-        .and_then(|config| config.token.clone());
+    // Prepare authentication based on repository auth_type
+    let auth_token = match repository.auth_type.as_str() {
+        "api_key" => repository
+            .auth_config
+            .as_ref()
+            .and_then(|config| config.api_key.clone()),
+        "bearer_token" => repository
+            .auth_config
+            .as_ref()
+            .and_then(|config| config.token.clone()),
+        "basic_auth" => {
+            // For basic auth, return username:password format
+            if let Some(config) = &repository.auth_config {
+                if let (Some(username), Some(password)) = (&config.username, &config.password) {
+                    Some(format!("{}:{}", username, password))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        },
+        "none" | _ => None,
+    };
     let provider_id = request.provider_id;
     let name = request.name.clone();
     let alias = request.alias.clone();
@@ -854,7 +856,15 @@ pub async fn download_and_commit_repository_files(
     // Create SSE stream
     let stream = UnboundedReceiverStream::new(sse_rx).map(|progress| {
         let json = serde_json::to_string(&progress).unwrap_or_else(|_| "{}".to_string());
-        Ok(Event::default().data(json))
+
+        // Determine event type based on phase
+        let event_type = match progress.phase.as_str() {
+            "Complete" => "complete",
+            "Error" => "error",
+            _ => "progress",
+        };
+
+        Ok(Event::default().event(event_type).data(json))
     });
 
     Ok(Sse::new(stream).keep_alive(KeepAlive::default()))

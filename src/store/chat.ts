@@ -204,15 +204,20 @@ export const useChatStore = create<ChatState>()(
               model_id: modelId,
             },
             {
-              SSE: {
-                onChunk(data: { delta: string }) {
-                  set((state) => ({
-                    streamingMessage: state.streamingMessage + data.delta,
-                  }));
-                },
-                onComplete(
-                  _data: Omit<Message, "content"> & { message_id: string },
+              SSE: (event: string, data: any) => {
+                if (
+                  event === "message" ||
+                  event === "data" ||
+                  event === "chunk"
                 ) {
+                  // Handle streaming data events
+                  if (data.delta) {
+                    set((state) => ({
+                      streamingMessage: state.streamingMessage + data.delta,
+                    }));
+                  }
+                } else if (event === "complete") {
+                  // Handle completion events
                   set((state) => ({
                     isStreaming: false,
                     sending: false,
@@ -223,19 +228,21 @@ export const useChatStore = create<ChatState>()(
                         ...assistantMessage,
                         content: state.streamingMessage,
                         updated_at: new Date().toISOString(),
-                        id: _data.message_id,
+                        id: data.message_id,
                       },
                     ],
                   }));
-                },
-                onError() {
+                } else if (event === "error") {
                   set({
                     error: "Streaming failed",
                     sending: false,
                     isStreaming: false,
                     streamingMessage: "",
                   });
-                },
+                } else {
+                  // Log unknown event types for debugging
+                  console.log("Unknown SSE event type in chat:", event, data);
+                }
               },
             },
           );
@@ -308,15 +315,16 @@ export const useChatStore = create<ChatState>()(
               content: newContent,
             },
             {
-              SSE: {
-                onChunk(data: { delta: string }) {
-                  set((state) => ({
-                    streamingMessage: state.streamingMessage + data.delta,
-                  }));
-                },
-                onComplete(
-                  data: Omit<Message, "content"> & { message_id: string },
-                ) {
+              SSE: (event: string, data: any) => {
+                if (event === "chunk") {
+                  // Handle streaming data events
+                  if (data.delta) {
+                    set((state) => ({
+                      streamingMessage: state.streamingMessage + data.delta,
+                    }));
+                  }
+                } else if (event === "complete") {
+                  // Handle completion events
                   set((state) => ({
                     isStreaming: false,
                     sending: false,
@@ -333,8 +341,7 @@ export const useChatStore = create<ChatState>()(
                       },
                     ],
                   }));
-                },
-                onError() {
+                } else if (event === "error") {
                   set({
                     error: "Edit streaming failed",
                     sending: false,
@@ -345,7 +352,14 @@ export const useChatStore = create<ChatState>()(
                       (msg) => msg.id !== "streaming-temp",
                     ),
                   });
-                },
+                } else {
+                  // Log unknown event types for debugging
+                  console.log(
+                    "Unknown SSE event type in edit chat:",
+                    event,
+                    data,
+                  );
+                }
               },
             },
           );
