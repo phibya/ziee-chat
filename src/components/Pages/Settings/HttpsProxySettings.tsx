@@ -1,59 +1,52 @@
-import { Card, Flex, Typography } from 'antd'
-import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
+import { Card, Flex, Typography } from "antd";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  useAdminStore,
-  loadSystemProxySettings,
-  updateSystemProxySettings,
   clearSystemAdminError,
-} from '../../../store'
-import { ProxySettingsForm } from './shared'
+  loadSystemProxySettings,
+  Stores,
+  updateSystemProxySettings,
+} from "../../../store";
+import { ProxySettingsForm } from "./shared";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 export function HttpsProxySettings() {
-  const { t } = useTranslation()
+  const { t } = useTranslation();
 
   // Admin store
-  const { proxySettings, loading, error } = useAdminStore(
-    useShallow(state => ({
-      proxySettings: state.proxySettings,
-      loading: state.loading,
-      error: state.error,
-    })),
-  )
+  const { proxySettings, loading, error } = Stores.Admin;
 
   useEffect(() => {
-    loadSystemProxySettings()
-  }, [])
+    loadSystemProxySettings();
+  }, []);
 
   // Show errors from store
   useEffect(() => {
     if (error) {
-      clearSystemAdminError()
+      clearSystemAdminError();
     }
-  }, [error])
+  }, [error]);
 
   const handleSave = async (values: any) => {
-    await updateSystemProxySettings(values)
-  }
+    await updateSystemProxySettings(values);
+  };
 
   if (loading && !proxySettings) {
     return (
       <Flex vertical className="gap-4 w-full">
-        <Title level={3}>{t('proxy.title')}</Title>
+        <Title level={3}>{t("proxy.title")}</Title>
         <Card>
-          <Text type="secondary">{t('proxy.loadingSettings')}</Text>
+          <Text type="secondary">{t("proxy.loadingSettings")}</Text>
         </Card>
       </Flex>
-    )
+    );
   }
 
   return (
     <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('proxy.title')}</Title>
+      <Title level={3}>{t("proxy.title")}</Title>
       <ProxySettingsForm initialSettings={proxySettings} onSave={handleSave} />
     </Flex>
-  )
+  );
 }

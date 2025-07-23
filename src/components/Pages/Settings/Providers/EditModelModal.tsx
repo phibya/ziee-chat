@@ -1,43 +1,33 @@
-import { Button, Card, Flex, Form, Modal } from 'antd'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
-import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
-import { ModelParametersSection } from './shared/ModelParametersSection'
-import { ModelSettingsSection } from './shared/ModelSettingsSection'
-import { BASIC_MODEL_FIELDS, LOCAL_PARAMETERS } from './shared/constants'
-import { useProvidersStore, updateExistingModel } from '../../../../store'
-import {
-  useModalsUIStore,
-  closeEditModelModal,
-} from '../../../../store/ui/modals'
-import { useShallow } from 'zustand/react/shallow'
+import { Button, Card, Flex, Form, Modal } from "antd";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Stores, updateExistingModel } from "../../../../store";
+import { closeEditModelModal } from "../../../../store/ui/modals";
+import { BASIC_MODEL_FIELDS, LOCAL_PARAMETERS } from "./shared/constants";
+import { DeviceSelectionSection } from "./shared/DeviceSelectionSection";
+import { ModelCapabilitiesSection } from "./shared/ModelCapabilitiesSection";
+import { ModelParametersSection } from "./shared/ModelParametersSection";
+import { ModelSettingsSection } from "./shared/ModelSettingsSection";
 
 export function EditModelModal() {
-  const { t } = useTranslation()
-  const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
 
-  const { editModelModalOpen, editingModelId } = useModalsUIStore()
-
-  const { providers, modelsByProvider } = useProvidersStore(
-    useShallow(state => ({
-      providers: state.providers,
-      modelsByProvider: state.modelsByProvider,
-    })),
-  )
+  const { editModelModalOpen, editingModelId } = Stores.UI.Modals;
+  const { providers, modelsByProvider } = Stores.Providers;
 
   // Find the current model and provider from the store
   const currentModel = editingModelId
     ? Object.values(modelsByProvider)
         .flat()
-        .find(m => m.id === editingModelId)
-    : null
+        .find((m) => m.id === editingModelId)
+    : null;
   const currentProvider = currentModel
-    ? providers.find(p =>
-        modelsByProvider[p.id]?.some(m => m.id === editingModelId),
+    ? providers.find((p) =>
+        modelsByProvider[p.id]?.some((m) => m.id === editingModelId),
       )
-    : null
+    : null;
 
   useEffect(() => {
     if (currentModel && editModelModalOpen) {
@@ -48,38 +38,38 @@ export function EditModelModal() {
         capabilities: currentModel.capabilities || {},
         parameters: currentModel.parameters || {},
         settings: currentModel.settings || {},
-      })
+      });
     }
-  }, [currentModel, editModelModalOpen, form])
+  }, [currentModel, editModelModalOpen, form]);
 
   const handleSubmit = async () => {
-    if (!currentModel) return
+    if (!currentModel) return;
 
     try {
-      setLoading(true)
-      const values = await form.validateFields()
+      setLoading(true);
+      const values = await form.validateFields();
 
       const modelData = {
         ...currentModel,
         ...values,
-      }
-      await updateExistingModel(modelData.id, modelData)
-      closeEditModelModal()
+      };
+      await updateExistingModel(modelData.id, modelData);
+      closeEditModelModal();
     } catch (error) {
-      console.error('Failed to update model:', error)
+      console.error("Failed to update model:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Modal
-      title={t('providers.editModel')}
+      title={t("providers.editModel")}
       open={editModelModalOpen}
       onCancel={closeEditModelModal}
       footer={[
         <Button key="cancel" onClick={closeEditModelModal}>
-          {t('buttons.cancel')}
+          {t("buttons.cancel")}
         </Button>,
         <Button
           key="submit"
@@ -87,7 +77,7 @@ export function EditModelModal() {
           loading={loading}
           onClick={handleSubmit}
         >
-          {t('buttons.saveChanges')}
+          {t("buttons.saveChanges")}
         </Button>,
       ]}
       width={600}
@@ -99,17 +89,17 @@ export function EditModelModal() {
         <Flex className={`flex-col gap-3`}>
           <ModelCapabilitiesSection />
 
-          {currentProvider?.type === 'local' && <DeviceSelectionSection />}
+          {currentProvider?.type === "local" && <DeviceSelectionSection />}
 
-          {currentProvider?.type === 'local' && <ModelSettingsSection />}
+          {currentProvider?.type === "local" && <ModelSettingsSection />}
 
-          {currentProvider?.type === 'local' && (
-            <Card title={t('providers.parameters')} size={'small'}>
+          {currentProvider?.type === "local" && (
+            <Card title={t("providers.parameters")} size={"small"}>
               <ModelParametersSection parameters={LOCAL_PARAMETERS} />
             </Card>
           )}
         </Flex>
       </Form>
     </Modal>
-  )
+  );
 }

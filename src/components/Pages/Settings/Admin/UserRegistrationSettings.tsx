@@ -1,84 +1,77 @@
-import { App, Card, Form, Switch, Typography } from 'antd'
-import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import { Permission, usePermissions } from '../../../../permissions'
+import { App, Card, Form, Switch, Typography } from "antd";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Permission, usePermissions } from "../../../../permissions";
 import {
-  useAdminStore,
-  loadSystemUserRegistrationSettings,
-  updateSystemUserRegistrationSettings,
   clearSystemAdminError,
-} from '../../../../store'
+  loadSystemUserRegistrationSettings,
+  Stores,
+  updateSystemUserRegistrationSettings,
+} from "../../../../store";
 
-const { Text } = Typography
+const { Text } = Typography;
 
 export function UserRegistrationSettings() {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
-  const [form] = Form.useForm()
-  const { hasPermission } = usePermissions()
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const { hasPermission } = usePermissions();
 
   // Admin store
-  const { registrationEnabled, loading, error } = useAdminStore(
-    useShallow(state => ({
-      registrationEnabled: state.userRegistrationEnabled,
-      loading: state.loading,
-      error: state.error,
-    })),
-  )
+  const { userRegistrationEnabled, loading, error } = Stores.Admin;
 
-  const canRead = hasPermission(Permission.config.userRegistration.read)
-  const canEdit = hasPermission(Permission.config.userRegistration.edit)
+  const canRead = hasPermission(Permission.config.userRegistration.read);
+  const canEdit = hasPermission(Permission.config.userRegistration.edit);
 
   useEffect(() => {
     if (canRead) {
-      loadSystemUserRegistrationSettings()
+      loadSystemUserRegistrationSettings();
     }
-  }, [canRead])
+  }, [canRead]);
 
   // Show errors
   useEffect(() => {
     if (error) {
-      message.error(error)
-      clearSystemAdminError()
+      message.error(error);
+      clearSystemAdminError();
     }
-  }, [error, message])
+  }, [error, message]);
 
   // Update form when registration status changes
   useEffect(() => {
-    form.setFieldsValue({ enabled: registrationEnabled })
-  }, [registrationEnabled, form])
+    form.setFieldsValue({ enabled: userRegistrationEnabled });
+  }, [userRegistrationEnabled, form]);
 
   const handleFormChange = async (changedValues: any) => {
     if (!canEdit) {
-      message.error(t('admin.noPermissionEditSetting'))
-      return
+      message.error(t("admin.noPermissionEditSetting"));
+      return;
     }
-    if ('enabled' in changedValues) {
-      const newValue = changedValues.enabled
+    if ("enabled" in changedValues) {
+      const newValue = changedValues.enabled;
 
       try {
-        await updateSystemUserRegistrationSettings(newValue)
+        await updateSystemUserRegistrationSettings(newValue);
         message.success(
-          `User registration ${newValue ? 'enabled' : 'disabled'} successfully`,
-        )
+          `User registration ${newValue ? "enabled" : "disabled"} successfully`,
+        );
       } catch (error) {
-        console.error('Failed to update registration status:', error)
+        console.error("Failed to update registration status:", error);
         // Error is handled by the store
       }
     }
-  }
+  };
 
   if (!canRead) {
-    return null
+    return null;
   }
 
   return (
-    <Card title={t('admin.userRegistration')}>
+    <Card title={t("admin.userRegistration")}>
       <Form
         form={form}
         onValuesChange={handleFormChange}
-        initialValues={{ enabled: registrationEnabled }}
+        initialValues={{ enabled: userRegistrationEnabled }}
       >
         <div className="flex justify-between items-center">
           <div>
@@ -95,5 +88,5 @@ export function UserRegistrationSettings() {
         </div>
       </Form>
     </Card>
-  )
+  );
 }

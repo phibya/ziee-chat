@@ -1,76 +1,69 @@
-import { App, Card, Flex, Form, Select, Typography } from 'antd'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
+import { App, Card, Flex, Form, Select, Typography } from "antd";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { isDesktopApp } from "../../../../api/core";
+import { Permission, usePermissions } from "../../../../permissions";
 import {
-  useUserSettingsStore,
   loadGlobalDefaultLanguage,
-} from '../../../../store'
-import { useAdminStore, updateSystemDefaultLanguage } from '../../../../store'
-import { isDesktopApp } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
-import { LANGUAGE_OPTIONS } from '../../../../types'
+  Stores,
+  updateSystemDefaultLanguage,
+} from "../../../../store";
+import { LANGUAGE_OPTIONS } from "../../../../types";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 export function AdminAppearanceSettings() {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
-  const [form] = Form.useForm()
-  const [isMobile, setIsMobile] = useState(false)
-  const { hasPermission } = usePermissions()
-  const { globalDefaultLanguage } = useUserSettingsStore()
-
-  // Admin store
-  const { updating } = useAdminStore(
-    useShallow(state => ({
-      updating: state.updating,
-    })),
-  )
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [isMobile, setIsMobile] = useState(false);
+  const { hasPermission } = usePermissions();
+  const { globalDefaultLanguage } = Stores.Settings;
+  const { updating } = Stores.Admin;
 
   // Check permissions - using a general config permission for appearance settings
-  const canEditAppearance = hasPermission(Permission.config.experimental.edit)
+  const canEditAppearance = hasPermission(Permission.config.experimental.edit);
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
+      setIsMobile(window.innerWidth < 768);
+    };
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
 
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     form.setFieldsValue({
       language: globalDefaultLanguage,
-    })
-  }, [globalDefaultLanguage, form])
+    });
+  }, [globalDefaultLanguage, form]);
 
   const handleFormChange = async (changedValues: any) => {
-    if ('language' in changedValues) {
+    if ("language" in changedValues) {
       if (!canEditAppearance) {
-        message.error(t('admin.noPermissionSystemSettings'))
-        form.setFieldsValue({ language: globalDefaultLanguage })
-        return
+        message.error(t("admin.noPermissionSystemSettings"));
+        form.setFieldsValue({ language: globalDefaultLanguage });
+        return;
       }
 
       try {
         // Update global default language via admin store
-        await updateSystemDefaultLanguage(changedValues.language)
+        await updateSystemDefaultLanguage(changedValues.language);
 
         // Update the store's global language
-        await loadGlobalDefaultLanguage()
+        await loadGlobalDefaultLanguage();
 
-        message.success('Default language updated successfully')
+        message.success("Default language updated successfully");
       } catch {
-        console.error('Failed to update default language')
+        console.error("Failed to update default language");
         // Error is handled by the store
-        form.setFieldsValue({ language: globalDefaultLanguage })
+        form.setFieldsValue({ language: globalDefaultLanguage });
       }
     }
-  }
+  };
 
   if (isDesktopApp) {
     return (
@@ -82,14 +75,14 @@ export function AdminAppearanceSettings() {
           </Text>
         </div>
       </Card>
-    )
+    );
   }
 
   return (
     <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('admin.appearanceSettings')}</Title>
+      <Title level={3}>{t("admin.appearanceSettings")}</Title>
 
-      <Card title={t('admin.defaultSystemSettings')}>
+      <Card title={t("admin.defaultSystemSettings")}>
         <Form
           form={form}
           onValuesChange={handleFormChange}
@@ -100,9 +93,9 @@ export function AdminAppearanceSettings() {
           <Flex vertical className="gap-2 w-full">
             <Flex
               justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
+              align={isMobile ? "flex-start" : "center"}
               vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
+              gap={isMobile ? "small" : 0}
             >
               <div>
                 <Text strong>Default Language</Text>
@@ -126,5 +119,5 @@ export function AdminAppearanceSettings() {
         </Form>
       </Card>
     </Flex>
-  )
+  );
 }

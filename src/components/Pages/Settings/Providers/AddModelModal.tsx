@@ -1,4 +1,4 @@
-import { UploadOutlined } from '@ant-design/icons'
+import { UploadOutlined } from "@ant-design/icons";
 import {
   App,
   Button,
@@ -14,106 +14,98 @@ import {
   Tag,
   Typography,
   Upload,
-} from 'antd'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useUpdate } from 'react-use'
-import { useShallow } from 'zustand/react/shallow'
-import { ApiClient } from '../../../../api/client'
-import { LOCAL_FILE_TYPE_OPTIONS } from '../../../../constants/localModelTypes.ts'
+} from "antd";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useUpdate } from "react-use";
+import { useShallow } from "zustand/react/shallow";
+import { ApiClient } from "../../../../api/client";
+import { LOCAL_FILE_TYPE_OPTIONS } from "../../../../constants/localModelTypes.ts";
 import {
-  useProvidersStore,
-  uploadModelFilesAndCreateModel,
-  loadAllModelProviders,
   addNewModelToProvider,
-  clearProvidersError,
   cancelModelUpload,
-} from '../../../../store'
-import {
-  useModelDownloadStore,
-  downloadModelFromRepository,
   clearModelDownload,
-  findDownloadById,
+  clearProvidersError,
   closeDownloadModal,
-} from '../../../../store'
-import { ProviderType } from '../../../../types/api/provider'
-import { Repository } from '../../../../types/api/repository'
-import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from './shared/constants'
-import { ModelParametersSection } from './shared/ModelParametersSection'
-import { UploadProgress } from './UploadProgress'
+  downloadModelFromRepository,
+  findDownloadById,
+  loadAllModelProviders,
+  Stores,
+  uploadModelFilesAndCreateModel,
+  useModelDownloadStore,
+} from "../../../../store";
+import { ProviderType } from "../../../../types/api/provider";
+import { Repository } from "../../../../types/api/repository";
+import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from "./shared/constants";
+import { ModelParametersSection } from "./shared/ModelParametersSection";
+import { UploadProgress } from "./UploadProgress";
 
 export function AddModelModal() {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
-  const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [filteredFiles, setFilteredFiles] = useState<
     { file: File; purpose: string; required: boolean }[]
-  >([])
-  const [repositories, setRepositories] = useState<Repository[]>([])
-  const [loadingRepositories, setLoadingRepositories] = useState(false)
-  const [isInViewMode, setIsInViewMode] = useState(false)
-  const update = useUpdate()
+  >([]);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [loadingRepositories, setLoadingRepositories] = useState(false);
+  const [isInViewMode, setIsInViewMode] = useState(false);
+  const update = useUpdate();
 
   // Function to generate a unique model ID from display name
   const generateModelId = (displayName: string): string => {
     // Convert display name to a URL-friendly ID
     const baseId = displayName
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-      .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
-      .substring(0, 50) // Limit length
+      .replace(/[^a-z0-9\s-]/g, "") // Remove special characters except spaces and hyphens
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
+      .substring(0, 50); // Limit length
 
     // Add timestamp to ensure uniqueness
-    const timestamp = Date.now().toString(36) // Base36 for shorter string
-    return `${baseId}-${timestamp}`
-  }
+    const timestamp = Date.now().toString(36); // Base36 for shorter string
+    return `${baseId}-${timestamp}`;
+  };
 
   // Get values from form instead of separate state
-  const selectedFileFormat = Form.useWatch('file_format', form) || 'safetensors'
-  const modelSource = Form.useWatch('model_source', form) || 'upload'
-  const selectedRepository = Form.useWatch('repository_id', form)
+  const selectedFileFormat =
+    Form.useWatch("file_format", form) || "safetensors";
+  const modelSource = Form.useWatch("model_source", form) || "upload";
+  const selectedRepository = Form.useWatch("repository_id", form);
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
-  }
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  };
 
   // Load available repositories
   const loadRepositories = async () => {
     try {
-      setLoadingRepositories(true)
-      const response = await ApiClient.Repositories.list({})
+      setLoadingRepositories(true);
+      const response = await ApiClient.Repositories.list({});
       // Filter to only enabled repositories
-      const enabledRepos = response.repositories.filter(repo => repo.enabled)
-      setRepositories(enabledRepos)
+      const enabledRepos = response.repositories.filter((repo) => repo.enabled);
+      setRepositories(enabledRepos);
     } catch (error) {
-      console.error('Failed to load repositories:', error)
-      message.error(t('providers.failedToLoadRepositories'))
+      console.error("Failed to load repositories:", error);
+      message.error(t("providers.failedToLoadRepositories"));
     } finally {
-      setLoadingRepositories(false)
+      setLoadingRepositories(false);
     }
-  }
+  };
 
-  const { uploading, uploadProgress, overallUploadProgress } =
-    useProvidersStore(
-      useShallow(state => ({
-        uploading: state.uploading,
-        uploadProgress: state.uploadProgress,
-        overallUploadProgress: state.overallUploadProgress,
-      })),
-    )
+  const { uploading, uploadProgress, overallUploadProgress } = Stores.Providers;
 
   const [currentDownloadId, setCurrentDownloadId] = useState<string | null>(
     null,
-  )
+  );
 
   const {
     downloads,
@@ -123,7 +115,7 @@ export function AddModelModal() {
     modalViewMode,
     modalViewDownloadId,
   } = useModelDownloadStore(
-    useShallow(state => ({
+    useShallow((state) => ({
       downloads: state.downloads,
       modalOpen: state.modalOpen,
       modalProviderId: state.modalProviderId,
@@ -131,79 +123,79 @@ export function AddModelModal() {
       modalViewMode: state.modalViewMode,
       modalViewDownloadId: state.modalViewDownloadId,
     })),
-  )
+  );
 
   // Get values from store
-  const open = modalOpen
-  const providerId = modalProviderId || ''
-  const providerType = (modalProviderType as ProviderType) || 'custom'
-  const viewMode = modalViewMode
-  const downloadId = modalViewDownloadId
+  const open = modalOpen;
+  const providerId = modalProviderId || "";
+  const providerType = (modalProviderType as ProviderType) || "custom";
+  const viewMode = modalViewMode;
+  const downloadId = modalViewDownloadId;
 
   // Get download instance - either external download or current download
   const viewDownload =
-    viewMode && downloadId ? findDownloadById(downloadId) : null
+    viewMode && downloadId ? findDownloadById(downloadId) : null;
   const internalDownload = currentDownloadId
     ? downloads[currentDownloadId]
-    : null
-  const currentDownload = viewMode ? viewDownload : internalDownload
-  const downloading = currentDownload?.downloading ?? false
-  const downloadProgress = currentDownload?.progress ?? null
+    : null;
+  const currentDownload = viewMode ? viewDownload : internalDownload;
+  const downloading = currentDownload?.downloading ?? false;
+  const downloadProgress = currentDownload?.progress ?? null;
 
   const handleSubmit = async () => {
     try {
-      setLoading(true)
-      clearProvidersError() // Clear any previous errors
-      const values = await form.validateFields()
+      setLoading(true);
+      clearProvidersError(); // Clear any previous errors
+      const values = await form.validateFields();
 
-      if (providerType === 'local') {
+      if (providerType === "local") {
         // Auto-generate model ID from display name for Local models
-        const modelId = generateModelId(values.alias || 'model')
+        const modelId = generateModelId(values.alias || "model");
 
-        if (values.model_source === 'upload') {
+        if (values.model_source === "upload") {
           // Step 1: Upload files using new workflow
           if (selectedFiles.length === 0) {
-            message.error(t('providers.selectModelFolderRequired'))
-            return
+            message.error(t("providers.selectModelFolderRequired"));
+            return;
           }
 
           if (!values.main_filename) {
-            message.error(t('providers.localFilenameRequired'))
-            return
+            message.error(t("providers.localFilenameRequired"));
+            return;
           }
 
           // Comprehensive validation of selected files
           const validation = validateModelFiles(
             selectedFiles,
             values.file_format,
-          )
+          );
 
           if (!validation.isValid) {
-            validation.errors.forEach(error => {
-              message.error(error)
-            })
-            return
+            validation.errors.forEach((error) => {
+              message.error(error);
+            });
+            return;
           }
 
           // Show warnings but allow upload to continue
           if (validation.warnings.length > 0) {
-            validation.warnings.forEach(warning => {
-              message.warning(warning)
-            })
+            validation.warnings.forEach((warning) => {
+              message.warning(warning);
+            });
           }
 
           // Validate that the specified main file exists in filtered files
-          const filesToUpload = filteredFiles.map(item => item.file)
+          const filesToUpload = filteredFiles.map((item) => item.file);
           const mainFile = filesToUpload.find(
-            file => file.name === values.main_filename,
-          )
+            (file) => file.name === values.main_filename,
+          );
           if (!mainFile) {
-            message.error(t('providers.mainFileNotFound'))
-            return
+            message.error(t("providers.mainFileNotFound"));
+            return;
           }
 
           // Switch to view mode to show upload progress
-          setIsInViewMode(true)
+          setIsInViewMode(true);
 
           // Upload and auto-commit the files as a model in a single request
           await uploadModelFilesAndCreateModel({
@@ -216,34 +208,34 @@ export function AddModelModal() {
             file_format: values.file_format,
             capabilities: values.capabilities, // Include capabilities from form
             settings: values.settings, // Include model settings from form
-          })
+          });
 
-          message.success(t('providers.modelFolderUploadedSuccessfully'))
+          message.success(t("providers.modelFolderUploadedSuccessfully"));
 
           // Clear upload progress after successful upload
-          cancelModelUpload()
+          cancelModelUpload();
 
           // Refresh providers list after successful upload
-          await loadAllModelProviders()
-        } else if (values.model_source === 'repository') {
+          await loadAllModelProviders();
+        } else if (values.model_source === "repository") {
           // Repository-based download workflow
           if (!values.repository_id) {
-            message.error(t('providers.repositoryRequired'))
-            return
+            message.error(t("providers.repositoryRequired"));
+            return;
           }
 
           if (!values.repository_path) {
-            message.error(t('providers.repositoryPathRequired'))
-            return
+            message.error(t("providers.repositoryPathRequired"));
+            return;
           }
 
           // Get the selected repository details
           const selectedRepo = repositories.find(
-            repo => repo.id === values.repository_id,
-          )
+            (repo) => repo.id === values.repository_id,
+          );
           if (!selectedRepo) {
-            message.error(t('providers.repositoryNotFound'))
-            return
+            message.error(t("providers.repositoryNotFound"));
+            return;
           }
 
           // Call the repository download API through store
@@ -260,23 +252,23 @@ export function AddModelModal() {
               file_format: values.file_format,
               capabilities: values.capabilities || {},
               settings: values.settings || {},
-            })
+            });
 
             // Track this download and switch to view mode
-            setCurrentDownloadId(downloadId)
-            setIsInViewMode(true)
+            setCurrentDownloadId(downloadId);
+            setIsInViewMode(true);
 
             // Don't close modal - stay open in view mode
             // Don't call onSubmit yet - wait for download completion
 
-            message.success('Download started successfully')
+            message.success("Download started successfully");
           } catch (error) {
-            console.error('Failed to download from repository:', error)
-            message.error(t('providers.modelDownloadFromRepositoryFailed'))
+            console.error("Failed to download from repository:", error);
+            message.error(t("providers.modelDownloadFromRepositoryFailed"));
             // Switch back to add mode on error
-            setIsInViewMode(false)
-            setCurrentDownloadId(null)
-            return
+            setIsInViewMode(false);
+            setCurrentDownloadId(null);
+            return;
           }
         }
       } else {
@@ -291,83 +283,83 @@ export function AddModelModal() {
             tools: values.tools || false,
             codeInterpreter: values.codeInterpreter || false,
           },
-        }
+        };
 
         // Remove capability checkboxes from main data
-        delete modelData.vision
-        delete modelData.audio
-        delete modelData.tools
-        delete modelData.codeInterpreter
+        delete modelData.vision;
+        delete modelData.audio;
+        delete modelData.tools;
+        delete modelData.codeInterpreter;
 
-        await addNewModelToProvider(providerId, modelData)
-        await loadAllModelProviders()
+        await addNewModelToProvider(providerId, modelData);
+        await loadAllModelProviders();
 
-        form.resetFields()
-        setSelectedFiles([])
-        setFilteredFiles([])
-        closeDownloadModal()
+        form.resetFields();
+        setSelectedFiles([]);
+        setFilteredFiles([]);
+        closeDownloadModal();
       }
 
       // Only close modal and reset for non-local providers or when not starting a download
-      if (providerType !== 'local' || !isInViewMode) {
+      if (providerType !== "local" || !isInViewMode) {
         // This code was moved from after the local provider section
         // It should only run when we're not switching to view mode
       }
     } catch (error) {
-      console.error('Failed to add model:', error)
+      console.error("Failed to add model:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Load repositories and pre-fill form when modal opens
   useEffect(() => {
-    if (open && providerType === 'local') {
+    if (open && providerType === "local") {
       // Load available repositories
-      loadRepositories()
+      loadRepositories();
 
       if (viewMode && viewDownload) {
         // In view mode, populate form with download data
         form.setFieldsValue({
           alias: viewDownload.request.alias,
-          description: viewDownload.request.description || '',
+          description: viewDownload.request.description || "",
           file_format: viewDownload.request.file_format,
-          model_source: 'repository',
+          model_source: "repository",
           repository_path: viewDownload.request.repository_path,
           main_filename: viewDownload.request.main_filename,
-          repository_branch: viewDownload.request.repository_branch || 'main',
+          repository_branch: viewDownload.request.repository_branch || "main",
           capabilities: viewDownload.request.capabilities || {},
           settings: viewDownload.request.settings || {},
-        })
+        });
       } else if (!viewMode) {
         // Set form values for quick testing with a tiny chat model (only in add mode)
         form.setFieldsValue({
-          alias: 'TinyLlama Chat Model', // Only display name for Local models
+          alias: "TinyLlama Chat Model", // Only display name for Local models
           description:
-            'Small 1.1B parameter chat model for quick testing (~637MB)',
-          file_format: 'safetensors',
-          model_source: 'repository',
-          repository_path: 'meta-llama/Llama-3.1-8B-Instruct',
-          main_filename: 'model.safetensors',
-          repository_branch: 'main',
+            "Small 1.1B parameter chat model for quick testing (~637MB)",
+          file_format: "safetensors",
+          model_source: "repository",
+          repository_path: "meta-llama/Llama-3.1-8B-Instruct",
+          main_filename: "model.safetensors",
+          repository_branch: "main",
           settings: {},
-        })
+        });
       }
-      update() // Force re-render to update form watchers
+      update(); // Force re-render to update form watchers
     }
-  }, [open, providerType, viewMode, viewDownload, form, update])
+  }, [open, providerType, viewMode, viewDownload, form, update]);
 
   // Clear errors and downloads when modal closes
   useEffect(() => {
     if (!open) {
-      clearProvidersError()
+      clearProvidersError();
       if (currentDownloadId) {
-        clearModelDownload(currentDownloadId)
-        setCurrentDownloadId(null)
+        clearModelDownload(currentDownloadId);
+        setCurrentDownloadId(null);
       }
-      setIsInViewMode(false)
+      setIsInViewMode(false);
     }
-  }, [open, currentDownloadId])
+  }, [open, currentDownloadId]);
 
   // Watch for download completion or errors to switch back to add mode
   useEffect(() => {
@@ -376,386 +368,391 @@ export function AddModelModal() {
       if (currentDownload.error) {
         // Switch back to add mode on error after a short delay
         setTimeout(() => {
-          setIsInViewMode(false)
-          setCurrentDownloadId(null)
-        }, 3000) // Show error for 3 seconds before switching back
+          setIsInViewMode(false);
+          setCurrentDownloadId(null);
+        }, 3000); // Show error for 3 seconds before switching back
       } else {
         // Download completed successfully
         const handleSuccessfulDownload = async () => {
           try {
             // Update the providers store with the new model
-            await loadAllModelProviders()
+            await loadAllModelProviders();
 
-            message.success(t('providers.modelDownloadFromRepositoryCompleted'))
+            message.success(
+              t("providers.modelDownloadFromRepositoryCompleted"),
+            );
           } catch (error) {
-            console.error('Failed to update after download completion:', error)
+            console.error("Failed to update after download completion:", error);
           }
-        }
+        };
 
-        handleSuccessfulDownload()
+        handleSuccessfulDownload();
       }
     }
-  }, [isInViewMode, currentDownload, loadAllModelProviders, t])
+  }, [isInViewMode, currentDownload, loadAllModelProviders, t]);
 
   const handleFolderSelect = (info: any) => {
-    const fileList = info.fileList || []
+    const fileList = info.fileList || [];
     const files = fileList.map(
       (file: any) => file.originFileObj || file.file || file,
-    )
+    );
 
     if (files.length > 0) {
       // Get the common folder path from the first file
-      const firstFile = files[0]
-      let folderPath = ''
+      const firstFile = files[0];
+      let folderPath = "";
 
       if (firstFile.webkitRelativePath) {
-        const pathParts = firstFile.webkitRelativePath.split('/')
-        folderPath = pathParts.slice(0, -1).join('/')
+        const pathParts = firstFile.webkitRelativePath.split("/");
+        folderPath = pathParts.slice(0, -1).join("/");
       } else if (firstFile.path) {
-        const pathParts = firstFile.path.split('/')
-        folderPath = pathParts.slice(0, -1).join('/')
+        const pathParts = firstFile.path.split("/");
+        folderPath = pathParts.slice(0, -1).join("/");
       }
 
-      setSelectedFiles(files)
+      setSelectedFiles(files);
       form.setFieldsValue({
-        local_folder_path: folderPath || 'Selected folder',
-      })
+        local_folder_path: folderPath || "Selected folder",
+      });
 
       // Categorize and filter files based on selected format
-      const currentFormat = selectedFileFormat
-      const categorizedFiles = categorizeFiles(files, currentFormat)
-      setFilteredFiles(categorizedFiles)
+      const currentFormat = selectedFileFormat;
+      const categorizedFiles = categorizeFiles(files, currentFormat);
+      setFilteredFiles(categorizedFiles);
 
       // Validate the filtered files
-      const validation = validateModelFiles(files, currentFormat)
+      const validation = validateModelFiles(files, currentFormat);
 
       // Show validation errors
       if (validation.errors.length > 0) {
-        validation.errors.forEach(error => {
-          message.error(error)
-        })
+        validation.errors.forEach((error) => {
+          message.error(error);
+        });
       }
 
       // Show validation warnings
       if (validation.warnings.length > 0) {
-        validation.warnings.forEach(warning => {
-          message.warning(warning)
-        })
+        validation.warnings.forEach((warning) => {
+          message.warning(warning);
+        });
       }
 
       // Try to find the main model file using fuzzy matching
-      const suggestedMainFile = findMainModelFile(files, currentFormat)
+      const suggestedMainFile = findMainModelFile(files, currentFormat);
 
       if (suggestedMainFile) {
         form.setFieldsValue({
           main_filename: suggestedMainFile,
-        })
+        });
         message.success(
           `Selected ${categorizedFiles.length} relevant files from folder. Suggested main file: ${suggestedMainFile}`,
-        )
+        );
       } else {
         message.success(
           `Selected ${categorizedFiles.length} relevant files from folder`,
-        )
+        );
       }
     }
-  }
+  };
 
   const handleFileFormatChange = (value: string) => {
     // Clear the current filename when format changes to guide user
     form.setFieldsValue({
-      main_filename: '',
-    })
+      main_filename: "",
+    });
 
     // Recategorize files if we have selected files
     if (selectedFiles.length > 0) {
-      const categorizedFiles = categorizeFiles(selectedFiles, value)
-      setFilteredFiles(categorizedFiles)
+      const categorizedFiles = categorizeFiles(selectedFiles, value);
+      setFilteredFiles(categorizedFiles);
 
       // Try to auto-fill with a new main file suggestion
-      const suggestedMainFile = findMainModelFile(selectedFiles, value)
+      const suggestedMainFile = findMainModelFile(selectedFiles, value);
       if (suggestedMainFile) {
         form.setFieldsValue({
           main_filename: suggestedMainFile,
-        })
+        });
       }
     }
 
     console.log(
-      'File format changed to:',
+      "File format changed to:",
       value,
-      'Current format:',
+      "Current format:",
       selectedFileFormat,
-    )
+    );
 
-    update() // Force re-render to update form watchers
-  }
+    update(); // Force re-render to update form watchers
+  };
 
   const getFilenamePlaceholder = (fileFormat: string) => {
     switch (fileFormat) {
-      case 'safetensors':
-        return 'model.safetensors'
-      case 'pytorch':
-        return 'pytorch_model.bin'
-      case 'gguf':
-        return 'model.gguf'
+      case "safetensors":
+        return "model.safetensors";
+      case "pytorch":
+        return "pytorch_model.bin";
+      case "gguf":
+        return "model.gguf";
       default:
-        return 'pytorch_model.bin'
+        return "pytorch_model.bin";
     }
-  }
+  };
 
   const validateFilename = (filename: string, fileFormat: string) => {
-    if (!filename) return false
+    if (!filename) return false;
 
     const validExtensions = {
-      safetensors: ['.safetensors'],
-      pytorch: ['.bin', '.pt', '.pth'],
-      gguf: ['.gguf'],
-    }
+      safetensors: [".safetensors"],
+      pytorch: [".bin", ".pt", ".pth"],
+      gguf: [".gguf"],
+    };
 
     const extensions = validExtensions[
       fileFormat as keyof typeof validExtensions
-    ] || ['.bin']
-    return extensions.some(ext => filename.toLowerCase().endsWith(ext))
-  }
+    ] || [".bin"];
+    return extensions.some((ext) => filename.toLowerCase().endsWith(ext));
+  };
 
   // File validation utilities for different model formats
   const validateModelFiles = (files: File[], fileFormat: string) => {
-    const errors: string[] = []
-    const warnings: string[] = []
-    const fileNames = files.map(f => f.name.toLowerCase())
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    const fileNames = files.map((f) => f.name.toLowerCase());
 
     // Common required files across formats
     const hasConfigJson = fileNames.some(
-      name =>
-        name === 'config.json' ||
-        (name.includes('config') && name.endsWith('.json')),
-    )
+      (name) =>
+        name === "config.json" ||
+        (name.includes("config") && name.endsWith(".json")),
+    );
     const hasTokenizerJson = fileNames.some(
-      name =>
-        name === 'tokenizer.json' ||
-        (name.includes('tokenizer') && name.endsWith('.json')),
-    )
+      (name) =>
+        name === "tokenizer.json" ||
+        (name.includes("tokenizer") && name.endsWith(".json")),
+    );
     const hasTokenizerConfig = fileNames.some(
-      name =>
-        name === 'tokenizer_config.json' || name.includes('tokenizer_config'),
-    )
+      (name) =>
+        name === "tokenizer_config.json" || name.includes("tokenizer_config"),
+    );
 
     // Format-specific validation - only check file extensions
     switch (fileFormat) {
-      case 'safetensors': {
+      case "safetensors": {
         // Check for any SafeTensors file
-        const safetensorsFiles = fileNames.filter(name =>
-          name.endsWith('.safetensors'),
-        )
+        const safetensorsFiles = fileNames.filter((name) =>
+          name.endsWith(".safetensors"),
+        );
         if (safetensorsFiles.length === 0) {
           errors.push(
-            'Missing SafeTensors model file (.safetensors extension required)',
-          )
+            "Missing SafeTensors model file (.safetensors extension required)",
+          );
         } else if (safetensorsFiles.length > 1) {
           // Check for index file if multiple shards
           const hasIndex = fileNames.some(
-            name =>
-              name === 'model.safetensors.index.json' ||
-              name === 'pytorch_model.safetensors.index.json',
-          )
+            (name) =>
+              name === "model.safetensors.index.json" ||
+              name === "pytorch_model.safetensors.index.json",
+          );
           if (!hasIndex) {
             warnings.push(
-              'Multiple SafeTensors files found but no index file detected',
-            )
+              "Multiple SafeTensors files found but no index file detected",
+            );
           }
         }
-        break
+        break;
       }
 
-      case 'pytorch': {
+      case "pytorch": {
         // Check for any PyTorch model file
         const pytorchFiles = fileNames.filter(
-          name =>
-            name.endsWith('.bin') ||
-            name.endsWith('.pt') ||
-            name.endsWith('.pth'),
-        )
+          (name) =>
+            name.endsWith(".bin") ||
+            name.endsWith(".pt") ||
+            name.endsWith(".pth"),
+        );
         if (pytorchFiles.length === 0) {
           errors.push(
-            'Missing PyTorch model file (.bin, .pt, or .pth extension required)',
-          )
+            "Missing PyTorch model file (.bin, .pt, or .pth extension required)",
+          );
         } else if (pytorchFiles.length > 1) {
           // Check for index file if multiple shards
           const hasIndex = fileNames.some(
-            name => name === 'pytorch_model.bin.index.json',
-          )
+            (name) => name === "pytorch_model.bin.index.json",
+          );
           if (!hasIndex) {
             warnings.push(
-              'Multiple PyTorch files found but no index file detected',
-            )
+              "Multiple PyTorch files found but no index file detected",
+            );
           }
         }
-        break
+        break;
       }
 
-      case 'gguf': {
+      case "gguf": {
         // Check for any GGUF file
-        const ggufFiles = fileNames.filter(name => name.endsWith('.gguf'))
+        const ggufFiles = fileNames.filter((name) => name.endsWith(".gguf"));
         if (ggufFiles.length === 0) {
-          errors.push('Missing GGUF model file (.gguf extension required)')
+          errors.push("Missing GGUF model file (.gguf extension required)");
         }
 
         // GGUF files are self-contained, so fewer requirements
         if (!hasConfigJson) {
           warnings.push(
-            'config.json recommended for GGUF models but not strictly required',
-          )
+            "config.json recommended for GGUF models but not strictly required",
+          );
         }
-        break
+        break;
       }
 
       default:
-        errors.push(`Unsupported file format: ${fileFormat}`)
+        errors.push(`Unsupported file format: ${fileFormat}`);
     }
 
     // Common file checks
-    if (!hasConfigJson && fileFormat !== 'gguf') {
-      errors.push('Missing config.json file (required for model configuration)')
+    if (!hasConfigJson && fileFormat !== "gguf") {
+      errors.push(
+        "Missing config.json file (required for model configuration)",
+      );
     }
 
     if (!hasTokenizerJson && !hasTokenizerConfig) {
       warnings.push(
-        'Missing tokenizer files (tokenizer.json or tokenizer_config.json) - may affect text processing',
-      )
+        "Missing tokenizer files (tokenizer.json or tokenizer_config.json) - may affect text processing",
+      );
     }
 
     // Check for other common files
     const hasVocab = fileNames.some(
-      name =>
-        name.includes('vocab') ||
-        name.includes('merges') ||
-        name === 'special_tokens_map.json',
-    )
+      (name) =>
+        name.includes("vocab") ||
+        name.includes("merges") ||
+        name === "special_tokens_map.json",
+    );
     if (!hasVocab) {
       warnings.push(
-        'Missing vocabulary files - tokenizer may not work correctly',
-      )
+        "Missing vocabulary files - tokenizer may not work correctly",
+      );
     }
 
-    return { errors, warnings, isValid: errors.length === 0 }
-  }
+    return { errors, warnings, isValid: errors.length === 0 };
+  };
 
   // Categorize files based on their purpose and format
   const categorizeFiles = (
     files: File[],
     fileFormat: string,
   ): { file: File; purpose: string; required: boolean }[] => {
-    const categorized: { file: File; purpose: string; required: boolean }[] = []
+    const categorized: { file: File; purpose: string; required: boolean }[] =
+      [];
 
     for (const file of files) {
-      const fileName = file.name.toLowerCase()
-      let purpose = ''
-      let required = false
-      let include = false
+      const fileName = file.name.toLowerCase();
+      let purpose = "";
+      let required = false;
+      let include = false;
 
       // Model files (format-specific)
-      if (fileFormat === 'safetensors' && fileName.endsWith('.safetensors')) {
-        purpose = 'Main model file (SafeTensors)'
-        required = true
-        include = true
+      if (fileFormat === "safetensors" && fileName.endsWith(".safetensors")) {
+        purpose = "Main model file (SafeTensors)";
+        required = true;
+        include = true;
       } else if (
-        fileFormat === 'pytorch' &&
-        (fileName.endsWith('.bin') ||
-          fileName.endsWith('.pt') ||
-          fileName.endsWith('.pth'))
+        fileFormat === "pytorch" &&
+        (fileName.endsWith(".bin") ||
+          fileName.endsWith(".pt") ||
+          fileName.endsWith(".pth"))
       ) {
-        purpose = 'Main model file (PyTorch)'
-        required = true
-        include = true
-      } else if (fileFormat === 'gguf' && fileName.endsWith('.gguf')) {
-        purpose = 'Main model file (GGUF)'
-        required = true
-        include = true
+        purpose = "Main model file (PyTorch)";
+        required = true;
+        include = true;
+      } else if (fileFormat === "gguf" && fileName.endsWith(".gguf")) {
+        purpose = "Main model file (GGUF)";
+        required = true;
+        include = true;
       }
       // Configuration files
-      else if (fileName === 'config.json') {
-        purpose = 'Model configuration'
-        required = fileFormat !== 'gguf'
-        include = true
+      else if (fileName === "config.json") {
+        purpose = "Model configuration";
+        required = fileFormat !== "gguf";
+        include = true;
       }
       // Tokenizer files
-      else if (fileName === 'tokenizer.json') {
-        purpose = 'Tokenizer configuration'
-        required = false
-        include = true
-      } else if (fileName === 'tokenizer_config.json') {
-        purpose = 'Tokenizer configuration'
-        required = false
-        include = true
-      } else if (fileName === 'special_tokens_map.json') {
-        purpose = 'Special tokens mapping'
-        required = false
-        include = true
+      else if (fileName === "tokenizer.json") {
+        purpose = "Tokenizer configuration";
+        required = false;
+        include = true;
+      } else if (fileName === "tokenizer_config.json") {
+        purpose = "Tokenizer configuration";
+        required = false;
+        include = true;
+      } else if (fileName === "special_tokens_map.json") {
+        purpose = "Special tokens mapping";
+        required = false;
+        include = true;
       }
       // Vocabulary files
-      else if (fileName.includes('vocab') && fileName.endsWith('.json')) {
-        purpose = 'Vocabulary file'
-        required = false
-        include = true
-      } else if (fileName === 'merges.txt') {
-        purpose = 'BPE merges file'
-        required = false
-        include = true
+      else if (fileName.includes("vocab") && fileName.endsWith(".json")) {
+        purpose = "Vocabulary file";
+        required = false;
+        include = true;
+      } else if (fileName === "merges.txt") {
+        purpose = "BPE merges file";
+        required = false;
+        include = true;
       }
       // Index files for sharded models
       else if (
-        fileName === 'model.safetensors.index.json' ||
-        fileName === 'pytorch_model.safetensors.index.json' ||
-        fileName === 'pytorch_model.bin.index.json'
+        fileName === "model.safetensors.index.json" ||
+        fileName === "pytorch_model.safetensors.index.json" ||
+        fileName === "pytorch_model.bin.index.json"
       ) {
-        purpose = 'Model sharding index'
-        required = false
-        include = true
+        purpose = "Model sharding index";
+        required = false;
+        include = true;
       }
       // README and other documentation
-      else if (fileName === 'readme.md' || fileName === 'model_card.md') {
-        purpose = 'Documentation'
-        required = false
-        include = true
+      else if (fileName === "readme.md" || fileName === "model_card.md") {
+        purpose = "Documentation";
+        required = false;
+        include = true;
       }
       // Generation config
-      else if (fileName === 'generation_config.json') {
-        purpose = 'Generation configuration'
-        required = false
-        include = true
+      else if (fileName === "generation_config.json") {
+        purpose = "Generation configuration";
+        required = false;
+        include = true;
       }
 
       if (include) {
-        categorized.push({ file, purpose, required })
+        categorized.push({ file, purpose, required });
       }
     }
 
     return categorized.sort((a, b) => {
       // Sort by: required first, then alphabetically by purpose
       if (a.required !== b.required) {
-        return a.required ? -1 : 1
+        return a.required ? -1 : 1;
       }
-      return a.purpose.localeCompare(b.purpose)
-    })
-  }
+      return a.purpose.localeCompare(b.purpose);
+    });
+  };
 
   // Format file size to appropriate unit (B, KB, MB, GB)
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B'
+    if (bytes === 0) return "0 B";
 
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     if (i === 0) {
-      return `${bytes} B`
+      return `${bytes} B`;
     } else if (i === 1) {
-      return `${(bytes / k).toFixed(1)} KB`
+      return `${(bytes / k).toFixed(1)} KB`;
     } else {
-      return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+      return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
     }
-  }
+  };
 
   // Find main model file by extension - auto-fill the first matching file
   const findMainModelFile = (
@@ -763,24 +760,24 @@ export function AddModelModal() {
     fileFormat: string,
   ): string | null => {
     const validExtensions = {
-      safetensors: ['.safetensors'],
-      pytorch: ['.bin', '.pt', '.pth'],
-      gguf: ['.gguf'],
-    }
+      safetensors: [".safetensors"],
+      pytorch: [".bin", ".pt", ".pth"],
+      gguf: [".gguf"],
+    };
 
     const extensions =
-      validExtensions[fileFormat as keyof typeof validExtensions] || []
+      validExtensions[fileFormat as keyof typeof validExtensions] || [];
 
     // Find the first file with a matching extension
     for (const file of files) {
-      const fileName = file.name.toLowerCase()
-      if (extensions.some(ext => fileName.endsWith(ext))) {
-        return file.name
+      const fileName = file.name.toLowerCase();
+      if (extensions.some((ext) => fileName.endsWith(ext))) {
+        return file.name;
       }
     }
 
-    return null
-  }
+    return null;
+  };
 
   const handleCancel = () => {
     if (
@@ -788,26 +785,26 @@ export function AddModelModal() {
       currentDownload &&
       currentDownload.downloading
     ) {
-      clearModelDownload(currentDownload.id)
+      clearModelDownload(currentDownload.id);
     }
     if (isInViewMode) {
-      setIsInViewMode(false)
-      setCurrentDownloadId(null)
+      setIsInViewMode(false);
+      setCurrentDownloadId(null);
     }
-    closeDownloadModal()
-  }
+    closeDownloadModal();
+  };
 
   const handleBackToAddMode = () => {
-    setIsInViewMode(false)
-    setCurrentDownloadId(null)
-  }
+    setIsInViewMode(false);
+    setCurrentDownloadId(null);
+  };
 
-  const currentViewMode = viewMode || isInViewMode
+  const currentViewMode = viewMode || isInViewMode;
 
   return (
     <Modal
       title={
-        currentViewMode ? 'View Download Details' : t('providers.addModel')
+        currentViewMode ? "View Download Details" : t("providers.addModel")
       }
       open={open}
       onCancel={closeDownloadModal}
@@ -815,7 +812,7 @@ export function AddModelModal() {
         currentViewMode
           ? [
               <Button key="close" onClick={closeDownloadModal}>
-                {t('buttons.close')}
+                {t("buttons.close")}
               </Button>,
               !viewMode && !currentDownload?.downloading && (
                 <Button key="back" onClick={handleBackToAddMode}>
@@ -824,13 +821,13 @@ export function AddModelModal() {
               ),
               currentDownload?.downloading && (
                 <Button key="cancel" danger onClick={handleCancel}>
-                  {t('buttons.cancel')} Download
+                  {t("buttons.cancel")} Download
                 </Button>
               ),
             ].filter(Boolean)
           : [
               <Button key="cancel" onClick={closeDownloadModal}>
-                {t('buttons.cancel')}
+                {t("buttons.cancel")}
               </Button>,
               <Button
                 key="submit"
@@ -838,7 +835,7 @@ export function AddModelModal() {
                 loading={loading}
                 onClick={handleSubmit}
               >
-                {t('providers.addModel')}
+                {t("providers.addModel")}
               </Button>,
             ]
       }
@@ -851,39 +848,39 @@ export function AddModelModal() {
         layout="vertical"
         disabled={currentViewMode}
         initialValues={{
-          file_format: 'safetensors',
-          model_source: 'upload',
-          local_folder_path: '',
-          main_filename: '',
+          file_format: "safetensors",
+          model_source: "upload",
+          local_folder_path: "",
+          main_filename: "",
           settings: {},
         }}
       >
         <ModelParametersSection
           parameters={
-            providerType === 'local' ? LOCAL_MODEL_FIELDS : BASIC_MODEL_FIELDS
+            providerType === "local" ? LOCAL_MODEL_FIELDS : BASIC_MODEL_FIELDS
           }
         />
 
         <Form.Item
           name="file_format"
-          label={t('providers.fileFormat')}
+          label={t("providers.fileFormat")}
           rules={[
             {
               required: true,
-              message: t('providers.fileFormatRequired'),
+              message: t("providers.fileFormatRequired"),
             },
           ]}
         >
           <Select
-            placeholder={t('providers.selectFileFormat')}
+            placeholder={t("providers.selectFileFormat")}
             onChange={handleFileFormatChange}
-            options={LOCAL_FILE_TYPE_OPTIONS.map(option => ({
+            options={LOCAL_FILE_TYPE_OPTIONS.map((option) => ({
               value: option.value,
               label: option.label,
               description: option.description,
             }))}
-            optionRender={option => (
-              <div className={'flex flex-col'}>
+            optionRender={(option) => (
+              <div className={"flex flex-col"}>
                 <Typography.Text>{option.label}</Typography.Text>
                 <Typography.Text type="secondary">
                   {option.data.description}
@@ -893,46 +890,46 @@ export function AddModelModal() {
           />
         </Form.Item>
 
-        {providerType === 'local' && (
+        {providerType === "local" && (
           <Form.Item
             name="model_source"
-            label={t('providers.modelSource')}
+            label={t("providers.modelSource")}
             rules={[
               {
                 required: true,
-                message: t('providers.modelSourceRequired'),
+                message: t("providers.modelSourceRequired"),
               },
             ]}
           >
             <Radio.Group
-              onChange={e => {
-                form.setFieldValue('model_source', e.target.value)
-                update() // Force re-render to update form watchers
+              onChange={(e) => {
+                form.setFieldValue("model_source", e.target.value);
+                update(); // Force re-render to update form watchers
               }}
               value={modelSource}
             >
-              <Radio value="upload">{t('providers.uploadLocal')}</Radio>
+              <Radio value="upload">{t("providers.uploadLocal")}</Radio>
               <Radio value="repository">
-                {t('providers.downloadFromRepository')}
+                {t("providers.downloadFromRepository")}
               </Radio>
             </Radio.Group>
           </Form.Item>
         )}
 
-        {providerType === 'local' && modelSource === 'upload' && (
+        {providerType === "local" && modelSource === "upload" && (
           <>
             <Form.Item
               name="local_folder_path"
-              label={t('providers.localFolderPath')}
+              label={t("providers.localFolderPath")}
               rules={[
                 {
                   required: true,
-                  message: t('providers.selectModelFolderRequired'),
+                  message: t("providers.selectModelFolderRequired"),
                 },
               ]}
             >
               <Input
-                placeholder={t('providers.selectModelFolder')}
+                placeholder={t("providers.selectModelFolder")}
                 addonBefore="📁"
                 addonAfter={
                   <Upload
@@ -944,10 +941,10 @@ export function AddModelModal() {
                   >
                     <Button
                       icon={<UploadOutlined />}
-                      type={'text'}
+                      type={"text"}
                       size="small"
                     >
-                      {t('providers.browse')}
+                      {t("providers.browse")}
                     </Button>
                   </Upload>
                 }
@@ -956,29 +953,29 @@ export function AddModelModal() {
 
             <Form.Item
               name="main_filename"
-              label={t('providers.localFilename')}
+              label={t("providers.localFilename")}
               rules={[
                 {
                   required: true,
-                  message: t('providers.localFilenameRequired'),
+                  message: t("providers.localFilenameRequired"),
                 },
                 {
                   validator: (_, value) => {
-                    if (!value) return Promise.resolve()
+                    if (!value) return Promise.resolve();
                     if (validateFilename(value, selectedFileFormat)) {
-                      return Promise.resolve()
+                      return Promise.resolve();
                     }
                     const placeholder =
-                      getFilenamePlaceholder(selectedFileFormat)
+                      getFilenamePlaceholder(selectedFileFormat);
                     return Promise.reject(
                       new Error(
                         `Filename must match selected format (e.g., ${placeholder})`,
                       ),
-                    )
+                    );
                   },
                 },
               ]}
-              help={t('providers.localFilenameHelp')}
+              help={t("providers.localFilenameHelp")}
             >
               <Input placeholder={getFilenamePlaceholder(selectedFileFormat)} />
             </Form.Item>
@@ -993,8 +990,8 @@ export function AddModelModal() {
                   <List
                     size="small"
                     dataSource={filteredFiles}
-                    className={'max-h-56 overflow-auto'}
-                    renderItem={item => (
+                    className={"max-h-56 overflow-auto"}
+                    renderItem={(item) => (
                       <List.Item>
                         <List.Item.Meta
                           title={
@@ -1003,7 +1000,7 @@ export function AddModelModal() {
                             </Typography.Text>
                           }
                           description={
-                            <Flex className={'gap-2'}>
+                            <Flex className={"gap-2"}>
                               <Typography.Text type="secondary">
                                 {item.purpose}
                               </Typography.Text>
@@ -1018,7 +1015,7 @@ export function AddModelModal() {
                     )}
                   />
                   <Typography.Text type="secondary">
-                    Total size:{' '}
+                    Total size:{" "}
                     {formatFileSize(
                       filteredFiles.reduce(
                         (total, item) => total + item.file.size,
@@ -1032,28 +1029,28 @@ export function AddModelModal() {
           </>
         )}
 
-        {providerType === 'local' &&
-          (modelSource === 'repository' || currentViewMode) && (
+        {providerType === "local" &&
+          (modelSource === "repository" || currentViewMode) && (
             <>
               <Form.Item
                 name="repository_id"
-                label={t('providers.selectRepository')}
+                label={t("providers.selectRepository")}
                 rules={[
                   {
                     required: true,
-                    message: t('providers.repositoryRequired'),
+                    message: t("providers.repositoryRequired"),
                   },
                 ]}
               >
                 <Select
-                  placeholder={t('providers.selectRepositoryPlaceholder')}
+                  placeholder={t("providers.selectRepositoryPlaceholder")}
                   loading={loadingRepositories}
-                  options={repositories.map(repo => ({
+                  options={repositories.map((repo) => ({
                     value: repo.id,
                     label: repo.name,
                     description: repo.url,
                   }))}
-                  optionRender={option => (
+                  optionRender={(option) => (
                     <div className="flex flex-col">
                       <Typography.Text>{option.label}</Typography.Text>
                       <Typography.Text type="secondary">
@@ -1066,50 +1063,50 @@ export function AddModelModal() {
 
               <Form.Item
                 name="repository_path"
-                label={t('providers.repositoryPath')}
+                label={t("providers.repositoryPath")}
                 rules={[
                   {
                     required: true,
-                    message: t('providers.repositoryPathRequired'),
+                    message: t("providers.repositoryPathRequired"),
                   },
                   {
                     pattern: /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+$/,
-                    message: t('providers.repositoryPathFormat'),
+                    message: t("providers.repositoryPathFormat"),
                   },
                 ]}
               >
                 <Input
                   placeholder="microsoft/DialoGPT-medium"
                   addonBefore={
-                    repositories.find(repo => repo.id === selectedRepository)
-                      ?.name === 'Hugging Face Hub'
-                      ? '🤗'
-                      : '📁'
+                    repositories.find((repo) => repo.id === selectedRepository)
+                      ?.name === "Hugging Face Hub"
+                      ? "🤗"
+                      : "📁"
                   }
                 />
               </Form.Item>
 
               <Form.Item
                 name="main_filename"
-                label={t('providers.repositoryFilename')}
+                label={t("providers.repositoryFilename")}
                 rules={[
                   {
                     required: true,
-                    message: t('providers.repositoryFilenameRequired'),
+                    message: t("providers.repositoryFilenameRequired"),
                   },
                   {
                     validator: (_, value) => {
-                      if (!value) return Promise.resolve()
+                      if (!value) return Promise.resolve();
                       if (validateFilename(value, selectedFileFormat)) {
-                        return Promise.resolve()
+                        return Promise.resolve();
                       }
                       const placeholder =
-                        getFilenamePlaceholder(selectedFileFormat)
+                        getFilenamePlaceholder(selectedFileFormat);
                       return Promise.reject(
                         new Error(
                           `Filename must match selected format (e.g., ${placeholder})`,
                         ),
-                      )
+                      );
                     },
                   },
                 ]}
@@ -1121,7 +1118,7 @@ export function AddModelModal() {
 
               <Form.Item
                 name="repository_branch"
-                label={t('providers.repositoryBranch')}
+                label={t("providers.repositoryBranch")}
               >
                 <Input placeholder="main" />
               </Form.Item>
@@ -1133,7 +1130,7 @@ export function AddModelModal() {
       {(uploading || uploadProgress.length > 0) && (
         <div className="mt-4">
           <UploadProgress
-            files={uploadProgress.map(p => ({
+            files={uploadProgress.map((p) => ({
               filename: p.filename,
               progress: p.progress,
               status: p.status,
@@ -1157,9 +1154,9 @@ export function AddModelModal() {
               <Typography.Text strong>
                 {currentViewMode
                   ? currentDownload?.downloading
-                    ? 'Download Progress'
-                    : 'Download Complete'
-                  : 'Repository Download Progress'}
+                    ? "Download Progress"
+                    : "Download Complete"
+                  : "Repository Download Progress"}
               </Typography.Text>
             </Flex>
 
@@ -1194,7 +1191,7 @@ export function AddModelModal() {
                     ? `${formatBytes(downloadProgress.current)} / ${formatBytes(downloadProgress.total)}`
                     : currentDownload?.progress
                       ? `${formatBytes(currentDownload.progress.current)} / ${formatBytes(currentDownload.progress.total)}`
-                      : '0 B / 0 B'}
+                      : "0 B / 0 B"}
                 </Typography.Text>
                 {currentViewMode && currentDownload && (
                   <Typography.Text type="secondary" className="text-xs">
@@ -1232,5 +1229,5 @@ export function AddModelModal() {
         </div>
       )}
     </Modal>
-  )
+  );
 }

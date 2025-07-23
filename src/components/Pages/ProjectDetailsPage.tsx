@@ -1,17 +1,3 @@
-import React, { useEffect, useState } from 'react'
-import {
-  App,
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  Input,
-  Progress,
-  Select,
-  Tag,
-  Typography,
-  Upload,
-} from 'antd'
 import {
   ArrowUpOutlined,
   DeleteOutlined,
@@ -24,34 +10,47 @@ import {
   SearchOutlined,
   StarOutlined,
   UploadOutlined,
-} from '@ant-design/icons'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
+} from "@ant-design/icons";
+import {
+  App,
+  Button,
+  Card,
+  Dropdown,
+  Form,
+  Input,
+  Progress,
+  Select,
+  Tag,
+  Typography,
+  Upload,
+} from "antd";
+import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useNavigate, useParams } from "react-router-dom";
 // import { Project } from '../../types/api/projects' // Unused but may be needed later
 import {
-  useProjectsStore,
+  clearProjectsStoreError,
   loadProjectWithDetails,
+  Stores,
   updateExistingProject,
   uploadDocumentToProject,
-  clearProjectsStoreError,
-} from '../../store'
+} from "../../store";
 
-const { Title, Text } = Typography
-const { TextArea } = Input
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: string
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
 }
 
 export const ProjectDetailsPage: React.FC = () => {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
-  const { projectId } = useParams<{ projectId: string }>()
-  const navigate = useNavigate()
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
 
   // Projects store
   const {
@@ -61,119 +60,109 @@ export const ProjectDetailsPage: React.FC = () => {
     loading,
     uploading,
     error,
-  } = useProjectsStore(
-    useShallow(state => ({
-      currentProject: state.currentProject,
-      documents: state.documents,
-      conversations: state.conversations,
-      loading: state.loading,
-      uploading: state.uploading,
-      updating: state.updating,
-      error: state.error,
-    })),
-  )
+  } = Stores.Projects;
 
   // Chat state
-  const [chatInput, setChatInput] = useState('')
+  const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: '1',
-      role: 'assistant',
-      content: t('projectDetails.howCanIHelp'),
+      id: "1",
+      role: "assistant",
+      content: t("projectDetails.howCanIHelp"),
       timestamp: new Date().toISOString(),
     },
-  ])
-  const [selectedAssistant, setSelectedAssistant] = useState('Claude Sonnet 4')
+  ]);
+  const [selectedAssistant, setSelectedAssistant] = useState("Claude Sonnet 4");
 
   // Project knowledge sidebar state
-  const [editingDescription, setEditingDescription] = useState(false)
-  const [descriptionForm] = Form.useForm()
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionForm] = Form.useForm();
 
   useEffect(() => {
     if (projectId) {
       loadProjectWithDetails(projectId).catch((error: any) => {
-        message.error(error?.message || t('common.failedToUpdate'))
-        navigate('/projects')
-      })
+        message.error(error?.message || t("common.failedToUpdate"));
+        navigate("/projects");
+      });
     }
-  }, [projectId])
+  }, [projectId]);
 
   // Show errors
   useEffect(() => {
     if (error) {
-      message.error(error)
-      clearProjectsStoreError()
+      message.error(error);
+      clearProjectsStoreError();
     }
-  }, [error, message])
+  }, [error, message]);
 
   const handleSendMessage = () => {
-    if (!chatInput.trim()) return
+    if (!chatInput.trim()) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: chatInput,
       timestamp: new Date().toISOString(),
-    }
+    };
 
-    setMessages([...messages, userMessage])
-    setChatInput('')
+    setMessages([...messages, userMessage]);
+    setChatInput("");
 
     // Simulate assistant response
     setTimeout(() => {
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
+        role: "assistant",
         content: `I understand you're asking about "${chatInput}". Based on your project documents and context, I can help you with that. This is a simulated response for demonstration purposes.`,
         timestamp: new Date().toISOString(),
-      }
-      setMessages(prev => [...prev, assistantMessage])
-    }, 1000)
-  }
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
+    }, 1000);
+  };
 
   const handleFileUpload = async (file: any) => {
-    if (!currentProject) return
+    if (!currentProject) return;
 
     try {
-      await uploadDocumentToProject(currentProject.id, file)
-      message.success(t('projectDetails.documentUploaded'))
+      await uploadDocumentToProject(currentProject.id, file);
+      message.success(t("projectDetails.documentUploaded"));
     } catch (error) {
-      console.error('Failed to upload document:', error)
+      console.error("Failed to upload document:", error);
       // Error is handled by the store
     }
-  }
+  };
 
   const handleUpdateDescription = async (values: { description: string }) => {
-    if (!currentProject) return
+    if (!currentProject) return;
 
     try {
       await updateExistingProject(currentProject.id, {
         description: values.description,
-      })
-      setEditingDescription(false)
-      message.success(t('projectDetails.descriptionUpdated'))
+      });
+      setEditingDescription(false);
+      message.success(t("projectDetails.descriptionUpdated"));
     } catch (error) {
-      console.error('Failed to update description:', error)
+      console.error("Failed to update description:", error);
       // Error is handled by the store
     }
-  }
+  };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
 
   if (loading || !currentProject) {
     return (
       <div className="p-6 flex justify-center min-h-screen">
         <div className="w-full max-w-7xl">
-          <Text>{t('projectDetails.loading')}</Text>
+          <Text>{t("projectDetails.loading")}</Text>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -190,22 +179,22 @@ export const ProjectDetailsPage: React.FC = () => {
               <Button icon={<StarOutlined />} type="text" className="text-xs" />
               <Tag color="default">
                 {currentProject.is_private
-                  ? t('projects.private')
-                  : t('projects.public')}
+                  ? t("projects.private")
+                  : t("projects.public")}
               </Tag>
             </div>
             <Dropdown
               menu={{
                 items: [
                   {
-                    key: 'edit',
+                    key: "edit",
                     icon: <EditOutlined />,
-                    label: t('projectDetails.editProject'),
+                    label: t("projectDetails.editProject"),
                   },
                   {
-                    key: 'delete',
+                    key: "delete",
                     icon: <DeleteOutlined />,
-                    label: t('projectDetails.deleteProject'),
+                    label: t("projectDetails.deleteProject"),
                     danger: true,
                   },
                 ],
@@ -218,10 +207,10 @@ export const ProjectDetailsPage: React.FC = () => {
           {/* Chat Messages */}
           <div className="flex-1 p-6 overflow-y-auto">
             <div className="max-w-3xl mx-auto space-y-4">
-              {messages.map(msg => (
+              {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div className="max-w-2xl px-4 py-3 rounded-lg">
                     <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -253,7 +242,7 @@ export const ProjectDetailsPage: React.FC = () => {
                   type="text"
                   className="text-xs"
                 >
-                  {t('projectDetails.research')}
+                  {t("projectDetails.research")}
                 </Button>
                 <div className="ml-auto flex items-center gap-2">
                   <Select
@@ -262,9 +251,9 @@ export const ProjectDetailsPage: React.FC = () => {
                     style={{ width: 150 }}
                     className="text-xs"
                     options={[
-                      { label: 'Claude Sonnet 4', value: 'Claude Sonnet 4' },
-                      { label: 'GPT-4', value: 'GPT-4' },
-                      { label: 'Gemini Pro', value: 'Gemini Pro' },
+                      { label: "Claude Sonnet 4", value: "Claude Sonnet 4" },
+                      { label: "GPT-4", value: "GPT-4" },
+                      { label: "Gemini Pro", value: "Gemini Pro" },
                     ]}
                   />
                   <Button
@@ -278,17 +267,17 @@ export const ProjectDetailsPage: React.FC = () => {
               </div>
               <TextArea
                 value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                placeholder={t('projectDetails.howCanIHelp')}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder={t("projectDetails.howCanIHelp")}
                 autoSize={{ minRows: 1, maxRows: 4 }}
-                onPressEnter={e => {
+                onPressEnter={(e) => {
                   if (!e.shiftKey) {
-                    e.preventDefault()
-                    handleSendMessage()
+                    e.preventDefault();
+                    handleSendMessage();
                   }
                 }}
                 className="resize-none"
-                style={{ fontSize: '15px' }}
+                style={{ fontSize: "15px" }}
               />
             </div>
           </div>
@@ -298,8 +287,8 @@ export const ProjectDetailsPage: React.FC = () => {
         <div className="w-80 flex flex-col">
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <Text strong style={{ fontSize: '15px' }}>
-                {t('projectDetails.projectKnowledge')}
+              <Text strong style={{ fontSize: "15px" }}>
+                {t("projectDetails.projectKnowledge")}
               </Text>
               <Button icon={<PlusOutlined />} type="text" className="text-xs" />
             </div>
@@ -311,14 +300,14 @@ export const ProjectDetailsPage: React.FC = () => {
                   form={descriptionForm}
                   onFinish={handleUpdateDescription}
                   initialValues={{
-                    description: currentProject.description || '',
+                    description: currentProject.description || "",
                   }}
                 >
                   <Form.Item name="description" className="!mb-2">
                     <TextArea
                       rows={3}
                       placeholder={
-                        t('projects.description') || 'Describe your project...'
+                        t("projects.description") || "Describe your project..."
                       }
                       autoFocus
                     />
@@ -329,13 +318,13 @@ export const ProjectDetailsPage: React.FC = () => {
                       htmlType="submit"
                       type="primary"
                     >
-                      {t('common.save')}
+                      {t("common.save")}
                     </Button>
                     <Button
                       className="text-xs"
                       onClick={() => setEditingDescription(false)}
                     >
-                      {t('common.cancel')}
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </Form>
@@ -349,7 +338,7 @@ export const ProjectDetailsPage: React.FC = () => {
                       '"This project is to response to reviewer comment for the..."'}
                   </Text>
                   <Button type="link" className="text-xs !p-0 !h-auto !ml-1">
-                    {t('projectDetails.edit')}
+                    {t("projectDetails.edit")}
                   </Button>
                 </div>
               )}
@@ -365,7 +354,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 trailColor="#e0e0e0"
               />
               <Text type="secondary" className="text-xs">
-                3{t('projectDetails.capacityUsed')}
+                3{t("projectDetails.capacityUsed")}
               </Text>
             </div>
           </div>
@@ -374,11 +363,11 @@ export const ProjectDetailsPage: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-4">
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <Text strong>{t('projectDetails.documents')}</Text>
+                <Text strong>{t("projectDetails.documents")}</Text>
                 <Upload
-                  beforeUpload={file => {
-                    handleFileUpload(file)
-                    return false
+                  beforeUpload={(file) => {
+                    handleFileUpload(file);
+                    return false;
                   }}
                   showUploadList={false}
                 >
@@ -387,13 +376,13 @@ export const ProjectDetailsPage: React.FC = () => {
                     className="text-xs"
                     loading={uploading}
                   >
-                    {t('projectDetails.upload')}
+                    {t("projectDetails.upload")}
                   </Button>
                 </Upload>
               </div>
 
               <div className="space-y-2">
-                {documents.map(doc => (
+                {documents.map((doc) => (
                   <Card
                     key={doc.id}
                     className="text-xs cursor-pointer hover:shadow-sm"
@@ -406,13 +395,13 @@ export const ProjectDetailsPage: React.FC = () => {
                             {doc.file_name}
                           </div>
                           <Text type="secondary" className="text-xs">
-                            {formatFileSize(doc.file_size)} •{' '}
+                            {formatFileSize(doc.file_size)} •{" "}
                             {doc.upload_status.toLowerCase()}
                           </Text>
                         </div>
                       </div>
                       <Tag color="default" className="uppercase">
-                        {doc.file_name.split('.').pop() || 'FILE'}
+                        {doc.file_name.split(".").pop() || "FILE"}
                       </Tag>
                     </div>
                   </Card>
@@ -423,17 +412,17 @@ export const ProjectDetailsPage: React.FC = () => {
                 <div className="text-center py-8">
                   <FileTextOutlined className="text-3xl mb-2" />
                   <Text type="secondary" className="block text-sm">
-                    {t('projectDetails.noDocuments')}
+                    {t("projectDetails.noDocuments")}
                   </Text>
                   <Upload
-                    beforeUpload={file => {
-                      handleFileUpload(file)
-                      return false
+                    beforeUpload={(file) => {
+                      handleFileUpload(file);
+                      return false;
                     }}
                     showUploadList={false}
                   >
                     <Button className="text-xs mt-2">
-                      {t('projectDetails.uploadFirst')}
+                      {t("projectDetails.uploadFirst")}
                     </Button>
                   </Upload>
                 </div>
@@ -443,9 +432,9 @@ export const ProjectDetailsPage: React.FC = () => {
             {/* Recent Conversations */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <Text strong>{t('projectDetails.recentConversations')}</Text>
+                <Text strong>{t("projectDetails.recentConversations")}</Text>
                 <Button type="link" className="text-xs !p-0">
-                  {t('projectDetails.viewAll')}
+                  {t("projectDetails.viewAll")}
                 </Button>
               </div>
 
@@ -520,7 +509,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 <div className="text-center py-4">
                   <MessageOutlined className="text-xl text-gray-300 mb-2" />
                   <Text type="secondary" className="block text-sm">
-                    {t('projectDetails.noConversations')}
+                    {t("projectDetails.noConversations")}
                   </Text>
                 </div>
               )}
@@ -529,5 +518,5 @@ export const ProjectDetailsPage: React.FC = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
