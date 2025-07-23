@@ -2,11 +2,11 @@ use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks, Repository};
 use serde::Serialize;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use tokio::sync::mpsc;
 use uuid::Uuid;
-use std::process::{Command, Stdio};
-use std::io::{BufRead, BufReader};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct GitProgress {
@@ -81,7 +81,14 @@ impl GitService {
         auth_token: Option<&str>,
         progress_tx: mpsc::UnboundedSender<GitProgress>,
     ) -> Result<std::path::PathBuf, GitError> {
-        self.clone_repository_without_lfs(repository_url, repository_id, branch, auth_token, progress_tx).await
+        self.clone_repository_without_lfs(
+            repository_url,
+            repository_id,
+            branch,
+            auth_token,
+            progress_tx,
+        )
+        .await
     }
 
     /// Clone a repository without LFS files
@@ -99,7 +106,6 @@ impl GitService {
 
         // Check if the cache folder already exists and is a valid git repository
         if repo_cache_dir.exists() && repo_cache_dir.join(".git").exists() {
-
             // Send completion message (no LFS files pulled yet)
             let _ = progress_tx.send(GitProgress {
                 phase: GitPhase::Complete,
@@ -488,7 +494,7 @@ impl GitService {
         // First scan which of the requested files are LFS pointers
         let mut lfs_files = Vec::new();
         let mut total_size = 0u64;
-        
+
         for file_path in file_paths {
             let full_path = repo_path.join(file_path);
             if let Ok(content) = std::fs::read(&full_path) {
@@ -511,39 +517,45 @@ impl GitService {
             return Ok(());
         }
 
-
         // Fetch the LFS files with size-based progress
-        Self::fetch_lfs_files_with_progress(repo_path, lfs_files, total_size, progress_tx, auth_token).await
+        Self::fetch_lfs_files_with_progress(
+            repo_path,
+            lfs_files,
+            total_size,
+            progress_tx,
+            auth_token,
+        )
+        .await
     }
 
     /// Get the git-lfs binary path from the build directory
     fn get_git_lfs_binary_path() -> Result<PathBuf, GitError> {
         // Get the executable directory
-        let exe_path = std::env::current_exe()
-            .map_err(|e| GitError::Io(e))?;
-        let exe_dir = exe_path.parent()
-            .ok_or_else(|| GitError::Io(std::io::Error::new(
+        let exe_path = std::env::current_exe().map_err(|e| GitError::Io(e))?;
+        let exe_dir = exe_path.parent().ok_or_else(|| {
+            GitError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                "Failed to get executable directory"
-            )))?;
-        
+                "Failed to get executable directory",
+            ))
+        })?;
+
         // Determine the binary name based on the platform
         let binary_name = if cfg!(windows) {
             "git-lfs.exe"
         } else {
             "git-lfs"
         };
-        
+
         let binary_path = exe_dir.join(binary_name);
-        
+
         // Check if the binary exists
         if !binary_path.exists() {
             return Err(GitError::Io(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                format!("git-lfs binary not found at {:?}", binary_path)
+                format!("git-lfs binary not found at {:?}", binary_path),
             )));
         }
-        
+
         Ok(binary_path)
     }
 
@@ -559,18 +571,15 @@ impl GitService {
             return Ok(());
         }
 
-
         // Get the git-lfs binary path
         let git_lfs_path = Self::get_git_lfs_binary_path()?;
 
         let total_files = lfs_pointers.len();
         let mut downloaded_size = 0u64;
-        
+
         // Change to the repository directory
-        let original_dir = std::env::current_dir()
-            .map_err(|e| GitError::Io(e))?;
-        std::env::set_current_dir(repo_path)
-            .map_err(|e| GitError::Io(e))?;
+        let original_dir = std::env::current_dir().map_err(|e| GitError::Io(e))?;
+        std::env::set_current_dir(repo_path).map_err(|e| GitError::Io(e))?;
 
         // Set up authentication environment variables if needed
         let mut env_vars = Vec::new();
@@ -594,7 +603,7 @@ impl GitService {
         for (index, lfs_pointer) in lfs_pointers.iter().enumerate() {
             let file_path_str = lfs_pointer.path.to_string_lossy();
             let file_size = lfs_pointer.size;
-            
+
             // Send initial progress update
             let _ = progress_tx.send(GitProgress {
                 phase: GitPhase::CheckingOut,
@@ -615,29 +624,32 @@ impl GitService {
             let file_path_string = file_path_str.to_string();
             let env_vars_clone = env_vars.clone();
             let progress_tx_clone = progress_tx.clone();
-            let lfs_filename = lfs_pointer.path.file_name().unwrap_or_default().to_string_lossy().to_string();
-            
+            let lfs_filename = lfs_pointer
+                .path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+
             let result = tokio::task::spawn_blocking(move || {
                 // Create a temporary file for progress
-                let progress_file = std::env::temp_dir().join(format!("git-lfs-progress-{}.log", uuid::Uuid::new_v4()));
+                let progress_file = std::env::temp_dir()
+                    .join(format!("git-lfs-progress-{}.log", uuid::Uuid::new_v4()));
                 let progress_file_path = progress_file.to_string_lossy().to_string();
-                
+
                 let mut cmd = Command::new(&git_lfs_path_clone);
                 cmd.args(&["pull", "--include", &file_path_string]);
-                
+
                 // Add environment variables
                 for (key, value) in &env_vars_clone {
                     cmd.env(key, value);
                 }
-                
+
                 // Set GIT_LFS_PROGRESS to the temp file
                 cmd.env("GIT_LFS_PROGRESS", &progress_file_path);
 
-                
                 // Spawn the child process
-                let mut child = cmd.spawn()
-                    .map_err(|e| GitError::Io(e))?;
-
+                let mut child = cmd.spawn().map_err(|e| GitError::Io(e))?;
 
                 // Spawn a thread to read the progress file
                 let progress_tx_file = progress_tx_clone.clone();
@@ -646,42 +658,43 @@ impl GitService {
                 let file_size_clone = file_size;
                 let downloaded_size_clone = downloaded_size;
                 let total_size_clone = total_size;
-                
+
                 let progress_reader_handle = std::thread::spawn(move || {
                     use std::time::{Duration, Instant};
-                    
+
                     // Wait a moment for the file to be created
                     std::thread::sleep(Duration::from_millis(100));
-                    
+
                     // Keep reading the file until the process completes
                     let mut last_pos = 0;
                     let mut last_update = Instant::now();
                     let mut last_bytes_so_far = 0u64;
-                    
+
                     loop {
                         if let Ok(mut file) = std::fs::File::open(&progress_file_clone) {
                             use std::io::{Read, Seek, SeekFrom};
-                            
+
                             // Seek to the last read position
                             if let Ok(_) = file.seek(SeekFrom::Start(last_pos)) {
                                 let mut buffer = String::new();
                                 if let Ok(bytes_read) = file.read_to_string(&mut buffer) {
                                     if bytes_read > 0 {
                                         last_pos += bytes_read as u64;
-                                        
+
                                         // Parse each line
                                         for line in buffer.lines() {
-                                            
                                             // Parse the plain text format: "download 1/1 55676250/4915916176 model-00003-of-00004.safetensors"
-                                            let parts: Vec<&str> = line.split_whitespace().collect();
+                                            let parts: Vec<&str> =
+                                                line.split_whitespace().collect();
                                             if parts.len() >= 3 && parts[0] == "download" {
                                                 // Parse the bytes progress (e.g., "55676250/4915916176")
                                                 if let Some(progress_parts) = parts.get(2) {
-                                                    let progress_split: Vec<&str> = progress_parts.split('/').collect();
+                                                    let progress_split: Vec<&str> =
+                                                        progress_parts.split('/').collect();
                                                     if progress_split.len() == 2 {
                                                         if let (Ok(current), Ok(total)) = (
                                                             progress_split[0].parse::<u64>(),
-                                                            progress_split[1].parse::<u64>()
+                                                            progress_split[1].parse::<u64>(),
                                                         ) {
                                                             last_bytes_so_far = current;
                                                         }
@@ -693,35 +706,34 @@ impl GitService {
                                 }
                             }
                         }
-                        
+
                         // Send update every 3 seconds
-                        if last_update.elapsed() >= Duration::from_secs(3) && last_bytes_so_far > 0 {
+                        if last_update.elapsed() >= Duration::from_secs(3) && last_bytes_so_far > 0
+                        {
                             let percent = if file_size_clone > 0 {
                                 (last_bytes_so_far * 100) / file_size_clone
                             } else {
                                 0
                             };
-                            
+
                             // Send progress update
                             let _ = progress_tx_file.send(GitProgress {
                                 phase: GitPhase::CheckingOut,
-                                current: downloaded_size_clone + last_bytes_so_far.min(file_size_clone),
+                                current: downloaded_size_clone
+                                    + last_bytes_so_far.min(file_size_clone),
                                 total: total_size_clone,
                                 message: format!(
-                                    "Downloading {}: {}% ({} MB / {} MB total)",
-                                    lfs_filename_clone,
-                                    percent,
-                                    (downloaded_size_clone + last_bytes_so_far.min(file_size_clone)) / (1024 * 1024),
-                                    total_size_clone / (1024 * 1024)
+                                    "Downloading {}: {}%",
+                                    lfs_filename_clone, percent,
                                 ),
                             });
-                            
+
                             last_update = Instant::now();
                         }
-                        
+
                         // Sleep briefly before checking again
                         std::thread::sleep(Duration::from_millis(100));
-                        
+
                         // Check if we should stop
                         if !progress_file_clone.exists() {
                             // Send final update if we have progress
@@ -742,21 +754,20 @@ impl GitService {
                     }
                 });
 
-
                 // Wait for the process to complete
-                let status = child.wait()
-                    .map_err(|e| GitError::Io(e))?;
-                
+                let status = child.wait().map_err(|e| GitError::Io(e))?;
+
                 // Clean up the progress file
                 let _ = std::fs::remove_file(&progress_file);
-                
+
                 // The reader thread will exit when it sees the file is gone
                 let _ = progress_reader_handle.join();
-                
+
                 Ok::<bool, GitError>(status.success())
-            }).await
+            })
+            .await
             .map_err(|e| GitError::Git(git2::Error::from_str(&e.to_string())))?;
-            
+
             match result {
                 Ok(true) => {
                     downloaded_size += file_size;
@@ -782,12 +793,10 @@ impl GitService {
                     return Err(e);
                 }
             }
-
         }
 
         // Restore original directory
-        std::env::set_current_dir(original_dir)
-            .map_err(|e| GitError::Io(e))?;
+        std::env::set_current_dir(original_dir).map_err(|e| GitError::Io(e))?;
 
         // All files fetched successfully
         let _ = progress_tx.send(GitProgress {
@@ -815,11 +824,17 @@ impl GitService {
             return Ok(());
         }
 
-        
         // Calculate total size
         let total_size: u64 = lfs_pointers.iter().map(|p| p.size).sum();
-        
+
         // Use the new method with progress
-        Self::fetch_lfs_files_with_progress(repo_path, lfs_pointers, total_size, progress_tx.clone(), auth_token).await
+        Self::fetch_lfs_files_with_progress(
+            repo_path,
+            lfs_pointers,
+            total_size,
+            progress_tx.clone(),
+            auth_token,
+        )
+        .await
     }
 }

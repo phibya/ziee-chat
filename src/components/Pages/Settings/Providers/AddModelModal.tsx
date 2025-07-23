@@ -8,6 +8,7 @@ import {
   Input,
   List,
   Modal,
+  Progress,
   Radio,
   Select,
   Tag,
@@ -28,21 +29,7 @@ import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from "./shared/constants";
 import { ModelParametersSection } from "./shared/ModelParametersSection";
 import { UploadProgress } from "./UploadProgress";
 
-interface AddModelModalProps {
-  open: boolean;
-  providerId: string;
-  providerType: ProviderType;
-  onClose: () => void;
-  onSubmit: (modelData: any) => void;
-}
-
-export function AddModelModal({
-  open,
-  providerId,
-  providerType,
-  onClose,
-  onSubmit,
-}: AddModelModalProps) {
+export function AddModelModal() {
   const { t } = useTranslation();
   const { message } = App.useApp();
   const [form] = Form.useForm();
@@ -53,6 +40,7 @@ export function AddModelModal({
   >([]);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
+  const [isInViewMode, setIsInViewMode] = useState(false);
   const update = useUpdate();
 
   // Function to generate a unique model ID from display name
@@ -77,6 +65,15 @@ export function AddModelModal({
   const modelSource = Form.useWatch("model_source", form) || "upload";
   const selectedRepository = Form.useWatch("repository_id", form);
 
+  // Format bytes to human readable format
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  };
+
   // Load available repositories
   const loadRepositories = async () => {
     try {
@@ -100,6 +97,8 @@ export function AddModelModal({
     overallUploadProgress,
     clearError,
     cancelUpload,
+    loadProviders,
+    addModel,
   } = useProvidersStore(
     useShallow((state) => ({
       uploadMultipleFilesAndCommit: state.uploadMultipleFilesAndCommit,
@@ -108,22 +107,52 @@ export function AddModelModal({
       overallUploadProgress: state.overallUploadProgress,
       clearError: state.clearError,
       cancelUpload: state.cancelUpload,
+      loadProviders: state.loadProviders,
+      addModel: state.addModel,
     })),
   );
 
+  const [currentDownloadId, setCurrentDownloadId] = useState<string | null>(null);
+  
   const {
-    downloading,
-    downloadProgress,
+    downloads,
     downloadFromRepository,
-    clearError: clearDownloadError,
+    clearDownload,
+    getDownloadById,
+    modalOpen,
+    modalProviderId,
+    modalProviderType,
+    modalViewMode,
+    modalViewDownloadId,
+    closeModal,
   } = useModelDownloadStore(
     useShallow((state) => ({
-      downloading: state.downloading,
-      downloadProgress: state.downloadProgress,
+      downloads: state.downloads,
       downloadFromRepository: state.downloadFromRepository,
-      clearError: state.clearError,
+      clearDownload: state.clearDownload,
+      getDownloadById: state.getDownloadById,
+      modalOpen: state.modalOpen,
+      modalProviderId: state.modalProviderId,
+      modalProviderType: state.modalProviderType,
+      modalViewMode: state.modalViewMode,
+      modalViewDownloadId: state.modalViewDownloadId,
+      closeModal: state.closeModal,
     })),
   );
+
+  // Get values from store
+  const open = modalOpen;
+  const providerId = modalProviderId || "";
+  const providerType = modalProviderType as ProviderType || "custom";
+  const viewMode = modalViewMode;
+  const downloadId = modalViewDownloadId;
+
+  // Get download instance - either external download or current download
+  const viewDownload = viewMode && downloadId ? getDownloadById(downloadId) : null;
+  const internalDownload = currentDownloadId ? downloads[currentDownloadId] : null;
+  const currentDownload = viewMode ? viewDownload : internalDownload;
+  const downloading = currentDownload?.downloading ?? false;
+  const downloadProgress = currentDownload?.progress ?? null;
 
   const handleSubmit = async () => {
     try {
@@ -177,6 +206,9 @@ export function AddModelModal({
             return;
           }
 
+          // Switch to view mode to show upload progress
+          setIsInViewMode(true);
+          
           // Upload and auto-commit the files as a model in a single request
           await uploadMultipleFilesAndCommit({
             provider_id: providerId,
@@ -194,6 +226,9 @@ export function AddModelModal({
 
           // Clear upload progress after successful upload
           cancelUpload();
+          
+          // Refresh providers list after successful upload
+          await loadProviders();
         } else if (values.model_source === "repository") {
           // Repository-based download workflow
           if (!values.repository_id) {
@@ -217,7 +252,7 @@ export function AddModelModal({
 
           // Call the repository download API through store
           try {
-            await downloadFromRepository({
+            const { downloadId } = await downloadFromRepository({
               provider_id: providerId,
               repository_id: values.repository_id,
               repository_path: values.repository_path,
@@ -231,29 +266,25 @@ export function AddModelModal({
               settings: values.settings || {},
             });
 
-            // Update the providers store with the new model
-            const { loadProviderModels } = useProvidersStore.getState();
-            await loadProviderModels(providerId);
+            // Track this download and switch to view mode
+            setCurrentDownloadId(downloadId);
+            setIsInViewMode(true);
+            
+            // Don't close modal - stay open in view mode
+            // Don't call onSubmit yet - wait for download completion
 
             message.success(
-              t("providers.modelDownloadFromRepositoryCompleted"),
+              "Download started successfully",
             );
           } catch (error) {
             console.error("Failed to download from repository:", error);
             message.error(t("providers.modelDownloadFromRepositoryFailed"));
+            // Switch back to add mode on error
+            setIsInViewMode(false);
+            setCurrentDownloadId(null);
             return;
           }
         }
-
-        // Step 5: Close the modal for adding model
-        form.resetFields();
-        setSelectedFiles([]);
-        setFilteredFiles([]);
-        // No need to clear session since we auto-commit
-        onClose();
-
-        // Step 6: Trigger parent refresh (if needed)
-        await onSubmit({ type: "local-upload", success: true });
       } else {
         // For other providers, use the existing workflow
         const modelData = {
@@ -274,12 +305,19 @@ export function AddModelModal({
         delete modelData.tools;
         delete modelData.codeInterpreter;
 
-        await onSubmit(modelData);
+        await addModel(providerId, modelData);
+        await loadProviders();
 
         form.resetFields();
         setSelectedFiles([]);
         setFilteredFiles([]);
-        onClose();
+        closeModal();
+      }
+      
+      // Only close modal and reset for non-local providers or when not starting a download
+      if (providerType !== "local" || !isInViewMode) {
+        // This code was moved from after the local provider section
+        // It should only run when we're not switching to view mode
       }
     } catch (error) {
       console.error("Failed to add model:", error);
@@ -294,29 +332,78 @@ export function AddModelModal({
       // Load available repositories
       loadRepositories();
 
-      // Set form values for quick testing with a tiny chat model
-      form.setFieldsValue({
-        alias: "TinyLlama Chat Model", // Only display name for Local models
-        description:
-          "Small 1.1B parameter chat model for quick testing (~637MB)",
-        file_format: "safetensors",
-        model_source: "repository",
-        repository_path: "meta-llama/Llama-3.1-8B-Instruct",
-        main_filename: "model.safetensors",
-        repository_branch: "main",
-        settings: {},
-      });
+      if (viewMode && viewDownload) {
+        // In view mode, populate form with download data
+        form.setFieldsValue({
+          alias: viewDownload.request.alias,
+          description: viewDownload.request.description || "",
+          file_format: viewDownload.request.file_format,
+          model_source: "repository",
+          repository_path: viewDownload.request.repository_path,
+          main_filename: viewDownload.request.main_filename,
+          repository_branch: viewDownload.request.repository_branch || "main",
+          capabilities: viewDownload.request.capabilities || {},
+          settings: viewDownload.request.settings || {},
+        });
+      } else if (!viewMode) {
+        // Set form values for quick testing with a tiny chat model (only in add mode)
+        form.setFieldsValue({
+          alias: "TinyLlama Chat Model", // Only display name for Local models
+          description:
+            "Small 1.1B parameter chat model for quick testing (~637MB)",
+          file_format: "safetensors",
+          model_source: "repository",
+          repository_path: "meta-llama/Llama-3.1-8B-Instruct",
+          main_filename: "model.safetensors",
+          repository_branch: "main",
+          settings: {},
+        });
+      }
       update(); // Force re-render to update form watchers
     }
-  }, [open, providerType, form, update]);
+  }, [open, providerType, viewMode, viewDownload, form, update]);
 
-  // Clear errors when modal closes
+  // Clear errors and downloads when modal closes
   useEffect(() => {
     if (!open) {
       clearError();
-      clearDownloadError();
+      if (currentDownloadId) {
+        clearDownload(currentDownloadId);
+        setCurrentDownloadId(null);
+      }
+      setIsInViewMode(false);
     }
-  }, [open, clearError, clearDownloadError]);
+  }, [open, clearError, clearDownload, currentDownloadId]);
+
+  // Watch for download completion or errors to switch back to add mode
+  useEffect(() => {
+    if (isInViewMode && currentDownload && !currentDownload.downloading) {
+      // Download completed (either success or error)
+      if (currentDownload.error) {
+        // Switch back to add mode on error after a short delay
+        setTimeout(() => {
+          setIsInViewMode(false);
+          setCurrentDownloadId(null);
+        }, 3000); // Show error for 3 seconds before switching back
+      } else {
+        // Download completed successfully
+        const handleSuccessfulDownload = async () => {
+          try {
+            // Update the providers store with the new model
+            await loadProviders();
+            
+            message.success(
+              t("providers.modelDownloadFromRepositoryCompleted"),
+            );
+          } catch (error) {
+            console.error("Failed to update after download completion:", error);
+          }
+        };
+        
+        handleSuccessfulDownload();
+      }
+    }
+  }, [isInViewMode, currentDownload, loadProviders, t]);
 
   const handleFolderSelect = (info: any) => {
     const fileList = info.fileList || [];
@@ -706,31 +793,69 @@ export function AddModelModal({
     return null;
   };
 
+  const handleCancel = () => {
+    if ((viewMode || isInViewMode) && currentDownload && currentDownload.downloading) {
+      clearDownload(currentDownload.id);
+    }
+    if (isInViewMode) {
+      setIsInViewMode(false);
+      setCurrentDownloadId(null);
+    }
+    closeModal();
+  };
+
+  const handleBackToAddMode = () => {
+    setIsInViewMode(false);
+    setCurrentDownloadId(null);
+  };
+
+  const currentViewMode = viewMode || isInViewMode;
+
   return (
     <Modal
-      title={t("providers.addModel")}
+      title={currentViewMode ? "View Download Details" : t("providers.addModel")}
       open={open}
-      onCancel={onClose}
-      footer={[
-        <Button key="cancel" onClick={onClose}>
-          {t("buttons.cancel")}
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          loading={loading}
-          onClick={handleSubmit}
-        >
-          {t("providers.addModel")}
-        </Button>,
-      ]}
+      onCancel={closeModal}
+      footer={
+        currentViewMode
+          ? [
+              <Button key="close" onClick={closeModal}>
+                {t("buttons.close")}
+              </Button>,
+              !viewMode && !currentDownload?.downloading && (
+                <Button key="back" onClick={handleBackToAddMode}>
+                  Add Another Model
+                </Button>
+              ),
+              currentDownload?.downloading && (
+                <Button key="cancel" danger onClick={handleCancel}>
+                  {t("buttons.cancel")} Download
+                </Button>
+              ),
+            ].filter(Boolean)
+          : [
+              <Button key="cancel" onClick={closeModal}>
+                {t("buttons.cancel")}
+              </Button>,
+              <Button
+                key="submit"
+                type="primary"
+                loading={loading}
+                onClick={handleSubmit}
+              >
+                {t("providers.addModel")}
+              </Button>,
+            ]
+      }
       width={600}
       maskClosable={false}
       destroyOnHidden={true}
     >
+
       <Form
         form={form}
         layout="vertical"
+        disabled={currentViewMode}
         initialValues={{
           file_format: "safetensors",
           model_source: "upload",
@@ -913,7 +1038,7 @@ export function AddModelModal({
           </>
         )}
 
-        {providerType === "local" && modelSource === "repository" && (
+        {providerType === "local" && (modelSource === "repository" || currentViewMode) && (
           <>
             <Form.Item
               name="repository_id"
@@ -1026,30 +1151,71 @@ export function AddModelModal({
       )}
 
       {/* Download Progress */}
-      {(downloading || downloadProgress) && (
+      {((downloading || downloadProgress) || (currentViewMode && currentDownload)) && (
         <div className="mt-4">
           <Card size="small">
-            <Flex className="gap-2 items-center">
+            <Flex className="gap-2 items-center" style={{ marginBottom: 12 }}>
               <Typography.Text strong>
-                Repository Download Progress
+                {currentViewMode 
+                  ? (currentDownload?.downloading ? "Download Progress" : "Download Complete")
+                  : "Repository Download Progress"
+                }
               </Typography.Text>
             </Flex>
-            {downloadProgress && (
-              <div className="mt-2 flex flex-col gap-1">
+            
+            {/* Active download progress */}
+            {(downloadProgress || (currentViewMode && currentDownload?.progress)) && (
+              <div className="flex flex-col gap-2">
                 <Typography.Text type="secondary">
-                  {downloadProgress.message}
+                  {downloadProgress?.message || currentDownload?.progress?.message}
                 </Typography.Text>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${Math.round((downloadProgress.current / downloadProgress.total) * 100)}%`,
-                    }}
-                  />
-                </div>
-                {/*<Typography.Text type="secondary">*/}
-                {/*  {downloadProgress.current}/{downloadProgress.total}*/}
-                {/*</Typography.Text>*/}
+                <Progress 
+                  percent={
+                    downloadProgress 
+                      ? Math.round((downloadProgress.current / downloadProgress.total) * 100)
+                      : currentDownload?.progress 
+                        ? Math.round((currentDownload.progress.current / currentDownload.progress.total) * 100)
+                        : 0
+                  }
+                  status="active"
+                  strokeColor="#1890ff"
+                />
+                <Typography.Text type="secondary">
+                  {downloadProgress 
+                    ? `${formatBytes(downloadProgress.current)} / ${formatBytes(downloadProgress.total)}`
+                    : currentDownload?.progress 
+                      ? `${formatBytes(currentDownload.progress.current)} / ${formatBytes(currentDownload.progress.total)}`
+                      : "0 B / 0 B"
+                  }
+                </Typography.Text>
+                {currentViewMode && currentDownload && (
+                  <Typography.Text type="secondary" className="text-xs">
+                    Started: {currentDownload.startedAt.toLocaleString()}
+                  </Typography.Text>
+                )}
+              </div>
+            )}
+
+            {/* Completed or error state (view mode only) */}
+            {currentViewMode && currentDownload && !currentDownload.downloading && (
+              <div className="flex flex-col gap-2">
+                {currentDownload.error ? (
+                  <Typography.Text type="danger">
+                    Error: {currentDownload.error}
+                  </Typography.Text>
+                ) : (
+                  <Typography.Text type="success">
+                    Download completed successfully
+                  </Typography.Text>
+                )}
+                <Typography.Text type="secondary" className="text-xs">
+                  Started: {currentDownload.startedAt.toLocaleString()}
+                </Typography.Text>
+                {currentDownload.completedAt && (
+                  <Typography.Text type="secondary" className="text-xs">
+                    Completed: {currentDownload.completedAt.toLocaleString()}
+                  </Typography.Text>
+                )}
               </div>
             )}
           </Card>

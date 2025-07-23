@@ -22,6 +22,7 @@ import {
   List,
   Menu,
   Modal,
+  Progress,
   Space,
   Spin,
   Switch,
@@ -35,6 +36,7 @@ import { useShallow } from "zustand/react/shallow";
 import { isDesktopApp } from "../../../../api/core";
 import { Permission, usePermissions } from "../../../../permissions";
 import { useProvidersStore } from "../../../../store/providers";
+import { useModelDownloadStore } from "../../../../store/modelDownload";
 import { Model } from "../../../../types/api/model";
 import { Provider, ProviderType } from "../../../../types/api/provider";
 import { AddModelModal } from "./AddModelModal";
@@ -76,7 +78,6 @@ export function ProvidersSettings() {
     updateProvider,
     deleteProvider,
     cloneProvider,
-    addModel,
     updateModel,
     deleteModel,
     startModel,
@@ -98,7 +99,6 @@ export function ProvidersSettings() {
       updateProvider: state.updateProvider,
       deleteProvider: state.deleteProvider,
       cloneProvider: state.cloneProvider,
-      addModel: state.addModel,
       updateModel: state.updateModel,
       deleteModel: state.deleteModel,
       startModel: state.startModel,
@@ -109,12 +109,21 @@ export function ProvidersSettings() {
     })),
   );
 
+  // Model downloads store
+  const { downloads, clearDownload, openAddModelModal, openViewDownloadModal } = useModelDownloadStore(
+    useShallow((state) => ({
+      downloads: state.downloads,
+      clearDownload: state.clearDownload,
+      openAddModelModal: state.openAddModelModal,
+      openViewDownloadModal: state.openViewDownloadModal,
+    })),
+  );
+
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [form] = Form.useForm();
   const [nameForm] = Form.useForm();
   const [isMobile, setIsMobile] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isAddModelModalOpen, setIsAddModelModalOpen] = useState(false);
   const [isEditModelModalOpen, setIsEditModelModalOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -420,31 +429,6 @@ export function ProvidersSettings() {
     }
   };
 
-  const handleAddModel = async (modelData: any) => {
-    if (!currentProvider) return;
-
-    try {
-      // Handle Local uploads differently - they're already processed
-      if (modelData.type === "local-upload") {
-        // For Local uploads, just refresh the providers list
-        await loadProviders();
-        setIsAddModelModalOpen(false);
-        message.success(t("providers.modelAdded"));
-      } else {
-        // For regular models, add them normally
-        await addModel(currentProvider.id, modelData);
-
-        // Refresh providers list to include any uploaded models
-        await loadProviders();
-
-        setIsAddModelModalOpen(false);
-        message.success(t("providers.modelAdded"));
-      }
-    } catch (error) {
-      console.error("Failed to add model:", error);
-      // Error is handled by the store
-    }
-  };
 
   const handleEditModel = async (modelData: any) => {
     if (!currentProvider || !selectedModel) return;
@@ -457,6 +441,10 @@ export function ProvidersSettings() {
       console.error("Failed to update model:", error);
       // Error is handled by the store
     }
+  };
+
+  const handleViewDownloadDetails = (downloadId: string) => {
+    openViewDownloadModal(downloadId, currentProvider?.type || "custom");
   };
 
   const handleDeleteModel = async (modelId: string) => {
@@ -845,6 +833,87 @@ export function ProvidersSettings() {
           </Form>
         )}
 
+        {/* Downloads Section - For Local providers only */}
+        {currentProvider.type === "local" && (() => {
+          // Get active downloads for this provider
+          const providerDownloads = Object.values(downloads).filter(
+            download => download.downloading && download.request.provider_id === currentProvider.id
+          );
+          
+          if (providerDownloads.length === 0) return null;
+          
+          // Format bytes to human readable format
+          const formatBytes = (bytes: number): string => {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+          };
+          
+          return (
+            <Card
+              title={t("providers.downloadingModels")}
+              style={{ marginBottom: 16 }}
+            >
+              <List
+                dataSource={providerDownloads}
+                renderItem={(download) => {
+                  const percent = download.progress 
+                    ? Math.round((download.progress.current / download.progress.total) * 100) 
+                    : 0;
+                  
+                  return (
+                    <List.Item
+                      actions={[
+                        <Button
+                          key="view"
+                          type="text"
+                          size="small"
+                          onClick={() => handleViewDownloadDetails(download.id)}
+                        >
+                          View Details
+                        </Button>,
+                        <Button
+                          key="cancel"
+                          type="text"
+                          danger
+                          size="small"
+                          onClick={() => clearDownload(download.id)}
+                        >
+                          Cancel
+                        </Button>
+                      ]}
+                    >
+                      <List.Item.Meta
+                        title={download.request.alias}
+                        description={
+                          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <Text type="secondary" className="text-xs">
+                              {download.progress?.message || "Preparing download..."}
+                            </Text>
+                            <Progress 
+                              percent={percent}
+                              status="active"
+                              strokeColor="#1890ff"
+                              size="small"
+                            />
+                            <Text type="secondary" className="text-xs">
+                              {download.progress 
+                                ? `${formatBytes(download.progress.current)} / ${formatBytes(download.progress.total)}` 
+                                : "0 B / 0 B"}
+                            </Text>
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  );
+                }}
+              />
+            </Card>
+          );
+        })()}
+
         {/* Models Section */}
         <Card
           title={t("providers.models")}
@@ -853,7 +922,7 @@ export function ProvidersSettings() {
               <Button
                 type="text"
                 icon={<PlusOutlined />}
-                onClick={() => setIsAddModelModalOpen(true)}
+                onClick={() => openAddModelModal(selectedProvider, currentProvider?.type || "custom")}
               />
             )
           }
@@ -1043,13 +1112,7 @@ export function ProvidersSettings() {
         onSubmit={handleAddProvider}
       />
 
-      <AddModelModal
-        open={isAddModelModalOpen}
-        providerId={selectedProvider}
-        providerType={currentProvider?.type || "custom"}
-        onClose={() => setIsAddModelModalOpen(false)}
-        onSubmit={handleAddModel}
-      />
+      <AddModelModal />
 
       <EditModelModal
         open={isEditModelModalOpen}
