@@ -11,11 +11,12 @@ import { Message, MessageBranch } from '../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { MessageEditor } from './MessageEditor'
 import { useShallow } from 'zustand/react/shallow'
-import { useChatStore } from '../../store/chat.ts'
-
-interface ChatMessageProps {
-  message: Message
-}
+import { useChatStore, loadConversationMessageBranches, switchMessageBranch } from '../../store'
+import {
+  useChatUIStore,
+  startEditingMessage,
+  setMessageToolBoxVisible,
+} from '../../store/ui/chat'
 
 interface BranchInfo {
   branches: MessageBranch[]
@@ -26,29 +27,23 @@ interface BranchInfo {
 
 export const ChatMessage = memo(function ChatMessage({
   message,
-}: ChatMessageProps) {
+}: {
+  message: Message
+}) {
   const { t } = useTranslation()
   const isUser = message.role === 'user'
   const { token } = theme.useToken()
-  const [showToolBox, setShowToolBox] = useState(false)
 
-  const {
-    loadMessageBranches,
-    editMessage,
-    switchBranch,
-    currentConversation,
-  } = useChatStore(
+  const { currentConversation } = useChatStore(
     useShallow(state => ({
-      loadMessageBranches: state.loadMessageBranches,
-      editMessage: state.editMessage,
-      switchBranch: state.switchBranch,
       currentConversation: state.currentConversation,
     })),
   )
 
-  // Local editing state
-  const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(message.content)
+  const { editingMessageId, showMessageToolBox } = useChatUIStore()
+
+  const isEditing = editingMessageId === message.id
+  const showToolBox = showMessageToolBox[message.id] || false
 
   const [branchInfo, setBranchInfo] = useState<BranchInfo>({
     branches: [],
@@ -57,7 +52,7 @@ export const ChatMessage = memo(function ChatMessage({
     isLoading: false,
   })
   const handleMouseOverOrClick = async (isClicked: boolean = false) => {
-    setShowToolBox(!isClicked ? true : !showToolBox)
+    setMessageToolBoxVisible(message.id, !isClicked ? true : !showToolBox)
     if (
       message.edit_count > 0 &&
       !branchInfo.isLoading &&
@@ -67,7 +62,7 @@ export const ChatMessage = memo(function ChatMessage({
 
       if (!currentConversation) return
 
-      let branches = await loadMessageBranches(message.id)
+      let branches = await loadConversationMessageBranches(message.id)
       let currentIndex = 0
       for (let i = 0; i < branches.length; i++) {
         if (branches[i].id === currentConversation.active_branch_id) {
@@ -90,33 +85,17 @@ export const ChatMessage = memo(function ChatMessage({
   }
 
   const handleMouseLeave = () => {
-    setShowToolBox(false)
+    setMessageToolBoxVisible(message.id, false)
   }
 
   const handleEdit = () => {
-    setIsEditing(true)
-    setEditValue(message.content)
-  }
-
-  const handleSaveEdit = async () => {
-    try {
-      setIsEditing(false)
-      await editMessage(message.id, editValue)
-    } catch (error) {
-      console.error('Failed to save edit:', error)
-      setIsEditing(false)
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setIsEditing(false)
-    setEditValue(message.content)
+    startEditingMessage(message.id, message.content)
   }
 
   const handleSwitchBranch = async (branchId: string) => {
     if (!currentConversation) return
     try {
-      await switchBranch(currentConversation.id, branchId)
+      await switchMessageBranch(currentConversation.id, branchId)
     } catch (error) {
       console.error('Failed to switch branch:', error)
     }
@@ -144,12 +123,7 @@ export const ChatMessage = memo(function ChatMessage({
       {/* Message content */}
       <Flex className={`${isUser ? '!pt-0.5' : ''} flex-1`}>
         {isEditing ? (
-          <MessageEditor
-            value={editValue}
-            onChange={setEditValue}
-            onSave={handleSaveEdit}
-            onCancel={handleCancelEdit}
-          />
+          <MessageEditor />
         ) : (
           <div
             className={'w-full'}

@@ -36,8 +36,8 @@ import {
 } from '../../../../types'
 import { Permission, usePermissions } from '../../../../permissions'
 import { PageContainer } from '../../../common/PageContainer'
-import { useAdminStore } from '../../../../store/admin'
-import { useProvidersStore } from '../../../../store/providers'
+import { useAdminStore, loadAllUserGroups, createNewUserGroup, updateUserGroup, deleteUserGroup, loadUserGroupMembers, clearSystemAdminError } from '../../../../store'
+import { useProvidersStore, loadAllModelProviders } from '../../../../store'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -53,12 +53,6 @@ export function UserGroupsSettings() {
     loading,
     membersLoading,
     error,
-    loadGroups,
-    createGroup,
-    updateGroup,
-    deleteGroup,
-    loadGroupMembers,
-    clearError,
   } = useAdminStore(
     useShallow(state => ({
       groups: state.groups,
@@ -69,20 +63,13 @@ export function UserGroupsSettings() {
       updating: state.updating,
       deleting: state.deleting,
       error: state.error,
-      loadGroups: state.loadGroups,
-      createGroup: state.createGroup,
-      updateGroup: state.updateGroup,
-      deleteGroup: state.deleteGroup,
-      loadGroupMembers: state.loadGroupMembers,
-      clearError: state.clearError,
     })),
   )
 
   // Model providers store
-  const { providers: providers, loadProviders } = useProvidersStore(
+  const { providers: providers } = useProvidersStore(
     useShallow(state => ({
       providers: state.providers,
-      loadProviders: state.loadProviders,
     })),
   )
 
@@ -110,17 +97,17 @@ export function UserGroupsSettings() {
       message.warning('You do not have permission to view user groups')
       return
     }
-    loadGroups()
-    loadProviders()
-  }, [canReadGroups, loadGroups, loadProviders])
+    loadAllUserGroups()
+    loadAllModelProviders()
+  }, [canReadGroups])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearSystemAdminError()
     }
-  }, [error, message, clearError])
+  }, [error, message])
 
   const handleCreateGroup = async (values: any) => {
     if (!canCreateGroups) {
@@ -147,7 +134,7 @@ export function UserGroupsSettings() {
         permissions: values.permissions ? JSON.parse(values.permissions) : {},
         provider_ids: values.provider_ids || [],
       }
-      await createGroup(groupData)
+      await createNewUserGroup(groupData)
       message.success('User group created successfully')
       setCreateModalVisible(false)
       createForm.resetFields()
@@ -191,7 +178,7 @@ export function UserGroupsSettings() {
         provider_ids: values.provider_ids || [],
         is_active: selectedGroup.is_protected ? undefined : values.is_active,
       }
-      await updateGroup(selectedGroup.id, updateData)
+      await updateUserGroup(selectedGroup.id, updateData)
       message.success('User group updated successfully')
       setEditModalVisible(false)
       setSelectedGroup(null)
@@ -208,7 +195,7 @@ export function UserGroupsSettings() {
       return
     }
     try {
-      await deleteGroup(groupId)
+      await deleteUserGroup(groupId)
       message.success('User group deleted successfully')
     } catch (error) {
       console.error('Failed to delete user group:', error)
@@ -221,7 +208,7 @@ export function UserGroupsSettings() {
     setMembersDrawerVisible(true)
 
     try {
-      await loadGroupMembers(group.id)
+      await loadUserGroupMembers(group.id)
     } catch (error) {
       console.error('Failed to fetch group members:', error)
       // Error is handled by the store

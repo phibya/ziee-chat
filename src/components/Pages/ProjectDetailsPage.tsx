@@ -29,7 +29,13 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 // import { Project } from '../../types/api/projects' // Unused but may be needed later
-import { useProjectsStore } from '../../store/projects'
+import { 
+  useProjectsStore,
+  loadProjectWithDetails,
+  updateExistingProject,
+  uploadDocumentToProject,
+  clearProjectsStoreError
+} from '../../store'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -55,10 +61,6 @@ export const ProjectDetailsPage: React.FC = () => {
     loading,
     uploading,
     error,
-    loadProjectDetails,
-    updateProject,
-    uploadDocument,
-    clearError,
   } = useProjectsStore(
     useShallow(state => ({
       currentProject: state.currentProject,
@@ -68,10 +70,6 @@ export const ProjectDetailsPage: React.FC = () => {
       uploading: state.uploading,
       updating: state.updating,
       error: state.error,
-      loadProjectDetails: state.loadProjectDetails,
-      updateProject: state.updateProject,
-      uploadDocument: state.uploadDocument,
-      clearError: state.clearError,
     })),
   )
 
@@ -93,20 +91,20 @@ export const ProjectDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (projectId) {
-      loadProjectDetails(projectId).catch((error: any) => {
+      loadProjectWithDetails(projectId).catch((error: any) => {
         message.error(error?.message || t('common.failedToUpdate'))
         navigate('/projects')
       })
     }
-  }, [projectId, loadProjectDetails])
+  }, [projectId])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearProjectsStoreError()
     }
-  }, [error, message, clearError])
+  }, [error, message])
 
   const handleSendMessage = () => {
     if (!chatInput.trim()) return
@@ -137,7 +135,7 @@ export const ProjectDetailsPage: React.FC = () => {
     if (!currentProject) return
 
     try {
-      await uploadDocument(currentProject.id, file)
+      await uploadDocumentToProject(currentProject.id, file)
       message.success(t('projectDetails.documentUploaded'))
     } catch (error) {
       console.error('Failed to upload document:', error)
@@ -149,7 +147,7 @@ export const ProjectDetailsPage: React.FC = () => {
     if (!currentProject) return
 
     try {
-      await updateProject(currentProject.id, {
+      await updateExistingProject(currentProject.id, {
         description: values.description,
       })
       setEditingDescription(false)

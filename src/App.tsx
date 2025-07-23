@@ -33,7 +33,7 @@ import {
   UserGroupsSettings,
   UsersSettings,
 } from './components/Pages/Settings'
-import { initializeUserSettings, useAppearanceSettings } from './store/settings'
+import { initializeUserSettingsOnStartup, useAppearanceSettings } from './store/settings'
 import { Permission, usePermissions } from './permissions'
 import { isDesktopApp } from './api/core'
 import './i18n'
@@ -46,7 +46,7 @@ function App() {
 
   // Initialize user settings on app start
   useEffect(() => {
-    initializeUserSettings()
+    initializeUserSettingsOnStartup()
   }, [])
 
   // Update language when settings change

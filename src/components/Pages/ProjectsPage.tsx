@@ -27,7 +27,14 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { Project } from '../../types/api/projects'
 import { PageContainer } from '../common/PageContainer'
-import { useProjectsStore } from '../../store/projects'
+import { 
+  useProjectsStore,
+  loadAllUserProjects,
+  createNewProject,
+  updateExistingProject,
+  deleteExistingProject,
+  clearProjectsStoreError
+} from '../../store'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -51,11 +58,6 @@ export const ProjectsPage: React.FC = () => {
     creating,
     updating,
     error,
-    loadProjects,
-    createProject,
-    updateProject,
-    deleteProject,
-    clearError,
   } = useProjectsStore(
     useShallow(state => ({
       projects: state.projects,
@@ -64,11 +66,6 @@ export const ProjectsPage: React.FC = () => {
       updating: state.updating,
       deleting: state.deleting,
       error: state.error,
-      loadProjects: state.loadProjects,
-      createProject: state.createProject,
-      updateProject: state.updateProject,
-      deleteProject: state.deleteProject,
-      clearError: state.clearError,
     })),
   )
 
@@ -82,16 +79,16 @@ export const ProjectsPage: React.FC = () => {
   const [form] = Form.useForm<ProjectFormData>()
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    loadAllUserProjects()
+  }, [])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearProjectsStoreError()
     }
-  }, [error, message, clearError])
+  }, [error, message])
 
   // Get filtered and sorted projects
   const getFilteredAndSortedProjects = () => {
@@ -133,7 +130,7 @@ export const ProjectsPage: React.FC = () => {
 
   const handleCreateProject = async (values: ProjectFormData) => {
     try {
-      await createProject({
+      await createNewProject({
         name: values.name,
         description: values.description || '',
       })
@@ -150,7 +147,7 @@ export const ProjectsPage: React.FC = () => {
     if (!editingProject) return
 
     try {
-      await updateProject(editingProject.id, {
+      await updateExistingProject(editingProject.id, {
         name: values.name,
         description: values.description,
       })
@@ -166,7 +163,7 @@ export const ProjectsPage: React.FC = () => {
 
   const handleDeleteProject = async (project: Project) => {
     try {
-      await deleteProject(project.id)
+      await deleteExistingProject(project.id)
       message.success(t('projects.projectDeleted'))
     } catch (error) {
       // Error is handled by the store

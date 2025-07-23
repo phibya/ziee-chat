@@ -12,7 +12,7 @@ import 'katex/dist/katex.min.css'
 // Import highlight.js theme
 import 'highlight.js/styles/github.css'
 // Import custom markdown styles
-import { useUserSettingsStore } from '../../store'
+import { getResolvedAppearanceTheme } from '../../store'
 
 interface EnhancedMarkdownRendererProps {
   content: string
@@ -27,8 +27,7 @@ export function EnhancedMarkdownRenderer({
   content,
   className,
 }: EnhancedMarkdownRendererProps) {
-  const { getResolvedTheme } = useUserSettingsStore()
-  const resolvedTheme = getResolvedTheme()
+  const resolvedTheme = getResolvedAppearanceTheme()
 
   return (
     <div className={`classless ${resolvedTheme} ${className || ''}`}>

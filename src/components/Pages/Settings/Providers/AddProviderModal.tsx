@@ -10,30 +10,32 @@ import {
   SUPPORTED_PROVIDERS,
 } from '../../../../constants/providers'
 import { ApiConfigurationSection } from './shared'
+import { createNewModelProvider } from '../../../../store'
+import {
+  useModalsUIStore,
+  closeAddProviderModal,
+  setAddProviderModalLoading,
+} from '../../../../store/ui/modals'
 
-interface AddProviderModalProps {
-  open: boolean
-  onClose: () => void
-  onSubmit: (provider: CreateProviderRequest) => void
-  loading?: boolean
-}
-
-export function AddProviderModal({
-  open,
-  onClose,
-  onSubmit,
-  loading,
-}: AddProviderModalProps) {
+export function AddProviderModal() {
   const { t } = useTranslation()
   const [form] = Form.useForm()
   const [providerType, setProviderType] = useState<ProviderType>('local')
 
+  const { addProviderModalOpen, addProviderModalLoading } = useModalsUIStore()
+
+  // No store state needed for this component
+
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      onSubmit(values as CreateProviderRequest)
+      setAddProviderModalLoading(true)
+      await createNewModelProvider(values as CreateProviderRequest)
+      closeAddProviderModal()
     } catch (error) {
-      console.error('Form validation failed:', error)
+      console.error('Failed to create provider:', error)
+    } finally {
+      setAddProviderModalLoading(false)
     }
   }
 
@@ -54,10 +56,10 @@ export function AddProviderModal({
   return (
     <Modal
       title={t('providers.addProviderTitle')}
-      open={open}
-      onCancel={onClose}
+      open={addProviderModalOpen}
+      onCancel={closeAddProviderModal}
       onOk={handleSubmit}
-      confirmLoading={loading}
+      confirmLoading={addProviderModalLoading}
       width={600}
       destroyOnClose
       maskClosable={false}

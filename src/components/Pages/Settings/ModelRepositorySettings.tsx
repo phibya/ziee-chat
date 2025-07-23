@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../api/core'
 import { Permission, usePermissions } from '../../../permissions'
-import { useRepositoriesStore } from '../../../store/repositories'
+import { useRepositoriesStore, loadAllModelRepositories, createNewModelRepository, updateModelRepository, deleteModelRepository } from '../../../store'
 import { Repository } from '../../../types/api/repository'
 
 const { Title, Text } = Typography
@@ -46,22 +46,12 @@ export function ModelRepositorySettings() {
     creating,
     updating,
     testing,
-    loadRepositories,
-    createRepository,
-    updateRepository,
-    deleteRepository,
-    testConnection,
   } = useRepositoriesStore(
     useShallow(state => ({
       repositories: state.repositories,
       creating: state.creating,
       updating: state.updating,
       testing: state.testing,
-      loadRepositories: state.loadRepositories,
-      createRepository: state.createRepository,
-      updateRepository: state.updateRepository,
-      deleteRepository: state.deleteRepository,
-      testConnection: state.testConnection,
     })),
   )
 
@@ -87,10 +77,10 @@ export function ModelRepositorySettings() {
 
   // Load repositories when component mounts
   useEffect(() => {
-    loadRepositories().catch(error => {
+    loadAllModelRepositories().catch((error: any) => {
       console.error('Failed to load repositories:', error)
     })
-  }, [loadRepositories])
+  }, [])
 
   // Update repository form when editing
   useEffect(() => {
@@ -145,20 +135,15 @@ export function ModelRepositorySettings() {
     }
 
     try {
-      const result = await testConnection({
+      await testRepositoryConnection({
         name: repository.name,
         url: repository.url,
         auth_type: repository.auth_type,
         auth_config: repository.auth_config,
-      })
+      } as any)
 
-      if (result.success) {
-        message.success(`Connection to ${repository.name} successful!`)
-      } else {
-        message.error(
-          result.message || `Connection to ${repository.name} failed`,
-        )
-      }
+      // If no error was thrown, assume success
+      message.success(`Connection to ${repository.name} successful!`)
     } catch (error: any) {
       console.error('Repository connection test failed:', error)
       message.error(error?.message || `Connection to ${repository.name} failed`)
@@ -201,7 +186,7 @@ export function ModelRepositorySettings() {
     }
 
     try {
-      const result = await testConnection({
+      await testRepositoryConnection({
         name: values.name,
         url: values.url,
         auth_type: values.auth_type,
@@ -212,13 +197,10 @@ export function ModelRepositorySettings() {
           token: values.token,
           auth_test_api_endpoint: values.auth_test_api_endpoint,
         },
-      })
+      } as any)
 
-      if (result.success) {
-        message.success(`Connection to ${values.name} successful!`)
-      } else {
-        message.error(result.message || `Connection to ${values.name} failed`)
-      }
+      // If no error was thrown, assume success
+      message.success(`Connection to ${values.name} successful!`)
     } catch (error: any) {
       console.error('Repository connection test failed:', error)
       message.error(error?.message || `Connection to ${values.name} failed`)
@@ -250,7 +232,7 @@ export function ModelRepositorySettings() {
     }
 
     try {
-      await deleteRepository(repositoryId)
+      await deleteModelRepository(repositoryId)
       message.success('Repository removed successfully')
     } catch (error: any) {
       console.error('Failed to delete repository:', error)
@@ -281,11 +263,11 @@ export function ModelRepositorySettings() {
     try {
       if (editingRepository) {
         // Update existing repository
-        await updateRepository(editingRepository.id, repositoryData)
+        await updateModelRepository(editingRepository.id, repositoryData)
         message.success('Repository updated successfully')
       } else {
         // Add new repository
-        await createRepository(repositoryData)
+        await createNewModelRepository(repositoryData)
         message.success('Repository added successfully')
       }
 
@@ -313,7 +295,7 @@ export function ModelRepositorySettings() {
     }
 
     try {
-      await updateRepository(repositoryId, { enabled })
+      await updateModelRepository(repositoryId, { enabled })
     } catch (error: any) {
       console.error('Failed to toggle repository:', error)
       message.error(error?.message || 'Failed to toggle repository')

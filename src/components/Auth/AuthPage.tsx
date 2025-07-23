@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Layout, Spin, Typography } from 'antd'
-import { useShallow } from 'zustand/react/shallow'
-import { useAuthStore } from '../../store/auth'
-import { useAdminStore } from '../../store/admin'
+import { useAuthStore } from '../../store'
+import { useAdminStore, loadSystemUserRegistrationSettings } from '../../store'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
 
@@ -16,11 +15,8 @@ export const AuthPage: React.FC = () => {
   const { isLoading, needsSetup, isDesktop, isAuthenticated } = useAuthStore()
 
   // Get registration status from admin store
-  const { registrationEnabled, loadUserRegistrationSettings } = useAdminStore(
-    useShallow(state => ({
-      registrationEnabled: state.userRegistrationEnabled,
-      loadUserRegistrationSettings: state.loadUserRegistrationSettings,
-    })),
+  const registrationEnabled = useAdminStore(
+    state => state.userRegistrationEnabled,
   )
 
   const [checkingRegistration, setCheckingRegistration] = useState(false)
@@ -31,7 +27,7 @@ export const AuthPage: React.FC = () => {
       if (!needsSetup && !isDesktop) {
         setCheckingRegistration(true)
         try {
-          await loadUserRegistrationSettings()
+          await loadSystemUserRegistrationSettings()
         } catch {
           // If we can't check status, registration status will remain default
           console.warn('Failed to load registration status')
@@ -42,7 +38,7 @@ export const AuthPage: React.FC = () => {
     }
 
     checkRegistrationStatus()
-  }, [needsSetup, isDesktop, loadUserRegistrationSettings])
+  }, [needsSetup, isDesktop, loadSystemUserRegistrationSettings])
 
   useEffect(() => {
     if (needsSetup) {

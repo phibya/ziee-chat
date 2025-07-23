@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   App,
@@ -20,7 +20,8 @@ import {
 import { useShallow } from 'zustand/react/shallow'
 import { Assistant } from '../../../../types/api/assistant'
 import { PageContainer } from '../../../common/PageContainer'
-import { useAdminStore } from '../../../../store/admin'
+import { useAdminStore, loadSystemAdminAssistants, deleteSystemAdminAssistant, clearSystemAdminError } from '../../../../store'
+import { openAssistantModal } from '../../../../store/ui/modals'
 import { AssistantFormModal } from '../../../shared/AssistantFormModal'
 
 const { Title, Text } = Typography
@@ -34,11 +35,6 @@ export const AdminAssistantsSettings: React.FC = () => {
     assistants,
     loading,
     error,
-    loadAssistants,
-    createAssistant,
-    updateAssistant,
-    deleteAssistant,
-    clearError,
   } = useAdminStore(
     useShallow(state => ({
       assistants: state.assistants,
@@ -47,65 +43,24 @@ export const AdminAssistantsSettings: React.FC = () => {
       updating: state.updating,
       deleting: state.deleting,
       error: state.error,
-      loadAssistants: state.loadAssistants,
-      createAssistant: state.createAssistant,
-      updateAssistant: state.updateAssistant,
-      deleteAssistant: state.deleteAssistant,
-      clearError: state.clearError,
     })),
   )
 
-  const [modalVisible, setModalVisible] = useState(false)
-  const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(
-    null,
-  )
-
   useEffect(() => {
-    loadAssistants()
-  }, [loadAssistants])
+    loadSystemAdminAssistants()
+  }, [])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearSystemAdminError()
     }
-  }, [error, message, clearError])
-
-  const handleFormSubmit = async (values: any) => {
-    try {
-      const requestData = {
-        name: values.name,
-        description: values.description || '',
-        instructions: values.instructions || '',
-        parameters: values.parameters ? JSON.parse(values.parameters) : {},
-        is_template: true, // Always true for admin-created assistants
-        is_active: values.is_active ?? true,
-      }
-
-      if (editingAssistant) {
-        await updateAssistant(editingAssistant.id, requestData)
-        message.success('Assistant updated successfully')
-      } else {
-        await createAssistant(requestData)
-        message.success('Assistant created successfully')
-      }
-
-      handleModalClose()
-    } catch (error) {
-      console.error('Failed to save assistant:', error)
-      // Error is handled by the store
-    }
-  }
-
-  const handleModalClose = () => {
-    setModalVisible(false)
-    setEditingAssistant(null)
-  }
+  }, [error, message])
 
   const handleDelete = async (assistant: Assistant) => {
     try {
-      await deleteAssistant(assistant.id)
+      await deleteSystemAdminAssistant(assistant.id)
       message.success('Assistant deleted successfully')
     } catch (error) {
       console.error('Failed to delete assistant:', error)
@@ -114,13 +69,11 @@ export const AdminAssistantsSettings: React.FC = () => {
   }
 
   const handleEdit = (assistant: Assistant) => {
-    setEditingAssistant(assistant)
-    setModalVisible(true)
+    openAssistantModal(assistant)
   }
 
   const handleCreate = () => {
-    setEditingAssistant(null)
-    setModalVisible(true)
+    openAssistantModal()
   }
 
   const columns = [
@@ -213,14 +166,7 @@ export const AdminAssistantsSettings: React.FC = () => {
           />
         </Card>
 
-        <AssistantFormModal
-          visible={modalVisible}
-          editingAssistant={editingAssistant}
-          loading={loading}
-          isAdmin={true}
-          onSubmit={handleFormSubmit}
-          onCancel={handleModalClose}
-        />
+        <AssistantFormModal />
       </div>
     </PageContainer>
   )

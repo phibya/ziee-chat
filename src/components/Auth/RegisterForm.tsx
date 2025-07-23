@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
-import { useShallow } from 'zustand/react/shallow'
-import { useAuthStore } from '../../store/auth'
-import { useAdminStore } from '../../store/admin'
+import { useAuthStore, registerNewUser, setupInitialAdminUser, clearAuthenticationError } from '../../store'
+import { useAdminStore, loadSystemUserRegistrationSettings } from '../../store'
 import type { CreateUserRequest } from '../../types'
 
 const { Title, Text } = Typography
@@ -21,15 +20,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const { t } = useTranslation()
   const [form] = Form.useForm()
   const [checkingRegistration, setCheckingRegistration] = useState(false)
-  const { register, setupApp, isLoading, error, clearError, isDesktop } =
-    useAuthStore()
+  const { isLoading, error, isDesktop } = useAuthStore()
 
   // Get registration status from admin store
-  const { registrationEnabled, loadUserRegistrationSettings } = useAdminStore(
-    useShallow(state => ({
-      registrationEnabled: state.userRegistrationEnabled,
-      loadUserRegistrationSettings: state.loadUserRegistrationSettings,
-    })),
+  const registrationEnabled = useAdminStore(
+    state => state.userRegistrationEnabled,
   )
 
   // Check registration status for web app (except for setup mode)
@@ -38,7 +33,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       const checkRegistrationStatus = async () => {
         setCheckingRegistration(true)
         try {
-          await loadUserRegistrationSettings()
+          await loadSystemUserRegistrationSettings()
         } catch {
           // If we can't check status, registration status will remain default
           console.warn('Failed to load registration status')
@@ -49,15 +44,15 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 
       checkRegistrationStatus()
     }
-  }, [isSetup, isDesktop, loadUserRegistrationSettings])
+  }, [isSetup, isDesktop, loadSystemUserRegistrationSettings])
 
   const onFinish = async (values: CreateUserRequest) => {
     try {
-      clearError()
+      clearAuthenticationError()
       if (isSetup) {
-        await setupApp(values)
+        await setupInitialAdminUser(values)
       } else {
-        await register(values)
+        await registerNewUser(values)
       }
     } catch (error) {
       // Error is handled by the store
@@ -117,7 +112,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           type="error"
           showIcon
           closable
-          onClose={clearError}
+          onClose={clearAuthenticationError}
           className="mb-4"
         />
       )}

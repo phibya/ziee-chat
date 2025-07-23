@@ -1,9 +1,7 @@
 import { memo } from 'react'
 import { Flex, theme, Typography } from 'antd'
 import { useShallow } from 'zustand/react/shallow'
-import { useChatStore } from '../../store/chat'
-import { useAssistantsStore } from '../../store/assistants'
-import { useProvidersStore } from '../../store/providers'
+import { useChatStore, useAssistantsStore, findModelById } from '../../store'
 
 const { Text } = Typography
 
@@ -25,9 +23,7 @@ export const ChatHeader = memo(function ChatHeader() {
   const getModelDisplayName = () => {
     if (!currentConversation?.model_id) return ''
 
-    const model = useProvidersStore
-      .getState()
-      .getModelById(currentConversation.model_id)
+    const model = findModelById(currentConversation.model_id)
     return model?.alias || currentConversation.model_id
   }
 

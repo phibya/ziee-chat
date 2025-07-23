@@ -1,10 +1,10 @@
 import { App, Flex } from 'antd'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { useAssistantsStore } from '../../store/assistants'
-import { useChatStore } from '../../store/chat'
+import { loadUserAssistants } from '../../store'
+import { useChatStore, loadConversationById, clearChatError } from '../../store'
 import { ChatHeader } from './ChatHeader'
 import { ChatInput } from './ChatInput'
 import { ChatMessageList } from './ChatMessageList'
@@ -23,25 +23,16 @@ export function ExistingChatInterface() {
     currentConversation,
     loading: chatLoading,
     error: chatError,
-    loadConversation,
-    clearError: clearChatError,
   } = useChatStore(
     useShallow(state => ({
       currentConversation: state.currentConversation,
       loading: state.loading,
       error: state.error,
-      loadConversation: state.loadConversation,
-      clearError: state.clearError,
     })),
   )
 
-  // Assistants store
-  const { loading: assistantsLoading, loadAssistants } = useAssistantsStore(
-    useShallow(state => ({
-      loading: state.loading,
-      loadAssistants: state.loadAssistants,
-    })),
-  )
+  // Assistants loading state
+  const [assistantsLoading, setAssistantsLoading] = useState(false)
 
   useEffect(() => {
     initializeData()
@@ -49,7 +40,7 @@ export function ExistingChatInterface() {
 
   useEffect(() => {
     if (conversationId) {
-      loadConversation(conversationId, true)
+      loadConversationById(conversationId, true)
     }
   }, [conversationId])
 
@@ -63,9 +54,12 @@ export function ExistingChatInterface() {
 
   const initializeData = async () => {
     try {
-      await loadAssistants()
+      setAssistantsLoading(true)
+      await loadUserAssistants()
     } catch (error: any) {
       message.error(error?.message || t('common.failedToLoadData'))
+    } finally {
+      setAssistantsLoading(false)
     }
   }
 

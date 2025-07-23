@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Button, Layout } from 'antd'
 import { MenuUnfoldOutlined } from '@ant-design/icons'
 import { useUISettings } from '../../store'
+import {
+  useLayoutUIStore,
+  setIsMobile,
+  setMobileOverlayOpen,
+} from '../../store/ui/layout'
 import { LeftPanel } from './LeftPanel'
 
 const { Sider, Content } = Layout
@@ -12,8 +17,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { leftPanelCollapsed, setLeftPanelCollapsed } = useUISettings()
-  const [isMobile, setIsMobile] = useState(false)
-  const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false)
+  const { isMobile, mobileOverlayOpen } = useLayoutUIStore()
 
   // Check if screen is mobile size
   useEffect(() => {
@@ -32,7 +36,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener('resize', checkMobile)
 
     return () => window.removeEventListener('resize', checkMobile)
-  }, [isMobile, mobileOverlayOpen])
+  }, [isMobile, mobileOverlayOpen, setIsMobile, setMobileOverlayOpen])
 
   // Force collapse on mobile
   useEffect(() => {
@@ -57,16 +61,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           }`}
           theme={'light'}
         >
-          <LeftPanel
-            onItemClick={() => {
-              if (isMobile) {
-                setMobileOverlayOpen(false)
-              }
-            }}
-            isMobile={isMobile}
-            mobileOverlayOpen={mobileOverlayOpen}
-            setMobileOverlayOpen={setMobileOverlayOpen}
-          />
+          <LeftPanel />
         </Sider>
       ) : null}
 

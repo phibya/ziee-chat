@@ -2,8 +2,8 @@ import { App, Card, Flex, Form, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useUserSettingsStore } from '../../../../store'
-import { useAdminStore } from '../../../../store/admin'
+import { useUserSettingsStore, loadGlobalDefaultLanguage } from '../../../../store'
+import { useAdminStore, updateSystemDefaultLanguage } from '../../../../store'
 import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 
@@ -18,10 +18,9 @@ export function AdminAppearanceSettings() {
   const { globalDefaultLanguage } = useUserSettingsStore()
 
   // Admin store
-  const { updating, updateDefaultLanguage } = useAdminStore(
+  const { updating } = useAdminStore(
     useShallow(state => ({
       updating: state.updating,
-      updateDefaultLanguage: state.updateDefaultLanguage,
     })),
   )
 
@@ -55,11 +54,10 @@ export function AdminAppearanceSettings() {
 
       try {
         // Update global default language via admin store
-        await updateDefaultLanguage(changedValues.language)
+        await updateSystemDefaultLanguage(changedValues.language)
 
         // Update the store's global language
-        const store = useUserSettingsStore.getState()
-        await store.loadGlobalLanguage()
+        await loadGlobalDefaultLanguage()
 
         message.success('Default language updated successfully')
       } catch {

@@ -9,24 +9,19 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
-import { useConversationsStore } from '../../store'
+import {
+  useConversationsStore,
+  useUISettings,
+  loadAllRecentConversations,
+  updateExistingConversation,
+  removeConversationFromList,
+} from '../../store'
+import { useLayoutUIStore, closeMobileOverlay } from '../../store/ui/layout'
 import { ConversationSummary } from '../../types/api/chat'
 
 const { confirm } = Modal
 
-interface RecentConversationsProps {
-  collapsed?: boolean
-  isMobile?: boolean
-  mobileOverlayOpen?: boolean
-  onConversationClick?: () => void
-}
-
-export function RecentConversations({
-  collapsed = false,
-  isMobile = false,
-  mobileOverlayOpen = false,
-  onConversationClick,
-}: RecentConversationsProps) {
+export function RecentConversations() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { message } = App.useApp()
@@ -34,34 +29,30 @@ export function RecentConversations({
   const [editingTitle, setEditingTitle] = useState('')
   const { token } = theme.useToken()
 
-  const {
-    conversations,
-    isLoading,
-    loadConversations,
-    updateConversation,
-    removeConversation,
-  } = useConversationsStore(
+  const { leftPanelCollapsed } = useUISettings()
+  const { isMobile, mobileOverlayOpen } = useLayoutUIStore()
+
+  const { conversations, isLoading } = useConversationsStore(
     useShallow(state => ({
       conversations: state.conversations,
       isLoading: state.isLoading,
-      loadConversations: state.loadConversations,
-      updateConversation: state.updateConversation,
-      removeConversation: state.removeConversation,
     })),
   )
 
-  const isExpanded = isMobile ? mobileOverlayOpen : !collapsed
+  const isExpanded = isMobile ? mobileOverlayOpen : !leftPanelCollapsed
 
   useEffect(() => {
     // Only load if we don't have conversations yet
     if (conversations.length === 0) {
-      loadConversations()
+      loadAllRecentConversations()
     }
   }, [])
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/conversation/${conversationId}`)
-    onConversationClick?.()
+    if (isMobile) {
+      closeMobileOverlay()
+    }
   }
 
   const handleEditTitle = (conversation: ConversationSummary) => {
@@ -74,7 +65,7 @@ export function RecentConversations({
 
     try {
       // Use store method that handles API call
-      await updateConversation(editingId, { title: editingTitle.trim() })
+      await updateExistingConversation(editingId, { title: editingTitle.trim() })
 
       setEditingId(null)
       setEditingTitle('')
@@ -101,7 +92,7 @@ export function RecentConversations({
       onOk: async () => {
         try {
           // Use store method that handles API call
-          await removeConversation(conversation.id)
+          await removeConversationFromList(conversation.id)
 
           message.success(t('conversations.deleted'))
         } catch (error: any) {

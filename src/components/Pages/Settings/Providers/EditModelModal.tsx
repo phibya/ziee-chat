@@ -1,58 +1,70 @@
 import { Button, Card, Flex, Form, Modal } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ProviderType } from '../../../../types/api/provider'
-import { Model } from '../../../../types/api/model'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
 import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { ModelSettingsSection } from './shared/ModelSettingsSection'
 import { BASIC_MODEL_FIELDS, LOCAL_PARAMETERS } from './shared/constants'
+import { useProvidersStore, updateExistingModel } from '../../../../store'
+import {
+  useModalsUIStore,
+  closeEditModelModal,
+} from '../../../../store/ui/modals'
+import { useShallow } from 'zustand/react/shallow'
 
-interface EditModelModalProps {
-  open: boolean
-  model: Model | null
-  providerType: ProviderType
-  onClose: () => void
-  onSubmit: (modelData: any) => void
-}
-
-export function EditModelModal({
-  open,
-  model,
-  providerType,
-  onClose,
-  onSubmit,
-}: EditModelModalProps) {
+export function EditModelModal() {
   const { t } = useTranslation()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (model && open) {
-      form.setFieldsValue({
-        name: model.name,
-        alias: model.alias,
-        description: model.description,
-        capabilities: model.capabilities || {},
-        parameters: model.parameters || {},
-        settings: model.settings || {},
-      })
+  const { editModelModalOpen, editingModelId } = useModalsUIStore()
 
-      console.log({ model, f: form.getFieldsValue() })
+  const { providers, modelsByProvider } = useProvidersStore(
+    useShallow(state => ({
+      providers: state.providers,
+      modelsByProvider: state.modelsByProvider,
+    })),
+  )
+
+  // Find the current model and provider from the store
+  const currentModel = editingModelId
+    ? Object.values(modelsByProvider)
+        .flat()
+        .find(m => m.id === editingModelId)
+    : null
+  const currentProvider = currentModel
+    ? providers.find(p =>
+        modelsByProvider[p.id]?.some(m => m.id === editingModelId),
+      )
+    : null
+
+  useEffect(() => {
+    if (currentModel && editModelModalOpen) {
+      form.setFieldsValue({
+        name: currentModel.name,
+        alias: currentModel.alias,
+        description: currentModel.description,
+        capabilities: currentModel.capabilities || {},
+        parameters: currentModel.parameters || {},
+        settings: currentModel.settings || {},
+      })
     }
-  }, [model, open, form])
+  }, [currentModel, editModelModalOpen, form])
 
   const handleSubmit = async () => {
+    if (!currentModel) return
+
     try {
       setLoading(true)
       const values = await form.validateFields()
 
       const modelData = {
-        ...model,
+        ...currentModel,
         ...values,
       }
-      await onSubmit(modelData)
+      await updateExistingModel(modelData.id, modelData)
+      closeEditModelModal()
     } catch (error) {
       console.error('Failed to update model:', error)
     } finally {
@@ -63,10 +75,10 @@ export function EditModelModal({
   return (
     <Modal
       title={t('providers.editModel')}
-      open={open}
-      onCancel={onClose}
+      open={editModelModalOpen}
+      onCancel={closeEditModelModal}
       footer={[
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={closeEditModelModal}>
           {t('buttons.cancel')}
         </Button>,
         <Button
@@ -87,11 +99,11 @@ export function EditModelModal({
         <Flex className={`flex-col gap-3`}>
           <ModelCapabilitiesSection />
 
-          {providerType === 'local' && <DeviceSelectionSection />}
+          {currentProvider?.type === 'local' && <DeviceSelectionSection />}
 
-          {providerType === 'local' && <ModelSettingsSection />}
+          {currentProvider?.type === 'local' && <ModelSettingsSection />}
 
-          {providerType === 'local' && (
+          {currentProvider?.type === 'local' && (
             <Card title={t('providers.parameters')} size={'small'}>
               <ModelParametersSection parameters={LOCAL_PARAMETERS} />
             </Card>

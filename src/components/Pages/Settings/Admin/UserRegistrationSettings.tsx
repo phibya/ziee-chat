@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
-import { useAdminStore } from '../../../../store/admin'
+import { useAdminStore, loadSystemUserRegistrationSettings, updateSystemUserRegistrationSettings, clearSystemAdminError } from '../../../../store'
 
 const { Text } = Typography
 
@@ -18,17 +18,11 @@ export function UserRegistrationSettings() {
     registrationEnabled,
     loading,
     error,
-    loadUserRegistrationSettings,
-    updateUserRegistrationSettings,
-    clearError,
   } = useAdminStore(
     useShallow(state => ({
       registrationEnabled: state.userRegistrationEnabled,
       loading: state.loading,
       error: state.error,
-      loadUserRegistrationSettings: state.loadUserRegistrationSettings,
-      updateUserRegistrationSettings: state.updateUserRegistrationSettings,
-      clearError: state.clearError,
     })),
   )
 
@@ -37,17 +31,17 @@ export function UserRegistrationSettings() {
 
   useEffect(() => {
     if (canRead) {
-      loadUserRegistrationSettings()
+      loadSystemUserRegistrationSettings()
     }
-  }, [canRead, loadUserRegistrationSettings])
+  }, [canRead])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearSystemAdminError()
     }
-  }, [error, message, clearError])
+  }, [error, message])
 
   // Update form when registration status changes
   useEffect(() => {
@@ -63,7 +57,7 @@ export function UserRegistrationSettings() {
       const newValue = changedValues.enabled
 
       try {
-        await updateUserRegistrationSettings(newValue)
+        await updateSystemUserRegistrationSettings(newValue)
         message.success(
           `User registration ${newValue ? 'enabled' : 'disabled'} successfully`,
         )

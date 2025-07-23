@@ -23,7 +23,8 @@ import {
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useAssistantsStore } from '../../store/assistants'
+import { useAssistantsStore, loadUserAssistants, deleteUserAssistant, clearAssistantsStoreError } from '../../store'
+import { openAssistantModal } from '../../store/ui/modals'
 import { Assistant } from '../../types/api/assistant'
 import { PageContainer } from '../common/PageContainer'
 import { AssistantFormModal } from '../shared/AssistantFormModal'
@@ -39,90 +40,37 @@ export const AssistantsPage: React.FC = () => {
     assistants: allAssistants,
     adminAssistants: templateAssistants,
     loading,
-    creating,
-    updating,
     deleting,
     error,
-    loadAssistants,
-    createAssistant,
-    updateAssistant,
-    deleteAssistant,
-    clearError,
   } = useAssistantsStore(
     useShallow(state => ({
       assistants: state.assistants,
       adminAssistants: state.adminAssistants,
       loading: state.loading,
-      creating: state.creating,
-      updating: state.updating,
       deleting: state.deleting,
       error: state.error,
-      loadAssistants: state.loadAssistants,
-      createAssistant: state.createAssistant,
-      updateAssistant: state.updateAssistant,
-      deleteAssistant: state.deleteAssistant,
-      clearError: state.clearError,
     })),
   )
 
   const assistants = allAssistants.filter(a => !a.is_template)
 
-  const [modalVisible, setModalVisible] = useState(false)
   const [templateModalVisible, setTemplateModalVisible] = useState(false)
-  const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(
-    null,
-  )
-  const [cloneSource, setCloneSource] = useState<Assistant | null>(null)
 
   useEffect(() => {
-    loadAssistants()
-  }, [loadAssistants])
+    loadUserAssistants()
+  }, [])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearAssistantsStoreError()
     }
-  }, [error, message, clearError])
-
-  const handleFormSubmit = async (values: any) => {
-    try {
-      const requestData = {
-        name: values.name,
-        description: values.description || '',
-        instructions: values.instructions || '',
-        parameters: values.parameters ? JSON.parse(values.parameters) : {},
-        is_enabled: values.is_active ?? true,
-      }
-
-      if (editingAssistant) {
-        await updateAssistant(editingAssistant.id, requestData)
-        message.success(t('assistants.assistantUpdated'))
-      } else if (cloneSource) {
-        await createAssistant(requestData)
-        message.success(t('assistants.assistantCloned'))
-      } else {
-        await createAssistant(requestData)
-        message.success(t('assistants.assistantCreated'))
-      }
-
-      handleModalClose()
-    } catch (error) {
-      // Error is already handled by the store
-      console.error('Failed to save assistant:', error)
-    }
-  }
-
-  const handleModalClose = () => {
-    setModalVisible(false)
-    setEditingAssistant(null)
-    setCloneSource(null)
-  }
+  }, [error, message])
 
   const handleDelete = async (assistant: Assistant) => {
     try {
-      await deleteAssistant(assistant.id)
+      await deleteUserAssistant(assistant.id)
       message.success(t('assistants.assistantDeleted'))
     } catch (error) {
       // Error is already handled by the store
@@ -131,26 +79,20 @@ export const AssistantsPage: React.FC = () => {
   }
 
   const handleEdit = (assistant: Assistant) => {
-    setEditingAssistant(assistant)
-    setCloneSource(null)
-    setModalVisible(true)
+    openAssistantModal(assistant)
   }
 
   const handleCreate = () => {
-    setEditingAssistant(null)
-    setCloneSource(null)
-    setModalVisible(true)
+    openAssistantModal()
   }
 
   const handleCloneFromTemplate = () => {
     setTemplateModalVisible(true)
   }
 
-  const handleSelectTemplateAssistant = (assistant: Assistant) => {
-    setCloneSource(assistant)
-    setEditingAssistant(null)
+  const handleSelectTemplateAssistant = () => {
     setTemplateModalVisible(false)
-    setModalVisible(true)
+    openAssistantModal()
   }
 
   const renderAssistantCard = (assistant: Assistant) => (
@@ -262,14 +204,7 @@ export const AssistantsPage: React.FC = () => {
         </Col>
       </Row>
 
-      <AssistantFormModal
-        visible={modalVisible}
-        editingAssistant={editingAssistant}
-        cloneSource={cloneSource}
-        loading={creating || updating}
-        onSubmit={handleFormSubmit}
-        onCancel={handleModalClose}
-      />
+      <AssistantFormModal />
 
       {/* Template Assistants Modal */}
       <Modal
@@ -370,7 +305,7 @@ export const AssistantsPage: React.FC = () => {
                   <Button
                     type="primary"
                     icon={<CopyOutlined />}
-                    onClick={() => handleSelectTemplateAssistant(record)}
+                    onClick={() => handleSelectTemplateAssistant()}
                   >
                     Clone
                   </Button>

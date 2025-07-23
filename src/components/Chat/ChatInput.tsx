@@ -3,7 +3,7 @@ import { Button, Flex, Input } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { SendOutlined, StopOutlined } from '@ant-design/icons'
 import { useShallow } from 'zustand/react/shallow'
-import { useChatStore } from '../../store/chat'
+import { useChatStore, sendChatMessage, stopMessageStreaming } from '../../store'
 
 const { TextArea } = Input
 
@@ -23,19 +23,11 @@ export const ChatInput = memo(function ChatInput({
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState('')
 
-  const {
-    currentConversation,
-    sending,
-    isStreaming,
-    sendMessage,
-    stopStreaming,
-  } = useChatStore(
+  const { currentConversation, sending, isStreaming } = useChatStore(
     useShallow(state => ({
       currentConversation: state.currentConversation,
       sending: state.sending,
       isStreaming: state.isStreaming,
-      sendMessage: state.sendMessage,
-      stopStreaming: state.stopStreaming,
     })),
   )
 
@@ -62,7 +54,7 @@ export const ChatInput = memo(function ChatInput({
     setInputValue('') // Clear input immediately
 
     try {
-      await sendMessage(
+      await sendChatMessage(
         messageToSend,
         currentConversation.assistant_id,
         currentConversation.model_id,
@@ -85,7 +77,7 @@ export const ChatInput = memo(function ChatInput({
     if (onStop) {
       onStop()
     } else {
-      stopStreaming()
+      stopMessageStreaming()
     }
   }
 

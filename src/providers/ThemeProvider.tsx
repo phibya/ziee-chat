@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ConfigProvider } from 'antd'
-import { useUserSettingsStore } from '../store'
+import { getUserAppearanceTheme, getUserAppearanceComponentSize, getResolvedAppearanceTheme } from '../store'
 import { themes } from '../themes'
 import { ThemeContext } from '../hooks/useTheme'
 import { AppThemeConfig } from '../themes/light.ts'
@@ -10,13 +10,12 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const { getAppearanceTheme, getAppearanceComponentSize, getResolvedTheme } =
-    useUserSettingsStore()
+  // No store state needed, using external methods
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [currentTheme, setCurrentTheme] = useState<AppThemeConfig>(themes.light)
 
-  const selectedTheme = getAppearanceTheme()
-  const rawComponentSize = getAppearanceComponentSize()
+  const selectedTheme = getUserAppearanceTheme()
+  const rawComponentSize = getUserAppearanceComponentSize()
 
   // Map component size to Ant Design's expected values
   const componentSize =
@@ -24,7 +23,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   useEffect(() => {
     const updateTheme = () => {
-      const resolvedTheme = getResolvedTheme()
+      const resolvedTheme = getResolvedAppearanceTheme()
       const darkMode = resolvedTheme === 'dark'
       setIsDarkMode(darkMode)
       setCurrentTheme(darkMode ? themes.dark : themes.light)
@@ -40,7 +39,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       mediaQuery.addEventListener('change', handleChange)
       return () => mediaQuery.removeEventListener('change', handleChange)
     }
-  }, [selectedTheme, getResolvedTheme])
+  }, [selectedTheme, getResolvedAppearanceTheme])
 
   // Update document class for global theme styling
   useEffect(() => {

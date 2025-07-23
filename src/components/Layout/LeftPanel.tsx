@@ -21,33 +21,29 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { useAuthStore, useUISettings } from '../../store'
+import { useAuthStore, useUISettings, logoutUser } from '../../store'
+import { useLayoutUIStore, closeMobileOverlay } from '../../store/ui/layout'
 import { RecentConversations } from '../Chat/RecentConversations.tsx'
 
-interface LeftPanelProps {
-  onItemClick?: () => void
-  isMobile?: boolean
-  mobileOverlayOpen?: boolean
-  setMobileOverlayOpen?: (open: boolean) => void
-}
-
-export function LeftPanel({
-  onItemClick,
-  isMobile,
-  mobileOverlayOpen,
-  setMobileOverlayOpen,
-}: LeftPanelProps) {
+export function LeftPanel() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { leftPanelCollapsed, setLeftPanelCollapsed } = useUISettings()
-  const { user, logout, isDesktop } = useAuthStore()
+  const { setLeftPanelCollapsed } = useUISettings()
+  const { user, isDesktop } = useAuthStore()
+  const { isMobile } = useLayoutUIStore()
   const { token } = theme.useToken()
+
+  const handleItemClick = () => {
+    if (isMobile) {
+      closeMobileOverlay()
+    }
+  }
 
   const handleNewChat = () => {
     // Navigate to chat without a conversation ID to start a new conversation
     navigate('/')
-    onItemClick?.()
+    handleItemClick()
   }
 
   const getSelectedKeys = () => {
@@ -77,8 +73,8 @@ export function LeftPanel({
             type="text"
             icon={<MenuFoldOutlined />}
             onClick={() => {
-              if (isMobile && setMobileOverlayOpen) {
-                setMobileOverlayOpen(false)
+              if (isMobile) {
+                closeMobileOverlay()
               } else {
                 setLeftPanelCollapsed(true)
               }
@@ -90,10 +86,7 @@ export function LeftPanel({
       {/* New Chat Button */}
       <Button
         type="primary"
-        onClick={() => {
-          handleNewChat()
-          onItemClick?.()
-        }}
+        onClick={handleNewChat}
         className={'flex text-left mb-2 mx-1'}
       >
         <div className={'text-left w-full flex gap-2'}>
@@ -112,7 +105,7 @@ export function LeftPanel({
             label: <Link to="/chat-history">{t('navigation.chats')}</Link>,
             onClick: () => {
               navigate('/chat-history')
-              onItemClick?.()
+              handleItemClick()
             },
           },
           {
@@ -121,7 +114,7 @@ export function LeftPanel({
             label: <Link to="/projects">{t('navigation.projects')}</Link>,
             onClick: () => {
               navigate('/projects')
-              onItemClick?.()
+              handleItemClick()
             },
           },
           {
@@ -130,7 +123,7 @@ export function LeftPanel({
             label: <Link to="/artifacts">{t('navigation.artifacts')}</Link>,
             onClick: () => {
               navigate('/artifacts')
-              onItemClick?.()
+              handleItemClick()
             },
           },
         ]}
@@ -145,12 +138,7 @@ export function LeftPanel({
       </Typography.Text>
 
       {/*/!* Recent Conversations *!/*/}
-      <RecentConversations
-        collapsed={leftPanelCollapsed}
-        isMobile={isMobile}
-        mobileOverlayOpen={mobileOverlayOpen}
-        onConversationClick={onItemClick}
-      />
+      <RecentConversations />
 
       <Divider size={'small'} />
 
@@ -164,7 +152,7 @@ export function LeftPanel({
             label: <Link to="/hub">{t('navigation.hub')}</Link>,
             onClick: () => {
               navigate('/hub')
-              onItemClick?.()
+              handleItemClick()
             },
           },
           {
@@ -173,7 +161,7 @@ export function LeftPanel({
             label: <Link to="/assistants">{t('navigation.assistants')}</Link>,
             onClick: () => {
               navigate('/assistants')
-              onItemClick?.()
+              handleItemClick()
             },
           },
           {
@@ -182,7 +170,7 @@ export function LeftPanel({
             label: <Link to="/settings">{t('navigation.settings')}</Link>,
             onClick: () => {
               navigate('/settings')
-              onItemClick?.()
+              handleItemClick()
             },
           },
         ]}
@@ -210,8 +198,8 @@ export function LeftPanel({
                   icon: <LogoutOutlined />,
                   label: t('navigation.logout'),
                   onClick: async () => {
-                    await logout()
-                    onItemClick?.()
+                    await logoutUser()
+                    handleItemClick()
                   },
                 },
               ],

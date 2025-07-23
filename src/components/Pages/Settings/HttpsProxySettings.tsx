@@ -2,7 +2,7 @@ import { Card, Space, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useAdminStore } from '../../../store/admin'
+import { useAdminStore, loadSystemProxySettings, updateSystemProxySettings, clearSystemAdminError } from '../../../store'
 import { ProxySettingsForm } from './shared'
 
 const { Title, Text } = Typography
@@ -15,33 +15,27 @@ export function HttpsProxySettings() {
     proxySettings,
     loading,
     error,
-    loadProxySettings,
-    updateProxySettings,
-    clearError,
   } = useAdminStore(
     useShallow(state => ({
       proxySettings: state.proxySettings,
       loading: state.loading,
       error: state.error,
-      loadProxySettings: state.loadProxySettings,
-      updateProxySettings: state.updateProxySettings,
-      clearError: state.clearError,
     })),
   )
 
   useEffect(() => {
-    loadProxySettings()
-  }, [loadProxySettings])
+    loadSystemProxySettings()
+  }, [])
 
   // Show errors from store
   useEffect(() => {
     if (error) {
-      clearError()
+      clearSystemAdminError()
     }
-  }, [error, clearError])
+  }, [error])
 
   const handleSave = async (values: any) => {
-    await updateProxySettings(values)
+    await updateSystemProxySettings(values)
   }
 
   if (loading && !proxySettings) {

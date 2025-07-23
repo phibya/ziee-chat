@@ -5,10 +5,18 @@ import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { RobotOutlined } from '@ant-design/icons'
 import { ChatInput } from './ChatInput'
+import {
+  createNewConversation,
+  loadConversationById,
+  sendChatMessage,
+  clearChatError,
+  loadUserAssistants,
+  loadAllModelProviders,
+  addNewConversationToList,
+} from '../../store'
 import { useChatStore } from '../../store/chat'
 import { useAssistantsStore } from '../../store/assistants'
 import { useProvidersStore } from '../../store/providers'
-import { useConversationsStore } from '../../store'
 import { useAuthStore } from '../../store/auth'
 
 const { Text } = Typography
@@ -23,32 +31,17 @@ export function NewChatInterface() {
   const { user } = useAuthStore()
 
   // Chat store
-  const {
-    createConversation,
-    loadConversation,
-    sendMessage,
-    error: chatError,
-    clearError: clearChatError,
-  } = useChatStore(
+  const { error: chatError } = useChatStore(
     useShallow(state => ({
-      createConversation: state.createConversation,
-      loadConversation: state.loadConversation,
-      sendMessage: state.sendMessage,
       error: state.error,
-      clearError: state.clearError,
     })),
   )
 
   // Assistants store
-  const {
-    assistants,
-    loading: assistantsLoading,
-    loadAssistants,
-  } = useAssistantsStore(
+  const { assistants, loading: assistantsLoading } = useAssistantsStore(
     useShallow(state => ({
       assistants: state.assistants,
       loading: state.loading,
-      loadAssistants: state.loadAssistants,
     })),
   )
 
@@ -57,18 +50,13 @@ export function NewChatInterface() {
     providers: providers,
     modelsByProvider,
     loading: providersLoading,
-    loadProviders,
   } = useProvidersStore(
     useShallow(state => ({
       providers: state.providers,
       modelsByProvider: state.modelsByProvider,
       loading: state.loading,
-      loadProviders: state.loadProviders,
     })),
   )
-
-  // Conversations store
-  const { addConversation } = useConversationsStore()
 
   const [selectedAssistant, setSelectedAssistant] = useState<string | null>(
     null,
@@ -89,7 +77,7 @@ export function NewChatInterface() {
 
   const initializeData = async () => {
     try {
-      await Promise.all([loadAssistants(), loadProviders()])
+      await Promise.all([loadUserAssistants(), loadAllModelProviders()])
     } catch (error: any) {
       message.error(error?.message || 'Failed to load data')
     }
@@ -123,7 +111,7 @@ export function NewChatInterface() {
     }
   }, [providers, selectedModel, modelsByProvider])
 
-  const createNewConversation = async () => {
+  const handleCreateNewConversation = async (): Promise<string | null> => {
     if (!selectedAssistant || !selectedModel) {
       message.error(t('chat.noAssistantSelected'))
       return null
@@ -132,13 +120,13 @@ export function NewChatInterface() {
     const [, modelId] = selectedModel.split(':')
 
     try {
-      const conversationId = await createConversation(
+      const conversationId = await createNewConversation(
         selectedAssistant,
         modelId,
       )
 
       // Add to conversations store immediately
-      addConversation({
+      addNewConversationToList({
         id: conversationId,
         title: 'New Conversation', // This will be updated by the backend
         user_id: user?.id || '',
@@ -162,15 +150,15 @@ export function NewChatInterface() {
     if (!inputValue.trim() || !selectedAssistant || !selectedModel) return
 
     // Create new conversation and send first message
-    const conversationId = await createNewConversation()
+    const conversationId = await handleCreateNewConversation()
     if (!conversationId) return
 
     const [, modelId] = selectedModel.split(':')
 
     try {
       // Send the first message
-      await sendMessage(inputValue.trim(), selectedAssistant, modelId)
-      await loadConversation(conversationId, false)
+      await sendChatMessage(inputValue.trim(), selectedAssistant, modelId)
+      await loadConversationById(conversationId, false)
     } catch (error) {
       // Error is already handled by the store
       console.error('Failed to send first message:', error)

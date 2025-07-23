@@ -3,69 +3,69 @@ import {
   ApiEndpointParameters,
   ApiEndpointResponses,
   ApiEndpoints,
-} from "../types";
-import { callAsync, FileUploadProgressCallback } from "./core";
+} from '../types'
+import { callAsync, FileUploadProgressCallback } from './core'
 
 // Helper types for automatic namespace/method extraction
 type ExtractNamespace<T extends string> = T extends `${infer N}.${string}`
   ? N
-  : never;
-type Namespaces = ExtractNamespace<ApiEndpoint>;
+  : never
+type Namespaces = ExtractNamespace<ApiEndpoint>
 
 // Force TypeScript to evaluate and display concrete types
-type Evaluate<T> = T extends infer U ? { [K in keyof U]: U[K] } : never;
+type Evaluate<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 
 // Force resolution of parameter types using identity function
 type ResolveParams<K extends ApiEndpoint> =
-  K extends keyof ApiEndpointParameters ? ApiEndpointParameters[K] : never;
+  K extends keyof ApiEndpointParameters ? ApiEndpointParameters[K] : never
 
 // Force resolution of response types
 type ResolveResponse<K extends ApiEndpoint> =
-  K extends keyof ApiEndpointResponses ? ApiEndpointResponses[K] : never;
+  K extends keyof ApiEndpointResponses ? ApiEndpointResponses[K] : never
 
 // Dynamic namespace methods with concrete type resolution
 type NamespaceMethods<N extends Namespaces> = Evaluate<{
   [K in ApiEndpoint as K extends `${N}.${infer M}` ? M : never]: (
     params: ResolveParams<K>,
     callbacks?: {
-      SSE?: (event: string, data: any) => void;
-      fileUploadProgress?: FileUploadProgressCallback;
+      SSE?: (event: string, data: any) => void
+      fileUploadProgress?: FileUploadProgressCallback
     },
-  ) => Promise<ResolveResponse<K>>;
-}>;
+  ) => Promise<ResolveResponse<K>>
+}>
 
 // Main ApiClient type - fully dynamic, scalable, and with resolved types
 type ApiClientType = Evaluate<{
-  [N in Namespaces]: NamespaceMethods<N>;
-}>;
+  [N in Namespaces]: NamespaceMethods<N>
+}>
 
 function createApiClient(): ApiClientType {
-  const client = {} as any;
+  const client = {} as any
 
   // Get all endpoint keys and group by namespace
-  const endpointKeys = Object.keys(ApiEndpoints) as ApiEndpoint[];
+  const endpointKeys = Object.keys(ApiEndpoints) as ApiEndpoint[]
 
-  endpointKeys.forEach((endpointKey) => {
-    const [namespace, method] = endpointKey.split(".") as [string, string];
+  endpointKeys.forEach(endpointKey => {
+    const [namespace, method] = endpointKey.split('.') as [string, string]
 
     if (!client[namespace]) {
-      client[namespace] = {};
+      client[namespace] = {}
     }
 
     // Create the method that calls callAsync with proper typing
     client[namespace][method] = async (
       params: any,
       callbacks?: {
-        SSE?: (event: string, data: any) => void;
-        fileUploadProgress?: FileUploadProgressCallback;
+        SSE?: (event: string, data: any) => void
+        fileUploadProgress?: FileUploadProgressCallback
       },
     ) => {
-      return callAsync(ApiEndpoints[endpointKey], params, callbacks);
-    };
-  });
+      return callAsync(ApiEndpoints[endpointKey], params, callbacks)
+    }
+  })
 
-  return client as ApiClientType;
+  return client as ApiClientType
 }
 
 // Export the main ApiClient - dynamically generated, fully type-safe
-export const ApiClient = createApiClient();
+export const ApiClient = createApiClient()

@@ -32,7 +32,7 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../../api/core.ts'
 import { Permission, usePermissions } from '../../../../permissions'
-import { useAdminStore } from '../../../../store/admin'
+import { useAdminStore, loadAllSystemUsers, loadAllUserGroups, updateSystemUser, resetSystemUserPassword, toggleSystemUserActiveStatus, assignUserToUserGroup, removeUserFromUserGroup, clearSystemAdminError } from '../../../../store'
 import {
   ResetPasswordRequest,
   UpdateUserRequest,
@@ -56,14 +56,6 @@ export function UsersSettings() {
     groups,
     loading,
     error,
-    loadUsers,
-    loadGroups,
-    updateUser,
-    resetUserPassword,
-    toggleUserActive,
-    assignUserToGroup,
-    removeUserFromGroup,
-    clearError,
   } = useAdminStore(
     useShallow(state => ({
       users: state.users,
@@ -71,14 +63,6 @@ export function UsersSettings() {
       loading: state.loading,
       updating: state.updating,
       error: state.error,
-      loadUsers: state.loadUsers,
-      loadGroups: state.loadGroups,
-      updateUser: state.updateUser,
-      resetUserPassword: state.resetUserPassword,
-      toggleUserActive: state.toggleUserActive,
-      assignUserToGroup: state.assignUserToGroup,
-      removeUserFromGroup: state.removeUserFromGroup,
-      clearError: state.clearError,
     })),
   )
 
@@ -108,17 +92,17 @@ export function UsersSettings() {
       message.warning('You do not have permission to access user management')
       return
     }
-    loadUsers()
-    loadGroups()
-  }, [canAccessUsers, loadUsers, loadGroups])
+    loadAllSystemUsers()
+    loadAllUserGroups()
+  }, [canAccessUsers])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearSystemAdminError()
     }
-  }, [error, message, clearError])
+  }, [error, message])
 
   const handleEditUser = async (values: any) => {
     if (!selectedUser) return
@@ -132,7 +116,7 @@ export function UsersSettings() {
         profile: values.profile ? JSON.parse(values.profile) : undefined,
       }
 
-      await updateUser(selectedUser.id, updateData)
+      await updateSystemUser(selectedUser.id, updateData)
 
       message.success('User updated successfully')
       setEditModalVisible(false)
@@ -153,7 +137,7 @@ export function UsersSettings() {
         new_password: values.new_password,
       }
 
-      await resetUserPassword(selectedUser.id, resetData.new_password)
+      await resetSystemUserPassword(selectedUser.id, resetData.new_password)
 
       message.success('Password reset successfully')
       setPasswordModalVisible(false)
@@ -167,7 +151,7 @@ export function UsersSettings() {
 
   const handleToggleActive = async (userId: string) => {
     try {
-      await toggleUserActive(userId)
+      await toggleSystemUserActiveStatus(userId)
       message.success('User status updated successfully')
     } catch (error) {
       console.error('Failed to update user status:', error)
@@ -179,7 +163,7 @@ export function UsersSettings() {
     if (!selectedUser) return
 
     try {
-      await assignUserToGroup(selectedUser.id, values.group_id)
+      await assignUserToUserGroup(selectedUser.id, values.group_id)
       message.success('User assigned to group successfully')
       setAssignGroupModalVisible(false)
       setSelectedUser(null)
@@ -192,7 +176,7 @@ export function UsersSettings() {
 
   const handleRemoveFromGroup = async (userId: string, groupId: string) => {
     try {
-      await removeUserFromGroup(userId, groupId)
+      await removeUserFromUserGroup(userId, groupId)
 
       message.success('User removed from group successfully')
     } catch (error) {

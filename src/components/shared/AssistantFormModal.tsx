@@ -20,6 +20,12 @@ import {
   PlusOutlined,
 } from '@ant-design/icons'
 import { Assistant } from '../../types/api/assistant'
+import {
+  useModalsUIStore,
+  closeAssistantModal,
+  setAssistantModalLoading,
+} from '../../store/ui/modals'
+import { createUserAssistant, updateUserAssistant } from '../../store'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -97,25 +103,7 @@ interface ParameterFormField {
   value: any
 }
 
-interface AssistantFormModalProps {
-  visible: boolean
-  editingAssistant: Assistant | null
-  cloneSource?: Assistant | null
-  loading?: boolean
-  isAdmin?: boolean
-  onSubmit: (values: AssistantFormData) => Promise<void>
-  onCancel: () => void
-}
-
-export const AssistantFormModal: React.FC<AssistantFormModalProps> = ({
-  visible,
-  editingAssistant,
-  cloneSource,
-  loading = false,
-  isAdmin = false,
-  onSubmit,
-  onCancel,
-}) => {
+export const AssistantFormModal: React.FC = () => {
   const { t } = useTranslation()
   const [form] = Form.useForm<AssistantFormData>()
   const [parameterMode, setParameterMode] = useState<'json' | 'form'>('json')
@@ -124,6 +112,16 @@ export const AssistantFormModal: React.FC<AssistantFormModalProps> = ({
   >([])
   const [parameterJson, setParameterJson] = useState('')
   const [jsonErrors, setJsonErrors] = useState<string[]>([])
+
+  // Store usage
+  const { assistantModalOpen, assistantModalLoading, editingAssistant } =
+    useModalsUIStore()
+
+  // No store state needed, using external methods
+
+  // TODO: Handle clone source through store if needed
+  const cloneSource: Assistant | null = null
+  const isAdmin = false // TODO: Handle admin flag through auth store
 
   // Validation functions
   const validateParameterName = (name: string): boolean => {
@@ -338,17 +336,37 @@ export const AssistantFormModal: React.FC<AssistantFormModalProps> = ({
       parametersString = convertFormToJson(parameterFormFields)
     }
 
-    const finalValues = {
-      ...values,
-      parameters: parametersString,
+    let parametersObject = {}
+    try {
+      parametersObject = parametersString ? JSON.parse(parametersString) : {}
+    } catch (error) {
+      console.error('Invalid JSON in parameters:', error)
+      parametersObject = {}
     }
 
-    await onSubmit(finalValues)
+    const finalValues = {
+      ...values,
+      parameters: parametersObject,
+    }
+
+    setAssistantModalLoading(true)
+    try {
+      if (editingAssistant) {
+        await updateUserAssistant(editingAssistant.id, finalValues)
+      } else {
+        await createUserAssistant(finalValues)
+      }
+      closeAssistantModal()
+    } catch (error) {
+      console.error('Failed to save assistant:', error)
+    } finally {
+      setAssistantModalLoading(false)
+    }
   }
 
   // Initialize form when modal opens or editing assistant changes
   useEffect(() => {
-    if (visible) {
+    if (assistantModalOpen) {
       if (editingAssistant) {
         // Editing existing assistant
         const parametersJson = editingAssistant.parameters
@@ -360,20 +378,6 @@ export const AssistantFormModal: React.FC<AssistantFormModalProps> = ({
           instructions: editingAssistant.instructions,
           parameters: parametersJson,
           is_active: editingAssistant.is_active,
-        })
-        setParameterJson(parametersJson)
-        convertJsonToForm(parametersJson)
-      } else if (cloneSource) {
-        // Cloning from template
-        const parametersJson = cloneSource.parameters
-          ? JSON.stringify(cloneSource.parameters, null, 2)
-          : ''
-        form.setFieldsValue({
-          name: `${cloneSource.name} (Copy)`,
-          description: cloneSource.description,
-          instructions: cloneSource.instructions,
-          parameters: parametersJson,
-          is_active: true,
         })
         setParameterJson(parametersJson)
         convertJsonToForm(parametersJson)
@@ -395,14 +399,11 @@ export const AssistantFormModal: React.FC<AssistantFormModalProps> = ({
       setParameterFormFields([])
       setJsonErrors([])
     }
-  }, [visible, editingAssistant, cloneSource, form])
+  }, [assistantModalOpen, editingAssistant, cloneSource, form])
 
   const getTitle = () => {
     if (editingAssistant) {
       return isAdmin ? 'Edit Template Assistant' : 'Edit Assistant'
-    }
-    if (cloneSource) {
-      return isAdmin ? 'Clone Template Assistant' : 'Clone Assistant'
     }
     return isAdmin ? 'Create Template Assistant' : 'Create Assistant'
   }
@@ -410,8 +411,8 @@ export const AssistantFormModal: React.FC<AssistantFormModalProps> = ({
   return (
     <Modal
       title={getTitle()}
-      open={visible}
-      onCancel={onCancel}
+      open={assistantModalOpen}
+      onCancel={closeAssistantModal}
       footer={null}
       width={800}
       maskClosable={false}
@@ -619,10 +620,17 @@ export const AssistantFormModal: React.FC<AssistantFormModalProps> = ({
 
         <Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              {editingAssistant ? 'Update' : cloneSource ? 'Clone' : 'Create'}
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={assistantModalLoading}
+            >
+              {editingAssistant ? 'Update' : 'Create'}
             </Button>
-            <Button onClick={onCancel} disabled={loading}>
+            <Button
+              onClick={closeAssistantModal}
+              disabled={assistantModalLoading}
+            >
               Cancel
             </Button>
           </Space>

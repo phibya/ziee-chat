@@ -25,7 +25,15 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ConversationSummary } from '../../types/api/chat'
 import { PageContainer } from '../common/PageContainer'
-import { useChatHistoryStore } from '../../store/chatHistory'
+import { 
+  useChatHistoryStore,
+  loadChatHistoryConversationsList,
+  searchChatHistoryConversations,
+  deleteChatHistoryConversationById,
+  clearAllUserChatHistoryConversations,
+  clearChatHistorySearchResults,
+  clearChatHistoryStoreError
+} from '../../store'
 
 const { Title, Text } = Typography
 const { Search } = Input
@@ -44,12 +52,6 @@ export const ChatHistoryPage: React.FC = () => {
     deleting,
     clearing,
     error,
-    loadConversations,
-    searchConversations,
-    deleteConversation,
-    clearAllConversations,
-    clearSearch,
-    clearError,
   } = useChatHistoryStore(
     useShallow(state => ({
       conversations: state.conversations,
@@ -59,53 +61,44 @@ export const ChatHistoryPage: React.FC = () => {
       deleting: state.deleting,
       clearing: state.clearing,
       error: state.error,
-      loadConversations: state.loadConversations,
-      searchConversations: state.searchConversations,
-      deleteConversation: state.deleteConversation,
-      clearAllConversations: state.clearAllConversations,
-      clearSearch: state.clearSearch,
-      clearError: state.clearError,
     })),
   )
 
   const [searchText, setSearchText] = useState('')
 
   useEffect(() => {
-    loadConversations()
-  }, [loadConversations])
+    loadChatHistoryConversationsList()
+  }, [])
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearError()
+      clearChatHistoryStoreError()
     }
-  }, [error, message, clearError])
+  }, [error, message])
 
   useEffect(() => {
     if (searchText.trim()) {
       const timeoutId = setTimeout(() => {
-        searchConversations(searchText)
+        searchChatHistoryConversations(searchText)
       }, 500) // Debounce search for 500ms
 
       return () => clearTimeout(timeoutId)
     } else {
-      clearSearch()
+      clearChatHistorySearchResults()
       if (conversations.length === 0) {
-        loadConversations()
+        loadChatHistoryConversationsList()
       }
     }
   }, [
     searchText,
-    searchConversations,
-    clearSearch,
-    loadConversations,
     conversations.length,
   ])
 
   const handleDeleteConversation = async (conversationId: string) => {
     try {
-      await deleteConversation(conversationId)
+      await deleteChatHistoryConversationById(conversationId)
       message.success(t('conversations.conversationDeleted'))
     } catch (error) {
       // Error is handled by the store
@@ -115,7 +108,7 @@ export const ChatHistoryPage: React.FC = () => {
 
   const handleClearAllHistory = async () => {
     try {
-      await clearAllConversations()
+      await clearAllUserChatHistoryConversations()
       message.success(t('conversations.allConversationsDeleted'))
     } catch (error) {
       // Error is handled by the store

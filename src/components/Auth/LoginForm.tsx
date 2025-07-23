@@ -2,7 +2,7 @@ import React from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { useAuthStore } from '../../store/auth'
+import { useAuthStore, authenticateUser, clearAuthenticationError } from '../../store'
 import type { LoginRequest } from '../../types'
 
 const { Title, Text } = Typography
@@ -14,12 +14,12 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const { t } = useTranslation()
   const [form] = Form.useForm()
-  const { login, isLoading, error, clearError, isDesktop } = useAuthStore()
+  const { isLoading, error, isDesktop } = useAuthStore()
 
   const onFinish = async (values: LoginRequest) => {
     try {
-      clearError()
-      await login(values)
+      clearAuthenticationError()
+      await authenticateUser(values)
     } catch (error) {
       // Error is handled by the store
       console.error('Login failed:', error)
@@ -39,7 +39,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
           type="error"
           showIcon
           closable
-          onClose={clearError}
+          onClose={clearAuthenticationError}
           className="mb-4"
         />
       )}
