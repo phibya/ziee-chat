@@ -8,7 +8,7 @@ import {
   Input,
   Popconfirm,
   Row,
-  Space,
+  Flex,
   Tag,
   Tooltip,
   Typography,
@@ -198,7 +198,7 @@ export const ChatHistoryPage: React.FC = () => {
                 View and manage all your chat conversations
               </Text>
             </div>
-            <Space>
+            <Flex className="gap-2">
               <Search
                 placeholder={t('forms.searchConversations')}
                 allowClear
@@ -228,7 +228,7 @@ export const ChatHistoryPage: React.FC = () => {
                   </Button>
                 </Popconfirm>
               )}
-            </Space>
+            </Flex>
           </div>
 
           {(searchText.trim() ? searchResults : conversations).length === 0 &&

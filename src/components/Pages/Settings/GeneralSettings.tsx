@@ -5,7 +5,6 @@ import {
   Divider,
   Flex,
   Form,
-  Space,
   Switch,
   Typography,
 } from 'antd'
@@ -204,9 +203,9 @@ export function GeneralSettings() {
                   </Text>
                 </div>
               </div>
-              <Space
-                direction={isMobile ? 'vertical' : 'horizontal'}
-                style={{ width: isMobile ? '100%' : 'auto' }}
+              <Flex
+                vertical={isMobile}
+                className={isMobile ? 'gap-2 w-full' : 'gap-2'}
               >
                 <Button
                   type="default"
@@ -224,7 +223,7 @@ export function GeneralSettings() {
                 >
                   {t('buttons.showInFinder')}
                 </Button>
-              </Space>
+              </Flex>
             </Flex>
           </Flex>
         </Card>
@@ -292,7 +291,7 @@ export function GeneralSettings() {
       </Card>
 
       <Card title={t('general.resources')}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <Flex
             justify="space-between"
             align={isMobile ? 'flex-start' : 'center'}
@@ -326,11 +325,11 @@ export function GeneralSettings() {
             </div>
             <Button type="link">{t('buttons.viewReleases')}</Button>
           </Flex>
-        </Space>
+        </Flex>
       </Card>
 
       <Card title={t('general.community')}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <Flex
             justify="space-between"
             align={isMobile ? 'flex-start' : 'center'}
@@ -378,7 +377,7 @@ export function GeneralSettings() {
               </svg>
             </Button>
           </Flex>
-        </Space>
+        </Flex>
       </Card>
 
       <Card title={t('general.support')}>

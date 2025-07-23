@@ -7,7 +7,7 @@ import {
   InputNumber,
   Modal,
   Select,
-  Space,
+  Flex,
   Switch,
   Tag,
   Tooltip,
@@ -443,7 +443,7 @@ export const AssistantFormModal: React.FC = () => {
 
         <Form.Item label={t('labels.parameters')}>
           <div className="mb-3">
-            <Space>
+            <Flex className="gap-2">
               <Button
                 type={parameterMode === 'json' ? 'primary' : 'default'}
                 size="small"
@@ -460,7 +460,7 @@ export const AssistantFormModal: React.FC = () => {
               >
                 Form
               </Button>
-            </Space>
+            </Flex>
           </div>
 
           {/* Parameter Tags */}
@@ -620,7 +620,7 @@ export const AssistantFormModal: React.FC = () => {
         </Form.Item>
 
         <Form.Item>
-          <Space>
+          <Flex className="gap-2">
             <Button
               type="primary"
               htmlType="submit"
@@ -634,7 +634,7 @@ export const AssistantFormModal: React.FC = () => {
             >
               Cancel
             </Button>
-          </Space>
+          </Flex>
         </Form.Item>
       </Form>
     </Modal>

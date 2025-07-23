@@ -1,21 +1,20 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   BrowserRouter as Router,
   Navigate,
   Route,
   Routes,
 } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { ThemeProvider } from './providers/ThemeProvider'
+import { isDesktopApp } from './api/core'
 import { AuthGuard } from './components/Auth'
 import { AppLayout } from './components/Layout/AppLayout'
-import { ChatPage } from './components/Pages/ChatPage'
 import { AssistantsPage } from './components/Pages/AssistantsPage'
 import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
+import { ChatPage } from './components/Pages/ChatPage'
 import { HubPage } from './components/Pages/HubPage'
-import { SettingsPage } from './components/Pages/SettingsPage'
-import { ProjectsPage } from './components/Pages/ProjectsPage'
 import { ProjectDetailsPage } from './components/Pages/ProjectDetailsPage'
+import { ProjectsPage } from './components/Pages/ProjectsPage'
 import {
   AdminAppearanceSettings,
   AdminAssistantsSettings,
@@ -33,12 +32,13 @@ import {
   UserGroupsSettings,
   UsersSettings,
 } from './components/Pages/Settings'
+import { SettingsPage } from './components/Pages/SettingsPage'
+import { Permission, usePermissions } from './permissions'
+import { ThemeProvider } from './providers/ThemeProvider'
 import {
   initializeUserSettingsOnStartup,
   useAppearanceSettings,
 } from './store/settings'
-import { Permission, usePermissions } from './permissions'
-import { isDesktopApp } from './api/core'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
 
@@ -58,6 +58,8 @@ function App() {
       i18n.changeLanguage(language)
     }
   }, [language, i18n])
+
+  console.log('App render', language, i18n)
 
   return (
     <ThemeProvider>

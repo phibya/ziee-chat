@@ -12,7 +12,7 @@ import {
   Popconfirm,
   Result,
   Select,
-  Space,
+  Flex,
   Switch,
   Table,
   Tag,
@@ -236,12 +236,12 @@ export function UserGroupsSettings() {
       dataIndex: 'name',
       key: 'name',
       render: (name: string, record: UserGroup) => (
-        <Space>
+        <Flex className="gap-2">
           <TeamOutlined />
           <span>{name}</span>
           {record.is_protected && <Tag color="orange">Protected</Tag>}
           {!record.is_active && <Tag color="red">Inactive</Tag>}
-        </Space>
+        </Flex>
       ),
     },
     {
@@ -271,7 +271,7 @@ export function UserGroupsSettings() {
                 return <Text type="secondary">No providers assigned</Text>
               }
               return (
-                <Space size={[0, 4]} wrap>
+                <Flex wrap className="gap-1">
                   {ids.map(providerId => {
                     const provider = providers.find(p => p.id === providerId)
                     return (
@@ -280,7 +280,7 @@ export function UserGroupsSettings() {
                       </Tag>
                     )
                   })}
-                </Space>
+                </Flex>
               )
             },
           },
@@ -307,7 +307,7 @@ export function UserGroupsSettings() {
       title: 'Actions',
       key: 'actions',
       render: (_, record: UserGroup) => (
-        <Space>
+        <Flex className="gap-2">
           <Button
             type="link"
             icon={<UserOutlined />}
@@ -336,7 +336,7 @@ export function UserGroupsSettings() {
               </Button>
             </Popconfirm>
           )}
-        </Space>
+        </Flex>
       ),
     },
   ]
@@ -473,7 +473,7 @@ export function UserGroupsSettings() {
               </Form.Item>
             )}
             <Form.Item className="mb-0">
-              <Space>
+              <Flex className="gap-2">
                 <Button type="primary" htmlType="submit">
                   Create Group
                 </Button>
@@ -485,7 +485,7 @@ export function UserGroupsSettings() {
                 >
                   Cancel
                 </Button>
-              </Space>
+              </Flex>
             </Form.Item>
           </Form>
         </Modal>
@@ -584,7 +584,7 @@ export function UserGroupsSettings() {
               <Switch disabled={selectedGroup?.is_protected} />
             </Form.Item>
             <Form.Item className="mb-0">
-              <Space>
+              <Flex className="gap-2">
                 <Button type="primary" htmlType="submit">
                   Update Group
                 </Button>
@@ -597,7 +597,7 @@ export function UserGroupsSettings() {
                 >
                   Cancel
                 </Button>
-              </Space>
+              </Flex>
             </Form.Item>
           </Form>
         </Modal>

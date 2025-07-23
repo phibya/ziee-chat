@@ -23,7 +23,6 @@ import {
   Menu,
   Modal,
   Progress,
-  Space,
   Spin,
   Switch,
   Tooltip,
@@ -859,11 +858,7 @@ export function ProvidersSettings() {
                         <List.Item.Meta
                           title={download.request.alias}
                           description={
-                            <Space
-                              direction="vertical"
-                              size="small"
-                              style={{ width: '100%' }}
-                            >
+                            <Flex vertical className="gap-1 w-full">
                               <Text type="secondary" className="text-xs">
                                 {download.progress?.message ||
                                   'Preparing download...'}
@@ -879,7 +874,7 @@ export function ProvidersSettings() {
                                   ? `${formatBytes(download.progress.current)} / ${formatBytes(download.progress.total)}`
                                   : '0 B / 0 B'}
                               </Text>
-                            </Space>
+                            </Flex>
                           }
                         />
                       </List.Item>
@@ -980,7 +975,7 @@ export function ProvidersSettings() {
                     </Flex>
                   }
                   description={
-                    <Space direction="vertical" size="small">
+                    <Flex vertical className="gap-1">
                       <Text type="secondary" className="text-xs">
                         Model ID: {model.name}
                       </Text>
@@ -988,7 +983,7 @@ export function ProvidersSettings() {
                         <Text type="secondary">{model.description}</Text>
                       )}
                       {model.capabilities && (
-                        <Space size="small" wrap>
+                        <Flex wrap className="gap-1">
                           {model.capabilities.vision && (
                             <Text type="secondary">👁️ Vision</Text>
                           )}
@@ -1001,9 +996,9 @@ export function ProvidersSettings() {
                           {model.capabilities.code_interpreter && (
                             <Text type="secondary">💻 Code</Text>
                           )}
-                        </Space>
+                        </Flex>
                       )}
-                    </Space>
+                    </Flex>
                   }
                 />
               </List.Item>

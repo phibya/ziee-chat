@@ -6,7 +6,6 @@ import {
   Input,
   InputNumber,
   Select,
-  Space,
   Switch,
   Typography,
 } from 'antd'
@@ -78,7 +77,7 @@ export function LocalConfigurationSection({
   )
 
   const content = (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Flex vertical className="gap-2 w-full">
       <ResponsiveConfigItem
         title={t('providers.autoUnloadOldModels')}
         description={t('providers.autoUnloadDescription')}
@@ -265,7 +264,7 @@ export function LocalConfigurationSection({
           />
         </Form.Item>
       </div>
-    </Space>
+    </Flex>
   )
 
   return wrapInCard ? (

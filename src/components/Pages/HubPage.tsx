@@ -5,7 +5,7 @@ import {
   Input,
   Row,
   Select,
-  Space,
+  Flex,
   Tag,
   Typography,
 } from 'antd'
@@ -268,7 +268,7 @@ export function HubPage() {
                 {/* Variants/Tags */}
                 {model.variants && model.variants.length > 0 && (
                   <div style={{ marginBottom: '12px' }}>
-                    <Space wrap>
+                    <Flex wrap className="gap-2">
                       {model.variants.map(variant => (
                         <Tag
                           key={variant}
@@ -278,14 +278,14 @@ export function HubPage() {
                           {variant}
                         </Tag>
                       ))}
-                    </Space>
+                    </Flex>
                   </div>
                 )}
 
                 {/* Capabilities */}
                 {model.capabilities && model.capabilities.length > 0 && (
                   <div style={{ marginBottom: '12px' }}>
-                    <Space wrap>
+                    <Flex wrap className="gap-2">
                       {model.capabilities.map(capability => (
                         <Tag
                           key={capability}
@@ -295,7 +295,7 @@ export function HubPage() {
                           {capability}
                         </Tag>
                       ))}
-                    </Space>
+                    </Flex>
                   </div>
                 )}
 
@@ -309,22 +309,22 @@ export function HubPage() {
                       marginBottom: '4px',
                     }}
                   >
-                    <Space size={4}>
+                    <Flex className="gap-1">
                       <DownloadOutlined
                         style={{ fontSize: '12px', color: '#666' }}
                       />
                       <Text type="secondary" style={{ fontSize: '12px' }}>
                         {model.pulls} Pulls
                       </Text>
-                    </Space>
-                    <Space size={4}>
+                    </Flex>
+                    <Flex className="gap-1">
                       <TagOutlined
                         style={{ fontSize: '12px', color: '#666' }}
                       />
                       <Text type="secondary" style={{ fontSize: '12px' }}>
                         {model.tags} Tags
                       </Text>
-                    </Space>
+                    </Flex>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     <ClockCircleOutlined

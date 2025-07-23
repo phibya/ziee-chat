@@ -8,7 +8,6 @@ import {
   Input,
   message,
   Row,
-  Space,
   Switch,
   Typography,
 } from 'antd'
@@ -340,7 +339,7 @@ export function ProxySettingsForm({
               const canTest = isProxyValid(values)
 
               return (
-                <Space>
+                <Flex className="gap-2">
                   <Button onClick={handleReset} disabled={disabled}>
                     {t('proxy.reset')}
                   </Button>
@@ -359,7 +358,7 @@ export function ProxySettingsForm({
                   >
                     {t('common.save')}
                   </Button>
-                </Space>
+                </Flex>
               )
             }}
           </Form.Item>

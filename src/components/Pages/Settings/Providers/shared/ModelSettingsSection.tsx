@@ -5,7 +5,6 @@ import {
   Form,
   InputNumber,
   Select,
-  Space,
   Switch,
   Typography,
 } from 'antd'
@@ -55,10 +54,10 @@ export function ModelSettingsSection() {
   )
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex vertical className="gap-4 w-full">
       {/* Sequence & Memory Management */}
       <Card size="small" title="Sequence & Memory Management">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Max Sequences"
             description="Maximum running sequences at any time (default: 16)"
@@ -124,12 +123,12 @@ export function ModelSettingsSection() {
               <Switch />
             </Form.Item>
           </ResponsiveConfigItem>
-        </Space>
+        </Flex>
       </Card>
 
       {/* PagedAttention Configuration */}
       <Card size="small" title="PagedAttention Configuration">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="PagedAttention GPU Memory (MB)"
             description="GPU memory to allocate for KV cache with PagedAttention in MBs"
@@ -234,12 +233,12 @@ export function ModelSettingsSection() {
               <Switch />
             </Form.Item>
           </ResponsiveConfigItem>
-        </Space>
+        </Flex>
       </Card>
 
       {/* Performance Optimization */}
       <Card size="small" title="Performance Optimization">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Prefix Cache Count"
             description="Number of prefix caches to hold on the device. Other caches are evicted to the CPU based on a LRU strategy (default: 16)"
@@ -275,12 +274,12 @@ export function ModelSettingsSection() {
               />
             </Form.Item>
           </ResponsiveConfigItem>
-        </Space>
+        </Flex>
       </Card>
 
       {/* Model Configuration */}
       <Card size="small" title="Model Configuration">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Data Type"
             description="Model data type (default: auto)"
@@ -346,12 +345,12 @@ export function ModelSettingsSection() {
               />
             </Form.Item>
           </ResponsiveConfigItem>
-        </Space>
+        </Flex>
       </Card>
 
       {/* Vision Model Settings */}
       <Card size="small" title="Vision Model Settings">
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Max Edge Length (Vision)"
             description="Automatically resize and pad images to this maximum edge length. Aspect ratio is preserved (vision models only)"
@@ -406,8 +405,8 @@ export function ModelSettingsSection() {
               />
             </Form.Item>
           </ResponsiveConfigItem>
-        </Space>
+        </Flex>
       </Card>
-    </Space>
+    </Flex>
   )
 }

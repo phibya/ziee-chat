@@ -1,12 +1,12 @@
-import { useEffect } from 'react'
-import { Button, Layout } from 'antd'
 import { MenuUnfoldOutlined } from '@ant-design/icons'
+import { Button, Layout } from 'antd'
+import { useEffect } from 'react'
 import {
-  Stores,
+  getUILeftPanelCollapsed,
   setIsMobile,
   setMobileOverlayOpen,
-  getUILeftPanelCollapsed,
   setUILeftPanelCollapsed,
+  Stores,
 } from '../../store'
 import { LeftPanel } from './LeftPanel'
 

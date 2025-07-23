@@ -1,4 +1,4 @@
-import { App, Card, Flex, Form, Select, Space, Typography } from 'antd'
+import { App, Card, Flex, Form, Select, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -85,7 +85,7 @@ export function AdminAppearanceSettings() {
   }
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex vertical className="gap-4 w-full">
       <Title level={3}>{t('admin.appearanceSettings')}</Title>
 
       <Card title={t('admin.defaultSystemSettings')}>
@@ -96,7 +96,7 @@ export function AdminAppearanceSettings() {
             language: globalDefaultLanguage,
           }}
         >
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Flex vertical className="gap-2 w-full">
             <Flex
               justify="space-between"
               align={isMobile ? 'flex-start' : 'center'}
@@ -124,9 +124,9 @@ export function AdminAppearanceSettings() {
                 />
               </Form.Item>
             </Flex>
-          </Space>
+          </Flex>
         </Form>
       </Card>
-    </Space>
+    </Flex>
   )
 }

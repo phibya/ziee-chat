@@ -16,7 +16,6 @@ import {
   List,
   Modal,
   Select,
-  Space,
   Switch,
   Typography,
 } from 'antd'
@@ -304,7 +303,7 @@ export function ModelRepositorySettings() {
   }
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex vertical className="gap-4 w-full">
       <div className="mb-6">
         <Title level={2}>{t('settings.modelRepository.title')}</Title>
         <Text type="secondary">
@@ -653,7 +652,7 @@ export function ModelRepositorySettings() {
           </Form.Item>
 
           <Form.Item>
-            <Space>
+            <Flex className="gap-2">
               <Button
                 type="primary"
                 htmlType="submit"
@@ -662,10 +661,10 @@ export function ModelRepositorySettings() {
                 {editingRepository ? 'Update' : 'Add'} Repository
               </Button>
               <Button onClick={handleRepositoryCancel}>Cancel</Button>
-            </Space>
+            </Flex>
           </Form.Item>
         </Form>
       </Modal>
-    </Space>
+    </Flex>
   )
 }

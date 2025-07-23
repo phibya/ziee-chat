@@ -1,4 +1,4 @@
-import { Card, Space, Typography } from 'antd'
+import { Card, Flex, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -41,19 +41,19 @@ export function HttpsProxySettings() {
 
   if (loading && !proxySettings) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Flex vertical className="gap-4 w-full">
         <Title level={3}>{t('proxy.title')}</Title>
         <Card>
           <Text type="secondary">{t('proxy.loadingSettings')}</Text>
         </Card>
-      </Space>
+      </Flex>
     )
   }
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex vertical className="gap-4 w-full">
       <Title level={3}>{t('proxy.title')}</Title>
       <ProxySettingsForm initialSettings={proxySettings} onSave={handleSave} />
-    </Space>
+    </Flex>
   )
 }

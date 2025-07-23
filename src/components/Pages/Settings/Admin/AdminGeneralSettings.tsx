@@ -5,7 +5,6 @@ import {
   Divider,
   Flex,
   Form,
-  Space,
   Switch,
   Typography,
 } from 'antd'
@@ -68,21 +67,21 @@ export function AdminGeneralSettings() {
   // Only show these settings for web app (not desktop)
   if (isDesktopApp) {
     return (
-      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Flex vertical className="gap-4 w-full">
         <Title level={3}>{t('admin.title')}</Title>
         <Card>
           <Text type="secondary">{t('admin.notAvailableDesktop')}</Text>
         </Card>
-      </Space>
+      </Flex>
     )
   }
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex vertical className="gap-4 w-full">
       <Title level={3}>{t('admin.title')}</Title>
 
       <Card title={t('admin.application')}>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Flex vertical className="gap-2 w-full">
           <Flex
             justify="space-between"
             align={isMobile ? 'flex-start' : 'center'}
@@ -119,7 +118,7 @@ export function AdminGeneralSettings() {
               </Button>
             </Flex>
           )}
-        </Space>
+        </Flex>
       </Card>
 
       {hasPermission(Permission.config.experimental.read) && (
@@ -157,7 +156,7 @@ export function AdminGeneralSettings() {
 
       {hasPermission(Permission.config.dataFolder.read) && (
         <Card title={t('admin.dataFolder')}>
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Flex vertical className="gap-2 w-full">
             <Flex
               justify="space-between"
               align={isMobile ? 'flex-start' : 'center'}
@@ -196,9 +195,9 @@ export function AdminGeneralSettings() {
                   <Text type="secondary">{t('admin.appLogsDesc')}</Text>
                 </div>
               </div>
-              <Space
-                direction={isMobile ? 'vertical' : 'horizontal'}
-                style={{ width: isMobile ? '100%' : 'auto' }}
+              <Flex
+                vertical={isMobile}
+                className={isMobile ? 'gap-2 w-full' : 'gap-2'}
               >
                 <Button
                   type="default"
@@ -216,11 +215,11 @@ export function AdminGeneralSettings() {
                 >
                   {t('admin.showInFinder')}
                 </Button>
-              </Space>
+              </Flex>
             </Flex>
-          </Space>
+          </Flex>
         </Card>
       )}
-    </Space>
+    </Flex>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { App, Col, Row, Select, Space, Typography } from 'antd'
+import { App, Col, Row, Select, Flex, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { RobotOutlined } from '@ant-design/icons'
@@ -172,10 +172,10 @@ export function NewChatInterface() {
             >
               {userAssistants.map(assistant => (
                 <Option key={assistant.id} value={assistant.id}>
-                  <Space>
+                  <Flex className="gap-2">
                     <RobotOutlined />
                     {assistant.name}
-                  </Space>
+                  </Flex>
                 </Option>
               ))}
             </Select>

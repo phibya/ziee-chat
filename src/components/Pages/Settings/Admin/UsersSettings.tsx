@@ -20,7 +20,6 @@ import {
   Popconfirm,
   Result,
   Select,
-  Space,
   Switch,
   Table,
   Tag,
@@ -212,7 +211,7 @@ export function UsersSettings() {
       title: t('admin.users.columns.user'),
       key: 'user',
       render: (_, record: User) => (
-        <Space>
+        <Flex className="gap-2">
           <UserOutlined />
           <div>
             <div>
@@ -227,7 +226,7 @@ export function UsersSettings() {
               {record.emails[0]?.address}
             </Text>
           </div>
-        </Space>
+        </Flex>
       ),
     },
     {
@@ -277,7 +276,7 @@ export function UsersSettings() {
       title: t('admin.users.columns.actions'),
       key: 'actions',
       render: (_, record: User) => (
-        <Space>
+        <Flex className="gap-2">
           {canEditUsers && !record.is_protected && (
             <Button
               type="link"
@@ -317,7 +316,7 @@ export function UsersSettings() {
               </Button>
             </Popconfirm>
           )}
-        </Space>
+        </Flex>
       ),
     },
   ]
@@ -445,7 +444,7 @@ export function UsersSettings() {
               <Input.TextArea rows={4} placeholder='{"name": "John Doe"}' />
             </Form.Item>
             <Form.Item className="mb-0">
-              <Space>
+              <Flex className="gap-2">
                 <Button type="primary" htmlType="submit">
                   Update User
                 </Button>
@@ -458,7 +457,7 @@ export function UsersSettings() {
                 >
                   Cancel
                 </Button>
-              </Space>
+              </Flex>
             </Form.Item>
           </Form>
         </Modal>
@@ -513,7 +512,7 @@ export function UsersSettings() {
               />
             </Form.Item>
             <Form.Item className="mb-0">
-              <Space>
+              <Flex className="gap-2">
                 <Button type="primary" htmlType="submit">
                   Reset Password
                 </Button>
@@ -526,7 +525,7 @@ export function UsersSettings() {
                 >
                   Cancel
                 </Button>
-              </Space>
+              </Flex>
             </Form.Item>
           </Form>
         </Modal>
@@ -627,7 +626,7 @@ export function UsersSettings() {
               </Select>
             </Form.Item>
             <Form.Item className="mb-0">
-              <Space>
+              <Flex className="gap-2">
                 <Button type="primary" htmlType="submit">
                   Assign Group
                 </Button>
@@ -640,7 +639,7 @@ export function UsersSettings() {
                 >
                   Cancel
                 </Button>
-              </Space>
+              </Flex>
             </Form.Item>
           </Form>
         </Modal>

@@ -1,4 +1,4 @@
-import { Card, Form, Space, Switch } from 'antd'
+import { Card, Form, Flex, Switch } from 'antd'
 import { useTranslation } from 'react-i18next'
 
 interface ModelCapabilitiesSectionProps {
@@ -12,7 +12,7 @@ export function ModelCapabilitiesSection({
 
   return (
     <Card title={t('providers.capabilities')} size={'small'}>
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Flex vertical className="gap-2 w-full">
         {capabilities.includes('vision') && (
           <div
             style={{
@@ -88,7 +88,7 @@ export function ModelCapabilitiesSection({
             </Form.Item>
           </div>
         )}
-      </Space>
+      </Flex>
     </Card>
   )
 }

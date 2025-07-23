@@ -5,7 +5,7 @@ import {
   Button,
   Card,
   Popconfirm,
-  Space,
+  Flex,
   Table,
   Tag,
   Tooltip,
@@ -83,12 +83,12 @@ export const AdminAssistantsSettings: React.FC = () => {
       dataIndex: 'name',
       key: 'name',
       render: (text: string, record: Assistant) => (
-        <Space>
+        <Flex className="gap-2">
           <RobotOutlined />
           <Text strong>{text}</Text>
           {record.is_default && <Tag color="green">Default</Tag>}
           {!record.is_active && <Tag color="red">Inactive</Tag>}
-        </Space>
+        </Flex>
       ),
     },
     {
@@ -117,7 +117,7 @@ export const AdminAssistantsSettings: React.FC = () => {
       title: t('labels.actions'),
       key: 'actions',
       render: (_: any, record: Assistant) => (
-        <Space>
+        <Flex className="gap-2">
           <Tooltip title={t('buttons.edit')}>
             <Button
               type="text"
@@ -136,7 +136,7 @@ export const AdminAssistantsSettings: React.FC = () => {
               <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
-        </Space>
+        </Flex>
       ),
     },
   ]

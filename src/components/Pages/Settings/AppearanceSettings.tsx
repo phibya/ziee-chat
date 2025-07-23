@@ -1,4 +1,4 @@
-import { App, Card, Divider, Flex, Form, Select, Space, Typography } from 'antd'
+import { App, Card, Divider, Flex, Form, Select, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppearanceSettings } from '../../../store'
@@ -64,7 +64,7 @@ export function AppearanceSettings() {
   }
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Flex vertical className="gap-4 w-full">
       <Title level={3}>{t('pages.appearance')}</Title>
 
       <Card title={t('appearance.themeAndDisplay')}>
@@ -77,7 +77,7 @@ export function AppearanceSettings() {
             language,
           }}
         >
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Flex vertical className="gap-2 w-full">
             <Flex
               justify="space-between"
               align={isMobile ? 'flex-start' : 'center'}
@@ -157,9 +157,9 @@ export function AppearanceSettings() {
                 />
               </Form.Item>
             </Flex>
-          </Space>
+          </Flex>
         </Form>
       </Card>
-    </Space>
+    </Flex>
   )
 }

@@ -1,4 +1,4 @@
-import { Card, Form, Input, Modal, Space, Switch } from 'antd'
+import { Card, Form, Input, Modal, Flex, Switch } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
@@ -82,7 +82,7 @@ export function EditProviderModal({
 
         {/* API Configuration for non-local providers */}
         {provider.type !== 'local' && (
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Flex vertical className="gap-2 w-full">
             <Card size="small" title={t('providers.apiConfiguration')}>
               <Form.Item
                 name="api_key"
@@ -115,7 +115,7 @@ export function EditProviderModal({
                 <Input placeholder={t('providers.baseUrlPlaceholder')} />
               </Form.Item>
             </Card>
-          </Space>
+          </Flex>
         )}
       </Form>
     </Modal>

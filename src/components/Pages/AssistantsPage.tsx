@@ -14,7 +14,7 @@ import {
   Modal,
   Popconfirm,
   Row,
-  Space,
+  Flex,
   Table,
   Tag,
   Tooltip,
@@ -154,7 +154,7 @@ export const AssistantsPage: React.FC = () => {
               <Title level={2}>{t('assistants.title')}</Title>
               <Text type="secondary">{t('assistants.subtitle')}</Text>
             </div>
-            <Space>
+            <Flex className="gap-2">
               <Button
                 type="default"
                 icon={<CopyOutlined />}
@@ -169,7 +169,7 @@ export const AssistantsPage: React.FC = () => {
               >
                 Create New
               </Button>
-            </Space>
+            </Flex>
           </div>
 
           {loading ? (
@@ -223,11 +223,11 @@ export const AssistantsPage: React.FC = () => {
               dataIndex: 'name',
               key: 'name',
               render: (text: string) => (
-                <Space>
+                <Flex className="gap-2">
                   <RobotOutlined />
                   <Text strong>{text}</Text>
                   <Tag color="blue">Template</Tag>
-                </Space>
+                </Flex>
               ),
             },
             {
@@ -255,7 +255,7 @@ export const AssistantsPage: React.FC = () => {
               title: t('labels.actions'),
               key: 'actions',
               render: (_: any, record: Assistant) => (
-                <Space>
+                <Flex className="gap-2">
                   <Tooltip title={t('assistants.previewDetails')}>
                     <Button
                       type="text"
@@ -305,7 +305,7 @@ export const AssistantsPage: React.FC = () => {
                   >
                     Clone
                   </Button>
-                </Space>
+                </Flex>
               ),
             },
           ]}
