@@ -55,14 +55,6 @@ interface ProvidersState {
   uploadProgress: FileUploadProgress[];
   overallUploadProgress: number;
 
-  // Download states (for repository downloads)
-  downloading: boolean;
-  downloadProgress: {
-    phase: string;
-    current: number;
-    total: number;
-    message: string;
-  } | null;
 
   // Upload session state
   uploadSession: UploadSession | null;
@@ -105,20 +97,6 @@ interface ProvidersState {
     request: UploadMultipleFilesRequest,
   ) => Promise<Model>;
 
-  // Download model from repository with SSE progress tracking
-  downloadFromRepository: (request: {
-    provider_id: string;
-    repository_id: string;
-    repository_path: string;
-    main_filename: string;
-    repository_branch?: string;
-    name: string;
-    alias: string;
-    description?: string;
-    file_format: string;
-    capabilities?: ModelCapabilities;
-    settings?: ModelSettings;
-  }) => Promise<void>;
 
   // Model control actions (for Local)
   startModel: (modelId: string) => Promise<void>; // For Local
@@ -148,8 +126,6 @@ export const useProvidersStore = create<ProvidersState>()(
       uploading: false,
       uploadProgress: [],
       overallUploadProgress: 0,
-      downloading: false,
-      downloadProgress: null,
       uploadSession: null,
       error: null,
 
@@ -637,93 +613,14 @@ export const useProvidersStore = create<ProvidersState>()(
         }
       },
 
-      // Download model from repository with SSE progress tracking
-      downloadFromRepository: async (request) => {
-        set({
-          downloading: true,
-          downloadProgress: {
-            phase: "Starting",
-            current: 0,
-            total: 100,
-            message: "Initializing repository download...",
-          },
-          error: null,
-        });
-
-        try {
-          // biome-ignore lint/suspicious/noAsyncPromiseExecutor: <explanation>
-          await new Promise<void>(async (resolve, reject) => {
-            let isRejected = false;
-            await ApiClient.Admin.downloadFromRepository(request, {
-              SSE: (event: string, data: any) => {
-                if (event === "progress") {
-                  set({
-                    downloadProgress: {
-                      phase: data.phase,
-                      current: data.current,
-                      total: data.total,
-                      message: data.message || "Downloading...",
-                    },
-                  });
-                } else if (event === "complete") {
-                  set({
-                    downloading: false,
-                    downloadProgress: null,
-                  });
-
-                  let model = data.model as Model;
-
-                  set((state) => ({
-                    modelsByProvider: {
-                      ...state.modelsByProvider,
-                      [request.provider_id]: [
-                        ...(state.modelsByProvider[request.provider_id] || []),
-                        model,
-                      ].filter((e) => !!e),
-                    },
-                  }));
-
-                  resolve();
-                } else if (event === "error") {
-                  set({
-                    downloading: false,
-                    downloadProgress: null,
-                    error: data.message || "Download failed",
-                  });
-                  !isRejected &&
-                    reject(new Error(data.message || "Download failed"));
-                  isRejected = true;
-                }
-              },
-            }).catch((e) => {
-              console.error("Download error:", e);
-              !isRejected && reject(e);
-              isRejected = true;
-            });
-          });
-        } catch (error) {
-          set({
-            downloading: false,
-            downloadProgress: null,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Failed to download from repository",
-          });
-          throw error;
-        }
-      },
-
       clearError: () => set({ error: null }),
 
       cancelUpload: () => {
-        // Reset both upload and download states
+        // Reset upload state
         set({
           uploading: false,
           uploadProgress: [],
           overallUploadProgress: 0,
-          downloading: false,
-          downloadProgress: null,
           error: null,
         });
       },

@@ -21,6 +21,7 @@ import { useShallow } from "zustand/react/shallow";
 import { ApiClient } from "../../../../api/client";
 import { LOCAL_FILE_TYPE_OPTIONS } from "../../../../constants/localModelTypes.ts";
 import { useProvidersStore } from "../../../../store/providers";
+import { useModelDownloadStore } from "../../../../store/modelDownload";
 import { ProviderType } from "../../../../types/api/provider";
 import { Repository } from "../../../../types/api/repository";
 import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from "./shared/constants";
@@ -97,9 +98,6 @@ export function AddModelModal({
     uploading,
     uploadProgress,
     overallUploadProgress,
-    downloading,
-    downloadProgress,
-    downloadFromRepository,
     clearError,
     cancelUpload,
   } = useProvidersStore(
@@ -108,11 +106,22 @@ export function AddModelModal({
       uploading: state.uploading,
       uploadProgress: state.uploadProgress,
       overallUploadProgress: state.overallUploadProgress,
+      clearError: state.clearError,
+      cancelUpload: state.cancelUpload,
+    })),
+  );
+
+  const {
+    downloading,
+    downloadProgress,
+    downloadFromRepository,
+    clearError: clearDownloadError,
+  } = useModelDownloadStore(
+    useShallow((state) => ({
       downloading: state.downloading,
       downloadProgress: state.downloadProgress,
       downloadFromRepository: state.downloadFromRepository,
       clearError: state.clearError,
-      cancelUpload: state.cancelUpload,
     })),
   );
 
@@ -222,6 +231,10 @@ export function AddModelModal({
               settings: values.settings || {},
             });
 
+            // Update the providers store with the new model
+            const { loadProviderModels } = useProvidersStore.getState();
+            await loadProviderModels(providerId);
+
             message.success(
               t("providers.modelDownloadFromRepositoryCompleted"),
             );
@@ -296,6 +309,14 @@ export function AddModelModal({
       update(); // Force re-render to update form watchers
     }
   }, [open, providerType, form, update]);
+
+  // Clear errors when modal closes
+  useEffect(() => {
+    if (!open) {
+      clearError();
+      clearDownloadError();
+    }
+  }, [open, clearError, clearDownloadError]);
 
   const handleFolderSelect = (info: any) => {
     const fileList = info.fileList || [];
