@@ -1,23 +1,23 @@
 import {
-  Button,
-  Card,
-  Col,
-  Input,
-  Row,
-  Select,
-  Flex,
-  Tag,
-  Typography,
-} from 'antd'
-import { useTranslation } from 'react-i18next'
-import { PageContainer } from '../common/PageContainer'
-import {
   ClockCircleOutlined,
   DownloadOutlined,
   SearchOutlined,
   TagOutlined,
 } from '@ant-design/icons'
+import {
+  Button,
+  Card,
+  Col,
+  Flex,
+  Input,
+  Row,
+  Select,
+  Tag,
+  Typography,
+} from 'antd'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PageContainer } from '../common/PageContainer'
 
 const { Title, Text } = Typography
 
@@ -254,7 +254,7 @@ export function HubPage() {
               <Card
                 hoverable
                 style={{ height: '100%' }}
-                bodyStyle={{ padding: '16px' }}
+                styles={{ body: { padding: '16px' } }}
               >
                 <div style={{ marginBottom: '12px' }}>
                   <Title level={4} style={{ margin: 0, marginBottom: '4px' }}>

@@ -1,20 +1,20 @@
 // Auth store
 
-import type { StoreApi, UseBoundStore } from 'zustand'
+import type { StoreApi, UseBoundStore } from "zustand";
 // Admin store
-import { useShallow } from 'zustand/react/shallow'
-import { useAdminStore } from './admin'
-import { useAssistantsStore } from './assistants'
-import { useAuthStore } from './auth'
-import { useChatStore } from './chat'
-import { useChatHistoryStore } from './chatHistory'
-import { useConversationsStore } from './conversations'
-import { useModelDownloadStore } from './modelDownload'
-import { useProjectsStore } from './projects'
-import { useProvidersStore } from './providers'
-import { useRepositoriesStore } from './repositories'
-import { useUserSettingsStore } from './settings'
-import { useChatUIStore, useLayoutUIStore, useModalsUIStore } from './ui'
+import { useShallow } from "zustand/react/shallow";
+import { useAdminStore } from "./admin";
+import { useAssistantsStore } from "./assistants";
+import { useAuthStore } from "./auth";
+import { useChatStore } from "./chat";
+import { useChatHistoryStore } from "./chatHistory";
+import { useConversationsStore } from "./conversations";
+import { useModelDownloadStore } from "./modelDownload";
+import { useProjectsStore } from "./projects";
+import { useProvidersStore } from "./providers";
+import { useRepositoriesStore } from "./repositories";
+import { useUserSettingsStore } from "./settings";
+import { useChatUIStore, useLayoutUIStore, useModalsUIStore } from "./ui";
 
 export {
   assignUserToUserGroup,
@@ -39,7 +39,7 @@ export {
   updateSystemUserRegistrationSettings,
   updateUserGroup,
   useAdminStore,
-} from './admin'
+} from "./admin";
 // Assistants store
 export {
   clearAssistantsStoreError,
@@ -161,12 +161,6 @@ export {
 // Settings store
 export {
   deleteUserSetting,
-  getResolvedAppearanceTheme,
-  getUILeftPanelCollapsed,
-  getUILeftPanelWidth,
-  getUserAppearanceComponentSize,
-  getUserAppearanceLanguage,
-  getUserAppearanceTheme,
   getUserSetting,
   initializeUserSettingsOnStartup,
   loadGlobalDefaultLanguage,
@@ -176,8 +170,11 @@ export {
   setUILeftPanelCollapsed,
   setUILeftPanelWidth,
   updateUserSetting,
-  useAppearanceSettings,
-  useUISettings,
+  useUILeftPanelCollapsed,
+  useUILeftPanelWidth,
+  useUserAppearanceLanguage,
+  useUserAppearanceTheme,
+  useUserSettings,
   useUserSettingsStore,
 } from './settings'
 

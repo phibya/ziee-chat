@@ -3,107 +3,107 @@ import {
   EditOutlined,
   ExclamationCircleOutlined,
   MessageOutlined,
-} from '@ant-design/icons'
-import { App, Button, Input, Modal, theme, Tooltip, Typography } from 'antd'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNavigate, Link } from 'react-router-dom'
+} from "@ant-design/icons";
+import { App, Button, Input, Modal, theme, Tooltip, Typography } from "antd";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  Stores,
-  loadAllRecentConversations,
-  updateExistingConversation,
-  removeConversationFromList,
   closeMobileOverlay,
-  getUILeftPanelCollapsed,
-} from '../../store'
-import { ConversationSummary } from '../../types/api/chat'
+  loadAllRecentConversations,
+  removeConversationFromList,
+  Stores,
+  updateExistingConversation,
+} from "../../store";
+import { useUILeftPanelCollapsed } from "../../store/settings.ts";
+import { ConversationSummary } from "../../types/api/chat";
 
-const { confirm } = Modal
+const { confirm } = Modal;
 
 export function RecentConversations() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const { message } = App.useApp()
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingTitle, setEditingTitle] = useState('')
-  const { token } = theme.useToken()
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { message } = App.useApp();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const { token } = theme.useToken();
 
-  const leftPanelCollapsed = getUILeftPanelCollapsed()
-  const { isMobile, mobileOverlayOpen } = Stores.UI.Layout
+  const leftPanelCollapsed = useUILeftPanelCollapsed();
+  const { isMobile, mobileOverlayOpen } = Stores.UI.Layout;
 
-  const { conversations, isLoading } = Stores.Conversations
+  const { conversations, isLoading } = Stores.Conversations;
 
-  const isExpanded = isMobile ? mobileOverlayOpen : !leftPanelCollapsed
+  const isExpanded = isMobile ? mobileOverlayOpen : !leftPanelCollapsed;
 
   useEffect(() => {
     // Only load if we don't have conversations yet
     if (conversations.length === 0) {
-      loadAllRecentConversations()
+      loadAllRecentConversations();
     }
-  }, [])
+  }, []);
 
   const handleConversationClick = (conversationId: string) => {
-    navigate(`/conversation/${conversationId}`)
+    navigate(`/conversation/${conversationId}`);
     if (isMobile) {
-      closeMobileOverlay()
+      closeMobileOverlay();
     }
-  }
+  };
 
   const handleEditTitle = (conversation: ConversationSummary) => {
-    setEditingId(conversation.id)
-    setEditingTitle(conversation.title)
-  }
+    setEditingId(conversation.id);
+    setEditingTitle(conversation.title);
+  };
 
   const handleSaveTitle = async () => {
-    if (!editingId || !editingTitle.trim()) return
+    if (!editingId || !editingTitle.trim()) return;
 
     try {
       // Use store method that handles API call
       await updateExistingConversation(editingId, {
         title: editingTitle.trim(),
-      })
+      });
 
-      setEditingId(null)
-      setEditingTitle('')
-      message.success(t('conversations.renamed'))
+      setEditingId(null);
+      setEditingTitle("");
+      message.success(t("conversations.renamed"));
     } catch (error: any) {
-      console.error('Failed to update conversation:', error)
-      message.error(error?.message || t('common.failedToRename'))
+      console.error("Failed to update conversation:", error);
+      message.error(error?.message || t("common.failedToRename"));
     }
-  }
+  };
 
   const handleCancelEdit = () => {
-    setEditingId(null)
-    setEditingTitle('')
-  }
+    setEditingId(null);
+    setEditingTitle("");
+  };
 
   const handleDeleteConversation = (conversation: ConversationSummary) => {
     confirm({
-      title: t('conversations.deleteTitle'),
+      title: t("conversations.deleteTitle"),
       icon: <ExclamationCircleOutlined />,
-      content: t('conversations.deleteConfirm', { title: conversation.title }),
-      okText: t('common.delete'),
-      okType: 'danger',
-      cancelText: t('common.cancel'),
+      content: t("conversations.deleteConfirm", { title: conversation.title }),
+      okText: t("common.delete"),
+      okType: "danger",
+      cancelText: t("common.cancel"),
       onOk: async () => {
         try {
           // Use store method that handles API call
-          await removeConversationFromList(conversation.id)
+          await removeConversationFromList(conversation.id);
 
-          message.success(t('conversations.deleted'))
+          message.success(t("conversations.deleted"));
         } catch (error: any) {
-          console.error('Failed to delete conversation:', error)
-          message.error(error?.message || t('common.failedToDelete'))
+          console.error("Failed to delete conversation:", error);
+          message.error(error?.message || t("common.failedToDelete"));
         }
       },
-    })
-  }
+    });
+  };
 
   if (!isExpanded) {
     // Collapsed state - show dots for conversations
     return (
       <div className="flex-1 overflow-auto">
-        {conversations.slice(0, 10).map(conversation => (
+        {conversations.slice(0, 10).map((conversation) => (
           <Tooltip
             key={conversation.id}
             title={conversation.title}
@@ -119,28 +119,28 @@ export function RecentConversations() {
           </Tooltip>
         ))}
       </div>
-    )
+    );
   }
 
   return (
     <div className="flex-1 overflow-auto max-w-42 pl-2 flex flex-col gap-1">
       {isLoading ? (
         <div className="text-center">
-          <div>{t('common.loading')}</div>
+          <div>{t("common.loading")}</div>
         </div>
       ) : conversations.length === 0 ? (
         <div className="text-center">
           <MessageOutlined />
-          <div>{t('conversations.noConversations')}</div>
+          <div>{t("conversations.noConversations")}</div>
         </div>
       ) : (
-        conversations.map(conversation => (
+        conversations.map((conversation) => (
           <div key={conversation.id} className="group relative">
             {editingId === conversation.id ? (
               <div className="flex items-center">
                 <Input
                   value={editingTitle}
-                  onChange={e => setEditingTitle(e.target.value)}
+                  onChange={(e) => setEditingTitle(e.target.value)}
                   onPressEnter={handleSaveTitle}
                   onBlur={handleSaveTitle}
                   autoFocus
@@ -168,25 +168,25 @@ export function RecentConversations() {
                     backgroundColor: token.colorBgContainer,
                   }}
                 >
-                  <Tooltip title={t('conversations.rename')}>
+                  <Tooltip title={t("conversations.rename")}>
                     <Button
                       size="small"
                       type="text"
                       icon={<EditOutlined />}
-                      onClick={e => {
-                        e.stopPropagation()
-                        handleEditTitle(conversation)
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditTitle(conversation);
                       }}
                     />
                   </Tooltip>
-                  <Tooltip title={t('conversations.delete')}>
+                  <Tooltip title={t("conversations.delete")}>
                     <Button
                       size="small"
                       type="text"
                       icon={<DeleteOutlined />}
-                      onClick={e => {
-                        e.stopPropagation()
-                        handleDeleteConversation(conversation)
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteConversation(conversation);
                       }}
                     />
                   </Tooltip>
@@ -197,5 +197,5 @@ export function RecentConversations() {
         ))
       )}
     </div>
-  )
+  );
 }

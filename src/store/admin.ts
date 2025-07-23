@@ -4,6 +4,7 @@ import { ApiClient } from '../api/client'
 import { Assistant } from '../types/api/assistant'
 import { CreateUserGroupRequest, User, UserGroup } from '../types/api/user'
 import { UpdateProxySettingsRequest } from '../types/api/config'
+import { SupportedLanguage } from '../types'
 
 // Using API types now - User and UserGroup imported above
 
@@ -541,7 +542,7 @@ export const updateSystemProxySettings = async (
 }
 
 export const updateSystemDefaultLanguage = async (
-  language: string,
+  language: SupportedLanguage,
 ): Promise<void> => {
   try {
     useAdminStore.setState({ updating: true, error: null })

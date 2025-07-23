@@ -1,66 +1,66 @@
-import { MenuUnfoldOutlined } from '@ant-design/icons'
-import { Button, Layout } from 'antd'
-import { useEffect } from 'react'
+import { MenuUnfoldOutlined } from "@ant-design/icons";
+import { Button, Layout } from "antd";
+import { useEffect } from "react";
 import {
-  getUILeftPanelCollapsed,
   setIsMobile,
   setMobileOverlayOpen,
   setUILeftPanelCollapsed,
   Stores,
-} from '../../store'
-import { LeftPanel } from './LeftPanel'
+} from "../../store";
+import { useUILeftPanelCollapsed } from "../../store/settings.ts";
+import { LeftPanel } from "./LeftPanel";
 
-const { Sider, Content } = Layout
+const { Sider, Content } = Layout;
 
 interface AppLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const leftPanelCollapsed = getUILeftPanelCollapsed()
-  const { isMobile, mobileOverlayOpen } = Stores.UI.Layout
+  const leftPanelCollapsed = useUILeftPanelCollapsed();
+  const { isMobile, mobileOverlayOpen } = Stores.UI.Layout;
 
   // Check if screen is mobile size
   useEffect(() => {
     const checkMobile = () => {
-      const wasMobile = isMobile
-      const isNowMobile = window.innerWidth < 1024 // lg breakpoint
-      setIsMobile(isNowMobile)
+      const wasMobile = isMobile;
+      const isNowMobile = window.innerWidth < 1024; // lg breakpoint
+      setIsMobile(isNowMobile);
 
       // Close mobile overlay when switching from mobile to desktop
       if (wasMobile && !isNowMobile && mobileOverlayOpen) {
-        setMobileOverlayOpen(false)
+        setMobileOverlayOpen(false);
       }
-    }
+    };
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
 
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [isMobile, mobileOverlayOpen, setIsMobile, setMobileOverlayOpen])
+    return () => window.removeEventListener("resize", checkMobile);
+  }, [isMobile, mobileOverlayOpen, setIsMobile, setMobileOverlayOpen]);
 
   // Force collapse on mobile
   useEffect(() => {
     if (isMobile && !leftPanelCollapsed) {
-      setUILeftPanelCollapsed(true)
+      setUILeftPanelCollapsed(true);
     }
-  }, [isMobile, leftPanelCollapsed])
+  }, [isMobile, leftPanelCollapsed]);
 
   return (
-    <Layout className={'h-screen overflow-hidden'}>
+    <Layout className={"h-screen overflow-hidden"}>
       {/* Left Panel - Only show when not collapsed on desktop or when overlay is open on mobile */}
       {(!isMobile && !leftPanelCollapsed) || (isMobile && mobileOverlayOpen) ? (
         <Sider
-          width={'fit-content'}
+          width={"fit-content"}
           collapsible
           collapsed={false}
           trigger={null}
           breakpoint="lg"
           collapsedWidth={0}
           className={`overflow-auto h-screen fixed top-0 left-0 bottom-0 z-1000 ${
-            isMobile ? 'z-[1050]' : ''
+            isMobile ? "z-[1050]" : ""
           }`}
-          theme={'light'}
+          theme={"light"}
         >
           <LeftPanel />
         </Sider>
@@ -84,11 +84,11 @@ export function AppLayout({ children }: AppLayoutProps) {
             onClick={() => setMobileOverlayOpen(true)}
             className="bg-white border border-gray-300 rounded-md p-2 shadow-md hover:bg-gray-50 transition-colors"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "40px",
+              height: "40px",
             }}
           >
             <svg
@@ -111,7 +111,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {isMobile && mobileOverlayOpen && (
         <div
           className="fixed inset-0 z-[1040]"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
           onClick={() => setMobileOverlayOpen(false)}
         />
       )}
@@ -119,5 +119,5 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content */}
       <Content className="w-full h-screen overflow-hidden">{children}</Content>
     </Layout>
-  )
+  );
 }

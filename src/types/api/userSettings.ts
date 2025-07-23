@@ -16,18 +16,18 @@ export interface UserSettingsResponse {
   settings: UserSetting[]
 }
 
+import type { SupportedLanguage } from '../common'
+
 // Strongly typed appearance settings
 export interface AppearanceSettings {
   theme: 'light' | 'dark' | 'system'
-  componentSize: 'small' | 'medium' | 'large'
-  language: 'en' | 'vi'
+  language: SupportedLanguage
 }
 
 // Strongly typed user setting keys and values
 export interface UserSettingKeys {
   'appearance.theme': 'light' | 'dark' | 'system'
-  'appearance.componentSize': 'small' | 'medium' | 'large'
-  'appearance.language': 'en' | 'vi'
+  'appearance.language': SupportedLanguage
   'ui.leftPanelCollapsed': boolean
   'ui.leftPanelWidth': number
   // Future settings can be added here
@@ -59,7 +59,6 @@ export type GetUserSettingResponse<
 // Default values for user settings (fallback to global config for language)
 export const DEFAULT_USER_SETTINGS: UserSettingKeys = {
   'appearance.theme': 'system',
-  'appearance.componentSize': 'medium',
   'appearance.language': 'en', // Will be overridden by global config if available
   'ui.leftPanelCollapsed': false,
   'ui.leftPanelWidth': 280,

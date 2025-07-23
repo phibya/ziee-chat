@@ -15,17 +15,19 @@ export interface GlobalConfigResponse {
   configs: GlobalConfig[]
 }
 
+import type { SupportedLanguage } from '../common'
+
 export interface DefaultLanguageResponse {
-  language: string
+  language: SupportedLanguage
 }
 
 export interface UpdateDefaultLanguageRequest {
-  language: string
+  language: SupportedLanguage
 }
 
 // Strongly typed global configuration keys and values
 export interface GlobalConfigKeys {
-  'appearance.defaultLanguage': 'en' | 'vi'
+  'appearance.defaultLanguage': SupportedLanguage
   // Future global configs can be added here
   // 'registration.enabled': boolean
   // 'maintenance.mode': boolean

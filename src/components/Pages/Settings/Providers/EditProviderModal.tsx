@@ -1,7 +1,7 @@
-import { Card, Form, Input, Modal, Flex, Switch } from 'antd'
+import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
+import { Card, Flex, Form, Input, Modal, Switch } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { Provider, UpdateProviderRequest } from '../../../../types/api/provider'
 
 interface EditProviderModalProps {
@@ -55,7 +55,7 @@ export function EditProviderModal({
       onOk={handleSubmit}
       confirmLoading={loading}
       width={600}
-      destroyOnClose
+      destroyOnHidden={true}
       maskClosable={false}
     >
       <Form form={form} layout="vertical">

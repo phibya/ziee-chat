@@ -9,6 +9,7 @@ import {
 import { useAdminStore, updateSystemDefaultLanguage } from '../../../../store'
 import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
+import { LANGUAGE_OPTIONS } from '../../../../types'
 
 const { Title, Text } = Typography
 
@@ -117,10 +118,7 @@ export function AdminAppearanceSettings() {
                   loading={updating}
                   disabled={!canEditAppearance}
                   style={{ minWidth: 120 }}
-                  options={[
-                    { value: 'en', label: t('appearance.english') },
-                    { value: 'vi', label: t('appearance.vietnamese') },
-                  ]}
+                  options={LANGUAGE_OPTIONS}
                 />
               </Form.Item>
             </Flex>

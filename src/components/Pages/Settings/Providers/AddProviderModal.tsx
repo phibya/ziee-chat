@@ -2,20 +2,20 @@ import { Form, Input, Modal, Select, Switch } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  CreateProviderRequest,
-  ProviderType,
-} from '../../../../types/api/provider'
-import {
   PROVIDER_DEFAULTS,
   SUPPORTED_PROVIDERS,
 } from '../../../../constants/providers'
-import { ApiConfigurationSection } from './shared'
 import { createNewModelProvider } from '../../../../store'
 import {
-  useModalsUIStore,
   closeAddProviderModal,
   setAddProviderModalLoading,
+  useModalsUIStore,
 } from '../../../../store/ui/modals'
+import {
+  CreateProviderRequest,
+  ProviderType,
+} from '../../../../types/api/provider'
+import { ApiConfigurationSection } from './shared'
 
 export function AddProviderModal() {
   const { t } = useTranslation()
@@ -61,7 +61,7 @@ export function AddProviderModal() {
       onOk={handleSubmit}
       confirmLoading={addProviderModalLoading}
       width={600}
-      destroyOnClose
+      destroyOnHidden={true}
       maskClosable={false}
     >
       <Form

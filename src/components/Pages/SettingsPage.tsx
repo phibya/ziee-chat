@@ -287,7 +287,9 @@ export function SettingsPage() {
         placement="left"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
-        bodyStyle={{ padding: 0 }}
+        styles={{
+          body: { padding: 0 },
+        }}
         width={280}
       >
         <SettingsMenu />

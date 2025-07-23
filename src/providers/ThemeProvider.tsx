@@ -1,67 +1,55 @@
-import { useEffect, useState } from 'react'
-import { ConfigProvider } from 'antd'
-import {
-  getUserAppearanceTheme,
-  getUserAppearanceComponentSize,
-  getResolvedAppearanceTheme,
-} from '../store'
-import { themes } from '../themes'
-import { ThemeContext } from '../hooks/useTheme'
-import { AppThemeConfig } from '../themes/light.ts'
+import { ConfigProvider } from "antd";
+import { useEffect } from "react";
+import { useUpdate } from "react-use";
+import { ThemeContext } from "../hooks/useTheme";
+import { useUserAppearanceTheme } from "../store";
+import { themes } from "../themes";
+import { AppThemeConfig } from "../themes/light.ts";
 
 interface ThemeProviderProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
+const resolveSystemTheme = (): "light" | "dark" => {
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  return mediaQuery.matches ? "dark" : "light";
+};
+
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  // No store state needed, using external methods
-  const [isDarkMode, setIsDarkMode] = useState(false)
-  const [currentTheme, setCurrentTheme] = useState<AppThemeConfig>(themes.light)
+  const selectedTheme = useUserAppearanceTheme();
+  const resolvedTheme =
+    selectedTheme === "system" ? resolveSystemTheme() : selectedTheme;
+  const isDarkMode = resolvedTheme === "dark";
+  const currentTheme: AppThemeConfig = themes[resolvedTheme] || themes.light;
 
-  const selectedTheme = getUserAppearanceTheme()
-  const rawComponentSize = getUserAppearanceComponentSize()
-
-  // Map component size to Ant Design's expected values
-  const componentSize =
-    rawComponentSize === 'medium' ? 'middle' : rawComponentSize
+  const update = useUpdate();
 
   useEffect(() => {
-    const updateTheme = () => {
-      const resolvedTheme = getResolvedAppearanceTheme()
-      const darkMode = resolvedTheme === 'dark'
-      setIsDarkMode(darkMode)
-      setCurrentTheme(darkMode ? themes.dark : themes.light)
-    }
-
-    updateTheme()
-
     // Listen for system theme changes if system mode is selected
-    if (selectedTheme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const handleChange = () => updateTheme()
+    if (selectedTheme === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => update();
 
-      mediaQuery.addEventListener('change', handleChange)
-      return () => mediaQuery.removeEventListener('change', handleChange)
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     }
-  }, [selectedTheme, getResolvedAppearanceTheme])
+  }, [selectedTheme]);
 
   // Update document class for global theme styling
   useEffect(() => {
-    const root = document.documentElement
+    const root = document.documentElement;
     if (isDarkMode) {
-      root.classList.add('dark')
-      root.classList.remove('light')
+      root.classList.add("dark");
+      root.classList.remove("light");
     } else {
-      root.classList.add('light')
-      root.classList.remove('dark')
+      root.classList.add("light");
+      root.classList.remove("dark");
     }
-  }, [isDarkMode])
+  }, [isDarkMode]);
 
   return (
     <ThemeContext.Provider value={currentTheme}>
-      <ConfigProvider componentSize={componentSize} theme={currentTheme}>
-        {children}
-      </ConfigProvider>
+      <ConfigProvider theme={currentTheme}>{children}</ConfigProvider>
     </ThemeContext.Provider>
-  )
+  );
 }

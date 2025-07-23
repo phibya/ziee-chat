@@ -1,91 +1,88 @@
-import { App, Card, Divider, Flex, Form, Select, Typography } from 'antd'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useAppearanceSettings } from '../../../store'
+import { App, Card, Divider, Flex, Form, Select, Typography } from "antd";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Stores,
+  useUserAppearanceLanguage,
+  useUserAppearanceTheme,
+} from "../../../store";
+import {
+  setUserAppearanceLanguage,
+  setUserAppearanceTheme,
+} from "../../../store/settings.ts";
+import { LANGUAGE_OPTIONS } from "../../../types";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 export function AppearanceSettings() {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
-  const [form] = Form.useForm()
-  const [isMobile, setIsMobile] = useState(false)
-  const {
-    theme,
-    componentSize,
-    language,
-    setTheme,
-    setComponentSize,
-    setLanguage,
-    loading,
-  } = useAppearanceSettings()
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [isMobile, setIsMobile] = useState(false);
+
+  const theme = useUserAppearanceTheme();
+  const language = useUserAppearanceLanguage();
+  const { loading } = Stores.Settings;
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
+      setIsMobile(window.innerWidth < 768);
+    };
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
 
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     form.setFieldsValue({
       theme,
-      componentSize,
       language,
-    })
-  }, [theme, componentSize, language, form])
+    });
+  }, [theme, language, form]);
 
   const handleFormChange = async (changedValues: any) => {
     try {
-      if ('theme' in changedValues) {
-        await setTheme(changedValues.theme)
-        message.success(t('appearance.themeUpdated'))
+      if ("theme" in changedValues) {
+        await setUserAppearanceTheme(changedValues.theme);
+        message.success(t("appearance.themeUpdated"));
       }
-      if ('componentSize' in changedValues) {
-        await setComponentSize(changedValues.componentSize)
-        message.success(t('appearance.componentSizeUpdated'))
-      }
-      if ('language' in changedValues) {
-        await setLanguage(changedValues.language)
-        message.success(t('appearance.languageUpdated'))
+      if ("language" in changedValues) {
+        await setUserAppearanceLanguage(changedValues.language);
+        message.success(t("appearance.languageUpdated"));
       }
     } catch (error: any) {
-      message.error(error?.message || 'Failed to update settings')
+      message.error(error?.message || "Failed to update settings");
       form.setFieldsValue({
         theme,
-        componentSize,
         language,
-      })
+      });
     }
-  }
+  };
 
   return (
     <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('pages.appearance')}</Title>
+      <Title level={3}>{t("pages.appearance")}</Title>
 
-      <Card title={t('appearance.themeAndDisplay')}>
+      <Card title={t("appearance.themeAndDisplay")}>
         <Form
           form={form}
           onValuesChange={handleFormChange}
           initialValues={{
             theme,
-            componentSize,
             language,
           }}
         >
           <Flex vertical className="gap-2 w-full">
             <Flex
               justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
+              align={isMobile ? "flex-start" : "center"}
               vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
+              gap={isMobile ? "small" : 0}
             >
               <div>
-                <Text strong>{t('labels.theme')}</Text>
+                <Text strong>{t("labels.theme")}</Text>
                 <div>
                   <Text type="secondary">
                     Choose your preferred theme or match the OS theme.
@@ -97,9 +94,9 @@ export function AppearanceSettings() {
                   loading={loading}
                   style={{ minWidth: 120 }}
                   options={[
-                    { value: 'light', label: t('appearance.light') },
-                    { value: 'dark', label: t('appearance.dark') },
-                    { value: 'system', label: t('appearance.system') },
+                    { value: "light", label: t("appearance.light") },
+                    { value: "dark", label: t("appearance.dark") },
+                    { value: "system", label: t("appearance.system") },
                   ]}
                 />
               </Form.Item>
@@ -107,39 +104,12 @@ export function AppearanceSettings() {
             <Divider style={{ margin: 0 }} />
             <Flex
               justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
+              align={isMobile ? "flex-start" : "center"}
               vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
+              gap={isMobile ? "small" : 0}
             >
               <div>
-                <Text strong>{t('labels.componentSize')}</Text>
-                <div>
-                  <Text type="secondary">
-                    Adjust the size of UI components throughout the app.
-                  </Text>
-                </div>
-              </div>
-              <Form.Item name="componentSize" style={{ margin: 0 }}>
-                <Select
-                  loading={loading}
-                  style={{ minWidth: 120 }}
-                  options={[
-                    { value: 'small', label: t('appearance.small') },
-                    { value: 'medium', label: t('appearance.medium') },
-                    { value: 'large', label: t('appearance.large') },
-                  ]}
-                />
-              </Form.Item>
-            </Flex>
-            <Divider style={{ margin: 0 }} />
-            <Flex
-              justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
-              vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
-            >
-              <div>
-                <Text strong>{t('labels.language')}</Text>
+                <Text strong>{t("labels.language")}</Text>
                 <div>
                   <Text type="secondary">
                     Choose your preferred language for the interface.
@@ -150,10 +120,7 @@ export function AppearanceSettings() {
                 <Select
                   loading={loading}
                   style={{ minWidth: 120 }}
-                  options={[
-                    { value: 'en', label: t('appearance.english') },
-                    { value: 'vi', label: t('appearance.vietnamese') },
-                  ]}
+                  options={LANGUAGE_OPTIONS}
                 />
               </Form.Item>
             </Flex>
@@ -161,5 +128,5 @@ export function AppearanceSettings() {
         </Form>
       </Card>
     </Flex>
-  )
+  );
 }
