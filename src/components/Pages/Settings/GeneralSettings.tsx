@@ -41,7 +41,7 @@ export function GeneralSettings() {
       experimentalFeatures,
       spellCheck,
     })
-  }, [experimentalFeatures, spellCheck, form])
+  }, [experimentalFeatures, spellCheck]) // Removed form from dependencies to prevent infinite rerenders
 
   const handleFormChange = async (changedValues: any) => {
     try {

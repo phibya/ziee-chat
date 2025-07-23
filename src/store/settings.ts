@@ -1,7 +1,7 @@
-import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
-import { useShallow } from "zustand/react/shallow";
-import { ApiClient } from "../api/client";
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
+import { useShallow } from 'zustand/react/shallow'
+import { ApiClient } from '../api/client'
 import {
   DEFAULT_USER_SETTINGS,
   getDefaultUserSettingValue,
@@ -9,18 +9,18 @@ import {
   SupportedLanguage,
   UserSetting,
   UserSettingKeys,
-} from "../types";
+} from '../types'
 
 interface UserSettingsState {
   // Current user settings
-  settings: Partial<UserSettingKeys>;
+  settings: Partial<UserSettingKeys>
 
   // Global default language (fallback when user hasn't set language preference)
-  globalDefaultLanguage: SupportedLanguage;
+  globalDefaultLanguage: SupportedLanguage
 
   // Loading states
-  loading: boolean;
-  initializing: boolean;
+  loading: boolean
+  initializing: boolean
 }
 
 export const useUserSettingsStore = create(
@@ -28,191 +28,190 @@ export const useUserSettingsStore = create(
     (): UserSettingsState => ({
       // Initial state
       settings: {},
-      globalDefaultLanguage: "en",
+      globalDefaultLanguage: 'en',
       loading: false,
       initializing: false,
     }),
   ),
-);
+)
 
 // Settings actions
 export const loadUserSettings = async (): Promise<void> => {
-  useUserSettingsStore.setState({ initializing: true });
+  useUserSettingsStore.setState({ initializing: true })
 
   try {
-    const response = await ApiClient.UserSettings.getAll();
-    const settingsMap: Partial<UserSettingKeys> = {};
+    const response = await ApiClient.UserSettings.getAll()
+    const settingsMap: Partial<UserSettingKeys> = {}
 
     response.settings.forEach((setting: UserSetting) => {
       if (isValidUserSettingKey(setting.key)) {
         // Type assertion is safe here because we validated the key
-        settingsMap[setting.key as keyof UserSettingKeys] =
-          setting.value as any;
+        settingsMap[setting.key as keyof UserSettingKeys] = setting.value as any
       }
-    });
+    })
 
-    useUserSettingsStore.setState({ settings: settingsMap });
+    useUserSettingsStore.setState({ settings: settingsMap })
   } catch (error) {
-    console.error("Failed to load user settings:", error);
+    console.error('Failed to load user settings:', error)
     // Use default settings if loading fails
-    useUserSettingsStore.setState({ settings: DEFAULT_USER_SETTINGS });
+    useUserSettingsStore.setState({ settings: DEFAULT_USER_SETTINGS })
   } finally {
-    useUserSettingsStore.setState({ initializing: false });
+    useUserSettingsStore.setState({ initializing: false })
   }
-};
+}
 
 export const loadGlobalDefaultLanguage = async (): Promise<void> => {
   try {
-    const response = await ApiClient.Config.getDefaultLanguage();
+    const response = await ApiClient.Config.getDefaultLanguage()
     useUserSettingsStore.setState({
       globalDefaultLanguage: response.language as SupportedLanguage,
-    });
+    })
   } catch (error) {
-    console.error("Failed to load global default language:", error);
+    console.error('Failed to load global default language:', error)
     // Keep default 'en' if loading fails
   }
-};
+}
 
 export const getUserSetting = <K extends keyof UserSettingKeys>(
   key: K,
 ): UserSettingKeys[K] => {
-  const state = useUserSettingsStore.getState();
-  return state.settings[key] ?? getDefaultUserSettingValue(key);
-};
+  const state = useUserSettingsStore.getState()
+  return state.settings[key] ?? getDefaultUserSettingValue(key)
+}
 
 export const saveUserSetting = async <K extends keyof UserSettingKeys>(
   key: K,
   value: UserSettingKeys[K],
 ): Promise<void> => {
-  useUserSettingsStore.setState({ loading: true });
+  useUserSettingsStore.setState({ loading: true })
 
   try {
     await ApiClient.UserSettings.set({
       key,
       value,
-    });
+    })
 
     // Update local state
-    useUserSettingsStore.setState((state) => ({
+    useUserSettingsStore.setState(state => ({
       settings: {
         ...state.settings,
         [key]: value,
       },
-    }));
+    }))
   } catch (error) {
-    console.error(`Failed to set setting ${key}:`, error);
-    throw error;
+    console.error(`Failed to set setting ${key}:`, error)
+    throw error
   } finally {
-    useUserSettingsStore.setState({ loading: false });
+    useUserSettingsStore.setState({ loading: false })
   }
-};
+}
 
 export const updateUserSetting = <K extends keyof UserSettingKeys>(
   key: K,
   value: UserSettingKeys[K],
 ): void => {
-  useUserSettingsStore.setState((state) => ({
+  useUserSettingsStore.setState(state => ({
     settings: {
       ...state.settings,
       [key]: value,
     },
-  }));
-};
+  }))
+}
 
 export const deleteUserSetting = async (
   key: keyof UserSettingKeys,
 ): Promise<void> => {
-  useUserSettingsStore.setState({ loading: true });
+  useUserSettingsStore.setState({ loading: true })
 
   try {
-    await ApiClient.UserSettings.delete({ key });
+    await ApiClient.UserSettings.delete({ key })
 
     // Remove from local state
-    useUserSettingsStore.setState((state) => {
-      const newSettings = { ...state.settings };
-      delete newSettings[key];
-      return { settings: newSettings };
-    });
+    useUserSettingsStore.setState(state => {
+      const newSettings = { ...state.settings }
+      delete newSettings[key]
+      return { settings: newSettings }
+    })
   } catch (error) {
-    console.error(`Failed to delete setting ${key}:`, error);
-    throw error;
+    console.error(`Failed to delete setting ${key}:`, error)
+    throw error
   } finally {
-    useUserSettingsStore.setState({ loading: false });
+    useUserSettingsStore.setState({ loading: false })
   }
-};
+}
 
 export const resetAllUserSettings = async (): Promise<void> => {
-  useUserSettingsStore.setState({ loading: true });
+  useUserSettingsStore.setState({ loading: true })
 
   try {
-    await ApiClient.UserSettings.deleteAll();
-    useUserSettingsStore.setState({ settings: {} });
+    await ApiClient.UserSettings.deleteAll()
+    useUserSettingsStore.setState({ settings: {} })
   } catch (error) {
-    console.error("Failed to reset settings:", error);
-    throw error;
+    console.error('Failed to reset settings:', error)
+    throw error
   } finally {
-    useUserSettingsStore.setState({ loading: false });
+    useUserSettingsStore.setState({ loading: false })
   }
-};
+}
 
 export const useUserSettings = <K extends keyof UserSettingKeys>(
   key: K,
 ): UserSettingKeys[K] => {
   return (
-    useUserSettingsStore(useShallow((state) => state.settings[key])) ??
+    useUserSettingsStore(useShallow(state => state.settings[key])) ??
     getDefaultUserSettingValue(key)
-  );
-};
+  )
+}
 
 export const useUserAppearanceLanguage = (): SupportedLanguage => {
   const globalDefaultLanguage = useUserSettingsStore(
-    useShallow((state) => state.globalDefaultLanguage),
-  );
+    useShallow(state => state.globalDefaultLanguage),
+  )
   return (
     useUserSettingsStore(
-      useShallow((state) => state.settings["appearance.language"]),
+      useShallow(state => state.settings['appearance.language']),
     ) ??
     globalDefaultLanguage ??
-    getDefaultUserSettingValue("appearance.language")
-  );
-};
+    getDefaultUserSettingValue('appearance.language')
+  )
+}
 
 export const setUserAppearanceLanguage = async (
   language: SupportedLanguage,
 ): Promise<void> => {
-  await saveUserSetting("appearance.language", language);
-};
+  await saveUserSetting('appearance.language', language)
+}
 
 export const useUILeftPanelCollapsed = (): boolean => {
-  return useUserSettings("ui.leftPanelCollapsed");
-};
+  return useUserSettings('ui.leftPanelCollapsed')
+}
 
 export const setUILeftPanelCollapsed = async (
   collapsed: boolean,
 ): Promise<void> => {
-  await saveUserSetting("ui.leftPanelCollapsed", collapsed);
-};
+  await saveUserSetting('ui.leftPanelCollapsed', collapsed)
+}
 
 export const useUILeftPanelWidth = (): number => {
-  return useUserSettings("ui.leftPanelWidth");
-};
+  return useUserSettings('ui.leftPanelWidth')
+}
 
 export const setUILeftPanelWidth = async (width: number): Promise<void> => {
-  await saveUserSetting("ui.leftPanelWidth", width);
-};
+  await saveUserSetting('ui.leftPanelWidth', width)
+}
 
-export const useUserAppearanceTheme = (): "light" | "dark" | "system" => {
-  return useUserSettings("appearance.theme");
-};
+export const useUserAppearanceTheme = (): 'light' | 'dark' | 'system' => {
+  return useUserSettings('appearance.theme')
+}
 
 export const setUserAppearanceTheme = async (
-  theme: "light" | "dark" | "system",
+  theme: 'light' | 'dark' | 'system',
 ): Promise<void> => {
-  await saveUserSetting("appearance.theme", theme);
-};
+  await saveUserSetting('appearance.theme', theme)
+}
 
 // Initialize settings on app start
 export const initializeUserSettingsOnStartup = async (): Promise<void> => {
   // Load both user settings and global language configuration
-  await Promise.all([loadUserSettings(), loadGlobalDefaultLanguage()]);
-};
+  await Promise.all([loadUserSettings(), loadGlobalDefaultLanguage()])
+}

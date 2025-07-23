@@ -54,7 +54,7 @@ export function NewChatInterface() {
       message.error(chatError)
       clearChatError()
     }
-  }, [chatError, message, clearChatError])
+  }, [chatError]) // Removed message and clearChatError from dependencies to prevent infinite rerenders
 
   const initializeData = async () => {
     try {

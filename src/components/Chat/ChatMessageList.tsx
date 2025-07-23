@@ -13,7 +13,7 @@ export const ChatMessageList = memo(function ChatMessageList() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [currentMessages])
+  }, [currentMessages.length]) // Use length instead of entire array to prevent unnecessary rerenders
 
   if (currentMessages.length === 0) {
     return (

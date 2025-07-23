@@ -39,7 +39,7 @@ export function ProxySettingsForm({
     if (initialSettings) {
       form.setFieldsValue(initialSettings)
     }
-  }, [initialSettings, form])
+  }, [initialSettings]) // Removed form from dependencies to prevent infinite rerenders
 
   const handleSave = async () => {
     try {

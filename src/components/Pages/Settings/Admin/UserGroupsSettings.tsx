@@ -5,7 +5,7 @@ import {
   PlusOutlined,
   TeamOutlined,
   UserOutlined,
-} from "@ant-design/icons";
+} from '@ant-design/icons'
 import {
   App,
   Badge,
@@ -24,11 +24,11 @@ import {
   Table,
   Tag,
   Typography,
-} from "antd";
-import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
-import { isDesktopApp } from "../../../../api/core.ts";
-import { Permission, usePermissions } from "../../../../permissions";
+} from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import { useEffect, useState } from 'react'
+import { isDesktopApp } from '../../../../api/core.ts'
+import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearSystemAdminError,
   createNewUserGroup,
@@ -38,65 +38,65 @@ import {
   loadUserGroupMembers,
   Stores,
   updateUserGroup,
-} from "../../../../store";
+} from '../../../../store'
 import {
   CreateUserGroupRequest,
   UpdateUserGroupRequest,
   UserGroup,
-} from "../../../../types";
-import { PageContainer } from "../../../common/PageContainer";
+} from '../../../../types'
+import { PageContainer } from '../../../common/PageContainer'
 
-const { Title, Text } = Typography;
-const { TextArea } = Input;
+const { Title, Text } = Typography
+const { TextArea } = Input
 
 export function UserGroupsSettings() {
-  const { message } = App.useApp();
-  const { hasPermission } = usePermissions();
+  const { message } = App.useApp()
+  const { hasPermission } = usePermissions()
 
   const { groups, currentGroupMembers, loading, loadingGroupMembers, error } =
-    Stores.Admin;
-  const { providers: providers } = Stores.Providers;
+    Stores.Admin
+  const { providers: providers } = Stores.Providers
 
-  const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [membersDrawerVisible, setMembersDrawerVisible] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null);
-  const [createForm] = Form.useForm();
-  const [editForm] = Form.useForm();
+  const [createModalVisible, setCreateModalVisible] = useState(false)
+  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [membersDrawerVisible, setMembersDrawerVisible] = useState(false)
+  const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null)
+  const [createForm] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   // Check permissions
-  const canReadGroups = hasPermission(Permission.groups.read);
-  const canEditGroups = hasPermission(Permission.groups.edit);
-  const canCreateGroups = hasPermission(Permission.groups.create);
-  const canDeleteGroups = hasPermission(Permission.groups.delete);
-  const canManageProviders = hasPermission(Permission.config.providers.edit);
+  const canReadGroups = hasPermission(Permission.groups.read)
+  const canEditGroups = hasPermission(Permission.groups.edit)
+  const canCreateGroups = hasPermission(Permission.groups.create)
+  const canDeleteGroups = hasPermission(Permission.groups.delete)
+  const canManageProviders = hasPermission(Permission.config.providers.edit)
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
     if (isDesktopApp) {
-      message.warning("User group management is not available in desktop mode");
-      return;
+      message.warning('User group management is not available in desktop mode')
+      return
     }
     if (!canReadGroups) {
-      message.warning("You do not have permission to view user groups");
-      return;
+      message.warning('You do not have permission to view user groups')
+      return
     }
-    loadAllUserGroups();
-    loadAllModelProviders();
-  }, [canReadGroups]);
+    loadAllUserGroups()
+    loadAllModelProviders()
+  }, [canReadGroups])
 
   // Show errors
   useEffect(() => {
     if (error) {
-      message.error(error);
-      clearSystemAdminError();
+      message.error(error)
+      clearSystemAdminError()
     }
-  }, [error, message]);
+  }, [error, message])
 
   const handleCreateGroup = async (values: any) => {
     if (!canCreateGroups) {
-      message.error("You do not have permission to create user groups");
-      return;
+      message.error('You do not have permission to create user groups')
+      return
     }
 
     // Check if user is trying to assign model providers but doesn't have permission
@@ -106,9 +106,9 @@ export function UserGroupsSettings() {
       !canManageProviders
     ) {
       message.error(
-        "You do not have permission to assign model providers to groups",
-      );
-      return;
+        'You do not have permission to assign model providers to groups',
+      )
+      return
     }
 
     try {
@@ -117,36 +117,36 @@ export function UserGroupsSettings() {
         description: values.description,
         permissions: values.permissions ? JSON.parse(values.permissions) : {},
         provider_ids: values.provider_ids || [],
-      };
-      await createNewUserGroup(groupData);
-      message.success("User group created successfully");
-      setCreateModalVisible(false);
-      createForm.resetFields();
+      }
+      await createNewUserGroup(groupData)
+      message.success('User group created successfully')
+      setCreateModalVisible(false)
+      createForm.resetFields()
     } catch (error) {
-      console.error("Failed to create user group:", error);
+      console.error('Failed to create user group:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const handleEditGroup = async (values: any) => {
-    if (!selectedGroup) return;
+    if (!selectedGroup) return
     if (!canEditGroups) {
-      message.error("You do not have permission to edit user groups");
-      return;
+      message.error('You do not have permission to edit user groups')
+      return
     }
 
     // Check if user is trying to modify model providers but doesn't have permission
-    const originalProviders = selectedGroup.provider_ids || [];
-    const newProviders = values.provider_ids || [];
+    const originalProviders = selectedGroup.provider_ids || []
+    const newProviders = values.provider_ids || []
     const providersChanged =
       JSON.stringify(originalProviders.sort()) !==
-      JSON.stringify(newProviders.sort());
+      JSON.stringify(newProviders.sort())
 
     if (providersChanged && !canManageProviders) {
       message.error(
-        "You do not have permission to modify model provider assignments",
-      );
-      return;
+        'You do not have permission to modify model provider assignments',
+      )
+      return
     }
 
     try {
@@ -161,61 +161,61 @@ export function UserGroupsSettings() {
             : undefined,
         provider_ids: values.provider_ids || [],
         is_active: selectedGroup.is_protected ? undefined : values.is_active,
-      };
-      await updateUserGroup(selectedGroup.id, updateData);
-      message.success("User group updated successfully");
-      setEditModalVisible(false);
-      setSelectedGroup(null);
-      editForm.resetFields();
+      }
+      await updateUserGroup(selectedGroup.id, updateData)
+      message.success('User group updated successfully')
+      setEditModalVisible(false)
+      setSelectedGroup(null)
+      editForm.resetFields()
     } catch (error) {
-      console.error("Failed to update user group:", error);
+      console.error('Failed to update user group:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const handleDeleteGroup = async (groupId: string) => {
     if (!canDeleteGroups) {
-      message.error("You do not have permission to delete user groups");
-      return;
+      message.error('You do not have permission to delete user groups')
+      return
     }
     try {
-      await deleteUserGroup(groupId);
-      message.success("User group deleted successfully");
+      await deleteUserGroup(groupId)
+      message.success('User group deleted successfully')
     } catch (error) {
-      console.error("Failed to delete user group:", error);
+      console.error('Failed to delete user group:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const handleViewMembers = async (group: UserGroup) => {
-    setSelectedGroup(group);
-    setMembersDrawerVisible(true);
+    setSelectedGroup(group)
+    setMembersDrawerVisible(true)
 
     try {
-      await loadUserGroupMembers(group.id);
+      await loadUserGroupMembers(group.id)
     } catch (error) {
-      console.error("Failed to fetch group members:", error);
+      console.error('Failed to fetch group members:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const openEditModal = (group: UserGroup) => {
-    setSelectedGroup(group);
+    setSelectedGroup(group)
     editForm.setFieldsValue({
       name: group.name,
       description: group.description,
       permissions: JSON.stringify(group.permissions, null, 2),
       provider_ids: group.provider_ids || [],
       is_active: group.is_active,
-    });
-    setEditModalVisible(true);
-  };
+    })
+    setEditModalVisible(true)
+  }
 
   const columns: ColumnsType<UserGroup> = [
     {
-      title: "Name",
-      dataIndex: "name",
-      key: "name",
+      title: 'Name',
+      dataIndex: 'name',
+      key: 'name',
       render: (name: string, record: UserGroup) => (
         <Flex className="gap-2">
           <TeamOutlined />
@@ -226,16 +226,16 @@ export function UserGroupsSettings() {
       ),
     },
     {
-      title: "Description",
-      dataIndex: "description",
-      key: "description",
+      title: 'Description',
+      dataIndex: 'description',
+      key: 'description',
       render: (desc: string) =>
         desc || <Text type="secondary">No description</Text>,
     },
     {
-      title: "Permissions",
-      dataIndex: "permissions",
-      key: "permissions",
+      title: 'Permissions',
+      dataIndex: 'permissions',
+      key: 'permissions',
       render: (permissions: any) => (
         <Text code>{Object.keys(permissions || {}).length} permissions</Text>
       ),
@@ -243,50 +243,50 @@ export function UserGroupsSettings() {
     ...(canManageProviders
       ? [
           {
-            title: "Providers",
-            dataIndex: "provider_ids",
-            key: "provider_ids",
+            title: 'Providers',
+            dataIndex: 'provider_ids',
+            key: 'provider_ids',
             render: (providerIds: string[], record: UserGroup) => {
-              const ids = providerIds || record.provider_ids || [];
+              const ids = providerIds || record.provider_ids || []
               if (ids.length === 0) {
-                return <Text type="secondary">No providers assigned</Text>;
+                return <Text type="secondary">No providers assigned</Text>
               }
               return (
                 <Flex wrap className="gap-1">
-                  {ids.map((providerId) => {
-                    const provider = providers.find((p) => p.id === providerId);
+                  {ids.map(providerId => {
+                    const provider = providers.find(p => p.id === providerId)
                     return (
                       <Tag key={providerId} color="blue">
                         {provider?.name || providerId}
                       </Tag>
-                    );
+                    )
                   })}
                 </Flex>
-              );
+              )
             },
           },
         ]
       : []),
     {
-      title: "Status",
-      dataIndex: "is_active",
-      key: "is_active",
+      title: 'Status',
+      dataIndex: 'is_active',
+      key: 'is_active',
       render: (active: boolean) => (
         <Badge
-          status={active ? "success" : "error"}
-          text={active ? "Active" : "Inactive"}
+          status={active ? 'success' : 'error'}
+          text={active ? 'Active' : 'Inactive'}
         />
       ),
     },
     {
-      title: "Created",
-      dataIndex: "created_at",
-      key: "created_at",
+      title: 'Created',
+      dataIndex: 'created_at',
+      key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: "Actions",
-      key: "actions",
+      title: 'Actions',
+      key: 'actions',
       render: (_, record: UserGroup) => (
         <Flex className="gap-2">
           <Button
@@ -320,7 +320,7 @@ export function UserGroupsSettings() {
         </Flex>
       ),
     },
-  ];
+  ]
 
   if (isDesktopApp) {
     return (
@@ -332,7 +332,7 @@ export function UserGroupsSettings() {
           </Text>
         </div>
       </Card>
-    );
+    )
   }
 
   if (!canReadGroups) {
@@ -347,7 +347,7 @@ export function UserGroupsSettings() {
           </Button>
         }
       />
-    );
+    )
   }
 
   return (
@@ -375,7 +375,7 @@ export function UserGroupsSettings() {
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
-              showTotal: (total) => `Total ${total} groups`,
+              showTotal: total => `Total ${total} groups`,
             }}
           />
         </Card>
@@ -385,8 +385,8 @@ export function UserGroupsSettings() {
           title="Create User Group"
           open={createModalVisible}
           onCancel={() => {
-            setCreateModalVisible(false);
-            createForm.resetFields();
+            setCreateModalVisible(false)
+            createForm.resetFields()
           }}
           footer={null}
           width={600}
@@ -400,7 +400,7 @@ export function UserGroupsSettings() {
             <Form.Item
               name="name"
               label="Group Name"
-              rules={[{ required: true, message: "Please enter group name" }]}
+              rules={[{ required: true, message: 'Please enter group name' }]}
             >
               <Input placeholder="Enter group name" />
             </Form.Item>
@@ -413,12 +413,12 @@ export function UserGroupsSettings() {
               rules={[
                 {
                   validator: (_, value) => {
-                    if (!value) return Promise.resolve();
+                    if (!value) return Promise.resolve()
                     try {
-                      JSON.parse(value);
-                      return Promise.resolve();
+                      JSON.parse(value)
+                      return Promise.resolve()
                     } catch {
-                      return Promise.reject("Invalid JSON format");
+                      return Promise.reject('Invalid JSON format')
                     }
                   },
                 },
@@ -439,14 +439,14 @@ export function UserGroupsSettings() {
                 <Select
                   mode="multiple"
                   placeholder="Select model providers"
-                  options={providers.map((provider) => ({
+                  options={providers.map(provider => ({
                     value: provider.id,
                     label: provider.name,
                     disabled: !provider.enabled,
                   }))}
                   showSearch
                   filterOption={(input, option) =>
-                    (option?.label ?? "")
+                    (option?.label ?? '')
                       .toLowerCase()
                       .includes(input.toLowerCase())
                   }
@@ -460,8 +460,8 @@ export function UserGroupsSettings() {
                 </Button>
                 <Button
                   onClick={() => {
-                    setCreateModalVisible(false);
-                    createForm.resetFields();
+                    setCreateModalVisible(false)
+                    createForm.resetFields()
                   }}
                 >
                   Cancel
@@ -476,9 +476,9 @@ export function UserGroupsSettings() {
           title="Edit User Group"
           open={editModalVisible}
           onCancel={() => {
-            setEditModalVisible(false);
-            setSelectedGroup(null);
-            editForm.resetFields();
+            setEditModalVisible(false)
+            setSelectedGroup(null)
+            editForm.resetFields()
           }}
           footer={null}
           width={600}
@@ -490,10 +490,10 @@ export function UserGroupsSettings() {
               label="Group Name"
               tooltip={
                 selectedGroup?.is_protected
-                  ? "Protected groups cannot have their name changed"
+                  ? 'Protected groups cannot have their name changed'
                   : undefined
               }
-              rules={[{ required: true, message: "Please enter group name" }]}
+              rules={[{ required: true, message: 'Please enter group name' }]}
             >
               <Input
                 placeholder="Enter group name"
@@ -508,18 +508,18 @@ export function UserGroupsSettings() {
               label="Permissions (JSON)"
               tooltip={
                 selectedGroup?.is_protected
-                  ? "Protected groups cannot have their permissions modified"
+                  ? 'Protected groups cannot have their permissions modified'
                   : undefined
               }
               rules={[
                 {
                   validator: (_, value) => {
-                    if (!value) return Promise.resolve();
+                    if (!value) return Promise.resolve()
                     try {
-                      JSON.parse(value);
-                      return Promise.resolve();
+                      JSON.parse(value)
+                      return Promise.resolve()
                     } catch {
-                      return Promise.reject("Invalid JSON format");
+                      return Promise.reject('Invalid JSON format')
                     }
                   },
                 },
@@ -537,14 +537,14 @@ export function UserGroupsSettings() {
                 <Select
                   mode="multiple"
                   placeholder="Select model providers"
-                  options={providers.map((provider) => ({
+                  options={providers.map(provider => ({
                     value: provider.id,
                     label: provider.name,
                     disabled: !provider.enabled,
                   }))}
                   showSearch
                   filterOption={(input, option) =>
-                    (option?.label ?? "")
+                    (option?.label ?? '')
                       .toLowerCase()
                       .includes(input.toLowerCase())
                   }
@@ -558,7 +558,7 @@ export function UserGroupsSettings() {
               valuePropName="checked"
               tooltip={
                 selectedGroup?.is_protected
-                  ? "Protected groups cannot have their active status changed"
+                  ? 'Protected groups cannot have their active status changed'
                   : undefined
               }
             >
@@ -571,9 +571,9 @@ export function UserGroupsSettings() {
                 </Button>
                 <Button
                   onClick={() => {
-                    setEditModalVisible(false);
-                    setSelectedGroup(null);
-                    editForm.resetFields();
+                    setEditModalVisible(false)
+                    setSelectedGroup(null)
+                    editForm.resetFields()
                   }}
                 >
                   Cancel
@@ -594,7 +594,7 @@ export function UserGroupsSettings() {
           <List
             loading={loadingGroupMembers}
             dataSource={currentGroupMembers}
-            renderItem={(user) => (
+            renderItem={user => (
               <List.Item>
                 <List.Item.Meta
                   avatar={<UserOutlined />}
@@ -602,8 +602,8 @@ export function UserGroupsSettings() {
                   description={
                     <div>
                       <div>{user.email}</div>
-                      <Tag color={user.is_active ? "green" : "red"}>
-                        {user.is_active ? "Active" : "Inactive"}
+                      <Tag color={user.is_active ? 'green' : 'red'}>
+                        {user.is_active ? 'Active' : 'Inactive'}
                       </Tag>
                     </div>
                   }
@@ -614,5 +614,5 @@ export function UserGroupsSettings() {
         </Drawer>
       </div>
     </PageContainer>
-  );
+  )
 }

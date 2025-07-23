@@ -115,8 +115,7 @@ export const AssistantFormModal: React.FC = () => {
   const [jsonErrors, setJsonErrors] = useState<string[]>([])
 
   // Store usage
-  const { assistantModalOpen, assistantModalLoading, editingAssistant } =
-    Stores.UI.Modals
+  const { open, loading, editingAssistant } = Stores.UI.AssistantModal
 
   // No store state needed, using external methods
 
@@ -367,7 +366,7 @@ export const AssistantFormModal: React.FC = () => {
 
   // Initialize form when modal opens or editing assistant changes
   useEffect(() => {
-    if (assistantModalOpen) {
+    if (open) {
       if (editingAssistant) {
         // Editing existing assistant
         const parametersJson = editingAssistant.parameters
@@ -400,7 +399,7 @@ export const AssistantFormModal: React.FC = () => {
       setParameterFormFields([])
       setJsonErrors([])
     }
-  }, [assistantModalOpen, editingAssistant, cloneSource, form])
+  }, [open, editingAssistant, cloneSource, form])
 
   const getTitle = () => {
     if (editingAssistant) {
@@ -412,7 +411,7 @@ export const AssistantFormModal: React.FC = () => {
   return (
     <Modal
       title={getTitle()}
-      open={assistantModalOpen}
+      open={open}
       onCancel={closeAssistantModal}
       footer={null}
       width={800}
@@ -621,17 +620,10 @@ export const AssistantFormModal: React.FC = () => {
 
         <Form.Item>
           <Flex className="gap-2">
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={assistantModalLoading}
-            >
+            <Button type="primary" htmlType="submit" loading={loading}>
               {editingAssistant ? 'Update' : 'Create'}
             </Button>
-            <Button
-              onClick={closeAssistantModal}
-              disabled={assistantModalLoading}
-            >
+            <Button onClick={closeAssistantModal} disabled={loading}>
               Cancel
             </Button>
           </Flex>

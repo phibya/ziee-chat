@@ -39,7 +39,7 @@ export function AdminGeneralSettings() {
     form.setFieldsValue({
       experimentalFeatures,
     })
-  }, [experimentalFeatures, form])
+  }, [experimentalFeatures]) // Removed form from dependencies to prevent infinite rerenders
 
   const handleFormChange = async (changedValues: any) => {
     try {

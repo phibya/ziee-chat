@@ -2,25 +2,23 @@ import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { Card, Flex, Form, Input, Modal, Switch } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Provider, UpdateProviderRequest } from '../../../../types/api/provider'
+import {
+  closeEditProviderModal,
+  setEditProviderModalLoading,
+  Stores,
+  updateModelProvider,
+} from '../../../../store'
+import { UpdateProviderRequest } from '../../../../types/api/provider'
 
-interface EditProviderModalProps {
-  open: boolean
-  provider: Provider | null
-  onClose: () => void
-  onSubmit: (provider: UpdateProviderRequest) => void
-  loading?: boolean
-}
-
-export function EditProviderModal({
-  open,
-  provider,
-  onClose,
-  onSubmit,
-  loading,
-}: EditProviderModalProps) {
+export function EditProviderModal() {
   const { t } = useTranslation()
   const [form] = Form.useForm()
+
+  const { open, loading, providerId } = Stores.UI.EditProviderModal
+  const { providers } = Stores.Providers
+
+  // Find the current provider from the store
+  const provider = providerId ? providers.find(p => p.id === providerId) : null
 
   useEffect(() => {
     if (provider && open) {
@@ -34,14 +32,20 @@ export function EditProviderModal({
   }, [provider, open, form])
 
   const handleSubmit = async () => {
+    if (!provider) return
+
     try {
+      setEditProviderModalLoading(true)
       const values = await form.validateFields()
-      onSubmit({
-        id: provider!.id,
+      await updateModelProvider(provider.id, {
+        id: provider.id,
         ...values,
       } as UpdateProviderRequest)
+      closeEditProviderModal()
     } catch (error) {
-      console.error('Form validation failed:', error)
+      console.error('Failed to update provider:', error)
+    } finally {
+      setEditProviderModalLoading(false)
     }
   }
 
@@ -51,7 +55,7 @@ export function EditProviderModal({
     <Modal
       title={`${t('providers.editProvider')} ${provider.name}`}
       open={open}
-      onCancel={onClose}
+      onCancel={closeEditProviderModal}
       onOk={handleSubmit}
       confirmLoading={loading}
       width={600}

@@ -37,13 +37,6 @@ export interface DownloadInstance {
 interface ModelDownloadState {
   // Download instances map
   downloads: Record<string, DownloadInstance>
-
-  // Modal state
-  modalOpen: boolean
-  modalProviderId: string | null
-  modalProviderType: string | null
-  modalViewMode: boolean
-  modalViewDownloadId: string | null
 }
 
 export const useModelDownloadStore = create<ModelDownloadState>()(
@@ -51,13 +44,6 @@ export const useModelDownloadStore = create<ModelDownloadState>()(
     (): ModelDownloadState => ({
       // Initial state
       downloads: {},
-
-      // Modal initial state
-      modalOpen: false,
-      modalProviderId: null,
-      modalProviderType: null,
-      modalViewMode: false,
-      modalViewDownloadId: null,
     }),
   ),
 )
@@ -212,38 +198,5 @@ export const findDownloadById = (
 }
 
 // Modal actions
-export const openAddModelModal = (
-  providerId: string,
-  providerType: string,
-): void => {
-  useModelDownloadStore.setState({
-    modalOpen: true,
-    modalProviderId: providerId,
-    modalProviderType: providerType,
-    modalViewMode: false,
-    modalViewDownloadId: null,
-  })
-}
-
-export const openViewDownloadModal = (
-  downloadId: string,
-  providerType: string,
-): void => {
-  useModelDownloadStore.setState({
-    modalOpen: true,
-    modalProviderId: null, // Not needed for view mode
-    modalProviderType: providerType,
-    modalViewMode: true,
-    modalViewDownloadId: downloadId,
-  })
-}
-
-export const closeDownloadModal = (): void => {
-  useModelDownloadStore.setState({
-    modalOpen: false,
-    modalProviderId: null,
-    modalProviderType: null,
-    modalViewMode: false,
-    modalViewDownloadId: null,
-  })
-}
+// Re-export the individual modal functions for backward compatibility
+export { openViewDownloadModal } from './ui/viewDownloadModal'

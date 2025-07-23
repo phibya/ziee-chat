@@ -1,20 +1,33 @@
 // Auth store
 
-import type { StoreApi, UseBoundStore } from "zustand";
+import type { StoreApi, UseBoundStore } from 'zustand'
 // Admin store
-import { useShallow } from "zustand/react/shallow";
-import { useAdminStore } from "./admin";
-import { useAssistantsStore } from "./assistants";
-import { useAuthStore } from "./auth";
-import { useChatStore } from "./chat";
-import { useChatHistoryStore } from "./chatHistory";
-import { useConversationsStore } from "./conversations";
-import { useModelDownloadStore } from "./modelDownload";
-import { useProjectsStore } from "./projects";
-import { useProvidersStore } from "./providers";
-import { useRepositoriesStore } from "./repositories";
-import { useUserSettingsStore } from "./settings";
-import { useChatUIStore, useLayoutUIStore, useModalsUIStore } from "./ui";
+import { useShallow } from 'zustand/react/shallow'
+import { useAdminStore } from './admin'
+import { useAssistantsStore } from './assistants'
+import { useAuthStore } from './auth'
+import { useChatStore } from './chat'
+import { useChatHistoryStore } from './chatHistory'
+import { useConversationsStore } from './conversations'
+import { useModelDownloadStore } from './modelDownload'
+import { useProjectsStore } from './projects'
+import { useProvidersStore } from './providers'
+import { useRepositoriesStore } from './repositories'
+import { useUserSettingsStore } from './settings'
+import {
+  useChatUIStore,
+  useLayoutUIStore,
+  useAssistantModalStore,
+  useAddProviderModalStore,
+  useEditProviderModalStore,
+  useAddModelModalStore,
+  useViewDownloadModalStore,
+  useAddRemoteModelModalStore,
+  useEditLocalModelModalStore,
+  useEditRemoteModelModalStore,
+  useAddLocalModelUploadModalStore,
+  useAddLocalModelDownloadModalStore,
+} from './ui'
 
 export {
   assignUserToUserGroup,
@@ -39,7 +52,7 @@ export {
   updateSystemUserRegistrationSettings,
   updateUserGroup,
   useAdminStore,
-} from "./admin";
+} from './admin'
 // Assistants store
 export {
   clearAssistantsStoreError,
@@ -102,12 +115,9 @@ export {
   cancelModelDownload,
   clearAllModelDownloads,
   clearModelDownload,
-  closeDownloadModal,
   downloadModelFromRepository,
   findDownloadById,
   getAllActiveDownloads,
-  openAddModelModal as openDownloadModelModal,
-  openViewDownloadModal,
   useModelDownloadStore,
 } from './modelDownload'
 // Projects store
@@ -180,24 +190,8 @@ export {
 
 // UI stores with all actions
 export {
-  closeAddModelModal,
-  closeAddProviderModal,
-  closeAssistantModal,
-  closeEditModelModal,
-  closeEditProviderModal,
   closeMobileOverlay,
-  openAddModelModal,
-  openAddProviderModal,
-  openAssistantModal,
-  openEditModelModal,
-  openEditProviderModal,
   resetChatUI,
-  resetModals,
-  setAddModelModalLoading,
-  setAddProviderModalLoading,
-  setAssistantModalLoading,
-  setEditModelModalLoading,
-  setEditProviderModalLoading,
   setInputDisabled,
   setInputPlaceholder,
   setIsMobile,
@@ -208,7 +202,48 @@ export {
   updateEditingContent,
   useChatUIStore,
   useLayoutUIStore,
-  useModalsUIStore,
+  // Individual modal stores
+  useAssistantModalStore,
+  openAssistantModal,
+  closeAssistantModal,
+  setAssistantModalLoading,
+  useAddProviderModalStore,
+  openAddProviderModal,
+  closeAddProviderModal,
+  setAddProviderModalLoading,
+  useEditProviderModalStore,
+  openEditProviderModal,
+  closeEditProviderModal,
+  setEditProviderModalLoading,
+  useAddModelModalStore,
+  openAddModelModal,
+  closeAddModelModal,
+  setAddModelModalLoading,
+  useViewDownloadModalStore,
+  openViewDownloadModal,
+  closeViewDownloadModal,
+  setViewDownloadModalLoading,
+  useAddRemoteModelModalStore,
+  openAddRemoteModelModal,
+  closeAddRemoteModelModal,
+  setAddRemoteModelModalLoading,
+  useEditLocalModelModalStore,
+  openEditLocalModelModal,
+  closeEditLocalModelModal,
+  setEditLocalModelModalLoading,
+  useEditRemoteModelModalStore,
+  openEditRemoteModelModal,
+  closeEditRemoteModelModal,
+  setEditRemoteModelModalLoading,
+  // Upload and Download modal stores
+  useAddLocalModelUploadModalStore,
+  openAddLocalModelUploadModal,
+  closeAddLocalModelUploadModal,
+  setAddLocalModelUploadModalLoading,
+  useAddLocalModelDownloadModalStore,
+  openAddLocalModelDownloadModal,
+  closeAddLocalModelDownloadModal,
+  setAddLocalModelDownloadModalLoading,
 } from './ui'
 
 type ExtractState<T> = T extends UseBoundStore<StoreApi<infer State>>
@@ -240,8 +275,22 @@ export const Stores = {
   Repositories: createStoreProxy(useRepositoriesStore),
   Settings: createStoreProxy(useUserSettingsStore),
   UI: {
-    Modals: createStoreProxy(useModalsUIStore),
     Chat: createStoreProxy(useChatUIStore),
     Layout: createStoreProxy(useLayoutUIStore),
+    // Individual modal stores
+    AssistantModal: createStoreProxy(useAssistantModalStore),
+    AddProviderModal: createStoreProxy(useAddProviderModalStore),
+    EditProviderModal: createStoreProxy(useEditProviderModalStore),
+    AddModelModal: createStoreProxy(useAddModelModalStore),
+    ViewDownloadModal: createStoreProxy(useViewDownloadModalStore),
+    AddRemoteModelModal: createStoreProxy(useAddRemoteModelModalStore),
+    EditLocalModelModal: createStoreProxy(useEditLocalModelModalStore),
+    EditRemoteModelModal: createStoreProxy(useEditRemoteModelModalStore),
+    AddLocalModelUploadModal: createStoreProxy(
+      useAddLocalModelUploadModalStore,
+    ),
+    AddLocalModelDownloadModal: createStoreProxy(
+      useAddLocalModelDownloadModalStore,
+    ),
   },
 }
