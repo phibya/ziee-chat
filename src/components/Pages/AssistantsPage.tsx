@@ -22,9 +22,13 @@ import {
 } from 'antd'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
-import { useAssistantsStore, loadUserAssistants, deleteUserAssistant, clearAssistantsStoreError } from '../../store'
-import { openAssistantModal } from '../../store/ui/modals'
+import {
+  Stores,
+  loadUserAssistants,
+  deleteUserAssistant,
+  clearAssistantsStoreError,
+  openAssistantModal,
+} from '../../store'
 import { Assistant } from '../../types/api/assistant'
 import { PageContainer } from '../common/PageContainer'
 import { AssistantFormModal } from '../shared/AssistantFormModal'
@@ -42,15 +46,7 @@ export const AssistantsPage: React.FC = () => {
     loading,
     deleting,
     error,
-  } = useAssistantsStore(
-    useShallow(state => ({
-      assistants: state.assistants,
-      adminAssistants: state.adminAssistants,
-      loading: state.loading,
-      deleting: state.deleting,
-      error: state.error,
-    })),
-  )
+  } = Stores.Assistants
 
   const assistants = allAssistants.filter(a => !a.is_template)
 

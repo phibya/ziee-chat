@@ -24,16 +24,15 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { Project } from '../../types/api/projects'
 import { PageContainer } from '../common/PageContainer'
-import { 
-  useProjectsStore,
+import {
+  Stores,
   loadAllUserProjects,
   createNewProject,
   updateExistingProject,
   deleteExistingProject,
-  clearProjectsStoreError
+  clearProjectsStoreError,
 } from '../../store'
 
 const { Title, Text } = Typography
@@ -52,22 +51,7 @@ export const ProjectsPage: React.FC = () => {
   const navigate = useNavigate()
 
   // Projects store
-  const {
-    projects,
-    loading,
-    creating,
-    updating,
-    error,
-  } = useProjectsStore(
-    useShallow(state => ({
-      projects: state.projects,
-      loading: state.loading,
-      creating: state.creating,
-      updating: state.updating,
-      deleting: state.deleting,
-      error: state.error,
-    })),
-  )
+  const { projects, loading, creating, updating, error } = Stores.Projects
 
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'activity' | 'name' | 'created'>(

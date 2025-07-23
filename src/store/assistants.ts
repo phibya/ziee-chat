@@ -212,7 +212,9 @@ export const updateAdministratorAssistant = async (
   }
 }
 
-export const deleteAdministratorAssistant = async (id: string): Promise<void> => {
+export const deleteAdministratorAssistant = async (
+  id: string,
+): Promise<void> => {
   try {
     useAssistantsStore.setState({ deleting: true, error: null })
 

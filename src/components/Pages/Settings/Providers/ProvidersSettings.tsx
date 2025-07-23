@@ -35,7 +35,20 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
-import { useProvidersStore, loadAllModelProviders, loadModels, updateModelProvider, deleteModelProvider, cloneExistingProvider, deleteExistingModel, startModelExecution, stopModelExecution, enableModelForUse, disableModelFromUse, clearProvidersError } from '../../../../store'
+import {
+  useProvidersStore,
+  loadAllModelProviders,
+  loadModels,
+  updateModelProvider,
+  deleteModelProvider,
+  cloneExistingProvider,
+  deleteExistingModel,
+  startModelExecution,
+  stopModelExecution,
+  enableModelForUse,
+  disableModelFromUse,
+  clearProvidersError,
+} from '../../../../store'
 import { useModelDownloadStore } from '../../../../store'
 import {
   openAddProviderModal,
@@ -87,12 +100,11 @@ export function ProvidersSettings() {
   )
 
   // Model downloads store
-  const { downloads } =
-    useModelDownloadStore(
-      useShallow(state => ({
-        downloads: state.downloads,
-      })),
-    )
+  const { downloads } = useModelDownloadStore(
+    useShallow(state => ({
+      downloads: state.downloads,
+    })),
+  )
 
   const [selectedProvider, setSelectedProvider] = useState<string>('')
   const [form] = Form.useForm()
@@ -295,7 +307,9 @@ export function ProvidersSettings() {
     if (!currentProvider || !canEditProviders) return
 
     try {
-      await updateModelProvider(currentProvider.id, { name: changedValues.name })
+      await updateModelProvider(currentProvider.id, {
+        name: changedValues.name,
+      })
     } catch (error) {
       console.error('Failed to update provider:', error)
       // Error is handled by the store
@@ -886,7 +900,11 @@ export function ProvidersSettings() {
                 icon={<PlusOutlined />}
                 onClick={() => {
                   // TODO: Implement openAddModelModal when API is available
-                  console.log('Add model modal:', selectedProvider, currentProvider?.type)
+                  console.log(
+                    'Add model modal:',
+                    selectedProvider,
+                    currentProvider?.type,
+                  )
                 }}
               />
             )

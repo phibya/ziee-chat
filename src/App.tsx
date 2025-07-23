@@ -33,7 +33,10 @@ import {
   UserGroupsSettings,
   UsersSettings,
 } from './components/Pages/Settings'
-import { initializeUserSettingsOnStartup, useAppearanceSettings } from './store/settings'
+import {
+  initializeUserSettingsOnStartup,
+  useAppearanceSettings,
+} from './store/settings'
 import { Permission, usePermissions } from './permissions'
 import { isDesktopApp } from './api/core'
 import './i18n'

@@ -25,7 +25,13 @@ import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../api/core'
 import { Permission, usePermissions } from '../../../permissions'
-import { useRepositoriesStore, loadAllModelRepositories, createNewModelRepository, updateModelRepository, deleteModelRepository } from '../../../store'
+import {
+  useRepositoriesStore,
+  loadAllModelRepositories,
+  createNewModelRepository,
+  updateModelRepository,
+  deleteModelRepository,
+} from '../../../store'
 import { Repository } from '../../../types/api/repository'
 
 const { Title, Text } = Typography
@@ -41,12 +47,7 @@ export function ModelRepositorySettings() {
   )
 
   // Use repository store
-  const {
-    repositories,
-    creating,
-    updating,
-    testing,
-  } = useRepositoriesStore(
+  const { repositories, creating, updating, testing } = useRepositoriesStore(
     useShallow(state => ({
       repositories: state.repositories,
       creating: state.creating,

@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { App, Col, Row, Select, Space, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { useShallow } from 'zustand/react/shallow'
 import { RobotOutlined } from '@ant-design/icons'
 import { ChatInput } from './ChatInput'
 import {
+  Stores,
   createNewConversation,
   loadConversationById,
   sendChatMessage,
@@ -14,10 +14,6 @@ import {
   loadAllModelProviders,
   addNewConversationToList,
 } from '../../store'
-import { useChatStore } from '../../store/chat'
-import { useAssistantsStore } from '../../store/assistants'
-import { useProvidersStore } from '../../store/providers'
-import { useAuthStore } from '../../store/auth'
 
 const { Text } = Typography
 const { Option } = Select
@@ -28,35 +24,20 @@ export function NewChatInterface() {
   const navigate = useNavigate()
 
   // Auth store
-  const { user } = useAuthStore()
+  const { user } = Stores.Auth
 
   // Chat store
-  const { error: chatError } = useChatStore(
-    useShallow(state => ({
-      error: state.error,
-    })),
-  )
+  const { error: chatError } = Stores.Chat
 
   // Assistants store
-  const { assistants, loading: assistantsLoading } = useAssistantsStore(
-    useShallow(state => ({
-      assistants: state.assistants,
-      loading: state.loading,
-    })),
-  )
+  const { assistants, loading: assistantsLoading } = Stores.Assistants
 
   // Model providers store
   const {
     providers: providers,
     modelsByProvider,
     loading: providersLoading,
-  } = useProvidersStore(
-    useShallow(state => ({
-      providers: state.providers,
-      modelsByProvider: state.modelsByProvider,
-      loading: state.loading,
-    })),
-  )
+  } = Stores.Providers
 
   const [selectedAssistant, setSelectedAssistant] = useState<string | null>(
     null,

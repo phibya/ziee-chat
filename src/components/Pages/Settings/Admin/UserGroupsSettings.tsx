@@ -36,7 +36,15 @@ import {
 } from '../../../../types'
 import { Permission, usePermissions } from '../../../../permissions'
 import { PageContainer } from '../../../common/PageContainer'
-import { useAdminStore, loadAllUserGroups, createNewUserGroup, updateUserGroup, deleteUserGroup, loadUserGroupMembers, clearSystemAdminError } from '../../../../store'
+import {
+  useAdminStore,
+  loadAllUserGroups,
+  createNewUserGroup,
+  updateUserGroup,
+  deleteUserGroup,
+  loadUserGroupMembers,
+  clearSystemAdminError,
+} from '../../../../store'
 import { useProvidersStore, loadAllModelProviders } from '../../../../store'
 
 const { Title, Text } = Typography
@@ -47,24 +55,19 @@ export function UserGroupsSettings() {
   const { hasPermission } = usePermissions()
 
   // Admin store
-  const {
-    groups,
-    groupMembers,
-    loading,
-    membersLoading,
-    error,
-  } = useAdminStore(
-    useShallow(state => ({
-      groups: state.groups,
-      groupMembers: state.currentGroupMembers,
-      loading: state.loadingGroups,
-      membersLoading: state.loadingGroupMembers,
-      creating: state.creating,
-      updating: state.updating,
-      deleting: state.deleting,
-      error: state.error,
-    })),
-  )
+  const { groups, groupMembers, loading, membersLoading, error } =
+    useAdminStore(
+      useShallow(state => ({
+        groups: state.groups,
+        groupMembers: state.currentGroupMembers,
+        loading: state.loadingGroups,
+        membersLoading: state.loadingGroupMembers,
+        creating: state.creating,
+        updating: state.updating,
+        deleting: state.deleting,
+        error: state.error,
+      })),
+    )
 
   // Model providers store
   const { providers: providers } = useProvidersStore(

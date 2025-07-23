@@ -20,7 +20,12 @@ import {
 import { useShallow } from 'zustand/react/shallow'
 import { Assistant } from '../../../../types/api/assistant'
 import { PageContainer } from '../../../common/PageContainer'
-import { useAdminStore, loadSystemAdminAssistants, deleteSystemAdminAssistant, clearSystemAdminError } from '../../../../store'
+import {
+  useAdminStore,
+  loadSystemAdminAssistants,
+  deleteSystemAdminAssistant,
+  clearSystemAdminError,
+} from '../../../../store'
 import { openAssistantModal } from '../../../../store/ui/modals'
 import { AssistantFormModal } from '../../../shared/AssistantFormModal'
 
@@ -31,11 +36,7 @@ export const AdminAssistantsSettings: React.FC = () => {
   const { message } = App.useApp()
 
   // Admin store
-  const {
-    assistants,
-    loading,
-    error,
-  } = useAdminStore(
+  const { assistants, loading, error } = useAdminStore(
     useShallow(state => ({
       assistants: state.assistants,
       loading: state.loading,

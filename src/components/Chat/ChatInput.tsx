@@ -2,8 +2,7 @@ import { memo, useState } from 'react'
 import { Button, Flex, Input } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { SendOutlined, StopOutlined } from '@ant-design/icons'
-import { useShallow } from 'zustand/react/shallow'
-import { useChatStore, sendChatMessage, stopMessageStreaming } from '../../store'
+import { Stores, sendChatMessage, stopMessageStreaming } from '../../store'
 
 const { TextArea } = Input
 
@@ -23,13 +22,7 @@ export const ChatInput = memo(function ChatInput({
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState('')
 
-  const { currentConversation, sending, isStreaming } = useChatStore(
-    useShallow(state => ({
-      currentConversation: state.currentConversation,
-      sending: state.sending,
-      isStreaming: state.isStreaming,
-    })),
-  )
+  const { currentConversation, sending, isStreaming } = Stores.Chat
 
   const handleSend = async () => {
     const messageToSend = inputValue.trim()

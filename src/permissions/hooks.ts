@@ -3,7 +3,7 @@
  */
 
 import { useMemo } from 'react'
-import { useAuthStore } from '../store/auth'
+import { Stores } from '../store'
 import {
   canPerformAction,
   expandWildcardPermission,
@@ -26,7 +26,7 @@ import type { PermissionContext } from './types'
  * Main permission hook providing all permission-related functionality
  */
 export function usePermissions(): PermissionContext {
-  const user = useAuthStore(state => state.user)
+  const user = Stores.Auth.user
 
   const effectivePermissions = useMemo(
     () => getUserEffectivePermissions(user),
@@ -49,7 +49,7 @@ export function usePermissions(): PermissionContext {
  * Hook for checking a specific permission
  */
 export function useHasPermission(permission: PermissionKey): boolean {
-  const user = useAuthStore(state => state.user)
+  const user = Stores.Auth.user
   return useMemo(() => hasPermission(user, permission), [user, permission])
 }
 
@@ -57,7 +57,7 @@ export function useHasPermission(permission: PermissionKey): boolean {
  * Hook for checking if user has any of the specified permissions
  */
 export function useHasAnyPermission(permissions: PermissionKey[]): boolean {
-  const user = useAuthStore(state => state.user)
+  const user = Stores.Auth.user
   return useMemo(() => hasAnyPermission(user, permissions), [user, permissions])
 }
 
@@ -65,7 +65,7 @@ export function useHasAnyPermission(permissions: PermissionKey[]): boolean {
  * Hook for checking if user has all of the specified permissions
  */
 export function useHasAllPermissions(permissions: PermissionKey[]): boolean {
-  const user = useAuthStore(state => state.user)
+  const user = Stores.Auth.user
   return useMemo(
     () => hasAllPermissions(user, permissions),
     [user, permissions],
@@ -76,7 +76,7 @@ export function useHasAllPermissions(permissions: PermissionKey[]): boolean {
  * Hook for getting user's effective permissions
  */
 export function useEffectivePermissions(): PermissionKey[] {
-  const user = useAuthStore(state => state.user)
+  const user = Stores.Auth.user
   return useMemo(() => getUserEffectivePermissions(user), [user])
 }
 
@@ -98,7 +98,7 @@ export function useCanPerformAction(
   requiredPermissions: PermissionKey[],
   requireAll: boolean = false,
 ): boolean {
-  const user = useAuthStore(state => state.user)
+  const user = Stores.Auth.user
   return useMemo(
     () => canPerformAction(user, requiredPermissions, requireAll),
     [user, requiredPermissions, requireAll],
@@ -111,7 +111,7 @@ export function useCanPerformAction(
 export function useMissingPermissions(
   requiredPermissions: PermissionKey[],
 ): PermissionKey[] {
-  const user = useAuthStore(state => state.user)
+  const user = Stores.Auth.user
   return useMemo(
     () => getMissingPermissions(user, requiredPermissions),
     [user, requiredPermissions],

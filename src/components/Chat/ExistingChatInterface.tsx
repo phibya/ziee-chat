@@ -2,9 +2,12 @@ import { App, Flex } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { useShallow } from 'zustand/react/shallow'
-import { loadUserAssistants } from '../../store'
-import { useChatStore, loadConversationById, clearChatError } from '../../store'
+import {
+  Stores,
+  loadUserAssistants,
+  loadConversationById,
+  clearChatError,
+} from '../../store'
 import { ChatHeader } from './ChatHeader'
 import { ChatInput } from './ChatInput'
 import { ChatMessageList } from './ChatMessageList'
@@ -23,13 +26,7 @@ export function ExistingChatInterface() {
     currentConversation,
     loading: chatLoading,
     error: chatError,
-  } = useChatStore(
-    useShallow(state => ({
-      currentConversation: state.currentConversation,
-      loading: state.loading,
-      error: state.error,
-    })),
-  )
+  } = Stores.Chat
 
   // Assistants loading state
   const [assistantsLoading, setAssistantsLoading] = useState(false)

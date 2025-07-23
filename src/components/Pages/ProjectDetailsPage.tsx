@@ -29,12 +29,12 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 // import { Project } from '../../types/api/projects' // Unused but may be needed later
-import { 
+import {
   useProjectsStore,
   loadProjectWithDetails,
   updateExistingProject,
   uploadDocumentToProject,
-  clearProjectsStoreError
+  clearProjectsStoreError,
 } from '../../store'
 
 const { Title, Text } = Typography

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Layout, Spin, Typography } from 'antd'
-import { useAuthStore } from '../../store'
-import { useAdminStore, loadSystemUserRegistrationSettings } from '../../store'
+import { Stores, loadSystemUserRegistrationSettings } from '../../store'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
 
@@ -12,12 +11,10 @@ type AuthMode = 'login' | 'register' | 'setup'
 
 export const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login')
-  const { isLoading, needsSetup, isDesktop, isAuthenticated } = useAuthStore()
+  const { isLoading, needsSetup, isDesktop, isAuthenticated } = Stores.Auth
 
   // Get registration status from admin store
-  const registrationEnabled = useAdminStore(
-    state => state.userRegistrationEnabled,
-  )
+  const registrationEnabled = Stores.Admin.userRegistrationEnabled
 
   const [checkingRegistration, setCheckingRegistration] = useState(false)
 

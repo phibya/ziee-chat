@@ -29,10 +29,19 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { isDesktopApp } from '../../../../api/core.ts'
 import { Permission, usePermissions } from '../../../../permissions'
-import { useAdminStore, loadAllSystemUsers, loadAllUserGroups, updateSystemUser, resetSystemUserPassword, toggleSystemUserActiveStatus, assignUserToUserGroup, removeUserFromUserGroup, clearSystemAdminError } from '../../../../store'
+import {
+  Stores,
+  loadAllSystemUsers,
+  loadAllUserGroups,
+  updateSystemUser,
+  resetSystemUserPassword,
+  toggleSystemUserActiveStatus,
+  assignUserToUserGroup,
+  removeUserFromUserGroup,
+  clearSystemAdminError,
+} from '../../../../store'
 import {
   ResetPasswordRequest,
   UpdateUserRequest,
@@ -51,20 +60,7 @@ export function UsersSettings() {
   const { hasPermission } = usePermissions()
 
   // Admin store
-  const {
-    users,
-    groups,
-    loading,
-    error,
-  } = useAdminStore(
-    useShallow(state => ({
-      users: state.users,
-      groups: state.groups,
-      loading: state.loading,
-      updating: state.updating,
-      error: state.error,
-    })),
-  )
+  const { users, groups, loading, error } = Stores.Admin
 
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [passwordModalVisible, setPasswordModalVisible] = useState(false)

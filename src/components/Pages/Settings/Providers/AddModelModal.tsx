@@ -21,8 +21,21 @@ import { useUpdate } from 'react-use'
 import { useShallow } from 'zustand/react/shallow'
 import { ApiClient } from '../../../../api/client'
 import { LOCAL_FILE_TYPE_OPTIONS } from '../../../../constants/localModelTypes.ts'
-import { useProvidersStore, uploadModelFilesAndCreateModel, loadAllModelProviders, addNewModelToProvider, clearProvidersError, cancelModelUpload } from '../../../../store'
-import { useModelDownloadStore, downloadModelFromRepository, clearModelDownload, findDownloadById, closeDownloadModal } from '../../../../store'
+import {
+  useProvidersStore,
+  uploadModelFilesAndCreateModel,
+  loadAllModelProviders,
+  addNewModelToProvider,
+  clearProvidersError,
+  cancelModelUpload,
+} from '../../../../store'
+import {
+  useModelDownloadStore,
+  downloadModelFromRepository,
+  clearModelDownload,
+  findDownloadById,
+  closeDownloadModal,
+} from '../../../../store'
 import { ProviderType } from '../../../../types/api/provider'
 import { Repository } from '../../../../types/api/repository'
 import { BASIC_MODEL_FIELDS, LOCAL_MODEL_FIELDS } from './shared/constants'
@@ -89,17 +102,14 @@ export function AddModelModal() {
     }
   }
 
-  const {
-    uploading,
-    uploadProgress,
-    overallUploadProgress,
-  } = useProvidersStore(
-    useShallow(state => ({
-      uploading: state.uploading,
-      uploadProgress: state.uploadProgress,
-      overallUploadProgress: state.overallUploadProgress,
-    })),
-  )
+  const { uploading, uploadProgress, overallUploadProgress } =
+    useProvidersStore(
+      useShallow(state => ({
+        uploading: state.uploading,
+        uploadProgress: state.uploadProgress,
+        overallUploadProgress: state.overallUploadProgress,
+      })),
+    )
 
   const [currentDownloadId, setCurrentDownloadId] = useState<string | null>(
     null,

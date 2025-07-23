@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ConfigProvider } from 'antd'
-import { getUserAppearanceTheme, getUserAppearanceComponentSize, getResolvedAppearanceTheme } from '../store'
+import {
+  getUserAppearanceTheme,
+  getUserAppearanceComponentSize,
+  getResolvedAppearanceTheme,
+} from '../store'
 import { themes } from '../themes'
 import { ThemeContext } from '../hooks/useTheme'
 import { AppThemeConfig } from '../themes/light.ts'

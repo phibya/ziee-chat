@@ -1,12 +1,13 @@
 import { useEffect } from 'react'
 import { Button, Layout } from 'antd'
 import { MenuUnfoldOutlined } from '@ant-design/icons'
-import { useUISettings } from '../../store'
 import {
-  useLayoutUIStore,
+  Stores,
   setIsMobile,
   setMobileOverlayOpen,
-} from '../../store/ui/layout'
+  getUILeftPanelCollapsed,
+  setUILeftPanelCollapsed,
+} from '../../store'
 import { LeftPanel } from './LeftPanel'
 
 const { Sider, Content } = Layout
@@ -16,8 +17,8 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { leftPanelCollapsed, setLeftPanelCollapsed } = useUISettings()
-  const { isMobile, mobileOverlayOpen } = useLayoutUIStore()
+  const leftPanelCollapsed = getUILeftPanelCollapsed()
+  const { isMobile, mobileOverlayOpen } = Stores.UI.Layout
 
   // Check if screen is mobile size
   useEffect(() => {
@@ -41,9 +42,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Force collapse on mobile
   useEffect(() => {
     if (isMobile && !leftPanelCollapsed) {
-      setLeftPanelCollapsed(true)
+      setUILeftPanelCollapsed(true)
     }
-  }, [isMobile, leftPanelCollapsed, setLeftPanelCollapsed])
+  }, [isMobile, leftPanelCollapsed])
 
   return (
     <Layout className={'h-screen overflow-hidden'}>
@@ -71,7 +72,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           <Button
             type="default"
             icon={<MenuUnfoldOutlined />}
-            onClick={() => setLeftPanelCollapsed(false)}
+            onClick={() => setUILeftPanelCollapsed(false)}
           />
         </div>
       )}

@@ -152,7 +152,10 @@ export const getUserAppearanceTheme = (): 'light' | 'dark' | 'system' => {
   return getUserSetting('appearance.theme')
 }
 
-export const getUserAppearanceComponentSize = (): 'small' | 'medium' | 'large' => {
+export const getUserAppearanceComponentSize = ():
+  | 'small'
+  | 'medium'
+  | 'large' => {
   return getUserSetting('appearance.componentSize')
 }
 

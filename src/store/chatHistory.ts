@@ -61,7 +61,9 @@ export const loadChatHistoryConversationsList = async (): Promise<void> => {
   }
 }
 
-export const searchChatHistoryConversations = async (query: string): Promise<void> => {
+export const searchChatHistoryConversations = async (
+  query: string,
+): Promise<void> => {
   try {
     useChatHistoryStore.setState({
       isSearching: true,

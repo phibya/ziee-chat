@@ -2,8 +2,13 @@ import React, { useEffect, useState } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
-import { useAuthStore, registerNewUser, setupInitialAdminUser, clearAuthenticationError } from '../../store'
-import { useAdminStore, loadSystemUserRegistrationSettings } from '../../store'
+import {
+  Stores,
+  registerNewUser,
+  setupInitialAdminUser,
+  clearAuthenticationError,
+  loadSystemUserRegistrationSettings,
+} from '../../store'
 import type { CreateUserRequest } from '../../types'
 
 const { Title, Text } = Typography
@@ -20,12 +25,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const { t } = useTranslation()
   const [form] = Form.useForm()
   const [checkingRegistration, setCheckingRegistration] = useState(false)
-  const { isLoading, error, isDesktop } = useAuthStore()
+  const { isLoading, error, isDesktop } = Stores.Auth
 
   // Get registration status from admin store
-  const registrationEnabled = useAdminStore(
-    state => state.userRegistrationEnabled,
-  )
+  const registrationEnabled = Stores.Admin.userRegistrationEnabled
 
   // Check registration status for web app (except for setup mode)
   useEffect(() => {

@@ -3,7 +3,12 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { Permission, usePermissions } from '../../../../permissions'
-import { useAdminStore, loadSystemUserRegistrationSettings, updateSystemUserRegistrationSettings, clearSystemAdminError } from '../../../../store'
+import {
+  useAdminStore,
+  loadSystemUserRegistrationSettings,
+  updateSystemUserRegistrationSettings,
+  clearSystemAdminError,
+} from '../../../../store'
 
 const { Text } = Typography
 
@@ -14,11 +19,7 @@ export function UserRegistrationSettings() {
   const { hasPermission } = usePermissions()
 
   // Admin store
-  const {
-    registrationEnabled,
-    loading,
-    error,
-  } = useAdminStore(
+  const { registrationEnabled, loading, error } = useAdminStore(
     useShallow(state => ({
       registrationEnabled: state.userRegistrationEnabled,
       loading: state.loading,

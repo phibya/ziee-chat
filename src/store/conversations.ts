@@ -38,7 +38,9 @@ export const loadAllRecentConversations = async (): Promise<void> => {
   }
 }
 
-export const addNewConversationToList = (conversation: ConversationSummary): void => {
+export const addNewConversationToList = (
+  conversation: ConversationSummary,
+): void => {
   useConversationsStore.setState(state => ({
     conversations: [conversation, ...state.conversations],
   }))

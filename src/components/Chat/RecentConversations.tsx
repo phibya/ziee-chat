@@ -8,15 +8,14 @@ import { App, Button, Input, Modal, theme, Tooltip, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, Link } from 'react-router-dom'
-import { useShallow } from 'zustand/react/shallow'
 import {
-  useConversationsStore,
-  useUISettings,
+  Stores,
   loadAllRecentConversations,
   updateExistingConversation,
   removeConversationFromList,
+  closeMobileOverlay,
+  getUILeftPanelCollapsed,
 } from '../../store'
-import { useLayoutUIStore, closeMobileOverlay } from '../../store/ui/layout'
 import { ConversationSummary } from '../../types/api/chat'
 
 const { confirm } = Modal
@@ -29,15 +28,10 @@ export function RecentConversations() {
   const [editingTitle, setEditingTitle] = useState('')
   const { token } = theme.useToken()
 
-  const { leftPanelCollapsed } = useUISettings()
-  const { isMobile, mobileOverlayOpen } = useLayoutUIStore()
+  const leftPanelCollapsed = getUILeftPanelCollapsed()
+  const { isMobile, mobileOverlayOpen } = Stores.UI.Layout
 
-  const { conversations, isLoading } = useConversationsStore(
-    useShallow(state => ({
-      conversations: state.conversations,
-      isLoading: state.isLoading,
-    })),
-  )
+  const { conversations, isLoading } = Stores.Conversations
 
   const isExpanded = isMobile ? mobileOverlayOpen : !leftPanelCollapsed
 
@@ -65,7 +59,9 @@ export function RecentConversations() {
 
     try {
       // Use store method that handles API call
-      await updateExistingConversation(editingId, { title: editingTitle.trim() })
+      await updateExistingConversation(editingId, {
+        title: editingTitle.trim(),
+      })
 
       setEditingId(null)
       setEditingTitle('')

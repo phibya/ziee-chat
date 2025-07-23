@@ -21,17 +21,20 @@ import {
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { useAuthStore, useUISettings, logoutUser } from '../../store'
-import { useLayoutUIStore, closeMobileOverlay } from '../../store/ui/layout'
+import {
+  Stores,
+  logoutUser,
+  closeMobileOverlay,
+  setUILeftPanelCollapsed,
+} from '../../store'
 import { RecentConversations } from '../Chat/RecentConversations.tsx'
 
 export function LeftPanel() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { setLeftPanelCollapsed } = useUISettings()
-  const { user, isDesktop } = useAuthStore()
-  const { isMobile } = useLayoutUIStore()
+  const { user, isDesktop } = Stores.Auth
+  const { isMobile } = Stores.UI.Layout
   const { token } = theme.useToken()
 
   const handleItemClick = () => {
@@ -76,7 +79,7 @@ export function LeftPanel() {
               if (isMobile) {
                 closeMobileOverlay()
               } else {
-                setLeftPanelCollapsed(true)
+                setUILeftPanelCollapsed(true)
               }
             }}
           />

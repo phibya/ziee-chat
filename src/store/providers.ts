@@ -190,14 +190,18 @@ export const cloneExistingProvider = async (id: string): Promise<Provider> => {
 }
 
 // Model actions
-export const loadModelsForProvider = async (providerId: string): Promise<void> => {
+export const loadModelsForProvider = async (
+  providerId: string,
+): Promise<void> => {
   try {
     useProvidersStore.setState(state => ({
       loadingModels: { ...state.loadingModels, [providerId]: true },
       error: null,
     }))
 
-    const models = await ApiClient.Providers.listModels({ provider_id: providerId })
+    const models = await ApiClient.Providers.listModels({
+      provider_id: providerId,
+    })
 
     useProvidersStore.setState(state => ({
       modelsByProvider: {
@@ -516,7 +520,9 @@ export const uploadModelFilesAndCreateModel = async (
   _request: UploadMultipleFilesRequest,
 ): Promise<Model> => {
   // TODO: Implement when upload session APIs are available
-  throw new Error('Upload functionality not yet implemented - API endpoints missing');
+  throw new Error(
+    'Upload functionality not yet implemented - API endpoints missing',
+  )
   /*
   const providerId = request.provider_id
 

@@ -21,11 +21,12 @@ import {
 } from '@ant-design/icons'
 import { Assistant } from '../../types/api/assistant'
 import {
-  useModalsUIStore,
+  Stores,
   closeAssistantModal,
   setAssistantModalLoading,
-} from '../../store/ui/modals'
-import { createUserAssistant, updateUserAssistant } from '../../store'
+  createUserAssistant,
+  updateUserAssistant,
+} from '../../store'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -115,7 +116,7 @@ export const AssistantFormModal: React.FC = () => {
 
   // Store usage
   const { assistantModalOpen, assistantModalLoading, editingAssistant } =
-    useModalsUIStore()
+    Stores.UI.Modals
 
   // No store state needed, using external methods
 

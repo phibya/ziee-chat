@@ -2,7 +2,10 @@ import { App, Card, Flex, Form, Select, Space, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useUserSettingsStore, loadGlobalDefaultLanguage } from '../../../../store'
+import {
+  useUserSettingsStore,
+  loadGlobalDefaultLanguage,
+} from '../../../../store'
 import { useAdminStore, updateSystemDefaultLanguage } from '../../../../store'
 import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'

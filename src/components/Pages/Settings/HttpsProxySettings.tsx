@@ -2,7 +2,12 @@ import { Card, Space, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useAdminStore, loadSystemProxySettings, updateSystemProxySettings, clearSystemAdminError } from '../../../store'
+import {
+  useAdminStore,
+  loadSystemProxySettings,
+  updateSystemProxySettings,
+  clearSystemAdminError,
+} from '../../../store'
 import { ProxySettingsForm } from './shared'
 
 const { Title, Text } = Typography
@@ -11,11 +16,7 @@ export function HttpsProxySettings() {
   const { t } = useTranslation()
 
   // Admin store
-  const {
-    proxySettings,
-    loading,
-    error,
-  } = useAdminStore(
+  const { proxySettings, loading, error } = useAdminStore(
     useShallow(state => ({
       proxySettings: state.proxySettings,
       loading: state.loading,

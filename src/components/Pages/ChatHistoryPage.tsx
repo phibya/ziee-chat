@@ -22,17 +22,16 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { ConversationSummary } from '../../types/api/chat'
 import { PageContainer } from '../common/PageContainer'
-import { 
-  useChatHistoryStore,
+import {
+  Stores,
   loadChatHistoryConversationsList,
   searchChatHistoryConversations,
   deleteChatHistoryConversationById,
   clearAllUserChatHistoryConversations,
   clearChatHistorySearchResults,
-  clearChatHistoryStoreError
+  clearChatHistoryStoreError,
 } from '../../store'
 
 const { Title, Text } = Typography
@@ -52,17 +51,7 @@ export const ChatHistoryPage: React.FC = () => {
     deleting,
     clearing,
     error,
-  } = useChatHistoryStore(
-    useShallow(state => ({
-      conversations: state.conversations,
-      searchResults: state.searchResults,
-      isSearching: state.isSearching,
-      loading: state.loading,
-      deleting: state.deleting,
-      clearing: state.clearing,
-      error: state.error,
-    })),
-  )
+  } = Stores.ChatHistory
 
   const [searchText, setSearchText] = useState('')
 
@@ -91,10 +80,7 @@ export const ChatHistoryPage: React.FC = () => {
         loadChatHistoryConversationsList()
       }
     }
-  }, [
-    searchText,
-    conversations.length,
-  ])
+  }, [searchText, conversations.length])
 
   const handleDeleteConversation = async (conversationId: string) => {
     try {

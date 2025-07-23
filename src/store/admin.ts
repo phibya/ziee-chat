@@ -141,7 +141,9 @@ export const resetSystemUserPassword = async (
   }
 }
 
-export const toggleSystemUserActiveStatus = async (id: string): Promise<void> => {
+export const toggleSystemUserActiveStatus = async (
+  id: string,
+): Promise<void> => {
   try {
     useAdminStore.setState({ updating: true, error: null })
 

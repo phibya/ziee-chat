@@ -2,19 +2,19 @@ import { memo } from 'react'
 import { Button, Input } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { CloseOutlined, SaveOutlined } from '@ant-design/icons'
-import { editChatMessage } from '../../store'
 import {
-  useChatUIStore,
+  Stores,
+  editChatMessage,
   updateEditingContent,
   stopEditingMessage,
-} from '../../store/ui/chat'
+} from '../../store'
 
 const { TextArea } = Input
 
 export const MessageEditor = memo(function MessageEditor() {
   const { t } = useTranslation()
 
-  const { editingMessageId, editingMessageContent } = useChatUIStore()
+  const { editingMessageId, editingMessageContent } = Stores.UI.Chat
 
   // External editMessage function is imported from store
 

@@ -1,22 +1,14 @@
 import { memo, useEffect, useRef } from 'react'
 import { Flex, Typography } from 'antd'
-import { useShallow } from 'zustand/react/shallow'
 import { MessageOutlined } from '@ant-design/icons'
 import { ChatMessage } from './ChatMessage'
-import { useChatStore } from '../../store/chat'
+import { Stores } from '../../store'
 
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
   const { currentMessages, sending, isStreaming, streamingMessage } =
-    useChatStore(
-      useShallow(state => ({
-        currentMessages: state.currentMessages,
-        sending: state.sending,
-        isStreaming: state.isStreaming,
-        streamingMessage: state.streamingMessage,
-      })),
-    )
+    Stores.Chat
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

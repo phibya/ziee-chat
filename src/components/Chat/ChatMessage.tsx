@@ -10,13 +10,13 @@ import {
 import { Message, MessageBranch } from '../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { MessageEditor } from './MessageEditor'
-import { useShallow } from 'zustand/react/shallow'
-import { useChatStore, loadConversationMessageBranches, switchMessageBranch } from '../../store'
 import {
-  useChatUIStore,
+  Stores,
+  loadConversationMessageBranches,
+  switchMessageBranch,
   startEditingMessage,
   setMessageToolBoxVisible,
-} from '../../store/ui/chat'
+} from '../../store'
 
 interface BranchInfo {
   branches: MessageBranch[]
@@ -34,13 +34,9 @@ export const ChatMessage = memo(function ChatMessage({
   const isUser = message.role === 'user'
   const { token } = theme.useToken()
 
-  const { currentConversation } = useChatStore(
-    useShallow(state => ({
-      currentConversation: state.currentConversation,
-    })),
-  )
+  const { currentConversation } = Stores.Chat
 
-  const { editingMessageId, showMessageToolBox } = useChatUIStore()
+  const { editingMessageId, showMessageToolBox } = Stores.UI.Chat
 
   const isEditing = editingMessageId === message.id
   const showToolBox = showMessageToolBox[message.id] || false

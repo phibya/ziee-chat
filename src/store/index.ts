@@ -1,20 +1,20 @@
 // Auth store
 
-import type { StoreApi, UseBoundStore } from "zustand";
+import type { StoreApi, UseBoundStore } from 'zustand'
 // Admin store
-import { useShallow } from "zustand/react/shallow";
-import { useAdminStore } from "./admin";
-import { useAssistantsStore } from "./assistants";
-import { useAuthStore } from "./auth";
-import { useChatStore } from "./chat";
-import { useChatHistoryStore } from "./chatHistory";
-import { useConversationsStore } from "./conversations";
-import { useModelDownloadStore } from "./modelDownload";
-import { useProjectsStore } from "./projects";
-import { useProvidersStore } from "./providers";
-import { useRepositoriesStore } from "./repositories";
-import { useUserSettingsStore } from "./settings";
-import { useChatUIStore, useLayoutUIStore, useModalsUIStore } from "./ui";
+import { useShallow } from 'zustand/react/shallow'
+import { useAdminStore } from './admin'
+import { useAssistantsStore } from './assistants'
+import { useAuthStore } from './auth'
+import { useChatStore } from './chat'
+import { useChatHistoryStore } from './chatHistory'
+import { useConversationsStore } from './conversations'
+import { useModelDownloadStore } from './modelDownload'
+import { useProjectsStore } from './projects'
+import { useProvidersStore } from './providers'
+import { useRepositoriesStore } from './repositories'
+import { useUserSettingsStore } from './settings'
+import { useChatUIStore, useLayoutUIStore, useModalsUIStore } from './ui'
 
 export {
   assignUserToUserGroup,
@@ -39,7 +39,7 @@ export {
   updateSystemUserRegistrationSettings,
   updateUserGroup,
   useAdminStore,
-} from "./admin";
+} from './admin'
 // Assistants store
 export {
   clearAssistantsStoreError,
@@ -220,8 +220,8 @@ type ExtractState<T> = T extends UseBoundStore<StoreApi<infer State>>
 
 const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
   useStore: T,
-): ExtractState<T> => {
-  return new Proxy({} as ExtractState<T>, {
+): Readonly<ExtractState<T>> => {
+  return new Proxy({} as Readonly<ExtractState<T>>, {
     get: (_, prop) => {
       return useStore(
         useShallow((state: ExtractState<T>) => (state as any)[prop]),

@@ -1,22 +1,13 @@
 import { memo } from 'react'
 import { Flex, theme, Typography } from 'antd'
-import { useShallow } from 'zustand/react/shallow'
-import { useChatStore, useAssistantsStore, findModelById } from '../../store'
+import { Stores, findModelById } from '../../store'
 
 const { Text } = Typography
 
 export const ChatHeader = memo(function ChatHeader() {
-  const { currentConversation } = useChatStore(
-    useShallow(state => ({
-      currentConversation: state.currentConversation,
-    })),
-  )
+  const { currentConversation } = Stores.Chat
 
-  const { assistants } = useAssistantsStore(
-    useShallow(state => ({
-      assistants: state.assistants,
-    })),
-  )
+  const { assistants } = Stores.Assistants
 
   const { token } = theme.useToken()
 

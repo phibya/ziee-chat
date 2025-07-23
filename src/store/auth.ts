@@ -30,7 +30,9 @@ export const useAuthStore = create<AuthState>()(
 )
 
 // Auth actions
-export const authenticateUser = async (credentials: LoginRequest): Promise<void> => {
+export const authenticateUser = async (
+  credentials: LoginRequest,
+): Promise<void> => {
   useAuthStore.setState({ isLoading: true, error: null })
   try {
     const { token, user } = await ApiClient.Auth.login(credentials)
@@ -82,7 +84,9 @@ export const logoutUser = async (): Promise<void> => {
   }
 }
 
-export const registerNewUser = async (userData: CreateUserRequest): Promise<void> => {
+export const registerNewUser = async (
+  userData: CreateUserRequest,
+): Promise<void> => {
   useAuthStore.setState({ isLoading: true, error: null })
   try {
     const { token, user } = await ApiClient.Auth.register(userData)
@@ -103,7 +107,9 @@ export const registerNewUser = async (userData: CreateUserRequest): Promise<void
   }
 }
 
-export const setupInitialAdminUser = async (userData: CreateUserRequest): Promise<void> => {
+export const setupInitialAdminUser = async (
+  userData: CreateUserRequest,
+): Promise<void> => {
   useAuthStore.setState({ isLoading: true, error: null })
   try {
     const { token, user } = await ApiClient.Auth.setup(userData)
