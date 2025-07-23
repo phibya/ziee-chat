@@ -4,25 +4,19 @@ interface ViewDownloadModalState {
   open: boolean
   loading: boolean
   downloadId: string | null
-  providerType: string | null
 }
 
 export const useViewDownloadModalStore = create<ViewDownloadModalState>(() => ({
   open: false,
   loading: false,
   downloadId: null,
-  providerType: null,
 }))
 
 // Modal actions
-export const openViewDownloadModal = (
-  downloadId: string,
-  providerType: string,
-) => {
+export const openViewDownloadModal = (downloadId: string) => {
   useViewDownloadModalStore.setState({
     open: true,
     downloadId,
-    providerType,
   })
 }
 
@@ -31,7 +25,6 @@ export const closeViewDownloadModal = () => {
     open: false,
     loading: false,
     downloadId: null,
-    providerType: null,
   })
 }
 

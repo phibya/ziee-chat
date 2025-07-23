@@ -221,6 +221,15 @@ export const callAsync = async <U extends ApiEndpointUrl>(
 
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
+            // Call onComplete callback if provided
+            try {
+              const responseData = JSON.parse(xhr.responseText)
+              fileUploadProgress.onComplete?.(responseData)
+            } catch {
+              // If response is not JSON, call onComplete with the text
+              fileUploadProgress.onComplete?.(xhr.responseText)
+            }
+
             // Create a Response-like object
             const responseHeaders = new Headers()
             xhr

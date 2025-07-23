@@ -9,6 +9,7 @@ import { useAuthStore } from './auth'
 import { useChatStore } from './chat'
 import { useChatHistoryStore } from './chatHistory'
 import { useConversationsStore } from './conversations'
+import { useLocalUploadStore } from './localUpload'
 import { useModelDownloadStore } from './modelDownload'
 import { useProjectsStore } from './projects'
 import { useProvidersStore } from './providers'
@@ -120,6 +121,15 @@ export {
   getAllActiveDownloads,
   useModelDownloadStore,
 } from './modelDownload'
+// Local Upload store
+export {
+  cancelLocalUpload,
+  clearLocalUploadError,
+  hideUploadProgress,
+  showUploadProgress,
+  uploadLocalModel,
+  useLocalUploadStore,
+} from './localUpload'
 // Projects store
 export {
   clearProjectsStoreError,
@@ -137,7 +147,6 @@ export {
 export {
   addNewModel,
   addNewModelToProvider,
-  cancelModelUpload,
   clearProvidersError,
   cloneExistingProvider,
   createNewModelProvider,
@@ -154,7 +163,6 @@ export {
   stopModelExecution,
   updateExistingModel,
   updateModelProvider,
-  uploadModelFilesAndCreateModel,
   useProvidersStore,
 } from './providers'
 // Repositories store
@@ -269,6 +277,7 @@ export const Stores = {
   Chat: createStoreProxy(useChatStore),
   ChatHistory: createStoreProxy(useChatHistoryStore),
   Conversations: createStoreProxy(useConversationsStore),
+  LocalUpload: createStoreProxy(useLocalUploadStore),
   ModelDownload: createStoreProxy(useModelDownloadStore),
   Projects: createStoreProxy(useProjectsStore),
   Providers: createStoreProxy(useProvidersStore),

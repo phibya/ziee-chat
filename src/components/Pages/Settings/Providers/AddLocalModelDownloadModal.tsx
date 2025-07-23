@@ -8,10 +8,10 @@ import {
   Progress,
   Select,
   Typography,
-} from 'antd'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ApiClient } from '../../../../api/client'
+} from "antd";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { ApiClient } from "../../../../api/client";
 import {
   clearModelDownload,
   clearProvidersError,
@@ -19,231 +19,194 @@ import {
   closeViewDownloadModal,
   downloadModelFromRepository,
   findDownloadById,
+  openViewDownloadModal,
   Stores,
-} from '../../../../store'
-import { Repository } from '../../../../types/api/repository'
-import { LocalModelCommonFields } from './shared/LocalModelCommonFields'
+} from "../../../../store";
+import { Repository } from "../../../../types/api/repository";
+import { LocalModelCommonFields } from "./shared/LocalModelCommonFields";
 
-const { Text } = Typography
+const { Text } = Typography;
 
 export function AddLocalModelDownloadModal() {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
-  const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
-  const [repositories, setRepositories] = useState<Repository[]>([])
-  const [loadingRepositories, setLoadingRepositories] = useState(false)
-  const [isInViewMode, setIsInViewMode] = useState(false)
-  const [currentDownloadId, setCurrentDownloadId] = useState<string | null>(
-    null,
-  )
+  const { t } = useTranslation();
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [loadingRepositories, setLoadingRepositories] = useState(false);
 
   // Function to generate a unique model ID from display name
   const generateModelId = (displayName: string): string => {
     const baseId = displayName
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .substring(0, 50)
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .substring(0, 50);
 
-    const timestamp = Date.now().toString(36)
-    return `${baseId}-${timestamp}`
-  }
+    const timestamp = Date.now().toString(36);
+    return `${baseId}-${timestamp}`;
+  };
 
   // Get values from form
-  const selectedRepository = Form.useWatch('repository_id', form)
+  const selectedRepository = Form.useWatch("repository_id", form);
 
   // Load available repositories
   const loadRepositories = async () => {
     try {
-      setLoadingRepositories(true)
-      const response = await ApiClient.Repositories.list({})
-      const enabledRepos = response.repositories.filter(repo => repo.enabled)
-      setRepositories(enabledRepos)
+      setLoadingRepositories(true);
+      const response = await ApiClient.Repositories.list({});
+      const enabledRepos = response.repositories.filter((repo) => repo.enabled);
+      setRepositories(enabledRepos);
     } catch (error) {
-      console.error('Failed to load repositories:', error)
-      message.error(t('providers.failedToLoadRepositories'))
+      console.error("Failed to load repositories:", error);
+      message.error(t("providers.failedToLoadRepositories"));
     } finally {
-      setLoadingRepositories(false)
+      setLoadingRepositories(false);
     }
-  }
+  };
 
-  const { downloads } = Stores.ModelDownload
-  const { open: addMode, providerId } = Stores.UI.AddLocalModelDownloadModal
-  const { downloadId, open: viewMode } = Stores.UI.ViewDownloadModal
+  const { open: addMode, providerId } = Stores.UI.AddLocalModelDownloadModal;
+  const { downloadId, open: viewMode } = Stores.UI.ViewDownloadModal;
 
-  const open = viewMode || addMode
+  const open = viewMode || addMode;
 
   // Helper function to close the appropriate modal
   const handleCloseModal = () => {
-    if (viewMode) {
-      closeViewDownloadModal()
-    } else if (addMode) {
-      closeAddLocalModelDownloadModal()
-    }
-  }
+    closeAddLocalModelDownloadModal();
+    closeViewDownloadModal();
+    setLoading(false);
+  };
 
   // Get download instance - either external download or current download
-  const viewDownload =
-    viewMode && downloadId ? findDownloadById(downloadId) : null
-  const internalDownload = currentDownloadId
-    ? downloads[currentDownloadId]
-    : null
-  const currentDownload = viewMode ? viewDownload : internalDownload
-  const downloading = currentDownload?.downloading ?? false
-  const downloadProgress = currentDownload?.progress ?? null
+  const viewDownload = downloadId ? findDownloadById(downloadId) : undefined;
 
   const handleSubmit = async () => {
     try {
-      setLoading(true)
-      clearProvidersError()
-      const values = await form.validateFields()
+      setLoading(true);
+      clearProvidersError();
+      const values = await form.validateFields();
 
       // Auto-generate model ID from display name
-      const modelId = generateModelId(values.alias || 'model')
+      const modelId = generateModelId(values.alias || "model");
 
       if (!values.repository_id) {
-        message.error(t('providers.repositoryRequired'))
-        return
+        message.error(t("providers.repositoryRequired"));
+        return;
       }
 
       if (!values.repository_path) {
-        message.error(t('providers.repositoryPathRequired'))
-        return
+        message.error(t("providers.repositoryPathRequired"));
+        return;
       }
 
       // Get the selected repository details
       const selectedRepo = repositories.find(
-        repo => repo.id === values.repository_id,
-      )
+        (repo) => repo.id === values.repository_id,
+      );
       if (!selectedRepo) {
-        message.error(t('providers.repositoryNotFound'))
-        return
+        message.error(t("providers.repositoryNotFound"));
+        return;
       }
 
       // Call the repository download API through store
       try {
-        const { downloadId } = await downloadModelFromRepository({
-          provider_id: providerId!,
-          repository_id: values.repository_id,
-          repository_path: values.repository_path,
-          main_filename: values.main_filename,
-          repository_branch: values.repository_branch,
-          name: modelId,
-          alias: values.alias,
-          description: values.description,
-          file_format: values.file_format,
-          capabilities: values.capabilities || {},
-          settings: values.settings || {},
-        })
+        await downloadModelFromRepository(
+          {
+            provider_id: providerId!,
+            repository_id: values.repository_id,
+            repository_path: values.repository_path,
+            main_filename: values.main_filename,
+            repository_branch: values.repository_branch,
+            name: modelId,
+            alias: values.alias,
+            description: values.description,
+            file_format: values.file_format,
+            capabilities: values.capabilities || {},
+            settings: values.settings || {},
+          },
+          openViewDownloadModal,
+        );
 
-        // Track this download and switch to view mode
-        setCurrentDownloadId(downloadId)
-        setIsInViewMode(true)
-
-        message.success(t('providers.downloadStarted'))
+        message.success(t("providers.downloadStarted"));
       } catch (error) {
-        console.error('Failed to start download:', error)
-        message.error(t('providers.downloadStartFailed'))
+        console.error("Failed to start download:", error);
+        message.error(t("providers.downloadStartFailed"));
       }
     } catch (error) {
-      console.error('Failed to create model:', error)
-      message.error(t('providers.failedToCreateModel'))
+      console.error("Failed to create model:", error);
+      message.error(t("providers.failedToCreateModel"));
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCancel = () => {
-    form.resetFields()
-    if (isInViewMode) {
-      setIsInViewMode(false)
-      setCurrentDownloadId(null)
-    }
-    handleCloseModal()
-  }
-
-  const handleBackToAddMode = () => {
-    setIsInViewMode(false)
-    setCurrentDownloadId(null)
-  }
-
-  // Current view mode state
-  const currentViewMode = viewMode || isInViewMode
+    handleCloseModal();
+  };
 
   // Load repositories and pre-fill form when modal opens
   useEffect(() => {
     if (open) {
-      loadRepositories()
-      if (viewMode && viewDownload) {
+      loadRepositories();
+      if (viewDownload) {
         // In view mode, populate form with download data
         form.setFieldsValue({
           alias: viewDownload.request.alias,
-          description: viewDownload.request.description || '',
+          description: viewDownload.request.description || "",
           file_format: viewDownload.request.file_format,
+          repository_id: viewDownload.request.repository_id,
           repository_path: viewDownload.request.repository_path,
           main_filename: viewDownload.request.main_filename,
-          repository_branch: viewDownload.request.repository_branch || 'main',
+          repository_branch: viewDownload.request.repository_branch || "main",
           capabilities: viewDownload.request.capabilities || {},
           settings: viewDownload.request.settings || {},
-        })
-      } else if (!viewMode && !currentViewMode) {
+        });
+      } else if (!viewMode) {
         // In add mode, set default values
         form.setFieldsValue({
-          alias: 'TinyLlama Chat Model',
+          alias: "TinyLlama Chat Model",
           description:
-            'Small 1.1B parameter chat model for quick testing (~637MB)',
-          file_format: 'safetensors',
-          repository_path: 'meta-llama/Llama-3.1-8B-Instruct',
-          main_filename: 'model.safetensors',
-          repository_branch: 'main',
+            "Small 1.1B parameter chat model for quick testing (~637MB)",
+          file_format: "safetensors",
+          repository_path: "meta-llama/Llama-3.1-8B-Instruct",
+          main_filename: "model.safetensors",
+          repository_branch: "main",
           settings: {},
-        })
+        });
       }
     }
-  }, [open, viewMode, viewDownload, currentViewMode, form])
+  }, [open, viewMode, viewDownload, form]);
 
   return (
     <Modal
       title={
-        currentViewMode
-          ? 'View Download Details'
-          : t('providers.downloadLocalModel')
+        viewMode ? "View Download Details" : t("providers.downloadLocalModel")
       }
       open={open}
-      onCancel={handleCancel}
+      onCancel={handleCloseModal}
       footer={
-        currentViewMode
+        viewMode
           ? [
               <Button key="close" onClick={handleCloseModal}>
-                {t('buttons.close')}
+                {t("buttons.close")}
               </Button>,
-              !viewMode && !currentDownload?.downloading && (
-                <Button key="back" onClick={handleBackToAddMode}>
-                  Add Another Model
-                </Button>
-              ),
-              !viewMode && currentDownload?.downloading && (
+              !viewMode && viewDownload?.downloading && (
                 <Button
                   key="cancel-download"
                   danger
                   onClick={() => {
-                    if (currentDownloadId) {
-                      clearModelDownload(currentDownloadId)
-                      setCurrentDownloadId(null)
-                      setIsInViewMode(false)
-                    }
+                    clearModelDownload(downloadId!);
                   }}
                 >
-                  {t('buttons.cancel')} Download
+                  {t("buttons.cancel")} Download
                 </Button>
               ),
             ].filter(Boolean)
           : [
               <Button key="cancel" onClick={handleCancel}>
-                {t('buttons.cancel')}
+                {t("buttons.cancel")}
               </Button>,
               <Button
                 key="submit"
@@ -251,7 +214,7 @@ export function AddLocalModelDownloadModal() {
                 loading={loading}
                 onClick={handleSubmit}
               >
-                {t('buttons.startDownload')}
+                {t("buttons.startDownload")}
               </Button>,
             ]
       }
@@ -259,32 +222,38 @@ export function AddLocalModelDownloadModal() {
       destroyOnHidden={true}
       maskClosable={false}
     >
-      {currentViewMode && currentDownload ? (
-        <Card title={t('providers.downloadProgress')} size="small">
-          <Progress
-            percent={Math.round(
-              ((currentDownload.progress?.current || 0) /
-                (currentDownload.progress?.total || 1)) *
-                100,
-            )}
-            status={currentDownload.downloading ? 'active' : 'success'}
-            format={percent =>
-              `${percent}% - ${currentDownload.progress?.phase || ''}`
-            }
-          />
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            {currentDownload.progress?.message || ''}
-          </Text>
-        </Card>
-      ) : (
+      <div>
+        {viewDownload && (
+          <Card
+            title={t("providers.downloadProgress")}
+            size="small"
+            style={{ marginBottom: 16 }}
+          >
+            <Progress
+              percent={Math.round(
+                ((viewDownload.progress?.current || 0) /
+                  (viewDownload.progress?.total || 1)) *
+                  100,
+              )}
+              status={viewDownload.downloading ? "active" : "success"}
+              format={(percent) =>
+                `${percent}% - ${viewDownload.progress?.phase || ""}`
+              }
+            />
+            <Text type="secondary" style={{ fontSize: "12px" }}>
+              {viewDownload.progress?.message || ""}
+            </Text>
+          </Card>
+        )}
+
         <Form
           form={form}
           layout="vertical"
-          disabled={currentViewMode}
+          disabled={viewMode}
           initialValues={{
-            file_format: 'safetensors',
-            main_filename: '',
-            repository_branch: 'main',
+            file_format: "safetensors",
+            main_filename: "",
+            repository_branch: "main",
             settings: {},
           }}
         >
@@ -292,20 +261,20 @@ export function AddLocalModelDownloadModal() {
 
           <Form.Item
             name="repository_id"
-            label={t('providers.selectRepository')}
+            label={t("providers.selectRepository")}
             rules={[
               {
                 required: true,
-                message: t('providers.repositoryRequired'),
+                message: t("providers.repositoryRequired"),
               },
             ]}
           >
             <Select
-              placeholder={t('providers.selectRepositoryPlaceholder')}
+              placeholder={t("providers.selectRepositoryPlaceholder")}
               loading={loadingRepositories}
               showSearch
               optionFilterProp="children"
-              options={repositories.map(repo => ({
+              options={repositories.map((repo) => ({
                 value: repo.id,
                 label: `${repo.name} (${repo.url})`,
               }))}
@@ -314,11 +283,11 @@ export function AddLocalModelDownloadModal() {
 
           <Form.Item
             name="repository_path"
-            label={t('providers.repositoryPath')}
+            label={t("providers.repositoryPath")}
             rules={[
               {
                 required: true,
-                message: t('providers.repositoryPathRequired'),
+                message: t("providers.repositoryPathRequired"),
               },
             ]}
           >
@@ -326,20 +295,20 @@ export function AddLocalModelDownloadModal() {
               placeholder="microsoft/DialoGPT-medium"
               addonBefore={
                 selectedRepository
-                  ? repositories.find(r => r.id === selectedRepository)?.url ||
-                    'Repository'
-                  : 'Repository'
+                  ? repositories.find((r) => r.id === selectedRepository)
+                      ?.url || "Repository"
+                  : "Repository"
               }
             />
           </Form.Item>
 
           <Form.Item
             name="main_filename"
-            label={t('providers.mainFilename')}
+            label={t("providers.mainFilename")}
             rules={[
               {
                 required: true,
-                message: t('providers.localFilenameRequired'),
+                message: t("providers.localFilenameRequired"),
               },
             ]}
           >
@@ -348,27 +317,12 @@ export function AddLocalModelDownloadModal() {
 
           <Form.Item
             name="repository_branch"
-            label={t('providers.repositoryBranch')}
+            label={t("providers.repositoryBranch")}
           >
             <Input placeholder="main" />
           </Form.Item>
-
-          {downloading && downloadProgress && (
-            <Card title={t('providers.downloadProgress')} size="small">
-              <Progress
-                percent={Math.round(
-                  (downloadProgress.current / downloadProgress.total) * 100,
-                )}
-                status={downloading ? 'active' : 'success'}
-                format={percent => `${percent}% - ${downloadProgress.phase}`}
-              />
-              <Text type="secondary" style={{ fontSize: '12px' }}>
-                {downloadProgress.message}
-              </Text>
-            </Card>
-          )}
         </Form>
-      )}
+      </div>
     </Modal>
-  )
+  );
 }
