@@ -89,6 +89,24 @@ export const cancelModelDownload = async (
   }
 }
 
+export const deleteModelDownload = async (
+  downloadId: string,
+): Promise<void> => {
+  try {
+    // Call backend to delete the download from database
+    await ApiClient.Admin.deleteDownload({ download_id: downloadId })
+
+    // Remove from local state
+    useModelDownloadStore.setState(state => {
+      const { [downloadId]: _, ...remaining } = state.downloads
+      return { downloads: remaining }
+    })
+  } catch (error) {
+    console.error('Failed to delete download:', error)
+    throw error
+  }
+}
+
 export const clearModelDownload = (downloadId: string): void => {
   useModelDownloadStore.setState(state => {
     const { [downloadId]: _, ...remaining } = state.downloads

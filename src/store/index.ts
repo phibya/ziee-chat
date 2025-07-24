@@ -123,6 +123,7 @@ export {
   cancelModelDownload,
   clearAllModelDownloads,
   clearModelDownload,
+  deleteModelDownload,
   downloadModelFromRepository,
   findDownloadById,
   getAllActiveDownloads,
