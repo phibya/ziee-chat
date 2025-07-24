@@ -1,11 +1,13 @@
 @import "tailwindcss";
 @import "./classless.css";
 
-.ant-menu-vertical {
-  border-inline-end: none !important;
+@custom-variant hover (&:hover);
 
-  .ant-menu-item {
-    height: 1.75rem;
-    line-height: 2.35;
-  }
+.ant-menu-vertical {
+    border-inline-end: none !important;
+
+    .ant-menu-item {
+        height: 1.75rem;
+        line-height: 2.35;
+    }
 }

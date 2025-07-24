@@ -56,7 +56,9 @@ export function AddLocalModelDownloadModal() {
     try {
       setLoadingRepositories(true)
       const response = await ApiClient.Admin.listRepositories({})
-      const enabledRepos = response.repositories.filter((repo: Repository) => repo.enabled)
+      const enabledRepos = response.repositories.filter(
+        (repo: Repository) => repo.enabled,
+      )
       setRepositories(enabledRepos)
     } catch (error) {
       console.error('Failed to load repositories:', error)
@@ -156,10 +158,10 @@ export function AddLocalModelDownloadModal() {
           alias: requestData.alias,
           description: requestData.description || '',
           file_format: requestData.file_format,
-          repository_id: requestData.repository_id,
+          repository_id: viewDownload.repository_id, // Get from download instance, not request_data
           repository_path: requestData.repository_path,
           main_filename: requestData.main_filename,
-          repository_branch: requestData.repository_branch || 'main',
+          repository_branch: requestData.revision || 'main', // Use revision instead of repository_branch
           capabilities: requestData.capabilities || {},
           settings: requestData.settings || {},
         })
@@ -192,24 +194,28 @@ export function AddLocalModelDownloadModal() {
               <Button key="close" onClick={handleCloseModal}>
                 {t('buttons.close')}
               </Button>,
-              viewDownload && (viewDownload.status === 'downloading' || viewDownload.status === 'pending') && (
-                <Button
-                  key="cancel-download"
-                  danger
-                  onClick={async () => {
-                    try {
-                      const { cancelModelDownload } = await import('../../../../store/modelDownload')
-                      await cancelModelDownload(downloadId!)
-                      message.success(t('providers.downloadCancelled'))
-                      handleCloseModal()
-                    } catch (error) {
-                      message.error(t('providers.failedToCancelDownload'))
-                    }
-                  }}
-                >
-                  {t('buttons.cancel')} Download
-                </Button>
-              ),
+              viewDownload &&
+                (viewDownload.status === 'downloading' ||
+                  viewDownload.status === 'pending') && (
+                  <Button
+                    key="cancel-download"
+                    danger
+                    onClick={async () => {
+                      try {
+                        const { cancelModelDownload } = await import(
+                          '../../../../store/modelDownload'
+                        )
+                        await cancelModelDownload(downloadId!)
+                        message.success(t('providers.downloadCancelled'))
+                        handleCloseModal()
+                      } catch (_error) {
+                        message.error(t('providers.failedToCancelDownload'))
+                      }
+                    }}
+                  >
+                    {t('buttons.cancel')} Download
+                  </Button>
+                ),
             ].filter(Boolean)
           : [
               <Button key="cancel" onClick={handleCancel}>
@@ -243,27 +249,39 @@ export function AddLocalModelDownloadModal() {
                   100,
               )}
               status={
-                viewDownload.status === 'downloading' 
-                  ? 'active' 
+                viewDownload.status === 'downloading'
+                  ? 'active'
                   : viewDownload.status === 'completed'
-                  ? 'success'
-                  : viewDownload.status === 'failed'
-                  ? 'exception'
-                  : 'normal'
+                    ? 'success'
+                    : viewDownload.status === 'failed'
+                      ? 'exception'
+                      : 'normal'
               }
               format={percent =>
                 `${percent}% - ${viewDownload.progress_data?.phase || viewDownload.status}`
               }
             />
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              {viewDownload.progress_data.message || viewDownload.error_message || ''}
+              {viewDownload.progress_data.message ||
+                viewDownload.error_message ||
+                ''}
             </Text>
             {viewDownload.progress_data.download_speed && (
               <div style={{ marginTop: 8 }}>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Speed: {Math.round(viewDownload.progress_data.download_speed / 1024 / 1024 * 10) / 10} MB/s
+                  Speed:{' '}
+                  {Math.round(
+                    (viewDownload.progress_data.download_speed / 1024 / 1024) *
+                      10,
+                  ) / 10}{' '}
+                  MB/s
                   {viewDownload.progress_data.eta_seconds && (
-                    <> • ETA: {Math.round(viewDownload.progress_data.eta_seconds / 60)} minutes</>
+                    <>
+                      {' '}
+                      • ETA:{' '}
+                      {Math.round(viewDownload.progress_data.eta_seconds / 60)}{' '}
+                      minutes
+                    </>
                   )}
                 </Text>
               </div>

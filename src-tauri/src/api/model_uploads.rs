@@ -501,15 +501,13 @@ pub async fn initiate_repository_download(
             revision: request.repository_branch.clone(),
             files: None, // Download all files
             quantization: None,
-            extra_params: Some(serde_json::json!({
-                "repository_path": request.repository_path,
-                "alias": request.alias,
-                "description": request.description,
-                "file_format": request.file_format,
-                "main_filename": request.main_filename,
-                "capabilities": request.capabilities,
-                "settings": request.settings,
-            })),
+            repository_path: Some(request.repository_path.clone()),
+            alias: Some(request.alias.clone()),
+            description: request.description.clone(),
+            file_format: Some(request.file_format.clone()),
+            main_filename: Some(request.main_filename.clone()),
+            capabilities: request.capabilities.clone(),
+            settings: request.settings.clone(),
         },
     };
 

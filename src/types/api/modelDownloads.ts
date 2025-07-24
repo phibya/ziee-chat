@@ -32,11 +32,25 @@ export interface DownloadFromRepositoryRequest {
   settings?: ModelSettings
 }
 
+export interface DownloadRequestData {
+  model_name: string
+  revision?: string
+  files?: string[]
+  quantization?: string
+  repository_path?: string
+  alias?: string
+  description?: string
+  file_format?: string
+  main_filename?: string
+  capabilities?: ModelCapabilities
+  settings?: ModelSettings
+}
+
 export interface DownloadInstance {
   id: string
   provider_id: string
   repository_id: string
-  request_data: DownloadFromRepositoryRequest
+  request_data: DownloadRequestData
   status: 'pending' | 'downloading' | 'completed' | 'failed' | 'cancelled'
   progress_data: DownloadProgress | null
   error_message: string | null
@@ -81,7 +95,7 @@ export interface DownloadStatusSummary {
 export interface CreateDownloadInstanceRequest {
   provider_id: string
   repository_id: string
-  request_data: DownloadFromRepositoryRequest
+  request_data: DownloadRequestData
 }
 
 export interface UpdateDownloadProgressRequest {

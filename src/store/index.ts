@@ -1,20 +1,20 @@
 // Auth store
 
-import type { StoreApi, UseBoundStore } from "zustand";
+import type { StoreApi, UseBoundStore } from 'zustand'
 // Admin store
-import { useShallow } from "zustand/react/shallow";
-import { useAdminStore } from "./admin";
-import { useAssistantsStore } from "./assistants";
-import { useAuthStore } from "./auth";
-import { useChatStore } from "./chat";
-import { useChatHistoryStore } from "./chatHistory";
-import { useConversationsStore } from "./conversations";
-import { useLocalUploadStore } from "./localUpload";
-import { useModelDownloadStore } from "./modelDownload";
-import { useProjectsStore } from "./projects";
-import { useProvidersStore } from "./providers";
-import { useRepositoriesStore } from "./repositories";
-import { useUserSettingsStore } from "./settings";
+import { useShallow } from 'zustand/react/shallow'
+import { useAdminStore } from './admin'
+import { useAssistantsStore } from './assistants'
+import { useAuthStore } from './auth'
+import { useChatStore } from './chat'
+import { useChatHistoryStore } from './chatHistory'
+import { useConversationsStore } from './conversations'
+import { useLocalUploadStore } from './localUpload'
+import { useModelDownloadStore } from './modelDownload'
+import { useProjectsStore } from './projects'
+import { useProvidersStore } from './providers'
+import { useRepositoriesStore } from './repositories'
+import { useUserSettingsStore } from './settings'
 import {
   useAddLocalModelDownloadModalStore,
   useAddLocalModelUploadModalStore,
@@ -28,7 +28,7 @@ import {
   useEditRemoteModelModalStore,
   useLayoutUIStore,
   useViewDownloadModalStore,
-} from "./ui";
+} from './ui'
 
 export {
   assignUserToUserGroup,
@@ -53,7 +53,7 @@ export {
   updateSystemUserRegistrationSettings,
   updateUserGroup,
   useAdminStore,
-} from "./admin";
+} from './admin'
 // Assistants store
 export {
   clearAssistantsStoreError,

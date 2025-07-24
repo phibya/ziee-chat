@@ -1,21 +1,21 @@
-import { Layout, Spin } from "antd";
-import React, { useEffect } from "react";
-import { Stores } from "../../store";
-import { auth } from "../../store/auth.ts";
-import { AuthPage } from "./AuthPage";
+import { Layout, Spin } from 'antd'
+import React, { useEffect } from 'react'
+import { Stores } from '../../store'
+import { auth } from '../../store/auth.ts'
+import { AuthPage } from './AuthPage'
 
-const { Content } = Layout;
+const { Content } = Layout
 
 interface AuthGuardProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = Stores.Auth;
+  const { isAuthenticated, isLoading } = Stores.Auth
 
   useEffect(() => {
-    auth();
-  }, []);
+    auth()
+  }, [])
 
   // Show loading spinner while checking auth status
   if (isLoading) {
@@ -25,14 +25,14 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
           <Spin size="large" />
         </Content>
       </Layout>
-    );
+    )
   }
 
   // Show authentication page if not authenticated
   if (!isAuthenticated) {
-    return <AuthPage />;
+    return <AuthPage />
   }
 
   // Show the protected content
-  return <>{children}</>;
-};
+  return <>{children}</>
+}

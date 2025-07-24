@@ -8,8 +8,8 @@ import {
   AssistantListResponse,
   CreateAssistantRequest,
   UpdateAssistantRequest,
-} from "./assistant";
-import { AuthResponse, InitResponse, LoginRequest } from "./auth";
+} from './assistant'
+import { AuthResponse, InitResponse, LoginRequest } from './auth'
 import {
   Conversation,
   ConversationListResponse,
@@ -20,7 +20,7 @@ import {
   SendMessageRequest,
   SwitchBranchRequest,
   UpdateConversationRequest,
-} from "./chat";
+} from './chat'
 import {
   ProxySettingsResponse,
   TestProxyConnectionRequest,
@@ -28,23 +28,23 @@ import {
   UpdateProxySettingsRequest,
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
-} from "./config.ts";
+} from './config.ts'
 import {
   DefaultLanguageResponse,
   UpdateDefaultLanguageRequest,
-} from "./globalConfig";
+} from './globalConfig'
 import {
   AddModelToProviderRequest,
   Model,
   ModelCapabilities,
   ModelSettings,
   UpdateModelRequest,
-} from "./model";
+} from './model'
 import {
   DownloadFromRepositoryRequest,
   DownloadInstance,
   DownloadInstanceListResponse,
-} from "./modelDownloads.ts";
+} from './modelDownloads.ts'
 import {
   CreateProjectRequest,
   Project,
@@ -55,14 +55,14 @@ import {
   UpdateProjectRequest,
   UploadDocumentRequest,
   UploadDocumentResponse,
-} from "./projects";
+} from './projects'
 import {
   AvailableDevicesResponse,
   CreateProviderRequest,
   Provider,
   ProviderListResponse,
   UpdateProviderRequest,
-} from "./provider";
+} from './provider'
 import {
   CreateRepositoryRequest,
   Repository,
@@ -70,7 +70,7 @@ import {
   TestRepositoryConnectionRequest,
   TestRepositoryConnectionResponse,
   UpdateRepositoryRequest,
-} from "./repository";
+} from './repository'
 import {
   AssignUserToGroupRequest,
   CreateUserGroupRequest,
@@ -81,13 +81,13 @@ import {
   User,
   UserGroup,
   UserListResponse,
-} from "./user";
-import { UserGroupListResponse } from "./userGroup.ts";
+} from './user'
+import { UserGroupListResponse } from './userGroup.ts'
 import {
   UserSetting,
   UserSettingRequest,
   UserSettingsResponse,
-} from "./userSettings";
+} from './userSettings'
 
 // API endpoint definitions
 export const ApiEndpoints = {

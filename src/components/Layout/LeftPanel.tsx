@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Button,
@@ -22,12 +22,13 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import {
-  Stores,
-  logoutUser,
   closeMobileOverlay,
+  logoutUser,
   setUILeftPanelCollapsed,
+  Stores,
 } from '../../store'
 import { RecentConversations } from '../Chat/RecentConversations.tsx'
+import { DownloadIndicator } from './DownloadIndicator'
 
 export function LeftPanel() {
   const { t } = useTranslation()
@@ -179,6 +180,9 @@ export function LeftPanel() {
         ]}
         style={{ border: 'none' }}
       />
+
+      {/* Download Indicator */}
+      <DownloadIndicator />
 
       {/* User Profile Section */}
       {user && !isDesktop && (

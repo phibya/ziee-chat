@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
+use super::model::{ModelCapabilities, ModelSettings};
+
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DownloadProgressData {
@@ -31,8 +33,20 @@ pub struct DownloadRequestData {
     pub files: Option<Vec<String>>,
     /// Quantization format (e.g., "q4_0", "q8_0")
     pub quantization: Option<String>,
-    /// Additional download parameters
-    pub extra_params: Option<serde_json::Value>,
+    /// Repository path (e.g., "microsoft/DialoGPT-medium")
+    pub repository_path: Option<String>,
+    /// Model alias/display name
+    pub alias: Option<String>,
+    /// Model description
+    pub description: Option<String>,
+    /// File format of the model
+    pub file_format: Option<String>,
+    /// Main filename for the model
+    pub main_filename: Option<String>,
+    /// Model capabilities configuration
+    pub capabilities: Option<ModelCapabilities>,
+    /// Model settings configuration
+    pub settings: Option<ModelSettings>,
 }
 
 /// Download instance status enum
