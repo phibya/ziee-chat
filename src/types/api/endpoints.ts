@@ -8,8 +8,8 @@ import {
   AssistantListResponse,
   CreateAssistantRequest,
   UpdateAssistantRequest,
-} from './assistant'
-import { AuthResponse, InitResponse, LoginRequest } from './auth'
+} from "./assistant";
+import { AuthResponse, InitResponse, LoginRequest } from "./auth";
 import {
   Conversation,
   ConversationListResponse,
@@ -20,7 +20,7 @@ import {
   SendMessageRequest,
   SwitchBranchRequest,
   UpdateConversationRequest,
-} from './chat'
+} from "./chat";
 import {
   ProxySettingsResponse,
   TestProxyConnectionRequest,
@@ -28,18 +28,23 @@ import {
   UpdateProxySettingsRequest,
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
-} from './config.ts'
+} from "./config.ts";
 import {
   DefaultLanguageResponse,
   UpdateDefaultLanguageRequest,
-} from './globalConfig'
+} from "./globalConfig";
 import {
   AddModelToProviderRequest,
   Model,
   ModelCapabilities,
   ModelSettings,
   UpdateModelRequest,
-} from './model'
+} from "./model";
+import {
+  DownloadFromRepositoryRequest,
+  DownloadInstance,
+  DownloadInstanceListResponse,
+} from "./modelDownloads.ts";
 import {
   CreateProjectRequest,
   Project,
@@ -50,14 +55,14 @@ import {
   UpdateProjectRequest,
   UploadDocumentRequest,
   UploadDocumentResponse,
-} from './projects'
+} from "./projects";
 import {
   AvailableDevicesResponse,
   CreateProviderRequest,
   Provider,
   ProviderListResponse,
   UpdateProviderRequest,
-} from './provider'
+} from "./provider";
 import {
   CreateRepositoryRequest,
   Repository,
@@ -65,7 +70,7 @@ import {
   TestRepositoryConnectionRequest,
   TestRepositoryConnectionResponse,
   UpdateRepositoryRequest,
-} from './repository'
+} from "./repository";
 import {
   AssignUserToGroupRequest,
   CreateUserGroupRequest,
@@ -76,13 +81,13 @@ import {
   User,
   UserGroup,
   UserListResponse,
-} from './user'
-import { UserGroupListResponse } from './userGroup.ts'
+} from "./user";
+import { UserGroupListResponse } from "./userGroup.ts";
 import {
   UserSetting,
   UserSettingRequest,
   UserSettingsResponse,
-} from './userSettings'
+} from "./userSettings";
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -198,10 +203,7 @@ export const ApiEndpoints = {
     'POST /api/projects/{project_id}/conversations/{conversation_id}',
   'Projects.unlinkConversation':
     'DELETE /api/projects/{project_id}/conversations/{conversation_id}',
-  // Repository endpoints
-  'Repositories.list': 'GET /api/repositories',
-  'Repositories.get': 'GET /api/repositories/{repository_id}',
-  'Repositories.testConnection': 'POST /api/repositories/test',
+  // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
   'Admin.listRepositories': 'GET /api/admin/repositories',
   'Admin.getRepository': 'GET /api/admin/repositories/{repository_id}',
@@ -211,6 +213,14 @@ export const ApiEndpoints = {
   'Admin.testRepositoryConnection': 'POST /api/admin/repositories/test',
   'Admin.downloadFromRepository':
     'POST /api/admin/models/download-from-repository',
+  'Admin.initiateRepositoryDownload':
+    'POST /api/admin/models/initiate-repository-download',
+  // Download instance endpoints - Admin (all download operations are admin-only)
+  'Admin.listAllDownloads': 'GET /api/admin/downloads',
+  'Admin.getDownload': 'GET /api/admin/downloads/{download_id}',
+  'Admin.cancelDownload': 'POST /api/admin/downloads/{download_id}/cancel',
+  'Admin.deleteDownload': 'DELETE /api/admin/downloads/{download_id}',
+  'Admin.subscribeDownloadProgress': 'GET /api/admin/downloads/subscribe',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -331,10 +341,7 @@ export type ApiEndpointParameters = {
   'Projects.deleteDocument': { project_id: string; document_id: string }
   'Projects.linkConversation': { project_id: string; conversation_id: string }
   'Projects.unlinkConversation': { project_id: string; conversation_id: string }
-  // Repository endpoints
-  'Repositories.list': { page?: number; per_page?: number }
-  'Repositories.get': { repository_id: string }
-  'Repositories.testConnection': TestRepositoryConnectionRequest
+  // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
   'Admin.listRepositories': { page?: number; per_page?: number }
   'Admin.getRepository': { repository_id: string }
@@ -355,6 +362,17 @@ export type ApiEndpointParameters = {
     capabilities?: ModelCapabilities
     settings?: ModelSettings
   }
+  'Admin.initiateRepositoryDownload': DownloadFromRepositoryRequest
+  // Download instance endpoints - Admin (all download operations are admin-only)
+  'Admin.listAllDownloads': {
+    page?: number
+    per_page?: number
+    status?: string
+  }
+  'Admin.getDownload': { download_id: string }
+  'Admin.cancelDownload': { download_id: string }
+  'Admin.deleteDownload': { download_id: string }
+  'Admin.subscribeDownloadProgress': void
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -475,10 +493,7 @@ export type ApiEndpointResponses = {
   'Projects.deleteDocument': void
   'Projects.linkConversation': ProjectConversation
   'Projects.unlinkConversation': void
-  // Repository endpoints
-  'Repositories.list': RepositoryListResponse
-  'Repositories.get': Repository
-  'Repositories.testConnection': TestRepositoryConnectionResponse
+  // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
   'Admin.listRepositories': RepositoryListResponse
   'Admin.getRepository': Repository
@@ -487,6 +502,13 @@ export type ApiEndpointResponses = {
   'Admin.deleteRepository': void
   'Admin.testRepositoryConnection': TestRepositoryConnectionResponse
   'Admin.downloadFromRepository': Model
+  'Admin.initiateRepositoryDownload': DownloadInstance
+  // Download instance endpoints - Admin (all download operations are admin-only)
+  'Admin.listAllDownloads': DownloadInstanceListResponse
+  'Admin.getDownload': DownloadInstance
+  'Admin.cancelDownload': void
+  'Admin.deleteDownload': void
+  'Admin.subscribeDownloadProgress': any // SSE stream
 }
 
 // Type helpers

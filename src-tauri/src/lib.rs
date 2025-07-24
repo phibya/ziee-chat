@@ -52,6 +52,18 @@ pub fn run() {
                 std::process::exit(1);
             }
 
+            // Clean up all download instances on startup
+            match database::queries::download_instances::delete_all_downloads().await {
+                Ok(count) => {
+                    if count > 0 {
+                        println!("Cleaned up {} download instances from previous session", count);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to clean up download instances: {}", e);
+                }
+            }
+
             let api_router = create_rest_router();
 
             // Setup graceful shutdown
@@ -103,6 +115,18 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = database::initialize_database().await {
                         eprintln!("Failed to initialize database: {}", e);
+                    }
+
+                    // Clean up all download instances on startup
+                    match database::queries::download_instances::delete_all_downloads().await {
+                        Ok(count) => {
+                            if count > 0 {
+                                println!("Cleaned up {} download instances from previous session", count);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to clean up download instances: {}", e);
+                        }
                     }
                 });
 

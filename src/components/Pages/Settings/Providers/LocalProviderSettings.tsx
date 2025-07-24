@@ -30,6 +30,7 @@ import {
   Stores,
   updateModelProvider,
 } from "../../../../store";
+import { DownloadInstance, Provider } from "../../../../types";
 import { ModelsSection } from "./shared/ModelsSection";
 import { ProviderHeader } from "./shared/ProviderHeader";
 
@@ -62,8 +63,7 @@ export function LocalProviderSettings() {
 
   // Get active downloads for this provider
   const providerDownloads = Object.values(downloads).filter(
-    (download: any) =>
-      download.downloading && download.request.provider_id === provider_id,
+    (download: DownloadInstance) => download.provider_id === provider_id,
   );
 
   // Format bytes to human readable format
@@ -76,7 +76,7 @@ export function LocalProviderSettings() {
   };
 
   // Helper functions for provider validation
-  const canEnableProvider = (provider: any): boolean => {
+  const canEnableProvider = (provider: Provider): boolean => {
     if (provider.enabled) return true; // Already enabled
     const providerModels = modelsByProvider[provider.id] || [];
     if (providerModels.length === 0) return false;
@@ -91,7 +91,7 @@ export function LocalProviderSettings() {
     }
   };
 
-  const getEnableDisabledReason = (provider: any): string | null => {
+  const getEnableDisabledReason = (provider: Provider): string | null => {
     if (provider.enabled) return null;
     const providerModels = modelsByProvider[provider.id] || [];
     if (providerModels.length === 0)
@@ -337,10 +337,10 @@ export function LocalProviderSettings() {
         >
           <List
             dataSource={providerDownloads}
-            renderItem={(download: any) => {
-              const percent = download.progress
+            renderItem={(download: DownloadInstance) => {
+              const percent = download.progress_data
                 ? Math.round(
-                    (download.progress.current / download.progress.total) * 100,
+                    (download.progress_data.current / download.progress_data.total) * 100,
                   )
                 : 0;
 
@@ -370,11 +370,11 @@ export function LocalProviderSettings() {
                   ]}
                 >
                   <List.Item.Meta
-                    title={download.request.alias}
+                    title={download.request_data.alias}
                     description={
                       <Flex vertical className="gap-1 w-full">
                         <Text type="secondary" className="text-xs">
-                          {download.progress?.message ||
+                          {download.progress_data?.message ||
                             "Preparing download..."}
                         </Text>
                         <Progress
@@ -384,8 +384,8 @@ export function LocalProviderSettings() {
                           size="small"
                         />
                         <Text type="secondary" className="text-xs">
-                          {download.progress
-                            ? `${formatBytes(download.progress.current)} / ${formatBytes(download.progress.total)}`
+                          {download.progress_data
+                            ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
                             : "0 B / 0 B"}
                         </Text>
                       </Flex>

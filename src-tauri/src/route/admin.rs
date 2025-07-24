@@ -307,15 +307,39 @@ pub fn admin_routes() -> Router {
             )),
         )
         .route(
-            "/api/admin/uploaded-models/upload-and-commit",
-            post(api::model_uploads::upload_multiple_files_and_commit).layer(middleware::from_fn(
+            "/api/admin/models/initiate-repository-download",
+            post(api::model_uploads::initiate_repository_download).layer(middleware::from_fn(
                 api::middleware::providers_edit_middleware,
             )),
         )
         .route(
-            "/api/admin/models/download-from-repository",
-            post(api::model_uploads::download_and_commit_repository_files).layer(
-                middleware::from_fn(api::middleware::providers_edit_middleware),
-            ),
+            "/api/admin/downloads",
+            get(api::download_instances::list_all_downloads).layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/downloads/{download_id}",
+            get(api::download_instances::get_download).layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/downloads/{download_id}/cancel",
+            post(api::download_instances::cancel_download).layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/downloads/{download_id}",
+            delete(api::download_instances::delete_download).layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/downloads/subscribe",
+            get(api::download_instances::subscribe_download_progress).layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
         )
 }

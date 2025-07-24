@@ -1,19 +1,19 @@
-import { useEffect } from 'react'
+import { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Navigate,
   Route,
   Routes,
-} from 'react-router-dom'
-import { isDesktopApp } from './api/core'
-import { AuthGuard } from './components/Auth'
-import { AppLayout } from './components/Layout/AppLayout'
-import { AssistantsPage } from './components/Pages/AssistantsPage'
-import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
-import { ChatPage } from './components/Pages/ChatPage'
-import { HubPage } from './components/Pages/HubPage'
-import { ProjectDetailsPage } from './components/Pages/ProjectDetailsPage'
-import { ProjectsPage } from './components/Pages/ProjectsPage'
+} from "react-router-dom";
+import { isDesktopApp } from "./api/core";
+import { AuthGuard } from "./components/Auth";
+import { AppLayout } from "./components/Layout/AppLayout";
+import { AssistantsPage } from "./components/Pages/AssistantsPage";
+import { ChatHistoryPage } from "./components/Pages/ChatHistoryPage";
+import { ChatPage } from "./components/Pages/ChatPage";
+import { HubPage } from "./components/Pages/HubPage";
+import { ProjectDetailsPage } from "./components/Pages/ProjectDetailsPage";
+import { ProjectsPage } from "./components/Pages/ProjectsPage";
 import {
   AdminAppearanceSettings,
   AdminAssistantsSettings,
@@ -30,34 +30,27 @@ import {
   ShortcutsSettings,
   UserGroupsSettings,
   UsersSettings,
-} from './components/Pages/Settings'
-import { SettingsPage } from './components/Pages/SettingsPage'
-import { Permission, usePermissions } from './permissions'
-import { ThemeProvider } from './providers/ThemeProvider'
-import './i18n'
-import '@ant-design/v5-patch-for-react-19'
-import { useTranslation } from 'react-i18next'
-import {
-  initializeUserSettingsOnStartup,
-  useUserAppearanceLanguage,
-} from './store'
+} from "./components/Pages/Settings";
+import { SettingsPage } from "./components/Pages/SettingsPage";
+import { Permission, usePermissions } from "./permissions";
+import { ThemeProvider } from "./providers/ThemeProvider";
+import "./i18n";
+import "@ant-design/v5-patch-for-react-19";
+import { useTranslation } from "react-i18next";
+import "./store/startup";
+import { useUserAppearanceLanguage } from "./store";
 
 function App() {
-  const { i18n } = useTranslation()
-  const language = useUserAppearanceLanguage()
-  const { hasPermission } = usePermissions()
-
-  // Initialize user settings on app start
-  useEffect(() => {
-    initializeUserSettingsOnStartup()
-  }, [])
+  const { i18n } = useTranslation();
+  const language = useUserAppearanceLanguage();
+  const { hasPermission } = usePermissions();
 
   // // Update language when settings change
   useEffect(() => {
     if (i18n.language !== language) {
-      i18n.changeLanguage(language)
+      i18n.changeLanguage(language);
     }
-  }, [language, i18n.language])
+  }, [language, i18n.language]);
 
   return (
     <ThemeProvider>
@@ -147,7 +140,7 @@ function App() {
         </Router>
       </AuthGuard>
     </ThemeProvider>
-  )
+  );
 }
 
-export default App
+export default App;

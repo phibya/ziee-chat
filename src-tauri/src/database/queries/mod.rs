@@ -2,6 +2,7 @@ pub mod assistants;
 pub mod branches;
 pub mod chat;
 pub mod configuration;
+pub mod download_instances;
 pub mod models;
 pub mod projects;
 pub mod providers;

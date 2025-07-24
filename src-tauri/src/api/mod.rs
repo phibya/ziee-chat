@@ -3,6 +3,7 @@ pub mod assistants;
 pub mod auth;
 pub mod chat;
 pub mod configuration;
+pub mod download_instances;
 pub mod errors;
 pub mod middleware;
 pub mod model_uploads;
