@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react'
 import {
   App,
   Button,
@@ -12,8 +12,8 @@ import {
   Row,
   Select,
   Typography,
-} from "antd";
-import { Drawer } from "../common/Drawer.tsx";
+} from 'antd'
+import { Drawer } from '../common/Drawer.tsx'
 import {
   CalendarOutlined,
   DeleteOutlined,
@@ -22,11 +22,11 @@ import {
   MoreOutlined,
   PlusOutlined,
   SearchOutlined,
-} from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { Project } from "../../types/api/projects";
-import { PageContainer } from "../common/PageContainer";
+} from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
+import { Project } from '../../types/api/projects'
+import { PageContainer } from '../common/PageContainer'
 import {
   clearProjectsStoreError,
   createNewProject,
@@ -34,177 +34,177 @@ import {
   loadAllUserProjects,
   Stores,
   updateExistingProject,
-} from "../../store";
+} from '../../store'
 
-const { Title, Text } = Typography;
-const { Search } = Input;
-const { TextArea } = Input;
+const { Title, Text } = Typography
+const { Search } = Input
+const { TextArea } = Input
 
 interface ProjectFormData {
-  name: string;
-  description?: string;
-  is_private?: boolean;
+  name: string
+  description?: string
+  is_private?: boolean
 }
 
 export const ProjectsPage: React.FC = () => {
-  const { t } = useTranslation();
-  const { message } = App.useApp();
-  const navigate = useNavigate();
+  const { t } = useTranslation()
+  const { message } = App.useApp()
+  const navigate = useNavigate()
 
   // Projects store
-  const { projects, loading, creating, updating, error } = Stores.Projects;
+  const { projects, loading, creating, updating, error } = Stores.Projects
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"activity" | "name" | "created">(
-    "activity",
-  );
-  const [newProjectModalVisible, setNewProjectModalVisible] = useState(false);
-  const [editProjectModalVisible, setEditProjectModalVisible] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [form] = Form.useForm<ProjectFormData>();
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'activity' | 'name' | 'created'>(
+    'activity',
+  )
+  const [newProjectModalVisible, setNewProjectModalVisible] = useState(false)
+  const [editProjectModalVisible, setEditProjectModalVisible] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [form] = Form.useForm<ProjectFormData>()
 
   useEffect(() => {
-    loadAllUserProjects();
-  }, []);
+    loadAllUserProjects()
+  }, [])
 
   // Show errors
   useEffect(() => {
     if (error) {
-      message.error(error);
-      clearProjectsStoreError();
+      message.error(error)
+      clearProjectsStoreError()
     }
-  }, [error, message]);
+  }, [error, message])
 
   // Get filtered and sorted projects
   const getFilteredAndSortedProjects = () => {
-    let filteredProjects = projects;
+    let filteredProjects = projects
 
     // Apply search filter
     if (searchQuery.trim()) {
       filteredProjects = projects.filter(
-        (project) =>
+        project =>
           project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           project.description
             ?.toLowerCase()
             .includes(searchQuery.toLowerCase()),
-      );
+      )
     }
 
     // Sort projects based on sortBy selection
-    let sortedProjects = [...filteredProjects];
+    let sortedProjects = [...filteredProjects]
     switch (sortBy) {
-      case "activity":
+      case 'activity':
         sortedProjects.sort(
           (a, b) =>
             new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
-        );
-        break;
-      case "name":
-        sortedProjects.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "created":
+        )
+        break
+      case 'name':
+        sortedProjects.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case 'created':
         sortedProjects.sort(
           (a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        );
-        break;
+        )
+        break
     }
 
-    return sortedProjects;
-  };
+    return sortedProjects
+  }
 
   const handleCreateProject = async (values: ProjectFormData) => {
     try {
       await createNewProject({
         name: values.name,
-        description: values.description || "",
-      });
-      setNewProjectModalVisible(false);
-      form.resetFields();
-      message.success(t("projects.projectCreated"));
+        description: values.description || '',
+      })
+      setNewProjectModalVisible(false)
+      form.resetFields()
+      message.success(t('projects.projectCreated'))
     } catch (error) {
       // Error is handled by the store
-      console.error("Failed to create project:", error);
+      console.error('Failed to create project:', error)
     }
-  };
+  }
 
   const handleEditProject = async (values: ProjectFormData) => {
-    if (!editingProject) return;
+    if (!editingProject) return
 
     try {
       await updateExistingProject(editingProject.id, {
         name: values.name,
         description: values.description,
-      });
-      setEditProjectModalVisible(false);
-      setEditingProject(null);
-      form.resetFields();
-      message.success(t("projects.projectUpdated"));
+      })
+      setEditProjectModalVisible(false)
+      setEditingProject(null)
+      form.resetFields()
+      message.success(t('projects.projectUpdated'))
     } catch (error) {
       // Error is handled by the store
-      console.error("Failed to update project:", error);
+      console.error('Failed to update project:', error)
     }
-  };
+  }
 
   const handleDeleteProject = async (project: Project) => {
     try {
-      await deleteExistingProject(project.id);
-      message.success(t("projects.projectDeleted"));
+      await deleteExistingProject(project.id)
+      message.success(t('projects.projectDeleted'))
     } catch (error) {
       // Error is handled by the store
-      console.error("Failed to delete project:", error);
+      console.error('Failed to delete project:', error)
     }
-  };
+  }
 
   const openEditModal = (project: Project) => {
-    setEditingProject(project);
+    setEditingProject(project)
     form.setFieldsValue({
       name: project.name,
       description: project.description,
       is_private: project.is_private,
-    });
-    setEditProjectModalVisible(true);
-  };
+    })
+    setEditProjectModalVisible(true)
+  }
 
   const formatTimeAgo = (date: string) => {
-    const now = new Date();
-    const past = new Date(date);
-    const diffMs = now.getTime() - past.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffMonths = Math.floor(diffDays / 30);
+    const now = new Date()
+    const past = new Date(date)
+    const diffMs = now.getTime() - past.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const diffMonths = Math.floor(diffDays / 30)
 
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "1 day ago";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    if (diffMonths === 1) return "1 month ago";
-    if (diffMonths < 12) return `${diffMonths} months ago`;
-    return `${Math.floor(diffMonths / 12)} years ago`;
-  };
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return '1 day ago'
+    if (diffDays < 7) return `${diffDays} days ago`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+    if (diffMonths === 1) return '1 month ago'
+    if (diffMonths < 12) return `${diffMonths} months ago`
+    return `${Math.floor(diffMonths / 12)} years ago`
+  }
 
-  const getProjectMenuItems = (project: Project): MenuProps["items"] => [
+  const getProjectMenuItems = (project: Project): MenuProps['items'] => [
     {
-      key: "edit",
+      key: 'edit',
       icon: <EditOutlined />,
-      label: t("buttons.edit"),
+      label: t('buttons.edit'),
       onClick: () => openEditModal(project),
     },
     {
-      key: "delete",
+      key: 'delete',
       icon: <DeleteOutlined />,
-      label: t("buttons.delete"),
+      label: t('buttons.delete'),
       danger: true,
       onClick: () => {
         Modal.confirm({
-          title: t("projects.deleteProject"),
+          title: t('projects.deleteProject'),
           content: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
-          okText: "Delete",
-          okType: "danger",
+          okText: 'Delete',
+          okType: 'danger',
           onOk: () => handleDeleteProject(project),
-        });
+        })
       },
     },
-  ];
+  ]
 
   return (
     <PageContainer>
@@ -225,11 +225,11 @@ export const ProjectsPage: React.FC = () => {
       {/* Search and Sort */}
       <div className="flex justify-between items-center mb-6">
         <Search
-          placeholder={t("forms.searchProjects")}
+          placeholder={t('forms.searchProjects')}
           prefix={<SearchOutlined />}
           style={{ width: 400 }}
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           allowClear
         />
         <div className="flex items-center gap-2">
@@ -239,9 +239,9 @@ export const ProjectsPage: React.FC = () => {
             onChange={setSortBy}
             style={{ width: 120 }}
             options={[
-              { label: t("labels.activity"), value: "activity" },
-              { label: t("labels.name"), value: "name" },
-              { label: t("labels.created"), value: "created" },
+              { label: t('labels.activity'), value: 'activity' },
+              { label: t('labels.name'), value: 'name' },
+              { label: t('labels.created'), value: 'created' },
             ]}
           />
         </div>
@@ -249,7 +249,7 @@ export const ProjectsPage: React.FC = () => {
 
       {/* Projects Grid */}
       <Row gutter={[16, 16]}>
-        {getFilteredAndSortedProjects().map((project) => (
+        {getFilteredAndSortedProjects().map(project => (
           <Col xs={24} sm={12} lg={8} xl={6} key={project.id}>
             <Card
               hoverable
@@ -258,12 +258,12 @@ export const ProjectsPage: React.FC = () => {
               actions={[
                 <Dropdown
                   menu={{ items: getProjectMenuItems(project) }}
-                  trigger={["click"]}
+                  trigger={['click']}
                 >
                   <Button
                     type="text"
                     icon={<MoreOutlined />}
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                   />
                 </Dropdown>,
               ]}
@@ -312,12 +312,12 @@ export const ProjectsPage: React.FC = () => {
         <div className="text-center py-12">
           <FolderOutlined className="text-6xl mb-4" />
           <Title level={3} type="secondary">
-            {searchQuery ? "No projects found" : "No projects yet"}
+            {searchQuery ? 'No projects found' : 'No projects yet'}
           </Title>
           <Text type="secondary" className="block mb-4">
             {searchQuery
-              ? "Try adjusting your search criteria"
-              : "Create your first project to get started"}
+              ? 'Try adjusting your search criteria'
+              : 'Create your first project to get started'}
           </Text>
           {!searchQuery && (
             <Button
@@ -333,11 +333,11 @@ export const ProjectsPage: React.FC = () => {
 
       {/* New Project Modal */}
       <Drawer
-        title={t("projects.createPersonalProject")}
+        title={t('projects.createPersonalProject')}
         open={newProjectModalVisible}
         onClose={() => {
-          setNewProjectModalVisible(false);
-          form.resetFields();
+          setNewProjectModalVisible(false)
+          form.resetFields()
         }}
         footer={null}
         width={600}
@@ -349,19 +349,19 @@ export const ProjectsPage: React.FC = () => {
           initialValues={{ is_private: true }}
         >
           <Form.Item
-            label={t("projects.whatAreYouWorkingOn")}
+            label={t('projects.whatAreYouWorkingOn')}
             name="name"
-            rules={[{ required: true, message: "Please enter a project name" }]}
+            rules={[{ required: true, message: 'Please enter a project name' }]}
           >
-            <Input placeholder={t("forms.nameYourProject")} size="large" />
+            <Input placeholder={t('forms.nameYourProject')} size="large" />
           </Form.Item>
 
           <Form.Item
-            label={t("projects.whatAreYouTryingToAchieve")}
+            label={t('projects.whatAreYouTryingToAchieve')}
             name="description"
           >
             <TextArea
-              placeholder={t("forms.describeYourProject")}
+              placeholder={t('forms.describeYourProject')}
               rows={4}
               size="large"
             />
@@ -370,8 +370,8 @@ export const ProjectsPage: React.FC = () => {
           <div className="flex justify-end gap-2 mt-6">
             <Button
               onClick={() => {
-                setNewProjectModalVisible(false);
-                form.resetFields();
+                setNewProjectModalVisible(false)
+                form.resetFields()
               }}
             >
               Cancel
@@ -385,28 +385,28 @@ export const ProjectsPage: React.FC = () => {
 
       {/* Edit Project Modal */}
       <Drawer
-        title={t("projects.editProject")}
+        title={t('projects.editProject')}
         open={editProjectModalVisible}
         onClose={() => {
-          setEditProjectModalVisible(false);
-          setEditingProject(null);
-          form.resetFields();
+          setEditProjectModalVisible(false)
+          setEditingProject(null)
+          form.resetFields()
         }}
         footer={null}
         width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleEditProject}>
           <Form.Item
-            label={t("projects.projectName")}
+            label={t('projects.projectName')}
             name="name"
-            rules={[{ required: true, message: "Please enter a project name" }]}
+            rules={[{ required: true, message: 'Please enter a project name' }]}
           >
-            <Input placeholder={t("forms.nameYourProject")} size="large" />
+            <Input placeholder={t('forms.nameYourProject')} size="large" />
           </Form.Item>
 
-          <Form.Item label={t("labels.description")} name="description">
+          <Form.Item label={t('labels.description')} name="description">
             <TextArea
-              placeholder={t("forms.describeYourProject")}
+              placeholder={t('forms.describeYourProject')}
               rows={4}
               size="large"
             />
@@ -415,9 +415,9 @@ export const ProjectsPage: React.FC = () => {
           <div className="flex justify-end gap-2 mt-6">
             <Button
               onClick={() => {
-                setEditProjectModalVisible(false);
-                setEditingProject(null);
-                form.resetFields();
+                setEditProjectModalVisible(false)
+                setEditingProject(null)
+                form.resetFields()
               }}
             >
               Cancel
@@ -429,5 +429,5 @@ export const ProjectsPage: React.FC = () => {
         </Form>
       </Drawer>
     </PageContainer>
-  );
-};
+  )
+}

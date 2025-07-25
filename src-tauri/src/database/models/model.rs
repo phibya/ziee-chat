@@ -427,6 +427,7 @@ pub struct CreateModelRequest {
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub capabilities: Option<ModelCapabilities>,
+    pub parameters: Option<ModelParameters>,
     pub settings: Option<ModelSettings>,
 }
 

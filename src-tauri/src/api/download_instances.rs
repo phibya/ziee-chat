@@ -84,7 +84,7 @@ pub async fn list_all_downloads(
         .as_ref()
         .and_then(|s| DownloadStatus::from_str(s));
 
-    match download_instances::list_all_download_instances(page, per_page, status_filter).await {
+    match download_instances::get_download_instances(page, per_page, status_filter).await {
         Ok(response) => Ok(Json(response)),
         Err(e) => {
             eprintln!("Failed to get all downloads: {}", e);

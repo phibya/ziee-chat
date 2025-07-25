@@ -1,21 +1,21 @@
 // Auth store
 
-import type { StoreApi, UseBoundStore } from "zustand";
+import type { StoreApi, UseBoundStore } from 'zustand'
 // Admin store
-import { useShallow } from "zustand/react/shallow";
-import { useAdminStore } from "./admin";
-import { useAssistantsStore } from "./assistants";
-import { useAuthStore } from "./auth";
-import { useChatStore } from "./chat";
-import { useChatHistoryStore } from "./chatHistory";
-import { useConversationsStore } from "./conversations";
-import { useHubStore } from "./hub";
-import { useLocalUploadStore } from "./localUpload";
-import { useModelDownloadStore } from "./modelDownload";
-import { useProjectsStore } from "./projects";
-import { useProvidersStore } from "./providers";
-import { useRepositoriesStore } from "./repositories";
-import { useUserSettingsStore } from "./settings";
+import { useShallow } from 'zustand/react/shallow'
+import { useAdminStore } from './admin'
+import { useAssistantsStore } from './assistants'
+import { useAuthStore } from './auth'
+import { useChatStore } from './chat'
+import { useChatHistoryStore } from './chatHistory'
+import { useConversationsStore } from './conversations'
+import { useHubStore } from './hub'
+import { useLocalUploadStore } from './localUpload'
+import { useModelDownloadStore } from './modelDownload'
+import { useProjectsStore } from './projects'
+import { useProvidersStore } from './providers'
+import { useRepositoriesStore } from './repositories'
+import { useUserSettingsStore } from './settings'
 import {
   useAddLocalModelDownloadDrawerStore,
   useAddLocalModelUploadDrawerStore,
@@ -29,7 +29,7 @@ import {
   useEditRemoteModelDrawerStore,
   useLayoutUIStore,
   useViewDownloadModalStore,
-} from "./ui";
+} from './ui'
 
 export {
   assignUserToUserGroup,
@@ -54,7 +54,7 @@ export {
   updateSystemUserRegistrationSettings,
   updateUserGroup,
   useAdminStore,
-} from "./admin";
+} from './admin'
 // Assistants store
 export {
   clearAssistantsStoreError,
@@ -67,7 +67,7 @@ export {
   updateAdministratorAssistant,
   updateUserAssistant,
   useAssistantsStore,
-} from "./assistants";
+} from './assistants'
 export {
   authenticateUser,
   clearAuthenticationError,
@@ -75,7 +75,7 @@ export {
   registerNewUser,
   setupInitialAdminUser,
   useAuthStore,
-} from "./auth";
+} from './auth'
 // Chat store
 export {
   clearChatError,
@@ -88,7 +88,7 @@ export {
   stopMessageStreaming,
   switchMessageBranch,
   useChatStore,
-} from "./chat";
+} from './chat'
 // Chat History store
 export {
   clearAllUserChatHistoryConversations,
@@ -99,7 +99,7 @@ export {
   searchChatHistoryConversations,
   updateChatHistoryConversationTitleById,
   useChatHistoryStore,
-} from "./chatHistory";
+} from './chatHistory'
 // Conversations store
 export {
   addNewConversationToList,
@@ -109,7 +109,7 @@ export {
   setConversationsListLoading,
   updateExistingConversation,
   useConversationsStore,
-} from "./conversations";
+} from './conversations'
 // Local Upload store
 export {
   cancelLocalUpload,
@@ -118,7 +118,7 @@ export {
   showUploadProgress,
   uploadLocalModel,
   useLocalUploadStore,
-} from "./localUpload";
+} from './localUpload'
 // Model Download store
 export {
   cancelModelDownload,
@@ -129,7 +129,7 @@ export {
   findDownloadById,
   getAllActiveDownloads,
   useModelDownloadStore,
-} from "./modelDownload";
+} from './modelDownload'
 // Hub store
 export {
   initializeHub,
@@ -140,7 +140,7 @@ export {
   getModelsByCategory,
   getAssistantsByCategory,
   useHubStore,
-} from "./hub";
+} from './hub'
 // Projects store
 export {
   clearProjectsStoreError,
@@ -153,7 +153,7 @@ export {
   updateExistingProject,
   uploadDocumentToProject,
   useProjectsStore,
-} from "./projects";
+} from './projects'
 // Providers store
 export {
   addNewModel,
@@ -175,7 +175,7 @@ export {
   updateExistingModel,
   updateModelProvider,
   useProvidersStore,
-} from "./providers";
+} from './providers'
 // Repositories store
 export {
   clearRepositoriesStoreError,
@@ -186,7 +186,7 @@ export {
   testModelRepositoryConnection,
   updateModelRepository,
   useRepositoriesStore,
-} from "./repositories";
+} from './repositories'
 // Settings store
 export {
   deleteUserSetting,
@@ -205,7 +205,7 @@ export {
   useUserAppearanceTheme,
   useUserSettings,
   useUserSettingsStore,
-} from "./settings";
+} from './settings'
 
 // UI stores with all actions
 export {
@@ -263,10 +263,11 @@ export {
   useEditRemoteModelDrawerStore,
   useLayoutUIStore,
   useViewDownloadModalStore,
-} from "./ui";
+} from './ui'
 
-type ExtractState<T> =
-  T extends UseBoundStore<StoreApi<infer State>> ? State : never;
+type ExtractState<T> = T extends UseBoundStore<StoreApi<infer State>>
+  ? State
+  : never
 
 const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
   useStore: T,
@@ -275,10 +276,10 @@ const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
     get: (_, prop) => {
       return useStore(
         useShallow((state: ExtractState<T>) => (state as any)[prop]),
-      );
+      )
     },
-  });
-};
+  })
+}
 
 export const Stores = {
   Auth: createStoreProxy(useAuthStore),
@@ -313,4 +314,4 @@ export const Stores = {
       useAddLocalModelDownloadDrawerStore,
     ),
   },
-};
+}

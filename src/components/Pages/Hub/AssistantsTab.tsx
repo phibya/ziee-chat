@@ -1,14 +1,5 @@
 import { ClearOutlined, RobotOutlined, SearchOutlined } from '@ant-design/icons'
-import {
-  App,
-  Button,
-  Card,
-  Flex,
-  Input,
-  Select,
-  Tag,
-  Typography,
-} from 'antd'
+import { App, Button, Card, Flex, Input, Select, Tag, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { useHubStore, searchAssistants } from '../../../store/hub'
 import type { HubAssistant } from '../../../types/api/hub'

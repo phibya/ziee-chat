@@ -1,10 +1,10 @@
-import { create } from "zustand";
+import { create } from 'zustand'
 
 interface AddRemoteModelDrawerState {
-  open: boolean;
-  loading: boolean;
-  providerId: string | null;
-  providerType: string | null;
+  open: boolean
+  loading: boolean
+  providerId: string | null
+  providerType: string | null
 }
 
 export const useAddRemoteModelDrawerStore = create<AddRemoteModelDrawerState>(
@@ -12,33 +12,33 @@ export const useAddRemoteModelDrawerStore = create<AddRemoteModelDrawerState>(
     open: false,
     loading: false,
     providerId: null,
-    providerType: null
-  })
-);
+    providerType: null,
+  }),
+)
 
 // Modal actions
 export const openAddRemoteModelDrawer = (
   providerId: string,
-  providerType: string
+  providerType: string,
 ) => {
   useAddRemoteModelDrawerStore.setState({
     open: true,
     providerId,
-    providerType
-  });
-};
+    providerType,
+  })
+}
 
 export const closeAddRemoteModelDrawer = () => {
   useAddRemoteModelDrawerStore.setState({
     open: false,
     loading: false,
     providerId: null,
-    providerType: null
-  });
-};
+    providerType: null,
+  })
+}
 
 export const setAddRemoteModelDrawerLoading = (loading: boolean) => {
   useAddRemoteModelDrawerStore.setState({
-    loading
-  });
-};
+    loading,
+  })
+}

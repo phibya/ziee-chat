@@ -8,165 +8,224 @@ import {
   SearchOutlined,
   ToolOutlined,
   UnlockOutlined,
-} from "@ant-design/icons";
-import { App, Button, Card, Flex, Input, Select, Tag, Typography } from "antd";
-import { useEffect, useMemo, useState } from "react";
-import { searchModels, useHubStore } from "../../../store/hub";
-import type { HubModel } from "../../../types/api/hub";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { isDesktopApp } from "../../../api/core.ts";
-import { loadAllModelRepositories, Stores } from "../../../store";
-import { repositoryHasCredentials } from "../../../store/repositories.ts";
-import { openRepositoryDrawer } from "../../../store/ui";
-import { RepositoryDrawer } from "../Settings/ModelRepositorySettings/RepositoryDrawer.tsx";
+} from '@ant-design/icons'
+import { App, Button, Card, Flex, Input, Select, Tag, Typography } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+import { searchModels, useHubStore } from '../../../store/hub'
+import type { HubModel } from '../../../types/api/hub'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { isDesktopApp } from '../../../api/core.ts'
+import {
+  loadAllModelProviders,
+  loadAllModelRepositories,
+  Stores,
+} from '../../../store'
+import { repositoryHasCredentials } from '../../../store/repositories.ts'
+import { downloadModelFromRepository } from '../../../store/modelDownload'
+import { openRepositoryDrawer, openViewDownloadModal } from '../../../store/ui'
+import { RepositoryDrawer } from '../Settings/ModelRepositorySettings/RepositoryDrawer.tsx'
 
-const { Title, Text } = Typography;
+const { Title, Text } = Typography
 
 export function ModelsTab() {
-  const { models } = useHubStore();
-  const { message } = App.useApp();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>(
-    [],
-  );
-  const [sortBy, setSortBy] = useState("popular");
-  const { repositories } = Stores.Repositories;
+  const { models } = useHubStore()
+  const { message } = App.useApp()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
+  const [sortBy, setSortBy] = useState('popular')
+  const { repositories } = Stores.Repositories
+  const { providers } = Stores.Providers
 
   useEffect(() => {
-    loadAllModelRepositories();
-  }, []);
+    loadAllModelRepositories()
+    loadAllModelProviders()
+  }, [])
 
   const handleDownload = async (model: HubModel) => {
-    console.log("Downloading model:", model.id);
-    const repo = repositories.find((repo) => repo.url === model.repository_url);
-    console.log({ repo });
+    console.log('Downloading model:', model.id)
+    const repo = repositories.find(repo => repo.url === model.repository_url)
+    console.log({ repo })
     if (!repo) {
       message.error(
         `Repository not found for model ${model.alias}. Please check the repository configuration.`,
-      );
-      return;
+      )
+      return
     }
 
     if (!model.public && !repositoryHasCredentials(repo)) {
       message.info(
         `Model ${model.alias} is private and requires credentials. Please configure the repository with valid credentials.`,
-      );
+      )
 
-      openRepositoryDrawer(repo);
-
-      return;
+      openRepositoryDrawer(repo)
+      return
     }
-  };
+
+    const provider = providers.find(p => p.type === 'local')
+
+    if (!provider) {
+      message.error(
+        `No local provider found for model ${model.alias}. Please ensure a local provider is configured.`,
+      )
+      return
+    }
+
+    try {
+      // Generate a unique model name for local storage
+      const modelName = `${model.alias
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')}-${Date.now().toString(36)}`
+
+      // Prepare download request
+      const downloadRequest = {
+        provider_id: provider.id,
+        repository_id: repo.id,
+        repository_path: model.repository_path,
+        main_filename: model.main_filename,
+        repository_branch: 'main', // Default branch
+        name: modelName,
+        alias: model.alias,
+        description:
+          model.description || `Downloaded from ${model.repository_url}`,
+        file_format: model.file_format,
+        capabilities: model.capabilities || {},
+        parameters: model.recommended_parameters || {},
+        settings: {}, // Empty settings for now
+      }
+
+      // Start the download
+      const { downloadId } = await downloadModelFromRepository(
+        downloadRequest,
+        (downloadId: string) => {
+          // Open the download view modal to show progress
+          openViewDownloadModal(downloadId)
+        },
+      )
+
+      message.success(
+        `Download started for ${model.alias}. You can monitor the progress in the download view.`,
+      )
+
+      // Open the download view modal to show progress
+      openViewDownloadModal(downloadId)
+    } catch (error: any) {
+      console.error('Failed to start model download:', error)
+      message.error(
+        `Failed to start download for ${model.alias}: ${error.message || 'Unknown error'}`,
+      )
+    }
+  }
 
   const handleViewReadme = (model: HubModel) => {
     // Construct the README URL based on repository type
     const constructReadmeUrl = (model: HubModel): string => {
-      const baseUrl = model.repository_url.replace(/\/$/, "");
-      const repoPath = model.repository_path;
+      const baseUrl = model.repository_url.replace(/\/$/, '')
+      const repoPath = model.repository_path
 
-      if (baseUrl.startsWith("https://github.com")) {
-        return `${baseUrl}/${repoPath}/blob/main/README.md`;
-      } else if (baseUrl.startsWith("https://huggingface.co")) {
-        return `${baseUrl}/${repoPath}/blob/main/README.md`;
+      if (baseUrl.startsWith('https://github.com')) {
+        return `${baseUrl}/${repoPath}/blob/main/README.md`
+      } else if (baseUrl.startsWith('https://huggingface.co')) {
+        return `${baseUrl}/${repoPath}/blob/main/README.md`
       } else {
         // Fallback to the repository URL itself
-        return `${baseUrl}/${repoPath}`;
+        return `${baseUrl}/${repoPath}`
       }
-    };
-
-    const readmeUrl = constructReadmeUrl(model);
-    if (isDesktopApp) {
-      openUrl(readmeUrl).catch((err) => {
-        console.error(`Failed to open ${readmeUrl}:`, err);
-        message.error(`Failed to open ${readmeUrl}`);
-      });
-    } else {
-      window.open(readmeUrl, "_blank", "noopener,noreferrer");
     }
-  };
+
+    const readmeUrl = constructReadmeUrl(model)
+    if (isDesktopApp) {
+      openUrl(readmeUrl).catch(err => {
+        console.error(`Failed to open ${readmeUrl}:`, err)
+        message.error(`Failed to open ${readmeUrl}`)
+      })
+    } else {
+      window.open(readmeUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   const clearAllFilters = () => {
-    setSearchTerm("");
-    setSelectedTags([]);
-    setSelectedCapabilities([]);
-  };
+    setSearchTerm('')
+    setSelectedTags([])
+    setSelectedCapabilities([])
+  }
 
   // Get unique tags and capabilities for filters
   const modelTags = useMemo(() => {
-    const allTags = new Set<string>();
-    models.forEach((model) => {
-      model.tags.forEach((tag) => allTags.add(tag));
-    });
-    return Array.from(allTags).sort();
-  }, [models]);
+    const allTags = new Set<string>()
+    models.forEach(model => {
+      model.tags.forEach(tag => allTags.add(tag))
+    })
+    return Array.from(allTags).sort()
+  }, [models])
 
   const modelCapabilities = useMemo(() => {
-    const capabilities: { key: string; label: string }[] = [];
-    const hasVision = models.some((m) => m.capabilities?.vision);
-    const hasTools = models.some((m) => m.capabilities?.tools);
-    const hasCode = models.some((m) => m.capabilities?.code_interpreter);
-    const hasAudio = models.some((m) => m.capabilities?.audio);
+    const capabilities: { key: string; label: string }[] = []
+    const hasVision = models.some(m => m.capabilities?.vision)
+    const hasTools = models.some(m => m.capabilities?.tools)
+    const hasCode = models.some(m => m.capabilities?.code_interpreter)
+    const hasAudio = models.some(m => m.capabilities?.audio)
 
-    if (hasVision) capabilities.push({ key: "vision", label: "Vision" });
-    if (hasTools) capabilities.push({ key: "tools", label: "Tools" });
+    if (hasVision) capabilities.push({ key: 'vision', label: 'Vision' })
+    if (hasTools) capabilities.push({ key: 'tools', label: 'Tools' })
     if (hasCode)
-      capabilities.push({ key: "code_interpreter", label: "Code Interpreter" });
-    if (hasAudio) capabilities.push({ key: "audio", label: "Audio" });
+      capabilities.push({ key: 'code_interpreter', label: 'Code Interpreter' })
+    if (hasAudio) capabilities.push({ key: 'audio', label: 'Audio' })
 
-    return capabilities;
-  }, [models]);
+    return capabilities
+  }, [models])
 
   const filteredModels = useMemo(() => {
-    let filtered = searchModels(models, searchTerm);
+    let filtered = searchModels(models, searchTerm)
 
     // Filter by tags
     if (selectedTags.length > 0) {
-      filtered = filtered.filter((model) =>
-        selectedTags.some((tag) => model.tags.includes(tag)),
-      );
+      filtered = filtered.filter(model =>
+        selectedTags.some(tag => model.tags.includes(tag)),
+      )
     }
 
     // Filter by capabilities
     if (selectedCapabilities.length > 0) {
-      filtered = filtered.filter((model) => {
-        if (!model.capabilities) return false;
-        return selectedCapabilities.some((capability) => {
+      filtered = filtered.filter(model => {
+        if (!model.capabilities) return false
+        return selectedCapabilities.some(capability => {
           switch (capability) {
-            case "vision":
-              return model.capabilities?.vision || false;
-            case "tools":
-              return model.capabilities?.tools || false;
-            case "code_interpreter":
-              return model.capabilities?.code_interpreter || false;
-            case "audio":
-              return model.capabilities?.audio || false;
+            case 'vision':
+              return model.capabilities?.vision || false
+            case 'tools':
+              return model.capabilities?.tools || false
+            case 'code_interpreter':
+              return model.capabilities?.code_interpreter || false
+            case 'audio':
+              return model.capabilities?.audio || false
             default:
-              return false;
+              return false
           }
-        });
-      });
+        })
+      })
     }
 
     // Sort models
     switch (sortBy) {
-      case "popular":
+      case 'popular':
         filtered.sort(
           (a, b) => (b.popularity_score || 0) - (a.popularity_score || 0),
-        );
-        break;
-      case "name":
-        filtered.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case "size":
-        filtered.sort((a, b) => a.size_gb - b.size_gb);
-        break;
+        )
+        break
+      case 'name':
+        filtered.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      case 'size':
+        filtered.sort((a, b) => a.size_gb - b.size_gb)
+        break
       default:
-        break;
+        break
     }
 
-    return filtered;
-  }, [models, searchTerm, selectedTags, selectedCapabilities, sortBy]);
+    return filtered
+  }, [models, searchTerm, selectedTags, selectedCapabilities, sortBy])
 
   return (
     <>
@@ -178,7 +237,7 @@ export function ModelsTab() {
               placeholder="Search models..."
               prefix={<SearchOutlined />}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               allowClear
             />
           </div>
@@ -192,7 +251,7 @@ export function ModelsTab() {
               allowClear
               maxTagCount="responsive"
             >
-              {modelTags.map((tag) => (
+              {modelTags.map(tag => (
                 <Select.Option key={tag} value={tag}>
                   {tag}
                 </Select.Option>
@@ -209,7 +268,7 @@ export function ModelsTab() {
               allowClear
               maxTagCount="responsive"
             >
-              {modelCapabilities.map((capability) => (
+              {modelCapabilities.map(capability => (
                 <Select.Option key={capability.key} value={capability.key}>
                   {capability.label}
                 </Select.Option>
@@ -234,15 +293,15 @@ export function ModelsTab() {
           selectedCapabilities.length > 0) && (
           <Flex align="center" gap={8}>
             <Text type="secondary" className="text-xs">
-              Filters active:{" "}
+              Filters active:{' '}
               {[
-                searchTerm && "search",
+                searchTerm && 'search',
                 selectedTags.length > 0 && `${selectedTags.length} tags`,
                 selectedCapabilities.length > 0 &&
                   `${selectedCapabilities.length} capabilities`,
               ]
                 .filter(Boolean)
-                .join(", ")}
+                .join(', ')}
             </Text>
             <Button
               size="small"
@@ -258,12 +317,12 @@ export function ModelsTab() {
 
       {/* Models Grid */}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
-        {filteredModels.map((model) => (
+        {filteredModels.map(model => (
           <Card
             key={model.id}
             hoverable
             className="h-full"
-            styles={{ body: { padding: "16px" } }}
+            styles={{ body: { padding: '16px' } }}
           >
             <div className="mb-3">
               <Flex justify="space-between" align="start" className="mb-2">
@@ -284,7 +343,7 @@ export function ModelsTab() {
             {/* Tags */}
             <div className="mb-3">
               <Flex wrap className="gap-1">
-                {model.tags.slice(0, 3).map((tag) => (
+                {model.tags.slice(0, 3).map(tag => (
                   <Tag key={tag} color="default" className="text-xs">
                     {tag}
                   </Tag>
@@ -381,5 +440,5 @@ export function ModelsTab() {
 
       <RepositoryDrawer />
     </>
-  );
+  )
 }

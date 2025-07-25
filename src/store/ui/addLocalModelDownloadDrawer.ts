@@ -1,9 +1,9 @@
-import { create } from "zustand";
+import { create } from 'zustand'
 
 interface AddLocalModelDownloadDrawerState {
-  open: boolean;
-  loading: boolean;
-  providerId: string | null;
+  open: boolean
+  loading: boolean
+  providerId: string | null
 }
 
 export const useAddLocalModelDownloadDrawerStore =
@@ -11,26 +11,26 @@ export const useAddLocalModelDownloadDrawerStore =
     open: false,
     loading: false,
     providerId: null,
-  }));
+  }))
 
 // Modal actions
 export const openAddLocalModelDownloadDrawer = (providerId: string) => {
   useAddLocalModelDownloadDrawerStore.setState({
     open: true,
     providerId,
-  });
-};
+  })
+}
 
 export const closeAddLocalModelDownloadDrawer = () => {
   useAddLocalModelDownloadDrawerStore.setState({
     open: false,
     loading: false,
     providerId: null,
-  });
-};
+  })
+}
 
 export const setAddLocalModelDownloadDrawerLoading = (loading: boolean) => {
   useAddLocalModelDownloadDrawerStore.setState({
     loading,
-  });
-};
+  })
+}

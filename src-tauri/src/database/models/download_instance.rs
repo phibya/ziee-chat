@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-use super::model::{ModelCapabilities, ModelSettings};
+use super::model::{ModelCapabilities, ModelParameters, ModelSettings};
 
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -45,6 +45,8 @@ pub struct DownloadRequestData {
     pub main_filename: Option<String>,
     /// Model capabilities configuration
     pub capabilities: Option<ModelCapabilities>,
+    /// Model parameters configuration
+    pub parameters: Option<ModelParameters>,
     /// Model settings configuration
     pub settings: Option<ModelSettings>,
 }

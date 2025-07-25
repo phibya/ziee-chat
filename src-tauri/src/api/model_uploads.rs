@@ -1,16 +1,9 @@
-use axum::{
-    http::StatusCode,
-    response::sse::{Event, KeepAlive, Sse},
-    response::Json,
-    response::Response,
-    Extension,
-};
-use futures_util::{Stream, StreamExt};
+use axum::{response::Json, Extension};
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::api::{
@@ -45,7 +38,7 @@ impl ProgressTracker {
 
     fn update(&mut self, current_bytes: u64) -> (Option<f64>, Option<u64>) {
         let now = std::time::Instant::now();
-        
+
         // Calculate overall speed (bytes per second)
         let total_elapsed = now.duration_since(self.start_time).as_secs_f64();
         let overall_speed = if total_elapsed > 0.0 {
@@ -56,7 +49,8 @@ impl ProgressTracker {
 
         // Calculate recent speed for more responsive updates
         let recent_elapsed = now.duration_since(self.last_update_time).as_secs_f64();
-        let recent_speed = if recent_elapsed > 1.0 { // Only calculate if at least 1 second elapsed
+        let recent_speed = if recent_elapsed > 1.0 {
+            // Only calculate if at least 1 second elapsed
             let bytes_diff = current_bytes.saturating_sub(self.last_bytes) as f64;
             bytes_diff / recent_elapsed
         } else {
@@ -79,7 +73,12 @@ impl ProgressTracker {
         (Some(speed_bps), None) // ETA will be calculated separately
     }
 
-    fn calculate_eta(&self, current_bytes: u64, total_bytes: u64, speed_bps: Option<f64>) -> Option<u64> {
+    fn calculate_eta(
+        &self,
+        current_bytes: u64,
+        total_bytes: u64,
+        speed_bps: Option<f64>,
+    ) -> Option<u64> {
         if let Some(speed) = speed_bps {
             if speed > 0.0 && total_bytes > current_bytes {
                 let remaining_bytes = total_bytes - current_bytes;
@@ -103,21 +102,29 @@ pub struct DownloadProgress {
     pub model: Option<Model>,
 }
 
+/// Request struct for creating a model with files
+#[derive(Debug)]
+pub struct CreateModelWithFilesRequest {
+    pub provider_id: Uuid,
+    pub name: String,
+    pub alias: String,
+    pub description: Option<String>,
+    pub file_format: String,
+    pub main_filename: String,
+    pub source_dir: PathBuf,
+    pub capabilities: Option<ModelCapabilities>,
+    pub parameters: Option<ModelParameters>,
+    pub settings: Option<ModelSettings>,
+}
+
 /// Shared model creation and file processing logic
-async fn create_model_with_files(
-    storage: &ModelStorage,
-    provider_id: Uuid,
-    name: String,
-    alias: String,
-    description: Option<String>,
-    file_format: String,
-    main_filename: String,
-    source_dir: PathBuf,
-    capabilities: Option<ModelCapabilities>,
-    settings: Option<ModelSettings>,
-) -> Result<Model, AppError> {
+async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result<Model, AppError> {
+    // Initialize storage
+    let storage = ModelStorage::new().await.map_err(|e| {
+        AppError::internal_error(format!("Failed to initialize storage: {}", e))
+    })?;
     // Validate provider exists and is of type 'local'
-    let provider = crate::database::queries::providers::get_provider_by_id(provider_id)
+    let provider = crate::database::queries::providers::get_provider_by_id(request.provider_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
@@ -131,23 +138,23 @@ async fn create_model_with_files(
 
     // Generate model ID first (but don't create in database yet)
     let model_id = Uuid::new_v4();
-    let model_name = name.clone();
+    let model_name = request.name.clone();
 
-    println!("Processing model with file format: {}", file_format);
+    println!("Processing model with file format: {}", request.file_format);
 
     // Create storage directory
     storage
-        .create_model_directory(&provider_id, &model_id)
+        .create_model_directory(&request.provider_id, &model_id)
         .await
         .map_err(|e| {
             AppError::internal_error(format!("Failed to create storage directory: {}", e))
         })?;
 
     // print source directory
-    println!("Source directory for model files: {}", source_dir.display());
+    println!("Source directory for model files: {}", request.source_dir.display());
 
     // List all files in the source directory
-    let source_files = match tokio::fs::read_dir(&source_dir).await {
+    let source_files = match tokio::fs::read_dir(&request.source_dir).await {
         Ok(mut entries) => {
             let mut files = Vec::new();
             while let Some(entry) = entries.next_entry().await.map_err(|e| {
@@ -182,14 +189,14 @@ async fn create_model_with_files(
     }
 
     // Determine which files to copy based on main filename and index files
-    let files_to_copy = determine_files_to_copy(&source_files, &main_filename)?;
+    let files_to_copy = determine_files_to_copy(&source_files, &request.main_filename)?;
 
     if files_to_copy.is_empty() {
         return Err(AppError::new(
             ErrorCode::ValidInvalidInput,
             format!(
                 "No relevant files found for main filename: {}",
-                main_filename
+                request.main_filename
             ),
         ));
     }
@@ -206,9 +213,9 @@ async fn create_model_with_files(
     let mut file_records = Vec::new();
 
     for filename in &files_to_copy {
-        let source_path = source_dir.join(filename);
+        let source_path = request.source_dir.join(filename);
         let dest_path = storage
-            .get_model_path(&provider_id, &model_id)
+            .get_model_path(&request.provider_id, &model_id)
             .join(filename);
 
         // Get file size
@@ -230,7 +237,7 @@ async fn create_model_with_files(
 
         // Collect file information for database insertion later
         let file_type = determine_model_file_type(filename).to_string();
-        let relative_path = format!("models/{}/{}/{}", provider_id, model_id, filename);
+        let relative_path = format!("models/{}/{}/{}", request.provider_id, model_id, filename);
 
         file_records.push((
             filename.clone(),
@@ -246,14 +253,15 @@ async fn create_model_with_files(
     }
 
     // Now that all files are processed successfully, create the model in the database
-    let create_request = CreateModelRequest {
-        provider_id,
-        name,
-        alias,
-        description,
+    let create_request = crate::database::models::CreateModelRequest {
+        provider_id: request.provider_id,
+        name: request.name,
+        alias: request.alias,
+        description: request.description,
         enabled: Some(true), // Enable immediately since everything succeeded
-        capabilities: capabilities.or_else(|| Some(ModelCapabilities::new())),
-        settings,
+        capabilities: request.capabilities.or_else(|| Some(ModelCapabilities::new())),
+        parameters: request.parameters,
+        settings: request.settings,
     };
 
     // Create the model record with the pre-generated ID
@@ -478,12 +486,13 @@ pub struct DownloadFromRepositoryRequest {
     pub file_format: String,
     pub main_filename: String,
     pub capabilities: Option<ModelCapabilities>,
+    pub parameters: Option<ModelParameters>,
     pub settings: Option<ModelSettings>,
 }
 
 /// Initiate model download from repository (returns JSON with download ID immediately)
 pub async fn initiate_repository_download(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<DownloadFromRepositoryRequest>,
 ) -> ApiResult<Json<DownloadInstance>> {
     // Get repository information
@@ -507,6 +516,7 @@ pub async fn initiate_repository_download(
             file_format: Some(request.file_format.clone()),
             main_filename: Some(request.main_filename.clone()),
             capabilities: request.capabilities.clone(),
+            parameters: request.parameters.clone(),
             settings: request.settings.clone(),
         },
     };
@@ -570,11 +580,9 @@ pub async fn initiate_repository_download(
                 // Calculate speed and ETA
                 let (speed_bps_f64, _) = tracker.update(git_progress.current);
                 let speed_bps = speed_bps_f64.map(|s| s as i64);
-                let eta_seconds = tracker.calculate_eta(
-                    git_progress.current,
-                    git_progress.total,
-                    speed_bps_f64
-                ).map(|eta| eta as i64);
+                let eta_seconds = tracker
+                    .calculate_eta(git_progress.current, git_progress.total, speed_bps_f64)
+                    .map(|eta| eta as i64);
 
                 let progress_data = DownloadProgressData {
                     phase: Some(format!("{:?}", git_progress.phase)),
@@ -628,8 +636,8 @@ pub async fn initiate_repository_download(
         // Drop the progress sender to signal completion to the progress task
         drop(progress_tx);
 
-        // Wait for progress task with timeout
-        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), progress_task).await;
+        // Wait for progress task with timeout to ensure it processes any final messages
+        let _ = tokio::time::timeout(std::time::Duration::from_secs(10), progress_task).await;
 
         println!("Clone result: {:?}", clone_result);
 
@@ -730,11 +738,9 @@ pub async fn initiate_repository_download(
                     while let Some(git_progress) = lfs_progress_rx.recv().await {
                         let (speed_bps_f64, _) = lfs_tracker.update(git_progress.current);
                         let speed_bps = speed_bps_f64.map(|s| s as i64);
-                        let eta_seconds = lfs_tracker.calculate_eta(
-                            git_progress.current,
-                            git_progress.total,
-                            speed_bps_f64
-                        ).map(|eta| eta as i64);
+                        let eta_seconds = lfs_tracker
+                            .calculate_eta(git_progress.current, git_progress.total, speed_bps_f64)
+                            .map(|eta| eta as i64);
 
                         let _ =
                             crate::database::queries::download_instances::update_download_progress(
@@ -800,71 +806,75 @@ pub async fn initiate_repository_download(
                 )
                 .await;
 
-                // Create storage and commit
-                match ModelStorage::new().await {
-                    Ok(storage) => {
-                        match create_model_with_files(
-                            &storage,
-                            request.provider_id,
-                            request.name,
-                            request.alias,
-                            request.description,
-                            request.file_format,
-                            request.main_filename,
-                            cache_path,
-                            request.capabilities,
-                            request.settings,
+                // Create model with files
+                match create_model_with_files(CreateModelWithFilesRequest {
+                    provider_id: request.provider_id,
+                    name: request.name,
+                    alias: request.alias,
+                    description: request.description,
+                    file_format: request.file_format,
+                    main_filename: request.main_filename,
+                    source_dir: cache_path,
+                    capabilities: request.capabilities,
+                    parameters: request.parameters,
+                    settings: request.settings,
+                })
+                .await
+                {
+                    Ok(model) => {
+                        // Update download as completed with model ID
+                        let _ = crate::database::queries::download_instances::update_download_status(
+                            download_id,
+                            UpdateDownloadStatusRequest {
+                                status: DownloadStatus::Completed,
+                                error_message: None,
+                                model_id: Some(model.id),
+                            },
                         )
-                        .await
-                        {
-                            Ok(model) => {
-                                // Update download as completed with model ID
-                                let _ = crate::database::queries::download_instances::update_download_status(
-                                    download_id,
-                                    UpdateDownloadStatusRequest {
-                                        status: DownloadStatus::Completed,
-                                        error_message: None,
-                                        model_id: Some(model.id),
-                                    },
-                                )
-                                .await;
-                            }
-                            Err(e) => {
-                                let _ = crate::database::queries::download_instances::update_download_status(
-                                    download_id,
-                                    UpdateDownloadStatusRequest {
-                                        status: DownloadStatus::Failed,
-                                        error_message: Some(format!("Failed to create model: {}", e)),
-                                        model_id: None,
-                                    },
-                                )
-                                .await;
-                            }
-                        }
+                        .await;
+
+                        // Spawn cleanup task to remove the download record after 60 seconds
+                        // This gives clients time to see the completion status
+                        tokio::spawn(async move {
+                            tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
+                            let _ = crate::database::queries::download_instances::delete_download_instance(download_id).await;
+                        });
                     }
                     Err(e) => {
-                        let _ =
-                            crate::database::queries::download_instances::update_download_status(
-                                download_id,
-                                UpdateDownloadStatusRequest {
-                                    status: DownloadStatus::Failed,
-                                    error_message: Some(format!(
-                                        "Storage initialization failed: {}",
-                                        e
-                                    )),
-                                    model_id: None,
-                                },
-                            )
-                            .await;
+                        let _ = crate::database::queries::download_instances::update_download_status(
+                            download_id,
+                            UpdateDownloadStatusRequest {
+                                status: DownloadStatus::Failed,
+                                error_message: Some(format!("Failed to create model: {}", e)),
+                                model_id: None,
+                            },
+                        )
+                        .await;
                     }
                 }
             }
             Err(e) => {
+                // Create a more descriptive error message
+                let error_msg = if e.to_string().contains("403")
+                    || e.to_string().contains("HTTP status code: 403")
+                {
+                    format!("Access denied (403): Authentication failed or insufficient permissions. {}", e)
+                } else if e.to_string().contains("401")
+                    || e.to_string().contains("HTTP status code: 401")
+                {
+                    format!(
+                        "Authentication required (401): Invalid or missing credentials. {}",
+                        e
+                    )
+                } else {
+                    format!("Download failed: {}", e)
+                };
+
                 let _ = crate::database::queries::download_instances::update_download_status(
                     download_id,
                     UpdateDownloadStatusRequest {
                         status: DownloadStatus::Failed,
-                        error_message: Some(format!("Download failed: {}", e)),
+                        error_message: Some(error_msg),
                         model_id: None,
                     },
                 )
@@ -875,328 +885,6 @@ pub async fn initiate_repository_download(
 
     // Return the download instance immediately
     Ok(Json(download_instance))
-}
-
-/// Download model from repository and commit files with SSE progress streaming
-pub async fn download_and_commit_repository_files(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Json(request): Json<DownloadFromRepositoryRequest>,
-) -> Result<Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>, Response> {
-    // Get repository information
-    let repository = match repositories::get_repository_by_id(request.repository_id).await {
-        Ok(Some(repo)) => repo,
-        Ok(None) => {
-            let error_response = Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body("Repository not found".into())
-                .unwrap();
-            return Err(error_response);
-        }
-        Err(e) => {
-            let error_response = Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(format!("Database error: {}", e).into())
-                .unwrap();
-            return Err(error_response);
-        }
-    };
-
-    // Build repository URL
-    let repository_url =
-        GitService::build_repository_url(&repository.url, &request.repository_path);
-
-    // Create progress channels
-    let (progress_tx, progress_rx) = mpsc::unbounded_channel::<GitProgress>();
-    let (sse_tx, sse_rx) = mpsc::unbounded_channel::<DownloadProgress>();
-
-    // Create git service
-    let git_service = GitService::new();
-
-    // Prepare authentication based on repository auth_type
-    let auth_token = match repository.auth_type.as_str() {
-        "api_key" => repository
-            .auth_config
-            .as_ref()
-            .and_then(|config| config.api_key.clone()),
-        "bearer_token" => repository
-            .auth_config
-            .as_ref()
-            .and_then(|config| config.token.clone()),
-        "basic_auth" => {
-            // For basic auth, return username:password format
-            if let Some(config) = &repository.auth_config {
-                if let (Some(username), Some(password)) = (&config.username, &config.password) {
-                    Some(format!("{}:{}", username, password))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-        "none" | _ => None,
-    };
-    let provider_id = request.provider_id;
-    let name = request.name.clone();
-    let alias = request.alias.clone();
-    let description = request.description.clone();
-    let file_format = request.file_format.clone();
-    let main_filename = request.main_filename.clone();
-    let capabilities = request.capabilities.clone();
-    let settings = request.settings.clone();
-    let repository_id = request.repository_id;
-
-    // Spawn task to handle git progress and auto-commit
-    tokio::spawn(async move {
-        // Convert git progress to SSE progress
-        let progress_task = {
-            let sse_tx = sse_tx.clone();
-            tokio::spawn(async move {
-                let mut progress_rx = progress_rx;
-                while let Some(git_progress) = progress_rx.recv().await {
-                    // Skip the Git Complete phase - we'll send our own when model is created
-                    if matches!(
-                        git_progress.phase,
-                        crate::utils::git_service::GitPhase::Complete
-                    ) {
-                        break;
-                    }
-
-                    let progress = DownloadProgress {
-                        phase: format!("{:?}", git_progress.phase),
-                        current: git_progress.current,
-                        total: git_progress.total,
-                        message: git_progress.message,
-                        model: None,
-                    };
-
-                    if sse_tx.send(progress).is_err() {
-                        break;
-                    }
-
-                    // Check if we're errored
-                    if matches!(
-                        git_progress.phase,
-                        crate::utils::git_service::GitPhase::Error
-                    ) {
-                        break;
-                    }
-                }
-            })
-        };
-
-        // Clone repository without LFS files
-        let clone_result = git_service
-            .clone_repository_without_lfs(
-                &repository_url,
-                &repository_id,
-                request.repository_branch.as_deref(),
-                auth_token.as_deref(),
-                progress_tx.clone(),
-            )
-            .await;
-
-        // Drop the progress sender to signal completion to the progress task
-        drop(progress_tx);
-
-        // Wait for progress task to complete with timeout
-        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), progress_task).await;
-
-        match clone_result {
-            Ok(cache_path) => {
-                // Step 1: Determine which files we need to copy
-                let _ = sse_tx.send(DownloadProgress {
-                    phase: "Analyzing".to_string(),
-                    current: 10,
-                    total: 100,
-                    message: "Analyzing repository files...".to_string(),
-                    model: None,
-                });
-
-                // List files in the repository
-                let source_files = match std::fs::read_dir(&cache_path) {
-                    Ok(entries) => entries
-                        .filter_map(|entry| {
-                            entry
-                                .ok()
-                                .and_then(|e| e.file_name().to_str().map(|s| s.to_string()))
-                        })
-                        .filter(|name| !name.starts_with('.'))
-                        .collect::<Vec<String>>(),
-                    Err(e) => {
-                        let _ = sse_tx.send(DownloadProgress {
-                            phase: "Error".to_string(),
-                            current: 0,
-                            total: 100,
-                            message: format!("Failed to read repository directory: {}", e),
-                            model: None,
-                        });
-                        return;
-                    }
-                };
-
-                // Determine which files to copy based on main filename
-                let files_to_copy = match determine_files_to_copy(&source_files, &main_filename) {
-                    Ok(files) => files,
-                    Err(e) => {
-                        let _ = sse_tx.send(DownloadProgress {
-                            phase: "Error".to_string(),
-                            current: 0,
-                            total: 100,
-                            message: format!("Failed to determine files to copy: {}", e),
-                            model: None,
-                        });
-                        return;
-                    }
-                };
-
-                println!("Files to copy: {:?}", files_to_copy);
-
-                // Step 2: Pull LFS files if needed
-                let _ = sse_tx.send(DownloadProgress {
-                    phase: "Downloading".to_string(),
-                    current: 20,
-                    total: 100,
-                    message: "Checking for LFS files...".to_string(),
-                    model: None,
-                });
-
-                // Create a new progress channel for LFS downloads
-                let (lfs_progress_tx, mut lfs_progress_rx) =
-                    mpsc::unbounded_channel::<GitProgress>();
-                let sse_tx_clone = sse_tx.clone();
-
-                // Spawn task to convert LFS progress to SSE progress
-                let lfs_progress_task = tokio::spawn(async move {
-                    while let Some(git_progress) = lfs_progress_rx.recv().await {
-                        let progress = DownloadProgress {
-                            phase: "Downloading".to_string(),
-                            current: git_progress.current,
-                            total: git_progress.total,
-                            message: git_progress.message,
-                            model: None,
-                        };
-                        if sse_tx_clone.send(progress).is_err() {
-                            break;
-                        }
-                    }
-                });
-
-                // Pull only the LFS files we need
-                let lfs_result = git_service
-                    .pull_lfs_files(
-                        &cache_path,
-                        &files_to_copy,
-                        auth_token.as_deref(),
-                        lfs_progress_tx,
-                    )
-                    .await;
-
-                // Wait for LFS progress task with timeout (the sender is dropped by pull_lfs_files)
-                let _ = tokio::time::timeout(std::time::Duration::from_secs(5), lfs_progress_task)
-                    .await;
-
-                // Check LFS result after progress task is done
-                if let Err(e) = lfs_result {
-                    let _ = sse_tx.send(DownloadProgress {
-                        phase: "Error".to_string(),
-                        current: 0,
-                        total: 100,
-                        message: format!("Failed to download LFS files: {}", e),
-                        model: None,
-                    });
-                    return;
-                }
-
-                // Step 3: Create model with the files
-                let _ = sse_tx.send(DownloadProgress {
-                    phase: "Committing".to_string(),
-                    current: 90,
-                    total: 100,
-                    message: "Creating model from downloaded files...".to_string(),
-                    model: None,
-                });
-
-                // Create storage and commit the repository files
-                let storage_result = ModelStorage::new().await;
-                match storage_result {
-                    Ok(storage) => {
-                        match create_model_with_files(
-                            &storage,
-                            provider_id,
-                            name,
-                            alias,
-                            description,
-                            file_format,
-                            main_filename,
-                            cache_path,
-                            capabilities,
-                            settings,
-                        )
-                        .await
-                        {
-                            Ok(model) => {
-                                // Send final success with model
-                                let _ = sse_tx.send(DownloadProgress {
-                                    phase: "Complete".to_string(),
-                                    current: 100,
-                                    total: 100,
-                                    message: "Model created successfully".to_string(),
-                                    model: Some(model),
-                                });
-                            }
-                            Err(e) => {
-                                // Send error
-                                let _ = sse_tx.send(DownloadProgress {
-                                    phase: "Error".to_string(),
-                                    current: 0,
-                                    total: 100,
-                                    message: format!("Failed to create model: {}", e),
-                                    model: None,
-                                });
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        // Send storage error
-                        let _ = sse_tx.send(DownloadProgress {
-                            phase: "Error".to_string(),
-                            current: 0,
-                            total: 100,
-                            message: format!("Storage initialization failed: {}", e),
-                            model: None,
-                        });
-                    }
-                }
-            }
-            Err(e) => {
-                // Send download error
-                let _ = sse_tx.send(DownloadProgress {
-                    phase: "Error".to_string(),
-                    current: 0,
-                    total: 100,
-                    message: format!("Download failed: {}", e),
-                    model: None,
-                });
-            }
-        }
-    });
-
-    // Create SSE stream
-    let stream = UnboundedReceiverStream::new(sse_rx).map(|progress| {
-        let json = serde_json::to_string(&progress).unwrap_or_else(|_| "{}".to_string());
-
-        // Determine event type based on phase
-        let event_type = match progress.phase.as_str() {
-            "Complete" => "complete",
-            "Error" => "error",
-            _ => "progress",
-        };
-
-        Ok(Event::default().event(event_type).data(json))
-    });
-
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 /// Determine model file type based on filename

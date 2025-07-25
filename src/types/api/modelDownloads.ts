@@ -2,7 +2,7 @@
  * Download instance types for model downloads from repositories
  */
 
-import { ModelCapabilities, ModelSettings } from './model'
+import { ModelCapabilities, ModelParameters, ModelSettings } from './model'
 
 export interface DownloadProgress {
   phase: string
@@ -29,6 +29,7 @@ export interface DownloadFromRepositoryRequest {
   description?: string
   file_format: string
   capabilities?: ModelCapabilities
+  parameters?: ModelParameters
   settings?: ModelSettings
 }
 
@@ -43,6 +44,7 @@ export interface DownloadRequestData {
   file_format?: string
   main_filename?: string
   capabilities?: ModelCapabilities
+  parameters?: ModelParameters
   settings?: ModelSettings
 }
 

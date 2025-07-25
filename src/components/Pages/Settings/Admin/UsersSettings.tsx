@@ -5,7 +5,7 @@ import {
   PlusOutlined,
   TeamOutlined,
   UserOutlined,
-} from "@ant-design/icons";
+} from '@ant-design/icons'
 import {
   App,
   Badge,
@@ -22,13 +22,13 @@ import {
   Table,
   Tag,
   Typography,
-} from "antd";
-import { Drawer } from "../../../common/Drawer.tsx";
-import type { ColumnsType } from "antd/es/table";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { isDesktopApp } from "../../../../api/core.ts";
-import { Permission, usePermissions } from "../../../../permissions";
+} from 'antd'
+import { Drawer } from '../../../common/Drawer.tsx'
+import type { ColumnsType } from 'antd/es/table'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { isDesktopApp } from '../../../../api/core.ts'
+import { Permission, usePermissions } from '../../../../permissions'
 import {
   assignUserToUserGroup,
   clearSystemAdminError,
@@ -39,67 +39,67 @@ import {
   Stores,
   toggleSystemUserActiveStatus,
   updateSystemUser,
-} from "../../../../store";
+} from '../../../../store'
 import {
   ResetPasswordRequest,
   UpdateUserRequest,
   User,
   UserGroup,
-} from "../../../../types";
-import { PageContainer } from "../../../common/PageContainer";
-import { UserRegistrationSettings } from "./UserRegistrationSettings.tsx";
+} from '../../../../types'
+import { PageContainer } from '../../../common/PageContainer'
+import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
-const { Title, Text } = Typography;
-const { Option } = Select;
+const { Title, Text } = Typography
+const { Option } = Select
 
 export function UsersSettings() {
-  const { t } = useTranslation();
-  const { message } = App.useApp();
-  const { hasPermission } = usePermissions();
+  const { t } = useTranslation()
+  const { message } = App.useApp()
+  const { hasPermission } = usePermissions()
 
   // Admin store
-  const { users, groups, loading, error } = Stores.Admin;
+  const { users, groups, loading, error } = Stores.Admin
 
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
-  const [groupsDrawerVisible, setGroupsDrawerVisible] = useState(false);
-  const [assignGroupModalVisible, setAssignGroupModalVisible] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [editForm] = Form.useForm();
-  const [passwordForm] = Form.useForm();
-  const [assignGroupForm] = Form.useForm();
+  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false)
+  const [groupsDrawerVisible, setGroupsDrawerVisible] = useState(false)
+  const [assignGroupModalVisible, setAssignGroupModalVisible] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [editForm] = Form.useForm()
+  const [passwordForm] = Form.useForm()
+  const [assignGroupForm] = Form.useForm()
 
   // Check permissions
-  const canReadUsers = hasPermission(Permission.users.read);
-  const canEditUsers = hasPermission(Permission.users.edit);
+  const canReadUsers = hasPermission(Permission.users.read)
+  const canEditUsers = hasPermission(Permission.users.edit)
 
   // User needs at least read permission to access this page
-  const canAccessUsers = canReadUsers;
+  const canAccessUsers = canReadUsers
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
     if (isDesktopApp) {
-      message.warning("User management is not available in desktop mode");
-      return;
+      message.warning('User management is not available in desktop mode')
+      return
     }
     if (!canAccessUsers) {
-      message.warning("You do not have permission to access user management");
-      return;
+      message.warning('You do not have permission to access user management')
+      return
     }
-    loadAllSystemUsers();
-    loadAllUserGroups();
-  }, [canAccessUsers]);
+    loadAllSystemUsers()
+    loadAllUserGroups()
+  }, [canAccessUsers])
 
   // Show errors
   useEffect(() => {
     if (error) {
-      message.error(error);
-      clearSystemAdminError();
+      message.error(error)
+      clearSystemAdminError()
     }
-  }, [error, message]);
+  }, [error, message])
 
   const handleEditUser = async (values: any) => {
-    if (!selectedUser) return;
+    if (!selectedUser) return
 
     try {
       const updateData: UpdateUserRequest = {
@@ -108,107 +108,107 @@ export function UsersSettings() {
         email: values.email,
         is_active: values.is_active,
         profile: values.profile ? JSON.parse(values.profile) : undefined,
-      };
+      }
 
-      await updateSystemUser(selectedUser.id, updateData);
+      await updateSystemUser(selectedUser.id, updateData)
 
-      message.success("User updated successfully");
-      setEditModalVisible(false);
-      setSelectedUser(null);
-      editForm.resetFields();
+      message.success('User updated successfully')
+      setEditModalVisible(false)
+      setSelectedUser(null)
+      editForm.resetFields()
     } catch (error) {
-      console.error("Failed to update user:", error);
+      console.error('Failed to update user:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const handleResetPassword = async (values: any) => {
-    if (!selectedUser) return;
+    if (!selectedUser) return
 
     try {
       const resetData: ResetPasswordRequest = {
         user_id: selectedUser.id,
         new_password: values.new_password,
-      };
+      }
 
-      await resetSystemUserPassword(selectedUser.id, resetData.new_password);
+      await resetSystemUserPassword(selectedUser.id, resetData.new_password)
 
-      message.success("Password reset successfully");
-      setPasswordModalVisible(false);
-      setSelectedUser(null);
-      passwordForm.resetFields();
+      message.success('Password reset successfully')
+      setPasswordModalVisible(false)
+      setSelectedUser(null)
+      passwordForm.resetFields()
     } catch (error) {
-      console.error("Failed to reset password:", error);
+      console.error('Failed to reset password:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const handleToggleActive = async (userId: string) => {
     try {
-      await toggleSystemUserActiveStatus(userId);
-      message.success("User status updated successfully");
+      await toggleSystemUserActiveStatus(userId)
+      message.success('User status updated successfully')
     } catch (error) {
-      console.error("Failed to update user status:", error);
+      console.error('Failed to update user status:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const handleAssignGroup = async (values: any) => {
-    if (!selectedUser) return;
+    if (!selectedUser) return
 
     try {
-      await assignUserToUserGroup(selectedUser.id, values.group_id);
-      message.success("User assigned to group successfully");
-      setAssignGroupModalVisible(false);
-      setSelectedUser(null);
-      assignGroupForm.resetFields();
+      await assignUserToUserGroup(selectedUser.id, values.group_id)
+      message.success('User assigned to group successfully')
+      setAssignGroupModalVisible(false)
+      setSelectedUser(null)
+      assignGroupForm.resetFields()
     } catch (error) {
-      console.error("Failed to assign user to group:", error);
+      console.error('Failed to assign user to group:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const handleRemoveFromGroup = async (userId: string, groupId: string) => {
     try {
-      await removeUserFromUserGroup(userId, groupId);
+      await removeUserFromUserGroup(userId, groupId)
 
-      message.success("User removed from group successfully");
+      message.success('User removed from group successfully')
     } catch (error) {
-      console.error("Failed to remove user from group:", error);
+      console.error('Failed to remove user from group:', error)
       // Error is handled by the store
     }
-  };
+  }
 
   const openEditModal = (user: User) => {
-    setSelectedUser(user);
+    setSelectedUser(user)
     editForm.setFieldsValue({
       username: user.username,
       email: user.emails[0]?.address,
       is_active: user.is_active,
-      profile: user.profile ? JSON.stringify(user.profile, null, 2) : "",
-    });
-    setEditModalVisible(true);
-  };
+      profile: user.profile ? JSON.stringify(user.profile, null, 2) : '',
+    })
+    setEditModalVisible(true)
+  }
 
   const openPasswordModal = (user: User) => {
-    setSelectedUser(user);
-    setPasswordModalVisible(true);
-  };
+    setSelectedUser(user)
+    setPasswordModalVisible(true)
+  }
 
   const openGroupsDrawer = (user: User) => {
-    setSelectedUser(user);
-    setGroupsDrawerVisible(true);
-  };
+    setSelectedUser(user)
+    setGroupsDrawerVisible(true)
+  }
 
   const openAssignGroupModal = (user: User) => {
-    setSelectedUser(user);
-    setAssignGroupModalVisible(true);
-  };
+    setSelectedUser(user)
+    setAssignGroupModalVisible(true)
+  }
 
   const columns: ColumnsType<User> = [
     {
-      title: t("admin.users.columns.user"),
-      key: "user",
+      title: t('admin.users.columns.user'),
+      key: 'user',
       render: (_, record: User) => (
         <Flex className="gap-2">
           <UserOutlined />
@@ -229,23 +229,23 @@ export function UsersSettings() {
       ),
     },
     {
-      title: t("admin.users.columns.status"),
-      dataIndex: "is_active",
-      key: "is_active",
+      title: t('admin.users.columns.status'),
+      dataIndex: 'is_active',
+      key: 'is_active',
       render: (active: boolean) => (
         <Badge
-          status={active ? "success" : "error"}
-          text={active ? "Active" : "Inactive"}
+          status={active ? 'success' : 'error'}
+          text={active ? 'Active' : 'Inactive'}
         />
       ),
     },
     {
-      title: t("admin.users.columns.groups"),
-      dataIndex: "groups",
-      key: "groups",
+      title: t('admin.users.columns.groups'),
+      dataIndex: 'groups',
+      key: 'groups',
       render: (groups: UserGroup[]) => (
         <div>
-          {groups.slice(0, 2).map((group) => (
+          {groups.slice(0, 2).map(group => (
             <Tag key={group.id} color="blue">
               {group.name}
             </Tag>
@@ -255,9 +255,9 @@ export function UsersSettings() {
       ),
     },
     {
-      title: t("admin.users.columns.lastLogin"),
-      dataIndex: "last_login_at",
-      key: "last_login_at",
+      title: t('admin.users.columns.lastLogin'),
+      dataIndex: 'last_login_at',
+      key: 'last_login_at',
       render: (date: string) =>
         date ? (
           new Date(date).toLocaleDateString()
@@ -266,14 +266,14 @@ export function UsersSettings() {
         ),
     },
     {
-      title: t("admin.users.columns.created"),
-      dataIndex: "created_at",
-      key: "created_at",
+      title: t('admin.users.columns.created'),
+      dataIndex: 'created_at',
+      key: 'created_at',
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: t("admin.users.columns.actions"),
-      key: "actions",
+      title: t('admin.users.columns.actions'),
+      key: 'actions',
       render: (_, record: User) => (
         <Flex className="gap-2">
           {canEditUsers && !record.is_protected && (
@@ -305,20 +305,20 @@ export function UsersSettings() {
           )}
           {canEditUsers && !(record.is_protected && record.is_active) && (
             <Popconfirm
-              title={`${record.is_active ? "Deactivate" : "Activate"} this user?`}
+              title={`${record.is_active ? 'Deactivate' : 'Activate'} this user?`}
               onConfirm={() => handleToggleActive(record.id)}
               okText="Yes"
               cancelText="No"
             >
               <Button type="link" danger={record.is_active}>
-                {record.is_active ? "Deactivate" : "Activate"}
+                {record.is_active ? 'Deactivate' : 'Activate'}
               </Button>
             </Popconfirm>
           )}
         </Flex>
       ),
     },
-  ];
+  ]
 
   if (isDesktopApp) {
     return (
@@ -330,15 +330,15 @@ export function UsersSettings() {
           </Text>
         </div>
       </Card>
-    );
+    )
   }
 
   if (!canAccessUsers) {
     return (
       <Result
         icon={<ExclamationCircleOutlined />}
-        title={t("admin.users.accessDenied")}
-        subTitle={t("admin.users.accessDeniedMessage", {
+        title={t('admin.users.accessDenied')}
+        subTitle={t('admin.users.accessDeniedMessage', {
           permission: Permission.users.read,
         })}
         extra={
@@ -347,7 +347,7 @@ export function UsersSettings() {
           </Button>
         }
       />
-    );
+    )
   }
 
   return (
@@ -364,7 +364,7 @@ export function UsersSettings() {
           <Card
             styles={{
               body: {
-                padding: "0",
+                padding: '0',
               },
             }}
           >
@@ -376,7 +376,7 @@ export function UsersSettings() {
               pagination={{
                 pageSize: 10,
                 showSizeChanger: true,
-                showTotal: (total) => `Total ${total} users`,
+                showTotal: total => `Total ${total} users`,
               }}
             />
           </Card>
@@ -384,12 +384,12 @@ export function UsersSettings() {
 
         {/* Edit User Modal */}
         <Drawer
-          title={t("admin.users.editUser")}
+          title={t('admin.users.editUser')}
           open={editModalVisible}
           onClose={() => {
-            setEditModalVisible(false);
-            setSelectedUser(null);
-            editForm.resetFields();
+            setEditModalVisible(false)
+            setSelectedUser(null)
+            editForm.resetFields()
           }}
           footer={null}
           width={600}
@@ -398,43 +398,43 @@ export function UsersSettings() {
           <Form form={editForm} layout="vertical" onFinish={handleEditUser}>
             <Form.Item
               name="username"
-              label={t("admin.users.forms.username")}
-              rules={[{ required: true, message: "Please enter username" }]}
+              label={t('admin.users.forms.username')}
+              rules={[{ required: true, message: 'Please enter username' }]}
             >
-              <Input placeholder={t("admin.users.forms.enterUsername")} />
+              <Input placeholder={t('admin.users.forms.enterUsername')} />
             </Form.Item>
             <Form.Item
               name="email"
-              label={t("admin.users.forms.email")}
+              label={t('admin.users.forms.email')}
               rules={[
                 {
                   required: true,
-                  type: "email",
-                  message: "Please enter valid email",
+                  type: 'email',
+                  message: 'Please enter valid email',
                 },
               ]}
             >
-              <Input placeholder={t("admin.users.forms.enterEmail")} />
+              <Input placeholder={t('admin.users.forms.enterEmail')} />
             </Form.Item>
             <Form.Item
               name="is_active"
-              label={t("admin.users.forms.active")}
+              label={t('admin.users.forms.active')}
               valuePropName="checked"
             >
               <Switch />
             </Form.Item>
             <Form.Item
               name="profile"
-              label={t("admin.users.forms.profile")}
+              label={t('admin.users.forms.profile')}
               rules={[
                 {
                   validator: (_, value) => {
-                    if (!value) return Promise.resolve();
+                    if (!value) return Promise.resolve()
                     try {
-                      JSON.parse(value);
-                      return Promise.resolve();
+                      JSON.parse(value)
+                      return Promise.resolve()
                     } catch {
-                      return Promise.reject("Invalid JSON format");
+                      return Promise.reject('Invalid JSON format')
                     }
                   },
                 },
@@ -449,9 +449,9 @@ export function UsersSettings() {
                 </Button>
                 <Button
                   onClick={() => {
-                    setEditModalVisible(false);
-                    setSelectedUser(null);
-                    editForm.resetFields();
+                    setEditModalVisible(false)
+                    setSelectedUser(null)
+                    editForm.resetFields()
                   }}
                 >
                   Cancel
@@ -463,12 +463,12 @@ export function UsersSettings() {
 
         {/* Reset Password Modal */}
         <Drawer
-          title={t("admin.users.resetPassword")}
+          title={t('admin.users.resetPassword')}
           open={passwordModalVisible}
           onClose={() => {
-            setPasswordModalVisible(false);
-            setSelectedUser(null);
-            passwordForm.resetFields();
+            setPasswordModalVisible(false)
+            setSelectedUser(null)
+            passwordForm.resetFields()
           }}
           footer={null}
           maskClosable={false}
@@ -480,34 +480,34 @@ export function UsersSettings() {
           >
             <Form.Item
               name="new_password"
-              label={t("admin.users.forms.newPassword")}
+              label={t('admin.users.forms.newPassword')}
               rules={[
-                { required: true, message: "Please enter new password" },
-                { min: 6, message: "Password must be at least 6 characters" },
+                { required: true, message: 'Please enter new password' },
+                { min: 6, message: 'Password must be at least 6 characters' },
               ]}
             >
               <Input.Password
-                placeholder={t("admin.users.forms.enterNewPassword")}
+                placeholder={t('admin.users.forms.enterNewPassword')}
               />
             </Form.Item>
             <Form.Item
               name="confirm_password"
-              label={t("admin.users.forms.confirmPassword")}
-              dependencies={["new_password"]}
+              label={t('admin.users.forms.confirmPassword')}
+              dependencies={['new_password']}
               rules={[
-                { required: true, message: "Please confirm password" },
+                { required: true, message: 'Please confirm password' },
                 ({ getFieldValue }) => ({
                   validator(_, value) {
-                    if (!value || getFieldValue("new_password") === value) {
-                      return Promise.resolve();
+                    if (!value || getFieldValue('new_password') === value) {
+                      return Promise.resolve()
                     }
-                    return Promise.reject("Passwords do not match");
+                    return Promise.reject('Passwords do not match')
                   },
                 }),
               ]}
             >
               <Input.Password
-                placeholder={t("admin.users.forms.confirmNewPassword")}
+                placeholder={t('admin.users.forms.confirmNewPassword')}
               />
             </Form.Item>
             <Form.Item className="mb-0">
@@ -517,9 +517,9 @@ export function UsersSettings() {
                 </Button>
                 <Button
                   onClick={() => {
-                    setPasswordModalVisible(false);
-                    setSelectedUser(null);
-                    passwordForm.resetFields();
+                    setPasswordModalVisible(false)
+                    setSelectedUser(null)
+                    passwordForm.resetFields()
                   }}
                 >
                   Cancel
@@ -543,8 +543,8 @@ export function UsersSettings() {
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={() => {
-                  setGroupsDrawerVisible(false);
-                  openAssignGroupModal(selectedUser!);
+                  setGroupsDrawerVisible(false)
+                  openAssignGroupModal(selectedUser!)
                 }}
               >
                 Assign Group
@@ -554,13 +554,13 @@ export function UsersSettings() {
         >
           <List
             dataSource={selectedUser?.groups || []}
-            renderItem={(group) => (
+            renderItem={group => (
               <List.Item
                 actions={[
                   canEditUsers && !selectedUser?.is_protected && (
                     <Popconfirm
                       key="remove"
-                      title={t("admin.users.removeFromGroupConfirm")}
+                      title={t('admin.users.removeFromGroupConfirm')}
                       onConfirm={() =>
                         handleRemoveFromGroup(selectedUser!.id, group.id)
                       }
@@ -586,12 +586,12 @@ export function UsersSettings() {
 
         {/* Assign Group Modal */}
         <Drawer
-          title={t("admin.users.assignToGroup")}
+          title={t('admin.users.assignToGroup')}
           open={assignGroupModalVisible}
           onClose={() => {
-            setAssignGroupModalVisible(false);
-            setSelectedUser(null);
-            assignGroupForm.resetFields();
+            setAssignGroupModalVisible(false)
+            setSelectedUser(null)
+            assignGroupForm.resetFields()
           }}
           footer={null}
           maskClosable={false}
@@ -603,21 +603,21 @@ export function UsersSettings() {
           >
             <Form.Item
               name="group_id"
-              label={t("admin.users.forms.selectGroup")}
+              label={t('admin.users.forms.selectGroup')}
               rules={[
                 {
                   required: true,
-                  message: t("admin.users.forms.pleaseSelectGroup"),
+                  message: t('admin.users.forms.pleaseSelectGroup'),
                 },
               ]}
             >
-              <Select placeholder={t("admin.users.forms.selectGroupToAssign")}>
+              <Select placeholder={t('admin.users.forms.selectGroupToAssign')}>
                 {groups
                   .filter(
-                    (group) =>
-                      !selectedUser?.groups.some((ug) => ug.id === group.id),
+                    group =>
+                      !selectedUser?.groups.some(ug => ug.id === group.id),
                   )
-                  .map((group) => (
+                  .map(group => (
                     <Option key={group.id} value={group.id}>
                       {group.name}
                     </Option>
@@ -631,9 +631,9 @@ export function UsersSettings() {
                 </Button>
                 <Button
                   onClick={() => {
-                    setAssignGroupModalVisible(false);
-                    setSelectedUser(null);
-                    assignGroupForm.resetFields();
+                    setAssignGroupModalVisible(false)
+                    setSelectedUser(null)
+                    assignGroupForm.resetFields()
                   }}
                 >
                   Cancel
@@ -644,5 +644,5 @@ export function UsersSettings() {
         </Drawer>
       </div>
     </PageContainer>
-  );
+  )
 }

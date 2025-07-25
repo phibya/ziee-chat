@@ -245,11 +245,22 @@ impl GitService {
             builder.branch(branch_name);
         }
 
-        builder.clone(repository_url, target_dir)?;
-
-        // Don't fetch LFS files during initial clone
-
-        Ok(())
+        match builder.clone(repository_url, target_dir) {
+            Ok(_) => {
+                // Don't fetch LFS files during initial clone
+                Ok(())
+            }
+            Err(e) => {
+                // Send error progress before returning
+                let _ = progress_tx.send(GitProgress {
+                    phase: GitPhase::Error,
+                    current: 0,
+                    total: 100,
+                    message: format!("Clone failed: {}", e),
+                });
+                Err(GitError::Git(e))
+            }
+        }
     }
 
     /// Get repository cache directory

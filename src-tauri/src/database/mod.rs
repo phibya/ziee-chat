@@ -84,7 +84,14 @@ async fn try_initialize_database_once(
     settings.port = std::env::var("POSTGRES_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(portpicker::pick_unused_port().unwrap_or(50000));
+        .unwrap_or_else(|| {
+            // Check if port 50000 is available first
+            if portpicker::is_free(50000) {
+                50000
+            } else {
+                portpicker::pick_unused_port().unwrap_or(50001)
+            }
+        });
 
     // Set bind address to POSTGRES_BIND_ADDRESS
     settings.host =

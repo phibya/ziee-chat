@@ -70,8 +70,7 @@ pub async fn get_download_instances(
     };
 
     // Count total records
-    let mut count_query =
-        String::from("SELECT COUNT(*) FROM download_instances WHERE 1=1");
+    let mut count_query = String::from("SELECT COUNT(*) FROM download_instances WHERE 1=1");
     if status_filter.is_some() {
         count_query.push_str(" AND status = $1");
     }
@@ -82,9 +81,7 @@ pub async fn get_download_instances(
             .fetch_one(pool)
             .await?
     } else {
-        sqlx::query_as(&count_query)
-            .fetch_one(pool)
-            .await?
+        sqlx::query_as(&count_query).fetch_one(pool).await?
     };
 
     Ok(DownloadInstanceListResponse {
@@ -93,16 +90,6 @@ pub async fn get_download_instances(
         page,
         per_page,
     })
-}
-
-/// Get all download instances (admin only) - now same as get_download_instances
-pub async fn list_all_download_instances(
-    page: i32,
-    per_page: i32,
-    status_filter: Option<DownloadStatus>,
-) -> Result<DownloadInstanceListResponse, sqlx::Error> {
-    // Since downloads belong to the system, this is now the same as get_download_instances
-    get_download_instances(page, per_page, status_filter).await
 }
 
 /// Create a new download instance
@@ -122,9 +109,10 @@ pub async fn create_download_instance(
     .bind(download_id)
     .bind(request.provider_id)
     .bind(request.repository_id)
-    .bind(serde_json::to_value(&request.request_data).map_err(|e| {
-        sqlx::Error::Encode(Box::new(e))
-    })?)
+    .bind(
+        serde_json::to_value(&request.request_data)
+            .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
+    )
     .bind(DownloadStatus::Pending.as_str())
     .fetch_one(pool)
     .await?;
@@ -151,9 +139,10 @@ pub async fn update_download_progress(
              error_message, started_at, completed_at, model_id, created_at, updated_at",
         )
         .bind(download_id)
-        .bind(serde_json::to_value(&request.progress_data).map_err(|e| {
-            sqlx::Error::Encode(Box::new(e))
-        })?)
+        .bind(
+            serde_json::to_value(&request.progress_data)
+                .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
+        )
         .bind(status.as_str())
         .fetch_optional(pool)
         .await?
@@ -167,9 +156,10 @@ pub async fn update_download_progress(
              error_message, started_at, completed_at, model_id, created_at, updated_at",
         )
         .bind(download_id)
-        .bind(serde_json::to_value(&request.progress_data).map_err(|e| {
-            sqlx::Error::Encode(Box::new(e))
-        })?)
+        .bind(
+            serde_json::to_value(&request.progress_data)
+                .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
+        )
         .fetch_optional(pool)
         .await?
     };
@@ -313,7 +303,7 @@ pub async fn get_all_active_downloads() -> Result<Vec<DownloadInstance>, sqlx::E
         "SELECT id, provider_id, repository_id, request_data, status, progress_data, 
          error_message, started_at, completed_at, model_id, created_at, updated_at
          FROM download_instances 
-         WHERE status IN ('pending', 'downloading')
+         WHERE status IN ('pending', 'downloading', 'failed', 'cancelled')
          ORDER BY created_at ASC",
     )
     .fetch_all(pool)

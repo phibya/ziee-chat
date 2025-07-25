@@ -38,6 +38,7 @@ import {
   AddModelToProviderRequest,
   Model,
   ModelCapabilities,
+  ModelParameters,
   ModelSettings,
   UpdateModelRequest,
 } from './model'
@@ -366,6 +367,7 @@ export type ApiEndpointParameters = {
     description?: string
     file_format: string
     capabilities?: ModelCapabilities
+    parameters?: ModelParameters
     settings?: ModelSettings
   }
   'Admin.initiateRepositoryDownload': DownloadFromRepositoryRequest

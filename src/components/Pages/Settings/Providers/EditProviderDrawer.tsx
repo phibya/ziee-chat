@@ -1,27 +1,25 @@
-import { EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
-import { Button, Card, Flex, Form, Input, Switch } from "antd";
-import { Drawer } from "../../../common/Drawer.tsx";
-import { useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
+import { Button, Card, Flex, Form, Input, Switch } from 'antd'
+import { Drawer } from '../../../common/Drawer.tsx'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   closeEditProviderDrawer,
   setEditProviderDrawerLoading,
   Stores,
   updateModelProvider,
-} from "../../../../store";
-import { UpdateProviderRequest } from "../../../../types/api/provider";
+} from '../../../../store'
+import { UpdateProviderRequest } from '../../../../types/api/provider'
 
 export function EditProviderDrawer() {
-  const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const { t } = useTranslation()
+  const [form] = Form.useForm()
 
-  const { open, loading, providerId } = Stores.UI.EditProviderModal;
-  const { providers } = Stores.Providers;
+  const { open, loading, providerId } = Stores.UI.EditProviderModal
+  const { providers } = Stores.Providers
 
   // Find the current provider from the store
-  const provider = providerId
-    ? providers.find((p) => p.id === providerId)
-    : null;
+  const provider = providerId ? providers.find(p => p.id === providerId) : null
 
   useEffect(() => {
     if (provider && open) {
@@ -30,38 +28,38 @@ export function EditProviderDrawer() {
         enabled: provider.enabled,
         api_key: provider.api_key,
         base_url: provider.base_url,
-      });
+      })
     }
-  }, [provider, open, form]);
+  }, [provider, open, form])
 
   const handleSubmit = async () => {
-    if (!provider) return;
+    if (!provider) return
 
     try {
-      setEditProviderDrawerLoading(true);
-      const values = await form.validateFields();
+      setEditProviderDrawerLoading(true)
+      const values = await form.validateFields()
       await updateModelProvider(provider.id, {
         id: provider.id,
         ...values,
-      } as UpdateProviderRequest);
-      closeEditProviderDrawer();
+      } as UpdateProviderRequest)
+      closeEditProviderDrawer()
     } catch (error) {
-      console.error("Failed to update provider:", error);
+      console.error('Failed to update provider:', error)
     } finally {
-      setEditProviderDrawerLoading(false);
+      setEditProviderDrawerLoading(false)
     }
-  };
+  }
 
-  if (!provider) return null;
+  if (!provider) return null
 
   return (
     <Drawer
-      title={`${t("providers.editProvider")} ${provider.name}`}
+      title={`${t('providers.editProvider')} ${provider.name}`}
       open={open}
       onClose={closeEditProviderDrawer}
       footer={[
         <Button key="cancel" onClick={closeEditProviderDrawer}>
-          {t("buttons.cancel")}
+          {t('buttons.cancel')}
         </Button>,
         <Button
           key="submit"
@@ -69,7 +67,7 @@ export function EditProviderDrawer() {
           loading={loading}
           onClick={handleSubmit}
         >
-          {t("buttons.ok")}
+          {t('buttons.ok')}
         </Button>,
       ]}
       width={600}
@@ -78,42 +76,42 @@ export function EditProviderDrawer() {
       <Form form={form} layout="vertical">
         <Form.Item
           name="name"
-          label={t("providers.providerName")}
+          label={t('providers.providerName')}
           rules={[
             {
               required: true,
-              message: t("providers.providerNameRequired"),
+              message: t('providers.providerNameRequired'),
             },
           ]}
         >
-          <Input placeholder={t("providers.providerNamePlaceholder")} />
+          <Input placeholder={t('providers.providerNamePlaceholder')} />
         </Form.Item>
 
         <Form.Item
           name="enabled"
-          label={t("providers.enabled")}
+          label={t('providers.enabled')}
           valuePropName="checked"
         >
           <Switch />
         </Form.Item>
 
         {/* API Configuration for non-local providers */}
-        {provider.type !== "local" && (
+        {provider.type !== 'local' && (
           <Flex vertical className="gap-2 w-full">
-            <Card size="small" title={t("providers.apiConfiguration")}>
+            <Card size="small" title={t('providers.apiConfiguration')}>
               <Form.Item
                 name="api_key"
-                label={t("providers.apiKey")}
+                label={t('providers.apiKey')}
                 rules={[
                   {
                     required: true,
-                    message: t("providers.apiKeyRequired"),
+                    message: t('providers.apiKeyRequired'),
                   },
                 ]}
               >
                 <Input.Password
-                  placeholder={t("providers.apiKeyPlaceholder")}
-                  iconRender={(visible) =>
+                  placeholder={t('providers.apiKeyPlaceholder')}
+                  iconRender={visible =>
                     visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                   }
                 />
@@ -121,20 +119,20 @@ export function EditProviderDrawer() {
 
               <Form.Item
                 name="base_url"
-                label={t("providers.baseUrl")}
+                label={t('providers.baseUrl')}
                 rules={[
                   {
                     required: true,
-                    message: t("providers.baseUrlRequired"),
+                    message: t('providers.baseUrlRequired'),
                   },
                 ]}
               >
-                <Input placeholder={t("providers.baseUrlPlaceholder")} />
+                <Input placeholder={t('providers.baseUrlPlaceholder')} />
               </Form.Item>
             </Card>
           </Flex>
         )}
       </Form>
     </Drawer>
-  );
+  )
 }

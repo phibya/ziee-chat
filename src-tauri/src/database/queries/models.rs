@@ -47,8 +47,8 @@ pub async fn create_model(
     .bind(&request.description)
     .bind(request.enabled.unwrap_or(true))
     .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
-    .bind(serde_json::json!({}))
-    .bind(serde_json::json!({}))
+    .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})))
+    .bind(request.settings.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or_else(|| serde_json::json!({})))
       .fetch_one(pool)
     .await?;
 

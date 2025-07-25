@@ -153,7 +153,6 @@ export function HubPage() {
           ]}
         />
       </div>
-
     </PageContainer>
   )
 }

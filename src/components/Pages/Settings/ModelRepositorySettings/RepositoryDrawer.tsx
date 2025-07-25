@@ -2,39 +2,40 @@ import {
   CloudDownloadOutlined,
   EyeInvisibleOutlined,
   EyeTwoTone,
-} from "@ant-design/icons";
-import { App, Button, Form, Input, Select, Switch, Typography } from "antd";
-import { useEffect } from "react";
-import { Drawer } from "../../../common/Drawer.tsx";
+} from '@ant-design/icons'
+import { App, Button, Form, Input, Select, Switch, Typography } from 'antd'
+import { useEffect } from 'react'
+import { Drawer } from '../../../common/Drawer.tsx'
 import {
   createNewModelRepository,
   Stores,
+  testModelRepositoryConnection,
   updateModelRepository,
-} from "../../../../store";
+} from '../../../../store'
 import {
   closeRepositoryDrawer,
   setRepositoryDrawerLoading,
   useRepositoryDrawerStore,
-} from "../../../../store/ui";
-import { isDesktopApp } from "../../../../api/core";
-import { Permission, usePermissions } from "../../../../permissions";
+} from '../../../../store/ui'
+import { isDesktopApp } from '../../../../api/core'
+import { Permission, usePermissions } from '../../../../permissions'
 import {
   CreateRepositoryRequest,
   UpdateRepositoryRequest,
-} from "../../../../types/api/repository";
+} from '../../../../types/api/repository'
 
-const { Text } = Typography;
+const { Text } = Typography
 
 export function RepositoryDrawer() {
-  const { message } = App.useApp();
-  const { hasPermission } = usePermissions();
-  const [repositoryForm] = Form.useForm();
-  const { open, editingRepository, loading } = useRepositoryDrawerStore();
-  const { creating, updating, testing } = Stores.Repositories;
+  const { message } = App.useApp()
+  const { hasPermission } = usePermissions()
+  const [repositoryForm] = Form.useForm()
+  const { open, editingRepository, loading } = useRepositoryDrawerStore()
+  const { creating, updating, testing } = Stores.Repositories
 
   // Check permissions
   const canEditRepositories =
-    isDesktopApp || hasPermission(Permission.config.repositories.edit);
+    isDesktopApp || hasPermission(Permission.config.repositories.edit)
 
   // Update repository form when editing
   useEffect(() => {
@@ -50,71 +51,88 @@ export function RepositoryDrawer() {
         auth_test_api_endpoint:
           editingRepository.auth_config?.auth_test_api_endpoint,
         enabled: editingRepository.enabled,
-      });
+      })
     } else if (!editingRepository && open) {
       repositoryForm.setFieldsValue({
-        auth_type: "none",
+        auth_type: 'none',
         enabled: true,
-      });
+      })
     }
-  }, [editingRepository, open, repositoryForm]);
+  }, [editingRepository, open, repositoryForm])
 
   const testRepositoryFromForm = async () => {
     if (!canEditRepositories) {
-      message.error(
-        "You do not have permission to test repository connections",
-      );
-      return;
+      message.error('You do not have permission to test repository connections')
+      return
     }
 
-    const values = repositoryForm.getFieldsValue();
+    const values = repositoryForm.getFieldsValue()
 
     // Validate required fields
     if (!values.name) {
-      message.warning("Please enter a repository name first");
-      return;
+      message.warning('Please enter a repository name first')
+      return
     }
     if (!values.url) {
-      message.warning("Please enter a repository URL first");
-      return;
+      message.warning('Please enter a repository URL first')
+      return
     }
 
     // Validate auth fields based on type
-    if (values.auth_type === "api_key" && !values.api_key) {
-      message.warning("Please enter an API key first");
-      return;
+    if (values.auth_type === 'api_key' && !values.api_key) {
+      message.warning('Please enter an API key first')
+      return
     }
     if (
-      values.auth_type === "basic_auth" &&
+      values.auth_type === 'basic_auth' &&
       (!values.username || !values.password)
     ) {
-      message.warning("Please enter username and password first");
-      return;
+      message.warning('Please enter username and password first')
+      return
     }
-    if (values.auth_type === "bearer_token" && !values.token) {
-      message.warning("Please enter a bearer token first");
-      return;
+    if (values.auth_type === 'bearer_token' && !values.token) {
+      message.warning('Please enter a bearer token first')
+      return
     }
 
     try {
-      // Note: testRepositoryConnection function would need to be imported
-      // For now, just show success message
-      message.success(`Connection to ${values.name} successful!`);
+      const testData = {
+        name: values.name,
+        url: values.url,
+        auth_type: values.auth_type,
+        auth_config: {
+          api_key: values.api_key,
+          username: values.username,
+          password: values.password,
+          token: values.token,
+          auth_test_api_endpoint: values.auth_test_api_endpoint,
+        },
+      }
+
+      const result = await testModelRepositoryConnection(testData)
+
+      if (result.success) {
+        message.success(
+          result.message || `Connection to ${values.name} successful!`,
+        )
+      } else {
+        message.error(result.message || `Connection to ${values.name} failed`)
+      }
     } catch (error: any) {
-      console.error("Repository connection test failed:", error);
-      message.error(error?.message || `Connection to ${values.name} failed`);
+      console.error('Repository connection test failed:', error)
+      message.error(error?.message || `Connection to ${values.name} failed`)
     }
-  };
+  }
 
   const handleRepositorySubmit = async (values: any) => {
     if (!canEditRepositories) {
-      message.error("You do not have permission to modify repository settings");
-      return;
+      message.error('You do not have permission to modify repository settings')
+      return
     }
 
-    setRepositoryDrawerLoading(true);
+    setRepositoryDrawerLoading(true)
 
-    let repositoryData: UpdateRepositoryRequest;
+    let repositoryData: UpdateRepositoryRequest
 
     if (editingRepository?.built_in) {
       // For built-in repositories, only allow authentication-related fields
@@ -126,7 +144,7 @@ export function RepositoryDrawer() {
           token: values.token,
           auth_test_api_endpoint: values.auth_test_api_endpoint,
         },
-      };
+      }
     } else {
       // For custom repositories, allow all fields
       repositoryData = {
@@ -141,14 +159,14 @@ export function RepositoryDrawer() {
           auth_test_api_endpoint: values.auth_test_api_endpoint,
         },
         enabled: values.enabled ?? true,
-      };
+      }
     }
 
     try {
       if (editingRepository) {
         // Update existing repository
-        await updateModelRepository(editingRepository.id, repositoryData);
-        message.success("Repository updated successfully");
+        await updateModelRepository(editingRepository.id, repositoryData)
+        message.success('Repository updated successfully')
       } else {
         // Add new repository - need full CreateRepositoryRequest
         const createData: CreateRepositoryRequest = {
@@ -163,33 +181,33 @@ export function RepositoryDrawer() {
             auth_test_api_endpoint: values.auth_test_api_endpoint,
           },
           enabled: values.enabled ?? true,
-        };
-        await createNewModelRepository(createData);
-        message.success("Repository added successfully");
+        }
+        await createNewModelRepository(createData)
+        message.success('Repository added successfully')
       }
 
-      closeRepositoryDrawer();
-      repositoryForm.resetFields();
+      closeRepositoryDrawer()
+      repositoryForm.resetFields()
     } catch (error: any) {
-      console.error("Failed to save repository:", error);
-      message.error(error?.message || "Failed to save repository");
+      console.error('Failed to save repository:', error)
+      message.error(error?.message || 'Failed to save repository')
     } finally {
-      setRepositoryDrawerLoading(false);
+      setRepositoryDrawerLoading(false)
     }
-  };
+  }
 
   const handleRepositoryCancel = () => {
-    closeRepositoryDrawer();
-    repositoryForm.resetFields();
-  };
+    closeRepositoryDrawer()
+    repositoryForm.resetFields()
+  }
   return (
     <Drawer
       title={
         editingRepository
           ? editingRepository.built_in
-            ? "Edit Built-in Repository (Authentication Only)"
-            : "Edit Repository"
-          : "Add Repository"
+            ? 'Edit Built-in Repository (Authentication Only)'
+            : 'Edit Repository'
+          : 'Add Repository'
       }
       open={open}
       onClose={handleRepositoryCancel}
@@ -203,7 +221,7 @@ export function RepositoryDrawer() {
           loading={loading || creating || updating}
           onClick={() => repositoryForm.submit()}
         >
-          {editingRepository ? "Update" : "Add"} Repository
+          {editingRepository ? 'Update' : 'Add'} Repository
         </Button>,
       ]}
       width={600}
@@ -218,7 +236,7 @@ export function RepositoryDrawer() {
           name="name"
           label="Repository Name"
           rules={[
-            { required: true, message: "Please enter a repository name" },
+            { required: true, message: 'Please enter a repository name' },
           ]}
         >
           <Input
@@ -231,8 +249,8 @@ export function RepositoryDrawer() {
           name="url"
           label="Repository URL"
           rules={[
-            { required: true, message: "Please enter a repository URL" },
-            { type: "url", message: "Please enter a valid URL" },
+            { required: true, message: 'Please enter a repository URL' },
+            { type: 'url', message: 'Please enter a valid URL' },
           ]}
         >
           <Input
@@ -256,67 +274,55 @@ export function RepositoryDrawer() {
           </Select>
         </Form.Item>
 
-        <Form.Item dependencies={["auth_type"]} noStyle>
+        <Form.Item dependencies={['auth_type']} noStyle>
           {({ getFieldValue }) => {
-            const authType = getFieldValue("auth_type");
+            const authType = getFieldValue('auth_type')
 
-            if (authType === "api_key") {
+            if (authType === 'api_key') {
               return (
-                <Form.Item
-                  name="api_key"
-                  label="API Key"
-                >
+                <Form.Item name="api_key" label="API Key">
                   <Input.Password
                     placeholder="Enter your API key"
-                    iconRender={(visible) =>
+                    iconRender={visible =>
                       visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                     }
                   />
                 </Form.Item>
-              );
+              )
             }
 
-            if (authType === "basic_auth") {
+            if (authType === 'basic_auth') {
               return (
                 <>
-                  <Form.Item
-                    name="username"
-                    label="Username"
-                  >
+                  <Form.Item name="username" label="Username">
                     <Input placeholder="Enter your username" />
                   </Form.Item>
-                  <Form.Item
-                    name="password"
-                    label="Password"
-                  >
+                  <Form.Item name="password" label="Password">
                     <Input.Password
                       placeholder="Enter your password"
-                      iconRender={(visible) =>
+                      iconRender={visible =>
                         visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                       }
                     />
                   </Form.Item>
                 </>
-              );
+              )
             }
 
-            if (authType === "bearer_token") {
+            if (authType === 'bearer_token') {
               return (
-                <Form.Item
-                  name="token"
-                  label="Bearer Token"
-                >
+                <Form.Item name="token" label="Bearer Token">
                   <Input.Password
                     placeholder="Enter your bearer token"
-                    iconRender={(visible) =>
+                    iconRender={visible =>
                       visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                     }
                   />
                 </Form.Item>
-              );
+              )
             }
 
-            return null;
+            return null
           }}
         </Form.Item>
 
@@ -334,29 +340,29 @@ export function RepositoryDrawer() {
         {/* Test Connection Section */}
         <Form.Item
           dependencies={[
-            "url",
-            "auth_type",
-            "api_key",
-            "username",
-            "password",
-            "token",
-            "auth_test_api_endpoint",
+            'url',
+            'auth_type',
+            'api_key',
+            'username',
+            'password',
+            'token',
+            'auth_test_api_endpoint',
           ]}
           noStyle
         >
           {({ getFieldValue }) => {
-            const authType = getFieldValue("auth_type");
-            const url = getFieldValue("url");
+            const authType = getFieldValue('auth_type')
+            const url = getFieldValue('url')
 
             // Only show test button if URL is provided and auth is configured (if needed)
             const showTestButton =
               url &&
-              (authType === "none" ||
-                (authType === "api_key" && getFieldValue("api_key")) ||
-                (authType === "basic_auth" &&
-                  getFieldValue("username") &&
-                  getFieldValue("password")) ||
-                (authType === "bearer_token" && getFieldValue("token")));
+              (authType === 'none' ||
+                (authType === 'api_key' && getFieldValue('api_key')) ||
+                (authType === 'basic_auth' &&
+                  getFieldValue('username') &&
+                  getFieldValue('password')) ||
+                (authType === 'bearer_token' && getFieldValue('token')))
 
             if (showTestButton) {
               return (
@@ -376,10 +382,10 @@ export function RepositoryDrawer() {
                     </Button>
                   </div>
                 </Form.Item>
-              );
+              )
             }
 
-            return null;
+            return null
           }}
         </Form.Item>
 
@@ -392,5 +398,5 @@ export function RepositoryDrawer() {
         </Form.Item>
       </Form>
     </Drawer>
-  );
+  )
 }
