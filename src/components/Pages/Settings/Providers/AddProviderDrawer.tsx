@@ -7,9 +7,9 @@ import {
   SUPPORTED_PROVIDERS,
 } from "../../../../constants/providers";
 import {
-  closeAddProviderModal,
+  closeAddProviderDrawer,
   createNewModelProvider,
-  setAddProviderModalLoading,
+  setAddProviderDrawerLoading,
   Stores,
 } from "../../../../store";
 import {
@@ -18,7 +18,7 @@ import {
 } from "../../../../types/api/provider";
 import { ApiConfigurationSection } from "./shared";
 
-export function AddProviderModal() {
+export function AddProviderDrawer() {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [providerType, setProviderType] = useState<ProviderType>("local");
@@ -30,13 +30,13 @@ export function AddProviderModal() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      setAddProviderModalLoading(true);
+      setAddProviderDrawerLoading(true);
       await createNewModelProvider(values as CreateProviderRequest);
-      closeAddProviderModal();
+      closeAddProviderDrawer();
     } catch (error) {
       console.error("Failed to create provider:", error);
     } finally {
-      setAddProviderModalLoading(false);
+      setAddProviderDrawerLoading(false);
     }
   };
 
@@ -58,9 +58,9 @@ export function AddProviderModal() {
     <Drawer
       title={t("providers.addProviderTitle")}
       open={open}
-      onClose={closeAddProviderModal}
+      onClose={closeAddProviderDrawer}
       footer={[
-        <Button key="cancel" onClick={closeAddProviderModal}>
+        <Button key="cancel" onClick={closeAddProviderDrawer}>
           {t("buttons.cancel")}
         </Button>,
         <Button

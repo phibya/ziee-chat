@@ -4,14 +4,14 @@ import { Drawer } from "../../../common/Drawer.tsx";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  closeEditProviderModal,
-  setEditProviderModalLoading,
+  closeEditProviderDrawer,
+  setEditProviderDrawerLoading,
   Stores,
   updateModelProvider,
 } from "../../../../store";
 import { UpdateProviderRequest } from "../../../../types/api/provider";
 
-export function EditProviderModal() {
+export function EditProviderDrawer() {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
@@ -38,17 +38,17 @@ export function EditProviderModal() {
     if (!provider) return;
 
     try {
-      setEditProviderModalLoading(true);
+      setEditProviderDrawerLoading(true);
       const values = await form.validateFields();
       await updateModelProvider(provider.id, {
         id: provider.id,
         ...values,
       } as UpdateProviderRequest);
-      closeEditProviderModal();
+      closeEditProviderDrawer();
     } catch (error) {
       console.error("Failed to update provider:", error);
     } finally {
-      setEditProviderModalLoading(false);
+      setEditProviderDrawerLoading(false);
     }
   };
 
@@ -58,9 +58,9 @@ export function EditProviderModal() {
     <Drawer
       title={`${t("providers.editProvider")} ${provider.name}`}
       open={open}
-      onClose={closeEditProviderModal}
+      onClose={closeEditProviderDrawer}
       footer={[
-        <Button key="cancel" onClick={closeEditProviderModal}>
+        <Button key="cancel" onClick={closeEditProviderDrawer}>
           {t("buttons.cancel")}
         </Button>,
         <Button

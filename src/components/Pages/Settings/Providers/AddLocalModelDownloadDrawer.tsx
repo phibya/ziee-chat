@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { ApiClient } from "../../../../api/client";
 import {
   clearProvidersError,
-  closeAddLocalModelDownloadModal,
+  closeAddLocalModelDownloadDrawer,
   closeViewDownloadModal,
   downloadModelFromRepository,
   openViewDownloadModal,
@@ -25,7 +25,7 @@ import { LocalModelCommonFields } from "./shared/LocalModelCommonFields";
 
 const { Text } = Typography;
 
-export function AddLocalModelDownloadModal() {
+export function AddLocalModelDownloadDrawer() {
   const { t } = useTranslation();
   const { message } = App.useApp();
   const [form] = Form.useForm();
@@ -74,7 +74,7 @@ export function AddLocalModelDownloadModal() {
 
   // Helper function to close the appropriate modal
   const handleCloseModal = () => {
-    closeAddLocalModelDownloadModal();
+    closeAddLocalModelDownloadDrawer();
     closeViewDownloadModal();
     setLoading(false);
   };
@@ -83,8 +83,6 @@ export function AddLocalModelDownloadModal() {
   const viewDownload = Object.values(Stores.ModelDownload.downloads).find(
     (d) => d.id === downloadId,
   );
-
-  console.log({ viewDownload });
 
   const handleSubmit = async () => {
     try {

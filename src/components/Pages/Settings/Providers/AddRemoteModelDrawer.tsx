@@ -5,14 +5,14 @@ import { useTranslation } from "react-i18next";
 import {
   addNewModelToProvider,
   clearProvidersError,
-  closeAddRemoteModelModal,
+  closeAddRemoteModelDrawer,
   loadAllModelProviders,
   Stores,
 } from "../../../../store";
 import { BASIC_MODEL_FIELDS } from "./shared/constants";
 import { ModelParametersSection } from "./shared/ModelParametersSection";
 
-export function AddRemoteModelModal() {
+export function AddRemoteModelDrawer() {
   const { t } = useTranslation();
   const { message } = App.useApp();
   const [form] = Form.useForm();
@@ -50,7 +50,7 @@ export function AddRemoteModelModal() {
       await loadAllModelProviders();
 
       form.resetFields();
-      closeAddRemoteModelModal();
+      closeAddRemoteModelDrawer();
 
       message.success(t("providers.modelAddedSuccessfully"));
     } catch (error) {
@@ -63,7 +63,7 @@ export function AddRemoteModelModal() {
 
   const handleCancel = () => {
     form.resetFields();
-    closeAddRemoteModelModal();
+    closeAddRemoteModelDrawer();
   };
 
   return (

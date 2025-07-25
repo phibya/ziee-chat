@@ -3,10 +3,8 @@ import {
   App,
   Button,
   Card,
-  Col,
   Flex,
   Input,
-  Row,
   Select,
   Tag,
   Typography,
@@ -75,8 +73,8 @@ export function AssistantsTab() {
     <>
       {/* Search and Filters */}
       <div className="mb-6">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={24} md={12} lg={8}>
+        <Flex wrap gap={16} className="mb-4">
+          <div className="flex-1 min-w-[200px] basis-[300px]">
             <Input
               placeholder="Search assistants..."
               prefix={<SearchOutlined />}
@@ -84,14 +82,14 @@ export function AssistantsTab() {
               onChange={e => setSearchTerm(e.target.value)}
               allowClear
             />
-          </Col>
-          <Col xs={12} sm={12} md={6} lg={4}>
+          </div>
+          <div className="flex-1 min-w-[150px] basis-[200px]">
             <Select
               mode="multiple"
               placeholder="Filter by tags"
               value={selectedTags}
               onChange={setSelectedTags}
-              style={{ width: '100%' }}
+              className="w-full"
               allowClear
               maxTagCount="responsive"
             >
@@ -101,118 +99,115 @@ export function AssistantsTab() {
                 </Select.Option>
               ))}
             </Select>
-          </Col>
-          <Col xs={12} sm={12} md={6} lg={4}>
+          </div>
+          <div className="flex-1 min-w-[120px] basis-[150px]">
             <Select
               placeholder="Sort by"
               value={sortBy}
               onChange={setSortBy}
-              style={{ width: '100%' }}
+              className="w-full"
             >
               <Select.Option value="popular">Popular</Select.Option>
               <Select.Option value="name">Name</Select.Option>
             </Select>
-          </Col>
-          {(searchTerm || selectedTags.length > 0) && (
-            <Col xs={24} sm={24} md={12} lg={8}>
-              <Flex align="center" gap={8}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Filters active:{' '}
-                  {[
-                    searchTerm && 'search',
-                    selectedTags.length > 0 && `${selectedTags.length} tags`,
-                  ]
-                    .filter(Boolean)
-                    .join(', ')}
-                </Text>
-                <Button
-                  size="small"
-                  type="text"
-                  icon={<ClearOutlined />}
-                  onClick={clearAllFilters}
-                >
-                  Clear all
-                </Button>
-              </Flex>
-            </Col>
-          )}
-        </Row>
+          </div>
+        </Flex>
+        {(searchTerm || selectedTags.length > 0) && (
+          <Flex align="center" gap={8}>
+            <Text type="secondary" className="text-xs">
+              Filters active:{' '}
+              {[
+                searchTerm && 'search',
+                selectedTags.length > 0 && `${selectedTags.length} tags`,
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            </Text>
+            <Button
+              size="small"
+              type="text"
+              icon={<ClearOutlined />}
+              onClick={clearAllFilters}
+            >
+              Clear all
+            </Button>
+          </Flex>
+        )}
       </div>
 
       {/* Assistants Grid */}
-      <Row gutter={[16, 16]}>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
         {filteredAssistants.map(assistant => (
-          <Col xs={24} sm={24} md={12} lg={8} xl={6} key={assistant.id}>
-            <Card
-              hoverable
-              style={{ height: '100%' }}
-              styles={{ body: { padding: '16px' } }}
-            >
-              <div style={{ marginBottom: '12px' }}>
-                <Title level={4} style={{ margin: 0, marginBottom: '4px' }}>
-                  {assistant.name}
-                </Title>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  {assistant.description}
+          <Card
+            key={assistant.id}
+            hoverable
+            className="h-full"
+            styles={{ body: { padding: '16px' } }}
+          >
+            <div className="mb-3">
+              <Title level={4} className="m-0 mb-1">
+                {assistant.name}
+              </Title>
+              <Text type="secondary" className="text-xs">
+                {assistant.description}
+              </Text>
+            </div>
+
+            {/* Category & Author */}
+            <div className="mb-3">
+              <Flex justify="space-between" align="center">
+                <Tag color="geekblue" className="text-xs">
+                  {assistant.category}
+                </Tag>
+                {assistant.author && (
+                  <Text type="secondary" className="text-xs">
+                    by {assistant.author}
+                  </Text>
+                )}
+              </Flex>
+            </div>
+
+            {/* Tags */}
+            <div className="mb-3">
+              <Flex wrap className="gap-1">
+                {assistant.tags.slice(0, 3).map(tag => (
+                  <Tag key={tag} color="default" className="text-xs">
+                    {tag}
+                  </Tag>
+                ))}
+                {assistant.tags.length > 3 && (
+                  <Tag color="default" className="text-xs">
+                    +{assistant.tags.length - 3}
+                  </Tag>
+                )}
+              </Flex>
+            </div>
+
+            {/* Recommended Models */}
+            {assistant.recommended_models.length > 0 && (
+              <div className="mb-3">
+                <Text type="secondary" className="text-xs">
+                  Works best with:{' '}
+                  {assistant.recommended_models.slice(0, 2).join(', ')}
+                  {assistant.recommended_models.length > 2 && '...'}
                 </Text>
               </div>
+            )}
 
-              {/* Category & Author */}
-              <div style={{ marginBottom: '12px' }}>
-                <Flex justify="space-between" align="center">
-                  <Tag color="geekblue" style={{ fontSize: '11px' }}>
-                    {assistant.category}
-                  </Tag>
-                  {assistant.author && (
-                    <Text type="secondary" style={{ fontSize: '11px' }}>
-                      by {assistant.author}
-                    </Text>
-                  )}
-                </Flex>
-              </div>
-
-              {/* Tags */}
-              <div style={{ marginBottom: '12px' }}>
-                <Flex wrap className="gap-1">
-                  {assistant.tags.slice(0, 3).map(tag => (
-                    <Tag key={tag} color="default" style={{ fontSize: '11px' }}>
-                      {tag}
-                    </Tag>
-                  ))}
-                  {assistant.tags.length > 3 && (
-                    <Tag color="default" style={{ fontSize: '11px' }}>
-                      +{assistant.tags.length - 3}
-                    </Tag>
-                  )}
-                </Flex>
-              </div>
-
-              {/* Recommended Models */}
-              {assistant.recommended_models.length > 0 && (
-                <div style={{ marginBottom: '12px' }}>
-                  <Text type="secondary" style={{ fontSize: '11px' }}>
-                    Works best with:{' '}
-                    {assistant.recommended_models.slice(0, 2).join(', ')}
-                    {assistant.recommended_models.length > 2 && '...'}
-                  </Text>
-                </div>
-              )}
-
-              {/* Action Button */}
-              <Button
-                type="primary"
-                block
-                size="small"
-                icon={<RobotOutlined />}
-                onClick={() => handleUseAssistant(assistant)}
-                style={{ marginTop: 'auto' }}
-              >
-                Use Assistant
-              </Button>
-            </Card>
-          </Col>
+            {/* Action Button */}
+            <Button
+              type="primary"
+              block
+              size="small"
+              icon={<RobotOutlined />}
+              onClick={() => handleUseAssistant(assistant)}
+              className="mt-auto"
+            >
+              Use Assistant
+            </Button>
+          </Card>
         ))}
-      </Row>
+      </div>
 
       {filteredAssistants.length === 0 && (
         <div className="text-center py-12">

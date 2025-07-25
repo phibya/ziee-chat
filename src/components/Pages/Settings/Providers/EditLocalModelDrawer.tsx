@@ -3,7 +3,7 @@ import { Drawer } from "../../../common/Drawer.tsx";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  closeEditLocalModelModal,
+  closeEditLocalModelDrawer,
   Stores,
   updateExistingModel,
 } from "../../../../store";
@@ -13,7 +13,7 @@ import { ModelCapabilitiesSection } from "./shared/ModelCapabilitiesSection";
 import { ModelParametersSection } from "./shared/ModelParametersSection";
 import { ModelSettingsSection } from "./shared/ModelSettingsSection";
 
-export function EditLocalModelModal() {
+export function EditLocalModelDrawer() {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -53,7 +53,7 @@ export function EditLocalModelModal() {
         ...values,
       };
       await updateExistingModel(modelData.id, modelData);
-      closeEditLocalModelModal();
+      closeEditLocalModelDrawer();
     } catch (error) {
       console.error("Failed to update local model:", error);
     } finally {
@@ -65,9 +65,9 @@ export function EditLocalModelModal() {
     <Drawer
       title={t("providers.editLocalModel")}
       open={open}
-      onClose={closeEditLocalModelModal}
+      onClose={closeEditLocalModelDrawer}
       footer={[
-        <Button key="cancel" onClick={closeEditLocalModelModal}>
+        <Button key="cancel" onClick={closeEditLocalModelDrawer}>
           {t("buttons.cancel")}
         </Button>,
         <Button

@@ -21,9 +21,9 @@ import {
 } from "@ant-design/icons";
 import { Assistant } from "../../types/api/assistant";
 import {
-  closeAssistantModal,
+  closeAssistantDrawer,
   createUserAssistant,
-  setAssistantModalLoading,
+  setAssistantDrawerLoading,
   Stores,
   updateUserAssistant,
 } from "../../store";
@@ -104,7 +104,7 @@ interface ParameterFormField {
   value: any;
 }
 
-export const AssistantFormModal: React.FC = () => {
+export const AssistantFormDrawer: React.FC = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm<AssistantFormData>();
   const [parameterMode, setParameterMode] = useState<"json" | "form">("json");
@@ -353,18 +353,18 @@ export const AssistantFormModal: React.FC = () => {
       parameters: parametersObject,
     };
 
-    setAssistantModalLoading(true);
+    setAssistantDrawerLoading(true);
     try {
       if (editingAssistant) {
         await updateUserAssistant(editingAssistant.id, finalValues);
       } else {
         await createUserAssistant(finalValues);
       }
-      closeAssistantModal();
+      closeAssistantDrawer();
     } catch (error) {
       console.error("Failed to save assistant:", error);
     } finally {
-      setAssistantModalLoading(false);
+      setAssistantDrawerLoading(false);
     }
   };
 
@@ -416,8 +416,20 @@ export const AssistantFormModal: React.FC = () => {
     <Drawer
       title={getTitle()}
       open={open}
-      onClose={closeAssistantModal}
-      footer={null}
+      onClose={closeAssistantDrawer}
+      footer={[
+        <Button key="cancel" onClick={closeAssistantDrawer} disabled={loading}>
+          Cancel
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          loading={loading}
+          onClick={() => form.submit()}
+        >
+          {editingAssistant ? "Update" : "Create"}
+        </Button>,
+      ]}
       width={800}
       maskClosable={false}
     >
@@ -622,16 +634,6 @@ export const AssistantFormModal: React.FC = () => {
           <Switch />
         </Form.Item>
 
-        <Form.Item>
-          <Flex className="gap-2">
-            <Button type="primary" htmlType="submit" loading={loading}>
-              {editingAssistant ? "Update" : "Create"}
-            </Button>
-            <Button onClick={closeAssistantModal} disabled={loading}>
-              Cancel
-            </Button>
-          </Flex>
-        </Form.Item>
       </Form>
     </Drawer>
   );

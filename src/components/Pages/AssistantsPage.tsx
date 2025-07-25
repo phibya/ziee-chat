@@ -27,12 +27,12 @@ import {
   clearAssistantsStoreError,
   deleteUserAssistant,
   loadUserAssistants,
-  openAssistantModal,
+  openAssistantDrawer,
   Stores,
 } from "../../store";
 import { Assistant } from "../../types/api/assistant";
 import { PageContainer } from "../common/PageContainer";
-import { AssistantFormModal } from "../shared/AssistantFormModal";
+import { AssistantFormDrawer } from "../shared/AssistantFormDrawer.tsx";
 
 const { Title, Text } = Typography;
 
@@ -76,11 +76,11 @@ export const AssistantsPage: React.FC = () => {
   };
 
   const handleEdit = (assistant: Assistant) => {
-    openAssistantModal(assistant);
+    openAssistantDrawer(assistant);
   };
 
   const handleCreate = () => {
-    openAssistantModal();
+    openAssistantDrawer();
   };
 
   const handleCloneFromTemplate = () => {
@@ -89,7 +89,7 @@ export const AssistantsPage: React.FC = () => {
 
   const handleSelectTemplateAssistant = () => {
     setTemplateModalVisible(false);
-    openAssistantModal();
+    openAssistantDrawer();
   };
 
   const renderAssistantCard = (assistant: Assistant) => (
@@ -201,7 +201,7 @@ export const AssistantsPage: React.FC = () => {
         </Col>
       </Row>
 
-      <AssistantFormModal />
+      <AssistantFormDrawer />
 
       {/* Template Assistants Modal */}
       <Drawer

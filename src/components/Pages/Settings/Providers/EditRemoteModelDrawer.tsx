@@ -3,7 +3,7 @@ import { Drawer } from "../../../common/Drawer.tsx";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  closeEditRemoteModelModal,
+  closeEditRemoteModelDrawer,
   Stores,
   updateExistingModel,
 } from "../../../../store";
@@ -11,7 +11,7 @@ import { BASIC_MODEL_FIELDS } from "./shared/constants";
 import { ModelCapabilitiesSection } from "./shared/ModelCapabilitiesSection";
 import { ModelParametersSection } from "./shared/ModelParametersSection";
 
-export function EditRemoteModelModal() {
+export function EditRemoteModelDrawer() {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -50,7 +50,7 @@ export function EditRemoteModelModal() {
         ...values,
       };
       await updateExistingModel(modelData.id, modelData);
-      closeEditRemoteModelModal();
+      closeEditRemoteModelDrawer();
     } catch (error) {
       console.error("Failed to update remote model:", error);
     } finally {
@@ -62,9 +62,9 @@ export function EditRemoteModelModal() {
     <Drawer
       title={t("providers.editRemoteModel")}
       open={open}
-      onClose={closeEditRemoteModelModal}
+      onClose={closeEditRemoteModelDrawer}
       footer={[
-        <Button key="cancel" onClick={closeEditRemoteModelModal}>
+        <Button key="cancel" onClick={closeEditRemoteModelDrawer}>
           {t("buttons.cancel")}
         </Button>,
         <Button

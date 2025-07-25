@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 import { LOCAL_FILE_TYPE_OPTIONS } from "../../../../constants/localModelTypes";
 import {
   clearLocalUploadError,
-  closeAddLocalModelUploadModal,
+  closeAddLocalModelUploadDrawer,
   Stores,
   uploadLocalModel,
 } from "../../../../store";
@@ -25,7 +25,7 @@ import { LocalModelCommonFields } from "./shared/LocalModelCommonFields";
 
 const { Text } = Typography;
 
-export function AddLocalModelUploadModal() {
+export function AddLocalModelUploadDrawer() {
   const { t } = useTranslation();
   const { message } = App.useApp();
   const [form] = Form.useForm();
@@ -129,7 +129,7 @@ export function AddLocalModelUploadModal() {
       form.resetFields();
       setSelectedFiles([]);
       setFilteredFiles([]);
-      closeAddLocalModelUploadModal();
+      closeAddLocalModelUploadDrawer();
     } catch (error) {
       console.error("Failed to upload model:", error);
       message.error(t("providers.failedToCreateModel"));
@@ -142,7 +142,7 @@ export function AddLocalModelUploadModal() {
     form.resetFields();
     setSelectedFiles([]);
     setFilteredFiles([]);
-    closeAddLocalModelUploadModal();
+    closeAddLocalModelUploadDrawer();
   };
 
   // Validation function for model files
