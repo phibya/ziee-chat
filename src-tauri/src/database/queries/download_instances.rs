@@ -186,7 +186,7 @@ pub async fn update_download_status(
                      completed_at = CURRENT_TIMESTAMP,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
-                 RETURNING id, user_id, provider_id, repository_id, request_data, status, progress_data, 
+                 RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
                  error_message, started_at, completed_at, model_id, created_at, updated_at",
             )
             .bind(download_id)
@@ -204,7 +204,7 @@ pub async fn update_download_status(
                      completed_at = CURRENT_TIMESTAMP,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
-                 RETURNING id, user_id, provider_id, repository_id, request_data, status, progress_data, 
+                 RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
                  error_message, started_at, completed_at, model_id, created_at, updated_at",
             )
             .bind(download_id)
@@ -220,7 +220,7 @@ pub async fn update_download_status(
                      error_message = $3,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
-                 RETURNING id, user_id, provider_id, repository_id, request_data, status, progress_data, 
+                 RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
                  error_message, started_at, completed_at, model_id, created_at, updated_at",
             )
             .bind(download_id)

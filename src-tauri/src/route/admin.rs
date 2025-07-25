@@ -307,6 +307,12 @@ pub fn admin_routes() -> Router {
             )),
         )
         .route(
+            "/api/admin/uploaded-models/upload-and-commit",
+            post(api::model_uploads::upload_multiple_files_and_commit).layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
+        )
+        .route(
             "/api/admin/models/initiate-repository-download",
             post(api::model_uploads::initiate_repository_download).layer(middleware::from_fn(
                 api::middleware::providers_edit_middleware,

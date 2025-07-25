@@ -1,4 +1,4 @@
-use axum::{response::Json, Extension};
+use axum::{extract::Multipart, response::Json, Extension};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -120,9 +120,9 @@ pub struct CreateModelWithFilesRequest {
 /// Shared model creation and file processing logic
 async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result<Model, AppError> {
     // Initialize storage
-    let storage = ModelStorage::new().await.map_err(|e| {
-        AppError::internal_error(format!("Failed to initialize storage: {}", e))
-    })?;
+    let storage = ModelStorage::new()
+        .await
+        .map_err(|e| AppError::internal_error(format!("Failed to initialize storage: {}", e)))?;
     // Validate provider exists and is of type 'local'
     let provider = crate::database::queries::providers::get_provider_by_id(request.provider_id)
         .await
@@ -151,7 +151,10 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
         })?;
 
     // print source directory
-    println!("Source directory for model files: {}", request.source_dir.display());
+    println!(
+        "Source directory for model files: {}",
+        request.source_dir.display()
+    );
 
     // List all files in the source directory
     let source_files = match tokio::fs::read_dir(&request.source_dir).await {
@@ -259,7 +262,9 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
         alias: request.alias,
         description: request.description,
         enabled: Some(true), // Enable immediately since everything succeeded
-        capabilities: request.capabilities.or_else(|| Some(ModelCapabilities::new())),
+        capabilities: request
+            .capabilities
+            .or_else(|| Some(ModelCapabilities::new())),
         parameters: request.parameters,
         settings: request.settings,
     };
@@ -488,6 +493,273 @@ pub struct DownloadFromRepositoryRequest {
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
     pub settings: Option<ModelSettings>,
+}
+
+/// Upload multiple model files and auto-commit as a model
+pub async fn upload_multiple_files_and_commit(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    mut multipart: Multipart,
+) -> ApiResult<Json<Model>> {
+    let storage = ModelStorage::new()
+        .await
+        .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
+
+    let mut uploaded_files = Vec::new();
+    let mut main_filename: Option<String> = None;
+    let mut provider_id: Option<Uuid> = None;
+    let mut name: Option<String> = None;
+    let mut alias: Option<String> = None;
+    let mut description: Option<String> = None;
+    let mut file_format: Option<String> = None;
+    let mut capabilities: Option<ModelCapabilities> = None;
+    let mut settings: Option<ModelSettings> = None;
+
+    // Process multipart form data
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            format!("Failed to read multipart field: {}", e),
+        )
+    })? {
+        let field_name = field.name().unwrap_or("").to_string();
+
+        match field_name.as_str() {
+            "files" => {
+                // Get filename from the field
+                if let Some(file_name) = field.file_name() {
+                    // Extract just the filename, not the full path
+                    let filename = std::path::Path::new(file_name)
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .unwrap_or(file_name)
+                        .to_string();
+
+                    println!(
+                        "Original file_name: '{}', extracted filename: '{}'",
+                        file_name, filename
+                    );
+
+                    // Read file data
+                    let data = field.bytes().await.map_err(|e| {
+                        AppError::new(
+                            ErrorCode::ValidInvalidInput,
+                            format!("Failed to read file data: {}", e),
+                        )
+                    })?;
+
+                    uploaded_files.push((filename, data.to_vec()));
+                }
+            }
+            "main_filename" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read main_filename: {}", e),
+                    )
+                })?;
+                main_filename = Some(value);
+            }
+            "provider_id" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read provider_id: {}", e),
+                    )
+                })?;
+                provider_id = Some(Uuid::parse_str(&value).map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Invalid provider_id format: {}", e),
+                    )
+                })?);
+            }
+            "name" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read name: {}", e),
+                    )
+                })?;
+                name = Some(value);
+            }
+            "alias" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read alias: {}", e),
+                    )
+                })?;
+                alias = Some(value);
+            }
+            "description" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read description: {}", e),
+                    )
+                })?;
+                description = if value.is_empty() { None } else { Some(value) };
+            }
+            "file_format" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read file_format: {}", e),
+                    )
+                })?;
+                file_format = Some(value);
+            }
+            "capabilities" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read capabilities: {}", e),
+                    )
+                })?;
+                if !value.is_empty() {
+                    capabilities = serde_json::from_str(&value).map_err(|e| {
+                        AppError::new(
+                            ErrorCode::ValidInvalidInput,
+                            format!("Invalid capabilities JSON: {}", e),
+                        )
+                    })?;
+                }
+            }
+            "settings" => {
+                let value = field.text().await.map_err(|e| {
+                    AppError::new(
+                        ErrorCode::ValidInvalidInput,
+                        format!("Failed to read settings: {}", e),
+                    )
+                })?;
+                if !value.is_empty() {
+                    settings = serde_json::from_str(&value).map_err(|e| {
+                        AppError::new(
+                            ErrorCode::ValidInvalidInput,
+                            format!("Invalid settings JSON: {}", e),
+                        )
+                    })?;
+                }
+            }
+            _ => {
+                // Skip unknown fields
+                continue;
+            }
+        }
+    }
+
+    // Validate required fields
+    if uploaded_files.is_empty() {
+        return Err(AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "No files provided in multipart request",
+        ));
+    }
+
+    let provider_id = provider_id.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing provider_id in multipart request",
+        )
+    })?;
+
+    let main_filename = main_filename.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing main_filename in multipart request",
+        )
+    })?;
+
+    let name = name.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing name in multipart request",
+        )
+    })?;
+
+    let alias = alias.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing alias in multipart request",
+        )
+    })?;
+
+    let file_format = file_format.ok_or_else(|| {
+        AppError::new(
+            ErrorCode::ValidInvalidInput,
+            "Missing file_format in multipart request",
+        )
+    })?;
+
+    println!(
+        "Processing multipart upload: {} files, main file: {}, name: {}, alias: {}",
+        uploaded_files.len(),
+        main_filename,
+        name,
+        alias
+    );
+
+    // Step 1: Upload files to temporary storage
+    let temp_session_id = Uuid::new_v4();
+    let mut total_size = 0u64;
+
+    for (filename, file_data) in uploaded_files {
+        total_size += file_data.len() as u64;
+
+        // Check and validate files
+        let _file_type = determine_model_file_type(&filename);
+        let _validation_issues = validate_file_content(&filename, &file_data);
+
+        // Save files to temporary storage
+        let temp_file_id = Uuid::new_v4();
+        match storage
+            .save_temp_file(&temp_session_id, &temp_file_id, &filename, &file_data)
+            .await
+        {
+            Ok(_temp_file) => {
+                println!("Saved temp file: {} (ID: {})", filename, temp_file_id);
+            }
+            Err(e) => {
+                println!("Failed to save temp file {}: {}", filename, e);
+                return Err(AppError::internal_error(format!(
+                    "Failed to save file {}: {}",
+                    filename, e
+                )));
+            }
+        }
+    }
+
+    println!(
+        "Files uploaded successfully, total size: {} bytes",
+        total_size
+    );
+
+    // Step 2: Auto-commit the uploaded files as a model
+    let source_dir = crate::get_app_data_dir()
+        .join("temp")
+        .join(temp_session_id.to_string());
+
+    // Create model using the existing function
+    let model = create_model_with_files(CreateModelWithFilesRequest {
+        provider_id,
+        name,
+        alias,
+        description,
+        file_format,
+        main_filename,
+        source_dir,
+        capabilities,
+        parameters: None, // No parameters available in upload request
+        settings,
+    })
+    .await
+    .map_err(|e| {
+        AppError::internal_error(format!("Failed to create model from uploaded files: {}", e))
+    })?;
+
+    println!("Model created successfully: {} ({})", model.alias, model.id);
+
+    Ok(Json(model))
 }
 
 /// Initiate model download from repository (returns JSON with download ID immediately)
@@ -823,15 +1095,16 @@ pub async fn initiate_repository_download(
                 {
                     Ok(model) => {
                         // Update download as completed with model ID
-                        let _ = crate::database::queries::download_instances::update_download_status(
-                            download_id,
-                            UpdateDownloadStatusRequest {
-                                status: DownloadStatus::Completed,
-                                error_message: None,
-                                model_id: Some(model.id),
-                            },
-                        )
-                        .await;
+                        let _ =
+                            crate::database::queries::download_instances::update_download_status(
+                                download_id,
+                                UpdateDownloadStatusRequest {
+                                    status: DownloadStatus::Completed,
+                                    error_message: None,
+                                    model_id: Some(model.id),
+                                },
+                            )
+                            .await;
 
                         // Spawn cleanup task to remove the download record after 60 seconds
                         // This gives clients time to see the completion status
@@ -841,15 +1114,16 @@ pub async fn initiate_repository_download(
                         });
                     }
                     Err(e) => {
-                        let _ = crate::database::queries::download_instances::update_download_status(
-                            download_id,
-                            UpdateDownloadStatusRequest {
-                                status: DownloadStatus::Failed,
-                                error_message: Some(format!("Failed to create model: {}", e)),
-                                model_id: None,
-                            },
-                        )
-                        .await;
+                        let _ =
+                            crate::database::queries::download_instances::update_download_status(
+                                download_id,
+                                UpdateDownloadStatusRequest {
+                                    status: DownloadStatus::Failed,
+                                    error_message: Some(format!("Failed to create model: {}", e)),
+                                    model_id: None,
+                                },
+                            )
+                            .await;
                     }
                 }
             }

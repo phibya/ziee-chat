@@ -138,6 +138,11 @@ export function AddLocalModelUploadDrawer() {
   }
 
   const handleCancel = () => {
+    // Prevent closing if upload is in progress
+    if (uploading) {
+      message.warning(t('providers.uploadInProgressCannotClose'))
+      return
+    }
     form.resetFields()
     setSelectedFiles([])
     setFilteredFiles([])
@@ -264,7 +269,7 @@ export function AddLocalModelUploadDrawer() {
       open={open}
       onClose={handleCancel}
       footer={[
-        <Button key="cancel" onClick={handleCancel}>
+        <Button key="cancel" onClick={handleCancel} disabled={uploading}>
           {t('buttons.cancel')}
         </Button>,
         <Button
@@ -272,12 +277,14 @@ export function AddLocalModelUploadDrawer() {
           type="primary"
           loading={loading}
           onClick={handleSubmit}
+          disabled={uploading}
         >
-          {t('buttons.upload')}
+          {uploading ? t('providers.uploading') : t('buttons.upload')}
         </Button>,
       ]}
       width={800}
-      maskClosable={false}
+      maskClosable={!uploading}
+      closable={!uploading}
     >
       <Form
         form={form}
