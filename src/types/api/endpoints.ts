@@ -34,6 +34,10 @@ import {
   UpdateDefaultLanguageRequest,
 } from './globalConfig'
 import {
+  HubDataResponse,
+  HubVersionResponse,
+} from './hub'
+import {
   AddModelToProviderRequest,
   Model,
   ModelCapabilities,
@@ -221,6 +225,10 @@ export const ApiEndpoints = {
   'Admin.cancelDownload': 'POST /api/admin/downloads/{download_id}/cancel',
   'Admin.deleteDownload': 'DELETE /api/admin/downloads/{download_id}',
   'Admin.subscribeDownloadProgress': 'GET /api/admin/downloads/subscribe',
+  // Hub endpoints
+  'Hub.getData': 'GET /api/hub/data',
+  'Hub.refresh': 'POST /api/hub/refresh',
+  'Hub.getVersion': 'GET /api/hub/version',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -373,6 +381,10 @@ export type ApiEndpointParameters = {
   'Admin.cancelDownload': { download_id: string }
   'Admin.deleteDownload': { download_id: string }
   'Admin.subscribeDownloadProgress': void
+  // Hub endpoints
+  'Hub.getData': void
+  'Hub.refresh': void
+  'Hub.getVersion': void
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -509,6 +521,10 @@ export type ApiEndpointResponses = {
   'Admin.cancelDownload': void
   'Admin.deleteDownload': void
   'Admin.subscribeDownloadProgress': any // SSE stream
+  // Hub endpoints
+  'Hub.getData': HubDataResponse
+  'Hub.refresh': HubDataResponse
+  'Hub.getVersion': HubVersionResponse
 }
 
 // Type helpers

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { hubApiClient, type HubModel, type HubAssistant } from '../api/hub'
+import { ApiClient } from '../api/client'
+import type { HubModel, HubAssistant, HubData } from '../types/api/hub'
 
 interface HubState {
   models: HubModel[]
@@ -28,7 +29,7 @@ export const initializeHub = async () => {
   useHubStore.setState({ loading: true, error: null })
 
   try {
-    const hubData = await hubApiClient.getHubData()
+    const hubData = await ApiClient.Hub.getData()
 
     useHubStore.setState({
       models: hubData.models,
@@ -58,7 +59,7 @@ export const refreshHub = async () => {
   useHubStore.setState({ loading: true, error: null })
 
   try {
-    const hubData = await hubApiClient.refreshHub()
+    const hubData = await ApiClient.Hub.refresh()
     useHubStore.setState({
       models: hubData.models,
       assistants: hubData.assistants,
@@ -83,7 +84,8 @@ export const refreshHub = async () => {
 
 export const getHubVersion = async (): Promise<string> => {
   try {
-    return await hubApiClient.getHubVersion()
+    const response = await ApiClient.Hub.getVersion()
+    return response.hub_version
   } catch (error) {
     console.error('Failed to get hub version:', error)
     throw error

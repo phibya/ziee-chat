@@ -1,6 +1,7 @@
 export * from './auth'
 export * from './config'
 export * from './endpoints'
+export * from './hub'
 export * from './model'
 export * from './provider'
 export * from './user'

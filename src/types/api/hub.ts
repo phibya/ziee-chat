@@ -1,3 +1,7 @@
+/**
+ * Hub API type definitions
+ */
+
 export interface HubModel {
   id: string
   name: string
@@ -47,33 +51,22 @@ export interface HubData {
   last_updated: string
 }
 
-class HubApiClient {
-  private baseUrl = '/api/hub'
+// Response types for specific endpoints
+export interface HubDataResponse extends HubData {}
 
-  async getHubData(): Promise<HubData> {
-    const response = await fetch(`${this.baseUrl}/data`)
-    if (!response.ok) {
-      throw new Error(`Failed to fetch hub data: ${response.statusText}`)
-    }
-    return response.json()
-  }
-
-  async refreshHub(): Promise<HubData> {
-    const response = await fetch(`${this.baseUrl}/refresh`, { method: 'POST' })
-    if (!response.ok) {
-      throw new Error(`Failed to refresh hub: ${response.statusText}`)
-    }
-    return response.json()
-  }
-
-  async getHubVersion(): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/version`)
-    if (!response.ok) {
-      throw new Error(`Failed to get hub version: ${response.statusText}`)
-    }
-    const data = await response.json()
-    return data.hub_version
-  }
+export interface HubVersionResponse {
+  hub_version: string
 }
 
-export const hubApiClient = new HubApiClient()
+// File structure types used by hub manager
+export interface HubModelsFile {
+  hub_version: string
+  schema_version: number
+  models: HubModel[]
+}
+
+export interface HubAssistantsFile {
+  hub_version: string
+  schema_version: number
+  assistants: HubAssistant[]
+}

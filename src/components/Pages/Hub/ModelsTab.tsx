@@ -22,6 +22,7 @@ import {
 } from 'antd'
 import { useMemo, useState } from 'react'
 import { useHubStore, searchModels } from '../../../store/hub'
+import type { HubModel } from '../../../types/api/hub'
 
 const { Title, Text } = Typography
 
