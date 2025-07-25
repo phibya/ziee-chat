@@ -2,12 +2,12 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ziee",
   "version": "0.1.0",
-  "identifier": "com.ziee.app",
+  "identifier": "com.ziee.ai",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
+    "frontendDist": "../dist/ui"
   },
   "app": {
     "windows": [],
@@ -24,6 +24,14 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "resources": {
+      "../hub/**/*": "hub",
+      "../dist/ui/**/*": "ui"
+    },
+    "externalBin": [
+      "target/git-lfs/git-lfs",
+      "target/mistralrs-build/mistralrs-server"
     ]
   }
 }

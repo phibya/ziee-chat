@@ -6,19 +6,21 @@ mod route;
 mod utils;
 
 use crate::api::app::get_http_port;
+use crate::utils::hub_manager::{HubManager, HUB_MANAGER};
 use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
 use once_cell::sync::Lazy;
 use route::create_rest_router;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use tauri::webview::WebviewWindowBuilder;
+use std::sync::Mutex;
+use tauri::{webview::WebviewWindowBuilder, Manager};
 use tokio::signal;
 use tower_http::cors::CorsLayer;
 
 pub static APP_NAME: Lazy<String> =
     Lazy::new(|| std::env::var("APP_NAME").unwrap_or_else(|_| "ziee".to_string()));
-pub static APP_DATA_DIR: Lazy<PathBuf> = Lazy::new(|| {
-    std::env::var("APP_DATA_DIR")
+pub static APP_DATA_DIR: Lazy<Mutex<PathBuf>> = Lazy::new(|| {
+    let default_path = std::env::var("APP_DATA_DIR")
         .unwrap_or_else(|_| {
             // {homedir}/.ziee
             let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
@@ -29,14 +31,29 @@ pub static APP_DATA_DIR: Lazy<PathBuf> = Lazy::new(|| {
                 .to_string()
         })
         .parse()
-        .unwrap()
+        .unwrap();
+    Mutex::new(default_path)
 });
+
+pub fn set_app_data_dir(path: PathBuf) {
+    if let Ok(mut app_data_dir) = APP_DATA_DIR.lock() {
+        *app_data_dir = path;
+    }
+}
+
+pub fn get_app_data_dir() -> PathBuf {
+    APP_DATA_DIR.lock().unwrap().clone()
+}
 pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| get_available_port());
+
+pub fn is_desktop_app() -> bool {
+    std::env::var("HEADLESS").unwrap_or_default() != "true"
+}
 
 pub fn run() {
     let port = get_http_port();
 
-    if std::env::var("HEADLESS").unwrap_or_default() == "true" {
+    if !is_desktop_app() {
         // Headless mode: Run server only without Tauri GUI
         println!("Starting headless API server on port: {}", port);
 
@@ -56,11 +73,33 @@ pub fn run() {
             match database::queries::download_instances::delete_all_downloads().await {
                 Ok(count) => {
                     if count > 0 {
-                        println!("Cleaned up {} download instances from previous session", count);
+                        println!(
+                            "Cleaned up {} download instances from previous session",
+                            count
+                        );
                     }
                 }
                 Err(e) => {
                     eprintln!("Failed to clean up download instances: {}", e);
+                }
+            }
+
+            // Initialize hub manager (headless mode - no app handle available)
+            match HubManager::new(get_app_data_dir()) {
+                Ok(hub_manager) => {
+                    // Note: In headless mode, we don't have app_handle, so embedded files won't be copied
+                    // The hub manager will create empty files instead
+                    if let Err(e) = hub_manager.initialize().await {
+                        eprintln!("Failed to initialize hub manager: {}", e);
+                    } else {
+                        println!("Hub manager initialized successfully (headless mode)");
+                        // Store hub manager globally
+                        let mut global_hub = HUB_MANAGER.lock().await;
+                        *global_hub = Some(hub_manager);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to create hub manager: {}", e);
                 }
             }
 
@@ -101,17 +140,44 @@ pub fn run() {
         tauri::Builder::default()
             .invoke_handler(tauri::generate_handler![get_http_port,])
             .setup(move |app| {
+                // Set APP_DATA_DIR to Tauri's app data directory only if APP_DATA_DIR env is not provided
+                if std::env::var("APP_DATA_DIR").is_err() {
+                    let app_handle = app.handle().clone();
+                    match app_handle.path().app_data_dir() {
+                        Ok(app_data_dir) => {
+                            set_app_data_dir(app_data_dir);
+                            println!(
+                                "Using Tauri app data directory: {}",
+                                get_app_data_dir().display()
+                            );
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to get Tauri app data directory: {}", e);
+                            println!(
+                                "Using default app data directory: {}",
+                                get_app_data_dir().display()
+                            );
+                        }
+                    }
+                } else {
+                    println!(
+                        "Using custom APP_DATA_DIR from environment: {}",
+                        get_app_data_dir().display()
+                    );
+                }
+
                 // Create the API router
                 let api_router = route::create_rest_router();
 
                 // Clear temp directory on startup
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+                    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await
+                    {
                         eprintln!("Failed to clear temp directory on startup: {}", e);
                     }
                 });
 
-                // Initialize database
+                // Initialize database and hub manager
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = database::initialize_database().await {
                         eprintln!("Failed to initialize database: {}", e);
@@ -121,11 +187,31 @@ pub fn run() {
                     match database::queries::download_instances::delete_all_downloads().await {
                         Ok(count) => {
                             if count > 0 {
-                                println!("Cleaned up {} download instances from previous session", count);
+                                println!(
+                                    "Cleaned up {} download instances from previous session",
+                                    count
+                                );
                             }
                         }
                         Err(e) => {
                             eprintln!("Failed to clean up download instances: {}", e);
+                        }
+                    }
+
+                    // Initialize hub manager
+                    match HubManager::new(get_app_data_dir()) {
+                        Ok(hub_manager) => {
+                            if let Err(e) = hub_manager.initialize().await {
+                                eprintln!("Failed to initialize hub manager: {}", e);
+                            } else {
+                                println!("Hub manager initialized successfully");
+                                // Store hub manager globally
+                                let mut global_hub = HUB_MANAGER.lock().await;
+                                *global_hub = Some(hub_manager);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to create hub manager: {}", e);
                         }
                     }
                 });
@@ -150,7 +236,9 @@ pub fn run() {
                     // Clear temp directory and cleanup database before closing
                     let handle = tauri::async_runtime::spawn(async move {
                         // Clear temp directory on shutdown
-                        if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+                        if let Err(e) =
+                            utils::model_storage::ModelStorage::clear_temp_directory().await
+                        {
                             eprintln!("Failed to clear temp directory on shutdown: {}", e);
                         }
 

@@ -63,7 +63,7 @@ pub struct ModelStorage {
 
 impl ModelStorage {
     pub async fn new() -> Result<Self, ModelStorageError> {
-        let app_data_path = crate::APP_DATA_DIR.clone();
+        let app_data_path = crate::get_app_data_dir();
         let base_path = app_data_path.join("models");
 
         // Create models directory if it doesn't exist
@@ -326,7 +326,7 @@ impl ModelStorage {
 
     /// Convert absolute file path to relative path (relative to APP_DATA_DIR)
     pub fn get_relative_path(absolute_path: &Path) -> Result<String, ModelStorageError> {
-        let app_data_path = crate::APP_DATA_DIR.clone();
+        let app_data_path = crate::get_app_data_dir();
 
         match absolute_path.strip_prefix(&app_data_path) {
             Ok(relative_path) => Ok(relative_path.to_string_lossy().to_string()),
@@ -350,7 +350,7 @@ impl ModelStorage {
         data: &[u8],
     ) -> Result<TempFile, ModelStorageError> {
         // Save to APP_DATA_DIR/temp/session_id/safe_filename
-        let temp_base = crate::APP_DATA_DIR.join("temp");
+        let temp_base = crate::get_app_data_dir().join("temp");
         let session_dir = temp_base.join(session_id.to_string());
 
         // Ensure session temp directory exists
@@ -432,7 +432,7 @@ impl ModelStorage {
         provider_id: &Uuid,
         model_id: &Uuid,
     ) -> Result<CommittedFile, ModelStorageError> {
-        let session_temp_path = crate::APP_DATA_DIR.join("temp").join(session_id.to_string());
+        let session_temp_path = crate::get_app_data_dir().join("temp").join(session_id.to_string());
 
         // Find the temp file in the session directory
         if !session_temp_path.exists() {
@@ -481,7 +481,7 @@ impl ModelStorage {
 
     /// List all files in a session directory
     pub async fn list_session_files(&self, session_id: &Uuid) -> Result<Vec<String>, ModelStorageError> {
-        let session_temp_path = crate::APP_DATA_DIR.join("temp").join(session_id.to_string());
+        let session_temp_path = crate::get_app_data_dir().join("temp").join(session_id.to_string());
 
         if !session_temp_path.exists() {
             return Ok(Vec::new());
@@ -507,7 +507,7 @@ impl ModelStorage {
 
     /// List all files in a cache directory (for repository downloads)
     pub async fn list_cache_files(&self, cache_path: &str) -> Result<Vec<String>, ModelStorageError> {
-        let cache_dir = crate::APP_DATA_DIR.join("caches").join(cache_path);
+        let cache_dir = crate::get_app_data_dir().join("caches").join(cache_path);
 
         if !cache_dir.exists() {
             return Err(ModelStorageError::ModelNotFound(format!(
@@ -540,7 +540,7 @@ impl ModelStorage {
         provider_id: &Uuid,
         model_id: &Uuid,
     ) -> Result<CommittedFile, ModelStorageError> {
-        let cache_dir = crate::APP_DATA_DIR.join("caches").join(cache_path);
+        let cache_dir = crate::get_app_data_dir().join("caches").join(cache_path);
         let source_file_path = cache_dir.join(filename);
         
         if !source_file_path.exists() {
@@ -574,7 +574,7 @@ impl ModelStorage {
 
     /// Clean up temporary files for a session
     pub async fn cleanup_temp_session(&self, session_id: &Uuid) -> Result<(), ModelStorageError> {
-        let session_temp_path = crate::APP_DATA_DIR.join("temp").join(session_id.to_string());
+        let session_temp_path = crate::get_app_data_dir().join("temp").join(session_id.to_string());
 
         if !session_temp_path.exists() {
             return Ok(()); // Nothing to clean up
@@ -597,7 +597,7 @@ impl ModelStorage {
     /// Clear all temporary files from the temp directory
     /// Called during app startup and shutdown to ensure clean state
     pub async fn clear_temp_directory() -> Result<(), ModelStorageError> {
-        let temp_path = crate::APP_DATA_DIR.join("temp");
+        let temp_path = crate::get_app_data_dir().join("temp");
 
         if !temp_path.exists() {
             return Ok(()); // Nothing to clean up
@@ -658,7 +658,7 @@ impl ModelStorage {
     /// Clean up old temp sessions that are older than the specified duration
     /// Useful for preventing disk space issues from abandoned upload sessions
     pub async fn cleanup_old_temp_sessions(max_age_hours: u64) -> Result<(), ModelStorageError> {
-        let temp_path = crate::APP_DATA_DIR.join("temp");
+        let temp_path = crate::get_app_data_dir().join("temp");
 
         if !temp_path.exists() {
             return Ok(()); // Nothing to clean up

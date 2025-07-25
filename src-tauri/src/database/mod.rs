@@ -66,7 +66,7 @@ async fn try_initialize_database_once(
     let mut settings = Settings::default();
     settings.version = postgresql_embedded::V17.clone();
     settings.temporary = false;
-    settings.installation_dir = crate::APP_DATA_DIR.clone().join("postgres");
+    settings.installation_dir = crate::get_app_data_dir().join("postgres");
     settings.username = "postgres".to_string();
     settings.password_file = settings.installation_dir.join(".pgpass");
     if settings.password_file.exists() {
@@ -84,14 +84,17 @@ async fn try_initialize_database_once(
     settings.port = std::env::var("POSTGRES_PORT")
         .ok()
         .and_then(|p| p.parse().ok())
-        .unwrap_or(50000);
+        .unwrap_or(portpicker::pick_unused_port().unwrap_or(50000));
 
     // Set bind address to POSTGRES_BIND_ADDRESS
     settings.host =
         std::env::var("POSTGRES_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1".to_string());
 
     let mut postgresql = PostgreSQL::new(settings);
-    println!("Setting up embedded PostgreSQL...");
+    println!(
+        "Setting up embedded PostgreSQL at port {}",
+        postgresql.settings().port
+    );
     postgresql.setup().await?;
     println!("Starting embedded PostgreSQL...");
     postgresql.start().await?;

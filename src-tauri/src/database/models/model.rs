@@ -521,7 +521,7 @@ impl Model {
     }
 
     pub fn get_model_absolute_path(&self) -> String {
-        APP_DATA_DIR
+        crate::get_app_data_dir()
             .join(self.get_model_path())
             .to_string_lossy()
             .to_string()

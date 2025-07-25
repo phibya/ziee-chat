@@ -54,7 +54,7 @@ struct LfsPointer {
 
 impl GitService {
     pub fn new() -> Self {
-        let cache_dir = crate::APP_DATA_DIR.join("caches");
+        let cache_dir = crate::get_app_data_dir().join("caches");
         Self { cache_dir }
     }
 

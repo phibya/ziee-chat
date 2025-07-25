@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::database::models::*;
-use crate::database::queries::users;
 use crate::database::queries::repositories;
+use crate::database::queries::users;
 use crate::utils::password;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,7 +51,6 @@ impl AuthService {
     pub fn default() -> Self {
         Self::new(AuthConfig::default())
     }
-
 
     /// Generate JWT token for user
     pub fn generate_token(&self, user: &User) -> Result<String, jsonwebtoken::errors::Error> {
@@ -109,9 +108,7 @@ impl AuthService {
         };
 
         // Verify password with salt
-        if !password::verify_password(password, password_service)
-            .map_err(|e| e.to_string())?
-        {
+        if !password::verify_password(password, password_service).map_err(|e| e.to_string())? {
             return Ok(None);
         }
 
@@ -147,8 +144,8 @@ impl AuthService {
         }
 
         // Hash password with salt
-        let password_service = password::hash_password(&request.password)
-            .map_err(|e| e.to_string())?;
+        let password_service =
+            password::hash_password(&request.password).map_err(|e| e.to_string())?;
 
         // Create user
         let user = users::create_user_with_password_service(
@@ -204,7 +201,7 @@ impl AuthService {
     }
 
     /// Get or create default root user for desktop app
-    pub async fn get_or_create_default_admin_user(&self) -> Result<User, String> {
+    pub async fn get_default_admin_user(&self) -> Result<User, String> {
         // Try to get existing root user
         if let Some(admin) = users::get_user_by_username("root")
             .await
@@ -231,7 +228,7 @@ impl AuthService {
 
     /// Auto-login for desktop app - returns JWT token for default admin
     pub async fn auto_login_desktop(&self) -> Result<LoginResponse, String> {
-        let admin_user = self.get_or_create_default_admin_user().await?;
+        let admin_user = self.get_default_admin_user().await?;
 
         // Generate JWT token
         let token = self

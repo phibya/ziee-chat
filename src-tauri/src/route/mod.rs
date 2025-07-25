@@ -2,6 +2,7 @@ mod admin;
 mod auth;
 mod chat;
 mod config;
+mod hub;
 mod projects;
 mod user;
 mod utils;
@@ -17,6 +18,7 @@ pub fn create_rest_router() -> Router {
         .merge(auth::auth_routes())
         .merge(config::config_routes())
         .merge(utils::utils_routes())
+        .merge(hub::hub_routes())
         .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }));
 
     // Protected routes requiring authentication

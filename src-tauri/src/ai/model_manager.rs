@@ -783,7 +783,7 @@ pub async fn start_model(
     let log_path = if let Some(log_file) = &params.log_file {
         log_file.clone()
     } else {
-        let log_dir = APP_DATA_DIR.join("logs/models");
+        let log_dir = crate::get_app_data_dir().join("logs/models");
         if !log_dir.exists() {
             std::fs::create_dir_all(&log_dir)?;
         }

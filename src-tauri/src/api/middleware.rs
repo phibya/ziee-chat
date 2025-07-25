@@ -33,7 +33,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
 
     // For desktop app, get or create default admin user
     if is_desktop_app() {
-        match auth_service.get_or_create_default_admin_user().await {
+        match auth_service.get_default_admin_user().await {
             Ok(user) => {
                 req.extensions_mut().insert(AuthenticatedUser {
                     user_id: user.id,
@@ -245,10 +245,7 @@ pub async fn settings_delete_middleware(req: Request, next: Next) -> Result<Resp
 }
 
 /// Middleware that checks for config::providers::read permission
-pub async fn providers_read_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn providers_read_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::PROVIDERS_READ) {
@@ -259,10 +256,7 @@ pub async fn providers_read_middleware(
 }
 
 /// Middleware that checks for config::providers::edit permission
-pub async fn providers_edit_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn providers_edit_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::PROVIDERS_EDIT) {
@@ -273,10 +267,7 @@ pub async fn providers_edit_middleware(
 }
 
 /// Middleware that checks for config::providers::create permission
-pub async fn providers_create_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn providers_create_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::PROVIDERS_CREATE) {
@@ -287,10 +278,7 @@ pub async fn providers_create_middleware(
 }
 
 /// Middleware that checks for config::providers::delete permission
-pub async fn providers_delete_middleware(
-    req: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn providers_delete_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
     let user = get_authenticated_user(&req)?;
 
     if !check_permission(user, permissions::PROVIDERS_DELETE) {

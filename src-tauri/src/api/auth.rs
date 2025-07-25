@@ -19,6 +19,7 @@ static AUTH_SERVICE: Lazy<AuthService> = Lazy::new(|| AuthService::default());
 pub struct InitResponse {
     pub needs_setup: bool,
     pub is_desktop: bool,
+    pub token: Option<String>, //if desktop app, include token for auto-login
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -26,6 +27,65 @@ pub struct AuthResponse {
     pub token: String,
     pub user: User,
     pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+async fn create_root_user() -> ApiResult<String> {
+    let user_request = CreateUserRequest {
+        username: "root".to_string(),
+        email: "root@domain.com".to_string(),
+        password: "root".to_string(),
+        profile: Some(serde_json::json!({})),
+    };
+
+    match AUTH_SERVICE.create_user(user_request).await {
+        Ok(user) => {
+            // Assign root user to admin group
+            if let Err(e) =
+                crate::database::queries::user_groups::assign_user_to_admin_group(user.id).await
+            {
+                eprintln!("Warning: Failed to assign root user to admin group: {}", e);
+            }
+
+            // Generate token for the new root user
+            match AUTH_SERVICE.generate_token(&user) {
+                Ok(token) => {
+                    let expires_at = chrono::Utc::now() + chrono::Duration::hours(24 * 7);
+
+                    // Add login token to database
+                    let login_token = AUTH_SERVICE.generate_login_token();
+                    let when_created = chrono::Utc::now().timestamp_millis();
+
+                    if let Err(e) = users::add_login_token(
+                        user.id,
+                        login_token,
+                        when_created,
+                        Some(expires_at),
+                    )
+                    .await
+                    {
+                        return Err(AppError::from_error(
+                            ErrorCode::AuthTokenStorageFailed,
+                            e,
+                        ));
+                    }
+
+                    // Mark app as initialized
+                    if let Err(e) =
+                        crate::database::queries::configuration::mark_app_initialized().await
+                    {
+                        eprintln!("Warning: Failed to mark app as initialized: {}", e);
+                    }
+
+                    Ok(token)
+                }
+                Err(e) => Err(AppError::from_error(
+                    ErrorCode::AuthTokenGenerationFailed,
+                    e,
+                )),
+            }
+        }
+        Err(e) => Err(AppError::from_string(ErrorCode::UserRootCreationFailed, e)),
+    }
 }
 
 /// Check if the app needs initial setup (not initialized)
@@ -36,9 +96,39 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
         Err(_) => true,
     };
 
+    if is_desktop_app() {
+        if needs_setup {
+            match create_root_user().await {
+                Ok(token) => {
+                    return Ok(Json(InitResponse {
+                        needs_setup: false,
+                        is_desktop: true,
+                        token: Some(token),
+                    }));
+                }
+                Err(e) => return Err(e),
+            }
+        } else {
+            // Desktop app doesn't need setup, generate token for auto-login
+            match AUTH_SERVICE.auto_login_desktop().await {
+                Ok(login_response) => {
+                    return Ok(Json(InitResponse {
+                        needs_setup: false,
+                        is_desktop: true,
+                        token: Some(login_response.token),
+                    }));
+                }
+                Err(e) => {
+                    return Err(AppError::from_string(ErrorCode::AuthenticationFailed, e));
+                }
+            }
+        }
+    }
+
     Ok(Json(InitResponse {
         needs_setup,
-        is_desktop: is_desktop_app(),
+        is_desktop: false,
+        token: None, // No token for web app setup
     }))
 }
 

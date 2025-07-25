@@ -9,6 +9,7 @@ import { useAuthStore } from './auth'
 import { useChatStore } from './chat'
 import { useChatHistoryStore } from './chatHistory'
 import { useConversationsStore } from './conversations'
+import { useHubStore } from './hub'
 import { useLocalUploadStore } from './localUpload'
 import { useModelDownloadStore } from './modelDownload'
 import { useProjectsStore } from './projects'
@@ -129,6 +130,17 @@ export {
   getAllActiveDownloads,
   useModelDownloadStore,
 } from './modelDownload'
+// Hub store
+export {
+  initializeHub,
+  refreshHub,
+  getHubVersion,
+  searchModels,
+  searchAssistants,
+  getModelsByCategory,
+  getAssistantsByCategory,
+  useHubStore,
+} from './hub'
 // Projects store
 export {
   clearProjectsStoreError,
@@ -276,6 +288,7 @@ export const Stores = {
   Chat: createStoreProxy(useChatStore),
   ChatHistory: createStoreProxy(useChatHistoryStore),
   Conversations: createStoreProxy(useConversationsStore),
+  Hub: createStoreProxy(useHubStore),
   LocalUpload: createStoreProxy(useLocalUploadStore),
   ModelDownload: createStoreProxy(useModelDownloadStore),
   Projects: createStoreProxy(useProjectsStore),

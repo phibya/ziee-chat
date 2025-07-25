@@ -8,10 +8,10 @@ import {
   Progress,
   Select,
   Typography,
-} from "antd";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { ApiClient } from "../../../../api/client";
+} from 'antd'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ApiClient } from '../../../../api/client'
 import {
   clearProvidersError,
   closeAddLocalModelDownloadModal,
@@ -19,99 +19,99 @@ import {
   downloadModelFromRepository,
   openViewDownloadModal,
   Stores,
-} from "../../../../store";
-import { Repository } from "../../../../types/api/repository";
-import { LocalModelCommonFields } from "./shared/LocalModelCommonFields";
+} from '../../../../store'
+import { Repository } from '../../../../types/api/repository'
+import { LocalModelCommonFields } from './shared/LocalModelCommonFields'
 
-const { Text } = Typography;
+const { Text } = Typography
 
 export function AddLocalModelDownloadModal() {
-  const { t } = useTranslation();
-  const { message } = App.useApp();
-  const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
-  const [repositories, setRepositories] = useState<Repository[]>([]);
-  const [loadingRepositories, setLoadingRepositories] = useState(false);
+  const { t } = useTranslation()
+  const { message } = App.useApp()
+  const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
+  const [repositories, setRepositories] = useState<Repository[]>([])
+  const [loadingRepositories, setLoadingRepositories] = useState(false)
 
   // Function to generate a unique model ID from display name
   const generateModelId = (displayName: string): string => {
     const baseId = displayName
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "")
-      .substring(0, 50);
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 50)
 
-    const timestamp = Date.now().toString(36);
-    return `${baseId}-${timestamp}`;
-  };
+    const timestamp = Date.now().toString(36)
+    return `${baseId}-${timestamp}`
+  }
 
   // Get values from form
-  const selectedRepository = Form.useWatch("repository_id", form);
+  const selectedRepository = Form.useWatch('repository_id', form)
 
   // Load available repositories
   const loadRepositories = async () => {
     try {
-      setLoadingRepositories(true);
-      const response = await ApiClient.Admin.listRepositories({});
+      setLoadingRepositories(true)
+      const response = await ApiClient.Admin.listRepositories({})
       const enabledRepos = response.repositories.filter(
         (repo: Repository) => repo.enabled,
-      );
-      setRepositories(enabledRepos);
+      )
+      setRepositories(enabledRepos)
     } catch (error) {
-      console.error("Failed to load repositories:", error);
-      message.error(t("providers.failedToLoadRepositories"));
+      console.error('Failed to load repositories:', error)
+      message.error(t('providers.failedToLoadRepositories'))
     } finally {
-      setLoadingRepositories(false);
+      setLoadingRepositories(false)
     }
-  };
+  }
 
-  const { open: addMode, providerId } = Stores.UI.AddLocalModelDownloadModal;
-  const { open: viewMode, downloadId } = Stores.UI.ViewDownloadModal;
+  const { open: addMode, providerId } = Stores.UI.AddLocalModelDownloadModal
+  const { open: viewMode, downloadId } = Stores.UI.ViewDownloadModal
 
-  const open = viewMode || addMode;
+  const open = viewMode || addMode
 
   // Helper function to close the appropriate modal
   const handleCloseModal = () => {
-    closeAddLocalModelDownloadModal();
-    closeViewDownloadModal();
-    setLoading(false);
-  };
+    closeAddLocalModelDownloadModal()
+    closeViewDownloadModal()
+    setLoading(false)
+  }
 
   // Get download instance from store
   const viewDownload = Object.values(Stores.ModelDownload.downloads).find(
-    (d) => d.id === downloadId,
-  );
+    d => d.id === downloadId,
+  )
 
-  console.log({ viewDownload });
+  console.log({ viewDownload })
 
   const handleSubmit = async () => {
     try {
-      setLoading(true);
-      clearProvidersError();
-      const values = await form.validateFields();
+      setLoading(true)
+      clearProvidersError()
+      const values = await form.validateFields()
 
       // Auto-generate model ID from display name
-      const modelId = generateModelId(values.alias || "model");
+      const modelId = generateModelId(values.alias || 'model')
 
       if (!values.repository_id) {
-        message.error(t("providers.repositoryRequired"));
-        return;
+        message.error(t('providers.repositoryRequired'))
+        return
       }
 
       if (!values.repository_path) {
-        message.error(t("providers.repositoryPathRequired"));
-        return;
+        message.error(t('providers.repositoryPathRequired'))
+        return
       }
 
       // Get the selected repository details
       const selectedRepo = repositories.find(
-        (repo) => repo.id === values.repository_id,
-      );
+        repo => repo.id === values.repository_id,
+      )
       if (!selectedRepo) {
-        message.error(t("providers.repositoryNotFound"));
-        return;
+        message.error(t('providers.repositoryNotFound'))
+        return
       }
 
       // Call the repository download API through store
@@ -131,63 +131,63 @@ export function AddLocalModelDownloadModal() {
             settings: values.settings || {},
           },
           openViewDownloadModal,
-        );
+        )
 
-        message.success(t("providers.downloadStarted"));
+        message.success(t('providers.downloadStarted'))
       } catch (error) {
-        console.error("Failed to start download:", error);
-        message.error(t("providers.downloadStartFailed"));
+        console.error('Failed to start download:', error)
+        message.error(t('providers.downloadStartFailed'))
       }
     } catch (error) {
-      console.error("Failed to create model:", error);
-      message.error(t("providers.failedToCreateModel"));
+      console.error('Failed to create model:', error)
+      message.error(t('providers.failedToCreateModel'))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleCancel = () => {
-    handleCloseModal();
-  };
+    handleCloseModal()
+  }
 
   // Load repositories and pre-fill form when modal opens
   useEffect(() => {
     if (open) {
-      loadRepositories();
+      loadRepositories()
       if (viewDownload) {
         // In view mode, populate form with download data from request_data
-        const requestData = viewDownload.request_data;
+        const requestData = viewDownload.request_data
         form.setFieldsValue({
           alias: requestData.alias,
-          description: requestData.description || "",
+          description: requestData.description || '',
           file_format: requestData.file_format,
           repository_id: viewDownload.repository_id, // Get from download instance, not request_data
           repository_path: requestData.repository_path,
           main_filename: requestData.main_filename,
-          repository_branch: requestData.revision || "main", // Use revision instead of repository_branch
+          repository_branch: requestData.revision || 'main', // Use revision instead of repository_branch
           capabilities: requestData.capabilities || {},
           settings: requestData.settings || {},
-        });
+        })
       } else if (!viewMode) {
         // In add mode, set default values
         form.setFieldsValue({
-          alias: "TinyLlama Chat Model",
+          alias: 'TinyLlama Chat Model',
           description:
-            "Small 1.1B parameter chat model for quick testing (~637MB)",
-          file_format: "safetensors",
-          repository_path: "meta-llama/Llama-3.1-8B-Instruct",
-          main_filename: "model.safetensors",
-          repository_branch: "main",
+            'Small 1.1B parameter chat model for quick testing (~637MB)',
+          file_format: 'safetensors',
+          repository_path: 'meta-llama/Llama-3.1-8B-Instruct',
+          main_filename: 'model.safetensors',
+          repository_branch: 'main',
           settings: {},
-        });
+        })
       }
     }
-  }, [open, viewMode, viewDownload, form]);
+  }, [open, viewMode, viewDownload, form])
 
   return (
     <Modal
       title={
-        viewMode ? "View Download Details" : t("providers.downloadLocalModel")
+        viewMode ? 'View Download Details' : t('providers.downloadLocalModel')
       }
       open={open}
       onCancel={handleCloseModal}
@@ -195,34 +195,34 @@ export function AddLocalModelDownloadModal() {
         viewMode
           ? [
               <Button key="close" onClick={handleCloseModal}>
-                {t("buttons.close")}
+                {t('buttons.close')}
               </Button>,
               viewDownload &&
-                (viewDownload.status === "downloading" ||
-                  viewDownload.status === "pending") && (
+                (viewDownload.status === 'downloading' ||
+                  viewDownload.status === 'pending') && (
                   <Button
                     key="cancel-download"
                     danger
                     onClick={async () => {
                       try {
                         const { cancelModelDownload } = await import(
-                          "../../../../store/modelDownload"
-                        );
-                        await cancelModelDownload(downloadId!);
-                        message.success(t("providers.downloadCancelled"));
-                        handleCloseModal();
+                          '../../../../store/modelDownload'
+                        )
+                        await cancelModelDownload(downloadId!)
+                        message.success(t('providers.downloadCancelled'))
+                        handleCloseModal()
                       } catch (_error) {
-                        message.error(t("providers.failedToCancelDownload"));
+                        message.error(t('providers.failedToCancelDownload'))
                       }
                     }}
                   >
-                    {t("buttons.cancel")} Download
+                    {t('buttons.cancel')} Download
                   </Button>
                 ),
             ].filter(Boolean)
           : [
               <Button key="cancel" onClick={handleCancel}>
-                {t("buttons.cancel")}
+                {t('buttons.cancel')}
               </Button>,
               <Button
                 key="submit"
@@ -230,7 +230,7 @@ export function AddLocalModelDownloadModal() {
                 loading={loading}
                 onClick={handleSubmit}
               >
-                {t("buttons.startDownload")}
+                {t('buttons.startDownload')}
               </Button>,
             ]
       }
@@ -241,7 +241,7 @@ export function AddLocalModelDownloadModal() {
       <div>
         {viewDownload && viewDownload.progress_data && (
           <Card
-            title={t("providers.downloadProgress")}
+            title={t('providers.downloadProgress')}
             size="small"
             style={{ marginBottom: 16 }}
           >
@@ -252,39 +252,37 @@ export function AddLocalModelDownloadModal() {
                   100,
               )}
               status={
-                viewDownload.status === "downloading"
-                  ? "active"
-                  : viewDownload.status === "completed"
-                    ? "success"
-                    : viewDownload.status === "failed"
-                      ? "exception"
-                      : "normal"
+                viewDownload.status === 'downloading'
+                  ? 'active'
+                  : viewDownload.status === 'completed'
+                    ? 'success'
+                    : viewDownload.status === 'failed'
+                      ? 'exception'
+                      : 'normal'
               }
-              format={(percent) =>
+              format={percent =>
                 `${percent}% - ${viewDownload.progress_data?.phase || viewDownload.status}`
               }
             />
-            <Text type="secondary" style={{ fontSize: "12px" }}>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
               {viewDownload.progress_data.message ||
                 viewDownload.error_message ||
-                ""}
+                ''}
             </Text>
             {viewDownload.progress_data.download_speed && (
               <div style={{ marginTop: 8 }}>
-                <Text type="secondary" style={{ fontSize: "12px" }}>
-                  Speed:{" "}
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  Speed:{' '}
                   {Math.round(
                     (viewDownload.progress_data.download_speed / 1024 / 1024) *
                       10,
-                  ) / 10}{" "}
+                  ) / 10}{' '}
                   MB/s
                   {viewDownload.progress_data.eta_seconds && (
                     <>
-                      {" "}
-                      • ETA:{" "}
-                      {Math.round(
-                        viewDownload.progress_data.eta_seconds / 60,
-                      )}{" "}
+                      {' '}
+                      • ETA:{' '}
+                      {Math.round(viewDownload.progress_data.eta_seconds / 60)}{' '}
                       minutes
                     </>
                   )}
@@ -299,9 +297,9 @@ export function AddLocalModelDownloadModal() {
           layout="vertical"
           disabled={viewMode}
           initialValues={{
-            file_format: "safetensors",
-            main_filename: "",
-            repository_branch: "main",
+            file_format: 'safetensors',
+            main_filename: '',
+            repository_branch: 'main',
             settings: {},
           }}
         >
@@ -309,20 +307,20 @@ export function AddLocalModelDownloadModal() {
 
           <Form.Item
             name="repository_id"
-            label={t("providers.selectRepository")}
+            label={t('providers.selectRepository')}
             rules={[
               {
                 required: true,
-                message: t("providers.repositoryRequired"),
+                message: t('providers.repositoryRequired'),
               },
             ]}
           >
             <Select
-              placeholder={t("providers.selectRepositoryPlaceholder")}
+              placeholder={t('providers.selectRepositoryPlaceholder')}
               loading={loadingRepositories}
               showSearch
               optionFilterProp="children"
-              options={repositories.map((repo) => ({
+              options={repositories.map(repo => ({
                 value: repo.id,
                 label: `${repo.name} (${repo.url})`,
               }))}
@@ -331,11 +329,11 @@ export function AddLocalModelDownloadModal() {
 
           <Form.Item
             name="repository_path"
-            label={t("providers.repositoryPath")}
+            label={t('providers.repositoryPath')}
             rules={[
               {
                 required: true,
-                message: t("providers.repositoryPathRequired"),
+                message: t('providers.repositoryPathRequired'),
               },
             ]}
           >
@@ -343,20 +341,20 @@ export function AddLocalModelDownloadModal() {
               placeholder="microsoft/DialoGPT-medium"
               addonBefore={
                 selectedRepository
-                  ? repositories.find((r) => r.id === selectedRepository)
-                      ?.url || "Repository"
-                  : "Repository"
+                  ? repositories.find(r => r.id === selectedRepository)?.url ||
+                    'Repository'
+                  : 'Repository'
               }
             />
           </Form.Item>
 
           <Form.Item
             name="main_filename"
-            label={t("providers.mainFilename")}
+            label={t('providers.mainFilename')}
             rules={[
               {
                 required: true,
-                message: t("providers.localFilenameRequired"),
+                message: t('providers.localFilenameRequired'),
               },
             ]}
           >
@@ -365,12 +363,12 @@ export function AddLocalModelDownloadModal() {
 
           <Form.Item
             name="repository_branch"
-            label={t("providers.repositoryBranch")}
+            label={t('providers.repositoryBranch')}
           >
             <Input placeholder="main" />
           </Form.Item>
         </Form>
       </div>
     </Modal>
-  );
+  )
 }

@@ -1,10 +1,16 @@
 import {
-  ClockCircleOutlined,
+  AppstoreOutlined,
   DownloadOutlined,
+  EyeOutlined,
+  LockOutlined,
+  ReloadOutlined,
+  RobotOutlined,
   SearchOutlined,
-  TagOutlined,
+  ToolOutlined,
+  UnlockOutlined,
 } from '@ant-design/icons'
 import {
+  App,
   Button,
   Card,
   Col,
@@ -12,202 +18,237 @@ import {
   Input,
   Row,
   Select,
+  Spin,
   Tag,
+  Tabs,
   Typography,
 } from 'antd'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useEffect, useMemo, useState } from 'react'
 import { PageContainer } from '../common/PageContainer'
+import {
+  useHubStore,
+  initializeHub,
+  refreshHub,
+  searchModels,
+  searchAssistants,
+} from '../../store/hub'
+import type { HubModel, HubAssistant } from '../../api/hub'
 
 const { Title, Text } = Typography
 
-const mockModels = [
-  {
-    id: 'llama3.1-8b',
-    name: 'llama3.1',
-    description:
-      'Llama 3.1 is a new state-of-the-art model from Meta available in 8B, 70B and 405B parameter sizes.',
-    provider: 'Meta',
-    size: '8b',
-    variants: ['8b', '70b', '405b'],
-    capabilities: ['tools'],
-    status: 'available',
-    pulls: '97.4M',
-    tags: 93,
-    lastUpdated: '7 months ago',
-  },
-  {
-    id: 'llama3.2-1b',
-    name: 'llama3.2',
-    description: "Meta's Llama 3.2 goes small with 1B and 3B models.",
-    provider: 'Meta',
-    size: '1b',
-    variants: ['1b', '3b'],
-    capabilities: ['tools'],
-    status: 'available',
-    pulls: '24.2M',
-    tags: 63,
-    lastUpdated: '9 months ago',
-  },
-  {
-    id: 'llama3-70b',
-    name: 'llama3',
-    description: 'Meta Llama 3: The most capable openly available LLM to date',
-    provider: 'Meta',
-    size: '70b',
-    variants: ['8b', '70b'],
-    capabilities: [],
-    status: 'available',
-    pulls: '9.2M',
-    tags: 68,
-    lastUpdated: '1 year ago',
-  },
-  {
-    id: 'llava-7b',
-    name: 'llava',
-    description:
-      '🌋 LLaVA is a novel end-to-end trained large multimodal model that combines a vision encoder and Vicuna for general-purpose visual and language understanding. Updated to version 1.6.',
-    provider: 'LLaVA',
-    size: '7b',
-    variants: ['7b', '13b', '34b'],
-    capabilities: ['vision'],
-    status: 'available',
-    pulls: '7.5M',
-    tags: 98,
-    lastUpdated: '1 year ago',
-  },
-  {
-    id: 'llama2-7b',
-    name: 'llama2',
-    description:
-      'Llama 2 is a collection of foundation language models ranging from 7B to 70B parameters.',
-    provider: 'Meta',
-    size: '7b',
-    variants: ['7b', '13b', '70b'],
-    capabilities: [],
-    status: 'available',
-    pulls: '3.8M',
-    tags: 102,
-    lastUpdated: '1 year ago',
-  },
-  {
-    id: 'gpt-3.5-turbo',
-    name: 'GPT-3.5 Turbo',
-    description: 'Fast and efficient model for general conversations',
-    provider: 'OpenAI',
-    size: '~1.5GB',
-    variants: [],
-    capabilities: ['Chat', 'Function Calling'],
-    status: 'available',
-    pulls: '45.2M',
-    tags: 12,
-    lastUpdated: '3 months ago',
-  },
-  {
-    id: 'gpt-4',
-    name: 'GPT-4',
-    description: 'Most capable model for complex reasoning tasks',
-    provider: 'OpenAI',
-    size: '~3GB',
-    variants: [],
-    capabilities: ['Chat', 'Function Calling', 'Vision'],
-    status: 'available',
-    pulls: '32.1M',
-    tags: 8,
-    lastUpdated: '2 months ago',
-  },
-  {
-    id: 'claude-3-sonnet',
-    name: 'Claude 3 Sonnet',
-    description: 'Balanced model for various tasks',
-    provider: 'Anthropic',
-    size: '~2GB',
-    variants: [],
-    capabilities: ['Chat', 'Function Calling', 'Vision'],
-    status: 'available',
-    pulls: '28.7M',
-    tags: 15,
-    lastUpdated: '4 months ago',
-  },
-]
-
 export function HubPage() {
-  const { t } = useTranslation()
+  const { message } = App.useApp()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState('popular')
+  const [activeTab, setActiveTab] = useState('models')
 
-  const handleDownload = (modelId: string) => {
-    console.log('Downloading model:', modelId)
-    // In a real app, this would trigger model download
+  // Hub store state
+  const {
+    models,
+    assistants,
+    hubVersion,
+    lastUpdated,
+    initialized,
+    loading,
+    error,
+  } = useHubStore()
+
+  useEffect(() => {
+    if (!initialized && !loading && !error) {
+      initializeHub().catch(err => {
+        console.error('Failed to initialize hub:', err)
+        message.error('Failed to load hub data')
+      })
+    }
+  }, [initialized, loading, error, message])
+
+  const handleDownload = async (model: HubModel) => {
+    console.log('Downloading model:', model.id)
+    message.info(`Starting download of ${model.name}`)
+    // TODO: Implement actual model download
   }
 
-  const getCapabilityColor = (capability: string) => {
-    switch (capability.toLowerCase()) {
-      case 'tools':
-        return 'blue'
-      case 'vision':
-        return 'purple'
-      case 'chat':
-        return 'green'
-      case 'function calling':
-        return 'orange'
-      default:
-        return 'default'
+  const handleUseAssistant = (assistant: HubAssistant) => {
+    console.log('Using assistant:', assistant.id)
+    message.info(`Starting conversation with ${assistant.name}`)
+    // TODO: Navigate to chat with assistant
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refreshHub()
+      message.success('Hub data refreshed successfully')
+    } catch (err) {
+      console.error('Failed to refresh hub:', err)
+      message.error('Failed to refresh hub data')
     }
   }
 
   const filteredModels = useMemo(() => {
-    let filtered = mockModels.filter(model => {
-      const matchesSearch =
-        model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        model.description.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesCategory =
-        selectedCategory === 'all' ||
-        model.capabilities.some(cap =>
-          cap.toLowerCase().includes(selectedCategory.toLowerCase()),
-        )
-      return matchesSearch && matchesCategory
-    })
+    let filtered = searchModels(models, searchTerm)
+
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(model => {
+        if (!model.capabilities) return false
+        switch (selectedCategory) {
+          case 'vision':
+            return model.capabilities.vision
+          case 'tools':
+            return model.capabilities.tools
+          case 'code':
+            return model.capabilities.code_interpreter
+          default:
+            return true
+        }
+      })
+    }
 
     // Sort models
     switch (sortBy) {
       case 'popular':
         filtered.sort(
-          (a, b) =>
-            parseFloat(b.pulls.replace(/[M]/g, '')) -
-            parseFloat(a.pulls.replace(/[M]/g, '')),
+          (a, b) => (b.popularity_score || 0) - (a.popularity_score || 0),
         )
         break
       case 'name':
         filtered.sort((a, b) => a.name.localeCompare(b.name))
         break
-      case 'updated':
-        // Simple sorting by last updated text - in real app would use actual dates
-        filtered.sort((a, b) => a.lastUpdated.localeCompare(b.lastUpdated))
+      case 'size':
+        filtered.sort((a, b) => a.size_gb - b.size_gb)
+        break
+      default:
         break
     }
 
     return filtered
-  }, [searchTerm, selectedCategory, sortBy])
+  }, [models, searchTerm, selectedCategory, sortBy])
+
+  const filteredAssistants = useMemo(() => {
+    let filtered = searchAssistants(assistants, searchTerm)
+
+    // Filter by category
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(
+        assistant =>
+          assistant.category.toLowerCase() === selectedCategory.toLowerCase(),
+      )
+    }
+
+    // Sort assistants
+    switch (sortBy) {
+      case 'popular':
+        filtered.sort(
+          (a, b) => (b.popularity_score || 0) - (a.popularity_score || 0),
+        )
+        break
+      case 'name':
+        filtered.sort((a, b) => a.name.localeCompare(b.name))
+        break
+      default:
+        break
+    }
+
+    return filtered
+  }, [assistants, searchTerm, selectedCategory, sortBy])
+
+  if (loading && !initialized) {
+    return (
+      <PageContainer>
+        <div className="flex justify-center items-center h-64">
+          <Spin size="large" />
+          <Text className="ml-4">Loading hub data...</Text>
+        </div>
+      </PageContainer>
+    )
+  }
+
+  if (error && !initialized) {
+    return (
+      <PageContainer>
+        <div className="text-center py-12">
+          <Text type="danger">Failed to load hub data: {error}</Text>
+          <div className="mt-4">
+            <Button
+              onClick={() => {
+                // Clear error and retry
+                useHubStore.setState({ error: null })
+                initializeHub()
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </PageContainer>
+    )
+  }
 
   return (
     <PageContainer>
       <div style={{ height: '100%', overflow: 'auto' }}>
         {/* Header */}
         <div className="mb-6">
-          <Title level={2} className="mb-2">
-            {t('hub.title')}
-          </Title>
-          <Text type="secondary">{t('hub.description')}</Text>
+          <Flex justify="space-between" align="center" className="mb-2">
+            <Title level={2} style={{ margin: 0 }}>
+              Hub
+            </Title>
+            <Flex align="center" gap={16}>
+              <Text type="secondary" className="text-sm">
+                Version: {hubVersion} • Updated:{' '}
+                {new Date(lastUpdated).toLocaleDateString()}
+              </Text>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleRefresh}
+                loading={loading}
+                type="text"
+              >
+                Refresh
+              </Button>
+            </Flex>
+          </Flex>
+          <Text type="secondary">
+            Discover and download models and assistants
+          </Text>
         </div>
 
+        {/* Tabs */}
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          className="mb-6"
+          items={[
+            {
+              key: 'models',
+              label: (
+                <span>
+                  <AppstoreOutlined />
+                  Models ({models.length})
+                </span>
+              ),
+              children: null,
+            },
+            {
+              key: 'assistants',
+              label: (
+                <span>
+                  <RobotOutlined />
+                  Assistants ({assistants.length})
+                </span>
+              ),
+              children: null,
+            },
+          ]}
+        />
+
         {/* Search and Filters */}
-        <div className="mb-6 p-4 rounded-lg">
+        <div className="mb-6">
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={24} md={12} lg={8}>
               <Input
-                placeholder={t('hub.searchPlaceholder')}
+                placeholder={`Search ${activeTab}...`}
                 prefix={<SearchOutlined />}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -216,149 +257,265 @@ export function HubPage() {
             </Col>
             <Col xs={12} sm={12} md={6} lg={4}>
               <Select
-                placeholder={t('hub.category')}
+                placeholder="Category"
                 value={selectedCategory}
                 onChange={setSelectedCategory}
                 style={{ width: '100%' }}
               >
-                <Select.Option value="all">{t('hub.all')}</Select.Option>
-                <Select.Option value="embedding">Embedding</Select.Option>
-                <Select.Option value="vision">Vision</Select.Option>
-                <Select.Option value="tools">Tools</Select.Option>
-                <Select.Option value="thinking">Thinking</Select.Option>
+                <Select.Option value="all">All</Select.Option>
+                {activeTab === 'models' ? (
+                  <>
+                    <Select.Option value="vision">Vision</Select.Option>
+                    <Select.Option value="tools">Tools</Select.Option>
+                    <Select.Option value="code">Code</Select.Option>
+                  </>
+                ) : (
+                  <>
+                    <Select.Option value="development">
+                      Development
+                    </Select.Option>
+                    <Select.Option value="writing">Writing</Select.Option>
+                    <Select.Option value="vision">Vision</Select.Option>
+                    <Select.Option value="analytics">Analytics</Select.Option>
+                  </>
+                )}
               </Select>
             </Col>
             <Col xs={12} sm={12} md={6} lg={4}>
               <Select
-                placeholder={t('hub.sortBy')}
+                placeholder="Sort by"
                 value={sortBy}
                 onChange={setSortBy}
                 style={{ width: '100%' }}
               >
-                <Select.Option value="popular">
-                  {t('hub.popular')}
-                </Select.Option>
-                <Select.Option value="name">{t('hub.name')}</Select.Option>
-                <Select.Option value="updated">
-                  {t('hub.recentlyUpdated')}
-                </Select.Option>
+                <Select.Option value="popular">Popular</Select.Option>
+                <Select.Option value="name">Name</Select.Option>
+                {activeTab === 'models' && (
+                  <Select.Option value="size">Size</Select.Option>
+                )}
               </Select>
             </Col>
           </Row>
         </div>
 
-        {/* Model Cards */}
-        <Row gutter={[16, 16]}>
-          {filteredModels.map(model => (
-            <Col xs={24} sm={24} md={12} lg={8} xl={6} key={model.id}>
-              <Card
-                hoverable
-                style={{ height: '100%' }}
-                styles={{ body: { padding: '16px' } }}
-              >
-                <div style={{ marginBottom: '12px' }}>
-                  <Title level={4} style={{ margin: 0, marginBottom: '4px' }}>
-                    {model.name}
-                  </Title>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    {model.description}
-                  </Text>
-                </div>
-
-                {/* Variants/Tags */}
-                {model.variants && model.variants.length > 0 && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <Flex wrap className="gap-2">
-                      {model.variants.map(variant => (
-                        <Tag
-                          key={variant}
-                          color="blue"
-                          style={{ fontSize: '11px' }}
-                        >
-                          {variant}
-                        </Tag>
-                      ))}
-                    </Flex>
-                  </div>
-                )}
-
-                {/* Capabilities */}
-                {model.capabilities && model.capabilities.length > 0 && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <Flex wrap className="gap-2">
-                      {model.capabilities.map(capability => (
-                        <Tag
-                          key={capability}
-                          color={getCapabilityColor(capability)}
-                          style={{ fontSize: '11px' }}
-                        >
-                          {capability}
-                        </Tag>
-                      ))}
-                    </Flex>
-                  </div>
-                )}
-
-                {/* Stats */}
-                <div style={{ marginBottom: '12px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '4px',
-                    }}
+        {/* Content */}
+        {activeTab === 'models' ? (
+          <>
+            <Row gutter={[16, 16]}>
+              {filteredModels.map(model => (
+                <Col xs={24} sm={24} md={12} lg={8} xl={6} key={model.id}>
+                  <Card
+                    hoverable
+                    style={{ height: '100%' }}
+                    styles={{ body: { padding: '16px' } }}
                   >
-                    <Flex className="gap-1">
-                      <DownloadOutlined
-                        style={{ fontSize: '12px', color: '#666' }}
-                      />
+                    <div style={{ marginBottom: '12px' }}>
+                      <Flex
+                        justify="space-between"
+                        align="start"
+                        className="mb-2"
+                      >
+                        <Title level={4} style={{ margin: 0 }}>
+                          {model.alias}
+                        </Title>
+                        {model.public ? (
+                          <UnlockOutlined style={{ color: '#52c41a' }} />
+                        ) : (
+                          <LockOutlined style={{ color: '#ff4d4f' }} />
+                        )}
+                      </Flex>
                       <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {model.pulls} Pulls
+                        {model.description}
                       </Text>
-                    </Flex>
-                    <Flex className="gap-1">
-                      <TagOutlined
-                        style={{ fontSize: '12px', color: '#666' }}
-                      />
+                    </div>
+
+                    {/* Tags */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <Flex wrap className="gap-1">
+                        {model.tags.slice(0, 3).map(tag => (
+                          <Tag
+                            key={tag}
+                            color="default"
+                            style={{ fontSize: '11px' }}
+                          >
+                            {tag}
+                          </Tag>
+                        ))}
+                        {model.tags.length > 3 && (
+                          <Tag color="default" style={{ fontSize: '11px' }}>
+                            +{model.tags.length - 3}
+                          </Tag>
+                        )}
+                      </Flex>
+                    </div>
+
+                    {/* Capabilities */}
+                    {model.capabilities && (
+                      <div style={{ marginBottom: '12px' }}>
+                        <Flex wrap className="gap-1">
+                          {model.capabilities.vision && (
+                            <Tag
+                              color="purple"
+                              icon={<EyeOutlined />}
+                              style={{ fontSize: '11px' }}
+                            >
+                              Vision
+                            </Tag>
+                          )}
+                          {model.capabilities.tools && (
+                            <Tag
+                              color="blue"
+                              icon={<ToolOutlined />}
+                              style={{ fontSize: '11px' }}
+                            >
+                              Tools
+                            </Tag>
+                          )}
+                          {model.capabilities.code_interpreter && (
+                            <Tag
+                              color="orange"
+                              icon={<AppstoreOutlined />}
+                              style={{ fontSize: '11px' }}
+                            >
+                              Code
+                            </Tag>
+                          )}
+                        </Flex>
+                      </div>
+                    )}
+
+                    {/* Stats */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <Flex
+                        justify="space-between"
+                        align="center"
+                        className="mb-1"
+                      >
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          Size: {model.size_gb}GB
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                          {model.file_format.toUpperCase()}
+                        </Text>
+                      </Flex>
+                      {model.license && (
+                        <Text type="secondary" style={{ fontSize: '11px' }}>
+                          License: {model.license}
+                        </Text>
+                      )}
+                    </div>
+
+                    {/* Action Button */}
+                    <Button
+                      type="primary"
+                      block
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() => handleDownload(model)}
+                      style={{ marginTop: 'auto' }}
+                    >
+                      Download Model
+                    </Button>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+
+            {filteredModels.length === 0 && (
+              <div className="text-center py-12">
+                <Text type="secondary">No models found</Text>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <Row gutter={[16, 16]}>
+              {filteredAssistants.map(assistant => (
+                <Col xs={24} sm={24} md={12} lg={8} xl={6} key={assistant.id}>
+                  <Card
+                    hoverable
+                    style={{ height: '100%' }}
+                    styles={{ body: { padding: '16px' } }}
+                  >
+                    <div style={{ marginBottom: '12px' }}>
+                      <Title
+                        level={4}
+                        style={{ margin: 0, marginBottom: '4px' }}
+                      >
+                        {assistant.name}
+                      </Title>
                       <Text type="secondary" style={{ fontSize: '12px' }}>
-                        {model.tags} Tags
+                        {assistant.description}
                       </Text>
-                    </Flex>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <ClockCircleOutlined
-                      style={{
-                        fontSize: '12px',
-                        color: '#666',
-                        marginRight: '4px',
-                      }}
-                    />
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      Updated {model.lastUpdated}
-                    </Text>
-                  </div>
-                </div>
+                    </div>
 
-                {/* Action Button */}
-                <Button
-                  type="primary"
-                  block
-                  size="small"
-                  onClick={() => handleDownload(model.id)}
-                  style={{ marginTop: 'auto' }}
-                >
-                  {t('hub.pullModel')}
-                </Button>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+                    {/* Category & Author */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <Flex justify="space-between" align="center">
+                        <Tag color="geekblue" style={{ fontSize: '11px' }}>
+                          {assistant.category}
+                        </Tag>
+                        {assistant.author && (
+                          <Text type="secondary" style={{ fontSize: '11px' }}>
+                            by {assistant.author}
+                          </Text>
+                        )}
+                      </Flex>
+                    </div>
 
-        {filteredModels.length === 0 && (
-          <div className="text-center py-12">
-            <Text type="secondary">{t('hub.noModels')}</Text>
-          </div>
+                    {/* Tags */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <Flex wrap className="gap-1">
+                        {assistant.tags.slice(0, 3).map(tag => (
+                          <Tag
+                            key={tag}
+                            color="default"
+                            style={{ fontSize: '11px' }}
+                          >
+                            {tag}
+                          </Tag>
+                        ))}
+                        {assistant.tags.length > 3 && (
+                          <Tag color="default" style={{ fontSize: '11px' }}>
+                            +{assistant.tags.length - 3}
+                          </Tag>
+                        )}
+                      </Flex>
+                    </div>
+
+                    {/* Recommended Models */}
+                    {assistant.recommended_models.length > 0 && (
+                      <div style={{ marginBottom: '12px' }}>
+                        <Text type="secondary" style={{ fontSize: '11px' }}>
+                          Works best with:{' '}
+                          {assistant.recommended_models.slice(0, 2).join(', ')}
+                          {assistant.recommended_models.length > 2 && '...'}
+                        </Text>
+                      </div>
+                    )}
+
+                    {/* Action Button */}
+                    <Button
+                      type="primary"
+                      block
+                      size="small"
+                      icon={<RobotOutlined />}
+                      onClick={() => handleUseAssistant(assistant)}
+                      style={{ marginTop: 'auto' }}
+                    >
+                      Use Assistant
+                    </Button>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+
+            {filteredAssistants.length === 0 && (
+              <div className="text-center py-12">
+                <Text type="secondary">No assistants found</Text>
+              </div>
+            )}
+          </>
         )}
       </div>
     </PageContainer>

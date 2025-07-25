@@ -94,7 +94,7 @@ pub async fn delete_model(
 
         // Delete the physical model files
         let model_path = model.get_model_path();
-        let full_model_path = crate::APP_DATA_DIR.join(&model_path);
+        let full_model_path = crate::get_app_data_dir().join(&model_path);
 
         println!(
             "Deleting Candle model files at: {}",

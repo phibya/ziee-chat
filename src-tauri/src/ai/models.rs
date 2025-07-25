@@ -16,7 +16,7 @@ impl ModelUtils {
         if path.is_absolute() {
             path
         } else {
-            APP_DATA_DIR.join(model_path)
+            crate::get_app_data_dir().join(model_path)
         }
     }
 
