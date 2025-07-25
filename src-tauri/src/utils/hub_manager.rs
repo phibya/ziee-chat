@@ -135,34 +135,52 @@ impl HubManager {
                     );
                 }
             } else {
-                // Create empty files if embedded doesn't exist
+                // Log the actual paths being checked
                 println!(
-                    "Embedded file {} not found, creating empty file in APP_DATA_DIR",
-                    filename
+                    "WARNING: Embedded file not found at: {}",
+                    embedded_file_path.display()
                 );
+                println!(
+                    "Expected hub directory: {}",
+                    embedded_hub_dir.display()
+                );
+                
+                // Check if file exists in the data directory already
+                if data_file_path.exists() {
+                    println!(
+                        "File {} already exists in APP_DATA_DIR, skipping empty file creation",
+                        filename
+                    );
+                } else {
+                    // Create empty files if embedded doesn't exist and data file doesn't exist
+                    println!(
+                        "Creating empty {} in APP_DATA_DIR as fallback",
+                        filename
+                    );
 
-                let empty_content = match filename.as_str() {
-                    "models.json" => {
-                        let empty_models = HubModelsFile {
-                            hub_version: self.config.hub_version.clone(),
-                            schema_version: 1,
-                            models: vec![],
-                        };
-                        serde_json::to_string_pretty(&empty_models)?
-                    }
-                    "assistants.json" => {
-                        let empty_assistants = HubAssistantsFile {
-                            hub_version: self.config.hub_version.clone(),
-                            schema_version: 1,
-                            assistants: vec![],
-                        };
-                        serde_json::to_string_pretty(&empty_assistants)?
-                    }
-                    _ => "{}".to_string(),
-                };
+                    let empty_content = match filename.as_str() {
+                        "models.json" => {
+                            let empty_models = HubModelsFile {
+                                hub_version: self.config.hub_version.clone(),
+                                schema_version: 1,
+                                models: vec![],
+                            };
+                            serde_json::to_string_pretty(&empty_models)?
+                        }
+                        "assistants.json" => {
+                            let empty_assistants = HubAssistantsFile {
+                                hub_version: self.config.hub_version.clone(),
+                                schema_version: 1,
+                                assistants: vec![],
+                            };
+                            serde_json::to_string_pretty(&empty_assistants)?
+                        }
+                        _ => "{}".to_string(),
+                    };
 
-                fs::write(&data_file_path, empty_content).await?;
-                println!("Created empty {} in APP_DATA_DIR", filename);
+                    fs::write(&data_file_path, empty_content).await?;
+                    println!("Created empty {} in APP_DATA_DIR", filename);
+                }
             }
         }
 
@@ -351,13 +369,11 @@ impl HubManager {
             let new_hub_dir = self.get_hub_data_dir();
             fs::create_dir_all(&new_hub_dir).await?;
 
-            // Copy embedded files for new version
-            self.copy_embedded_hub_files().await?;
-
-            // Update version marker
+            // Update version marker (don't copy files here, let initialize() handle it)
+            fs::create_dir_all(&hub_base_dir).await?;
             fs::write(version_file, &self.config.hub_version).await?;
 
-            println!("Hub migrated to version {}", self.config.hub_version);
+            println!("Hub version marker updated to {}", self.config.hub_version);
         }
 
         Ok(())

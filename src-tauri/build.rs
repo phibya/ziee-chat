@@ -73,15 +73,15 @@ fn create_binary_symlink(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let source_binary_path = source_dir.join(full_binary_name);
     let target_binary_path = target_dir.join(simple_name);
-    
+
     // Remove existing symlink/shortcut if it exists
     if target_binary_path.exists() {
         fs::remove_file(&target_binary_path)?;
     }
-    
+
     // Ensure target directory exists
     fs::create_dir_all(target_dir)?;
-    
+
     if target.contains("windows") {
         // Windows: Create a batch file that calls the actual binary
         let batch_content = format!("@echo off\n\"{}\" %*", source_binary_path.to_string_lossy());
@@ -93,10 +93,13 @@ fn create_binary_symlink(
         #[cfg(unix)]
         {
             std::os::unix::fs::symlink(&source_binary_path, &target_binary_path)?;
-            println!("Created symlink: {:?} -> {:?}", target_binary_path, source_binary_path);
+            println!(
+                "Created symlink: {:?} -> {:?}",
+                target_binary_path, source_binary_path
+            );
         }
     }
-    
+
     Ok(())
 }
 
@@ -107,14 +110,14 @@ fn build_mistralrs_server(
     println!("Building mistralrs-server...");
 
     let mistralrs_dir = Path::new("mistralrs-server");
-    
+
     // Always build mistralrs-server in release mode
     let binary_name = if target.contains("windows") {
         format!("mistralrs-server-{}.exe", target)
     } else {
         format!("mistralrs-server-{}", target)
     };
-    
+
     // Use dedicated mistralrs-build directory
     let mistralrs_build_dir = target_dir.join("mistralrs-build");
     fs::create_dir_all(&mistralrs_build_dir)?;
@@ -128,10 +131,10 @@ fn build_mistralrs_server(
         );
         return Ok(target_path);
     }
-    
+
     // Build the mistralrs-server with appropriate features based on platform
     let mut cmd = Command::new("cargo");
-    
+
     cmd.arg("build")
         .arg("--manifest-path")
         .arg(mistralrs_dir.join("Cargo.toml"))
@@ -232,7 +235,7 @@ fn main() {
     // Get the output directory and build profile
     let out_dir = env::var("OUT_DIR").unwrap();
     let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-    
+
     // OUT_DIR is typically target/{profile}/build/{package}/out
     // We want to get to target/
     let target_dir = Path::new(&out_dir)
@@ -244,20 +247,21 @@ fn main() {
         .unwrap()
         .parent() // removes /{profile}
         .unwrap();
-    
+
     let target_profile_dir = target_dir.join(&profile);
 
     // Use dedicated git-lfs directory
     let git_lfs_dir = target_dir.join("git-lfs");
-    fs::create_dir_all(&git_lfs_dir).unwrap_or_else(|e| panic!("Failed to create git-lfs directory: {}", e));
-    
+    fs::create_dir_all(&git_lfs_dir)
+        .unwrap_or_else(|e| panic!("Failed to create git-lfs directory: {}", e));
+
     // Use target triple format for binary naming
     let target_binary_name = if target.contains("windows") {
         format!("git-lfs-{}.exe", target)
     } else {
         format!("git-lfs-{}", target)
     };
-    
+
     let target_path = git_lfs_dir.join(&target_binary_name);
 
     // Skip download if binary already exists
@@ -286,8 +290,13 @@ fn main() {
         }
 
         // Extract the binary
-        let extracted_path = extract_git_lfs(&archive_path, &temp_dir, extension == "zip", &target_binary_name)
-            .unwrap_or_else(|e| panic!("Failed to extract git-lfs: {}", e));
+        let extracted_path = extract_git_lfs(
+            &archive_path,
+            &temp_dir,
+            extension == "zip",
+            &target_binary_name,
+        )
+        .unwrap_or_else(|e| panic!("Failed to extract git-lfs: {}", e));
 
         // Copy to target directory
         fs::copy(&extracted_path, &target_path)
@@ -307,7 +316,7 @@ fn main() {
         perms.set_mode(0o755);
         fs::set_permissions(&target_path, perms).unwrap();
     }
-    
+
     // Build mistralrs-server
     println!("cargo:rerun-if-changed=mistralrs-server");
     let mistralrs_path = match build_mistralrs_server(&target_dir, &target) {
@@ -318,27 +327,62 @@ fn main() {
             None
         }
     };
-    
+
     // Create symlinks in target/{profile} directories for both debug and release
     for build_profile in ["debug", "release"] {
         let profile_dir = target_dir.join(build_profile);
         fs::create_dir_all(&profile_dir).ok();
-        
+
         // Create git-lfs symlink
-        if let Err(e) = create_binary_symlink(&git_lfs_dir, &profile_dir, &target_binary_name, "git-lfs", &target) {
-            eprintln!("Warning: Failed to create git-lfs symlink in {} directory: {}", build_profile, e);
+        if let Err(e) = create_binary_symlink(
+            &git_lfs_dir,
+            &profile_dir,
+            &target_binary_name,
+            "git-lfs",
+            &target,
+        ) {
+            eprintln!(
+                "Warning: Failed to create git-lfs symlink in {} directory: {}",
+                build_profile, e
+            );
         }
-        
+
         // Create mistralrs-server symlink if it was built successfully
         if let Some(ref mistralrs_binary_path) = mistralrs_path {
-            let mistralrs_binary_name = mistralrs_binary_path.file_name().unwrap().to_str().unwrap();
+            let mistralrs_binary_name =
+                mistralrs_binary_path.file_name().unwrap().to_str().unwrap();
             let mistralrs_source_dir = mistralrs_binary_path.parent().unwrap();
-            if let Err(e) = create_binary_symlink(mistralrs_source_dir, &profile_dir, mistralrs_binary_name, "mistralrs-server", &target) {
-                eprintln!("Warning: Failed to create mistralrs-server symlink in {} directory: {}", build_profile, e);
+            if let Err(e) = create_binary_symlink(
+                mistralrs_source_dir,
+                &profile_dir,
+                mistralrs_binary_name,
+                "mistralrs-server",
+                &target,
+            ) {
+                eprintln!(
+                    "Warning: Failed to create mistralrs-server symlink in {} directory: {}",
+                    build_profile, e
+                );
             }
         }
     }
 
     // Also run the default Tauri build script
     tauri_build::build();
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+        if ty.is_dir() {
+            copy_dir_all(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
 }

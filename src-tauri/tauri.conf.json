@@ -58,8 +58,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../hub/**/*": "hub",
-      "../dist/ui/**/*": "ui"
+      "../hub": "hub",
+      "../dist/ui": "ui"
     },
     "externalBin": [
       "target/git-lfs/git-lfs",

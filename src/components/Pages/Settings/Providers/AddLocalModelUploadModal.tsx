@@ -5,13 +5,13 @@ import {
   Card,
   Form,
   List,
-  Modal,
   Progress,
   Select,
   Tag,
   Typography,
   Upload,
 } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LOCAL_FILE_TYPE_OPTIONS } from '../../../../constants/localModelTypes'
@@ -259,10 +259,10 @@ export function AddLocalModelUploadModal() {
   }
 
   return (
-    <Modal
+    <Drawer
       title={t('providers.uploadLocalModel')}
       open={open}
-      onCancel={handleCancel}
+      onClose={handleCancel}
       footer={[
         <Button key="cancel" onClick={handleCancel}>
           {t('buttons.cancel')}
@@ -277,7 +277,6 @@ export function AddLocalModelUploadModal() {
         </Button>,
       ]}
       width={800}
-      destroyOnHidden={true}
       maskClosable={false}
     >
       <Form
@@ -434,6 +433,6 @@ export function AddLocalModelUploadModal() {
             </Card>
           )}
       </Form>
-    </Modal>
+    </Drawer>
   )
 }

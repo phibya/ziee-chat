@@ -11,12 +11,10 @@ import {
   Badge,
   Button,
   Card,
-  Drawer,
   Flex,
   Form,
   Input,
   List,
-  Modal,
   Popconfirm,
   Result,
   Select,
@@ -25,6 +23,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { isDesktopApp } from '../../../../api/core.ts'
@@ -381,10 +380,10 @@ export function UserGroupsSettings() {
         </Card>
 
         {/* Create Group Modal */}
-        <Modal
+        <Drawer
           title="Create User Group"
           open={createModalVisible}
-          onCancel={() => {
+          onClose={() => {
             setCreateModalVisible(false)
             createForm.resetFields()
           }}
@@ -469,13 +468,13 @@ export function UserGroupsSettings() {
               </Flex>
             </Form.Item>
           </Form>
-        </Modal>
+        </Drawer>
 
         {/* Edit Group Modal */}
-        <Modal
+        <Drawer
           title="Edit User Group"
           open={editModalVisible}
-          onCancel={() => {
+          onClose={() => {
             setEditModalVisible(false)
             setSelectedGroup(null)
             editForm.resetFields()
@@ -581,7 +580,7 @@ export function UserGroupsSettings() {
               </Flex>
             </Form.Item>
           </Form>
-        </Modal>
+        </Drawer>
 
         {/* Group Members Drawer */}
         <Drawer

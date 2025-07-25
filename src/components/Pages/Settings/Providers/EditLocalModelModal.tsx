@@ -1,4 +1,5 @@
-import { Button, Card, Flex, Form, Modal } from 'antd'
+import { Button, Card, Flex, Form } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -61,10 +62,10 @@ export function EditLocalModelModal() {
   }
 
   return (
-    <Modal
+    <Drawer
       title={t('providers.editLocalModel')}
       open={open}
-      onCancel={closeEditLocalModelModal}
+      onClose={closeEditLocalModelModal}
       footer={[
         <Button key="cancel" onClick={closeEditLocalModelModal}>
           {t('buttons.cancel')}
@@ -94,6 +95,6 @@ export function EditLocalModelModal() {
           </Card>
         </Flex>
       </Form>
-    </Modal>
+    </Drawer>
   )
 }

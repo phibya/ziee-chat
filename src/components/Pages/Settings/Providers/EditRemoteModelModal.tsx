@@ -1,4 +1,5 @@
-import { Button, Flex, Form, Modal } from 'antd'
+import { Button, Flex, Form } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -58,10 +59,10 @@ export function EditRemoteModelModal() {
   }
 
   return (
-    <Modal
+    <Drawer
       title={t('providers.editRemoteModel')}
       open={open}
-      onCancel={closeEditRemoteModelModal}
+      onClose={closeEditRemoteModelModal}
       footer={[
         <Button key="cancel" onClick={closeEditRemoteModelModal}>
           {t('buttons.cancel')}
@@ -85,6 +86,6 @@ export function EditRemoteModelModal() {
           <ModelCapabilitiesSection />
         </Flex>
       </Form>
-    </Modal>
+    </Drawer>
   )
 }

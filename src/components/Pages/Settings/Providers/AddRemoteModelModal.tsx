@@ -1,4 +1,5 @@
-import { App, Button, Form, Modal } from 'antd'
+import { App, Button, Form } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -66,10 +67,10 @@ export function AddRemoteModelModal() {
   }
 
   return (
-    <Modal
+    <Drawer
       title={t('providers.addRemoteModel')}
       open={open}
-      onCancel={handleCancel}
+      onClose={handleCancel}
       footer={[
         <Button key="cancel" onClick={handleCancel}>
           {t('buttons.cancel')}
@@ -84,7 +85,6 @@ export function AddRemoteModelModal() {
         </Button>,
       ]}
       width={600}
-      destroyOnHidden={true}
       maskClosable={false}
     >
       <Form
@@ -100,6 +100,6 @@ export function AddRemoteModelModal() {
       >
         <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
       </Form>
-    </Modal>
+    </Drawer>
   )
 }

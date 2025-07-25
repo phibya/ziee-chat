@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   InputNumber,
-  Modal,
   Select,
   Flex,
   Switch,
@@ -13,6 +12,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd'
+import { Drawer } from '../UI/Drawer'
 import {
   CodeOutlined,
   DeleteOutlined,
@@ -409,10 +409,10 @@ export const AssistantFormModal: React.FC = () => {
   }
 
   return (
-    <Modal
+    <Drawer
       title={getTitle()}
       open={open}
-      onCancel={closeAssistantModal}
+      onClose={closeAssistantModal}
       footer={null}
       width={800}
       maskClosable={false}
@@ -629,6 +629,6 @@ export const AssistantFormModal: React.FC = () => {
           </Flex>
         </Form.Item>
       </Form>
-    </Modal>
+    </Drawer>
   )
 }

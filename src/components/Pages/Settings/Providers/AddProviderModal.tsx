@@ -1,4 +1,5 @@
-import { Form, Input, Modal, Select, Switch } from 'antd'
+import { Button, Form, Input, Select, Switch } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -54,14 +55,19 @@ export function AddProviderModal() {
   }
 
   return (
-    <Modal
+    <Drawer
       title={t('providers.addProviderTitle')}
       open={open}
-      onCancel={closeAddProviderModal}
-      onOk={handleSubmit}
-      confirmLoading={loading}
+      onClose={closeAddProviderModal}
+      footer={[
+        <Button key="cancel" onClick={closeAddProviderModal}>
+          {t('buttons.cancel')}
+        </Button>,
+        <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
+          {t('buttons.ok')}
+        </Button>,
+      ]}
       width={600}
-      destroyOnHidden={true}
       maskClosable={false}
     >
       <Form
@@ -114,6 +120,6 @@ export function AddProviderModal() {
         {/* API Configuration for non-local providers */}
         {providerType !== 'local' && <ApiConfigurationSection />}
       </Form>
-    </Modal>
+    </Drawer>
   )
 }

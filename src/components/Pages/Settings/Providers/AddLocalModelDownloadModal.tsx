@@ -4,11 +4,11 @@ import {
   Card,
   Form,
   Input,
-  Modal,
   Progress,
   Select,
   Typography,
 } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiClient } from '../../../../api/client'
@@ -185,12 +185,12 @@ export function AddLocalModelDownloadModal() {
   }, [open, viewMode, viewDownload, form])
 
   return (
-    <Modal
+    <Drawer
       title={
         viewMode ? 'View Download Details' : t('providers.downloadLocalModel')
       }
       open={open}
-      onCancel={handleCloseModal}
+      onClose={handleCloseModal}
       footer={
         viewMode
           ? [
@@ -235,7 +235,6 @@ export function AddLocalModelDownloadModal() {
             ]
       }
       width={800}
-      destroyOnHidden={true}
       maskClosable={false}
     >
       <div>
@@ -369,6 +368,6 @@ export function AddLocalModelDownloadModal() {
           </Form.Item>
         </Form>
       </div>
-    </Modal>
+    </Drawer>
   )
 }

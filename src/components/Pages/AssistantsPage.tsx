@@ -20,6 +20,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd'
+import { Drawer } from '../UI/Drawer'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -203,10 +204,10 @@ export const AssistantsPage: React.FC = () => {
       <AssistantFormModal />
 
       {/* Template Assistants Modal */}
-      <Modal
+      <Drawer
         title={t('assistants.cloneFromTemplateAssistants')}
         open={templateModalVisible}
-        onCancel={() => setTemplateModalVisible(false)}
+        onClose={() => setTemplateModalVisible(false)}
         footer={null}
         width={900}
         maskClosable={false}
@@ -313,7 +314,7 @@ export const AssistantsPage: React.FC = () => {
           rowKey="id"
           pagination={{ pageSize: 5 }}
         />
-      </Modal>
+      </Drawer>
     </PageContainer>
   )
 }

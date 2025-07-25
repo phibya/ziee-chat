@@ -11,12 +11,10 @@ import {
   Badge,
   Button,
   Card,
-  Drawer,
   Flex,
   Form,
   Input,
   List,
-  Modal,
   Popconfirm,
   Result,
   Select,
@@ -25,6 +23,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -384,10 +383,10 @@ export function UsersSettings() {
         </Flex>
 
         {/* Edit User Modal */}
-        <Modal
+        <Drawer
           title={t('admin.users.editUser')}
           open={editModalVisible}
-          onCancel={() => {
+          onClose={() => {
             setEditModalVisible(false)
             setSelectedUser(null)
             editForm.resetFields()
@@ -460,13 +459,13 @@ export function UsersSettings() {
               </Flex>
             </Form.Item>
           </Form>
-        </Modal>
+        </Drawer>
 
         {/* Reset Password Modal */}
-        <Modal
+        <Drawer
           title={t('admin.users.resetPassword')}
           open={passwordModalVisible}
-          onCancel={() => {
+          onClose={() => {
             setPasswordModalVisible(false)
             setSelectedUser(null)
             passwordForm.resetFields()
@@ -528,7 +527,7 @@ export function UsersSettings() {
               </Flex>
             </Form.Item>
           </Form>
-        </Modal>
+        </Drawer>
 
         {/* Groups Drawer */}
         <Drawer
@@ -586,10 +585,10 @@ export function UsersSettings() {
         </Drawer>
 
         {/* Assign Group Modal */}
-        <Modal
+        <Drawer
           title={t('admin.users.assignToGroup')}
           open={assignGroupModalVisible}
-          onCancel={() => {
+          onClose={() => {
             setAssignGroupModalVisible(false)
             setSelectedUser(null)
             assignGroupForm.resetFields()
@@ -642,7 +641,7 @@ export function UsersSettings() {
               </Flex>
             </Form.Item>
           </Form>
-        </Modal>
+        </Drawer>
       </div>
     </PageContainer>
   )

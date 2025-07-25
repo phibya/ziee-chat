@@ -13,6 +13,7 @@ import {
   Select,
   Typography,
 } from 'antd'
+import { Drawer } from '../UI/Drawer'
 import {
   CalendarOutlined,
   DeleteOutlined,
@@ -331,10 +332,10 @@ export const ProjectsPage: React.FC = () => {
       )}
 
       {/* New Project Modal */}
-      <Modal
+      <Drawer
         title={t('projects.createPersonalProject')}
         open={newProjectModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setNewProjectModalVisible(false)
           form.resetFields()
         }}
@@ -380,13 +381,13 @@ export const ProjectsPage: React.FC = () => {
             </Button>
           </div>
         </Form>
-      </Modal>
+      </Drawer>
 
       {/* Edit Project Modal */}
-      <Modal
+      <Drawer
         title={t('projects.editProject')}
         open={editProjectModalVisible}
-        onCancel={() => {
+        onClose={() => {
           setEditProjectModalVisible(false)
           setEditingProject(null)
           form.resetFields()
@@ -426,7 +427,7 @@ export const ProjectsPage: React.FC = () => {
             </Button>
           </div>
         </Form>
-      </Modal>
+      </Drawer>
     </PageContainer>
   )
 }

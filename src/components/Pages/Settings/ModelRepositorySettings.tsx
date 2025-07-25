@@ -14,11 +14,11 @@ import {
   Form,
   Input,
   List,
-  Modal,
   Select,
   Switch,
   Typography,
 } from 'antd'
+import { Drawer } from '../../UI/Drawer'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isDesktopApp } from '../../../api/core'
@@ -441,10 +441,10 @@ export function ModelRepositorySettings() {
       </Card>
 
       {/* Repository Add/Edit Modal */}
-      <Modal
+      <Drawer
         title={editingRepository ? 'Edit Repository' : 'Add Repository'}
         open={isRepositoryModalOpen}
-        onCancel={handleRepositoryCancel}
+        onClose={handleRepositoryCancel}
         footer={null}
         width={600}
         maskClosable={false}
@@ -656,7 +656,7 @@ export function ModelRepositorySettings() {
             </Flex>
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
     </Flex>
   )
 }

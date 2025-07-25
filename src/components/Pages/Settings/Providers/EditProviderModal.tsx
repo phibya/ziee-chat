@@ -1,5 +1,6 @@
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
-import { Card, Flex, Form, Input, Modal, Switch } from 'antd'
+import { Button, Card, Flex, Form, Input, Switch } from 'antd'
+import { Drawer } from '../../../UI/Drawer'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -52,14 +53,19 @@ export function EditProviderModal() {
   if (!provider) return null
 
   return (
-    <Modal
+    <Drawer
       title={`${t('providers.editProvider')} ${provider.name}`}
       open={open}
-      onCancel={closeEditProviderModal}
-      onOk={handleSubmit}
-      confirmLoading={loading}
+      onClose={closeEditProviderModal}
+      footer={[
+        <Button key="cancel" onClick={closeEditProviderModal}>
+          {t('buttons.cancel')}
+        </Button>,
+        <Button key="submit" type="primary" loading={loading} onClick={handleSubmit}>
+          {t('buttons.ok')}
+        </Button>,
+      ]}
       width={600}
-      destroyOnHidden={true}
       maskClosable={false}
     >
       <Form form={form} layout="vertical">
@@ -122,6 +128,6 @@ export function EditProviderModal() {
           </Flex>
         )}
       </Form>
-    </Modal>
+    </Drawer>
   )
 }
