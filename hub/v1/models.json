@@ -1,0 +1,134 @@
+{
+  "hub_version": "v1",
+  "schema_version": 2,
+  "models": [
+    {
+      "id": "llama-3-8b-instruct",
+      "name": "Llama 3 8B Instruct",
+      "alias": "Llama 3 8B",
+      "description": "Meta's Llama 3 8B instruction-tuned model",
+      "repository_url": "https://huggingface.co",
+      "repository_path": "meta-llama/Meta-Llama-3-8B-Instruct",
+      "main_filename": "model.safetensors",
+      "file_format": "safetensors",
+      "capabilities": {
+        "vision": false,
+        "audio": false,
+        "tools": true,
+        "code_interpreter": true
+      },
+      "size_gb": 15.8,
+      "tags": [
+        "instruct",
+        "chat",
+        "code",
+        "reasoning"
+      ],
+      "recommended_parameters": {
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "top_k": 40,
+        "repeat_penalty": 1.1,
+        "context_size": 8192
+      },
+      "public": false,
+      "popularity_score": 0.95,
+      "license": "Meta Custom License",
+      "quantization_options": [
+        "fp16",
+        "q4_0",
+        "q8_0"
+      ],
+      "context_length": 8192,
+      "language_support": [
+        "en",
+        "es",
+        "fr",
+        "de",
+        "it"
+      ]
+    },
+    {
+      "id": "phi-3-mini-4k-instruct",
+      "name": "Phi-3 Mini 4K Instruct",
+      "alias": "Phi-3 Mini",
+      "description": "Microsoft's small but powerful instruction-tuned model",
+      "repository_url": "https://huggingface.co",
+      "repository_path": "microsoft/Phi-3-mini-4k-instruct",
+      "main_filename": "model.safetensors",
+      "file_format": "safetensors",
+      "capabilities": {
+        "vision": false,
+        "audio": false,
+        "tools": true,
+        "code_interpreter": true
+      },
+      "size_gb": 7.6,
+      "tags": [
+        "instruct",
+        "chat",
+        "small",
+        "efficient"
+      ],
+      "recommended_parameters": {
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 50,
+        "repeat_penalty": 1.05,
+        "context_size": 4096
+      },
+      "public": true,
+      "popularity_score": 0.87,
+      "license": "MIT",
+      "quantization_options": [
+        "fp16",
+        "q4_0",
+        "q8_0"
+      ],
+      "context_length": 4096,
+      "language_support": [
+        "en"
+      ]
+    },
+    {
+      "id": "llava-v1.6-vicuna-7b",
+      "name": "LLaVA v1.6 Vicuna 7B",
+      "alias": "LLaVA Vicuna 7B",
+      "description": "Large Language and Vision Assistant with Vicuna 7B base",
+      "repository_url": "https://huggingface.co",
+      "repository_path": "liuhaotian/llava-v1.6-vicuna-7b",
+      "main_filename": "pytorch_model.bin",
+      "file_format": "pytorch",
+      "capabilities": {
+        "vision": true,
+        "audio": false,
+        "tools": false,
+        "code_interpreter": false
+      },
+      "size_gb": 13.4,
+      "tags": [
+        "vision",
+        "multimodal",
+        "image-understanding"
+      ],
+      "recommended_parameters": {
+        "temperature": 0.5,
+        "top_p": 0.9,
+        "top_k": 30,
+        "repeat_penalty": 1.0,
+        "context_size": 2048
+      },
+      "public": true,
+      "popularity_score": 0.78,
+      "license": "Apache 2.0",
+      "quantization_options": [
+        "fp16",
+        "q4_0"
+      ],
+      "context_length": 2048,
+      "language_support": [
+        "en"
+      ]
+    }
+  ]
+}

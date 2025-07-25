@@ -1,0 +1,11 @@
+{
+  "hub_version": "v1",
+  "github_repo": "your-org/hub",
+  "github_branch": "main",
+  "hub_files": [
+    "models.json",
+    "assistants.json"
+  ],
+  "fallback_enabled": true,
+  "update_check_interval_hours": 24
+}

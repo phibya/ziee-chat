@@ -1,5 +1,5 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Button,
   Divider,
@@ -8,7 +8,7 @@ import {
   theme,
   Tooltip,
   Typography,
-} from 'antd'
+} from "antd";
 import {
   AppstoreOutlined,
   BlockOutlined,
@@ -20,45 +20,45 @@ import {
   RobotOutlined,
   SettingOutlined,
   UserOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons";
 import {
   closeMobileOverlay,
   logoutUser,
   setUILeftPanelCollapsed,
   Stores,
-} from '../../store'
-import { RecentConversations } from '../Chat/RecentConversations.tsx'
-import { DownloadIndicator } from './DownloadIndicator'
+} from "../../store";
+import { RecentConversations } from "../Chat/RecentConversations.tsx";
+import { DownloadIndicator } from "./DownloadIndicator";
 
 export function LeftPanel() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { user, isDesktop } = Stores.Auth
-  const { isMobile } = Stores.UI.Layout
-  const { token } = theme.useToken()
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, isDesktop } = Stores.Auth;
+  const { isMobile } = Stores.UI.Layout;
+  const { token } = theme.useToken();
 
   const handleItemClick = () => {
     if (isMobile) {
-      closeMobileOverlay()
+      closeMobileOverlay();
     }
-  }
+  };
 
   const handleNewChat = () => {
     // Navigate to chat without a conversation ID to start a new conversation
-    navigate('/')
-    handleItemClick()
-  }
+    navigate("/");
+    handleItemClick();
+  };
 
   const getSelectedKeys = () => {
-    if (location.pathname === '/chat-history') return ['chat-history']
-    if (location.pathname === '/projects') return ['projects']
-    if (location.pathname === '/artifacts') return ['artifacts']
-    if (location.pathname === '/hub') return ['hub']
-    if (location.pathname === '/assistants') return ['assistants']
-    if (location.pathname === '/settings') return ['settings']
-    return []
-  }
+    if (location.pathname === "/chat-history") return ["chat-history"];
+    if (location.pathname === "/projects") return ["projects"];
+    if (location.pathname === "/artifacts") return ["artifacts"];
+    if (location.pathname === "/hub") return ["hub"];
+    if (location.pathname === "/assistants") return ["assistants"];
+    if (location.pathname === "/settings") return ["settings"];
+    return [];
+  };
 
   return (
     <div
@@ -70,17 +70,18 @@ export function LeftPanel() {
       {/* Collapse Toggle - Only show when panel is open */}
       <div className="flex justify-end">
         <Tooltip
-          title={isMobile ? 'Close sidebar' : 'Collapse sidebar'}
+          title={isMobile ? "Close sidebar" : "Collapse sidebar"}
           placement="right"
         >
           <Button
             type="text"
+            className={"z-100"}
             icon={<MenuFoldOutlined />}
             onClick={() => {
               if (isMobile) {
-                closeMobileOverlay()
+                closeMobileOverlay();
               } else {
-                setUILeftPanelCollapsed(true)
+                setUILeftPanelCollapsed(true);
               }
             }}
           />
@@ -91,11 +92,11 @@ export function LeftPanel() {
       <Button
         type="primary"
         onClick={handleNewChat}
-        className={'flex text-left mb-2 mx-1'}
+        className={"flex text-left mb-2 mx-1"}
       >
-        <div className={'text-left w-full flex gap-2'}>
+        <div className={"text-left w-full flex gap-2"}>
           <PlusOutlined />
-          <div>{t('navigation.newChat')}</div>
+          <div>{t("navigation.newChat")}</div>
         </div>
       </Button>
 
@@ -104,81 +105,81 @@ export function LeftPanel() {
         selectedKeys={getSelectedKeys()}
         items={[
           {
-            key: 'chat-history',
+            key: "chat-history",
             icon: <HistoryOutlined />,
-            label: <Link to="/chat-history">{t('navigation.chats')}</Link>,
+            label: <Link to="/chat-history">{t("navigation.chats")}</Link>,
             onClick: () => {
-              navigate('/chat-history')
-              handleItemClick()
+              navigate("/chat-history");
+              handleItemClick();
             },
           },
           {
-            key: 'projects',
+            key: "projects",
             icon: <FolderOutlined />,
-            label: <Link to="/projects">{t('navigation.projects')}</Link>,
+            label: <Link to="/projects">{t("navigation.projects")}</Link>,
             onClick: () => {
-              navigate('/projects')
-              handleItemClick()
+              navigate("/projects");
+              handleItemClick();
             },
           },
           {
-            key: 'artifacts',
+            key: "artifacts",
             icon: <BlockOutlined />,
-            label: <Link to="/artifacts">{t('navigation.artifacts')}</Link>,
+            label: <Link to="/artifacts">{t("navigation.artifacts")}</Link>,
             onClick: () => {
-              navigate('/artifacts')
-              handleItemClick()
+              navigate("/artifacts");
+              handleItemClick();
             },
           },
         ]}
-        style={{ border: 'none' }}
+        style={{ border: "none" }}
       />
 
-      <Divider size={'small'} />
+      <Divider size={"small"} />
 
       {/* Recents Section */}
-      <Typography.Text type="secondary" className={'p-2 pt-1'}>
+      <Typography.Text type="secondary" className={"p-2 pt-1"}>
         Recents
       </Typography.Text>
 
       {/*/!* Recent Conversations *!/*/}
       <RecentConversations />
 
-      <Divider size={'small'} />
+      <Divider size={"small"} />
 
       {/* Bottom Navigation */}
       <Menu
         selectedKeys={getSelectedKeys()}
         items={[
           {
-            key: 'hub',
+            key: "hub",
             icon: <AppstoreOutlined />,
-            label: <Link to="/hub">{t('navigation.hub')}</Link>,
+            label: <Link to="/hub">{t("navigation.hub")}</Link>,
             onClick: () => {
-              navigate('/hub')
-              handleItemClick()
+              navigate("/hub");
+              handleItemClick();
             },
           },
           {
-            key: 'assistants',
+            key: "assistants",
             icon: <RobotOutlined />,
-            label: <Link to="/assistants">{t('navigation.assistants')}</Link>,
+            label: <Link to="/assistants">{t("navigation.assistants")}</Link>,
             onClick: () => {
-              navigate('/assistants')
-              handleItemClick()
+              navigate("/assistants");
+              handleItemClick();
             },
           },
           {
-            key: 'settings',
+            key: "settings",
             icon: <SettingOutlined />,
-            label: <Link to="/settings">{t('navigation.settings')}</Link>,
+            label: <Link to="/settings">{t("navigation.settings")}</Link>,
             onClick: () => {
-              navigate('/settings')
-              handleItemClick()
+              navigate("/settings");
+              handleItemClick();
             },
           },
         ]}
-        style={{ border: 'none' }}
+        style={{ border: "none" }}
       />
 
       {/* Download Indicator */}
@@ -187,32 +188,32 @@ export function LeftPanel() {
       {/* User Profile Section */}
       {user && !isDesktop && (
         <>
-          <Divider size={'small'} />
+          <Divider size={"small"} />
           <Dropdown
             menu={{
               items: [
                 {
-                  key: 'profile',
+                  key: "profile",
                   icon: <UserOutlined />,
-                  label: t('navigation.profile'),
+                  label: t("navigation.profile"),
                   onClick: () => {
                     // Navigate to profile page or open profile modal
-                    console.log('Profile clicked')
+                    console.log("Profile clicked");
                   },
                 },
                 {
-                  key: 'logout',
+                  key: "logout",
                   icon: <LogoutOutlined />,
-                  label: t('navigation.logout'),
+                  label: t("navigation.logout"),
                   onClick: async () => {
-                    await logoutUser()
-                    handleItemClick()
+                    await logoutUser();
+                    handleItemClick();
                   },
                 },
               ],
             }}
             placement="topLeft"
-            trigger={['click']}
+            trigger={["click"]}
           >
             <Button type="text" className="flex items-start text-left w-full">
               <div>
@@ -228,5 +229,5 @@ export function LeftPanel() {
         </>
       )}
     </div>
-  )
+  );
 }

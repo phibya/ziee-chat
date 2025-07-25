@@ -44,6 +44,62 @@ pub fn set_app_data_dir(path: PathBuf) {
 pub fn get_app_data_dir() -> PathBuf {
     APP_DATA_DIR.lock().unwrap().clone()
 }
+
+async fn initialize_app_common() -> Result<(), String> {
+    // Clear temp directory on startup
+    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+        eprintln!("Failed to clear temp directory on startup: {}", e);
+    }
+
+    if let Err(e) = database::initialize_database().await {
+        return Err(format!("Failed to initialize database: {}", e));
+    }
+
+    // Clean up all download instances on startup
+    match database::queries::download_instances::delete_all_downloads().await {
+        Ok(count) => {
+            if count > 0 {
+                println!(
+                    "Cleaned up {} download instances from previous session",
+                    count
+                );
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to clean up download instances: {}", e);
+        }
+    }
+
+    // Initialize hub manager
+    match HubManager::new(get_app_data_dir()) {
+        Ok(hub_manager) => {
+            if let Err(e) = hub_manager.initialize().await {
+                eprintln!("Failed to initialize hub manager: {}", e);
+            } else {
+                println!("Hub manager initialized successfully");
+                // Store hub manager globally
+                let mut global_hub = HUB_MANAGER.lock().await;
+                *global_hub = Some(hub_manager);
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to create hub manager: {}", e);
+        }
+    }
+
+    Ok(())
+}
+
+async fn cleanup_app_common() {
+    // Clear temp directory on shutdown
+    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
+        eprintln!("Failed to clear temp directory on shutdown: {}", e);
+    }
+
+    // Cleanup database
+    database::cleanup_database().await;
+}
+
 pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| get_available_port());
 
 pub fn is_desktop_app() -> bool {
@@ -59,49 +115,11 @@ pub fn run() {
 
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            // Clear temp directory on startup
-            if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
-                eprintln!("Failed to clear temp directory on startup: {}", e);
-            }
-
-            if let Err(e) = database::initialize_database().await {
-                eprintln!("Failed to initialize database: {}", e);
+            if let Err(e) = initialize_app_common().await {
+                eprintln!("{}", e);
                 std::process::exit(1);
             }
-
-            // Clean up all download instances on startup
-            match database::queries::download_instances::delete_all_downloads().await {
-                Ok(count) => {
-                    if count > 0 {
-                        println!(
-                            "Cleaned up {} download instances from previous session",
-                            count
-                        );
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Failed to clean up download instances: {}", e);
-                }
-            }
-
-            // Initialize hub manager (headless mode - no app handle available)
-            match HubManager::new(get_app_data_dir()) {
-                Ok(hub_manager) => {
-                    // Note: In headless mode, we don't have app_handle, so embedded files won't be copied
-                    // The hub manager will create empty files instead
-                    if let Err(e) = hub_manager.initialize().await {
-                        eprintln!("Failed to initialize hub manager: {}", e);
-                    } else {
-                        println!("Hub manager initialized successfully (headless mode)");
-                        // Store hub manager globally
-                        let mut global_hub = HUB_MANAGER.lock().await;
-                        *global_hub = Some(hub_manager);
-                    }
-                }
-                Err(e) => {
-                    eprintln!("Failed to create hub manager: {}", e);
-                }
-            }
+            println!("App initialized successfully (headless mode)");
 
             let api_router = create_rest_router();
 
@@ -122,13 +140,7 @@ pub fn run() {
             // Wait for shutdown signal
             let _ = rx.await;
 
-            // Clear temp directory on shutdown
-            if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
-                eprintln!("Failed to clear temp directory on shutdown: {}", e);
-            }
-
-            // Cleanup database
-            database::cleanup_database().await;
+            cleanup_app_common().await;
 
             server_task.abort();
             println!("Application shutdown complete");
@@ -169,65 +181,41 @@ pub fn run() {
                 // Create the API router
                 let api_router = route::create_rest_router();
 
-                // Clear temp directory on startup
+
+                // Initialize app and start API server before opening webview
+                let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await
+                    // Initialize database and hub manager
+                    if let Err(e) = initialize_app_common().await {
+                        eprintln!("{}", e);
+                        return;
+                    } else {
+                        println!("App initialized successfully (desktop mode)");
+                    }
+
+                    // Start API server
+                    println!("Starting API server on port: {}", port);
+                    let server_handle = tokio::spawn(async move {
+                        start_api_server(port, api_router).await;
+                    });
+
+                    // Give the server a moment to start
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+                    // Open webview after initialization is complete
+                    println!("Production mode: Opening default Tauri webview");
+                    if let Err(e) = WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::App("index.html".into()))
+                        .title("Ziee")
+                        .inner_size(1200.0, 800.0)
+                        .decorations(false)
+                        .build()
                     {
-                        eprintln!("Failed to clear temp directory on startup: {}", e);
+                        eprintln!("Failed to create webview window: {}", e);
                     }
+
+                    // Keep the server running
+                    let _ = server_handle.await;
                 });
-
-                // Initialize database and hub manager
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = database::initialize_database().await {
-                        eprintln!("Failed to initialize database: {}", e);
-                    }
-
-                    // Clean up all download instances on startup
-                    match database::queries::download_instances::delete_all_downloads().await {
-                        Ok(count) => {
-                            if count > 0 {
-                                println!(
-                                    "Cleaned up {} download instances from previous session",
-                                    count
-                                );
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to clean up download instances: {}", e);
-                        }
-                    }
-
-                    // Initialize hub manager
-                    match HubManager::new(get_app_data_dir()) {
-                        Ok(hub_manager) => {
-                            if let Err(e) = hub_manager.initialize().await {
-                                eprintln!("Failed to initialize hub manager: {}", e);
-                            } else {
-                                println!("Hub manager initialized successfully");
-                                // Store hub manager globally
-                                let mut global_hub = HUB_MANAGER.lock().await;
-                                *global_hub = Some(hub_manager);
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to create hub manager: {}", e);
-                        }
-                    }
-                });
-
-                // Register the API router with the Tauri application
-                tauri::async_runtime::spawn(async move {
-                    start_api_server(port, api_router).await;
-                });
-
-                // Production mode: open default Tauri webview without binding port
-                println!("Production mode: Opening default Tauri webview");
-
-                WebviewWindowBuilder::new(app, "main", tauri::WebviewUrl::App("index.html".into()))
-                    .title("React Test App")
-                    .inner_size(800.0, 600.0)
-                    .build()?;
 
                 Ok(())
             })
@@ -235,14 +223,7 @@ pub fn run() {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     // Clear temp directory and cleanup database before closing
                     let handle = tauri::async_runtime::spawn(async move {
-                        // Clear temp directory on shutdown
-                        if let Err(e) =
-                            utils::model_storage::ModelStorage::clear_temp_directory().await
-                        {
-                            eprintln!("Failed to clear temp directory on shutdown: {}", e);
-                        }
-
-                        database::cleanup_database().await;
+                        cleanup_app_common().await;
                     });
 
                     // Wait for cleanup to complete
