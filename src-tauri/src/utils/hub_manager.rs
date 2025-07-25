@@ -72,6 +72,7 @@ impl HubManager {
         self.load_hub_from_data_dir().await
     }
 
+
     async fn copy_embedded_hub_files(
         &self,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -140,11 +141,8 @@ impl HubManager {
                     "WARNING: Embedded file not found at: {}",
                     embedded_file_path.display()
                 );
-                println!(
-                    "Expected hub directory: {}",
-                    embedded_hub_dir.display()
-                );
-                
+                println!("Expected hub directory: {}", embedded_hub_dir.display());
+
                 // Check if file exists in the data directory already
                 if data_file_path.exists() {
                     println!(
@@ -153,10 +151,7 @@ impl HubManager {
                     );
                 } else {
                     // Create empty files if embedded doesn't exist and data file doesn't exist
-                    println!(
-                        "Creating empty {} in APP_DATA_DIR as fallback",
-                        filename
-                    );
+                    println!("Creating empty {} in APP_DATA_DIR as fallback", filename);
 
                     let empty_content = match filename.as_str() {
                         "models.json" => {

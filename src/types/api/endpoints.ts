@@ -33,10 +33,7 @@ import {
   DefaultLanguageResponse,
   UpdateDefaultLanguageRequest,
 } from './globalConfig'
-import {
-  HubDataResponse,
-  HubVersionResponse,
-} from './hub'
+import { HubDataResponse, HubVersionResponse } from './hub'
 import {
   AddModelToProviderRequest,
   Model,
@@ -229,6 +226,7 @@ export const ApiEndpoints = {
   'Hub.getData': 'GET /api/hub/data',
   'Hub.refresh': 'POST /api/hub/refresh',
   'Hub.getVersion': 'GET /api/hub/version',
+  'Hub.getModelReadme': 'GET /api/hub/models/{model_id}/readme',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -385,6 +383,7 @@ export type ApiEndpointParameters = {
   'Hub.getData': void
   'Hub.refresh': void
   'Hub.getVersion': void
+  'Hub.getModelReadme': { model_id: string }
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -525,6 +524,7 @@ export type ApiEndpointResponses = {
   'Hub.getData': HubDataResponse
   'Hub.refresh': HubDataResponse
   'Hub.getVersion': HubVersionResponse
+  'Hub.getModelReadme': { content: string }
 }
 
 // Type helpers

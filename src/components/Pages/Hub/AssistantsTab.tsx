@@ -1,8 +1,4 @@
-import {
-  ClearOutlined,
-  RobotOutlined,
-  SearchOutlined,
-} from '@ant-design/icons'
+import { ClearOutlined, RobotOutlined, SearchOutlined } from '@ant-design/icons'
 import {
   App,
   Button,
@@ -53,8 +49,8 @@ export function AssistantsTab() {
 
     // Filter by tags
     if (selectedTags.length > 0) {
-      filtered = filtered.filter(assistant => 
-        selectedTags.some(tag => assistant.tags.includes(tag))
+      filtered = filtered.filter(assistant =>
+        selectedTags.some(tag => assistant.tags.includes(tag)),
       )
     }
 
@@ -121,10 +117,13 @@ export function AssistantsTab() {
             <Col xs={24} sm={24} md={12} lg={8}>
               <Flex align="center" gap={8}>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Filters active: {[
+                  Filters active:{' '}
+                  {[
                     searchTerm && 'search',
                     selectedTags.length > 0 && `${selectedTags.length} tags`,
-                  ].filter(Boolean).join(', ')}
+                  ]
+                    .filter(Boolean)
+                    .join(', ')}
                 </Text>
                 <Button
                   size="small"
@@ -150,10 +149,7 @@ export function AssistantsTab() {
               styles={{ body: { padding: '16px' } }}
             >
               <div style={{ marginBottom: '12px' }}>
-                <Title
-                  level={4}
-                  style={{ margin: 0, marginBottom: '4px' }}
-                >
+                <Title level={4} style={{ margin: 0, marginBottom: '4px' }}>
                   {assistant.name}
                 </Title>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
@@ -179,11 +175,7 @@ export function AssistantsTab() {
               <div style={{ marginBottom: '12px' }}>
                 <Flex wrap className="gap-1">
                   {assistant.tags.slice(0, 3).map(tag => (
-                    <Tag
-                      key={tag}
-                      color="default"
-                      style={{ fontSize: '11px' }}
-                    >
+                    <Tag key={tag} color="default" style={{ fontSize: '11px' }}>
                       {tag}
                     </Tag>
                   ))}

@@ -150,6 +150,7 @@ pub fn run() {
         println!("Starting Tauri application with API on port: {}", port);
 
         tauri::Builder::default()
+            .plugin(tauri_plugin_opener::init())
             .invoke_handler(tauri::generate_handler![get_http_port,])
             .setup(move |app| {
                 // Set APP_DATA_DIR to Tauri's app data directory only if APP_DATA_DIR env is not provided
@@ -181,7 +182,6 @@ pub fn run() {
                 // Create the API router
                 let api_router = route::create_rest_router();
 
-
                 // Initialize app and start API server before opening webview
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
@@ -204,11 +204,15 @@ pub fn run() {
 
                     // Open webview after initialization is complete
                     println!("Production mode: Opening default Tauri webview");
-                    if let Err(e) = WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::App("index.html".into()))
-                        .title("Ziee")
-                        .inner_size(1200.0, 800.0)
-                        .decorations(false)
-                        .build()
+                    if let Err(e) = WebviewWindowBuilder::new(
+                        &app_handle,
+                        "main",
+                        tauri::WebviewUrl::App("index.html".into()),
+                    )
+                    .title("Ziee")
+                    .inner_size(1200.0, 800.0)
+                    .decorations(false)
+                    .build()
                     {
                         eprintln!("Failed to create webview window: {}", e);
                     }

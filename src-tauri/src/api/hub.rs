@@ -113,3 +113,4 @@ pub async fn get_hub_version() -> Result<Json<serde_json::Value>, (StatusCode, S
         Err((StatusCode::SERVICE_UNAVAILABLE, "Hub manager not initialized".to_string()))
     }
 }
+

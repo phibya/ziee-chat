@@ -70,7 +70,10 @@ function App() {
                 path="/projects/:projectId"
                 element={<ProjectDetailsPage />}
               />
-              <Route path="/hub" element={<Navigate to="/hub/models" replace />} />
+              <Route
+                path="/hub"
+                element={<Navigate to="/hub/models" replace />}
+              />
               <Route path="/hub/:activeTab" element={<HubPage />} />
               <Route path="/settings" element={<SettingsPage />}>
                 <Route

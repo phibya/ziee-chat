@@ -4,41 +4,41 @@ import {
   EditOutlined,
   PlusOutlined,
   RobotOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons";
 import {
   App,
   Avatar,
   Button,
   Card,
   Col,
+  Flex,
   Modal,
   Popconfirm,
   Row,
-  Flex,
   Table,
   Tag,
   Tooltip,
   Typography,
-} from 'antd'
-import { Drawer } from '../UI/Drawer'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+} from "antd";
+import { Drawer } from "../common/Drawer.tsx";
+import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  Stores,
-  loadUserAssistants,
-  deleteUserAssistant,
   clearAssistantsStoreError,
+  deleteUserAssistant,
+  loadUserAssistants,
   openAssistantModal,
-} from '../../store'
-import { Assistant } from '../../types/api/assistant'
-import { PageContainer } from '../common/PageContainer'
-import { AssistantFormModal } from '../shared/AssistantFormModal'
+  Stores,
+} from "../../store";
+import { Assistant } from "../../types/api/assistant";
+import { PageContainer } from "../common/PageContainer";
+import { AssistantFormModal } from "../shared/AssistantFormModal";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 export const AssistantsPage: React.FC = () => {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
+  const { t } = useTranslation();
+  const { message } = App.useApp();
 
   // Assistants store
   const {
@@ -47,69 +47,69 @@ export const AssistantsPage: React.FC = () => {
     loading,
     deleting,
     error,
-  } = Stores.Assistants
+  } = Stores.Assistants;
 
-  const assistants = allAssistants.filter(a => !a.is_template)
+  const assistants = allAssistants.filter((a) => !a.is_template);
 
-  const [templateModalVisible, setTemplateModalVisible] = useState(false)
+  const [templateModalVisible, setTemplateModalVisible] = useState(false);
 
   useEffect(() => {
-    loadUserAssistants()
-  }, [])
+    loadUserAssistants();
+  }, []);
 
   // Show errors
   useEffect(() => {
     if (error) {
-      message.error(error)
-      clearAssistantsStoreError()
+      message.error(error);
+      clearAssistantsStoreError();
     }
-  }, [error, message])
+  }, [error, message]);
 
   const handleDelete = async (assistant: Assistant) => {
     try {
-      await deleteUserAssistant(assistant.id)
-      message.success(t('assistants.assistantDeleted'))
+      await deleteUserAssistant(assistant.id);
+      message.success(t("assistants.assistantDeleted"));
     } catch (error) {
       // Error is already handled by the store
-      console.error('Failed to delete assistant:', error)
+      console.error("Failed to delete assistant:", error);
     }
-  }
+  };
 
   const handleEdit = (assistant: Assistant) => {
-    openAssistantModal(assistant)
-  }
+    openAssistantModal(assistant);
+  };
 
   const handleCreate = () => {
-    openAssistantModal()
-  }
+    openAssistantModal();
+  };
 
   const handleCloneFromTemplate = () => {
-    setTemplateModalVisible(true)
-  }
+    setTemplateModalVisible(true);
+  };
 
   const handleSelectTemplateAssistant = () => {
-    setTemplateModalVisible(false)
-    openAssistantModal()
-  }
+    setTemplateModalVisible(false);
+    openAssistantModal();
+  };
 
   const renderAssistantCard = (assistant: Assistant) => (
     <Card
       key={assistant.id}
       hoverable
       actions={[
-        <Tooltip title={t('buttons.edit')} key="edit">
+        <Tooltip title={t("buttons.edit")} key="edit">
           <EditOutlined onClick={() => handleEdit(assistant)} />
         </Tooltip>,
         <Popconfirm
-          title={t('assistants.deleteAssistant')}
-          description={t('assistants.deleteConfirm')}
+          title={t("assistants.deleteAssistant")}
+          description={t("assistants.deleteConfirm")}
           onConfirm={() => handleDelete(assistant)}
           okText="Yes"
           cancelText="No"
           key="delete"
           okButtonProps={{ loading: deleting }}
         >
-          <Tooltip title={t('buttons.delete')}>
+          <Tooltip title={t("buttons.delete")}>
             <DeleteOutlined />
           </Tooltip>
         </Popconfirm>,
@@ -120,22 +120,22 @@ export const AssistantsPage: React.FC = () => {
           <Avatar
             size={48}
             icon={<RobotOutlined />}
-            style={{ backgroundColor: '#1890ff' }}
+            style={{ backgroundColor: "#1890ff" }}
           />
         }
         title={
           <div className="flex items-center gap-2">
             <Text strong>{assistant.name}</Text>
-            <Tag color="green">{t('assistants.personal')}</Tag>
+            <Tag color="green">{t("assistants.personal")}</Tag>
             {!assistant.is_active && (
-              <Tag color="red">{t('assistants.inactive')}</Tag>
+              <Tag color="red">{t("assistants.inactive")}</Tag>
             )}
           </div>
         }
         description={
           <div>
             <Text type="secondary" className="block mb-2">
-              {assistant.description || 'No description'}
+              {assistant.description || "No description"}
             </Text>
             <Text type="secondary" className="text-xs">
               Created {new Date(assistant.created_at).toLocaleDateString()}
@@ -144,7 +144,7 @@ export const AssistantsPage: React.FC = () => {
         }
       />
     </Card>
-  )
+  );
 
   return (
     <PageContainer>
@@ -152,8 +152,8 @@ export const AssistantsPage: React.FC = () => {
         <Col span={24}>
           <div className="flex justify-between items-center mb-6">
             <div>
-              <Title level={2}>{t('assistants.title')}</Title>
-              <Text type="secondary">{t('assistants.subtitle')}</Text>
+              <Title level={2}>{t("assistants.title")}</Title>
+              <Text type="secondary">{t("assistants.subtitle")}</Text>
             </div>
             <Flex className="gap-2">
               <Button
@@ -191,7 +191,7 @@ export const AssistantsPage: React.FC = () => {
             </Card>
           ) : (
             <Row gutter={[16, 16]}>
-              {assistants.map(assistant => (
+              {assistants.map((assistant) => (
                 <Col xs={24} sm={12} md={8} lg={6} key={assistant.id}>
                   {renderAssistantCard(assistant)}
                 </Col>
@@ -205,7 +205,7 @@ export const AssistantsPage: React.FC = () => {
 
       {/* Template Assistants Modal */}
       <Drawer
-        title={t('assistants.cloneFromTemplateAssistants')}
+        title={t("assistants.cloneFromTemplateAssistants")}
         open={templateModalVisible}
         onClose={() => setTemplateModalVisible(false)}
         footer={null}
@@ -220,9 +220,9 @@ export const AssistantsPage: React.FC = () => {
         <Table
           columns={[
             {
-              title: t('labels.name'),
-              dataIndex: 'name',
-              key: 'name',
+              title: t("labels.name"),
+              dataIndex: "name",
+              key: "name",
               render: (text: string) => (
                 <Flex className="gap-2">
                   <RobotOutlined />
@@ -232,32 +232,32 @@ export const AssistantsPage: React.FC = () => {
               ),
             },
             {
-              title: t('labels.description'),
-              dataIndex: 'description',
-              key: 'description',
+              title: t("labels.description"),
+              dataIndex: "description",
+              key: "description",
               render: (text: string) => (
-                <Text type="secondary">{text || 'No description'}</Text>
+                <Text type="secondary">{text || "No description"}</Text>
               ),
             },
             {
-              title: t('assistants.instructionsPreview'),
-              dataIndex: 'instructions',
-              key: 'instructions',
+              title: t("assistants.instructionsPreview"),
+              dataIndex: "instructions",
+              key: "instructions",
               render: (text: string) => (
                 <Text type="secondary" ellipsis={{ tooltip: text }}>
                   {text
-                    ? text.substring(0, 100) + (text.length > 100 ? '...' : '')
-                    : 'No instructions'}
+                    ? text.substring(0, 100) + (text.length > 100 ? "..." : "")
+                    : "No instructions"}
                 </Text>
               ),
               width: 200,
             },
             {
-              title: t('labels.actions'),
-              key: 'actions',
+              title: t("labels.actions"),
+              key: "actions",
               render: (_: any, record: Assistant) => (
                 <Flex className="gap-2">
-                  <Tooltip title={t('assistants.previewDetails')}>
+                  <Tooltip title={t("assistants.previewDetails")}>
                     <Button
                       type="text"
                       icon={<RobotOutlined />}
@@ -267,35 +267,35 @@ export const AssistantsPage: React.FC = () => {
                           content: (
                             <div>
                               <div className="mb-3">
-                                <Text strong>{t('labels.description')}</Text>
+                                <Text strong>{t("labels.description")}</Text>
                                 <div>
-                                  {record.description || 'No description'}
+                                  {record.description || "No description"}
                                 </div>
                               </div>
                               <div className="mb-3">
-                                <Text strong>{t('labels.instructions')}</Text>
-                                <div style={{ whiteSpace: 'pre-wrap' }}>
-                                  {record.instructions || 'No instructions'}
+                                <Text strong>{t("labels.instructions")}</Text>
+                                <div style={{ whiteSpace: "pre-wrap" }}>
+                                  {record.instructions || "No instructions"}
                                 </div>
                               </div>
                               <div className="mb-3">
-                                <Text strong>{t('labels.parameters')}</Text>
+                                <Text strong>{t("labels.parameters")}</Text>
                                 <pre
                                   style={{
-                                    backgroundColor: '#f5f5f5',
-                                    padding: '8px',
-                                    borderRadius: '4px',
+                                    backgroundColor: "#f5f5f5",
+                                    padding: "8px",
+                                    borderRadius: "4px",
                                   }}
                                 >
                                   {record.parameters
                                     ? JSON.stringify(record.parameters, null, 2)
-                                    : 'No parameters'}
+                                    : "No parameters"}
                                 </pre>
                               </div>
                             </div>
                           ),
                           width: 600,
-                        })
+                        });
                       }}
                     />
                   </Tooltip>
@@ -316,5 +316,5 @@ export const AssistantsPage: React.FC = () => {
         />
       </Drawer>
     </PageContainer>
-  )
-}
+  );
+};
