@@ -11,7 +11,8 @@ import {
   Tabs,
   Typography,
 } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { PageContainer } from '../../common/PageContainer'
 import {
   useHubStore,
@@ -25,7 +26,23 @@ const { Title, Text } = Typography
 
 export function HubPage() {
   const { message } = App.useApp()
-  const [activeTab, setActiveTab] = useState('models')
+  const navigate = useNavigate()
+  const { activeTab: urlActiveTab } = useParams<{ activeTab?: string }>()
+  
+  // Valid tab names
+  const validTabs = ['models', 'assistants']
+  
+  // Default to 'models' if no tab specified or invalid tab
+  const activeTab = urlActiveTab && validTabs.includes(urlActiveTab) 
+    ? urlActiveTab 
+    : 'models'
+    
+  // Redirect to valid tab if current tab is invalid
+  useEffect(() => {
+    if (urlActiveTab && !validTabs.includes(urlActiveTab)) {
+      navigate('/hub/models', { replace: true })
+    }
+  }, [urlActiveTab, navigate])
 
   // Hub store state
   const {
@@ -121,7 +138,7 @@ export function HubPage() {
         {/* Tabs */}
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={(key) => navigate(`/hub/${key}`)}
           className="mb-6"
           items={[
             {

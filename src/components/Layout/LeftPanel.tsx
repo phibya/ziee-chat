@@ -54,7 +54,7 @@ export function LeftPanel() {
     if (location.pathname === "/chat-history") return ["chat-history"];
     if (location.pathname === "/projects") return ["projects"];
     if (location.pathname === "/artifacts") return ["artifacts"];
-    if (location.pathname === "/hub") return ["hub"];
+    if (location.pathname.startsWith("/hub")) return ["hub"];
     if (location.pathname === "/assistants") return ["assistants"];
     if (location.pathname === "/settings") return ["settings"];
     return [];
@@ -154,9 +154,9 @@ export function LeftPanel() {
           {
             key: "hub",
             icon: <AppstoreOutlined />,
-            label: <Link to="/hub">{t("navigation.hub")}</Link>,
+            label: <Link to="/hub/models">{t("navigation.hub")}</Link>,
             onClick: () => {
-              navigate("/hub");
+              navigate("/hub/models");
               handleItemClick();
             },
           },
