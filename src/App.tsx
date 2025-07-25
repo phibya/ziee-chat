@@ -11,7 +11,7 @@ import { AppLayout } from './components/Layout/AppLayout'
 import { AssistantsPage } from './components/Pages/AssistantsPage'
 import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
 import { ChatPage } from './components/Pages/ChatPage'
-import { HubPage } from './components/Pages/HubPage'
+import { HubPage } from './components/Pages/Hub'
 import { ProjectDetailsPage } from './components/Pages/ProjectDetailsPage'
 import { ProjectsPage } from './components/Pages/ProjectsPage'
 import {
