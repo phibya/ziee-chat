@@ -23,7 +23,6 @@ import {
   GeneralSettings,
   HardwareSettings,
   HttpsProxySettings,
-  LocalApiServerSettings,
   ModelRepositorySettings,
   PrivacySettings,
   ProvidersSettings,
@@ -104,10 +103,6 @@ function App() {
                 )}
                 <Route path="shortcuts" element={<ShortcutsSettings />} />
                 <Route path="hardware" element={<HardwareSettings />} />
-                <Route
-                  path="local-api-server"
-                  element={<LocalApiServerSettings />}
-                />
                 <Route path="https-proxy" element={<HttpsProxySettings />} />
                 <Route path="extensions" element={<ExtensionsSettings />} />
                 {!isDesktopApp && hasPermission(Permission.users.read) && (

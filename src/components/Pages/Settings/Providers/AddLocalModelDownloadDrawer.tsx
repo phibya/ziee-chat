@@ -33,6 +33,7 @@ export function AddLocalModelDownloadDrawer() {
   const [loading, setLoading] = useState(false);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loadingRepositories, setLoadingRepositories] = useState(false);
+  const { downloads } = Stores.ModelDownload;
 
   // Function to generate a unique model ID from display name
   const generateModelId = (displayName: string): string => {
@@ -110,6 +111,21 @@ export function AddLocalModelDownloadDrawer() {
       );
       if (!selectedRepo) {
         message.error(t("providers.repositoryNotFound"));
+        return;
+      }
+
+      const isAnotherDownloadInProgress = Object.values(downloads).some(
+        (download) =>
+          download.provider_id === providerId &&
+          download.repository_id === values.repository_id &&
+          download.request_data.repository_path === values.repository_path &&
+          (download.status === "downloading" || download.status === "pending"),
+      );
+
+      if (isAnotherDownloadInProgress) {
+        message.error(
+          "Another download with the same repository is already in progress. Please wait for it to complete.",
+        );
         return;
       }
 
@@ -232,7 +248,7 @@ export function AddLocalModelDownloadDrawer() {
               </Button>,
             ]
       }
-      width={800}
+      width={600}
       maskClosable={false}
     >
       <div>
@@ -242,6 +258,9 @@ export function AddLocalModelDownloadDrawer() {
             size="small"
             style={{ marginBottom: 16 }}
           >
+            <Text>
+              {viewDownload.progress_data?.phase || viewDownload.status}
+            </Text>
             <Progress
               percent={Math.round(
                 ((viewDownload.progress_data.current || 0) /
@@ -257,9 +276,7 @@ export function AddLocalModelDownloadDrawer() {
                       ? "exception"
                       : "normal"
               }
-              format={(percent) =>
-                `${percent}% - ${viewDownload.progress_data?.phase || viewDownload.status}`
-              }
+              format={(percent) => `${percent}%`}
             />
             <Text type="secondary" style={{ fontSize: "12px" }}>
               {viewDownload.progress_data.message ||

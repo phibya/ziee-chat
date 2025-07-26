@@ -1,149 +1,24 @@
-import {
-  AppstoreOutlined,
-  ClearOutlined,
-  DownloadOutlined,
-  EyeOutlined,
-  FileTextOutlined,
-  LockOutlined,
-  SearchOutlined,
-  ToolOutlined,
-  UnlockOutlined,
-} from '@ant-design/icons'
-import { App, Button, Card, Flex, Input, Select, Tag, Typography } from 'antd'
+import { ClearOutlined, SearchOutlined } from '@ant-design/icons'
+import { Button, Flex, Input, Select, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { searchModels, useHubStore } from '../../../store/hub'
-import type { HubModel } from '../../../types/api/hub'
-import { openUrl } from '@tauri-apps/plugin-opener'
-import { isDesktopApp } from '../../../api/core.ts'
-import {
-  loadAllModelProviders,
-  loadAllModelRepositories,
-  Stores,
-} from '../../../store'
-import { repositoryHasCredentials } from '../../../store/repositories.ts'
-import { downloadModelFromRepository } from '../../../store/modelDownload'
-import { openRepositoryDrawer, openViewDownloadModal } from '../../../store/ui'
 import { RepositoryDrawer } from '../Settings/ModelRepositorySettings/RepositoryDrawer.tsx'
+import { ModelCard } from './ModelCard'
+import { loadAllModelProviders, loadAllModelRepositories } from '../../../store'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export function ModelsTab() {
   const { models } = useHubStore()
-  const { message } = App.useApp()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('popular')
-  const { repositories } = Stores.Repositories
-  const { providers } = Stores.Providers
 
   useEffect(() => {
     loadAllModelRepositories()
     loadAllModelProviders()
   }, [])
-
-  const handleDownload = async (model: HubModel) => {
-    console.log('Downloading model:', model.id)
-    const repo = repositories.find(repo => repo.url === model.repository_url)
-    console.log({ repo })
-    if (!repo) {
-      message.error(
-        `Repository not found for model ${model.alias}. Please check the repository configuration.`,
-      )
-      return
-    }
-
-    if (!model.public && !repositoryHasCredentials(repo)) {
-      message.info(
-        `Model ${model.alias} is private and requires credentials. Please configure the repository with valid credentials.`,
-      )
-
-      openRepositoryDrawer(repo)
-      return
-    }
-
-    const provider = providers.find(p => p.type === 'local')
-
-    if (!provider) {
-      message.error(
-        `No local provider found for model ${model.alias}. Please ensure a local provider is configured.`,
-      )
-      return
-    }
-
-    try {
-      // Generate a unique model name for local storage
-      const modelName = `${model.alias
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')}-${Date.now().toString(36)}`
-
-      // Prepare download request
-      const downloadRequest = {
-        provider_id: provider.id,
-        repository_id: repo.id,
-        repository_path: model.repository_path,
-        main_filename: model.main_filename,
-        repository_branch: 'main', // Default branch
-        name: modelName,
-        alias: model.alias,
-        description:
-          model.description || `Downloaded from ${model.repository_url}`,
-        file_format: model.file_format,
-        capabilities: model.capabilities || {},
-        parameters: model.recommended_parameters || {},
-        settings: {}, // Empty settings for now
-      }
-
-      // Start the download
-      const { downloadId } = await downloadModelFromRepository(
-        downloadRequest,
-        (downloadId: string) => {
-          // Open the download view modal to show progress
-          openViewDownloadModal(downloadId)
-        },
-      )
-
-      message.success(
-        `Download started for ${model.alias}. You can monitor the progress in the download view.`,
-      )
-
-      // Open the download view modal to show progress
-      openViewDownloadModal(downloadId)
-    } catch (error: any) {
-      console.error('Failed to start model download:', error)
-      message.error(
-        `Failed to start download for ${model.alias}: ${error.message || 'Unknown error'}`,
-      )
-    }
-  }
-
-  const handleViewReadme = (model: HubModel) => {
-    // Construct the README URL based on repository type
-    const constructReadmeUrl = (model: HubModel): string => {
-      const baseUrl = model.repository_url.replace(/\/$/, '')
-      const repoPath = model.repository_path
-
-      if (baseUrl.startsWith('https://github.com')) {
-        return `${baseUrl}/${repoPath}/blob/main/README.md`
-      } else if (baseUrl.startsWith('https://huggingface.co')) {
-        return `${baseUrl}/${repoPath}/blob/main/README.md`
-      } else {
-        // Fallback to the repository URL itself
-        return `${baseUrl}/${repoPath}`
-      }
-    }
-
-    const readmeUrl = constructReadmeUrl(model)
-    if (isDesktopApp) {
-      openUrl(readmeUrl).catch(err => {
-        console.error(`Failed to open ${readmeUrl}:`, err)
-        message.error(`Failed to open ${readmeUrl}`)
-      })
-    } else {
-      window.open(readmeUrl, '_blank', 'noopener,noreferrer')
-    }
-  }
 
   const clearAllFilters = () => {
     setSearchTerm('')
@@ -230,63 +105,55 @@ export function ModelsTab() {
   return (
     <>
       {/* Search and Filters */}
-      <div className="mb-6">
-        <Flex wrap gap={16} className="mb-4">
-          <div className="flex-1 min-w-[200px] basis-[300px]">
-            <Input
-              placeholder="Search models..."
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              allowClear
-            />
-          </div>
-          <div className="flex-1 min-w-[150px] basis-[200px]">
-            <Select
-              mode="multiple"
-              placeholder="Filter by tags"
-              value={selectedTags}
-              onChange={setSelectedTags}
-              className="w-full"
-              allowClear
-              maxTagCount="responsive"
-            >
-              {modelTags.map(tag => (
-                <Select.Option key={tag} value={tag}>
-                  {tag}
-                </Select.Option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[150px] basis-[200px]">
-            <Select
-              mode="multiple"
-              placeholder="Capabilities"
-              value={selectedCapabilities}
-              onChange={setSelectedCapabilities}
-              className="w-full"
-              allowClear
-              maxTagCount="responsive"
-            >
-              {modelCapabilities.map(capability => (
-                <Select.Option key={capability.key} value={capability.key}>
-                  {capability.label}
-                </Select.Option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[120px] basis-[150px]">
-            <Select
-              placeholder="Sort by"
-              value={sortBy}
-              onChange={setSortBy}
-              className="w-full"
-            >
-              <Select.Option value="popular">Popular</Select.Option>
-              <Select.Option value="name">Name</Select.Option>
-              <Select.Option value="size">Size</Select.Option>
-            </Select>
-          </div>
+      <div className="mb-3">
+        <Flex className="mb-4 gap-3">
+          <Input
+            placeholder="Search models..."
+            prefix={<SearchOutlined />}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            allowClear
+            className="flex-1"
+          />
+          <Select
+            mode="multiple"
+            placeholder="Filter by tags"
+            value={selectedTags}
+            onChange={setSelectedTags}
+            className="flex-1"
+            allowClear
+            maxTagCount="responsive"
+            options={modelTags.map(tag => ({
+              key: tag,
+              value: tag,
+              label: tag,
+            }))}
+          />
+          <Select
+            mode="multiple"
+            placeholder="Capabilities"
+            value={selectedCapabilities}
+            onChange={setSelectedCapabilities}
+            className="flex-1"
+            allowClear
+            maxTagCount="responsive"
+            options={modelCapabilities.map(capability => ({
+              key: capability.key,
+              value: capability.key,
+              label: capability.label,
+            }))}
+          />
+          <Select
+            placeholder="Sort by"
+            value={sortBy}
+            onChange={setSortBy}
+            className="flex-1"
+            options={[
+              { value: 'popular', label: 'Popular' },
+              { value: 'name', label: 'Name' },
+              { value: 'size', label: 'Size' },
+            ]}
+          />
         </Flex>
         {(searchTerm ||
           selectedTags.length > 0 ||
@@ -316,119 +183,9 @@ export function ModelsTab() {
       </div>
 
       {/* Models Grid */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
         {filteredModels.map(model => (
-          <Card
-            key={model.id}
-            hoverable
-            className="h-full"
-            styles={{ body: { padding: '16px' } }}
-          >
-            <div className="mb-3">
-              <Flex justify="space-between" align="start" className="mb-2">
-                <Title level={4} className="m-0">
-                  {model.alias}
-                </Title>
-                {model.public ? (
-                  <UnlockOutlined className="text-green-500" />
-                ) : (
-                  <LockOutlined className="text-red-500" />
-                )}
-              </Flex>
-              <Text type="secondary" className="text-xs">
-                {model.description}
-              </Text>
-            </div>
-
-            {/* Tags */}
-            <div className="mb-3">
-              <Flex wrap className="gap-1">
-                {model.tags.slice(0, 3).map(tag => (
-                  <Tag key={tag} color="default" className="text-xs">
-                    {tag}
-                  </Tag>
-                ))}
-                {model.tags.length > 3 && (
-                  <Tag color="default" className="text-xs">
-                    +{model.tags.length - 3}
-                  </Tag>
-                )}
-              </Flex>
-            </div>
-
-            {/* Capabilities */}
-            {model.capabilities && (
-              <div className="mb-3">
-                <Flex wrap className="gap-1">
-                  {model.capabilities.vision && (
-                    <Tag
-                      color="purple"
-                      icon={<EyeOutlined />}
-                      className="text-xs"
-                    >
-                      Vision
-                    </Tag>
-                  )}
-                  {model.capabilities.tools && (
-                    <Tag
-                      color="blue"
-                      icon={<ToolOutlined />}
-                      className="text-xs"
-                    >
-                      Tools
-                    </Tag>
-                  )}
-                  {model.capabilities.code_interpreter && (
-                    <Tag
-                      color="orange"
-                      icon={<AppstoreOutlined />}
-                      className="text-xs"
-                    >
-                      Code
-                    </Tag>
-                  )}
-                </Flex>
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="mb-3">
-              <Flex justify="space-between" align="center" className="mb-1">
-                <Text type="secondary" className="text-xs">
-                  Size: {model.size_gb}GB
-                </Text>
-                <Text type="secondary" className="text-xs">
-                  {model.file_format.toUpperCase()}
-                </Text>
-              </Flex>
-              {model.license && (
-                <Text type="secondary" className="text-xs">
-                  License: {model.license}
-                </Text>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="mt-auto flex gap-2">
-              <Button
-                size="small"
-                icon={<FileTextOutlined />}
-                onClick={() => handleViewReadme(model)}
-                className="flex-1"
-              >
-                README
-              </Button>
-              <Button
-                type="primary"
-                size="small"
-                icon={<DownloadOutlined />}
-                onClick={() => handleDownload(model)}
-                className="flex-[2]"
-              >
-                Download
-              </Button>
-            </div>
-          </Card>
+          <ModelCard key={model.id} model={model} />
         ))}
       </div>
 

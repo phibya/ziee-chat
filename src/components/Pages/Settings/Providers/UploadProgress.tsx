@@ -5,6 +5,7 @@ import {
 } from '@ant-design/icons'
 import { Alert, Card, List, Progress, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
+import { formatBytes } from '../../../../utils/downloadUtils'
 
 const { Text, Title } = Typography
 
@@ -46,13 +47,6 @@ export function UploadProgress({
       default:
         return null
     }
-  }
-
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return ''
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(1024))
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
   }
 
   return (
@@ -109,7 +103,7 @@ export function UploadProgress({
                       </Text>
                       {file.size && (
                         <Text type="secondary" className="text-xs">
-                          ({formatFileSize(file.size)})
+                          ({formatBytes(file.size)})
                         </Text>
                       )}
                     </div>

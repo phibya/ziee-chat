@@ -5,6 +5,7 @@ import {
   AvailableDevicesResponse,
   DeviceInfo,
 } from '../../../../../types/api/provider'
+import { formatBytes } from '../../../../../utils/downloadUtils'
 import { useUpdate } from 'react-use'
 
 const { Text } = Typography
@@ -104,8 +105,7 @@ export const DeviceSelectionSection: React.FC<DeviceSelectionSectionProps> = ({
 
   const formatMemorySize = (bytes?: number) => {
     if (!bytes) return 'Unknown'
-    const gb = bytes / (1024 * 1024 * 1024)
-    return `${gb.toFixed(1)} GB`
+    return formatBytes(bytes)
   }
 
   const formatDeviceId = (device: DeviceInfo) => {

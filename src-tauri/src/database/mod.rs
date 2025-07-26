@@ -1,5 +1,6 @@
 use postgresql_embedded::{PostgreSQL, Settings};
 use sqlx::PgPool;
+use std::net::{TcpListener, SocketAddr};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -11,6 +12,47 @@ pub mod queries;
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();
 static POSTGRESQL_INSTANCE: OnceCell<Arc<Mutex<PostgreSQL>>> = OnceCell::const_new();
 static CLEANUP_REGISTERED: AtomicBool = AtomicBool::new(false);
+
+/// Find an available port in the given range by actually trying to bind to it
+fn find_available_port(start_port: u16, end_port: u16) -> Option<u16> {
+    for port in start_port..=end_port {
+        if is_port_available(port) {
+            println!("Found available port: {}", port);
+            return Some(port);
+        }
+    }
+    println!("No available ports found in range {}..{}", start_port, end_port);
+    None
+}
+
+/// Check if a port is available by actually trying to bind to it
+fn is_port_available(port: u16) -> bool {
+    // Try to bind to the port on localhost
+    match TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], port))) {
+        Ok(listener) => {
+            // Port is available, close the listener immediately
+            drop(listener);
+            
+            // Double-check with a second attempt to catch race conditions
+            match TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], port))) {
+                Ok(listener2) => {
+                    drop(listener2);
+                    println!("Port {} is confirmed available", port);
+                    true
+                }
+                Err(e) => {
+                    println!("Port {} became unavailable during double-check: {}", port, e);
+                    false
+                }
+            }
+        }
+        Err(e) => {
+            // Port is not available (already in use or permission denied)
+            println!("Port {} is not available: {}", port, e);
+            false
+        }
+    }
+}
 
 pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>>
 {
@@ -85,12 +127,24 @@ async fn try_initialize_database_once(
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or_else(|| {
-            // Check if port 50000 is available first
-            if portpicker::is_free(50000) {
-                50000
-            } else {
-                portpicker::pick_unused_port().unwrap_or(50001)
-            }
+            println!("No POSTGRES_PORT specified, searching for available port...");
+            
+            // Try to find an available port starting from 50000
+            find_available_port(50000, 50099).unwrap_or_else(|| {
+                println!("Port range 50000-50099 exhausted, trying random port selection...");
+                
+                // Fallback to random port if range is exhausted
+                match portpicker::pick_unused_port() {
+                    Some(port) => {
+                        println!("Selected random available port: {}", port);
+                        port
+                    }
+                    None => {
+                        println!("Warning: Could not find any available port, using 50001 as last resort");
+                        50001
+                    }
+                }
+            })
         });
 
     // Set bind address to POSTGRES_BIND_ADDRESS

@@ -35,9 +35,6 @@ export const downloadModelFromRepository = async (
   onStart?: (downloadId: string) => void,
 ): Promise<{ downloadId: string }> => {
   try {
-    // Set up download tracking subscription if not already done
-    setupDownloadTracking()
-
     // Call the new initiate download endpoint that returns immediately
     const downloadInstance =
       await ApiClient.Admin.initiateRepositoryDownload(request)
@@ -53,6 +50,9 @@ export const downloadModelFromRepository = async (
     // Call onStart callback with the download ID
     onStart?.(downloadInstance.id)
 
+    // Set up download tracking subscription if not already done
+    setupDownloadTracking()
+
     return { downloadId: downloadInstance.id }
   } catch (error) {
     console.error('Failed to initiate download:', error)
@@ -67,22 +67,11 @@ export const cancelModelDownload = async (
     // Call backend to cancel the download
     await ApiClient.Admin.cancelDownload({ download_id: downloadId })
 
-    // Update local state
-    const download = useModelDownloadStore.getState().downloads[downloadId]
-    if (download) {
-      useModelDownloadStore.setState(state => ({
-        downloads: {
-          ...state.downloads,
-          [downloadId]: {
-            ...download,
-            status: 'cancelled',
-            progress_data: null,
-            error_message: 'Download cancelled',
-            completed_at: new Date().toISOString(),
-          },
-        },
-      }))
-    }
+    // Remove from local state immediately since backend will delete it
+    useModelDownloadStore.setState(state => {
+      const { [downloadId]: _, ...remaining } = state.downloads
+      return { downloads: remaining }
+    })
   } catch (error) {
     console.error('Failed to cancel download:', error)
     throw error
@@ -191,7 +180,20 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
                   },
                 )
 
-                useModelDownloadStore.setState({ downloads: updatedDownloads })
+                // Filter out cancelled and completed downloads before updating state
+                const filteredDownloads: Record<string, DownloadInstance> = {}
+                Object.entries(updatedDownloads).forEach(([id, download]) => {
+                  if (
+                    download.status !== 'cancelled' &&
+                    download.status !== 'completed'
+                  ) {
+                    filteredDownloads[id] = download
+                  }
+                })
+
+                useModelDownloadStore.setState({
+                  downloads: filteredDownloads,
+                })
               }
               break
 
@@ -199,6 +201,7 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
               console.log('Downloads complete:', data.message)
               // Close the connection as no more downloads are active
               disconnectSSE()
+              loadExistingDownloads()
               break
 
             case 'error':
@@ -290,10 +293,12 @@ const loadExistingDownloads = async (): Promise<void> => {
     // Fetch all download instances from server
     const response = await ApiClient.Admin.listAllDownloads({})
 
-    // Update store with existing downloads
+    // Update store with existing downloads (exclude cancelled and completed)
     const downloads: Record<string, DownloadInstance> = {}
     response.downloads.forEach(download => {
-      downloads[download.id] = download
+      if (['pending', 'downloading', 'failed'].includes(download.status)) {
+        downloads[download.id] = download
+      }
     })
 
     useModelDownloadStore.setState({ downloads })

@@ -64,44 +64,39 @@ export function AssistantsTab() {
     <>
       {/* Search and Filters */}
       <div className="mb-6">
-        <Flex wrap gap={16} className="mb-4">
-          <div className="flex-1 min-w-[200px] basis-[300px]">
-            <Input
-              placeholder="Search assistants..."
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              allowClear
-            />
-          </div>
-          <div className="flex-1 min-w-[150px] basis-[200px]">
-            <Select
-              mode="multiple"
-              placeholder="Filter by tags"
-              value={selectedTags}
-              onChange={setSelectedTags}
-              className="w-full"
-              allowClear
-              maxTagCount="responsive"
-            >
-              {assistantTags.map(tag => (
-                <Select.Option key={tag} value={tag}>
-                  {tag}
-                </Select.Option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[120px] basis-[150px]">
-            <Select
-              placeholder="Sort by"
-              value={sortBy}
-              onChange={setSortBy}
-              className="w-full"
-            >
-              <Select.Option value="popular">Popular</Select.Option>
-              <Select.Option value="name">Name</Select.Option>
-            </Select>
-          </div>
+        <Flex className="mb-4 gap-3">
+          <Input
+            placeholder="Search assistants..."
+            prefix={<SearchOutlined />}
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            allowClear
+            className="flex-1"
+          />
+          <Select
+            mode="multiple"
+            placeholder="Filter by tags"
+            value={selectedTags}
+            onChange={setSelectedTags}
+            className="flex-1"
+            allowClear
+            maxTagCount="responsive"
+            options={assistantTags.map(tag => ({
+              key: tag,
+              value: tag,
+              label: tag,
+            }))}
+          />
+          <Select
+            placeholder="Sort by"
+            value={sortBy}
+            onChange={setSortBy}
+            className="flex-1"
+            options={[
+              { value: 'popular', label: 'Popular' },
+              { value: 'name', label: 'Name' },
+            ]}
+          />
         </Flex>
         {(searchTerm || selectedTags.length > 0) && (
           <Flex align="center" gap={8}>

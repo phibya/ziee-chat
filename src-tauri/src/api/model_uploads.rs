@@ -825,6 +825,10 @@ pub async fn initiate_repository_download(
         "none" | _ => None,
     };
 
+    // Create cancellation token for this download
+    let cancellation_token =
+        crate::utils::cancellation::create_cancellation_token(download_id).await;
+
     // Spawn background task to handle the download
     tokio::spawn(async move {
         // Update status to downloading
@@ -849,11 +853,18 @@ pub async fn initiate_repository_download(
         let progress_task = tokio::spawn(async move {
             let mut tracker = ProgressTracker::new();
             while let Some(git_progress) = progress_rx.recv().await {
+                // For git cloning, use actual byte estimates based on progress
+                let estimated_bytes = if git_progress.total > 0 {
+                    git_progress.current * 10 // Rough estimate: 10KB per unit
+                } else {
+                    git_progress.current // Fallback: 1KB per unit
+                };
+
                 // Calculate speed and ETA
-                let (speed_bps_f64, _) = tracker.update(git_progress.current);
+                let (speed_bps_f64, _) = tracker.update(estimated_bytes);
                 let speed_bps = speed_bps_f64.map(|s| s as i64);
                 let eta_seconds = tracker
-                    .calculate_eta(git_progress.current, git_progress.total, speed_bps_f64)
+                    .calculate_eta(estimated_bytes, git_progress.total * 10240, speed_bps_f64)
                     .map(|eta| eta as i64);
 
                 let progress_data = DownloadProgressData {
@@ -894,14 +905,15 @@ pub async fn initiate_repository_download(
             request.repository_path, request.repository_id
         );
 
-        // Clone repository without LFS files
+        // Clone repository (LFS files not included in initial clone)
         let clone_result = git_service
-            .clone_repository_without_lfs(
+            .clone_repository(
                 &repository_url,
                 &request.repository_id,
                 request.repository_branch.as_deref(),
                 auth_token.as_deref(),
                 progress_tx.clone(),
+                Some(cancellation_token.clone()),
             )
             .await;
 
@@ -943,6 +955,9 @@ pub async fn initiate_repository_download(
                         .filter(|name| !name.starts_with('.'))
                         .collect::<Vec<String>>(),
                     Err(e) => {
+                        // Clean up cancellation tracking
+                        crate::utils::cancellation::remove_download_tracking(download_id).await;
+
                         let _ =
                             crate::database::queries::download_instances::update_download_status(
                                 download_id,
@@ -965,6 +980,9 @@ pub async fn initiate_repository_download(
                     match determine_files_to_copy(&source_files, &request.main_filename) {
                         Ok(files) => files,
                         Err(e) => {
+                            // Clean up cancellation tracking
+                            crate::utils::cancellation::remove_download_tracking(download_id).await;
+
                             let _ =
                             crate::database::queries::download_instances::update_download_status(
                                 download_id,
@@ -1008,18 +1026,37 @@ pub async fn initiate_repository_download(
                 let lfs_progress_task = tokio::spawn(async move {
                     let mut lfs_tracker = ProgressTracker::new();
                     while let Some(git_progress) = lfs_progress_rx.recv().await {
-                        let (speed_bps_f64, _) = lfs_tracker.update(git_progress.current);
+                        // For LFS downloads, use actual byte counts for better speed calculation
+                        let current_bytes = git_progress.current; // Assume KB units, adjust as needed
+                        let (speed_bps_f64, _) = lfs_tracker.update(current_bytes);
                         let speed_bps = speed_bps_f64.map(|s| s as i64);
                         let eta_seconds = lfs_tracker
-                            .calculate_eta(git_progress.current, git_progress.total, speed_bps_f64)
+                            .calculate_eta(current_bytes, git_progress.total, speed_bps_f64)
                             .map(|eta| eta as i64);
+
+                        // Use the git_progress phase for better status reporting
+                        let phase_string = match git_progress.phase {
+                            crate::utils::git_service::GitPhase::Connecting => {
+                                "Connecting to LFS".to_string()
+                            }
+                            crate::utils::git_service::GitPhase::CheckingOut => {
+                                "Downloading LFS files".to_string()
+                            }
+                            crate::utils::git_service::GitPhase::Complete => {
+                                "LFS download complete".to_string()
+                            }
+                            crate::utils::git_service::GitPhase::Error => {
+                                "LFS download error".to_string()
+                            }
+                            _ => "Downloading LFS files".to_string(),
+                        };
 
                         let _ =
                             crate::database::queries::download_instances::update_download_progress(
                                 download_id_lfs,
                                 UpdateDownloadProgressRequest {
                                     progress_data: DownloadProgressData {
-                                        phase: Some("Downloading LFS files".to_string()),
+                                        phase: Some(phase_string),
                                         current: Some(git_progress.current as i64),
                                         total: Some(git_progress.total as i64),
                                         message: Some(git_progress.message),
@@ -1035,11 +1072,12 @@ pub async fn initiate_repository_download(
 
                 // Pull LFS files
                 let lfs_result = git_service
-                    .pull_lfs_files(
+                    .pull_lfs_files_with_cancellation(
                         &cache_path,
                         &files_to_copy,
                         auth_token.as_deref(),
                         lfs_progress_tx,
+                        Some(cancellation_token.clone()),
                     )
                     .await;
 
@@ -1049,11 +1087,28 @@ pub async fn initiate_repository_download(
 
                 // Check LFS result after progress task is done
                 if let Err(e) = lfs_result {
+                    // Check if the error is due to cancellation
+                    let is_cancelled = matches!(e, crate::utils::git_service::GitError::Cancelled);
+                    let (status, error_msg) = if is_cancelled {
+                        (
+                            DownloadStatus::Cancelled,
+                            "Download was cancelled by user".to_string(),
+                        )
+                    } else {
+                        (
+                            DownloadStatus::Failed,
+                            format!("Failed to download LFS files: {}", e),
+                        )
+                    };
+
+                    // Clean up cancellation tracking
+                    crate::utils::cancellation::remove_download_tracking(download_id).await;
+
                     let _ = crate::database::queries::download_instances::update_download_status(
                         download_id,
                         UpdateDownloadStatusRequest {
-                            status: DownloadStatus::Failed,
-                            error_message: Some(format!("Failed to download LFS files: {}", e)),
+                            status,
+                            error_message: Some(error_msg),
                             model_id: None,
                         },
                     )
@@ -1106,14 +1161,21 @@ pub async fn initiate_repository_download(
                             )
                             .await;
 
+                        // Clean up cancellation tracking
+                        crate::utils::cancellation::remove_download_tracking(download_id).await;
+
                         // Spawn cleanup task to remove the download record after 60 seconds
                         // This gives clients time to see the completion status
-                        tokio::spawn(async move {
-                            tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
-                            let _ = crate::database::queries::download_instances::delete_download_instance(download_id).await;
-                        });
+                        let _ =
+                            crate::database::queries::download_instances::delete_download_instance(
+                                download_id,
+                            )
+                            .await;
                     }
                     Err(e) => {
+                        // Clean up cancellation tracking
+                        crate::utils::cancellation::remove_download_tracking(download_id).await;
+
                         let _ =
                             crate::database::queries::download_instances::update_download_status(
                                 download_id,
@@ -1128,31 +1190,44 @@ pub async fn initiate_repository_download(
                 }
             }
             Err(e) => {
-                // Create a more descriptive error message
-                let error_msg = if e.to_string().contains("403")
+                // Check if the error is due to cancellation
+                let is_cancelled = matches!(e, crate::utils::git_service::GitError::Cancelled);
+
+                let (status, error_msg) = if is_cancelled {
+                    (
+                        DownloadStatus::Cancelled,
+                        "Download was cancelled by user".to_string(),
+                    )
+                } else if e.to_string().contains("403")
                     || e.to_string().contains("HTTP status code: 403")
                 {
-                    format!("Access denied (403): Authentication failed or insufficient permissions. {}", e)
+                    (DownloadStatus::Failed, format!("Access denied (403): Authentication failed or insufficient permissions. {}", e))
                 } else if e.to_string().contains("401")
                     || e.to_string().contains("HTTP status code: 401")
                 {
-                    format!(
-                        "Authentication required (401): Invalid or missing credentials. {}",
-                        e
+                    (
+                        DownloadStatus::Failed,
+                        format!(
+                            "Authentication required (401): Invalid or missing credentials. {}",
+                            e
+                        ),
                     )
                 } else {
-                    format!("Download failed: {}", e)
+                    (DownloadStatus::Failed, format!("Download failed: {}", e))
                 };
 
                 let _ = crate::database::queries::download_instances::update_download_status(
                     download_id,
                     UpdateDownloadStatusRequest {
-                        status: DownloadStatus::Failed,
+                        status,
                         error_message: Some(error_msg),
                         model_id: None,
                     },
                 )
                 .await;
+
+                // Clean up cancellation tracking
+                crate::utils::cancellation::remove_download_tracking(download_id).await;
             }
         }
     });

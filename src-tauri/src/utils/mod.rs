@@ -1,3 +1,4 @@
+pub mod cancellation;
 pub mod git_service;
 pub mod hub_config;
 pub mod hub_manager;

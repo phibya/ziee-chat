@@ -1,42 +1,28 @@
-import { CloseOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
-import {
-  App,
-  Button,
-  Card,
-  Dropdown,
-  Flex,
-  Form,
-  List,
-  Progress,
-  Typography,
-} from "antd";
+import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import { App, Button, Card, Divider, Dropdown, Flex, Form } from "antd";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { isDesktopApp } from "../../../../api/core";
 import { Permission, usePermissions } from "../../../../permissions";
 import {
-  cancelModelDownload,
   clearProvidersError,
   deleteExistingModel,
-  deleteModelDownload,
   disableModelFromUse,
   enableModelForUse,
   loadModels,
   openAddLocalModelDownloadDrawer,
   openAddLocalModelUploadDrawer,
   openEditLocalModelDrawer,
-  openViewDownloadModal,
   startModelExecution,
   stopModelExecution,
   Stores,
   updateModelProvider,
 } from "../../../../store";
 import { DownloadInstance, Provider } from "../../../../types";
+import { DownloadItem } from "../../../shared/DownloadItem";
 import { ModelsSection } from "./shared/ModelsSection";
 import { ProviderHeader } from "./shared/ProviderHeader";
-
-const { Text } = Typography;
 
 export function LocalProviderSettings() {
   const { t } = useTranslation();
@@ -67,43 +53,6 @@ export function LocalProviderSettings() {
   const providerDownloads = Object.values(downloads).filter(
     (download: DownloadInstance) => download.provider_id === provider_id,
   );
-
-  // Format bytes to human readable format
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-  };
-
-  const formatSpeed = (speedBps?: number): string => {
-    if (!speedBps) return "";
-
-    const speedMBps = speedBps / (1024 * 1024);
-    if (speedMBps >= 1) {
-      return `${speedMBps.toFixed(1)} MB/s`;
-    }
-
-    const speedKBps = speedBps / 1024;
-    return `${speedKBps.toFixed(1)} KB/s`;
-  };
-
-  const formatETA = (etaSeconds?: number): string => {
-    if (!etaSeconds) return "";
-
-    const hours = Math.floor(etaSeconds / 3600);
-    const minutes = Math.floor((etaSeconds % 3600) / 60);
-    const seconds = Math.floor(etaSeconds % 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    } else {
-      return `${seconds}s`;
-    }
-  };
 
   // Helper functions for provider validation
   const canEnableProvider = (provider: Provider): boolean => {
@@ -362,115 +311,16 @@ export function LocalProviderSettings() {
       {/* Downloads Section - For Local providers only */}
       {providerDownloads.length > 0 && (
         <Card title={t("providers.downloadingModels")}>
-          <List
-            dataSource={providerDownloads}
-            renderItem={(download: DownloadInstance) => {
-              const percent = download.progress_data
-                ? Math.round(
-                    (download.progress_data.current /
-                      download.progress_data.total) *
-                      100,
-                  )
-                : 0;
-
-              const speed = formatSpeed(download.progress_data?.download_speed);
-              const eta = formatETA(download.progress_data?.eta_seconds);
-
-              const handleCloseDownload = async (downloadId: string) => {
-                try {
-                  await deleteModelDownload(downloadId);
-                  message.success("Download removed successfully");
-                } catch (error: any) {
-                  console.error("Failed to delete download:", error);
-                  message.error(`Failed to remove download: ${error.message}`);
-                }
-              };
-
-              return (
-                <List.Item
-                  actions={[
-                    <Button
-                      key="view"
-                      type="text"
-                      size="small"
-                      onClick={() => openViewDownloadModal(download.id)}
-                    >
-                      View Details
-                    </Button>,
-                    ["completed", "failed", "cancelled"].includes(
-                      download.status,
-                    ) ? (
-                      <Button
-                        key="close"
-                        type="text"
-                        size="small"
-                        icon={<CloseOutlined />}
-                        onClick={() => handleCloseDownload(download.id)}
-                        title="Remove from list"
-                      >
-                        Close
-                      </Button>
-                    ) : (
-                      <Button
-                        key="cancel"
-                        type="text"
-                        danger
-                        size="small"
-                        onClick={async () => {
-                          try {
-                            await cancelModelDownload(download.id);
-                            message.success("Download cancelled successfully");
-                          } catch (error: any) {
-                            console.error("Failed to cancel download:", error);
-                            message.error(`Failed to cancel download: ${error.message}`);
-                          }
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    ),
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={download.request_data.alias}
-                    description={
-                      <Flex vertical className="gap-1 w-full">
-                        <Text type="secondary" className="text-xs">
-                          {download.progress_data?.message ||
-                            "Preparing download..."}
-                        </Text>
-                        <Progress
-                          percent={percent}
-                          status="active"
-                          strokeColor="#1890ff"
-                          size="small"
-                        />
-                        <Flex justify="space-between" align="center">
-                          <Text type="secondary" className="text-xs">
-                            {download.progress_data
-                              ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
-                              : "0 B / 0 B"}
-                          </Text>
-                          <Flex className={"gap-2"}>
-                            {speed && (
-                              <Text type="secondary" className="text-xs">
-                                Speed: {speed}
-                              </Text>
-                            )}
-                            {eta && (
-                              <Text type="secondary" className="text-xs">
-                                ETA: {eta}
-                              </Text>
-                            )}
-                          </Flex>
-                        </Flex>
-                      </Flex>
-                    }
-                  />
-                </List.Item>
-              );
-            }}
-          />
+          <Flex vertical>
+            {providerDownloads.map((download: DownloadInstance, i: number) => (
+              <>
+                <DownloadItem key={download.id} download={download} />
+                {i < providerDownloads.length - 1 && (
+                  <Divider className={"m-0"} />
+                )}
+              </>
+            ))}
+          </Flex>
         </Card>
       )}
 
