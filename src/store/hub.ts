@@ -8,6 +8,7 @@ interface HubState {
   assistants: HubAssistant[]
   hubVersion: string
   lastUpdated: string
+  lastActiveTab: string
   initialized: boolean
   loading: boolean
   error: string | null
@@ -19,6 +20,7 @@ export const useHubStore = create<HubState>()(
     assistants: [],
     hubVersion: '',
     lastUpdated: '',
+    lastActiveTab: 'models',
     initialized: false,
     loading: false,
     error: null,
@@ -159,4 +161,9 @@ export const searchAssistants = (
       assistant.category.toLowerCase().includes(searchTerm) ||
       assistant.tags.some(tag => tag.toLowerCase().includes(searchTerm)),
   )
+}
+
+// Set the last active tab
+export const setHubActiveTab = (tab: string) => {
+  useHubStore.setState({ lastActiveTab: tab })
 }

@@ -10,8 +10,7 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        AvailableDevicesResponse, CreateProviderRequest, Provider,
-        ProviderListResponse,
+        AvailableDevicesResponse, CreateProviderRequest, Provider, ProviderListResponse,
         UpdateProviderRequest, UserGroup,
     },
     queries::{models, providers, user_group_providers},
@@ -204,8 +203,7 @@ pub async fn update_provider(
                 }
 
                 // Check if provider has any models
-                let provider_models = match models::get_models_by_provider_id(provider_id).await
-                {
+                let provider_models = match models::get_models_by_provider_id(provider_id).await {
                     Ok(models) => models,
                     Err(e) => {
                         eprintln!(
@@ -215,17 +213,6 @@ pub async fn update_provider(
                         return Err(AppError::from(e));
                     }
                 };
-
-                if provider_models.is_empty() {
-                    eprintln!(
-                        "Cannot enable provider {}: No models available",
-                        provider_id
-                    );
-                    return Err(AppError::new(
-                        crate::api::errors::ErrorCode::ValidInvalidInput,
-                        "Invalid operation",
-                    ));
-                }
             }
             Ok(None) => return Err(AppError::not_found("Resource")),
             Err(e) => {
@@ -270,8 +257,6 @@ pub async fn delete_provider(
     }
 }
 
-
-
 // Get groups that have access to a model provider
 pub async fn get_provider_groups(
     Extension(_auth_user): Extension<AuthenticatedUser>,
@@ -285,8 +270,6 @@ pub async fn get_provider_groups(
         }
     }
 }
-
-
 
 /// Get available compute devices for model deployment
 pub async fn get_available_devices(

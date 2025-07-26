@@ -1,75 +1,71 @@
-import { ClearOutlined, RobotOutlined, SearchOutlined } from '@ant-design/icons'
-import { App, Button, Card, Flex, Input, Select, Tag, Typography } from 'antd'
-import { useMemo, useState } from 'react'
-import { useHubStore, searchAssistants } from '../../../store/hub'
-import type { HubAssistant } from '../../../types/api/hub'
+import {
+  ClearOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
+import { Button, Flex, Input, Select, Typography } from "antd";
+import { useMemo, useState } from "react";
+import { searchAssistants, useHubStore } from "../../../store/hub";
+import { AssistantCard } from "./AssistantCard";
 
-const { Title, Text } = Typography
+const { Text } = Typography;
 
 export function AssistantsTab() {
-  const { assistants } = useHubStore()
-  const { message } = App.useApp()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState('popular')
-
-  const handleUseAssistant = (assistant: HubAssistant) => {
-    console.log('Using assistant:', assistant.id)
-    message.info(`Starting conversation with ${assistant.name}`)
-    // TODO: Navigate to chat with assistant
-  }
+  const { assistants } = useHubStore();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState("popular");
 
   const clearAllFilters = () => {
-    setSearchTerm('')
-    setSelectedTags([])
-  }
+    setSearchTerm("");
+    setSelectedTags([]);
+  };
 
   // Get unique tags for filters
   const assistantTags = useMemo(() => {
-    const allTags = new Set<string>()
-    assistants.forEach(assistant => {
-      assistant.tags.forEach(tag => allTags.add(tag))
-    })
-    return Array.from(allTags).sort()
-  }, [assistants])
+    const allTags = new Set<string>();
+    assistants.forEach((assistant) => {
+      assistant.tags.forEach((tag) => allTags.add(tag));
+    });
+    return Array.from(allTags).sort();
+  }, [assistants]);
 
   const filteredAssistants = useMemo(() => {
-    let filtered = searchAssistants(assistants, searchTerm)
+    let filtered = searchAssistants(assistants, searchTerm);
 
     // Filter by tags
     if (selectedTags.length > 0) {
-      filtered = filtered.filter(assistant =>
-        selectedTags.some(tag => assistant.tags.includes(tag)),
-      )
+      filtered = filtered.filter((assistant) =>
+        selectedTags.some((tag) => assistant.tags.includes(tag)),
+      );
     }
 
     // Sort assistants
     switch (sortBy) {
-      case 'popular':
+      case "popular":
         filtered.sort(
           (a, b) => (b.popularity_score || 0) - (a.popularity_score || 0),
-        )
-        break
-      case 'name':
-        filtered.sort((a, b) => a.name.localeCompare(b.name))
-        break
+        );
+        break;
+      case "name":
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
       default:
-        break
+        break;
     }
 
-    return filtered
-  }, [assistants, searchTerm, selectedTags, sortBy])
+    return filtered;
+  }, [assistants, searchTerm, selectedTags, sortBy]);
 
   return (
-    <>
+    <Flex className={"flex-col gap-3"}>
       {/* Search and Filters */}
-      <div className="mb-6">
-        <Flex className="mb-4 gap-3">
+      <div>
+        <Flex className="gap-3">
           <Input
             placeholder="Search assistants..."
             prefix={<SearchOutlined />}
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
             allowClear
             className="flex-1"
           />
@@ -81,7 +77,7 @@ export function AssistantsTab() {
             className="flex-1"
             allowClear
             maxTagCount="responsive"
-            options={assistantTags.map(tag => ({
+            options={assistantTags.map((tag) => ({
               key: tag,
               value: tag,
               label: tag,
@@ -93,21 +89,21 @@ export function AssistantsTab() {
             onChange={setSortBy}
             className="flex-1"
             options={[
-              { value: 'popular', label: 'Popular' },
-              { value: 'name', label: 'Name' },
+              { value: "popular", label: "Popular" },
+              { value: "name", label: "Name" },
             ]}
           />
         </Flex>
         {(searchTerm || selectedTags.length > 0) && (
           <Flex align="center" gap={8}>
             <Text type="secondary" className="text-xs">
-              Filters active:{' '}
+              Filters active:{" "}
               {[
-                searchTerm && 'search',
+                searchTerm && "search",
                 selectedTags.length > 0 && `${selectedTags.length} tags`,
               ]
                 .filter(Boolean)
-                .join(', ')}
+                .join(", ")}
             </Text>
             <Button
               size="small"
@@ -123,75 +119,8 @@ export function AssistantsTab() {
 
       {/* Assistants Grid */}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
-        {filteredAssistants.map(assistant => (
-          <Card
-            key={assistant.id}
-            hoverable
-            className="h-full"
-            styles={{ body: { padding: '16px' } }}
-          >
-            <div className="mb-3">
-              <Title level={4} className="m-0 mb-1">
-                {assistant.name}
-              </Title>
-              <Text type="secondary" className="text-xs">
-                {assistant.description}
-              </Text>
-            </div>
-
-            {/* Category & Author */}
-            <div className="mb-3">
-              <Flex justify="space-between" align="center">
-                <Tag color="geekblue" className="text-xs">
-                  {assistant.category}
-                </Tag>
-                {assistant.author && (
-                  <Text type="secondary" className="text-xs">
-                    by {assistant.author}
-                  </Text>
-                )}
-              </Flex>
-            </div>
-
-            {/* Tags */}
-            <div className="mb-3">
-              <Flex wrap className="gap-1">
-                {assistant.tags.slice(0, 3).map(tag => (
-                  <Tag key={tag} color="default" className="text-xs">
-                    {tag}
-                  </Tag>
-                ))}
-                {assistant.tags.length > 3 && (
-                  <Tag color="default" className="text-xs">
-                    +{assistant.tags.length - 3}
-                  </Tag>
-                )}
-              </Flex>
-            </div>
-
-            {/* Recommended Models */}
-            {assistant.recommended_models.length > 0 && (
-              <div className="mb-3">
-                <Text type="secondary" className="text-xs">
-                  Works best with:{' '}
-                  {assistant.recommended_models.slice(0, 2).join(', ')}
-                  {assistant.recommended_models.length > 2 && '...'}
-                </Text>
-              </div>
-            )}
-
-            {/* Action Button */}
-            <Button
-              type="primary"
-              block
-              size="small"
-              icon={<RobotOutlined />}
-              onClick={() => handleUseAssistant(assistant)}
-              className="mt-auto"
-            >
-              Use Assistant
-            </Button>
-          </Card>
+        {filteredAssistants.map((assistant) => (
+          <AssistantCard key={assistant.id} assistant={assistant} />
         ))}
       </div>
 
@@ -200,6 +129,6 @@ export function AssistantsTab() {
           <Text type="secondary">No assistants found</Text>
         </div>
       )}
-    </>
-  )
+    </Flex>
+  );
 }

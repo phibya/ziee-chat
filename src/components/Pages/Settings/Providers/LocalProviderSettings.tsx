@@ -57,8 +57,6 @@ export function LocalProviderSettings() {
   // Helper functions for provider validation
   const canEnableProvider = (provider: Provider): boolean => {
     if (provider.enabled) return true; // Already enabled
-    const providerModels = modelsByProvider[provider.id] || [];
-    if (providerModels.length === 0) return false;
     if (provider.type === "local") return true;
     if (!provider.api_key || provider.api_key.trim() === "") return false;
     if (!provider.base_url || provider.base_url.trim() === "") return false;
@@ -72,9 +70,6 @@ export function LocalProviderSettings() {
 
   const getEnableDisabledReason = (provider: Provider): string | null => {
     if (provider.enabled) return null;
-    const providerModels = modelsByProvider[provider.id] || [];
-    if (providerModels.length === 0)
-      return "No models available. Add at least one model first.";
     if (provider.type === "local") return null;
     if (!provider.api_key || provider.api_key.trim() === "")
       return "API key is required";

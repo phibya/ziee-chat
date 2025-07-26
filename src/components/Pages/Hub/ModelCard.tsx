@@ -7,7 +7,7 @@ import {
   ToolOutlined,
   UnlockOutlined,
 } from "@ant-design/icons";
-import { App, Button, Card, Flex, Tag, Typography } from "antd";
+import { App, Button, Card, Flex, Select, Tag, Typography } from "antd";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isDesktopApp } from "../../../api/core.ts";
 import type { HubModel } from "../../../types/api/hub";
@@ -16,6 +16,7 @@ import { repositoryHasCredentials } from "../../../store/repositories.ts";
 import { downloadModelFromRepository } from "../../../store/modelDownload";
 import { openRepositoryDrawer } from "../../../store/ui";
 import { DownloadItem } from "../../shared/DownloadItem.tsx";
+import { Provider } from "../../../types";
 
 const { Title, Text } = Typography;
 
@@ -24,7 +25,7 @@ interface ModelCardProps {
 }
 
 export function ModelCard({ model }: ModelCardProps) {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { repositories } = Stores.Repositories;
   const { providers } = Stores.Providers;
   const { downloads } = Stores.ModelDownload;
@@ -58,12 +59,74 @@ export function ModelCard({ model }: ModelCardProps) {
       return;
     }
 
-    const provider = providers.find((p) => p.type === "local");
+    const localProviders = providers.filter(
+      (p) => p.type === "local" && p.enabled,
+    );
 
-    if (!provider) {
+    if (localProviders.length === 0) {
       message.error(
         `No local provider found for model ${model.alias}. Please ensure a local provider is configured.`,
       );
+      return;
+    }
+
+    let provider: Provider | undefined = localProviders[0];
+
+    if (localProviders.length > 1) {
+      await new Promise<void>((resolve) => {
+        let m = modal.info({
+          icon: null,
+          footer: null,
+          title: "Select Local Provider",
+          closable: false,
+          onCancel: () => {
+            provider = undefined;
+            resolve();
+          },
+          content: (
+            <div className="flex flex-col gap-2">
+              <Text>
+                Multiple local providers found. Please select one to download
+                the model:
+              </Text>
+              <Select
+                options={localProviders.map((p) => ({
+                  label: p.name,
+                  value: p.id,
+                }))}
+                defaultValue={localProviders[0].id}
+                onChange={(value) => {
+                  provider = localProviders.find((p) => p.id === value);
+                }}
+                placeholder="Select a provider"
+              />
+              <Flex className={"gap-2 w-full justify-end"}>
+                <Button
+                  onClick={() => {
+                    provider = undefined;
+                    m.destroy();
+                    resolve();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    resolve();
+                    m.destroy();
+                  }}
+                >
+                  Continue
+                </Button>
+              </Flex>
+            </div>
+          ),
+        });
+      });
+    }
+
+    if (!provider) {
       return;
     }
 

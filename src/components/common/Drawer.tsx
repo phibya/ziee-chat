@@ -46,7 +46,7 @@ export const Drawer: React.FC<DrawerProps> = (props) => {
         },
         header: {
           borderBottom: "none",
-          padding: "12px 12px 6px 16px",
+          padding: "12px 12px 6px 12px",
           zIndex: 1002,
         },
         footer: {
