@@ -1,19 +1,15 @@
 import {
   CopyOutlined,
-  DeleteOutlined,
-  EditOutlined,
   PlusOutlined,
   RobotOutlined,
 } from '@ant-design/icons'
 import {
   App,
-  Avatar,
   Button,
   Card,
   Col,
   Flex,
   Modal,
-  Popconfirm,
   Row,
   Table,
   Tag,
@@ -25,7 +21,6 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   clearAssistantsStoreError,
-  deleteUserAssistant,
   loadUserAssistants,
   openAssistantDrawer,
   Stores,
@@ -34,6 +29,7 @@ import { Assistant } from '../../types/api/assistant'
 import { PageContainer } from '../common/PageContainer'
 import { AssistantFormDrawer } from '../shared/AssistantFormDrawer.tsx'
 import { isDesktopApp } from '../../api/core.ts'
+import { AssistantCard } from './Assistants'
 
 const { Title, Text } = Typography
 
@@ -46,7 +42,6 @@ export const AssistantsPage: React.FC = () => {
     assistants: allAssistants,
     adminAssistants: templateAssistants,
     loading,
-    deleting,
     error,
   } = Stores.Assistants
 
@@ -66,20 +61,6 @@ export const AssistantsPage: React.FC = () => {
     }
   }, [error, message])
 
-  const handleDelete = async (assistant: Assistant) => {
-    try {
-      await deleteUserAssistant(assistant.id)
-      message.success(t('assistants.assistantDeleted'))
-    } catch (error) {
-      // Error is already handled by the store
-      console.error('Failed to delete assistant:', error)
-    }
-  }
-
-  const handleEdit = (assistant: Assistant) => {
-    openAssistantDrawer(assistant)
-  }
-
   const handleCreate = () => {
     openAssistantDrawer()
   }
@@ -93,59 +74,6 @@ export const AssistantsPage: React.FC = () => {
     openAssistantDrawer()
   }
 
-  const renderAssistantCard = (assistant: Assistant) => (
-    <Card
-      key={assistant.id}
-      hoverable
-      actions={[
-        <Tooltip title={t('buttons.edit')} key="edit">
-          <EditOutlined onClick={() => handleEdit(assistant)} />
-        </Tooltip>,
-        <Popconfirm
-          title={t('assistants.deleteAssistant')}
-          description={t('assistants.deleteConfirm')}
-          onConfirm={() => handleDelete(assistant)}
-          okText="Yes"
-          cancelText="No"
-          key="delete"
-          okButtonProps={{ loading: deleting }}
-        >
-          <Tooltip title={t('buttons.delete')}>
-            <DeleteOutlined />
-          </Tooltip>
-        </Popconfirm>,
-      ]}
-    >
-      <Card.Meta
-        avatar={
-          <Avatar
-            size={48}
-            icon={<RobotOutlined />}
-            style={{ backgroundColor: '#1890ff' }}
-          />
-        }
-        title={
-          <div className="flex items-center gap-2">
-            <Text strong>{assistant.name}</Text>
-            <Tag color="green">{t('assistants.personal')}</Tag>
-            {!assistant.is_active && (
-              <Tag color="red">{t('assistants.inactive')}</Tag>
-            )}
-          </div>
-        }
-        description={
-          <div>
-            <Text type="secondary" className="block mb-2">
-              {assistant.description || 'No description'}
-            </Text>
-            <Text type="secondary" className="text-xs">
-              Created {new Date(assistant.created_at).toLocaleDateString()}
-            </Text>
-          </div>
-        }
-      />
-    </Card>
-  )
 
   return (
     <PageContainer>
@@ -196,7 +124,7 @@ export const AssistantsPage: React.FC = () => {
             <Row gutter={[16, 16]}>
               {assistants.map(assistant => (
                 <Col xs={24} sm={12} md={8} lg={6} key={assistant.id}>
-                  {renderAssistantCard(assistant)}
+                  <AssistantCard assistant={assistant} />
                 </Col>
               ))}
             </Row>
