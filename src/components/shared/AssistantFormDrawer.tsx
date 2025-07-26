@@ -22,12 +22,12 @@ import {
 import { Assistant } from "../../types/api/assistant";
 import {
   closeAssistantDrawer,
+  createSystemAdminAssistant,
   createUserAssistant,
   setAssistantDrawerLoading,
   Stores,
-  updateUserAssistant,
-  createSystemAdminAssistant,
   updateSystemAdminAssistant,
+  updateUserAssistant,
 } from "../../store";
 
 const { Text } = Typography;
@@ -117,7 +117,7 @@ export const AssistantFormDrawer: React.FC = () => {
   const [jsonErrors, setJsonErrors] = useState<string[]>([]);
 
   // Store usage
-  const { open, loading, editingAssistant, isAdmin } =
+  const { open, loading, editingAssistant, isAdmin, isCloning } =
     Stores.UI.AssistantDrawer;
 
   // No store state needed, using external methods
@@ -358,7 +358,7 @@ export const AssistantFormDrawer: React.FC = () => {
 
     setAssistantDrawerLoading(true);
     try {
-      if (editingAssistant) {
+      if (editingAssistant && !isCloning) {
         if (isAdmin) {
           await updateSystemAdminAssistant(editingAssistant.id, finalValues);
         } else {
@@ -419,7 +419,7 @@ export const AssistantFormDrawer: React.FC = () => {
   }, [open, editingAssistant, cloneSource, form]);
 
   const getTitle = () => {
-    if (editingAssistant) {
+    if (editingAssistant && !isCloning) {
       return isAdmin ? "Edit Template Assistant" : "Edit Assistant";
     }
     return isAdmin ? "Create Template Assistant" : "Create Assistant";
@@ -440,10 +440,10 @@ export const AssistantFormDrawer: React.FC = () => {
           loading={loading}
           onClick={() => form.submit()}
         >
-          {editingAssistant ? "Update" : "Create"}
+          {editingAssistant && !isCloning ? "Update" : "Create"}
         </Button>,
       ]}
-      width={800}
+      width={500}
       maskClosable={false}
     >
       <Form form={form} onFinish={handleSubmit} layout="vertical">

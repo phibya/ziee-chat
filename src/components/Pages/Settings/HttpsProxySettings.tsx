@@ -1,4 +1,4 @@
-import { Card, Flex, Typography } from 'antd'
+import { Card, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,8 +8,9 @@ import {
   updateSystemProxySettings,
 } from '../../../store'
 import { ProxySettingsForm } from './shared'
+import { SettingsPageContainer } from './SettingsPageContainer'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export function HttpsProxySettings() {
   const { t } = useTranslation()
@@ -34,19 +35,17 @@ export function HttpsProxySettings() {
 
   if (loading && !proxySettings) {
     return (
-      <Flex vertical className="gap-4 w-full">
-        <Title level={3}>{t('proxy.title')}</Title>
+      <SettingsPageContainer title={t('proxy.title')}>
         <Card>
           <Text type="secondary">{t('proxy.loadingSettings')}</Text>
         </Card>
-      </Flex>
+      </SettingsPageContainer>
     )
   }
 
   return (
-    <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('proxy.title')}</Title>
+    <SettingsPageContainer title={t('proxy.title')}>
       <ProxySettingsForm initialSettings={proxySettings} onSave={handleSave} />
-    </Flex>
+    </SettingsPageContainer>
   )
 }

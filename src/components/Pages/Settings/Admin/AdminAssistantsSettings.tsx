@@ -25,10 +25,10 @@ import {
   Stores,
 } from "../../../../store";
 import { Assistant } from "../../../../types/api/assistant";
-import { PageContainer } from "../../../common/PageContainer";
+import { SettingsPageContainer } from '../SettingsPageContainer';
 import { AssistantFormDrawer } from "../../../shared/AssistantFormDrawer.tsx";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const AdminAssistantsSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -132,16 +132,12 @@ export const AdminAssistantsSettings: React.FC = () => {
   ];
 
   return (
-    <PageContainer>
+    <SettingsPageContainer 
+      title="Assistants"
+      subtitle="Manage template assistants. Default assistants are automatically cloned for new users."
+    >
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <Title level={3}>Assistants</Title>
-            <Text type="secondary">
-              Manage template assistants. Default assistants are automatically
-              cloned for new users.
-            </Text>
-          </div>
+        <div className="flex justify-end items-center mb-6">
           <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
             Create Assistant
           </Button>
@@ -159,6 +155,6 @@ export const AdminAssistantsSettings: React.FC = () => {
 
         <AssistantFormDrawer />
       </div>
-    </PageContainer>
+    </SettingsPageContainer>
   );
 };

@@ -13,8 +13,9 @@ import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'
 import { isDesktopApp } from '../../../../api/core'
+import { SettingsPageContainer } from '../SettingsPageContainer'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export function AdminGeneralSettings() {
   const { t } = useTranslation()
@@ -67,19 +68,16 @@ export function AdminGeneralSettings() {
   // Only show these settings for web app (not desktop)
   if (isDesktopApp) {
     return (
-      <Flex vertical className="gap-4 w-full">
-        <Title level={3}>{t('admin.title')}</Title>
+      <SettingsPageContainer title={t('admin.title')}>
         <Card>
           <Text type="secondary">{t('admin.notAvailableDesktop')}</Text>
         </Card>
-      </Flex>
+      </SettingsPageContainer>
     )
   }
 
   return (
-    <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('admin.title')}</Title>
-
+    <SettingsPageContainer title={t('admin.title')}>
       <Card title={t('admin.application')}>
         <Flex vertical className="gap-2 w-full">
           <Flex
@@ -220,6 +218,6 @@ export function AdminGeneralSettings() {
           </Flex>
         </Card>
       )}
-    </Flex>
+    </SettingsPageContainer>
   )
 }

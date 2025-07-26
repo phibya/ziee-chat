@@ -43,7 +43,7 @@ import {
   UpdateUserGroupRequest,
   UserGroup,
 } from '../../../../types'
-import { PageContainer } from '../../../common/PageContainer'
+import { SettingsPageContainer } from '../SettingsPageContainer'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -350,10 +350,9 @@ export function UserGroupsSettings() {
   }
 
   return (
-    <PageContainer>
+    <SettingsPageContainer title="User Groups">
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <Title level={3}>User Groups</Title>
+        <div className="flex justify-end items-center mb-6">
           {canCreateGroups && (
             <Button
               type="primary"
@@ -612,6 +611,6 @@ export function UserGroupsSettings() {
           />
         </Drawer>
       </div>
-    </PageContainer>
+    </SettingsPageContainer>
   )
 }

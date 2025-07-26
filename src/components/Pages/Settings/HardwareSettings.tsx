@@ -1,18 +1,18 @@
-import { Card, Flex, Typography } from 'antd'
+import { Card, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
+import { SettingsPageContainer } from './SettingsPageContainer'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export function HardwareSettings() {
   const { t } = useTranslation()
   return (
-    <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('pages.hardware')}</Title>
+    <SettingsPageContainer title={t('pages.hardware')}>
       <Card title={t('settings.hardwareConfiguration')}>
         <Text type="secondary">
           {t('settings.hardwareConfigurationDescription')}
         </Text>
       </Card>
-    </Flex>
+    </SettingsPageContainer>
   )
 }

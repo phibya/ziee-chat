@@ -6,6 +6,7 @@ interface AssistantDrawerState {
   loading: boolean;
   editingAssistant: Assistant | null;
   isAdmin: boolean;
+  isCloning: boolean;
 }
 
 export const useAssistantDrawerStore = create<AssistantDrawerState>(() => ({
@@ -13,14 +14,20 @@ export const useAssistantDrawerStore = create<AssistantDrawerState>(() => ({
   loading: false,
   editingAssistant: null,
   isAdmin: false,
+  isCloning: false,
 }));
 
 // Modal actions
-export const openAssistantDrawer = (assistant?: Assistant, isAdmin = false) => {
+export const openAssistantDrawer = (
+  assistant?: Assistant,
+  isAdmin = false,
+  isCloning = false,
+) => {
   useAssistantDrawerStore.setState({
     open: true,
     editingAssistant: assistant || null,
     isAdmin,
+    isCloning,
   });
 };
 
@@ -30,6 +37,7 @@ export const closeAssistantDrawer = () => {
     loading: false,
     editingAssistant: null,
     isAdmin: false,
+    isCloning: false,
   });
 };
 

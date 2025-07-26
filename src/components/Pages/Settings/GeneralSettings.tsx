@@ -13,8 +13,9 @@ import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../permissions'
 import { isDesktopApp } from '../../../api/core'
+import { SettingsPageContainer } from './SettingsPageContainer'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export function GeneralSettings() {
   const { t } = useTranslation()
@@ -76,10 +77,9 @@ export function GeneralSettings() {
   }
 
   return (
-    <Flex className={'flex-col gap-3 h-full pb-2'}>
-      <Title level={3}>{t('pages.general')}</Title>
-
-      <Card title={t('general.application')}>
+    <SettingsPageContainer title={t('pages.general')}>
+      <Flex className={'flex-col gap-3 h-full pb-2'}>
+        <Card title={t('general.application')}>
         <Flex className="flex-col gap-3">
           <Flex
             justify="space-between"
@@ -393,6 +393,7 @@ export function GeneralSettings() {
           <Button type="link">{t('buttons.reportIssue')}</Button>
         </Flex>
       </Card>
-    </Flex>
+      </Flex>
+    </SettingsPageContainer>
   )
 }

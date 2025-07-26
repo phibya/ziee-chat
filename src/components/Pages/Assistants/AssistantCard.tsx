@@ -36,14 +36,16 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
       <Flex className={"flex-col w-full gap-3"}>
         <Card.Meta
           title={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
               <Text strong>{assistant.name}</Text>
-              {assistant.is_default && (
-                <Tag color="blue">{t("assistants.default")}</Tag>
-              )}
-              {!assistant.is_active && (
-                <Tag color="red">{t("assistants.inactive")}</Tag>
-              )}
+              <Flex className={"gap-3"}>
+                {assistant.is_default && (
+                  <Tag color="blue">{t("assistants.default")}</Tag>
+                )}
+                {!assistant.is_active && (
+                  <Tag color="red">{t("assistants.inactive")}</Tag>
+                )}
+              </Flex>
             </div>
           }
           description={

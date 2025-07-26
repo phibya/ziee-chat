@@ -46,7 +46,7 @@ import {
   User,
   UserGroup,
 } from '../../../../types'
-import { PageContainer } from '../../../common/PageContainer'
+import { SettingsPageContainer } from '../SettingsPageContainer'
 import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
 const { Title, Text } = Typography
@@ -351,11 +351,8 @@ export function UsersSettings() {
   }
 
   return (
-    <PageContainer>
+    <SettingsPageContainer title="Users">
       <div>
-        <div className="flex justify-between items-center mb-6">
-          <Title level={3}>Users</Title>
-        </div>
 
         {/* User Registration Settings */}
         <Flex vertical className="gap-3">
@@ -643,6 +640,6 @@ export function UsersSettings() {
           </Form>
         </Drawer>
       </div>
-    </PageContainer>
+    </SettingsPageContainer>
   )
 }

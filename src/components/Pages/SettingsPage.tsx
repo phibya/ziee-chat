@@ -254,7 +254,7 @@ export function SettingsPage() {
             icon={<MenuOutlined />}
             onClick={() => setDrawerVisible(true)}
           />
-          <Title level={4} style={{ margin: 0 }}>
+          <Title level={3} style={{ margin: 0 }}>
             <SettingOutlined style={{ marginRight: 8 }} />
             {t("settings.title")}
           </Title>

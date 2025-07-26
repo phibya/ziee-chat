@@ -4,7 +4,6 @@ import {
   DownOutlined,
   MenuOutlined,
   PlusOutlined,
-  SettingOutlined,
 } from '@ant-design/icons'
 import {
   App,
@@ -40,6 +39,7 @@ import { EditLocalModelDrawer } from './EditLocalModelDrawer.tsx'
 import { EditRemoteModelDrawer } from './EditRemoteModelDrawer.tsx'
 import { LocalProviderSettings } from './LocalProviderSettings'
 import { RemoteProviderSettings } from './RemoteProviderSettings'
+import { SettingsPageContainer } from '../SettingsPageContainer'
 
 const { Title, Text } = Typography
 const { Sider, Content } = Layout
@@ -292,76 +292,73 @@ export function ProvidersSettings() {
   }
 
   return (
-    <Layout>
-      {/* Desktop Sidebar */}
-      {!isMobile && (
-        <Sider
-          width={200}
-          theme="light"
-          style={{ backgroundColor: 'transparent' }}
-        >
-          <div>
-            <Title level={3}>Providers</Title>
-            <ProviderMenu />
-          </div>
-        </Sider>
-      )}
-
-      {/* Main Content */}
-      <Layout className={'px-2'}>
-        <Content>
-          {/* Mobile Header with Provider Selector */}
-          {isMobile && (
-            <div style={{ marginBottom: '24px' }}>
-              <Title level={3} style={{ margin: '0 0 16px 0' }}>
-                <SettingOutlined style={{ marginRight: 8 }} />
-                Providers
-              </Title>
-              <Dropdown
-                menu={{
-                  items: menuItems,
-                  onClick: ({ key }) => {
-                    if (key === 'add-provider') {
-                      openAddProviderDrawer()
-                    } else {
-                      navigate(`/settings/providers/${key}`)
-                    }
-                  },
-                }}
-                trigger={['click']}
-              >
-                <Button
-                  size="large"
-                  style={{ width: '100%', textAlign: 'left' }}
-                >
-                  <Flex justify="space-between" align="center">
-                    <Flex align="center" gap="middle">
-                      <span style={{ fontSize: '20px' }}>
-                        {currentProvider
-                          ? PROVIDER_ICONS[currentProvider.type]
-                          : ''}
-                      </span>
-                      <span>{currentProvider?.name}</span>
-                    </Flex>
-                    <DownOutlined />
-                  </Flex>
-                </Button>
-              </Dropdown>
+    <SettingsPageContainer title="Providers">
+      <Layout>
+        {/* Desktop Sidebar */}
+        {!isMobile && (
+          <Sider
+            width={200}
+            theme="light"
+            style={{ backgroundColor: 'transparent' }}
+          >
+            <div>
+              <ProviderMenu />
             </div>
-          )}
-          {renderProviderSettings()}
-        </Content>
+          </Sider>
+        )}
+
+        {/* Main Content */}
+        <Layout className={'px-2'}>
+          <Content>
+            {/* Mobile Header with Provider Selector */}
+            {isMobile && (
+              <div style={{ marginBottom: '24px' }}>
+                <Dropdown
+                  menu={{
+                    items: menuItems,
+                    onClick: ({ key }) => {
+                      if (key === 'add-provider') {
+                        openAddProviderDrawer()
+                      } else {
+                        navigate(`/settings/providers/${key}`)
+                      }
+                    },
+                  }}
+                  trigger={['click']}
+                >
+                  <Button
+                    size="large"
+                    style={{ width: '100%', textAlign: 'left' }}
+                  >
+                    <Flex justify="space-between" align="center">
+                      <Flex align="center" gap="middle">
+                        <span style={{ fontSize: '20px' }}>
+                          {currentProvider
+                            ? PROVIDER_ICONS[currentProvider.type]
+                            : ''}
+                        </span>
+                        <span>{currentProvider?.name}</span>
+                      </Flex>
+                      <DownOutlined />
+                    </Flex>
+                  </Button>
+                </Dropdown>
+              </div>
+            )}
+            {renderProviderSettings()}
+          </Content>
+        </Layout>
+
+        {/* Modals */}
+        <AddProviderDrawer />
+
+        <AddLocalModelUploadDrawer />
+        <AddLocalModelDownloadDrawer />
+        <AddRemoteModelDrawer />
+
+        <EditLocalModelDrawer />
+        <EditRemoteModelDrawer />
       </Layout>
-
-      {/* Modals */}
-      <AddProviderDrawer />
-
-      <AddLocalModelUploadDrawer />
-      <AddLocalModelDownloadDrawer />
-      <AddRemoteModelDrawer />
-
-      <EditLocalModelDrawer />
-      <EditRemoteModelDrawer />
-    </Layout>
+    </SettingsPageContainer>
   )
 }

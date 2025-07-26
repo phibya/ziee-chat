@@ -1,1 +1,2 @@
-export { AssistantCard } from './AssistantCard'
+export { AssistantCard } from "./AssistantCard";
+export { AssistantsPage } from "./AssistantsPage";

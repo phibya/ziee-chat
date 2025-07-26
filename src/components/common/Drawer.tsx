@@ -17,7 +17,6 @@ export const Drawer: React.FC<DrawerProps> = (props) => {
     placement = "right",
     width = 520,
     maskClosable = true,
-    destroyOnHidden = true,
     className = "",
     ...restProps
   } = props;
@@ -37,7 +36,6 @@ export const Drawer: React.FC<DrawerProps> = (props) => {
       placement={placement}
       width={width}
       maskClosable={maskClosable}
-      destroyOnHidden={destroyOnHidden}
       {...restProps}
       closable={false}
       styles={{

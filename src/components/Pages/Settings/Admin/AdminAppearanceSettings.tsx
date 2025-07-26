@@ -9,8 +9,9 @@ import {
   updateSystemDefaultLanguage,
 } from '../../../../store'
 import { LANGUAGE_OPTIONS } from '../../../../types'
+import { SettingsPageContainer } from '../SettingsPageContainer'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export function AdminAppearanceSettings() {
   const { t } = useTranslation()
@@ -67,21 +68,20 @@ export function AdminAppearanceSettings() {
 
   if (isDesktopApp) {
     return (
-      <Card>
-        <div className="text-center">
-          <Title level={4}>Admin Appearance Settings</Title>
-          <Text type="secondary">
-            Admin appearance settings are disabled in desktop mode
-          </Text>
-        </div>
-      </Card>
+      <SettingsPageContainer title="Admin Appearance Settings">
+        <Card>
+          <div className="text-center">
+            <Text type="secondary">
+              Admin appearance settings are disabled in desktop mode
+            </Text>
+          </div>
+        </Card>
+      </SettingsPageContainer>
     )
   }
 
   return (
-    <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('admin.appearanceSettings')}</Title>
-
+    <SettingsPageContainer title={t('admin.appearanceSettings')}>
       <Card title={t('admin.defaultSystemSettings')}>
         <Form
           form={form}
@@ -118,6 +118,6 @@ export function AdminAppearanceSettings() {
           </Flex>
         </Form>
       </Card>
-    </Flex>
+    </SettingsPageContainer>
   )
 }

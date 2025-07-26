@@ -11,8 +11,9 @@ import {
   setUserAppearanceTheme,
 } from '../../../store/settings.ts'
 import { LANGUAGE_OPTIONS } from '../../../types'
+import { SettingsPageContainer } from './SettingsPageContainer'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 export function AppearanceSettings() {
   const { t } = useTranslation()
@@ -62,9 +63,7 @@ export function AppearanceSettings() {
   }
 
   return (
-    <Flex vertical className="gap-4 w-full">
-      <Title level={3}>{t('pages.appearance')}</Title>
-
+    <SettingsPageContainer title={t('pages.appearance')}>
       <Card title={t('appearance.themeAndDisplay')}>
         <Form
           form={form}
@@ -127,6 +126,6 @@ export function AppearanceSettings() {
           </Flex>
         </Form>
       </Card>
-    </Flex>
+    </SettingsPageContainer>
   )
 }
