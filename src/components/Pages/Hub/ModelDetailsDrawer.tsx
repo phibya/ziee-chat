@@ -5,17 +5,17 @@ import {
   LockOutlined,
   ToolOutlined,
   UnlockOutlined,
-} from "@ant-design/icons";
-import { Button, Card, Flex, Tag, Typography } from "antd";
-import { Drawer } from "../../common/Drawer";
-import type { HubModel } from "../../../types/api/hub";
+} from '@ant-design/icons'
+import { Button, Card, Flex, Tag, Typography } from 'antd'
+import { Drawer } from '../../common/Drawer'
+import type { HubModel } from '../../../types/api/hub'
 
-const { Title, Text } = Typography;
+const { Title, Text } = Typography
 
 interface ModelDetailsDrawerProps {
-  model: HubModel | null;
-  open: boolean;
-  onClose: () => void;
+  model: HubModel | null
+  open: boolean
+  onClose: () => void
 }
 
 export function ModelDetailsDrawer({
@@ -23,7 +23,7 @@ export function ModelDetailsDrawer({
   open,
   onClose,
 }: ModelDetailsDrawerProps) {
-  if (!model) return null;
+  if (!model) return null
 
   return (
     <Drawer
@@ -145,7 +145,7 @@ export function ModelDetailsDrawer({
           <div>
             <Title level={5}>Tags</Title>
             <Flex wrap className="gap-1">
-              {model.tags.map((tag) => (
+              {model.tags.map(tag => (
                 <Tag key={tag} color="default">
                   {tag}
                 </Tag>
@@ -159,7 +159,7 @@ export function ModelDetailsDrawer({
           <div>
             <Title level={5}>Language Support</Title>
             <Flex wrap className="gap-1">
-              {model.language_support.map((lang) => (
+              {model.language_support.map(lang => (
                 <Tag key={lang} color="cyan">
                   {lang}
                 </Tag>
@@ -174,7 +174,7 @@ export function ModelDetailsDrawer({
             <div>
               <Title level={5}>Quantization Options</Title>
               <Flex wrap className="gap-1">
-                {model.quantization_options.map((option) => (
+                {model.quantization_options.map(option => (
                   <Tag key={option} color="gold">
                     {option}
                   </Tag>
@@ -197,5 +197,5 @@ export function ModelDetailsDrawer({
           )}
       </Flex>
     </Drawer>
-  );
+  )
 }

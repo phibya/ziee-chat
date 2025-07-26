@@ -10,122 +10,122 @@ import {
   TeamOutlined,
   ToolOutlined,
   UserOutlined,
-} from "@ant-design/icons";
-import { Button, Drawer, Layout, Menu, theme, Typography } from "antd";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { isDesktopApp } from "../../api/core";
-import { Permission, usePermissions } from "../../permissions";
-import { PageContainer } from "../common/PageContainer.tsx";
+} from '@ant-design/icons'
+import { Button, Drawer, Layout, Menu, theme, Typography } from 'antd'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { isDesktopApp } from '../../api/core'
+import { Permission, usePermissions } from '../../permissions'
+import { PageContainer } from '../common/PageContainer.tsx'
 
-const { Title } = Typography;
-const { Sider } = Layout;
+const { Title } = Typography
+const { Sider } = Layout
 
 export function SettingsPage() {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [isMobile, setIsMobile] = useState(false);
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const { hasPermission } = usePermissions();
-  const { token } = theme.useToken();
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [isMobile, setIsMobile] = useState(false)
+  const [drawerVisible, setDrawerVisible] = useState(false)
+  const { hasPermission } = usePermissions()
+  const { token } = theme.useToken()
 
   // Extract the current settings section from the URL
-  const currentSection = location.pathname.split("/").pop() || "general";
+  const currentSection = location.pathname.split('/').pop() || 'general'
 
   // Check if screen is mobile size
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768); // md breakpoint
-    };
+      setIsMobile(window.innerWidth < 768) // md breakpoint
+    }
 
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
 
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const baseMenuItems = [
     {
-      key: "general",
+      key: 'general',
       icon: <UserOutlined />,
-      label: t("settings.general"),
+      label: t('settings.general'),
     },
     {
-      key: "appearance",
+      key: 'appearance',
       icon: <EyeOutlined />,
-      label: t("settings.appearance"),
+      label: t('settings.appearance'),
     },
     {
-      key: "privacy",
+      key: 'privacy',
       icon: <LockOutlined />,
-      label: t("settings.privacy"),
+      label: t('settings.privacy'),
     },
     // Providers only shows in main menu for desktop apps
     ...(isDesktopApp
       ? [
           {
-            key: "providers",
+            key: 'providers',
             icon: <ToolOutlined />,
-            label: t("settings.providers"),
+            label: t('settings.providers'),
           },
           {
-            key: "repositories",
+            key: 'repositories',
             icon: <CloudDownloadOutlined />,
-            label: t("settings.modelRepository.title"),
+            label: t('settings.modelRepository.title'),
           },
         ]
       : []),
 
     {
-      key: "shortcuts",
+      key: 'shortcuts',
       icon: <SlidersOutlined />,
-      label: t("settings.shortcuts"),
+      label: t('settings.shortcuts'),
     },
     {
-      key: "hardware",
+      key: 'hardware',
       icon: <ToolOutlined />,
-      label: t("settings.hardware"),
+      label: t('settings.hardware'),
     },
     // HTTPS Proxy only shows in main menu for desktop apps
     ...(isDesktopApp
       ? [
           {
-            key: "https-proxy",
+            key: 'https-proxy',
             icon: <ToolOutlined />,
-            label: t("settings.httpsProxy"),
+            label: t('settings.httpsProxy'),
           },
         ]
       : []),
     {
-      key: "extensions",
+      key: 'extensions',
       icon: <ExperimentOutlined />,
-      label: t("settings.extensions"),
+      label: t('settings.extensions'),
     },
-  ];
+  ]
 
   // Build admin menu items based on permissions
   const adminMenuItems = !isDesktopApp
     ? (() => {
-        const items = [];
+        const items = []
 
         // Check if user has any admin permissions
-        const hasUserManagement = hasPermission(Permission.users.read);
-        const hasGroupManagement = hasPermission(Permission.groups.read);
+        const hasUserManagement = hasPermission(Permission.users.read)
+        const hasGroupManagement = hasPermission(Permission.groups.read)
         const hasAppearanceManagement = hasPermission(
           Permission.config.experimental.edit,
-        );
+        )
         const hasProviderManagement = hasPermission(
           Permission.config.providers.read,
-        );
+        )
         const hasRepositoryManagement = hasPermission(
           Permission.config.repositories.read,
-        );
-        const hasProxyManagement = hasPermission(Permission.config.proxy.read);
+        )
+        const hasProxyManagement = hasPermission(Permission.config.proxy.read)
         const hasAssistantsManagement = hasPermission(
           Permission.config.assistants.read,
-        );
+        )
 
         if (
           hasUserManagement ||
@@ -137,103 +137,103 @@ export function SettingsPage() {
           hasAssistantsManagement
         ) {
           items.push({
-            type: "divider" as const,
-          });
+            type: 'divider' as const,
+          })
           items.push({
-            key: "admin",
+            key: 'admin',
             icon: <SettingOutlined />,
-            label: t("settings.admin"),
-            type: "group" as const,
-          });
+            label: t('settings.admin'),
+            type: 'group' as const,
+          })
 
           if (hasAppearanceManagement) {
             items.push({
-              key: "admin-general",
+              key: 'admin-general',
               icon: <UserOutlined />,
-              label: t("settings.general"),
-            });
+              label: t('settings.general'),
+            })
           }
 
           if (hasAppearanceManagement) {
             items.push({
-              key: "admin-appearance",
+              key: 'admin-appearance',
               icon: <EyeOutlined />,
-              label: t("settings.appearance"),
-            });
+              label: t('settings.appearance'),
+            })
           }
 
           if (hasProviderManagement) {
             items.push({
-              key: "providers",
+              key: 'providers',
               icon: <ToolOutlined />,
-              label: t("settings.providers"),
-            });
+              label: t('settings.providers'),
+            })
           }
 
           if (hasRepositoryManagement) {
             items.push({
-              key: "repositories",
+              key: 'repositories',
               icon: <CloudDownloadOutlined />,
-              label: t("settings.modelRepository.title"),
-            });
+              label: t('settings.modelRepository.title'),
+            })
           }
 
           if (hasProxyManagement) {
             items.push({
-              key: "https-proxy",
+              key: 'https-proxy',
               icon: <ToolOutlined />,
-              label: t("settings.httpsProxy"),
-            });
+              label: t('settings.httpsProxy'),
+            })
           }
 
           if (hasAssistantsManagement) {
             items.push({
-              key: "admin-assistants",
+              key: 'admin-assistants',
               icon: <RobotOutlined />,
-              label: t("settings.assistants"),
-            });
+              label: t('settings.assistants'),
+            })
           }
 
           if (hasUserManagement) {
             items.push({
-              key: "users",
+              key: 'users',
               icon: <UserOutlined />,
-              label: t("settings.users"),
-            });
+              label: t('settings.users'),
+            })
           }
 
           if (hasGroupManagement) {
             items.push({
-              key: "user-groups",
+              key: 'user-groups',
               icon: <TeamOutlined />,
-              label: t("settings.userGroups"),
-            });
+              label: t('settings.userGroups'),
+            })
           }
         }
 
-        return items;
+        return items
       })()
-    : [];
+    : []
 
-  const menuItems = [...baseMenuItems, ...adminMenuItems];
+  const menuItems = [...baseMenuItems, ...adminMenuItems]
 
   const handleMenuClick = (key: string) => {
-    navigate(`/settings/${key}`);
+    navigate(`/settings/${key}`)
     if (isMobile) {
-      setDrawerVisible(false);
+      setDrawerVisible(false)
     }
-  };
+  }
 
   const SettingsMenu = () => (
     <>
-      <div className={"p-2.5"}>
+      <div className={'p-2.5'}>
         <Title level={4} style={{ margin: 0 }}>
           <SettingOutlined style={{ marginRight: 8 }} />
-          {t("settings.title")}
+          {t('settings.title')}
         </Title>
       </div>
       <Menu
-        className={"w-fit"}
+        className={'w-fit'}
         style={{
           lineHeight: 1,
         }}
@@ -242,7 +242,7 @@ export function SettingsPage() {
         onClick={({ key }) => handleMenuClick(key)}
       />
     </>
-  );
+  )
 
   return (
     <Layout className="h-screen w-full">
@@ -256,7 +256,7 @@ export function SettingsPage() {
           />
           <Title level={3} style={{ margin: 0 }}>
             <SettingOutlined style={{ marginRight: 8 }} />
-            {t("settings.title")}
+            {t('settings.title')}
           </Title>
           <div className="w-8" />
         </div>
@@ -265,9 +265,9 @@ export function SettingsPage() {
       {/* Desktop Sidebar */}
       {!isMobile && (
         <Sider
-          theme={"light"}
-          className={"h-screen overflow-auto w-fit px-1"}
-          width={"fit-content"}
+          theme={'light'}
+          className={'h-screen overflow-auto w-fit px-1'}
+          width={'fit-content'}
           style={{
             borderRight: `1px solid ${token.colorBorderSecondary}`,
           }}
@@ -297,5 +297,5 @@ export function SettingsPage() {
         </PageContainer>
       </Layout>
     </Layout>
-  );
+  )
 }

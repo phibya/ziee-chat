@@ -1,51 +1,51 @@
-import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
-import { ApiClient } from "../api/client";
-import { Assistant, CreateAssistantRequest } from "../types/api/assistant";
-import { CreateUserGroupRequest, User, UserGroup } from "../types/api/user";
-import { UpdateProxySettingsRequest } from "../types/api/config";
-import { SupportedLanguage } from "../types";
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
+import { ApiClient } from '../api/client'
+import { Assistant, CreateAssistantRequest } from '../types/api/assistant'
+import { CreateUserGroupRequest, User, UserGroup } from '../types/api/user'
+import { UpdateProxySettingsRequest } from '../types/api/config'
+import { SupportedLanguage } from '../types'
 
 // Using API types now - User and UserGroup imported above
 
 interface GroupMember {
-  id: string;
-  username: string;
-  email: string;
-  is_active: boolean;
-  joined_at: string;
+  id: string
+  username: string
+  email: string
+  is_active: boolean
+  joined_at: string
 }
 
-type ProxySettings = UpdateProxySettingsRequest;
+type ProxySettings = UpdateProxySettingsRequest
 
 interface AdminState {
   // Users
-  users: User[];
-  loadingUsers: boolean;
+  users: User[]
+  loadingUsers: boolean
 
   // User Groups
-  groups: UserGroup[];
-  loadingGroups: boolean;
-  currentGroupMembers: GroupMember[];
-  loadingGroupMembers: boolean;
+  groups: UserGroup[]
+  loadingGroups: boolean
+  currentGroupMembers: GroupMember[]
+  loadingGroupMembers: boolean
 
   // Assistants
-  assistants: Assistant[];
-  loading: boolean;
+  assistants: Assistant[]
+  loading: boolean
 
   // Settings
-  userRegistrationEnabled: boolean;
-  loadingRegistrationSettings: boolean;
+  userRegistrationEnabled: boolean
+  loadingRegistrationSettings: boolean
 
   // Proxy settings
-  proxySettings: ProxySettings | null;
-  loadingProxySettings: boolean;
+  proxySettings: ProxySettings | null
+  loadingProxySettings: boolean
 
   // Global states
-  creating: boolean;
-  updating: boolean;
-  deleting: boolean;
-  error: string | null;
+  creating: boolean
+  updating: boolean
+  deleting: boolean
+  error: string | null
 }
 
 export const useAdminStore = create<AdminState>()(
@@ -70,433 +70,434 @@ export const useAdminStore = create<AdminState>()(
       error: null,
     }),
   ),
-);
+)
 
 // User actions
 export const loadAllSystemUsers = async (): Promise<void> => {
   try {
-    useAdminStore.setState({ loadingUsers: true, error: null });
+    useAdminStore.setState({ loadingUsers: true, error: null })
 
     const response = await ApiClient.Admin.listUsers({
       page: 1,
       per_page: 50,
-    });
+    })
 
     useAdminStore.setState({
       users: response.users,
       loadingUsers: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
-      error: error instanceof Error ? error.message : "Failed to load users",
+      error: error instanceof Error ? error.message : 'Failed to load users',
       loadingUsers: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const updateSystemUser = async (
   id: string,
   data: Partial<User>,
 ): Promise<User> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
-    const user = await ApiClient.Admin.updateUser({ user_id: id, ...data });
+    const user = await ApiClient.Admin.updateUser({ user_id: id, ...data })
 
-    useAdminStore.setState((state) => ({
-      users: state.users.map((u) => (u.id === id ? user : u)),
+    useAdminStore.setState(state => ({
+      users: state.users.map(u => (u.id === id ? user : u)),
       updating: false,
-    }));
+    }))
 
-    return user;
+    return user
   } catch (error) {
     useAdminStore.setState({
-      error: error instanceof Error ? error.message : "Failed to update user",
+      error: error instanceof Error ? error.message : 'Failed to update user',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const resetSystemUserPassword = async (
   id: string,
   newPassword: string,
 ): Promise<void> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
     await ApiClient.Admin.resetPassword({
       user_id: id,
       new_password: newPassword,
-    });
+    })
 
-    useAdminStore.setState({ updating: false });
+    useAdminStore.setState({ updating: false })
   } catch (error) {
     useAdminStore.setState({
       error:
-        error instanceof Error ? error.message : "Failed to reset password",
+        error instanceof Error ? error.message : 'Failed to reset password',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const toggleSystemUserActiveStatus = async (
   id: string,
 ): Promise<void> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
-    await ApiClient.Admin.toggleUserActive({ user_id: id });
+    await ApiClient.Admin.toggleUserActive({ user_id: id })
 
-    useAdminStore.setState((state) => ({
-      users: state.users.map((u) =>
+    useAdminStore.setState(state => ({
+      users: state.users.map(u =>
         u.id === id ? { ...u, is_active: !u.is_active } : u,
       ),
       updating: false,
-    }));
+    }))
   } catch (error) {
     useAdminStore.setState({
       error:
-        error instanceof Error ? error.message : "Failed to toggle user status",
+        error instanceof Error ? error.message : 'Failed to toggle user status',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 // User Group actions
 export const loadAllUserGroups = async (): Promise<void> => {
   try {
-    useAdminStore.setState({ loadingGroups: true, error: null });
+    useAdminStore.setState({ loadingGroups: true, error: null })
 
     const response = await ApiClient.Admin.listGroups({
       page: 1,
       per_page: 50,
-    });
+    })
 
     useAdminStore.setState({
       groups: response.groups,
       loadingGroups: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
-      error: error instanceof Error ? error.message : "Failed to load groups",
+      error: error instanceof Error ? error.message : 'Failed to load groups',
       loadingGroups: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const createNewUserGroup = async (
   data: CreateUserGroupRequest,
 ): Promise<UserGroup> => {
   try {
-    useAdminStore.setState({ creating: true, error: null });
+    useAdminStore.setState({ creating: true, error: null })
 
-    const group = await ApiClient.Admin.createGroup(data);
+    const group = await ApiClient.Admin.createGroup(data)
 
-    useAdminStore.setState((state) => ({
+    useAdminStore.setState(state => ({
       groups: [...state.groups, group],
       creating: false,
-    }));
+    }))
 
-    return group;
+    return group
   } catch (error) {
     useAdminStore.setState({
-      error: error instanceof Error ? error.message : "Failed to create group",
+      error: error instanceof Error ? error.message : 'Failed to create group',
       creating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const updateUserGroup = async (
   id: string,
   data: Partial<UserGroup>,
 ): Promise<UserGroup> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
     const group = await ApiClient.Admin.updateGroup({
       group_id: id,
       ...data,
-    });
+    })
 
-    useAdminStore.setState((state) => ({
-      groups: state.groups.map((g) => (g.id === id ? group : g)),
+    useAdminStore.setState(state => ({
+      groups: state.groups.map(g => (g.id === id ? group : g)),
       updating: false,
-    }));
+    }))
 
-    return group;
+    return group
   } catch (error) {
     useAdminStore.setState({
-      error: error instanceof Error ? error.message : "Failed to update group",
+      error: error instanceof Error ? error.message : 'Failed to update group',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const deleteUserGroup = async (id: string): Promise<void> => {
   try {
-    useAdminStore.setState({ deleting: true, error: null });
+    useAdminStore.setState({ deleting: true, error: null })
 
-    await ApiClient.Admin.deleteGroup({ group_id: id });
+    await ApiClient.Admin.deleteGroup({ group_id: id })
 
-    useAdminStore.setState((state) => ({
-      groups: state.groups.filter((g) => g.id !== id),
+    useAdminStore.setState(state => ({
+      groups: state.groups.filter(g => g.id !== id),
       deleting: false,
-    }));
+    }))
   } catch (error) {
     useAdminStore.setState({
-      error: error instanceof Error ? error.message : "Failed to delete group",
+      error: error instanceof Error ? error.message : 'Failed to delete group',
       deleting: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const loadUserGroupMembers = async (groupId: string): Promise<void> => {
   try {
-    useAdminStore.setState({ loadingGroupMembers: true, error: null });
+    useAdminStore.setState({ loadingGroupMembers: true, error: null })
 
     const response = await ApiClient.Admin.getGroupMembers({
       group_id: groupId,
       page: 1,
       per_page: 50,
-    });
+    })
 
     useAdminStore.setState({
-      currentGroupMembers: response.users.map((u) => ({
+      currentGroupMembers: response.users.map(u => ({
         id: u.id,
         username: u.username,
-        email: u.emails?.[0]?.address || "",
+        email: u.emails?.[0]?.address || '',
         is_active: u.is_active,
         joined_at: new Date().toISOString(),
       })),
       loadingGroupMembers: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
       error:
-        error instanceof Error ? error.message : "Failed to load group members",
+        error instanceof Error ? error.message : 'Failed to load group members',
       loadingGroupMembers: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const assignUserToUserGroup = async (
   userId: string,
   groupId: string,
 ): Promise<void> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
     await ApiClient.Admin.assignUserToGroup({
       user_id: userId,
       group_id: groupId,
-    });
+    })
 
     // Reload group members if we're viewing this group
-    const { currentGroupMembers } = useAdminStore.getState();
+    const { currentGroupMembers } = useAdminStore.getState()
     if (currentGroupMembers.length > 0) {
-      await loadUserGroupMembers(groupId);
+      await loadUserGroupMembers(groupId)
     }
 
-    useAdminStore.setState({ updating: false });
+    useAdminStore.setState({ updating: false })
   } catch (error) {
     useAdminStore.setState({
       error:
         error instanceof Error
           ? error.message
-          : "Failed to assign user to group",
+          : 'Failed to assign user to group',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const removeUserFromUserGroup = async (
   userId: string,
   groupId: string,
 ): Promise<void> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
     await ApiClient.Admin.removeUserFromGroup({
       user_id: userId,
       group_id: groupId,
-    });
+    })
 
     // Remove from current group members
-    useAdminStore.setState((state) => ({
+    useAdminStore.setState(state => ({
       currentGroupMembers: state.currentGroupMembers.filter(
-        (m) => m.id !== userId,
+        m => m.id !== userId,
       ),
       updating: false,
-    }));
+    }))
   } catch (error) {
     useAdminStore.setState({
       error:
         error instanceof Error
           ? error.message
-          : "Failed to remove user from group",
+          : 'Failed to remove user from group',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 // Registration settings
 export const loadSystemUserRegistrationSettings = async (): Promise<void> => {
   try {
-    useAdminStore.setState({ loadingRegistrationSettings: true, error: null });
+    useAdminStore.setState({ loadingRegistrationSettings: true, error: null })
 
-    const { enabled } = await ApiClient.Admin.getUserRegistrationStatus();
+    const { enabled } = await ApiClient.Admin.getUserRegistrationStatus()
 
     useAdminStore.setState({
       userRegistrationEnabled: enabled,
       loadingRegistrationSettings: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
       error:
         error instanceof Error
           ? error.message
-          : "Failed to load registration settings",
+          : 'Failed to load registration settings',
       loadingRegistrationSettings: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const updateSystemUserRegistrationSettings = async (
   enabled: boolean,
 ): Promise<void> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
-    await ApiClient.Admin.updateUserRegistrationStatus({ enabled });
+    await ApiClient.Admin.updateUserRegistrationStatus({ enabled })
 
     useAdminStore.setState({
       userRegistrationEnabled: enabled,
       updating: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
       error:
         error instanceof Error
           ? error.message
-          : "Failed to update registration settings",
+          : 'Failed to update registration settings',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 // Assistant actions for admin
 export const loadSystemAdminAssistants = async (): Promise<void> => {
   try {
-    useAdminStore.setState({ loading: true, error: null });
+    useAdminStore.setState({ loading: true, error: null })
     const response = await ApiClient.Admin.listAssistants({
       page: 1,
       per_page: 50,
-    });
+    })
     useAdminStore.setState({
       assistants: response.assistants,
       loading: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
       error:
-        error instanceof Error ? error.message : "Failed to load assistants",
+        error instanceof Error ? error.message : 'Failed to load assistants',
       loading: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const createSystemAdminAssistant = async (
   data: CreateAssistantRequest,
 ): Promise<Assistant> => {
   try {
-    useAdminStore.setState({ creating: true, error: null });
-    const assistant = await ApiClient.Admin.createAssistant(data);
-    useAdminStore.setState((state) => ({
-      assistants: data.is_default 
-        ? [...state.assistants.map(a => ({ ...a, is_default: false })), assistant]
+    useAdminStore.setState({ creating: true, error: null })
+    const assistant = await ApiClient.Admin.createAssistant(data)
+    useAdminStore.setState(state => ({
+      assistants: data.is_default
+        ? [
+            ...state.assistants.map(a => ({ ...a, is_default: false })),
+            assistant,
+          ]
         : [...state.assistants, assistant],
       creating: false,
-    }));
-    return assistant;
+    }))
+    return assistant
   } catch (error) {
     useAdminStore.setState({
       error:
-        error instanceof Error ? error.message : "Failed to create assistant",
+        error instanceof Error ? error.message : 'Failed to create assistant',
       creating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const updateSystemAdminAssistant = async (
   id: string,
   data: Partial<Assistant>,
 ): Promise<Assistant> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
     const assistant = await ApiClient.Admin.updateAssistant({
       assistant_id: id,
       ...data,
-    });
-    useAdminStore.setState((state) => ({
+    })
+    useAdminStore.setState(state => ({
       assistants: data.is_default
-        ? state.assistants.map(a => 
-            a.id === id 
-              ? assistant 
-              : { ...a, is_default: false }
+        ? state.assistants.map(a =>
+            a.id === id ? assistant : { ...a, is_default: false },
           )
-        : state.assistants.map((a) => (a.id === id ? assistant : a)),
+        : state.assistants.map(a => (a.id === id ? assistant : a)),
       updating: false,
-    }));
-    return assistant;
+    }))
+    return assistant
   } catch (error) {
     useAdminStore.setState({
       error:
-        error instanceof Error ? error.message : "Failed to update assistant",
+        error instanceof Error ? error.message : 'Failed to update assistant',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const deleteSystemAdminAssistant = async (id: string): Promise<void> => {
   try {
-    useAdminStore.setState({ deleting: true, error: null });
-    await ApiClient.Admin.deleteAssistant({ assistant_id: id });
-    useAdminStore.setState((state) => ({
-      assistants: state.assistants.filter((a) => a.id !== id),
+    useAdminStore.setState({ deleting: true, error: null })
+    await ApiClient.Admin.deleteAssistant({ assistant_id: id })
+    useAdminStore.setState(state => ({
+      assistants: state.assistants.filter(a => a.id !== id),
       deleting: false,
-    }));
+    }))
   } catch (error) {
     useAdminStore.setState({
       error:
-        error instanceof Error ? error.message : "Failed to delete assistant",
+        error instanceof Error ? error.message : 'Failed to delete assistant',
       deleting: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 // Proxy settings
 export const loadSystemProxySettings = async (): Promise<void> => {
   try {
-    useAdminStore.setState({ loadingProxySettings: true, error: null });
+    useAdminStore.setState({ loadingProxySettings: true, error: null })
 
-    const settings = await ApiClient.Admin.getProxySettings();
+    const settings = await ApiClient.Admin.getProxySettings()
 
     useAdminStore.setState({
       proxySettings: {
@@ -512,64 +513,64 @@ export const loadSystemProxySettings = async (): Promise<void> => {
         host_ssl: settings.host_ssl,
       },
       loadingProxySettings: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
       error:
         error instanceof Error
           ? error.message
-          : "Failed to load proxy settings",
+          : 'Failed to load proxy settings',
       loadingProxySettings: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const updateSystemProxySettings = async (
   settings: ProxySettings,
 ): Promise<void> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
-    await ApiClient.Admin.updateProxySettings(settings);
+    await ApiClient.Admin.updateProxySettings(settings)
 
     useAdminStore.setState({
       proxySettings: settings,
       updating: false,
-    });
+    })
   } catch (error) {
     useAdminStore.setState({
       error:
         error instanceof Error
           ? error.message
-          : "Failed to update proxy settings",
+          : 'Failed to update proxy settings',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const updateSystemDefaultLanguage = async (
   language: SupportedLanguage,
 ): Promise<void> => {
   try {
-    useAdminStore.setState({ updating: true, error: null });
+    useAdminStore.setState({ updating: true, error: null })
 
-    await ApiClient.Admin.updateDefaultLanguage({ language });
+    await ApiClient.Admin.updateDefaultLanguage({ language })
 
-    useAdminStore.setState({ updating: false });
+    useAdminStore.setState({ updating: false })
   } catch (error) {
     useAdminStore.setState({
       error:
         error instanceof Error
           ? error.message
-          : "Failed to update default language",
+          : 'Failed to update default language',
       updating: false,
-    });
-    throw error;
+    })
+    throw error
   }
-};
+}
 
 export const clearSystemAdminError = (): void => {
-  useAdminStore.setState({ error: null });
-};
+  useAdminStore.setState({ error: null })
+}

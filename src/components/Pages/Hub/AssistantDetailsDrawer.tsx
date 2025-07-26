@@ -1,18 +1,18 @@
-import { RobotOutlined } from "@ant-design/icons";
-import { Button, Card, Flex, Tag, Typography } from "antd";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { App } from "antd";
-import { Drawer } from "../../common/Drawer";
-import type { HubAssistant } from "../../../types/api/hub";
-import { createUserAssistant } from "../../../store/assistants";
+import { RobotOutlined } from '@ant-design/icons'
+import { Button, Card, Flex, Tag, Typography } from 'antd'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { App } from 'antd'
+import { Drawer } from '../../common/Drawer'
+import type { HubAssistant } from '../../../types/api/hub'
+import { createUserAssistant } from '../../../store/assistants'
 
-const { Title, Text } = Typography;
+const { Title, Text } = Typography
 
 interface AssistantDetailsDrawerProps {
-  assistant: HubAssistant | null;
-  open: boolean;
-  onClose: () => void;
+  assistant: HubAssistant | null
+  open: boolean
+  onClose: () => void
 }
 
 export function AssistantDetailsDrawer({
@@ -20,14 +20,14 @@ export function AssistantDetailsDrawer({
   open,
   onClose,
 }: AssistantDetailsDrawerProps) {
-  const { message } = App.useApp();
-  const [isCreating, setIsCreating] = useState(false);
-  const navigate = useNavigate();
+  const { message } = App.useApp()
+  const [isCreating, setIsCreating] = useState(false)
+  const navigate = useNavigate()
 
-  if (!assistant) return null;
+  if (!assistant) return null
 
   const handleUseAssistant = async (assistant: HubAssistant) => {
-    setIsCreating(true);
+    setIsCreating(true)
     try {
       // Create a user assistant based on the hub assistant
       await createUserAssistant({
@@ -36,21 +36,21 @@ export function AssistantDetailsDrawer({
         instructions: assistant.instructions,
         parameters: assistant.parameters || { stream: true },
         is_active: true,
-      });
+      })
 
-      message.success(`Assistant "${assistant.name}" created successfully!`);
+      message.success(`Assistant "${assistant.name}" created successfully!`)
 
       // Navigate to assistants page to show the newly created assistant
-      navigate("/assistants");
+      navigate('/assistants')
     } catch (error: any) {
-      console.error("Failed to create assistant:", error);
+      console.error('Failed to create assistant:', error)
       message.error(
-        `Failed to create assistant: ${error.message || "Unknown error"}`,
-      );
+        `Failed to create assistant: ${error.message || 'Unknown error'}`,
+      )
     } finally {
-      setIsCreating(false);
+      setIsCreating(false)
     }
-  };
+  }
 
   return (
     <Drawer
@@ -67,13 +67,13 @@ export function AssistantDetailsDrawer({
           type="primary"
           icon={<RobotOutlined />}
           onClick={() => {
-            handleUseAssistant(assistant);
-            onClose();
+            handleUseAssistant(assistant)
+            onClose()
           }}
           loading={isCreating}
           disabled={isCreating}
         >
-          {isCreating ? "Creating..." : "Use Assistant"}
+          {isCreating ? 'Creating...' : 'Use Assistant'}
         </Button>,
       ]}
     >
@@ -81,7 +81,7 @@ export function AssistantDetailsDrawer({
         {/* Basic Info */}
         <div>
           <Title level={5}>Description</Title>
-          <Text>{assistant.description || "No description available"}</Text>
+          <Text>{assistant.description || 'No description available'}</Text>
         </div>
 
         {/* Instructions */}
@@ -121,7 +121,7 @@ export function AssistantDetailsDrawer({
         <div>
           <Title level={5}>Tags</Title>
           <Flex wrap className="gap-1">
-            {assistant.tags.map((tag) => (
+            {assistant.tags.map(tag => (
               <Tag key={tag} color="default">
                 {tag}
               </Tag>
@@ -134,7 +134,7 @@ export function AssistantDetailsDrawer({
           <div>
             <Title level={5}>Recommended Models</Title>
             <Flex wrap className="gap-1">
-              {assistant.recommended_models.map((model) => (
+              {assistant.recommended_models.map(model => (
                 <Tag key={model} color="green">
                   {model}
                 </Tag>
@@ -148,7 +148,7 @@ export function AssistantDetailsDrawer({
           <div>
             <Title level={5}>Required Capabilities</Title>
             <Flex wrap className="gap-1">
-              {assistant.capabilities_required.map((capability) => (
+              {assistant.capabilities_required.map(capability => (
                 <Tag key={capability} color="orange">
                   {capability}
                 </Tag>
@@ -172,19 +172,18 @@ export function AssistantDetailsDrawer({
         )}
 
         {/* Example Prompts */}
-        {assistant.example_prompts &&
-          assistant.example_prompts.length > 0 && (
-            <div>
-              <Title level={5}>Example Prompts</Title>
-              <Flex vertical className="gap-2">
-                {assistant.example_prompts.map((prompt, index) => (
-                  <Card key={index} size="small">
-                    <Text className="text-sm italic">"{prompt}"</Text>
-                  </Card>
-                ))}
-              </Flex>
-            </div>
-          )}
+        {assistant.example_prompts && assistant.example_prompts.length > 0 && (
+          <div>
+            <Title level={5}>Example Prompts</Title>
+            <Flex vertical className="gap-2">
+              {assistant.example_prompts.map((prompt, index) => (
+                <Card key={index} size="small">
+                  <Text className="text-sm italic">"{prompt}"</Text>
+                </Card>
+              ))}
+            </Flex>
+          </div>
+        )}
 
         {/* Parameters */}
         {assistant.parameters &&
@@ -200,5 +199,5 @@ export function AssistantDetailsDrawer({
           )}
       </Flex>
     </Drawer>
-  );
+  )
 }

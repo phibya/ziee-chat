@@ -1,56 +1,56 @@
-import { CloseOutlined } from "@ant-design/icons";
-import { App, Button, Flex, Progress, theme, Typography } from "antd";
+import { CloseOutlined } from '@ant-design/icons'
+import { App, Button, Flex, Progress, theme, Typography } from 'antd'
 import {
   cancelModelDownload,
   deleteModelDownload,
   openViewDownloadModal,
-} from "../../store";
-import type { DownloadInstance } from "../../types";
-import { formatBytes, formatETA, formatSpeed } from "../../utils/downloadUtils";
-import { Link } from "react-router-dom";
+} from '../../store'
+import type { DownloadInstance } from '../../types'
+import { formatBytes, formatETA, formatSpeed } from '../../utils/downloadUtils'
+import { Link } from 'react-router-dom'
 
-const { Text } = Typography;
+const { Text } = Typography
 
 interface DownloadItemProps {
-  download: DownloadInstance;
-  mode?: "full" | "compact" | "minimal";
+  download: DownloadInstance
+  mode?: 'full' | 'compact' | 'minimal'
 }
 
-export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
-  const { message } = App.useApp();
-  const { token } = theme.useToken();
+export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
+  const { message } = App.useApp()
+  const { token } = theme.useToken()
 
   const percent = download.progress_data
     ? Math.round(
         (download.progress_data.current / download.progress_data.total) * 100,
       )
-    : 0;
+    : 0
 
-  const speed = formatSpeed(download.progress_data?.download_speed);
-  const eta = formatETA(download.progress_data?.eta_seconds);
+  const speed = formatSpeed(download.progress_data?.download_speed)
+  const eta = formatETA(download.progress_data?.eta_seconds)
 
   const handleCloseDownload = async (downloadId: string) => {
     try {
-      await deleteModelDownload(downloadId);
-      message.success("Download removed successfully");
+      await deleteModelDownload(downloadId)
+      message.success('Download removed successfully')
     } catch (error: any) {
-      console.error("Failed to delete download:", error);
-      message.error(`Failed to remove download: ${error.message}`);
+      console.error('Failed to delete download:', error)
+      message.error(`Failed to remove download: ${error.message}`)
     }
-  };
+  }
 
   const handleCancelDownload = async () => {
     try {
-      await cancelModelDownload(download.id);
-      message.success("Download cancelled successfully");
+      await cancelModelDownload(download.id)
+      message.success('Download cancelled successfully')
     } catch (error: any) {
-      console.error("Failed to cancel download:", error);
-      message.error(`Failed to cancel download: ${error.message}`);
+      console.error('Failed to cancel download:', error)
+      message.error(`Failed to cancel download: ${error.message}`)
     }
-  };
+  }
 
   // Minimal mode for DownloadIndicator (sidebar popover)
-  if (mode === "minimal") {
+  if (mode === 'minimal') {
     return (
       <div className="py-2">
         <Flex justify="space-between" align="center" className="mb-1">
@@ -58,7 +58,7 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
             to={`/settings/providers/${download.provider_id}`}
             className="text-xs truncate flex-1 pr-2"
             onClick={() => {
-              openViewDownloadModal(download.id);
+              openViewDownloadModal(download.id)
             }}
           >
             {download.request_data.alias}
@@ -78,19 +78,19 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
         {(speed || eta) && (
           <Flex justify="space-between" align="center" className="mt-1">
             <Text type="secondary" className="text-xs">
-              {speed || ""}
+              {speed || ''}
             </Text>
             <Text type="secondary" className="text-xs">
-              {eta ? `ETA: ${eta}` : ""}
+              {eta ? `ETA: ${eta}` : ''}
             </Text>
           </Flex>
         )}
       </div>
-    );
+    )
   }
 
   // Compact mode for ModelCard
-  if (mode === "compact") {
+  if (mode === 'compact') {
     return (
       <div className="rounded-lg">
         <Flex justify="space-between" align="center" className="mb-2">
@@ -98,13 +98,13 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
             to={`/settings/providers/${download.provider_id}`}
             className="text-xs truncate flex-1 pr-2"
             onClick={() => {
-              openViewDownloadModal(download.id);
+              openViewDownloadModal(download.id)
             }}
           >
             {download.request_data.alias}
           </Link>
           <Flex className="gap-1">
-            {!["completed", "failed", "cancelled"].includes(
+            {!['completed', 'failed', 'cancelled'].includes(
               download.status,
             ) && (
               <Button
@@ -129,7 +129,7 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
           <Text type="secondary" className="text-xs">
             {download.progress_data
               ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
-              : "0 B / 0 B"}
+              : '0 B / 0 B'}
           </Text>
           <Flex className="gap-2">
             {speed && (
@@ -145,7 +145,7 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
           </Flex>
         </Flex>
       </div>
-    );
+    )
   }
 
   // Full mode for LocalProviderSettings (default)
@@ -157,7 +157,7 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
             {download.request_data.alias}
           </div>
           <Text type="secondary" className="text-xs">
-            {download.progress_data?.message || "Preparing download..."}
+            {download.progress_data?.message || 'Preparing download...'}
           </Text>
         </div>
         <Flex className="gap-2">
@@ -168,7 +168,7 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
           >
             View Details
           </Button>
-          {["completed", "failed", "cancelled"].includes(download.status) ? (
+          {['completed', 'failed', 'cancelled'].includes(download.status) ? (
             <Button
               type="text"
               size="small"
@@ -201,9 +201,9 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
         <Text type="secondary" className="text-xs">
           {download.progress_data
             ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
-            : "0 B / 0 B"}
+            : '0 B / 0 B'}
         </Text>
-        <Flex className={"gap-2"}>
+        <Flex className={'gap-2'}>
           {speed && (
             <Text type="secondary" className="text-xs">
               Speed: {speed}
@@ -217,5 +217,5 @@ export function DownloadItem({ download, mode = "full" }: DownloadItemProps) {
         </Flex>
       </Flex>
     </div>
-  );
+  )
 }

@@ -212,127 +212,135 @@ export function ModelCard({ model }: ModelCardProps) {
         key={model.id}
         hoverable
         className="h-full cursor-pointer"
-        styles={{ body: { padding: "16px" } }}
+        classNames={{
+          body: "h-full flex flex-col gap-2 !py-1",
+        }}
         onClick={handleCardClick}
       >
-      <div className="mb-3">
-        <Flex justify="space-between" align="start" className="mb-2">
-          <Title level={4} className="m-0">
-            {model.alias}
-          </Title>
-          {model.public ? (
-            <UnlockOutlined className="text-green-500" />
-          ) : (
-            <LockOutlined className="text-red-500" />
+        <Flex className={"gap-2 w-full flex-col flex-1"}>
+          <div>
+            <Flex justify="space-between" align="start">
+              <Title level={4} className="m-0">
+                {model.alias}
+              </Title>
+              {model.public ? (
+                <UnlockOutlined className="text-green-500" />
+              ) : (
+                <LockOutlined className="text-red-500" />
+              )}
+            </Flex>
+            <Text type="secondary" className="text-xs">
+              {model.description}
+            </Text>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <Flex wrap className="gap-1">
+              {model.tags.slice(0, 3).map((tag) => (
+                <Tag key={tag} color="default" className="text-xs">
+                  {tag}
+                </Tag>
+              ))}
+              {model.tags.length > 3 && (
+                <Tag color="default" className="text-xs">
+                  +{model.tags.length - 3}
+                </Tag>
+              )}
+            </Flex>
+          </div>
+
+          {/* Capabilities */}
+          {model.capabilities && (
+            <div>
+              <Flex wrap className="gap-1">
+                {model.capabilities.vision && (
+                  <Tag
+                    color="purple"
+                    icon={<EyeOutlined />}
+                    className="text-xs"
+                  >
+                    Vision
+                  </Tag>
+                )}
+                {model.capabilities.tools && (
+                  <Tag color="blue" icon={<ToolOutlined />} className="text-xs">
+                    Tools
+                  </Tag>
+                )}
+                {model.capabilities.code_interpreter && (
+                  <Tag
+                    color="orange"
+                    icon={<AppstoreOutlined />}
+                    className="text-xs"
+                  >
+                    Code
+                  </Tag>
+                )}
+              </Flex>
+            </div>
           )}
-        </Flex>
-        <Text type="secondary" className="text-xs">
-          {model.description}
-        </Text>
-      </div>
 
-      {/* Tags */}
-      <div className="mb-3">
-        <Flex wrap className="gap-1">
-          {model.tags.slice(0, 3).map((tag) => (
-            <Tag key={tag} color="default" className="text-xs">
-              {tag}
-            </Tag>
-          ))}
-          {model.tags.length > 3 && (
-            <Tag color="default" className="text-xs">
-              +{model.tags.length - 3}
-            </Tag>
+          {/* Stats */}
+          <div>
+            <Flex justify="space-between" align="center" className="mb-1">
+              <Text type="secondary" className="text-xs">
+                Size: {model.size_gb}GB
+              </Text>
+              <Text type="secondary" className="text-xs">
+                {model.file_format.toUpperCase()}
+              </Text>
+            </Flex>
+            {model.license && (
+              <Text type="secondary" className="text-xs">
+                License: {model.license}
+              </Text>
+            )}
+          </div>
+        </Flex>
+
+        {/* Action Buttons */}
+        <div className="mt-auto flex gap-1 flex-col">
+          <div className="flex gap-2 mb-2">
+            <Button
+              size="small"
+              icon={<FileTextOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewReadme(model);
+              }}
+              className="flex-1"
+            >
+              README
+            </Button>
+            <Button
+              type="primary"
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(model);
+              }}
+              className="flex-[2]"
+              disabled={isModelBeingDownloaded}
+              loading={isModelBeingDownloaded}
+            >
+              {isModelBeingDownloaded ? "Downloading..." : "Download"}
+            </Button>
+          </div>
+
+          {/* Progress Bar */}
+          {isModelBeingDownloaded && activeDownload && (
+            <DownloadItem download={activeDownload} mode="compact" />
           )}
-        </Flex>
-      </div>
-
-      {/* Capabilities */}
-      {model.capabilities && (
-        <div className="mb-3">
-          <Flex wrap className="gap-1">
-            {model.capabilities.vision && (
-              <Tag color="purple" icon={<EyeOutlined />} className="text-xs">
-                Vision
-              </Tag>
-            )}
-            {model.capabilities.tools && (
-              <Tag color="blue" icon={<ToolOutlined />} className="text-xs">
-                Tools
-              </Tag>
-            )}
-            {model.capabilities.code_interpreter && (
-              <Tag
-                color="orange"
-                icon={<AppstoreOutlined />}
-                className="text-xs"
-              >
-                Code
-              </Tag>
-            )}
-          </Flex>
         </div>
-      )}
+      </Card>
 
-      {/* Stats */}
-      <div className="mb-3">
-        <Flex justify="space-between" align="center" className="mb-1">
-          <Text type="secondary" className="text-xs">
-            Size: {model.size_gb}GB
-          </Text>
-          <Text type="secondary" className="text-xs">
-            {model.file_format.toUpperCase()}
-          </Text>
-        </Flex>
-        {model.license && (
-          <Text type="secondary" className="text-xs">
-            License: {model.license}
-          </Text>
-        )}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="mt-auto flex gap-1 flex-col">
-        <div className="flex gap-2 mb-2">
-          <Button
-            size="small"
-            icon={<FileTextOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewReadme(model);
-            }}
-            className="flex-1"
-          >
-            README
-          </Button>
-          <Button
-            type="primary"
-            size="small"
-            icon={<DownloadOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDownload(model);
-            }}
-            className="flex-[2]"
-            disabled={isModelBeingDownloaded}
-            loading={isModelBeingDownloaded}
-          >
-            {isModelBeingDownloaded ? "Downloading..." : "Download"}
-          </Button>
-        </div>
-
-        {/* Progress Bar */}
-        {isModelBeingDownloaded && activeDownload && (
-          <DownloadItem download={activeDownload} mode="compact" />
-        )}
-      </div>
-    </Card>
-
-    <ModelDetailsDrawer
-      model={model}
-      open={showDetails}
-      onClose={handleCloseDetails}
-    />
+      <ModelDetailsDrawer
+        model={model}
+        open={showDetails}
+        onClose={handleCloseDetails}
+      />
     </>
   );
 }

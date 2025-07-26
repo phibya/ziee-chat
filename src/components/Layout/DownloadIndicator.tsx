@@ -1,4 +1,4 @@
-import { DownloadOutlined } from "@ant-design/icons";
+import { DownloadOutlined } from '@ant-design/icons'
 import {
   Badge,
   Button,
@@ -8,44 +8,44 @@ import {
   Progress,
   theme,
   Typography,
-} from "antd";
-import { useTranslation } from "react-i18next";
-import { Stores } from "../../store";
-import type { DownloadInstance } from "../../types/api/modelDownloads";
-import { DownloadItem } from "../shared/DownloadItem";
+} from 'antd'
+import { useTranslation } from 'react-i18next'
+import { Stores } from '../../store'
+import type { DownloadInstance } from '../../types/api/modelDownloads'
+import { DownloadItem } from '../shared/DownloadItem'
 
-const { Text } = Typography;
+const { Text } = Typography
 
 export function DownloadIndicator() {
-  const { t } = useTranslation();
-  const { token } = theme.useToken();
+  const { t } = useTranslation()
+  const { token } = theme.useToken()
 
   // Get active downloads from store
-  const downloads = Object.values(Stores.ModelDownload.downloads);
+  const downloads = Object.values(Stores.ModelDownload.downloads)
 
   // Don't render if no active downloads
   if (downloads.length === 0) {
-    return null;
+    return null
   }
 
   const getProgressPercent = (download: DownloadInstance): number => {
     if (!download.progress_data?.current || !download.progress_data?.total) {
-      return 0;
+      return 0
     }
     return Math.round(
       (download.progress_data.current / download.progress_data.total) * 100,
-    );
-  };
+    )
+  }
 
   // Get the first download for the button display
-  const firstDownload = downloads[0];
-  const firstDownloadPercent = getProgressPercent(firstDownload);
+  const firstDownload = downloads[0]
+  const firstDownloadPercent = getProgressPercent(firstDownload)
 
   // Create the popover content
   const popoverContent = (
     <div className="w-60">
       <Text strong className="block mb-2">
-        {t("downloads.activeDownloads", {
+        {t('downloads.activeDownloads', {
           count: downloads.length,
           defaultValue: `${downloads.length} Active Downloads`,
         })}
@@ -59,13 +59,13 @@ export function DownloadIndicator() {
               mode="minimal"
             />
             {i < downloads.length - 1 && (
-              <Divider className={"!m-0 !leading-0"} />
+              <Divider className={'!m-0 !leading-0'} />
             )}
           </>
         ))}
       </Flex>
     </div>
-  );
+  )
 
   return (
     <Popover
@@ -76,7 +76,7 @@ export function DownloadIndicator() {
     >
       <Button
         type="text"
-        className={"w-full flex items-center justify-between px-3 !py-5"}
+        className={'w-full flex items-center justify-between px-3 !py-5'}
         style={{
           border: `1px solid ${token.colorBorder}`,
         }}
@@ -107,10 +107,10 @@ export function DownloadIndicator() {
             strokeColor={token.colorPrimary}
             showInfo={false}
             strokeWidth={3}
-            className={"!leading-0"}
+            className={'!leading-0'}
           />
         </Flex>
       </Button>
     </Popover>
-  );
+  )
 }

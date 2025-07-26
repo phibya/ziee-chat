@@ -1,12 +1,12 @@
-import { create } from "zustand";
-import { Assistant } from "../../types/api/assistant";
+import { create } from 'zustand'
+import { Assistant } from '../../types/api/assistant'
 
 interface AssistantDrawerState {
-  open: boolean;
-  loading: boolean;
-  editingAssistant: Assistant | null;
-  isAdmin: boolean;
-  isCloning: boolean;
+  open: boolean
+  loading: boolean
+  editingAssistant: Assistant | null
+  isAdmin: boolean
+  isCloning: boolean
 }
 
 export const useAssistantDrawerStore = create<AssistantDrawerState>(() => ({
@@ -15,7 +15,7 @@ export const useAssistantDrawerStore = create<AssistantDrawerState>(() => ({
   editingAssistant: null,
   isAdmin: false,
   isCloning: false,
-}));
+}))
 
 // Modal actions
 export const openAssistantDrawer = (
@@ -28,8 +28,8 @@ export const openAssistantDrawer = (
     editingAssistant: assistant || null,
     isAdmin,
     isCloning,
-  });
-};
+  })
+}
 
 export const closeAssistantDrawer = () => {
   useAssistantDrawerStore.setState({
@@ -38,11 +38,11 @@ export const closeAssistantDrawer = () => {
     editingAssistant: null,
     isAdmin: false,
     isCloning: false,
-  });
-};
+  })
+}
 
 export const setAssistantDrawerLoading = (loading: boolean) => {
   useAssistantDrawerStore.setState({
     loading,
-  });
-};
+  })
+}

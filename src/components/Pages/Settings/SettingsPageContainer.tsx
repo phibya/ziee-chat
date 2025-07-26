@@ -1,12 +1,12 @@
-import { Flex, Typography } from "antd";
-import { ReactNode } from "react";
+import { Flex, Typography } from 'antd'
+import { ReactNode } from 'react'
 
-const { Title, Text } = Typography;
+const { Title, Text } = Typography
 
 interface SettingsPageContainerProps {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
+  title: string
+  subtitle?: string
+  children: ReactNode
 }
 
 export function SettingsPageContainer({
@@ -26,7 +26,7 @@ export function SettingsPageContainer({
           </Text>
         )}
       </Flex>
-      <Flex className={"flex-col gap-3"}>{children}</Flex>
+      <Flex className={'flex-col gap-3'}>{children}</Flex>
     </Flex>
-  );
+  )
 }

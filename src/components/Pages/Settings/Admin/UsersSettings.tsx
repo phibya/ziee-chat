@@ -353,7 +353,6 @@ export function UsersSettings() {
   return (
     <SettingsPageContainer title="Users">
       <div>
-
         {/* User Registration Settings */}
         <Flex vertical className="gap-3">
           <UserRegistrationSettings />
