@@ -1,32 +1,32 @@
-import { Button, Card, Flex, Form } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Button, Card, Flex, Form } from "antd";
+import { Drawer } from "../../../common/Drawer.tsx";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   closeEditLocalModelDrawer,
   Stores,
   updateExistingModel,
-} from '../../../../store'
-import { BASIC_MODEL_FIELDS, LOCAL_PARAMETERS } from './shared/constants'
-import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
-import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
-import { ModelParametersSection } from './shared/ModelParametersSection'
-import { ModelSettingsSection } from './shared/ModelSettingsSection'
+} from "../../../../store";
+import { BASIC_MODEL_FIELDS, LOCAL_PARAMETERS } from "./shared/constants";
+import { DeviceSelectionSection } from "./shared/DeviceSelectionSection";
+import { ModelCapabilitiesSection } from "./shared/ModelCapabilitiesSection";
+import { ModelParametersSection } from "./shared/ModelParametersSection";
+import { ModelSettingsSection } from "./shared/ModelSettingsSection";
 
 export function EditLocalModelDrawer() {
-  const { t } = useTranslation()
-  const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
 
-  const { open, modelId } = Stores.UI.EditLocalModelModal
-  const { modelsByProvider } = Stores.Providers
+  const { open, modelId } = Stores.UI.EditLocalModelDrawer;
+  const { modelsByProvider } = Stores.Providers;
 
   // Find the current model from the store
   const currentModel = modelId
     ? Object.values(modelsByProvider)
         .flat()
-        .find(m => m.id === modelId)
-    : null
+        .find((m) => m.id === modelId)
+    : null;
 
   useEffect(() => {
     if (currentModel && open) {
@@ -37,38 +37,38 @@ export function EditLocalModelDrawer() {
         capabilities: currentModel.capabilities || {},
         parameters: currentModel.parameters || {},
         settings: currentModel.settings || {},
-      })
+      });
     }
-  }, [currentModel, open, form])
+  }, [currentModel, open, form]);
 
   const handleSubmit = async () => {
-    if (!currentModel) return
+    if (!currentModel) return;
 
     try {
-      setLoading(true)
-      const values = await form.validateFields()
+      setLoading(true);
+      const values = await form.validateFields();
 
       const modelData = {
         ...currentModel,
         ...values,
-      }
-      await updateExistingModel(modelData.id, modelData)
-      closeEditLocalModelDrawer()
+      };
+      await updateExistingModel(modelData.id, modelData);
+      closeEditLocalModelDrawer();
     } catch (error) {
-      console.error('Failed to update local model:', error)
+      console.error("Failed to update local model:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Drawer
-      title={t('providers.editLocalModel')}
+      title={t("providers.editLocalModel")}
       open={open}
       onClose={closeEditLocalModelDrawer}
       footer={[
         <Button key="cancel" onClick={closeEditLocalModelDrawer}>
-          {t('buttons.cancel')}
+          {t("buttons.cancel")}
         </Button>,
         <Button
           key="submit"
@@ -76,7 +76,7 @@ export function EditLocalModelDrawer() {
           loading={loading}
           onClick={handleSubmit}
         >
-          {t('buttons.saveChanges')}
+          {t("buttons.saveChanges")}
         </Button>,
       ]}
       width={600}
@@ -90,11 +90,11 @@ export function EditLocalModelDrawer() {
           <DeviceSelectionSection />
           <ModelSettingsSection />
 
-          <Card title={t('providers.parameters')} size={'small'}>
+          <Card title={t("providers.parameters")} size={"small"}>
             <ModelParametersSection parameters={LOCAL_PARAMETERS} />
           </Card>
         </Flex>
       </Form>
     </Drawer>
-  )
+  );
 }

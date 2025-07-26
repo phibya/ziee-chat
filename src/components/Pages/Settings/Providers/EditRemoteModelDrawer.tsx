@@ -1,30 +1,30 @@
-import { Button, Flex, Form } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
-import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Button, Flex, Form } from "antd";
+import { Drawer } from "../../../common/Drawer.tsx";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   closeEditRemoteModelDrawer,
   Stores,
   updateExistingModel,
-} from '../../../../store'
-import { BASIC_MODEL_FIELDS } from './shared/constants'
-import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
-import { ModelParametersSection } from './shared/ModelParametersSection'
+} from "../../../../store";
+import { BASIC_MODEL_FIELDS } from "./shared/constants";
+import { ModelCapabilitiesSection } from "./shared/ModelCapabilitiesSection";
+import { ModelParametersSection } from "./shared/ModelParametersSection";
 
 export function EditRemoteModelDrawer() {
-  const { t } = useTranslation()
-  const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
+  const { t } = useTranslation();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
 
-  const { open, modelId } = Stores.UI.EditRemoteModelModal
-  const { modelsByProvider } = Stores.Providers
+  const { open, modelId } = Stores.UI.EditRemoteModelDrawer;
+  const { modelsByProvider } = Stores.Providers;
 
   // Find the current model from the store
   const currentModel = modelId
     ? Object.values(modelsByProvider)
         .flat()
-        .find(m => m.id === modelId)
-    : null
+        .find((m) => m.id === modelId)
+    : null;
 
   useEffect(() => {
     if (currentModel && open) {
@@ -34,38 +34,38 @@ export function EditRemoteModelDrawer() {
         description: currentModel.description,
         capabilities: currentModel.capabilities || {},
         parameters: currentModel.parameters || {},
-      })
+      });
     }
-  }, [currentModel, open, form])
+  }, [currentModel, open, form]);
 
   const handleSubmit = async () => {
-    if (!currentModel) return
+    if (!currentModel) return;
 
     try {
-      setLoading(true)
-      const values = await form.validateFields()
+      setLoading(true);
+      const values = await form.validateFields();
 
       const modelData = {
         ...currentModel,
         ...values,
-      }
-      await updateExistingModel(modelData.id, modelData)
-      closeEditRemoteModelDrawer()
+      };
+      await updateExistingModel(modelData.id, modelData);
+      closeEditRemoteModelDrawer();
     } catch (error) {
-      console.error('Failed to update remote model:', error)
+      console.error("Failed to update remote model:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Drawer
-      title={t('providers.editRemoteModel')}
+      title={t("providers.editRemoteModel")}
       open={open}
       onClose={closeEditRemoteModelDrawer}
       footer={[
         <Button key="cancel" onClick={closeEditRemoteModelDrawer}>
-          {t('buttons.cancel')}
+          {t("buttons.cancel")}
         </Button>,
         <Button
           key="submit"
@@ -73,7 +73,7 @@ export function EditRemoteModelDrawer() {
           loading={loading}
           onClick={handleSubmit}
         >
-          {t('buttons.saveChanges')}
+          {t("buttons.saveChanges")}
         </Button>,
       ]}
       width={600}
@@ -87,5 +87,5 @@ export function EditRemoteModelDrawer() {
         </Flex>
       </Form>
     </Drawer>
-  )
+  );
 }

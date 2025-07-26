@@ -23,7 +23,7 @@ export function AddProviderDrawer() {
   const [form] = Form.useForm();
   const [providerType, setProviderType] = useState<ProviderType>("local");
 
-  const { open, loading } = Stores.UI.AddProviderModal;
+  const { open, loading } = Stores.UI.AddProviderDrawer;
 
   // No store state needed for this component
 

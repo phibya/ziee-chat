@@ -69,8 +69,8 @@ export function AddLocalModelDownloadDrawer() {
     }
   };
 
-  const { open: addMode, providerId } = Stores.UI.AddLocalModelDownloadModal;
-  const { open: viewMode, downloadId } = Stores.UI.ViewDownloadModal;
+  const { open: addMode, providerId } = Stores.UI.AddLocalModelDownloadDrawer;
+  const { open: viewMode, downloadId } = Stores.UI.ViewDownloadDrawer;
 
   const open = viewMode || addMode;
 

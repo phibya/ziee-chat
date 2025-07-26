@@ -8,6 +8,7 @@ import {
   UnlockOutlined,
 } from "@ant-design/icons";
 import { App, Button, Card, Flex, Select, Tag, Typography } from "antd";
+import { useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isDesktopApp } from "../../../api/core.ts";
 import type { HubModel } from "../../../types/api/hub";
@@ -17,6 +18,7 @@ import { downloadModelFromRepository } from "../../../store/modelDownload";
 import { openRepositoryDrawer } from "../../../store/ui";
 import { DownloadItem } from "../../shared/DownloadItem.tsx";
 import { Provider } from "../../../types";
+import { ModelDetailsDrawer } from "./ModelDetailsDrawer";
 
 const { Title, Text } = Typography;
 
@@ -29,6 +31,7 @@ export function ModelCard({ model }: ModelCardProps) {
   const { repositories } = Stores.Repositories;
   const { providers } = Stores.Providers;
   const { downloads } = Stores.ModelDownload;
+  const [showDetails, setShowDetails] = useState(false);
 
   // Find active download for this model
   const activeDownload = Object.values(downloads).find(
@@ -195,13 +198,23 @@ export function ModelCard({ model }: ModelCardProps) {
     }
   };
 
+  const handleCardClick = () => {
+    setShowDetails(true);
+  };
+
+  const handleCloseDetails = () => {
+    setShowDetails(false);
+  };
+
   return (
-    <Card
-      key={model.id}
-      hoverable
-      className="h-full"
-      styles={{ body: { padding: "16px" } }}
-    >
+    <>
+      <Card
+        key={model.id}
+        hoverable
+        className="h-full cursor-pointer"
+        styles={{ body: { padding: "16px" } }}
+        onClick={handleCardClick}
+      >
       <div className="mb-3">
         <Flex justify="space-between" align="start" className="mb-2">
           <Title level={4} className="m-0">
@@ -284,7 +297,10 @@ export function ModelCard({ model }: ModelCardProps) {
           <Button
             size="small"
             icon={<FileTextOutlined />}
-            onClick={() => handleViewReadme(model)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewReadme(model);
+            }}
             className="flex-1"
           >
             README
@@ -293,7 +309,10 @@ export function ModelCard({ model }: ModelCardProps) {
             type="primary"
             size="small"
             icon={<DownloadOutlined />}
-            onClick={() => handleDownload(model)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload(model);
+            }}
             className="flex-[2]"
             disabled={isModelBeingDownloaded}
             loading={isModelBeingDownloaded}
@@ -308,5 +327,12 @@ export function ModelCard({ model }: ModelCardProps) {
         )}
       </div>
     </Card>
+
+    <ModelDetailsDrawer
+      model={model}
+      open={showDetails}
+      onClose={handleCloseDetails}
+    />
+    </>
   );
 }

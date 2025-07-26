@@ -16,6 +16,27 @@ pub async fn create_assistant(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let assistant_id = Uuid::new_v4();
+    let is_default = request.is_default.unwrap_or(false);
+    let is_template = request.is_template.unwrap_or(false);
+
+    // Start a transaction to handle default assistant logic
+    let mut tx = pool.begin().await?;
+
+    // If this assistant is being set as default, unset all other defaults for the same context
+    if is_default {
+        if is_template {
+            // For template assistants, unset all other default templates
+            sqlx::query("UPDATE assistants SET is_default = false WHERE is_template = true")
+                .execute(&mut *tx)
+                .await?;
+        } else if let Some(user_id) = created_by {
+            // For user assistants, unset all other default assistants for this user
+            sqlx::query("UPDATE assistants SET is_default = false WHERE created_by = $1 AND is_template = false")
+                .bind(user_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+    }
 
     let assistant_row: Assistant = sqlx::query_as(
         "INSERT INTO assistants (id, name, description, instructions, parameters, created_by, is_template, is_default) 
@@ -35,10 +56,13 @@ pub async fn create_assistant(
         "top_k": 2
     })))
     .bind(created_by)
-    .bind(request.is_template.unwrap_or(false))
-    .bind(request.is_default.unwrap_or(false))
-    .fetch_one(pool)
+    .bind(is_template)
+    .bind(is_default)
+    .fetch_one(&mut *tx)
     .await?;
+
+    // Commit the transaction
+    tx.commit().await?;
 
     Ok(assistant_row)
 }
@@ -144,6 +168,44 @@ pub async fn update_assistant(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
+    // Start a transaction to handle default assistant logic
+    let mut tx = pool.begin().await?;
+
+    // Get the current assistant to check its type
+    let current_assistant: Option<Assistant> = sqlx::query_as(
+        "SELECT id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at 
+         FROM assistants WHERE id = $1"
+    )
+    .bind(assistant_id)
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let current_assistant = match current_assistant {
+        Some(assistant) => assistant,
+        None => {
+            tx.rollback().await?;
+            return Ok(None);
+        }
+    };
+
+    // If this assistant is being set as default, unset all other defaults for the same context
+    if let Some(true) = request.is_default {
+        if current_assistant.is_template {
+            // For template assistants, unset all other default templates
+            sqlx::query("UPDATE assistants SET is_default = false WHERE is_template = true AND id != $1")
+                .bind(assistant_id)
+                .execute(&mut *tx)
+                .await?;
+        } else if let Some(user_id) = current_assistant.created_by {
+            // For user assistants, unset all other default assistants for this user
+            sqlx::query("UPDATE assistants SET is_default = false WHERE created_by = $1 AND is_template = false AND id != $2")
+                .bind(user_id)
+                .bind(assistant_id)
+                .execute(&mut *tx)
+                .await?;
+        }
+    }
+
     let where_clause = if is_admin {
         "WHERE id = $1"
     } else {
@@ -175,7 +237,7 @@ pub async fn update_assistant(
             .bind(request.is_template)
             .bind(request.is_default)
             .bind(request.is_active)
-            .fetch_optional(pool)
+            .fetch_optional(&mut *tx)
             .await?
     } else {
         sqlx::query_as(&query)
@@ -188,9 +250,12 @@ pub async fn update_assistant(
             .bind(request.is_default)
             .bind(request.is_active)
             .bind(requesting_user_id)
-            .fetch_optional(pool)
+            .fetch_optional(&mut *tx)
             .await?
     };
+
+    // Commit the transaction
+    tx.commit().await?;
 
     Ok(assistant_row)
 }

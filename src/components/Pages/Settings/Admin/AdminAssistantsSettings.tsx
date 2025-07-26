@@ -3,7 +3,7 @@ import {
   EditOutlined,
   PlusOutlined,
   RobotOutlined,
-} from '@ant-design/icons'
+} from "@ant-design/icons";
 import {
   App,
   Button,
@@ -14,64 +14,64 @@ import {
   Tag,
   Tooltip,
   Typography,
-} from 'antd'
-import React, { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+} from "antd";
+import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   clearSystemAdminError,
   deleteSystemAdminAssistant,
   loadSystemAdminAssistants,
   openAssistantDrawer,
   Stores,
-} from '../../../../store'
-import { Assistant } from '../../../../types/api/assistant'
-import { PageContainer } from '../../../common/PageContainer'
-import { AssistantFormDrawer } from '../../../shared/AssistantFormDrawer.tsx'
+} from "../../../../store";
+import { Assistant } from "../../../../types/api/assistant";
+import { PageContainer } from "../../../common/PageContainer";
+import { AssistantFormDrawer } from "../../../shared/AssistantFormDrawer.tsx";
 
-const { Title, Text } = Typography
+const { Title, Text } = Typography;
 
 export const AdminAssistantsSettings: React.FC = () => {
-  const { t } = useTranslation()
-  const { message } = App.useApp()
+  const { t } = useTranslation();
+  const { message } = App.useApp();
 
   // Admin store
-  const { assistants, loading, error } = Stores.Admin
+  const { assistants, loading, error } = Stores.Admin;
 
   useEffect(() => {
-    loadSystemAdminAssistants()
-  }, [])
+    loadSystemAdminAssistants();
+  }, []);
 
   // Show errors
   useEffect(() => {
     if (error) {
-      message.error(error)
-      clearSystemAdminError()
+      message.error(error);
+      clearSystemAdminError();
     }
-  }, [error, message])
+  }, [error, message]);
 
   const handleDelete = async (assistant: Assistant) => {
     try {
-      await deleteSystemAdminAssistant(assistant.id)
-      message.success('Assistant deleted successfully')
+      await deleteSystemAdminAssistant(assistant.id);
+      message.success("Assistant deleted successfully");
     } catch (error) {
-      console.error('Failed to delete assistant:', error)
+      console.error("Failed to delete assistant:", error);
       // Error is handled by the store
     }
-  }
+  };
 
   const handleEdit = (assistant: Assistant) => {
-    openAssistantDrawer(assistant)
-  }
+    openAssistantDrawer(assistant, true);
+  };
 
   const handleCreate = () => {
-    openAssistantDrawer()
-  }
+    openAssistantDrawer(undefined, true);
+  };
 
   const columns = [
     {
-      title: t('labels.name'),
-      dataIndex: 'name',
-      key: 'name',
+      title: t("labels.name"),
+      dataIndex: "name",
+      key: "name",
       render: (text: string, record: Assistant) => (
         <Flex className="gap-2">
           <RobotOutlined />
@@ -82,33 +82,33 @@ export const AdminAssistantsSettings: React.FC = () => {
       ),
     },
     {
-      title: t('labels.description'),
-      dataIndex: 'description',
-      key: 'description',
+      title: t("labels.description"),
+      dataIndex: "description",
+      key: "description",
       render: (text: string) => (
-        <Text type="secondary">{text || 'No description'}</Text>
+        <Text type="secondary">{text || "No description"}</Text>
       ),
     },
     {
-      title: t('admin.assistants.createdBy'),
-      dataIndex: 'created_by',
-      key: 'created_by',
+      title: t("admin.assistants.createdBy"),
+      dataIndex: "created_by",
+      key: "created_by",
       render: (userId: string) => (
-        <Text type="secondary">{userId ? 'User' : 'System'}</Text>
+        <Text type="secondary">{userId ? "User" : "System"}</Text>
       ),
     },
     {
-      title: t('labels.created'),
-      dataIndex: 'created_at',
-      key: 'created_at',
+      title: t("labels.created"),
+      dataIndex: "created_at",
+      key: "created_at",
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: t('labels.actions'),
-      key: 'actions',
+      title: t("labels.actions"),
+      key: "actions",
       render: (_: any, record: Assistant) => (
         <Flex className="gap-2">
-          <Tooltip title={t('buttons.edit')}>
+          <Tooltip title={t("buttons.edit")}>
             <Button
               type="text"
               icon={<EditOutlined />}
@@ -116,20 +116,20 @@ export const AdminAssistantsSettings: React.FC = () => {
             />
           </Tooltip>
           <Popconfirm
-            title={t('assistants.deleteAssistant')}
-            description={t('assistants.deleteConfirm')}
+            title={t("assistants.deleteAssistant")}
+            description={t("assistants.deleteConfirm")}
             onConfirm={() => handleDelete(record)}
             okText="Yes"
             cancelText="No"
           >
-            <Tooltip title={t('buttons.delete')}>
+            <Tooltip title={t("buttons.delete")}>
               <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
         </Flex>
       ),
     },
-  ]
+  ];
 
   return (
     <PageContainer>
@@ -160,5 +160,5 @@ export const AdminAssistantsSettings: React.FC = () => {
         <AssistantFormDrawer />
       </div>
     </PageContainer>
-  )
-}
+  );
+};

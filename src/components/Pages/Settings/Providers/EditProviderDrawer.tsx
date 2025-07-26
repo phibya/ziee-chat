@@ -15,7 +15,7 @@ export function EditProviderDrawer() {
   const { t } = useTranslation();
   const [form] = Form.useForm();
 
-  const { open, loading, providerId } = Stores.UI.EditProviderModal;
+  const { open, loading, providerId } = Stores.UI.EditProviderDrawer;
   const { providers } = Stores.Providers;
 
   // Find the current provider from the store

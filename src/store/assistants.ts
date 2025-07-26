@@ -91,7 +91,9 @@ export const createUserAssistant = async (
     const assistant = await ApiClient.Assistant.create(data as any)
 
     useAssistantsStore.setState(state => ({
-      assistants: [...state.assistants, assistant],
+      assistants: data.is_default 
+        ? [...state.assistants.map(a => ({ ...a, is_default: false })), assistant]
+        : [...state.assistants, assistant],
       creating: false,
     }))
 
@@ -119,7 +121,13 @@ export const updateUserAssistant = async (
     })
 
     useAssistantsStore.setState(state => ({
-      assistants: state.assistants.map(a => (a.id === id ? assistant : a)),
+      assistants: data.is_default
+        ? state.assistants.map(a => 
+            a.id === id 
+              ? assistant 
+              : { ...a, is_default: false }
+          )
+        : state.assistants.map(a => (a.id === id ? assistant : a)),
       updating: false,
     }))
 

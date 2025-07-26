@@ -56,7 +56,7 @@ export function AddLocalModelUploadDrawer() {
 
   const { uploading, uploadProgress, overallUploadProgress } =
     Stores.LocalUpload;
-  const { open, providerId } = Stores.UI.AddLocalModelUploadModal;
+  const { open, providerId } = Stores.UI.AddLocalModelUploadDrawer;
 
   const handleSubmit = async () => {
     try {

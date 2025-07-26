@@ -38,6 +38,9 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
           title={
             <div className="flex items-center gap-2">
               <Text strong>{assistant.name}</Text>
+              {assistant.is_default && (
+                <Tag color="blue">{t("assistants.default")}</Tag>
+              )}
               {!assistant.is_active && (
                 <Tag color="red">{t("assistants.inactive")}</Tag>
               )}
