@@ -117,6 +117,24 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       })
     }
 
+    if (method === 'GET') {
+      //add query parameters to the URL for GET requests
+      const queryParams: string[] = []
+      if (params && typeof params === 'object') {
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && !captureMatches.includes(key)) {
+            // Encode the key and value to ensure they are URL-safe
+            queryParams.push(
+              `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+            )
+          }
+        }
+        if (queryParams.length > 0) {
+          endpointPath += `?${queryParams.join('&')}`
+        }
+      }
+    }
+
     // Prepare the request body
     let body: any = undefined
     if (['POST', 'PUT', 'PATCH'].includes(method) && params !== undefined) {

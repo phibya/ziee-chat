@@ -1,12 +1,14 @@
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use uuid::Uuid;
-use crate::database::models::file::*;
+use crate::database::{get_database_pool, models::file::*};
 
 
 pub async fn create_file(
-    pool: &PgPool,
     data: FileCreateData,
 ) -> Result<File, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let file = sqlx::query_as::<_, File>(
         r#"
         INSERT INTO files (
@@ -34,9 +36,11 @@ pub async fn create_file(
 }
 
 pub async fn get_file_by_id(
-    pool: &PgPool,
     file_id: Uuid,
 ) -> Result<Option<File>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let file = sqlx::query_as::<_, File>("SELECT * FROM files WHERE id = $1")
         .bind(file_id)
         .fetch_optional(pool)
@@ -46,10 +50,12 @@ pub async fn get_file_by_id(
 }
 
 pub async fn get_file_by_id_and_user(
-    pool: &PgPool,
     file_id: Uuid,
     user_id: Uuid,
 ) -> Result<Option<File>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let file = sqlx::query_as::<_, File>("SELECT * FROM files WHERE id = $1 AND user_id = $2")
         .bind(file_id)
         .bind(user_id)
@@ -60,12 +66,14 @@ pub async fn get_file_by_id_and_user(
 }
 
 pub async fn get_files_by_project(
-    pool: &PgPool,
     project_id: Uuid,
     user_id: Uuid,
     page: i32,
     per_page: i32,
 ) -> Result<(Vec<File>, i64), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let offset = (page - 1) * per_page;
 
     let files = sqlx::query_as::<_, File>(
@@ -95,10 +103,12 @@ pub async fn get_files_by_project(
 }
 
 pub async fn get_files_by_message(
-    pool: &PgPool,
     message_id: Uuid,
     user_id: Uuid,
 ) -> Result<Vec<File>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let files = sqlx::query_as::<_, File>(
         r#"
         SELECT f.* FROM files f
@@ -116,10 +126,12 @@ pub async fn get_files_by_message(
 }
 
 pub async fn delete_file(
-    pool: &PgPool,
     file_id: Uuid,
     user_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let result = sqlx::query("DELETE FROM files WHERE id = $1 AND user_id = $2")
         .bind(file_id)
         .bind(user_id)
@@ -130,10 +142,12 @@ pub async fn delete_file(
 }
 
 pub async fn update_file_thumbnail_count(
-    pool: &PgPool,
     file_id: Uuid,
     thumbnail_count: i32,
 ) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let result = sqlx::query("UPDATE files SET thumbnail_count = $1 WHERE id = $2")
         .bind(thumbnail_count)
         .bind(file_id)
@@ -145,10 +159,12 @@ pub async fn update_file_thumbnail_count(
 
 // Message-file relationship functions
 pub async fn create_message_file_relationship(
-    pool: &PgPool,
     message_id: Uuid,
     file_id: Uuid,
 ) -> Result<MessageFile, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let message_file = sqlx::query_as::<_, MessageFile>(
         r#"
         INSERT INTO messages_files (message_id, file_id)
@@ -166,10 +182,12 @@ pub async fn create_message_file_relationship(
 }
 
 pub async fn delete_message_file_relationship(
-    pool: &PgPool,
     message_id: Uuid,
     file_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let result = sqlx::query("DELETE FROM messages_files WHERE message_id = $1 AND file_id = $2")
         .bind(message_id)
         .bind(file_id)
@@ -180,9 +198,11 @@ pub async fn delete_message_file_relationship(
 }
 
 pub async fn check_file_has_message_associations(
-    pool: &PgPool,
     file_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let row = sqlx::query("SELECT COUNT(*) as count FROM messages_files WHERE file_id = $1")
         .bind(file_id)
         .fetch_one(pool)
@@ -193,9 +213,11 @@ pub async fn check_file_has_message_associations(
 }
 
 pub async fn check_file_has_project_association(
-    pool: &PgPool,
     file_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let row = sqlx::query("SELECT COUNT(*) as count FROM files WHERE id = $1 AND project_id IS NOT NULL")
         .bind(file_id)
         .fetch_one(pool)
@@ -207,12 +229,14 @@ pub async fn check_file_has_project_association(
 
 // Provider-file relationship functions
 pub async fn create_provider_file_mapping(
-    pool: &PgPool,
     file_id: Uuid,
     provider_id: Uuid,
     provider_file_id: Option<String>,
     provider_metadata: serde_json::Value,
 ) -> Result<ProviderFile, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let provider_file = sqlx::query_as::<_, ProviderFile>(
         r#"
         INSERT INTO provider_files (file_id, provider_id, provider_file_id, provider_metadata)
@@ -234,10 +258,12 @@ pub async fn create_provider_file_mapping(
 }
 
 pub async fn get_provider_file_mapping(
-    pool: &PgPool,
     file_id: Uuid,
     provider_id: Uuid,
 ) -> Result<Option<ProviderFile>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let provider_file = sqlx::query_as::<_, ProviderFile>("SELECT * FROM provider_files WHERE file_id = $1 AND provider_id = $2")
         .bind(file_id)
         .bind(provider_id)
@@ -248,9 +274,11 @@ pub async fn get_provider_file_mapping(
 }
 
 pub async fn get_provider_file_mappings_by_file(
-    pool: &PgPool,
     file_id: Uuid,
 ) -> Result<Vec<ProviderFile>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let provider_files = sqlx::query_as::<_, ProviderFile>("SELECT * FROM provider_files WHERE file_id = $1")
         .bind(file_id)
         .fetch_all(pool)
@@ -260,10 +288,12 @@ pub async fn get_provider_file_mappings_by_file(
 }
 
 pub async fn delete_provider_file_mapping(
-    pool: &PgPool,
     file_id: Uuid,
     provider_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
     let result = sqlx::query("DELETE FROM provider_files WHERE file_id = $1 AND provider_id = $2")
         .bind(file_id)
         .bind(provider_id)

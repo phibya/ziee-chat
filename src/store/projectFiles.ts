@@ -254,7 +254,7 @@ export const getFileThumbnail = async (
   try {
     const response = await ApiClient.Files.preview({ id: fileId, page: 1 })
     return window.URL.createObjectURL(response)
-  } catch (error) {
+  } catch (_error) {
     console.debug('Thumbnail not available for file:', fileId)
     return null
   }
@@ -273,7 +273,7 @@ export const getFileThumbnails = async (
       const response = await ApiClient.Files.preview({ id: fileId, page })
       const url = window.URL.createObjectURL(response)
       thumbnails.push(url)
-    } catch (error) {
+    } catch (_error) {
       console.debug(`Thumbnail ${page} not available for file:`, fileId)
       break // Stop if a thumbnail is not available
     }

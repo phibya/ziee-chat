@@ -12,7 +12,7 @@ use crate::{
     api::middleware::AuthenticatedUser,
     database::{
         models::file::*,
-        queries::{get_database_pool, files},
+        queries::files,
     },
     utils::file_storage::{FileStorage, extract_extension, get_mime_type_from_extension},
     processing::ProcessingManager,
@@ -115,7 +115,6 @@ async fn process_file_upload(
     file_size: u64,
     project_id: Option<Uuid>,
 ) -> Result<Json<UploadFileResponse>, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     let file_id = Uuid::new_v4();
     let extension = extract_extension(&filename);
@@ -154,7 +153,7 @@ async fn process_file_upload(
         processing_metadata: processing_result.metadata,
     };
 
-    let file = files::create_file(&pool, file_create_data).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let file = files::create_file(file_create_data).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(UploadFileResponse { file }))
 }
@@ -164,9 +163,7 @@ pub async fn get_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
 ) -> Result<Json<File>, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    let file = files::get_file_by_id_and_user(&pool, file_id, user.user_id)
+    let file = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -178,9 +175,7 @@ pub async fn download_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
 ) -> Result<Response, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    let file_db = files::get_file_by_id_and_user(&pool, file_id, user.user_id)
+    let file_db = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -210,9 +205,7 @@ pub async fn get_file_preview(
     Path(file_id): Path<Uuid>,
     Query(params): Query<PreviewParams>,
 ) -> Result<Response, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    let _file_db = files::get_file_by_id_and_user(&pool, file_id, user.user_id)
+    let _file_db = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
@@ -239,15 +232,13 @@ pub async fn delete_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    let file_db = files::get_file_by_id_and_user(&pool, file_id, user.user_id)
+    let file_db = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
     // Delete from database (this will cascade to relationships)
-    let deleted = files::delete_file(&pool, file_id, user.user_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let deleted = files::delete_file(file_id, user.user_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     if !deleted {
         return Err(StatusCode::NOT_FOUND);
@@ -266,12 +257,10 @@ pub async fn list_project_files(
     Path(project_id): Path<Uuid>,
     Query(params): Query<FileListParams>,
 ) -> Result<Json<FileListResponse>, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20).min(100);
 
-    let (files, total) = files::get_files_by_project(&pool, project_id, user.user_id, page, per_page)
+    let (files, total) = files::get_files_by_project(project_id, user.user_id, page, per_page)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -288,9 +277,7 @@ pub async fn list_message_files(
     Extension(user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
 ) -> Result<Json<Vec<File>>, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    let files = files::get_files_by_message(&pool, message_id, user.user_id)
+    let files = files::get_files_by_message(message_id, user.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(files))
@@ -301,10 +288,8 @@ pub async fn remove_file_from_message(
     Extension(user): Extension<AuthenticatedUser>,
     Path((file_id, message_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
     // Verify file belongs to user
-    let file_exists = files::get_file_by_id_and_user(&pool, file_id, user.user_id)
+    let file_exists = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .is_some();
@@ -314,7 +299,7 @@ pub async fn remove_file_from_message(
     }
 
     // Remove relationship
-    let removed = files::delete_message_file_relationship(&pool, message_id, file_id)
+    let removed = files::delete_message_file_relationship(message_id, file_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -323,23 +308,23 @@ pub async fn remove_file_from_message(
     }
 
     // Check if file is now orphaned
-    let has_messages = files::check_file_has_message_associations(&pool, file_id)
+    let has_messages = files::check_file_has_message_associations(file_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let has_project = files::check_file_has_project_association(&pool, file_id)
+    let has_project = files::check_file_has_project_association(file_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // If orphaned, delete the file completely
     if !has_messages && !has_project {
-        let file_db = files::get_file_by_id(&pool, file_id)
+        let file_db = files::get_file_by_id(file_id)
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
         if let Some(file_db) = file_db {
             // Delete from database
-            files::delete_file(&pool, file_id, user.user_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            files::delete_file(file_id, user.user_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
             // Delete from filesystem
             let extension = extract_extension(&file_db.filename);

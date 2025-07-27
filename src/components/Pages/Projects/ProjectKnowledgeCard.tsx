@@ -46,9 +46,9 @@ export const ProjectKnowledgeCard: React.FC = () => {
   return (
     <Card
       title="Project knowledge"
-      className="w-96 !mt-1"
+      className="w-96 !my-1 overflow-y-hidden flex flex-col"
       classNames={{
-        body: 'h-full flex flex-col relative',
+        body: 'flex flex-col relative overflow-y-hidden flex-1',
       }}
     >
       <Upload.Dragger
@@ -68,13 +68,18 @@ export const ProjectKnowledgeCard: React.FC = () => {
         openFileDialogOnClick={false}
       />
       {/* Project Description */}
-      <Text type="secondary">
-        {currentProject?.description ||
-          '"Goal: - To completely write the Proposal.tex. There are two...'}
-        <Button type="link" size="small" style={{ pointerEvents: 'auto' }}>
-          Edit
-        </Button>
-      </Text>
+      <Flex className="gap-1 flex-col">
+        <Typography.Text strong>Project Instructions</Typography.Text>
+        <Card>
+          <Text type="secondary">
+            {currentProject?.description ||
+              '"Goal: - To completely write the Proposal.tex. There are two...'}
+            <Button type="link" size="small" style={{ pointerEvents: 'auto' }}>
+              Edit
+            </Button>
+          </Text>
+        </Card>
+      </Flex>
 
       {/* Upload Progress */}
       {showProgress && (
@@ -101,7 +106,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
       )}
 
       {/* Documents */}
-      <Flex justify="space-between" align="center">
+      <Flex justify="space-between" align="center" className={'!mt-2'}>
         <Typography.Title level={5}>Documents</Typography.Title>
         <Button
           icon={<UploadOutlined />}
@@ -113,11 +118,11 @@ export const ProjectKnowledgeCard: React.FC = () => {
       </Flex>
 
       <div
+        className="overflow-y-auto flex-1 mt-3"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
           gap: '8px',
-          marginTop: 12,
         }}
       >
         {projectFiles.map(file => (

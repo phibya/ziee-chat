@@ -67,7 +67,7 @@ export const ProjectDetailsPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <Flex className={'w-full h-full gap-8'}>
+      <Flex className={'w-full h-full gap-8 overflow-y-hidden'}>
         {/* Left Side - Chat Input and Conversations */}
         <Flex vertical className={'flex-1 h-full'}>
           {/* Header */}

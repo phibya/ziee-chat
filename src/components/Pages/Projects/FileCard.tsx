@@ -1,5 +1,5 @@
 import { DeleteOutlined, DownloadOutlined } from '@ant-design/icons'
-import { App, Button, Card, Typography } from 'antd'
+import { App, Button, Card, theme, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
 import {
   deleteProjectFile,
@@ -118,6 +118,7 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
 export const FileCard: React.FC<FileCardProps> = ({ file }) => {
   const { message, modal } = App.useApp()
   const { currentProject } = Stores.Projects
+  const { token } = theme.useToken()
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [fileContent, setFileContent] = useState<string>('')
@@ -205,18 +206,13 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
             flexDirection: 'column',
             justifyContent: 'center',
             position: 'relative',
-            backgroundColor: thumbnailUrl
-              ? 'rgba(255, 255, 255, 0.9)'
-              : 'transparent',
-            backdropFilter: thumbnailUrl ? 'blur(1px)' : undefined,
           },
         }}
       >
         {/* Delete button - only visible on hover */}
         <Button
-          type="text"
-          size="small"
           danger
+          size="small"
           icon={<DeleteOutlined />}
           onClick={e => {
             e.stopPropagation()
@@ -224,22 +220,28 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
               console.error('Failed to delete file:', error)
             })
           }}
-          className="absolute top-[-1] left-[-1] opacity-0 group-hover:opacity-100 transition-opacity"
+          className="!absolute top-1 right-1 opacity-0
+                    group-hover:opacity-100 transition-opacity"
         />
 
         {/* File extension - bottom left */}
         <Text
-          className="absolute bottom-1 left-1"
+          className="absolute top-1 left-1 rounded px-1 "
           style={{
             fontSize: '8px',
             fontWeight: '600',
+            backgroundColor: token.colorBgContainer,
           }}
         >
           {file.filename.split('.').pop()?.toUpperCase() || 'FILE'}
         </Text>
 
         {/* File content */}
-        <Text type="secondary" style={{ fontSize: '9px' }}>
+        <Text
+          type="secondary"
+          style={{ fontSize: '9px' }}
+          className="absolute bottom-1 right-1 rounded px-1"
+        >
           {formatFileSize(file.file_size)}
         </Text>
       </Card>
