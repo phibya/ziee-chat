@@ -2,9 +2,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::database::models::{
-    CreateProjectRequest, Project, ProjectConversation, ProjectConversationDb, ProjectDb,
-    ProjectDocument, ProjectDocumentDb, ProjectListResponse, UpdateProjectRequest,
-    UploadDocumentRequest,
+    CreateProjectRequest, Project, ProjectConversation,
+    ProjectListResponse, UpdateProjectRequest,
 };
 
 // Project CRUD operations
@@ -16,11 +15,11 @@ pub async fn create_project(
     let id = Uuid::new_v4();
     let is_private = request.is_private.unwrap_or(true);
 
-    let project_db = sqlx::query_as::<_, ProjectDb>(
+    let project = sqlx::query_as::<_, Project>(
         r#"
         INSERT INTO projects (id, user_id, name, description, is_private)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, user_id, name, description, is_private, created_at, updated_at
+        RETURNING id, user_id, name, description, is_private, created_at, updated_at, 0 as conversation_count
         "#,
     )
     .bind(id)
@@ -31,7 +30,7 @@ pub async fn create_project(
     .fetch_one(pool)
     .await?;
 
-    Ok(Project::from_db(project_db, Some(0), Some(0)))
+    Ok(project)
 }
 
 pub async fn get_project_by_id(
@@ -39,11 +38,14 @@ pub async fn get_project_by_id(
     project_id: Uuid,
     user_id: Uuid,
 ) -> Result<Option<Project>, sqlx::Error> {
-    let project_result = sqlx::query_as::<_, ProjectDb>(
+    let project = sqlx::query_as::<_, Project>(
         r#"
-        SELECT id, user_id, name, description, is_private, created_at, updated_at
-        FROM projects
-        WHERE id = $1 AND user_id = $2
+        SELECT p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at,
+               COALESCE(COUNT(pc.id), 0) as conversation_count
+        FROM projects p
+        LEFT JOIN project_conversations pc ON p.id = pc.project_id
+        WHERE p.id = $1 AND p.user_id = $2
+        GROUP BY p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at
         "#,
     )
     .bind(project_id)
@@ -51,29 +53,7 @@ pub async fn get_project_by_id(
     .fetch_optional(pool)
     .await?;
 
-    if let Some(project_db) = project_result {
-        // Get document count
-        let document_count: Option<i64> =
-            sqlx::query_scalar("SELECT COUNT(*) FROM project_documents WHERE project_id = $1")
-                .bind(project_id)
-                .fetch_one(pool)
-                .await?;
-
-        // Get conversation count
-        let conversation_count: Option<i64> =
-            sqlx::query_scalar("SELECT COUNT(*) FROM project_conversations WHERE project_id = $1")
-                .bind(project_id)
-                .fetch_one(pool)
-                .await?;
-
-        Ok(Some(Project::from_db(
-            project_db,
-            document_count,
-            conversation_count,
-        )))
-    } else {
-        Ok(None)
-    }
+    Ok(project)
 }
 
 pub async fn list_projects(
@@ -110,20 +90,23 @@ pub async fn list_projects(
             .await?
     };
 
-    // Get projects first
+    // Get projects with conversation counts
     let projects_query = format!(
         r#"
-        SELECT id, user_id, name, description, is_private, created_at, updated_at
-        FROM projects
+        SELECT p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at,
+               COALESCE(COUNT(pc.id), 0) as conversation_count
+        FROM projects p
+        LEFT JOIN project_conversations pc ON p.id = pc.project_id
         {}
-        ORDER BY updated_at DESC
+        GROUP BY p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at
+        ORDER BY p.updated_at DESC
         LIMIT $2 OFFSET $3
         "#,
         where_clause
     );
 
-    let projects_db = if let Some(ref search_param) = search_param {
-        sqlx::query_as::<_, ProjectDb>(&projects_query)
+    let projects = if let Some(ref search_param) = search_param {
+        sqlx::query_as::<_, Project>(&projects_query)
             .bind(user_id)
             .bind(per_page)
             .bind(offset)
@@ -131,35 +114,13 @@ pub async fn list_projects(
             .fetch_all(pool)
             .await?
     } else {
-        sqlx::query_as::<_, ProjectDb>(&projects_query)
+        sqlx::query_as::<_, Project>(&projects_query)
             .bind(user_id)
             .bind(per_page)
             .bind(offset)
             .fetch_all(pool)
             .await?
     };
-
-    // Get counts for each project
-    let mut projects: Vec<Project> = Vec::new();
-    for project_db in projects_db {
-        let document_count: Option<i64> =
-            sqlx::query_scalar("SELECT COUNT(*) FROM project_documents WHERE project_id = $1")
-                .bind(project_db.id)
-                .fetch_one(pool)
-                .await?;
-
-        let conversation_count: Option<i64> =
-            sqlx::query_scalar("SELECT COUNT(*) FROM project_conversations WHERE project_id = $1")
-                .bind(project_db.id)
-                .fetch_one(pool)
-                .await?;
-
-        projects.push(Project::from_db(
-            project_db,
-            document_count,
-            conversation_count,
-        ));
-    }
 
     Ok(ProjectListResponse {
         projects,
@@ -227,93 +188,6 @@ pub async fn delete_project(
     Ok(result.rows_affected() > 0)
 }
 
-// Project document operations
-pub async fn create_project_document(
-    pool: &PgPool,
-    project_id: Uuid,
-    user_id: Uuid,
-    request: &UploadDocumentRequest,
-    file_path: String,
-) -> Result<Option<ProjectDocument>, sqlx::Error> {
-    // Verify project exists and belongs to user
-    let project = get_project_by_id(pool, project_id, user_id).await?;
-    if project.is_none() {
-        return Ok(None);
-    }
-
-    let id = Uuid::new_v4();
-
-    let document_db = sqlx::query_as::<_, ProjectDocumentDb>(
-        r#"
-        INSERT INTO project_documents (id, project_id, file_name, file_path, file_size, mime_type, upload_status)
-        VALUES ($1, $2, $3, $4, $5, $6, 'uploaded')
-        RETURNING id, project_id, file_name, file_path, file_size, mime_type, content_text, upload_status, created_at, updated_at
-        "#,
-    )
-    .bind(id)
-    .bind(project_id)
-    .bind(&request.file_name)
-    .bind(&file_path)
-    .bind(request.file_size)
-    .bind(&request.mime_type)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(Some(ProjectDocument::from_db(document_db)))
-}
-
-pub async fn list_project_documents(
-    pool: &PgPool,
-    project_id: Uuid,
-    user_id: Uuid,
-) -> Result<Option<Vec<ProjectDocument>>, sqlx::Error> {
-    // Verify project exists and belongs to user
-    let project = get_project_by_id(pool, project_id, user_id).await?;
-    if project.is_none() {
-        return Ok(None);
-    }
-
-    let documents_db = sqlx::query_as::<_, ProjectDocumentDb>(
-        r#"
-        SELECT id, project_id, file_name, file_path, file_size, mime_type, content_text, upload_status, created_at, updated_at
-        FROM project_documents
-        WHERE project_id = $1
-        ORDER BY created_at DESC
-        "#,
-    )
-    .bind(project_id)
-    .fetch_all(pool)
-    .await?;
-
-    let documents = documents_db
-        .into_iter()
-        .map(ProjectDocument::from_db)
-        .collect();
-
-    Ok(Some(documents))
-}
-
-pub async fn delete_project_document(
-    pool: &PgPool,
-    document_id: Uuid,
-    project_id: Uuid,
-    user_id: Uuid,
-) -> Result<bool, sqlx::Error> {
-    // Verify project exists and belongs to user
-    let project = get_project_by_id(pool, project_id, user_id).await?;
-    if project.is_none() {
-        return Ok(false);
-    }
-
-    let result = sqlx::query("DELETE FROM project_documents WHERE id = $1 AND project_id = $2")
-        .bind(document_id)
-        .bind(project_id)
-        .execute(pool)
-        .await?;
-
-    Ok(result.rows_affected() > 0)
-}
-
 // Project conversation operations
 pub async fn link_conversation_to_project(
     pool: &PgPool,
@@ -341,7 +215,7 @@ pub async fn link_conversation_to_project(
 
     let id = Uuid::new_v4();
 
-    let project_conversation_db = sqlx::query_as::<_, ProjectConversationDb>(
+    let project_conversation = sqlx::query_as::<_, ProjectConversation>(
         r#"
         INSERT INTO project_conversations (id, project_id, conversation_id)
         VALUES ($1, $2, $3)
@@ -355,10 +229,7 @@ pub async fn link_conversation_to_project(
     .fetch_one(pool)
     .await?;
 
-    Ok(Some(ProjectConversation::from_db(
-        project_conversation_db,
-        None,
-    )))
+    Ok(Some(project_conversation))
 }
 
 pub async fn list_project_conversations(
@@ -372,7 +243,7 @@ pub async fn list_project_conversations(
         return Ok(None);
     }
 
-    let project_conversations_db = sqlx::query_as::<_, ProjectConversationDb>(
+    let conversations = sqlx::query_as::<_, ProjectConversation>(
         r#"
         SELECT pc.id, pc.project_id, pc.conversation_id, pc.created_at
         FROM project_conversations pc
@@ -385,11 +256,6 @@ pub async fn list_project_conversations(
     .bind(user_id)
     .fetch_all(pool)
     .await?;
-
-    let conversations = project_conversations_db
-        .into_iter()
-        .map(|pc_db| ProjectConversation::from_db(pc_db, None))
-        .collect();
 
     Ok(Some(conversations))
 }

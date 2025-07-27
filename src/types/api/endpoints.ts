@@ -33,6 +33,12 @@ import {
   DefaultLanguageResponse,
   UpdateDefaultLanguageRequest,
 } from './globalConfig'
+import {
+  File,
+  FileListParams,
+  FileListResponse,
+  UploadFileResponse,
+} from './files'
 import { HubDataResponse, HubVersionResponse } from './hub'
 import {
   AddModelToProviderRequest,
@@ -55,8 +61,6 @@ import {
   ProjectListParams,
   ProjectListResponse,
   UpdateProjectRequest,
-  UploadDocumentRequest,
-  UploadDocumentResponse,
 } from './projects'
 import {
   AvailableDevicesResponse,
@@ -198,13 +202,20 @@ export const ApiEndpoints = {
   'Projects.get': 'GET /api/projects/{project_id}',
   'Projects.update': 'PUT /api/projects/{project_id}',
   'Projects.delete': 'DELETE /api/projects/{project_id}',
-  'Projects.uploadDocument': 'POST /api/projects/{project_id}/documents',
+  'Projects.uploadFile': 'POST /api/projects/{project_id}/files',
+  'Projects.listFiles': 'GET /api/projects/{project_id}/files',
   'Projects.deleteDocument':
     'DELETE /api/projects/{project_id}/documents/{document_id}',
   'Projects.linkConversation':
     'POST /api/projects/{project_id}/conversations/{conversation_id}',
   'Projects.unlinkConversation':
     'DELETE /api/projects/{project_id}/conversations/{conversation_id}',
+  // File endpoints
+  'Files.upload': 'POST /api/files/upload',
+  'Files.get': 'GET /api/files/{id}',
+  'Files.delete': 'DELETE /api/files/{id}',
+  'Files.download': 'GET /api/files/{id}/download',
+  'Files.preview': 'GET /api/files/{id}/preview',
   // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
   'Admin.listRepositories': 'GET /api/admin/repositories',
@@ -344,10 +355,17 @@ export type ApiEndpointParameters = {
   'Projects.get': { project_id: string }
   'Projects.update': { project_id: string } & UpdateProjectRequest
   'Projects.delete': { project_id: string }
-  'Projects.uploadDocument': { project_id: string } & UploadDocumentRequest
+  'Projects.uploadFile': FormData
+  'Projects.listFiles': { project_id: string } & FileListParams
   'Projects.deleteDocument': { project_id: string; document_id: string }
   'Projects.linkConversation': { project_id: string; conversation_id: string }
   'Projects.unlinkConversation': { project_id: string; conversation_id: string }
+  // File endpoints
+  'Files.upload': FormData
+  'Files.get': { id: string }
+  'Files.delete': { id: string }
+  'Files.download': { id: string }
+  'Files.preview': { id: string; page?: number }
   // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
   'Admin.listRepositories': { page?: number; per_page?: number }
@@ -502,10 +520,17 @@ export type ApiEndpointResponses = {
   'Projects.get': ProjectDetailResponse
   'Projects.update': Project
   'Projects.delete': void
-  'Projects.uploadDocument': UploadDocumentResponse
+  'Projects.uploadFile': UploadFileResponse
+  'Projects.listFiles': FileListResponse
   'Projects.deleteDocument': void
   'Projects.linkConversation': ProjectConversation
   'Projects.unlinkConversation': void
+  // File endpoints
+  'Files.upload': UploadFileResponse
+  'Files.get': File
+  'Files.delete': void
+  'Files.download': Blob
+  'Files.preview': Blob
   // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
   'Admin.listRepositories': RepositoryListResponse

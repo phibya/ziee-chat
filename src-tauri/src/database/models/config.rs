@@ -1,15 +1,28 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::FromRow;
+use sqlx::{FromRow, Row};
 
-// Configuration table structure
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct ConfigurationDb {
+// Configuration structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Configuration {
     pub id: i32,
     pub name: String,
     pub value: Value,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl FromRow<'_, sqlx::postgres::PgRow> for Configuration {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(Configuration {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            value: row.try_get("value")?,
+            description: row.try_get("description")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
 }

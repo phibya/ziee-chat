@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-// Database table structures (for direct DB operations)
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserDb {
+// Base User structure (for direct DB operations without aggregations)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserBase {
     pub id: Uuid,
     pub username: String,
     pub created_at: DateTime<Utc>,
@@ -16,8 +16,23 @@ pub struct UserDb {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserServiceDb {
+impl FromRow<'_, sqlx::postgres::PgRow> for UserBase {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserBase {
+            id: row.try_get("id")?,
+            username: row.try_get("username")?,
+            created_at: row.try_get("created_at")?,
+            profile: row.try_get("profile")?,
+            is_active: row.try_get("is_active")?,
+            is_protected: row.try_get("is_protected")?,
+            last_login_at: row.try_get("last_login_at")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserService {
     pub id: Uuid,
     pub user_id: Uuid,
     pub service_name: String,
@@ -25,8 +40,20 @@ pub struct UserServiceDb {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserLoginTokenDb {
+impl FromRow<'_, sqlx::postgres::PgRow> for UserService {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserService {
+            id: row.try_get("id")?,
+            user_id: row.try_get("user_id")?,
+            service_name: row.try_get("service_name")?,
+            service_data: row.try_get("service_data")?,
+            created_at: row.try_get("created_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserLoginToken {
     pub id: Uuid,
     pub user_id: Uuid,
     pub token: String,
@@ -35,8 +62,21 @@ pub struct UserLoginTokenDb {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserGroupMembershipDb {
+impl FromRow<'_, sqlx::postgres::PgRow> for UserLoginToken {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserLoginToken {
+            id: row.try_get("id")?,
+            user_id: row.try_get("user_id")?,
+            token: row.try_get("token")?,
+            when_created: row.try_get("when_created")?,
+            expires_at: row.try_get("expires_at")?,
+            created_at: row.try_get("created_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserGroupMembership {
     pub id: Uuid,
     pub user_id: Uuid,
     pub group_id: Uuid,
@@ -44,13 +84,36 @@ pub struct UserGroupMembershipDb {
     pub assigned_by: Option<Uuid>,
 }
 
+impl FromRow<'_, sqlx::postgres::PgRow> for UserGroupMembership {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserGroupMembership {
+            id: row.try_get("id")?,
+            user_id: row.try_get("user_id")?,
+            group_id: row.try_get("group_id")?,
+            assigned_at: row.try_get("assigned_at")?,
+            assigned_by: row.try_get("assigned_by")?,
+        })
+    }
+}
+
 // User group model provider relationship
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct UserGroupProviderDb {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserGroupProvider {
     pub id: Uuid,
     pub group_id: Uuid,
     pub provider_id: Uuid,
     pub assigned_at: DateTime<Utc>,
+}
+
+impl FromRow<'_, sqlx::postgres::PgRow> for UserGroupProvider {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserGroupProvider {
+            id: row.try_get("id")?,
+            group_id: row.try_get("group_id")?,
+            provider_id: row.try_get("provider_id")?,
+            assigned_at: row.try_get("assigned_at")?,
+        })
+    }
 }
 
 // Meteor-like User structure (for API responses)
@@ -268,23 +331,23 @@ impl User {
 
     // Convert from database structures to Meteor-like User
     pub fn from_db_parts(
-        user_db: UserDb,
+        user_base: UserBase,
         emails: Vec<UserEmail>,
-        services: Vec<UserServiceDb>,
-        _login_tokens: Vec<UserLoginTokenDb>,
+        services: Vec<UserService>,
+        _login_tokens: Vec<UserLoginToken>,
         groups: Vec<UserGroup>,
     ) -> Self {
         let mut user = User {
-            id: user_db.id,
-            username: user_db.username,
+            id: user_base.id,
+            username: user_base.username,
             emails,
-            created_at: user_db.created_at,
-            profile: user_db.profile,
+            created_at: user_base.created_at,
+            profile: user_base.profile,
             services: UserServices::default(),
-            is_active: user_db.is_active,
-            is_protected: user_db.is_protected,
-            last_login_at: user_db.last_login_at,
-            updated_at: user_db.updated_at,
+            is_active: user_base.is_active,
+            is_protected: user_base.is_protected,
+            last_login_at: user_base.last_login_at,
+            updated_at: user_base.updated_at,
             groups,
         };
 

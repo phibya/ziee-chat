@@ -13,6 +13,7 @@ import { useHubStore } from './hub'
 import { useLocalUploadStore } from './localUpload'
 import { useModelDownloadStore } from './modelDownload'
 import { useProjectsStore } from './projects'
+import { useProjectFilesStore } from './projectFiles'
 import { useProvidersStore } from './providers'
 import { useRepositoriesStore } from './repositories'
 import { useUserSettingsStore } from './settings'
@@ -28,6 +29,7 @@ import {
   useEditProviderDrawerStore,
   useEditRemoteModelDrawerStore,
   useLayoutUIStore,
+  useProjectDrawerStore,
   useViewDownloadModalStore,
 } from './ui'
 
@@ -114,8 +116,8 @@ export {
 export {
   cancelLocalUpload,
   clearLocalUploadError,
-  hideUploadProgress,
-  showUploadProgress,
+  hideUploadProgress as hideLocalUploadProgress,
+  showUploadProgress as showLocalUploadProgress,
   uploadLocalModel,
   useLocalUploadStore,
 } from './localUpload'
@@ -151,9 +153,23 @@ export {
   loadProjectWithDetails,
   resetProjectsStore,
   updateExistingProject,
-  uploadDocumentToProject,
   useProjectsStore,
 } from './projects'
+// Project Files store
+export {
+  cancelFileUpload,
+  clearProjectFilesError,
+  deleteProjectFile,
+  getFileContent,
+  getFileThumbnail,
+  getFileThumbnails,
+  getProjectFiles,
+  hideUploadProgress,
+  loadProjectFiles,
+  showUploadProgress,
+  uploadFilesToProject,
+  useProjectFilesStore,
+} from './projectFiles'
 // Providers store
 export {
   addNewModel,
@@ -219,6 +235,7 @@ export {
   closeEditProviderDrawer,
   closeEditRemoteModelDrawer,
   closeMobileOverlay,
+  closeProjectDrawer,
   closeViewDownloadModal,
   openAddLocalModelDownloadDrawer,
   openAddLocalModelUploadDrawer,
@@ -229,6 +246,7 @@ export {
   openEditLocalModelDrawer,
   openEditProviderDrawer,
   openEditRemoteModelDrawer,
+  openProjectDrawer,
   openViewDownloadModal,
   resetChatUI,
   setAddLocalModelDownloadDrawerLoading,
@@ -240,6 +258,7 @@ export {
   setEditLocalModelDrawerLoading,
   setEditProviderDrawerLoading,
   setEditRemoteModelDrawerLoading,
+  setProjectDrawerLoading,
   setInputDisabled,
   setInputPlaceholder,
   setIsMobile,
@@ -292,6 +311,7 @@ export const Stores = {
   LocalUpload: createStoreProxy(useLocalUploadStore),
   ModelDownload: createStoreProxy(useModelDownloadStore),
   Projects: createStoreProxy(useProjectsStore),
+  ProjectFiles: createStoreProxy(useProjectFilesStore),
   Providers: createStoreProxy(useProvidersStore),
   Repositories: createStoreProxy(useRepositoriesStore),
   Settings: createStoreProxy(useUserSettingsStore),
@@ -313,5 +333,6 @@ export const Stores = {
     AddLocalModelDownloadDrawer: createStoreProxy(
       useAddLocalModelDownloadDrawerStore,
     ),
+    ProjectDrawer: createStoreProxy(useProjectDrawerStore),
   },
 }

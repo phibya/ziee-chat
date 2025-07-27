@@ -2,6 +2,7 @@ mod admin;
 mod auth;
 mod chat;
 mod config;
+mod files;
 mod hub;
 mod projects;
 mod user;
@@ -30,9 +31,13 @@ pub fn create_rest_router() -> Router {
         .merge(projects::project_routes())
         .layer(middleware::from_fn(api::middleware::auth_middleware));
 
+    // File routes (already have auth middleware applied individually)
+    let file_routes = files::file_routes();
+
     // Combine public and protected routes
     Router::new()
         .merge(public_routes)
         .merge(protected_routes)
+        .merge(file_routes)
         .layer(CorsLayer::permissive())
 }

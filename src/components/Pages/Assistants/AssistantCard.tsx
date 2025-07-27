@@ -1,5 +1,5 @@
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
-import { App, Button, Card, Flex, Popconfirm, Tag, Typography } from 'antd'
+import { DeleteOutlined, EditOutlined, MoreOutlined } from '@ant-design/icons'
+import { App, Button, Card, Dropdown, Flex, Tag, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { deleteUserAssistant, openAssistantDrawer } from '../../../store'
 import { Assistant } from '../../../types/api/assistant'
@@ -12,7 +12,7 @@ interface AssistantCardProps {
 
 export function AssistantCard({ assistant }: AssistantCardProps) {
   const { t } = useTranslation()
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
 
   const handleDelete = async () => {
     try {
@@ -45,8 +45,12 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
         <div className="flex-1">
           <Card.Meta
             title={
-              <div className="flex flex-col gap-1">
-                <Text strong>{assistant.name}</Text>
+              <div className="flex flex-col gap-1 pr-4">
+                <div className={'text-ellipsis overflow-hidden'}>
+                  <Typography.Title level={4} className={'whitespace-nowrap'}>
+                    {assistant.name}
+                  </Typography.Title>
+                </div>
                 <Flex className="gap-2">
                   {assistant.is_default && (
                     <Tag color="blue">{t('assistants.default')}</Tag>
@@ -67,36 +71,49 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
           />
         </div>
 
-        {/* Actions Area - Always at bottom */}
-        <Flex justify="flex-end" className="gap-2">
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={e => {
-              e.stopPropagation()
-              handleEdit()
+        <div className="absolute top-2 right-2">
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'edit',
+                  icon: <EditOutlined />,
+                  label: 'Edit',
+                  onClick: e => {
+                    e.domEvent.stopPropagation()
+                    e.domEvent.preventDefault()
+                    handleEdit()
+                  },
+                },
+                {
+                  key: 'delete',
+                  icon: <DeleteOutlined />,
+                  label: 'Delete',
+                  danger: true,
+                  onClick: e => {
+                    e.domEvent.stopPropagation()
+                    e.domEvent.preventDefault()
+                    modal.confirm({
+                      title: 'Delete Assistant',
+                      content: `Are you sure?`,
+                      okText: 'Delete',
+                      okType: 'danger',
+                      onOk: handleDelete,
+                    })
+                  },
+                },
+              ],
             }}
-          >
-            {t('buttons.edit')}
-          </Button>
-
-          <Popconfirm
-            title={t('assistants.deleteAssistant')}
-            description={t('assistants.deleteConfirm')}
-            onConfirm={() => handleDelete()}
-            okText="Yes"
-            cancelText="No"
+            trigger={['click']}
           >
             <Button
-              danger
-              size="small"
-              icon={<DeleteOutlined />}
+              type="text"
+              icon={<MoreOutlined />}
               onClick={e => e.stopPropagation()}
-            >
-              {t('buttons.delete')}
-            </Button>
-          </Popconfirm>
-        </Flex>
+              size="small"
+            />
+          </Dropdown>
+        </div>
       </Flex>
     </Card>
   )

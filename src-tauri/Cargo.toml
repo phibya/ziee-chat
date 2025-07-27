@@ -65,6 +65,13 @@ thiserror = "2.0.12"
 git2 = { version = "0.19", features = ["vendored-openssl"] }
 eventsource-stream = "0.2"
 
+# File processing dependencies
+image = "0.25"
+base64 = "0.22"
+encoding_rs = "0.8"
+sha2 = "0.10"
+bytes = "1.8"
+
 ## Add mistralrs dependencies
 mistralrs-core = { git = "https://github.com/EricLBuehler/mistral.rs.git" }
 mistralrs-server-core = { git = "https://github.com/EricLBuehler/mistral.rs.git" }

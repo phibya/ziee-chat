@@ -1,14 +1,8 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import {
-  Project,
-  ProjectDocument,
-  UploadDocumentResponse,
-} from '../types/api/projects'
-
-// Type alias for compatibility
-type Document = ProjectDocument
+import { Project } from '../types/api/projects'
+import { File } from '../types/api/files'
 
 interface Conversation {
   id: string
@@ -24,7 +18,7 @@ interface ProjectsState {
   // Data
   projects: Project[]
   currentProject: Project | null
-  documents: Document[]
+  files: File[]
   conversations: Conversation[]
 
   // Loading states
@@ -44,7 +38,7 @@ export const useProjectsStore = create<ProjectsState>()(
       // Initial state
       projects: [],
       currentProject: null,
-      documents: [],
+      files: [],
       conversations: [],
       loading: false,
       creating: false,
@@ -106,7 +100,7 @@ export const loadProjectWithDetails = async (id: string): Promise<void> => {
 
     useProjectsStore.setState({
       currentProject: response.project,
-      documents: (response.project as any).documents || [],
+      files: (response.project as any).files || [],
       conversations: (response.project as any).conversations || [],
       loading: false,
     })
@@ -199,33 +193,7 @@ export const deleteExistingProject = async (id: string): Promise<void> => {
   }
 }
 
-export const uploadDocumentToProject = async (
-  projectId: string,
-  file: any,
-): Promise<UploadDocumentResponse> => {
-  try {
-    useProjectsStore.setState({ uploading: true, error: null })
-
-    const response = await ApiClient.Projects.uploadDocument({
-      project_id: projectId,
-      file: file,
-    } as any)
-
-    useProjectsStore.setState(state => ({
-      documents: [...state.documents, response.document],
-      uploading: false,
-    }))
-
-    return response
-  } catch (error) {
-    useProjectsStore.setState({
-      error:
-        error instanceof Error ? error.message : 'Failed to upload document',
-      uploading: false,
-    })
-    throw error
-  }
-}
+// File upload is now handled by projectFiles store
 
 export const clearProjectsStoreError = (): void => {
   useProjectsStore.setState({ error: null })
@@ -235,7 +203,7 @@ export const resetProjectsStore = (): void => {
   useProjectsStore.setState({
     projects: [],
     currentProject: null,
-    documents: [],
+    files: [],
     conversations: [],
     loading: false,
     creating: false,

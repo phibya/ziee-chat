@@ -2,6 +2,7 @@ pub mod ai;
 mod api;
 mod auth;
 mod database;
+mod processing;
 mod route;
 mod utils;
 
@@ -68,6 +69,13 @@ async fn initialize_app_common() -> Result<(), String> {
         Err(e) => {
             eprintln!("Failed to clean up download instances: {}", e);
         }
+    }
+
+    // Initialize file storage
+    if let Err(e) = api::files::initialize_file_storage().await {
+        eprintln!("Failed to initialize file storage: {:?}", e);
+    } else {
+        println!("File storage initialized successfully");
     }
 
     // Initialize hub manager

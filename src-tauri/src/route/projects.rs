@@ -30,16 +30,6 @@ pub fn project_routes() -> Router {
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
-            "/api/projects/{project_id}/documents",
-            post(api::projects::upload_document)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .route(
-            "/api/projects/{project_id}/documents/{document_id}",
-            delete(api::projects::delete_document)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .route(
             "/api/projects/{project_id}/conversations/{conversation_id}",
             post(api::projects::link_conversation)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),

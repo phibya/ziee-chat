@@ -6,85 +6,85 @@ import {
   LockOutlined,
   ToolOutlined,
   UnlockOutlined,
-} from "@ant-design/icons";
-import { App, Button, Card, Flex, Select, Tag, Typography } from "antd";
-import { useState } from "react";
-import { openUrl } from "@tauri-apps/plugin-opener";
-import { isDesktopApp } from "../../../api/core.ts";
-import type { HubModel } from "../../../types/api/hub";
-import { Stores } from "../../../store";
-import { repositoryHasCredentials } from "../../../store/repositories.ts";
-import { downloadModelFromRepository } from "../../../store/modelDownload";
-import { openRepositoryDrawer } from "../../../store/ui";
-import { DownloadItem } from "../../shared/DownloadItem.tsx";
-import { Provider } from "../../../types";
-import { ModelDetailsDrawer } from "./ModelDetailsDrawer";
+} from '@ant-design/icons'
+import { App, Button, Card, Flex, Select, Tag, Typography } from 'antd'
+import { useState } from 'react'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { isDesktopApp } from '../../../api/core.ts'
+import type { HubModel } from '../../../types/api/hub'
+import { Stores } from '../../../store'
+import { repositoryHasCredentials } from '../../../store/repositories.ts'
+import { downloadModelFromRepository } from '../../../store/modelDownload'
+import { openRepositoryDrawer } from '../../../store/ui'
+import { DownloadItem } from '../../shared/DownloadItem.tsx'
+import { Provider } from '../../../types'
+import { ModelDetailsDrawer } from './ModelDetailsDrawer'
 
-const { Title, Text } = Typography;
+const { Title, Text } = Typography
 
 interface ModelCardProps {
-  model: HubModel;
+  model: HubModel
 }
 
 export function ModelCard({ model }: ModelCardProps) {
-  const { message, modal } = App.useApp();
-  const { repositories } = Stores.Repositories;
-  const { providers } = Stores.Providers;
-  const { downloads } = Stores.ModelDownload;
-  const [showDetails, setShowDetails] = useState(false);
+  const { message, modal } = App.useApp()
+  const { repositories } = Stores.Repositories
+  const { providers } = Stores.Providers
+  const { downloads } = Stores.ModelDownload
+  const [showDetails, setShowDetails] = useState(false)
 
   // Find active download for this model
   const activeDownload = Object.values(downloads).find(
-    (download) =>
+    download =>
       download.request_data.repository_path === model.repository_path &&
-      (download.status === "downloading" || download.status === "pending"),
-  );
+      (download.status === 'downloading' || download.status === 'pending'),
+  )
 
-  const isModelBeingDownloaded = !!activeDownload;
+  const isModelBeingDownloaded = !!activeDownload
 
   const handleDownload = async (model: HubModel) => {
-    console.log("Downloading model:", model.id);
-    const repo = repositories.find((repo) => repo.url === model.repository_url);
-    console.log({ repo });
+    console.log('Downloading model:', model.id)
+    const repo = repositories.find(repo => repo.url === model.repository_url)
+    console.log({ repo })
     if (!repo) {
       message.error(
         `Repository not found for model ${model.alias}. Please check the repository configuration.`,
-      );
-      return;
+      )
+      return
     }
 
     if (!model.public && !repositoryHasCredentials(repo)) {
       message.info(
         `Model ${model.alias} is private and requires credentials. Please configure the repository with valid credentials.`,
-      );
+      )
 
-      openRepositoryDrawer(repo);
-      return;
+      openRepositoryDrawer(repo)
+      return
     }
 
     const localProviders = providers.filter(
-      (p) => p.type === "local" && p.enabled,
-    );
+      p => p.type === 'local' && p.enabled,
+    )
 
     if (localProviders.length === 0) {
       message.error(
         `No local provider found for model ${model.alias}. Please ensure a local provider is configured.`,
-      );
-      return;
+      )
+      return
     }
 
-    let provider: Provider | undefined = localProviders[0];
+    let provider: Provider | undefined = localProviders[0]
 
     if (localProviders.length > 1) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>(resolve => {
         let m = modal.info({
           icon: null,
           footer: null,
-          title: "Select Local Provider",
+          title: 'Select Local Provider',
           closable: false,
           onCancel: () => {
-            provider = undefined;
-            resolve();
+            provider = undefined
+            resolve()
           },
           content: (
             <div className="flex flex-col gap-2">
@@ -93,22 +93,22 @@ export function ModelCard({ model }: ModelCardProps) {
                 the model:
               </Text>
               <Select
-                options={localProviders.map((p) => ({
+                options={localProviders.map(p => ({
                   label: p.name,
                   value: p.id,
                 }))}
                 defaultValue={localProviders[0].id}
-                onChange={(value) => {
-                  provider = localProviders.find((p) => p.id === value);
+                onChange={value => {
+                  provider = localProviders.find(p => p.id === value)
                 }}
                 placeholder="Select a provider"
               />
-              <Flex className={"gap-2 w-full justify-end"}>
+              <Flex className={'gap-2 w-full justify-end'}>
                 <Button
                   onClick={() => {
-                    provider = undefined;
-                    m.destroy();
-                    resolve();
+                    provider = undefined
+                    m.destroy()
+                    resolve()
                   }}
                 >
                   Cancel
@@ -116,8 +116,8 @@ export function ModelCard({ model }: ModelCardProps) {
                 <Button
                   type="primary"
                   onClick={() => {
-                    resolve();
-                    m.destroy();
+                    resolve()
+                    m.destroy()
                   }}
                 >
                   Continue
@@ -125,20 +125,20 @@ export function ModelCard({ model }: ModelCardProps) {
               </Flex>
             </div>
           ),
-        });
-      });
+        })
+      })
     }
 
     if (!provider) {
-      return;
+      return
     }
 
     try {
       // Generate a unique model name for local storage
       const modelName = `${model.alias
         .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .replace(/\s+/g, "-")}-${Date.now().toString(36)}`;
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')}-${Date.now().toString(36)}`
 
       // Prepare download request
       const downloadRequest = {
@@ -146,7 +146,7 @@ export function ModelCard({ model }: ModelCardProps) {
         repository_id: repo.id,
         repository_path: model.repository_path,
         main_filename: model.main_filename,
-        repository_branch: "main", // Default branch
+        repository_branch: 'main', // Default branch
         name: modelName,
         alias: model.alias,
         description:
@@ -155,56 +155,56 @@ export function ModelCard({ model }: ModelCardProps) {
         capabilities: model.capabilities || {},
         parameters: model.recommended_parameters || {},
         settings: {}, // Empty settings for now
-      };
+      }
 
       // Start the download
-      await downloadModelFromRepository(downloadRequest);
+      await downloadModelFromRepository(downloadRequest)
 
       message.success(
         `Download started for ${model.alias}. You can monitor the progress in the download view.`,
-      );
+      )
     } catch (error: any) {
-      console.error("Failed to start model download:", error);
+      console.error('Failed to start model download:', error)
       message.error(
-        `Failed to start download for ${model.alias}: ${error.message || "Unknown error"}`,
-      );
+        `Failed to start download for ${model.alias}: ${error.message || 'Unknown error'}`,
+      )
     }
-  };
+  }
 
   const handleViewReadme = (model: HubModel) => {
     // Construct the README URL based on repository type
     const constructReadmeUrl = (model: HubModel): string => {
-      const baseUrl = model.repository_url.replace(/\/$/, "");
-      const repoPath = model.repository_path;
+      const baseUrl = model.repository_url.replace(/\/$/, '')
+      const repoPath = model.repository_path
 
-      if (baseUrl.startsWith("https://github.com")) {
-        return `${baseUrl}/${repoPath}/blob/main/README.md`;
-      } else if (baseUrl.startsWith("https://huggingface.co")) {
-        return `${baseUrl}/${repoPath}/blob/main/README.md`;
+      if (baseUrl.startsWith('https://github.com')) {
+        return `${baseUrl}/${repoPath}/blob/main/README.md`
+      } else if (baseUrl.startsWith('https://huggingface.co')) {
+        return `${baseUrl}/${repoPath}/blob/main/README.md`
       } else {
         // Fallback to the repository URL itself
-        return `${baseUrl}/${repoPath}`;
+        return `${baseUrl}/${repoPath}`
       }
-    };
-
-    const readmeUrl = constructReadmeUrl(model);
-    if (isDesktopApp) {
-      openUrl(readmeUrl).catch((err) => {
-        console.error(`Failed to open ${readmeUrl}:`, err);
-        message.error(`Failed to open ${readmeUrl}`);
-      });
-    } else {
-      window.open(readmeUrl, "_blank", "noopener,noreferrer");
     }
-  };
+
+    const readmeUrl = constructReadmeUrl(model)
+    if (isDesktopApp) {
+      openUrl(readmeUrl).catch(err => {
+        console.error(`Failed to open ${readmeUrl}:`, err)
+        message.error(`Failed to open ${readmeUrl}`)
+      })
+    } else {
+      window.open(readmeUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
 
   const handleCardClick = () => {
-    setShowDetails(true);
-  };
+    setShowDetails(true)
+  }
 
   const handleCloseDetails = () => {
-    setShowDetails(false);
-  };
+    setShowDetails(false)
+  }
 
   return (
     <>
@@ -213,11 +213,11 @@ export function ModelCard({ model }: ModelCardProps) {
         hoverable
         className="h-full cursor-pointer"
         classNames={{
-          body: "h-full flex flex-col gap-2 !py-1",
+          body: 'h-full flex flex-col gap-2 !py-1',
         }}
         onClick={handleCardClick}
       >
-        <Flex className={"gap-2 w-full flex-col flex-1"}>
+        <Flex className={'gap-2 w-full flex-col flex-1'}>
           <div>
             <Flex justify="space-between" align="start">
               <Title level={4} className="m-0">
@@ -237,7 +237,7 @@ export function ModelCard({ model }: ModelCardProps) {
           {/* Tags */}
           <div>
             <Flex wrap className="gap-1">
-              {model.tags.slice(0, 3).map((tag) => (
+              {model.tags.slice(0, 3).map(tag => (
                 <Tag key={tag} color="default" className="text-xs">
                   {tag}
                 </Tag>
@@ -305,9 +305,9 @@ export function ModelCard({ model }: ModelCardProps) {
             <Button
               size="small"
               icon={<FileTextOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewReadme(model);
+              onClick={e => {
+                e.stopPropagation()
+                handleViewReadme(model)
               }}
               className="flex-1"
             >
@@ -317,15 +317,15 @@ export function ModelCard({ model }: ModelCardProps) {
               type="primary"
               size="small"
               icon={<DownloadOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownload(model);
+              onClick={e => {
+                e.stopPropagation()
+                handleDownload(model)
               }}
               className="flex-[2]"
               disabled={isModelBeingDownloaded}
               loading={isModelBeingDownloaded}
             >
-              {isModelBeingDownloaded ? "Downloading..." : "Download"}
+              {isModelBeingDownloaded ? 'Downloading...' : 'Download'}
             </Button>
           </div>
 
@@ -342,5 +342,5 @@ export function ModelCard({ model }: ModelCardProps) {
         onClose={handleCloseDetails}
       />
     </>
-  );
+  )
 }

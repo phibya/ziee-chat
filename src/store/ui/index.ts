@@ -82,3 +82,9 @@ export {
   closeRepositoryDrawer,
   setRepositoryDrawerLoading,
 } from './repositoryDrawer.ts'
+export {
+  useProjectDrawerStore,
+  openProjectDrawer,
+  closeProjectDrawer,
+  setProjectDrawerLoading,
+} from './projectDrawer.ts'

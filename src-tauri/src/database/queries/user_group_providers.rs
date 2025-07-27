@@ -6,7 +6,7 @@ use crate::database::queries::{
 use crate::database::{
   get_database_pool,
   models::{
-    AssignProviderToGroupRequest, Provider, UserGroup, UserGroupProviderDb,
+    AssignProviderToGroupRequest, Provider, UserGroup, UserGroupProvider,
     UserGroupProviderResponse,
   },
 };
@@ -51,7 +51,7 @@ pub async fn assign_provider_to_group(
     }
 
     let relationship_id = Uuid::new_v4();
-    let relationship_row: UserGroupProviderDb = sqlx::query_as(
+    let relationship_row: UserGroupProvider = sqlx::query_as(
         "INSERT INTO user_group_providers (id, group_id, provider_id) 
          VALUES ($1, $2, $3) 
          RETURNING id, group_id, provider_id, assigned_at",
@@ -241,7 +241,7 @@ pub async fn list_user_group_provider_relationships(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let relationships: Vec<UserGroupProviderDb> = sqlx::query_as(
+    let relationships: Vec<UserGroupProvider> = sqlx::query_as(
         "SELECT id, group_id, provider_id, assigned_at 
          FROM user_group_providers 
          ORDER BY assigned_at DESC",

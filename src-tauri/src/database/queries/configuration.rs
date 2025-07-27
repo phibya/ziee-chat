@@ -1,10 +1,10 @@
-use crate::database::models::ConfigurationDb;
+use crate::database::models::Configuration;
 use crate::database::models::proxy::ProxySettings;
 use serde_json::Value;
 
-pub async fn get_configuration(name: &str) -> Result<Option<ConfigurationDb>, sqlx::Error> {
+pub async fn get_configuration(name: &str) -> Result<Option<Configuration>, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    sqlx::query_as::<_, ConfigurationDb>(
+    sqlx::query_as::<_, Configuration>(
         "SELECT id, name, value, description, created_at, updated_at FROM configurations WHERE name = $1"
     )
     .bind(name)
@@ -16,9 +16,9 @@ pub async fn set_configuration(
     name: &str,
     value: &Value,
     description: Option<&str>,
-) -> Result<ConfigurationDb, sqlx::Error> {
+) -> Result<Configuration, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    sqlx::query_as::<_, ConfigurationDb>(
+    sqlx::query_as::<_, Configuration>(
         r#"
         INSERT INTO configurations (name, value, description, updated_at)
         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
@@ -55,7 +55,7 @@ pub async fn set_config_value<T>(
     name: &str,
     value: &T,
     description: Option<&str>,
-) -> Result<ConfigurationDb, sqlx::Error>
+) -> Result<Configuration, sqlx::Error>
 where
     T: serde::Serialize,
 {

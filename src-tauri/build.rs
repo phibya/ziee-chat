@@ -248,8 +248,6 @@ fn main() {
         .parent() // removes /{profile}
         .unwrap();
 
-    let target_profile_dir = target_dir.join(&profile);
-
     // Use dedicated git-lfs directory
     let git_lfs_dir = target_dir.join("git-lfs");
     fs::create_dir_all(&git_lfs_dir)
@@ -369,20 +367,4 @@ fn main() {
 
     // Also run the default Tauri build script
     tauri_build::build();
-}
-
-fn copy_dir_all(src: &Path, dst: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dst)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let ty = entry.file_type()?;
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-        if ty.is_dir() {
-            copy_dir_all(&src_path, &dst_path)?;
-        } else {
-            fs::copy(&src_path, &dst_path)?;
-        }
-    }
-    Ok(())
 }

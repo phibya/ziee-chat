@@ -5,6 +5,7 @@ pub mod chat;
 pub mod configuration;
 pub mod download_instances;
 pub mod errors;
+pub mod files;
 pub mod hub;
 pub mod middleware;
 pub mod model_uploads;

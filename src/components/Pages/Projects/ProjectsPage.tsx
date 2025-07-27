@@ -1,67 +1,31 @@
 import React, { useEffect, useState } from 'react'
-import {
-  App,
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Form,
-  Input,
-  MenuProps,
-  Modal,
-  Row,
-  Select,
-  Typography,
-} from 'antd'
-import { Drawer } from '../common/Drawer.tsx'
-import {
-  CalendarOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  FolderOutlined,
-  MoreOutlined,
-  PlusOutlined,
-  SearchOutlined,
-} from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { App, Button, Col, Input, Row, Select, Typography } from 'antd'
+import { FolderOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { Project } from '../../types/api/projects'
-import { PageContainer } from '../common/PageContainer'
+import { PageContainer } from '../../common/PageContainer.tsx'
 import {
   clearProjectsStoreError,
-  createNewProject,
-  deleteExistingProject,
   loadAllUserProjects,
+  openProjectDrawer,
   Stores,
-  updateExistingProject,
-} from '../../store'
+} from '../../../store'
+import { ProjectFormDrawer } from './ProjectFormDrawer.tsx'
+import { ProjectCard } from './ProjectCard.tsx'
 
 const { Title, Text } = Typography
 const { Search } = Input
-const { TextArea } = Input
-
-interface ProjectFormData {
-  name: string
-  description?: string
-  is_private?: boolean
-}
 
 export const ProjectsPage: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const navigate = useNavigate()
 
   // Projects store
-  const { projects, loading, creating, updating, error } = Stores.Projects
+  const { projects, loading, error } = Stores.Projects
 
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'activity' | 'name' | 'created'>(
     'activity',
   )
-  const [newProjectModalVisible, setNewProjectModalVisible] = useState(false)
-  const [editProjectModalVisible, setEditProjectModalVisible] = useState(false)
-  const [editingProject, setEditingProject] = useState<Project | null>(null)
-  const [form] = Form.useForm<ProjectFormData>()
 
   useEffect(() => {
     loadAllUserProjects()
@@ -113,99 +77,6 @@ export const ProjectsPage: React.FC = () => {
     return sortedProjects
   }
 
-  const handleCreateProject = async (values: ProjectFormData) => {
-    try {
-      await createNewProject({
-        name: values.name,
-        description: values.description || '',
-      })
-      setNewProjectModalVisible(false)
-      form.resetFields()
-      message.success(t('projects.projectCreated'))
-    } catch (error) {
-      // Error is handled by the store
-      console.error('Failed to create project:', error)
-    }
-  }
-
-  const handleEditProject = async (values: ProjectFormData) => {
-    if (!editingProject) return
-
-    try {
-      await updateExistingProject(editingProject.id, {
-        name: values.name,
-        description: values.description,
-      })
-      setEditProjectModalVisible(false)
-      setEditingProject(null)
-      form.resetFields()
-      message.success(t('projects.projectUpdated'))
-    } catch (error) {
-      // Error is handled by the store
-      console.error('Failed to update project:', error)
-    }
-  }
-
-  const handleDeleteProject = async (project: Project) => {
-    try {
-      await deleteExistingProject(project.id)
-      message.success(t('projects.projectDeleted'))
-    } catch (error) {
-      // Error is handled by the store
-      console.error('Failed to delete project:', error)
-    }
-  }
-
-  const openEditModal = (project: Project) => {
-    setEditingProject(project)
-    form.setFieldsValue({
-      name: project.name,
-      description: project.description,
-      is_private: project.is_private,
-    })
-    setEditProjectModalVisible(true)
-  }
-
-  const formatTimeAgo = (date: string) => {
-    const now = new Date()
-    const past = new Date(date)
-    const diffMs = now.getTime() - past.getTime()
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-    const diffMonths = Math.floor(diffDays / 30)
-
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return '1 day ago'
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    if (diffMonths === 1) return '1 month ago'
-    if (diffMonths < 12) return `${diffMonths} months ago`
-    return `${Math.floor(diffMonths / 12)} years ago`
-  }
-
-  const getProjectMenuItems = (project: Project): MenuProps['items'] => [
-    {
-      key: 'edit',
-      icon: <EditOutlined />,
-      label: t('buttons.edit'),
-      onClick: () => openEditModal(project),
-    },
-    {
-      key: 'delete',
-      icon: <DeleteOutlined />,
-      label: t('buttons.delete'),
-      danger: true,
-      onClick: () => {
-        Modal.confirm({
-          title: t('projects.deleteProject'),
-          content: `Are you sure you want to delete "${project.name}"? This action cannot be undone.`,
-          okText: 'Delete',
-          okType: 'danger',
-          onOk: () => handleDeleteProject(project),
-        })
-      },
-    },
-  ]
-
   return (
     <PageContainer>
       {/* Header */}
@@ -216,7 +87,7 @@ export const ProjectsPage: React.FC = () => {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => setNewProjectModalVisible(true)}
+          onClick={() => openProjectDrawer()}
         >
           New project
         </Button>
@@ -251,58 +122,7 @@ export const ProjectsPage: React.FC = () => {
       <Row gutter={[16, 16]}>
         {getFilteredAndSortedProjects().map(project => (
           <Col xs={24} sm={12} lg={8} xl={6} key={project.id}>
-            <Card
-              hoverable
-              className="h-full cursor-pointer"
-              onClick={() => navigate(`/projects/${project.id}`)}
-              actions={[
-                <Dropdown
-                  menu={{ items: getProjectMenuItems(project) }}
-                  trigger={['click']}
-                >
-                  <Button
-                    type="text"
-                    icon={<MoreOutlined />}
-                    onClick={e => e.stopPropagation()}
-                  />
-                </Dropdown>,
-              ]}
-            >
-              <div className="flex flex-col h-full">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <FolderOutlined />
-                    <Text strong className="text-base">
-                      {project.name}
-                    </Text>
-                  </div>
-                  {project.is_private && (
-                    <Text type="secondary" className="text-xs">
-                      Private
-                    </Text>
-                  )}
-                </div>
-
-                {project.description && (
-                  <Text type="secondary" className="text-sm mb-4 line-clamp-2">
-                    {project.description}
-                  </Text>
-                )}
-
-                <div className="mt-auto">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <CalendarOutlined />
-                      <span>Updated {formatTimeAgo(project.updated_at)}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span>{project.document_count || 0} documents</span>
-                    <span>{project.conversation_count || 0} conversations</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
+            <ProjectCard project={project} />
           </Col>
         ))}
       </Row>
@@ -323,7 +143,7 @@ export const ProjectsPage: React.FC = () => {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() => setNewProjectModalVisible(true)}
+              onClick={() => openProjectDrawer()}
             >
               Create project
             </Button>
@@ -331,103 +151,7 @@ export const ProjectsPage: React.FC = () => {
         </div>
       )}
 
-      {/* New Project Modal */}
-      <Drawer
-        title={t('projects.createPersonalProject')}
-        open={newProjectModalVisible}
-        onClose={() => {
-          setNewProjectModalVisible(false)
-          form.resetFields()
-        }}
-        footer={null}
-        width={600}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleCreateProject}
-          initialValues={{ is_private: true }}
-        >
-          <Form.Item
-            label={t('projects.whatAreYouWorkingOn')}
-            name="name"
-            rules={[{ required: true, message: 'Please enter a project name' }]}
-          >
-            <Input placeholder={t('forms.nameYourProject')} size="large" />
-          </Form.Item>
-
-          <Form.Item
-            label={t('projects.whatAreYouTryingToAchieve')}
-            name="description"
-          >
-            <TextArea
-              placeholder={t('forms.describeYourProject')}
-              rows={4}
-              size="large"
-            />
-          </Form.Item>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button
-              onClick={() => {
-                setNewProjectModalVisible(false)
-                form.resetFields()
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="primary" htmlType="submit" loading={creating}>
-              Create project
-            </Button>
-          </div>
-        </Form>
-      </Drawer>
-
-      {/* Edit Project Modal */}
-      <Drawer
-        title={t('projects.editProject')}
-        open={editProjectModalVisible}
-        onClose={() => {
-          setEditProjectModalVisible(false)
-          setEditingProject(null)
-          form.resetFields()
-        }}
-        footer={null}
-        width={600}
-      >
-        <Form form={form} layout="vertical" onFinish={handleEditProject}>
-          <Form.Item
-            label={t('projects.projectName')}
-            name="name"
-            rules={[{ required: true, message: 'Please enter a project name' }]}
-          >
-            <Input placeholder={t('forms.nameYourProject')} size="large" />
-          </Form.Item>
-
-          <Form.Item label={t('labels.description')} name="description">
-            <TextArea
-              placeholder={t('forms.describeYourProject')}
-              rows={4}
-              size="large"
-            />
-          </Form.Item>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <Button
-              onClick={() => {
-                setEditProjectModalVisible(false)
-                setEditingProject(null)
-                form.resetFields()
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="primary" htmlType="submit" loading={updating}>
-              Update project
-            </Button>
-          </div>
-        </Form>
-      </Drawer>
+      <ProjectFormDrawer />
     </PageContainer>
   )
 }

@@ -37,7 +37,7 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
         return Ok(None);
     };
 
-    let user_db = UserDb {
+    let user_base = UserBase {
         id: user_row.get("id"),
         username: user_row.get("username"),
         created_at: user_row.get("created_at"),
@@ -70,9 +70,9 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
         .fetch_all(&*pool)
         .await?;
 
-    let services: Vec<UserServiceDb> = service_rows
+    let services: Vec<UserService> = service_rows
         .into_iter()
-        .map(|row| UserServiceDb {
+        .map(|row| UserService {
             id: row.get("id"),
             user_id: row.get("user_id"),
             service_name: row.get("service_name"),
@@ -88,9 +88,9 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
     .fetch_all(&*pool)
     .await?;
 
-    let login_tokens: Vec<UserLoginTokenDb> = token_rows
+    let login_tokens: Vec<UserLoginToken> = token_rows
         .into_iter()
-        .map(|row| UserLoginTokenDb {
+        .map(|row| UserLoginToken {
             id: row.get("id"),
             user_id: row.get("user_id"),
             token: row.get("token"),
@@ -104,7 +104,7 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
     let groups = super::user_groups::get_user_groups(user_id).await?;
 
     Ok(Some(User::from_db_parts(
-        user_db,
+        user_base,
         emails,
         services,
         login_tokens,
@@ -376,7 +376,7 @@ pub async fn create_user_with_password_service(
     .fetch_one(&mut *tx)
     .await?;
 
-    let user_db = UserDb {
+    let user_base = UserBase {
         id: user_row.get("id"),
         username: user_row.get("username"),
         created_at: user_row.get("created_at"),
@@ -391,7 +391,7 @@ pub async fn create_user_with_password_service(
     let email_row = sqlx::query(
     "INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3) RETURNING id, user_id, address, verified, created_at"
   )
-    .bind(user_db.id)
+    .bind(user_base.id)
     .bind(&email)
     .bind(false)
     .fetch_one(&mut *tx)
@@ -416,13 +416,13 @@ pub async fn create_user_with_password_service(
         let service_row = sqlx::query(
       "INSERT INTO user_services (user_id, service_name, service_data) VALUES ($1, $2, $3) RETURNING id, user_id, service_name, service_data, created_at"
     )
-      .bind(user_db.id)
+      .bind(user_base.id)
       .bind("password")
       .bind(&password_service_json)
       .fetch_one(&mut *tx)
       .await?;
 
-        let service_db = UserServiceDb {
+        let service_db = UserService {
             id: service_row.get("id"),
             user_id: service_row.get("user_id"),
             service_name: service_row.get("service_name"),
@@ -435,7 +435,7 @@ pub async fn create_user_with_password_service(
 
     tx.commit().await?;
 
-    let user = User::from_db_parts(user_db, vec![email_db], services, vec![], vec![]);
+    let user = User::from_db_parts(user_base, vec![email_db], services, vec![], vec![]);
 
     // Automatically assign new user to default user group
     if let Err(e) =

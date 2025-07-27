@@ -11,7 +11,6 @@ use crate::{
     database::{
         models::{
             CreateProjectRequest, ProjectDetailResponse, ProjectListResponse, UpdateProjectRequest,
-            UploadDocumentRequest, UploadDocumentResponse,
         },
         queries::{get_database_pool, projects},
     },
@@ -79,16 +78,6 @@ pub async fn get_project(
         }
     };
 
-    // Get documents
-    let documents = match projects::list_project_documents(&pool, project_id, user.user_id).await {
-        Ok(Some(docs)) => docs,
-        Ok(None) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            eprintln!("Failed to get project documents: {:?}", e);
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-
     // Get conversations
     let conversations =
         match projects::list_project_conversations(&pool, project_id, user.user_id).await {
@@ -102,7 +91,6 @@ pub async fn get_project(
 
     let response = ProjectDetailResponse {
         project,
-        documents,
         conversations,
     };
 
@@ -145,56 +133,6 @@ pub async fn delete_project(
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Failed to delete project: {:?}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
-// Upload document to project
-pub async fn upload_document(
-    Extension(user): Extension<AuthenticatedUser>,
-    Path(project_id): Path<Uuid>,
-    Json(request): Json<UploadDocumentRequest>,
-) -> Result<Json<UploadDocumentResponse>, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    if request.file_name.trim().is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
-    // For now, use a simple file path - in production this would handle actual file upload
-    let file_path = format!("/projects/{}/{}", project_id, request.file_name);
-
-    match projects::create_project_document(&pool, project_id, user.user_id, &request, file_path)
-        .await
-    {
-        Ok(Some(document)) => {
-            let response = UploadDocumentResponse {
-                document,
-                upload_url: None, // Would contain signed URL for file upload in production
-            };
-            Ok(Json(response))
-        }
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            eprintln!("Failed to upload document: {:?}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
-
-// Delete document from project
-pub async fn delete_document(
-    Extension(user): Extension<AuthenticatedUser>,
-    Path((project_id, document_id)): Path<(Uuid, Uuid)>,
-) -> Result<StatusCode, StatusCode> {
-    let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    match projects::delete_project_document(&pool, document_id, project_id, user.user_id).await {
-        Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            eprintln!("Failed to delete document: {:?}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
