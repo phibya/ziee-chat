@@ -31,13 +31,7 @@
         "decorations": true,
         "titleBarStyle": "Overlay",
         "windowEffects": {
-          "effects": [
-            "fullScreenUI",
-            "mica",
-            "tabbed",
-            "blur",
-            "acrylic"
-          ],
+          "effects": ["fullScreenUI", "mica", "tabbed", "blur", "acrylic"],
           "state": "active",
           "radius": 8
         }
@@ -59,7 +53,8 @@
     ],
     "resources": {
       "../hub": "hub",
-      "../dist/ui": "ui"
+      "../dist/ui": "ui",
+      "./target/pdfium/target/*": "lib"
     },
     "externalBin": [
       "target/git-lfs/git-lfs",

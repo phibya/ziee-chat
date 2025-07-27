@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use super::resource_paths::ResourcePaths;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct HubConfig {
@@ -12,40 +13,18 @@ pub struct HubConfig {
 }
 
 /// Determines the hub folder path based on the environment
+/// Uses the ResourcePaths utility for platform-specific path resolution
 pub fn get_hub_folder_path() -> PathBuf {
-    // First check if CARGO_MANIFEST_DIR is set (development environment)
-    if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
-        let dev_hub_path = PathBuf::from(manifest_dir).parent().unwrap().join("hub");
-        println!("Development mode: Checking hub path at {}", dev_hub_path.display());
-        if dev_hub_path.exists() {
-            println!("Found hub folder in development at: {}", dev_hub_path.display());
-            return dev_hub_path;
-        }
+    let hub_path = ResourcePaths::get_hub_folder();
+    
+    // Log the path for debugging
+    if hub_path.exists() {
+        println!("Found hub folder at: {}", hub_path.display());
+    } else {
+        println!("Warning: Using hub path at: {} (directory does not exist yet)", hub_path.display());
     }
     
-    let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-    let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
-    
-    // Check if we're in development (hub folder exists in same directory)
-    let dev_hub_path = exe_dir.join("hub");
-    if dev_hub_path.exists() {
-        println!("Found hub folder at: {}", dev_hub_path.display());
-        return dev_hub_path;
-    }
-    
-    // Production environment
-    if cfg!(target_os = "macos") {
-        // On macOS, check ../Resources/hub
-        let resources_hub_path = exe_dir.join("../Resources/hub");
-        if resources_hub_path.exists() {
-            println!("Found hub folder in macOS Resources at: {}", resources_hub_path.display());
-            return resources_hub_path;
-        }
-    }
-    
-    // Fallback to same folder as binary
-    println!("Warning: Using fallback hub path at: {}", exe_dir.join("hub").display());
-    exe_dir.join("hub")
+    hub_path
 }
 
 impl HubConfig {

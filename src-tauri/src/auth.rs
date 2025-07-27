@@ -27,16 +27,10 @@ pub struct AuthConfig {
 impl Default for AuthConfig {
     fn default() -> Self {
         Self {
-            jwt_secret: std::env::var("JWT_SECRET").unwrap_or_else(|_| generate_jwt_secret()),
+            jwt_secret: crate::utils::jwt_secret::get_jwt_secret(),
             jwt_expiration_hours: 24 * 7, // 1 week
         }
     }
-}
-
-fn generate_jwt_secret() -> String {
-    let mut rng = rand::rng();
-    let secret: Vec<u8> = (0..32).map(|_| rng.random()).collect();
-    hex::encode(secret)
 }
 
 pub struct AuthService {

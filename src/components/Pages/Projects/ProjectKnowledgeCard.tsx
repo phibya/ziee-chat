@@ -63,7 +63,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
         className="!p-0 !m-0
         [&_.ant-upload-drag]:!border-none [&_.ant-upload-drag]:!bg-transparent
         [&_.ant-upload-drag-hover]:!border-dashed
-        absolute left-2 right-2 top-2 bottom-12
+        absolute left-2 right-2 top-3 bottom-2
         "
         openFileDialogOnClick={false}
       />
@@ -83,7 +83,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
 
       {/* Upload Progress */}
       {showProgress && (
-        <div className={'py-0 flex flex-col gap-4'}>
+        <div className={'py-0 flex flex-col gap-1 pt-2'}>
           <Text strong>Uploading files...</Text>
           <div className={'py-4 flex flex-col gap-2'}>
             {uploadProgress.map((progress, index) => (
@@ -117,17 +117,12 @@ export const ProjectKnowledgeCard: React.FC = () => {
         </Button>
       </Flex>
 
-      <div
-        className="overflow-y-auto flex-1 mt-3"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '8px',
-        }}
-      >
-        {projectFiles.map(file => (
-          <FileCard key={file.id} file={file} />
-        ))}
+      <div className={'overflow-y-auto mt-3 flex-1'}>
+        <div className="flex gap-2 flex-wrap">
+          {projectFiles.map(file => (
+            <FileCard key={file.id} file={file} />
+          ))}
+        </div>
       </div>
     </Card>
   )

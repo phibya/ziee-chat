@@ -395,12 +395,30 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       throw new Error(errorMessage)
     }
 
-    //try to parse the response as JSON else return as text
-    if (response.headers.get('Content-Type')?.includes('application/json')) {
+    //try to parse the response based on content type
+    const contentType = response.headers.get('Content-Type') || ''
+    
+    if (contentType.includes('application/json')) {
       return (await response.json()) as ResponseByUrl<U>
-    } else {
+    } else if (contentType.startsWith('text/') || 
+               contentType.includes('application/xml') ||
+               contentType.includes('application/javascript') ||
+               contentType.includes('application/json')) {
+      // Return text for text-like content types
       const textResponse = await response.text()
-      return textResponse as unknown as ResponseByUrl<U> // Fallback to text if not JSON
+      return textResponse as unknown as ResponseByUrl<U>
+    } else if (contentType.startsWith('image/') ||
+               contentType.startsWith('video/') ||
+               contentType.startsWith('audio/') ||
+               contentType.includes('application/pdf') ||
+               contentType.includes('application/octet-stream')) {
+      // Return blob for binary content types
+      const blobResponse = await response.blob()
+      return blobResponse as unknown as ResponseByUrl<U>
+    } else {
+      // Fallback to text for unknown content types
+      const textResponse = await response.text()
+      return textResponse as unknown as ResponseByUrl<U>
     }
   } catch (error) {
     console.error(`Error calling endpoint ${endpointUrl}:`, error)

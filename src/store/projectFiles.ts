@@ -253,6 +253,7 @@ export const getFileThumbnail = async (
 ): Promise<string | null> => {
   try {
     const response = await ApiClient.Files.preview({ id: fileId, page: 1 })
+    console.log({ response })
     return window.URL.createObjectURL(response)
   } catch (_error) {
     console.debug('Thumbnail not available for file:', fileId)
@@ -290,6 +291,29 @@ export const getFileContent = async (fileId: string): Promise<string> => {
     return await blob.text()
   } catch (error) {
     console.error('Failed to fetch file content:', error)
+    throw error
+  }
+}
+
+// Generate download token for a file
+export const generateFileDownloadToken = async (fileId: string): Promise<{ token: string; expires_at: string }> => {
+  try {
+    const response = await ApiClient.Files.generateDownloadToken({ id: fileId })
+    return response
+  } catch (error) {
+    console.error('Failed to generate download token:', error)
+    throw error
+  }
+}
+
+// Get download URL with token for a file (useful for <a> tags)
+export const getFileDownloadUrl = async (fileId: string, baseUrl?: string): Promise<string> => {
+  try {
+    const tokenResponse = await generateFileDownloadToken(fileId)
+    const apiBaseUrl = baseUrl || window.location.origin
+    return `${apiBaseUrl}/api/files/${fileId}/download-with-token?token=${tokenResponse.token}`
+  } catch (error) {
+    console.error('Failed to generate download URL:', error)
     throw error
   }
 }

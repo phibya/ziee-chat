@@ -4,9 +4,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const GIT_LFS_VERSION: &str = "v3.7.0";
+const PDFIUM_VERSION: &str = "6721"; // Latest stable version from pdfium-binaries
 
-fn download_git_lfs(url: &str, target_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    println!("Downloading git-lfs from: {}", url);
+fn download_binary(url: &str, target_path: &Path, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Downloading {} from: {}", name, url);
 
     let response = ureq::get(url).call()?;
     let mut reader = response.into_reader();
@@ -15,6 +16,14 @@ fn download_git_lfs(url: &str, target_path: &Path) -> Result<(), Box<dyn std::er
     std::io::copy(&mut reader, &mut file)?;
 
     Ok(())
+}
+
+fn download_git_lfs(url: &str, target_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    download_binary(url, target_path, "git-lfs")
+}
+
+fn download_pdfium(url: &str, target_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    download_binary(url, target_path, "PDFium")
 }
 
 fn extract_git_lfs(
@@ -62,6 +71,43 @@ fn extract_git_lfs(
     }
 
     Err("git-lfs binary not found in archive".into())
+}
+
+fn extract_pdfium(
+    archive_path: &Path,
+    target_dir: &Path,
+    target_binary_name: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    fs::create_dir_all(target_dir)?;
+
+    // Extract tar.gz file
+    let tar_gz = fs::File::open(archive_path)?;
+    let tar = flate2::read::GzDecoder::new(tar_gz);
+    let mut archive = tar::Archive::new(tar);
+
+    // PDFium dynamic libraries are typically in lib/ directory
+    let library_names = if target_binary_name.contains("windows") {
+        vec!["bin/pdfium.dll", "lib/pdfium.dll"]
+    } else if target_binary_name.contains("darwin") {
+        vec!["lib/libpdfium.dylib"]
+    } else {
+        vec!["lib/libpdfium.so"]
+    };
+
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let path = entry.path()?;
+        let path_str = path.to_string_lossy();
+
+        // Check if this is the PDFium library we're looking for
+        if library_names.iter().any(|name| path_str.ends_with(name)) {
+            let output_path = target_dir.join(target_binary_name);
+            entry.unpack(&output_path)?;
+            return Ok(output_path);
+        }
+    }
+
+    Err("PDFium library not found in archive".into())
 }
 
 fn create_binary_symlink(
@@ -315,6 +361,145 @@ fn main() {
         fs::set_permissions(&target_path, perms).unwrap();
     }
 
+    // === PDFium Binary Download ===
+    
+    // Use dedicated PDFium directory
+    let pdfium_dir = target_dir.join("pdfium");
+    fs::create_dir_all(&pdfium_dir)
+        .unwrap_or_else(|e| panic!("Failed to create PDFium directory: {}", e));
+
+    // Map target to PDFium platform names
+    let (pdfium_platform, pdfium_arch) = if target.contains("windows") {
+        if target.contains("x86_64") {
+            ("win", "x64")
+        } else if target.contains("aarch64") {
+            ("win", "arm64")
+        } else {
+            panic!("Unsupported Windows architecture for PDFium: {}", target);
+        }
+    } else if target.contains("darwin") {
+        if target.contains("x86_64") {
+            ("mac", "x64")
+        } else if target.contains("aarch64") {
+            ("mac", "arm64")
+        } else {
+            panic!("Unsupported macOS architecture for PDFium: {}", target);
+        }
+    } else if target.contains("linux") {
+        if target.contains("x86_64") {
+            ("linux", "x64")
+        } else if target.contains("aarch64") {
+            ("linux", "arm64")
+        } else {
+            panic!("Unsupported Linux architecture for PDFium: {}", target);
+        }
+    } else {
+        panic!("Unsupported platform for PDFium: {}", target);
+    };
+
+    // Use target triple format for dynamic library naming
+    let pdfium_binary_name = if target.contains("windows") {
+        format!("pdfium-{}.dll", target)
+    } else if target.contains("darwin") {
+        format!("libpdfium-{}.dylib", target)
+    } else {
+        format!("libpdfium-{}.so", target)
+    };
+
+    let pdfium_target_path = pdfium_dir.join(&pdfium_binary_name);
+    
+    println!("PDFium target path:  {:?}", pdfium_target_path);
+
+    // Download PDFium if it doesn't exist
+    if !pdfium_target_path.exists() {
+        println!("Downloading PDFium library...");
+        
+        // Create a temporary directory for PDFium download
+        let pdfium_temp_dir = Path::new(&out_dir).join("pdfium-download");
+        fs::create_dir_all(&pdfium_temp_dir).unwrap();
+
+        // Construct the PDFium download URL for dynamic libraries
+        // Format: https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-platform-arch.tgz
+        let pdfium_archive_name = format!("pdfium-{}-{}.tgz", pdfium_platform, pdfium_arch);
+        let pdfium_download_url = format!(
+            "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/{}",
+            pdfium_archive_name
+        );
+
+        let pdfium_archive_path = pdfium_temp_dir.join(&pdfium_archive_name);
+
+        // Download the PDFium archive
+        if let Err(e) = download_pdfium(&pdfium_download_url, &pdfium_archive_path) {
+            eprintln!("Warning: Failed to download PDFium: {}", e);
+            eprintln!("PDF thumbnail generation will not be available");
+        } else {
+            // Extract the PDFium library
+            match extract_pdfium(&pdfium_archive_path, &pdfium_temp_dir, &pdfium_binary_name) {
+                Ok(extracted_path) => {
+                    // Copy to target directory with platform-specific name
+                    if let Err(e) = fs::copy(&extracted_path, &pdfium_target_path) {
+                        eprintln!("Warning: Failed to copy PDFium binary: {}", e);
+                    } else {
+                        println!("Successfully installed PDFium to {:?}", pdfium_target_path);
+                        
+                        // Make it executable on Unix
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            let mut perms = fs::metadata(&pdfium_target_path).unwrap().permissions();
+                            perms.set_mode(0o755);
+                            fs::set_permissions(&pdfium_target_path, perms).unwrap();
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to extract PDFium: {}", e);
+                }
+            }
+        }
+
+        // Clean up temporary files
+        fs::remove_dir_all(&pdfium_temp_dir).ok();
+    } else {
+        println!("PDFium binary already exists at {:?}", pdfium_target_path);
+    }
+    
+    // Always copy to lib directories for Tauri bundling (during every build)
+    if pdfium_target_path.exists() {
+        let standardized_name = if target.contains("windows") {
+            "pdfium.dll"
+        } else if target.contains("darwin") {
+            "libpdfium.dylib"
+        } else {
+            "libpdfium.so"
+        };
+        
+        // Copy to both debug and release lib directories
+        for build_profile in ["debug", "release"] {
+            let profile_dir = target_dir.join(build_profile);
+            let lib_dir = profile_dir.join("lib");
+            fs::create_dir_all(&lib_dir).ok();
+            
+            let pdfium_lib_path = lib_dir.join(standardized_name);
+            if let Err(e) = fs::copy(&pdfium_target_path, &pdfium_lib_path) {
+                eprintln!("Warning: Failed to copy PDFium to {} lib directory: {}", build_profile, e);
+            } else {
+                println!("Successfully copied PDFium to {} lib directory: {:?}", build_profile, pdfium_lib_path);
+            }
+            
+            // Make lib version executable on Unix
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if pdfium_lib_path.exists() {
+                    let mut lib_perms = fs::metadata(&pdfium_lib_path).unwrap().permissions();
+                    lib_perms.set_mode(0o755);
+                    fs::set_permissions(&pdfium_lib_path, lib_perms).unwrap();
+                }
+            }
+        }
+    }
+
     // Build mistralrs-server
     println!("cargo:rerun-if-changed=mistralrs-server");
     let mistralrs_path = match build_mistralrs_server(&target_dir, &target) {
@@ -325,44 +510,24 @@ fn main() {
             None
         }
     };
-
-    // Create symlinks in target/{profile} directories for both debug and release
-    for build_profile in ["debug", "release"] {
-        let profile_dir = target_dir.join(build_profile);
-        fs::create_dir_all(&profile_dir).ok();
-
-        // Create git-lfs symlink
-        if let Err(e) = create_binary_symlink(
-            &git_lfs_dir,
-            &profile_dir,
-            &target_binary_name,
-            "git-lfs",
-            &target,
-        ) {
-            eprintln!(
-                "Warning: Failed to create git-lfs symlink in {} directory: {}",
-                build_profile, e
-            );
+    
+    // Set environment variables for PDFium dynamic library path
+    if pdfium_target_path.exists() {
+        let pdfium_dir_str = pdfium_dir.to_string_lossy();
+        
+        // Set PDFIUM_DYNAMIC_LIB_PATH for pdfium-render crate
+        println!("cargo:rustc-env=PDFIUM_DYNAMIC_LIB_PATH={}", pdfium_dir_str);
+        
+        // For runtime, set the library path environment variable
+        if target.contains("windows") {
+            println!("cargo:rustc-env=PATH={};{}", pdfium_dir_str, env::var("PATH").unwrap_or_default());
+        } else if target.contains("darwin") {
+            println!("cargo:rustc-env=DYLD_LIBRARY_PATH={}", pdfium_dir_str);
+        } else {
+            println!("cargo:rustc-env=LD_LIBRARY_PATH={}", pdfium_dir_str);
         }
-
-        // Create mistralrs-server symlink if it was built successfully
-        if let Some(ref mistralrs_binary_path) = mistralrs_path {
-            let mistralrs_binary_name =
-                mistralrs_binary_path.file_name().unwrap().to_str().unwrap();
-            let mistralrs_source_dir = mistralrs_binary_path.parent().unwrap();
-            if let Err(e) = create_binary_symlink(
-                mistralrs_source_dir,
-                &profile_dir,
-                mistralrs_binary_name,
-                "mistralrs-server",
-                &target,
-            ) {
-                eprintln!(
-                    "Warning: Failed to create mistralrs-server symlink in {} directory: {}",
-                    build_profile, e
-                );
-            }
-        }
+        
+        println!("cargo:rustc-env=PDFIUM_LIB_PATH={}", pdfium_dir_str);
     }
 
     // Also run the default Tauri build script

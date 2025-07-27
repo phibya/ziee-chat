@@ -4,6 +4,9 @@ use std::process::Command;
 
 use crate::processing::ThumbnailGenerator;
 
+// Maximum number of thumbnails to generate for office documents
+const MAX_OFFICE_THUMBNAILS: u32 = 5;
+
 pub struct OfficeThumbnailGenerator;
 
 impl OfficeThumbnailGenerator {
@@ -11,11 +14,30 @@ impl OfficeThumbnailGenerator {
         Self
     }
 
+    /// Check if Poppler tools are available on the system
+    fn is_poppler_available(&self) -> bool {
+        // Check if pdfinfo is available
+        let pdfinfo_check = Command::new("pdfinfo")
+            .arg("-v")
+            .output();
+
+        match pdfinfo_check {
+            Ok(output) => output.status.success(),
+            Err(_) => false,
+        }
+    }
+
     async fn generate_office_thumbnails_with_libreoffice(
         &self,
         file_path: &Path,
         output_dir: &Path,
     ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+        // Check if Poppler tools are available (needed for PDF conversion)
+        if !self.is_poppler_available() {
+            eprintln!("Poppler tools (pdfinfo/pdftoppm) not found. Office document thumbnails will not be generated.");
+            return Ok(0); // Return 0 thumbnails generated
+        }
+
         // Create a temporary directory for conversion
         let temp_dir = std::env::temp_dir().join(format!("office_thumb_{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir)?;
@@ -64,13 +86,16 @@ impl OfficeThumbnailGenerator {
             }
         }
 
-        // Limit to maximum 5 pages for office documents
-        let max_pages = page_count.min(5);
+        // Limit to maximum pages for office documents
+        let max_pages = page_count.min(MAX_OFFICE_THUMBNAILS);
 
         // Generate thumbnails for each page
         for page in 1..=max_pages {
+            let target_file = output_dir.join(format!("page_{}.jpg", page));
+            
             let output = Command::new("pdftoppm")
                 .arg("-jpeg")
+                .arg("-singlefile") // Generate single file without numbering
                 .arg("-scale-to")
                 .arg("300")
                 .arg("-f")
@@ -78,19 +103,16 @@ impl OfficeThumbnailGenerator {
                 .arg("-l")
                 .arg(&page.to_string())
                 .arg(&pdf_file)
-                .arg(output_dir.join(format!("page_{}", page)))
+                .arg(&target_file.with_extension("")) // Output without extension, pdftoppm will add .jpg
                 .output();
 
             if let Ok(output) = output {
-                if output.status.success() {
-                    // Rename generated file to expected format
-                    let generated_file = output_dir.join(format!("page_{}-1.jpg", page));
-                    let target_file = output_dir.join(format!("page_{}.jpg", page));
-                    
-                    if generated_file.exists() {
-                        std::fs::rename(generated_file, target_file).ok();
-                    }
+                if !output.status.success() {
+                    eprintln!("Failed to generate thumbnail for page {}: {}", page, String::from_utf8_lossy(&output.stderr));
+                    // Continue with other pages
                 }
+                // With -singlefile, pdftoppm should create the file with the exact name we want
+                // No renaming needed as the target file should already exist
             }
         }
 

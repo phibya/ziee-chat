@@ -1,8 +1,13 @@
 use async_trait::async_trait;
 use std::path::Path;
-use std::process::Command;
+use pdfium_render::prelude::*;
+use image::{RgbImage, ImageBuffer};
 
 use crate::processing::ThumbnailGenerator;
+use crate::utils::resource_paths::ResourcePaths;
+
+// Maximum number of thumbnails to generate for PDF files
+const MAX_PDF_THUMBNAILS: u32 = 5;
 
 pub struct PdfThumbnailGenerator;
 
@@ -11,58 +16,86 @@ impl PdfThumbnailGenerator {
         Self
     }
 
-    async fn generate_pdf_thumbnails_with_pdftoppm(
+    async fn generate_pdf_thumbnails(
         &self,
         file_path: &Path,
         output_dir: &Path,
     ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-        // First, get the number of pages
-        let info_output = Command::new("pdfinfo")
-            .arg(file_path)
-            .output()?;
+        // Initialize PDFium - dynamic linking using platform-specific paths
+        let pdfium = {
+            // Get platform-specific library search paths
+            let library_name = if cfg!(target_os = "windows") {
+                "pdfium.dll"
+            } else if cfg!(target_os = "macos") {
+                "libpdfium.dylib"
+            } else {
+                "libpdfium.so"
+            };
+            
+            let search_paths = ResourcePaths::get_library_search_paths(library_name);
 
-        let mut page_count = 1u32;
-        if info_output.status.success() {
-            let info_text = String::from_utf8_lossy(&info_output.stdout);
-            for line in info_text.lines() {
-                if let Some(value) = line.strip_prefix("Pages:") {
-                    page_count = value.trim().parse::<u32>().unwrap_or(1);
+            // Try each path in order
+            let mut pdfium_result = None;
+            for path in &search_paths {
+                if let Ok(lib) = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(path)) {
+                    pdfium_result = Some(lib);
                     break;
                 }
             }
-        }
+            
+            // Fallback to system library if bundled library not found
+            pdfium_result
+                .or_else(|| Pdfium::bind_to_system_library().ok())
+                .ok_or(format!("Failed to load PDFium library. Searched paths: {:?}. Make sure PDFium is installed or the binary is available.", search_paths))?  
+        };
 
-        // Limit to maximum 10 pages to avoid too many thumbnails
-        let max_pages = page_count.min(10);
+        let pdfium = Pdfium::new(pdfium);
+
+        // Load the PDF document
+        let document = pdfium.load_pdf_from_file(file_path, None)
+            .map_err(|e| format!("Failed to load PDF: {}", e))?;
+
+        let page_count = document.pages().len() as u32;
+        let max_pages = page_count.min(MAX_PDF_THUMBNAILS);
 
         // Generate thumbnails for each page
-        for page in 1..=max_pages {
-            let output = Command::new("pdftoppm")
-                .arg("-jpeg")
-                .arg("-scale-to")
-                .arg("300") // Scale to 300px max dimension
-                .arg("-f")
-                .arg(&page.to_string())
-                .arg("-l")
-                .arg(&page.to_string())
-                .arg(file_path)
-                .arg(output_dir.join(format!("page_{}", page)))
-                .output()?;
+        for page_index in 0..max_pages {
+            let page = document.pages().get(page_index as u16)
+                .map_err(|e| format!("Failed to get page {}: {}", page_index + 1, e))?;
 
-            if !output.status.success() {
-                eprintln!("Failed to generate thumbnail for page {}: {}", page, String::from_utf8_lossy(&output.stderr));
-                // Continue with other pages
-                continue;
-            }
+            // Render page to bitmap with 300px max dimension
+            let render_config = PdfRenderConfig::new()
+                .set_target_width(300)
+                .set_maximum_height(300)
+                .rotate_if_landscape(PdfPageRenderRotation::Degrees90, true);
 
-            // pdftoppm creates files with format "page_N-1.jpg" (0-indexed page number)
-            // Rename to our expected format "page_N.jpg"
-            let generated_file = output_dir.join(format!("page_{}-1.jpg", page));
-            let target_file = output_dir.join(format!("page_{}.jpg", page));
+            let bitmap = page.render_with_config(&render_config)
+                .map_err(|e| format!("Failed to render page {}: {}", page_index + 1, e))?;
+
+            // Convert bitmap to RGB image
+            let width = bitmap.width() as u32;
+            let height = bitmap.height() as u32;
             
-            if generated_file.exists() {
-                std::fs::rename(generated_file, target_file)?;
+            // Get raw pixel data
+            let pixel_data = bitmap.as_raw_bytes();
+            
+            // Convert BGRA to RGB
+            let mut rgb_data = Vec::with_capacity((width * height * 3) as usize);
+            for pixel in pixel_data.chunks_exact(4) {
+                rgb_data.push(pixel[2]); // R (from B in BGRA)
+                rgb_data.push(pixel[1]); // G
+                rgb_data.push(pixel[0]); // B (from R in BGRA)
+                // Skip alpha channel
             }
+
+            // Create RGB image
+            let rgb_image: RgbImage = ImageBuffer::from_raw(width, height, rgb_data)
+                .ok_or("Failed to create RGB image from raw data")?;
+
+            // Save thumbnail
+            let thumbnail_path = output_dir.join(format!("page_{}.jpg", page_index + 1));
+            rgb_image.save(&thumbnail_path)
+                .map_err(|e| format!("Failed to save thumbnail: {}", e))?;
         }
 
         Ok(max_pages)
@@ -84,6 +117,6 @@ impl ThumbnailGenerator for PdfThumbnailGenerator {
         file_path: &Path,
         output_dir: &Path,
     ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-        self.generate_pdf_thumbnails_with_pdftoppm(file_path, output_dir).await
+        self.generate_pdf_thumbnails(file_path, output_dir).await
     }
 }

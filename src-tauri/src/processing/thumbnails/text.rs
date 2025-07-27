@@ -14,7 +14,7 @@ impl TextThumbnailGenerator {
 
     fn create_text_preview(&self, text: &str) -> Result<RgbImage, Box<dyn std::error::Error + Send + Sync>> {
         // Image dimensions
-        const WIDTH: u32 = 400;
+        const WIDTH: u32 = 300;
         const HEIGHT: u32 = 300;
 
         // Create white background with gray border
@@ -84,19 +84,10 @@ impl ThumbnailGenerator for TextThumbnailGenerator {
 
     async fn generate_thumbnails(
         &self,
-        file_path: &Path,
-        output_dir: &Path,
+        _file_path: &Path,
+        _output_dir: &Path,
     ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-        // Read file content
-        let content = fs::read_to_string(file_path).await?;
-        
-        // Create preview image
-        let preview_img = self.create_text_preview(&content)?;
-
-        // Save thumbnail
-        let thumbnail_path = output_dir.join("page_1.jpg");
-        preview_img.save(&thumbnail_path)?;
-
-        Ok(1) // One thumbnail generated
+        // Do not generate thumbnails for text files
+        Ok(0) // No thumbnails generated
     }
 }

@@ -4,9 +4,11 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
+use chrono::{DateTime, Utc, Duration};
+use jsonwebtoken::{encode, decode, Header, Algorithm, EncodingKey, DecodingKey, Validation};
 
 use crate::{
     api::middleware::AuthenticatedUser,
@@ -18,6 +20,7 @@ use crate::{
     processing::ProcessingManager,
     get_app_data_dir,
 };
+
 
 // Initialize global file storage and processing manager
 use once_cell::sync::Lazy;
@@ -34,6 +37,26 @@ static PROCESSING_MANAGER: Lazy<Arc<ProcessingManager>> = Lazy::new(|| {
 pub struct PreviewParams {
     pub page: Option<u32>,
 }
+
+#[derive(Debug, Serialize)]
+pub struct DownloadTokenResponse {
+    pub token: String,
+    pub expires_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DownloadTokenParams {
+    pub token: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct DownloadTokenClaims {
+    pub file_id: String,
+    pub user_id: String,
+    pub exp: usize, // Expiration time
+    pub iat: usize, // Issued at
+}
+
 
 // Initialize file storage on first use
 pub async fn initialize_file_storage() -> Result<(), StatusCode> {
@@ -170,7 +193,43 @@ pub async fn get_file(
     Ok(Json(file))
 }
 
-// Download file
+// Generate download token
+pub async fn generate_download_token(
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(file_id): Path<Uuid>,
+) -> Result<Json<DownloadTokenResponse>, StatusCode> {
+    // Verify file belongs to user
+    let _file = files::get_file_by_id_and_user(file_id, user.user_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let now = Utc::now();
+    let expires_at = now + Duration::hours(1);
+
+    // Create JWT claims
+    let claims = DownloadTokenClaims {
+        file_id: file_id.to_string(),
+        user_id: user.user_id.to_string(),
+        exp: expires_at.timestamp() as usize,
+        iat: now.timestamp() as usize,
+    };
+
+    // Generate JWT token
+    let jwt_secret = crate::utils::jwt_secret::get_jwt_secret();
+    let header = Header::new(Algorithm::HS256);
+    let key = EncodingKey::from_secret(jwt_secret.as_ref());
+    
+    let token = encode(&header, &claims, &key)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(DownloadTokenResponse {
+        token,
+        expires_at,
+    }))
+}
+
+// Download file (with authentication)
 pub async fn download_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
@@ -180,16 +239,57 @@ pub async fn download_file(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
+    download_file_internal(file_db).await
+}
+
+// Download file with token (no authentication required)
+pub async fn download_file_with_token(
+    Path(file_id): Path<Uuid>,
+    Query(params): Query<DownloadTokenParams>,
+) -> Result<Response, StatusCode> {
+    let token = params.token.ok_or(StatusCode::BAD_REQUEST)?;
+
+    // Decode and validate JWT token
+    let jwt_secret = crate::utils::jwt_secret::get_jwt_secret();
+    let key = DecodingKey::from_secret(jwt_secret.as_ref());
+    let validation = Validation::new(Algorithm::HS256);
+
+    let claims = decode::<DownloadTokenClaims>(&token, &key, &validation)
+        .map_err(|_| StatusCode::UNAUTHORIZED)?
+        .claims;
+
+    // Verify file_id matches
+    let token_file_id = Uuid::parse_str(&claims.file_id)
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    
+    if token_file_id != file_id {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    // Parse user_id from token
+    let user_id = Uuid::parse_str(&claims.user_id)
+        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+
+    // Get file info
+    let file_db = files::get_file_by_id_and_user(token_file_id, user_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    download_file_internal(file_db).await
+}
+
+// Internal download function shared by both endpoints
+async fn download_file_internal(file_db: File) -> Result<Response, StatusCode> {
     let file_path = std::path::Path::new(&file_db.file_path);
     if !file_path.exists() {
         return Err(StatusCode::NOT_FOUND);
     }
 
     let file_data = FILE_STORAGE.read_file_bytes(file_path).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let content_type = file_db.mime_type.unwrap_or_else(|| "application/octet-stream".to_string());
 
     let headers = [
-        (header::CONTENT_TYPE, content_type),
+        (header::CONTENT_TYPE, "application/octet-stream".to_string()),
         (
             header::CONTENT_DISPOSITION,
             format!("attachment; filename=\"{}\"", file_db.filename),

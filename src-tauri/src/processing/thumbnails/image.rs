@@ -56,9 +56,10 @@ impl ThumbnailGenerator for ImageThumbnailGenerator {
         // Create thumbnail
         let thumbnail = self.resize_image(img, 300); // 300px max dimension
 
-        // Save thumbnail
+        // Save thumbnail - convert to RGB for JPEG format
         let thumbnail_path = output_dir.join("page_1.jpg");
-        thumbnail.save(&thumbnail_path)?;
+        let rgb_thumbnail = thumbnail.to_rgb8();
+        rgb_thumbnail.save(&thumbnail_path)?;
 
         Ok(1) // One thumbnail generated
     }

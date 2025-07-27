@@ -11,6 +11,7 @@ import {
 import { Drawer } from '../../common/Drawer'
 import { formatFileSize, isTextFile } from '../../../utils/fileUtils'
 import type { File } from '../../../types'
+import { generateFileDownloadToken } from '../../../store/projectFiles.ts'
 
 const { Text } = Typography
 
@@ -25,6 +26,19 @@ interface FileModalContentProps {
 const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
   const [thumbnails, setThumbnails] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [downloadToken, setDownloadToken] = useState<string | null>(null)
+  const { message } = App.useApp()
+
+  useEffect(() => {
+    generateFileDownloadToken(file.id)
+      .then(({ token }) => {
+        setDownloadToken(token)
+      })
+      .catch(error => {
+        console.error('Failed to generate download token:', error)
+        message.error('Failed to generate download link')
+      })
+  }, [file.id])
 
   useEffect(() => {
     const loadThumbnails = async () => {
@@ -102,15 +116,19 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
           File size: {formatFileSize(file.file_size)}
         </p>
       </div>
-      <div className="flex justify-center">
-        <a
-          href={`/api/files/${file.id}/download`}
-          download={file.filename}
-          className="ant-btn ant-btn-primary"
-        >
-          <DownloadOutlined /> Download File
-        </a>
-      </div>
+      <Button type={'primary'}>
+        <div className="flex justify-center">
+          <a
+            href={`/api/files/${file.id}/download-with-token?token=${downloadToken}`}
+            download={file.filename}
+            className="ant-btn ant-btn-primary"
+          >
+            <Typography.Text>
+              <DownloadOutlined /> Download File
+            </Typography.Text>
+          </a>
+        </div>
+      </Button>
     </div>
   )
 }
@@ -126,6 +144,7 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
 
   useEffect(() => {
+    if (file.thumbnail_count === 0) return
     const loadThumbnail = async () => {
       const url = await getFileThumbnail(file.id)
       setThumbnailUrl(url)
@@ -172,10 +191,13 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
     } else {
       // Open modal for non-text files
       modal.info({
+        icon: null, // No icon for file modal
         title: file.filename,
         width: 600,
         content: <FileModalContent file={file} />,
         footer: null, // Footer is handled within FileModalContent
+        closable: true,
+        maskClosable: true,
       })
     }
   }
@@ -190,7 +212,7 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
         size="small"
         className="group relative cursor-pointer"
         style={{
-          height: '100px',
+          height: '111px',
           backgroundImage: thumbnailUrl ? `url(${thumbnailUrl})` : undefined,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -200,7 +222,6 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
         loading={loading}
         styles={{
           body: {
-            padding: '8px',
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
@@ -221,26 +242,24 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
             })
           }}
           className="!absolute top-1 right-1 opacity-0
-                    group-hover:opacity-100 transition-opacity"
+                    group-hover:opacity-100 transition-opacity bg-transparent"
         />
 
-        {/* File extension - bottom left */}
         <Text
-          className="absolute top-1 left-1 rounded px-1 "
+          className="absolute top-1 left-1 rounded px-1 !text-[9px]"
           style={{
-            fontSize: '8px',
-            fontWeight: '600',
             backgroundColor: token.colorBgContainer,
           }}
+          strong
         >
           {file.filename.split('.').pop()?.toUpperCase() || 'FILE'}
         </Text>
 
-        {/* File content */}
         <Text
-          type="secondary"
-          style={{ fontSize: '9px' }}
-          className="absolute bottom-1 right-1 rounded px-1"
+          className="absolute bottom-1 right-1 rounded px-1  !text-[9px]"
+          style={{
+            backgroundColor: token.colorBgContainer,
+          }}
         >
           {formatFileSize(file.file_size)}
         </Text>
@@ -255,10 +274,11 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
         open={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         width={600}
+        footer={[<Button onClick={() => setIsDrawerOpen(false)}>Close</Button>]}
       >
-        <div className="font-mono text-sm whitespace-pre-wrap bg-gray-50 p-4 rounded border max-h-full overflow-auto">
+        <Card className="font-mono text-sm whitespace-pre-wrap p-4 rounded max-h-full overflow-auto">
           {fileContent}
-        </div>
+        </Card>
       </Drawer>
     </div>
   )

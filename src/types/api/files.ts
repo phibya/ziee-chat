@@ -37,3 +37,8 @@ export interface FileUploadProgress {
   error?: string
   size?: number
 }
+
+export interface DownloadTokenResponse {
+  token: string
+  expires_at: string
+}

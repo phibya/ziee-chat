@@ -38,6 +38,7 @@ import {
   FileListParams,
   FileListResponse,
   UploadFileResponse,
+  DownloadTokenResponse,
 } from './files'
 import { HubDataResponse, HubVersionResponse } from './hub'
 import {
@@ -215,6 +216,8 @@ export const ApiEndpoints = {
   'Files.get': 'GET /api/files/{id}',
   'Files.delete': 'DELETE /api/files/{id}',
   'Files.download': 'GET /api/files/{id}/download',
+  'Files.generateDownloadToken': 'POST /api/files/{id}/download-token',
+  'Files.downloadWithToken': 'GET /api/files/{id}/download-with-token',
   'Files.preview': 'GET /api/files/{id}/preview',
   // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
@@ -365,6 +368,8 @@ export type ApiEndpointParameters = {
   'Files.get': { id: string }
   'Files.delete': { id: string }
   'Files.download': { id: string }
+  'Files.generateDownloadToken': { id: string }
+  'Files.downloadWithToken': { id: string; token: string }
   'Files.preview': { id: string; page?: number }
   // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints
@@ -530,6 +535,8 @@ export type ApiEndpointResponses = {
   'Files.get': File
   'Files.delete': void
   'Files.download': Blob
+  'Files.generateDownloadToken': DownloadTokenResponse
+  'Files.downloadWithToken': Blob
   'Files.preview': Blob
   // Repository endpoints - Admin only (all repository operations are admin-only)
   // Admin repository endpoints

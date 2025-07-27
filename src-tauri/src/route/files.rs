@@ -22,6 +22,15 @@ pub fn file_routes() -> Router {
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
         .route(
+            "/api/files/{id}/download-token",
+            post(api::files::generate_download_token)
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
+        )
+        .route(
+            "/api/files/{id}/download-with-token",
+            get(api::files::download_file_with_token),
+        )
+        .route(
             "/api/files/{id}/preview",
             get(api::files::get_file_preview)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
