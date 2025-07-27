@@ -5,6 +5,7 @@ pub mod hub_config;
 pub mod hub_manager;
 pub mod jwt_secret;
 pub mod model_storage;
+pub mod pandoc;
 pub mod password;
 pub mod proxy;
 pub mod resource_paths;

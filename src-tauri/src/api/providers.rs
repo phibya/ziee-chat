@@ -203,7 +203,7 @@ pub async fn update_provider(
                 }
 
                 // Check if provider has any models
-                let provider_models = match models::get_models_by_provider_id(provider_id).await {
+                let _provider_models = match models::get_models_by_provider_id(provider_id).await {
                     Ok(models) => models,
                     Err(e) => {
                         eprintln!(

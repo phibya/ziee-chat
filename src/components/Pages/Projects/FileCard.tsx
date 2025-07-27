@@ -42,6 +42,10 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
 
   useEffect(() => {
     const loadThumbnails = async () => {
+      if (file.thumbnail_count === 0) {
+        setLoading(false)
+        return
+      }
       setLoading(true)
       try {
         const thumbnailUrls = await getFileThumbnails(
@@ -94,27 +98,20 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
                 />
               ))}
             </div>
-            {thumbnails.length > 1 && (
-              <Text
-                type="secondary"
-                style={{ fontSize: '12px', marginTop: '8px', display: 'block' }}
-              >
-                {thumbnails.length} page{thumbnails.length > 1 ? 's' : ''}{' '}
-                available
-              </Text>
-            )}
           </div>
         ) : (
           <div>
             <div className="text-6xl mb-4">📄</div>
-            <p className="text-gray-500">
+            <Text type={'secondary'}>
               Preview not available for this file type
-            </p>
+            </Text>
           </div>
         )}
-        <p className="text-sm text-gray-400">
-          File size: {formatFileSize(file.file_size)}
-        </p>
+        <div className="pt-4">
+          <Text type={'secondary'}>
+            File size: {formatFileSize(file.file_size)}
+          </Text>
+        </div>
       </div>
       <Button type={'primary'}>
         <div className="flex justify-center">

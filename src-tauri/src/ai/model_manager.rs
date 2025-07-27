@@ -1432,4 +1432,3 @@ pub async fn cleanup_all_processes() -> Result<(), Box<dyn std::error::Error + S
 }
 
 use crate::ai::models::ModelUtils;
-use crate::APP_DATA_DIR;

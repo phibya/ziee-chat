@@ -1,4 +1,3 @@
-use crate::APP_DATA_DIR;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};

@@ -1,4 +1,5 @@
 use crate::utils::cancellation::CancellationToken;
+use crate::utils::resource_paths::ResourcePaths;
 use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use serde::Serialize;
 use std::collections::hash_map::DefaultHasher;
@@ -60,26 +61,16 @@ impl GitService {
         Self { cache_dir }
     }
 
-    /// Get the git-lfs binary path from the build directory
+    /// Get the git-lfs binary path using ResourcePaths utility
     fn get_git_lfs_binary_path() -> Result<PathBuf, GitError> {
-        // Get the executable directory
-        let exe_path = std::env::current_exe().map_err(|e| GitError::Io(e))?;
-        let exe_dir = exe_path.parent().ok_or_else(|| {
-            GitError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Failed to get executable directory",
-            ))
-        })?;
+        // Try to find the git-lfs binary using ResourcePaths utility
+        if let Some(binary_path) = ResourcePaths::find_executable_binary("git-lfs") {
+            return Ok(binary_path);
+        }
 
-        // Determine the binary name based on the platform
-        let binary_name = if cfg!(windows) {
-            "git-lfs.exe"
-        } else {
-            "git-lfs"
-        };
-
-        let binary_path = exe_dir.join(binary_name);
-
+        // Fallback: try the direct path method
+        let binary_path = ResourcePaths::get_executable_binary_path("git-lfs");
+        
         // Check if the binary exists
         if !binary_path.exists() {
             return Err(GitError::Io(std::io::Error::new(

@@ -58,7 +58,8 @@
     },
     "externalBin": [
       "target/git-lfs/git-lfs",
-      "target/mistralrs-build/mistralrs-server"
+      "target/mistralrs-build/mistralrs-server",
+      "target/pandoc/pandoc"
     ]
   }
 }

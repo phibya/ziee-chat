@@ -250,12 +250,19 @@ pub fn get_mime_type_from_extension(extension: &str) -> Option<String> {
         "avi" => Some("video/x-msvideo".to_string()),
         "mp3" => Some("audio/mpeg".to_string()),
         "wav" => Some("audio/wav".to_string()),
+        // Microsoft Office formats
         "doc" => Some("application/msword".to_string()),
         "docx" => Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document".to_string()),
         "xls" => Some("application/vnd.ms-excel".to_string()),
         "xlsx" => Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".to_string()),
         "ppt" => Some("application/vnd.ms-powerpoint".to_string()),
         "pptx" => Some("application/vnd.openxmlformats-officedocument.presentationml.presentation".to_string()),
+        // Rich Text Format
+        "rtf" => Some("application/rtf".to_string()),
+        // OpenDocument formats
+        "odt" => Some("application/vnd.oasis.opendocument.text".to_string()),
+        "ods" => Some("application/vnd.oasis.opendocument.spreadsheet".to_string()),
+        "odp" => Some("application/vnd.oasis.opendocument.presentation".to_string()),
         "zip" => Some("application/zip".to_string()),
         "tar" => Some("application/x-tar".to_string()),
         "gz" => Some("application/gzip".to_string()),

@@ -72,27 +72,45 @@ impl ResourcePaths {
     /// * `library_name` - The name of the library file (e.g., "libpdfium.dylib")
     /// 
     /// # Returns
-    /// Vector of library search paths in order of preference
+    /// Vector of absolute library search paths in order of preference
     pub fn get_library_search_paths(library_name: &str) -> Vec<String> {
         let mut paths = Vec::new();
+        
+        // Get the directory of the current executable for absolute paths
+        let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+        let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
         
         // Platform-specific library search paths
         if cfg!(target_os = "windows") || cfg!(target_os = "linux") {
             // Windows and Linux: ./lib/
-            paths.push("./lib/".to_string());
-            paths.push("./".to_string());
+            if let Ok(lib_path) = exe_dir.join("lib").canonicalize() {
+                paths.push(lib_path.to_string_lossy().to_string());
+            }
+            if let Ok(exe_path) = exe_dir.canonicalize() {
+                paths.push(exe_path.to_string_lossy().to_string());
+            }
         } else if cfg!(target_os = "macos") {
             // macOS: ./lib/ (development) and ../Resources/lib/ (production)
-            paths.push("./lib/".to_string());
-            paths.push("../Resources/lib/".to_string());
-            paths.push("./".to_string());
+            if let Ok(lib_path) = exe_dir.join("lib").canonicalize() {
+                paths.push(lib_path.to_string_lossy().to_string());
+            }
+            if let Ok(resources_lib_path) = exe_dir.join("../Resources/lib").canonicalize() {
+                paths.push(resources_lib_path.to_string_lossy().to_string());
+            }
+            if let Ok(exe_path) = exe_dir.canonicalize() {
+                paths.push(exe_path.to_string_lossy().to_string());
+            }
         } else {
             // Default: current directory
-            paths.push("./".to_string());
+            if let Ok(exe_path) = exe_dir.canonicalize() {
+                paths.push(exe_path.to_string_lossy().to_string());
+            }
         }
         
         // Also add specific library name paths
-        paths.push(format!("./{}", library_name));
+        if let Ok(lib_file_path) = exe_dir.join(library_name).canonicalize() {
+            paths.push(lib_file_path.to_string_lossy().to_string());
+        }
         
         paths
     }
@@ -102,10 +120,60 @@ impl ResourcePaths {
         Self::find_resource_folder("hub")
     }
     
-    /// Get lib folder path (convenience method for library-specific logic)
-    pub fn get_lib_folder() -> PathBuf {
-        Self::find_resource_folder("lib")
+    /// Get executable binary path in the same folder as the current running executable
+    /// 
+    /// # Arguments
+    /// * `binary_name` - The name of the binary without extension (e.g., "pandoc")
+    /// 
+    /// # Returns
+    /// The full path to the binary, with .exe extension added on Windows
+    pub fn get_executable_binary_path(binary_name: &str) -> PathBuf {
+        // Get the directory of the current executable
+        let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+        let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+        
+        // Add .exe extension on Windows
+        let binary_filename = if cfg!(target_os = "windows") {
+            format!("{}.exe", binary_name)
+        } else {
+            binary_name.to_string()
+        };
+        
+        exe_dir.join(binary_filename)
     }
+    
+    /// Get executable binary path with fallback search in bin/ subdirectory
+    /// 
+    /// # Arguments
+    /// * `binary_name` - The name of the binary without extension (e.g., "pandoc")
+    /// 
+    /// # Returns
+    /// The full path to the binary, searching current directory first, then bin/ subdirectory
+    pub fn find_executable_binary(binary_name: &str) -> Option<PathBuf> {
+        // First try in the same directory as the current executable
+        let primary_path = Self::get_executable_binary_path(binary_name);
+        if primary_path.exists() {
+            return Some(primary_path);
+        }
+        
+        // Then try in bin/ subdirectory
+        let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+        let exe_dir = exe_path.parent().unwrap_or_else(|| std::path::Path::new("."));
+        
+        let binary_filename = if cfg!(target_os = "windows") {
+            format!("{}.exe", binary_name)
+        } else {
+            binary_name.to_string()
+        };
+        
+        let bin_path = exe_dir.join("bin").join(&binary_filename);
+        if bin_path.exists() {
+            return Some(bin_path);
+        }
+        
+        None
+    }
+    
 }
 
 #[cfg(test)]
@@ -124,5 +192,24 @@ mod tests {
         let paths = ResourcePaths::get_library_search_paths("libtest.dylib");
         assert!(!paths.is_empty());
         assert!(paths.iter().any(|p| p.contains("lib/")));
+    }
+    
+    #[test]
+    fn test_executable_binary_path() {
+        let path = ResourcePaths::get_executable_binary_path("pandoc");
+        
+        // Should end with the correct extension for the platform
+        if cfg!(target_os = "windows") {
+            assert!(path.to_string_lossy().ends_with("pandoc.exe"));
+        } else {
+            assert!(path.to_string_lossy().ends_with("pandoc"));
+        }
+    }
+    
+    #[test]
+    fn test_find_executable_binary() {
+        // This test will return None since pandoc likely doesn't exist in test environment
+        let result = ResourcePaths::find_executable_binary("nonexistent_binary");
+        assert!(result.is_none());
     }
 }

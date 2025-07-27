@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 const GIT_LFS_VERSION: &str = "v3.7.0";
-const PDFIUM_VERSION: &str = "6721"; // Latest stable version from pdfium-binaries
+const PANDOC_VERSION: &str = "3.7.0.2";
 
 fn download_binary(url: &str, target_path: &Path, name: &str) -> Result<(), Box<dyn std::error::Error>> {
     println!("Downloading {} from: {}", name, url);
@@ -24,6 +24,10 @@ fn download_git_lfs(url: &str, target_path: &Path) -> Result<(), Box<dyn std::er
 
 fn download_pdfium(url: &str, target_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     download_binary(url, target_path, "PDFium")
+}
+
+fn download_pandoc(url: &str, target_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    download_binary(url, target_path, "Pandoc")
 }
 
 fn extract_git_lfs(
@@ -110,43 +114,54 @@ fn extract_pdfium(
     Err("PDFium library not found in archive".into())
 }
 
-fn create_binary_symlink(
-    source_dir: &Path,
+fn extract_pandoc(
+    archive_path: &Path,
     target_dir: &Path,
-    full_binary_name: &str,
-    simple_name: &str,
-    target: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let source_binary_path = source_dir.join(full_binary_name);
-    let target_binary_path = target_dir.join(simple_name);
-
-    // Remove existing symlink/shortcut if it exists
-    if target_binary_path.exists() {
-        fs::remove_file(&target_binary_path)?;
-    }
-
-    // Ensure target directory exists
+    is_zip: bool,
+    target_binary_name: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     fs::create_dir_all(target_dir)?;
 
-    if target.contains("windows") {
-        // Windows: Create a batch file that calls the actual binary
-        let batch_content = format!("@echo off\n\"{}\" %*", source_binary_path.to_string_lossy());
-        let batch_path = target_dir.join(format!("{}.bat", simple_name));
-        fs::write(&batch_path, batch_content)?;
-        println!("Created Windows batch file: {:?}", batch_path);
+    if is_zip {
+        // Extract ZIP file
+        let file = fs::File::open(archive_path)?;
+        let mut archive = zip::ZipArchive::new(file)?;
+
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)?;
+            let filename = file.name();
+
+            // Look for pandoc or pandoc.exe (may be in bin/ directory or root)
+            if filename.ends_with("pandoc") || filename.ends_with("pandoc.exe") || filename.ends_with("bin/pandoc") {
+                let output_path = target_dir.join(target_binary_name);
+
+                let mut outfile = fs::File::create(&output_path)?;
+                std::io::copy(&mut file, &mut outfile)?;
+
+                return Ok(output_path);
+            }
+        }
     } else {
-        // Unix: Create symlink
-        #[cfg(unix)]
-        {
-            std::os::unix::fs::symlink(&source_binary_path, &target_binary_path)?;
-            println!(
-                "Created symlink: {:?} -> {:?}",
-                target_binary_path, source_binary_path
-            );
+        // Extract tar.gz file
+        let tar_gz = fs::File::open(archive_path)?;
+        let tar = flate2::read::GzDecoder::new(tar_gz);
+        let mut archive = tar::Archive::new(tar);
+
+        for entry in archive.entries()? {
+            let mut entry = entry?;
+            let path = entry.path()?;
+            let path_str = path.to_string_lossy();
+
+            // Look for pandoc (may be in bin/ directory or root)
+            if path_str.ends_with("pandoc") || path_str.ends_with("pandoc.exe") || path_str.ends_with("bin/pandoc") {
+                let output_path = target_dir.join(target_binary_name);
+                entry.unpack(&output_path)?;
+                return Ok(output_path);
+            }
         }
     }
 
-    Ok(())
+    Err("Pandoc binary not found in archive".into())
 }
 
 fn build_mistralrs_server(
@@ -280,7 +295,7 @@ fn main() {
 
     // Get the output directory and build profile
     let out_dir = env::var("OUT_DIR").unwrap();
-    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
+    let _profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
 
     // OUT_DIR is typically target/{profile}/build/{package}/out
     // We want to get to target/
@@ -473,28 +488,164 @@ fn main() {
         } else {
             "libpdfium.so"
         };
+
+        let profile_dir = pdfium_dir.join("target");
+        fs::create_dir_all(&profile_dir).ok();
+
+        let target_path_standardized = profile_dir.join(standardized_name);
+
+        if let Err(e) = fs::copy(&pdfium_target_path, &target_path_standardized) {
+            eprintln!("Warning: Failed to copy PDFium to {:?} directory: {}", profile_dir, e);
+        } else {
+            println!("Successfully copied PDFium to {:?}", profile_dir);
+        }
+
+        // Make bundle version executable on Unix
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if target_path_standardized.exists() {
+                let mut bundle_perms = fs::metadata(&target_path_standardized).unwrap().permissions();
+                bundle_perms.set_mode(0o755);
+                fs::set_permissions(&target_path_standardized, bundle_perms).unwrap();
+            }
+        }
+    }
+
+    // === Pandoc Binary Download ===
+    
+    // Use dedicated Pandoc directory
+    let pandoc_dir = target_dir.join("pandoc");
+    fs::create_dir_all(&pandoc_dir)
+        .unwrap_or_else(|e| panic!("Failed to create Pandoc directory: {}", e));
+
+    // Map target to Pandoc platform names (based on actual GitHub release assets)
+    let (pandoc_platform, pandoc_arch, pandoc_extension) = if target.contains("windows") {
+        if target.contains("x86_64") {
+            ("windows", "x86_64", "zip")
+        } else {
+            panic!("Unsupported Windows architecture for Pandoc: {}", target);
+        }
+    } else if target.contains("darwin") {
+        if target.contains("x86_64") {
+            ("x86_64", "macOS", "zip")
+        } else if target.contains("aarch64") {
+            ("arm64", "macOS", "zip")
+        } else {
+            panic!("Unsupported macOS architecture for Pandoc: {}", target);
+        }
+    } else if target.contains("linux") {
+        if target.contains("x86_64") {
+            ("linux", "amd64", "tar.gz")
+        } else if target.contains("aarch64") {
+            ("linux", "arm64", "tar.gz")
+        } else {
+            panic!("Unsupported Linux architecture for Pandoc: {}", target);
+        }
+    } else {
+        panic!("Unsupported platform for Pandoc: {}", target);
+    };
+
+    // Use target triple format for binary naming
+    let pandoc_binary_name = if target.contains("windows") {
+        format!("pandoc-{}.exe", target)
+    } else {
+        format!("pandoc-{}", target)
+    };
+
+    let pandoc_target_path = pandoc_dir.join(&pandoc_binary_name);
+    
+    println!("Pandoc target path: {:?}", pandoc_target_path);
+
+    // Download Pandoc if it doesn't exist
+    if !pandoc_target_path.exists() {
+        println!("Downloading Pandoc binary...");
         
-        // Copy to both debug and release lib directories
+        // Create a temporary directory for Pandoc download
+        let pandoc_temp_dir = Path::new(&out_dir).join("pandoc-download");
+        fs::create_dir_all(&pandoc_temp_dir).unwrap();
+
+        // Construct the Pandoc download URL based on actual GitHub release assets
+        // Format varies: Windows: pandoc-{version}-windows-{arch}.zip, macOS: pandoc-{version}-{arch}-macOS.zip, Linux: pandoc-{version}-linux-{arch}.tar.gz
+        let pandoc_archive_name = if target.contains("windows") {
+            format!("pandoc-{}-{}-{}.{}", PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension)
+        } else if target.contains("darwin") {
+            format!("pandoc-{}-{}-{}.{}", PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension)
+        } else {
+            format!("pandoc-{}-{}-{}.{}", PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension)
+        };
+        let pandoc_download_url = format!(
+            "https://github.com/jgm/pandoc/releases/download/{}/{}",
+            PANDOC_VERSION, pandoc_archive_name
+        );
+
+        let pandoc_archive_path = pandoc_temp_dir.join(&pandoc_archive_name);
+
+        // Download the Pandoc archive
+        if let Err(e) = download_pandoc(&pandoc_download_url, &pandoc_archive_path) {
+            eprintln!("Warning: Failed to download Pandoc: {}", e);
+            eprintln!("Pandoc functionality will not be available");
+        } else {
+            // Extract the Pandoc binary
+            match extract_pandoc(&pandoc_archive_path, &pandoc_temp_dir, pandoc_extension == "zip", &pandoc_binary_name) {
+                Ok(extracted_path) => {
+                    // Copy to target directory with platform-specific name
+                    if let Err(e) = fs::copy(&extracted_path, &pandoc_target_path) {
+                        eprintln!("Warning: Failed to copy Pandoc binary: {}", e);
+                    } else {
+                        println!("Successfully installed Pandoc to {:?}", pandoc_target_path);
+                        
+                        // Make it executable on Unix
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            let mut perms = fs::metadata(&pandoc_target_path).unwrap().permissions();
+                            perms.set_mode(0o755);
+                            fs::set_permissions(&pandoc_target_path, perms).unwrap();
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to extract Pandoc: {}", e);
+                }
+            }
+        }
+
+        // Clean up temporary files
+        fs::remove_dir_all(&pandoc_temp_dir).ok();
+    } else {
+        println!("Pandoc binary already exists at {:?}", pandoc_target_path);
+    }
+    
+    // Always copy to bin directories for Tauri bundling (during every build)
+    if pandoc_target_path.exists() {
+        let standardized_name = if target.contains("windows") {
+            "pandoc.exe"
+        } else {
+            "pandoc"
+        };
+        
+        // Copy to both debug and release bin directories
         for build_profile in ["debug", "release"] {
             let profile_dir = target_dir.join(build_profile);
-            let lib_dir = profile_dir.join("lib");
-            fs::create_dir_all(&lib_dir).ok();
+            let bin_dir = profile_dir.join("bin");
+            fs::create_dir_all(&bin_dir).ok();
             
-            let pdfium_lib_path = lib_dir.join(standardized_name);
-            if let Err(e) = fs::copy(&pdfium_target_path, &pdfium_lib_path) {
-                eprintln!("Warning: Failed to copy PDFium to {} lib directory: {}", build_profile, e);
+            let pandoc_bin_path = bin_dir.join(standardized_name);
+            if let Err(e) = fs::copy(&pandoc_target_path, &pandoc_bin_path) {
+                eprintln!("Warning: Failed to copy Pandoc to {} bin directory: {}", build_profile, e);
             } else {
-                println!("Successfully copied PDFium to {} lib directory: {:?}", build_profile, pdfium_lib_path);
+                println!("Successfully copied Pandoc to {} bin directory: {:?}", build_profile, pandoc_bin_path);
             }
             
-            // Make lib version executable on Unix
+            // Make bin version executable on Unix
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
-                if pdfium_lib_path.exists() {
-                    let mut lib_perms = fs::metadata(&pdfium_lib_path).unwrap().permissions();
-                    lib_perms.set_mode(0o755);
-                    fs::set_permissions(&pdfium_lib_path, lib_perms).unwrap();
+                if pandoc_bin_path.exists() {
+                    let mut bin_perms = fs::metadata(&pandoc_bin_path).unwrap().permissions();
+                    bin_perms.set_mode(0o755);
+                    fs::set_permissions(&pandoc_bin_path, bin_perms).unwrap();
                 }
             }
         }
@@ -502,7 +653,7 @@ fn main() {
 
     // Build mistralrs-server
     println!("cargo:rerun-if-changed=mistralrs-server");
-    let mistralrs_path = match build_mistralrs_server(&target_dir, &target) {
+    let _mistralrs_path = match build_mistralrs_server(&target_dir, &target) {
         Ok(path) => Some(path),
         Err(e) => {
             eprintln!("Warning: Failed to build mistralrs-server: {}", e);

@@ -1,4 +1,3 @@
-use crate::APP_DATA_DIR;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]

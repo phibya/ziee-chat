@@ -1,7 +1,5 @@
 use async_trait::async_trait;
 use std::path::Path;
-use tokio::fs;
-use image::{ImageBuffer, Rgb, RgbImage};
 
 use crate::processing::ThumbnailGenerator;
 
@@ -12,54 +10,6 @@ impl TextThumbnailGenerator {
         Self
     }
 
-    fn create_text_preview(&self, text: &str) -> Result<RgbImage, Box<dyn std::error::Error + Send + Sync>> {
-        // Image dimensions
-        const WIDTH: u32 = 300;
-        const HEIGHT: u32 = 300;
-
-        // Create white background with gray border
-        let mut img: RgbImage = ImageBuffer::from_pixel(WIDTH, HEIGHT, Rgb([255, 255, 255]));
-        
-        // Add a simple border
-        for x in 0..WIDTH {
-            img.put_pixel(x, 0, Rgb([200, 200, 200]));
-            img.put_pixel(x, HEIGHT - 1, Rgb([200, 200, 200]));
-        }
-        for y in 0..HEIGHT {
-            img.put_pixel(0, y, Rgb([200, 200, 200]));
-            img.put_pixel(WIDTH - 1, y, Rgb([200, 200, 200]));
-        }
-
-        // For now, just create a simple preview without text rendering
-        // In a full implementation, you would use a text rendering library
-        // This creates a visual indication that it's a text file
-
-        // Add some simple geometric patterns to indicate text content
-        let line_count = text.lines().count().min(15);
-        let char_count = text.chars().count();
-        
-        // Draw simple lines to represent text
-        for i in 0..line_count {
-            let y = 30 + (i * 18) as u32;
-            if y + 5 < HEIGHT - 10 {
-                let line_width = if i == line_count - 1 && char_count % 50 != 0 {
-                    (char_count % 50) * 6  // Shorter last line
-                } else {
-                    300  // Full width line
-                };
-                
-                for x in 20..20 + line_width.min(360) {
-                    let x_u32 = x as u32;
-                    if x_u32 < WIDTH - 20 {
-                        img.put_pixel(x_u32, y, Rgb([100, 100, 100]));
-                        img.put_pixel(x_u32, y + 1, Rgb([100, 100, 100]));
-                    }
-                }
-            }
-        }
-
-        Ok(img)
-    }
 }
 
 #[async_trait]
