@@ -1,0 +1,30 @@
+{
+  "hub_version": "v1",
+  "schema_version": 2,
+  "models": [
+    {
+      "id": "llama-3-8b-instruct",
+      "name": "Llama 3 8B Instruct",
+      "alias": "Llama 3 8B",
+      "description": "Mô hình được điều chỉnh hướng dẫn Llama 3 8B của Meta"
+    },
+    {
+      "id": "llama-3-1-8b-instruct",
+      "name": "Llama 3.1 8B Instruct",
+      "alias": "Llama 3.1 8B",
+      "description": "Mô hình được điều chỉnh hướng dẫn Llama 3.1 8B mới nhất của Meta với khả năng cải tiến"
+    },
+    {
+      "id": "phi-3-mini-4k-instruct",
+      "name": "Phi-3 Mini 4K Instruct",
+      "alias": "Phi-3 Mini",
+      "description": "Mô hình được điều chỉnh hướng dẫn nhỏ nhưng mạnh mẽ của Microsoft"
+    },
+    {
+      "id": "llava-v1.6-vicuna-7b",
+      "name": "LLaVA v1.6 Vicuna 7B",
+      "alias": "LLaVA Vicuna 7B",
+      "description": "Trợ lý Ngôn ngữ và Thị giác Lớn với cơ sở Vicuna 7B"
+    }
+  ]
+}

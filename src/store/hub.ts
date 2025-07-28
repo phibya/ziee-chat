@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import type { HubModel, HubAssistant } from '../types/api/hub'
+import i18n from '../i18n'
 
 interface HubState {
   models: HubModel[]
@@ -9,6 +10,7 @@ interface HubState {
   hubVersion: string
   lastUpdated: string
   lastActiveTab: string
+  currentLocale: string
   initialized: boolean
   loading: boolean
   error: string | null
@@ -21,30 +23,33 @@ export const useHubStore = create<HubState>()(
     hubVersion: '',
     lastUpdated: '',
     lastActiveTab: 'models',
+    currentLocale: 'en',
     initialized: false,
     loading: false,
     error: null,
   })),
 )
 
-export const initializeHub = async () => {
-  useHubStore.setState({ loading: true, error: null })
+export const initializeHub = async (locale?: string) => {
+  const currentLocale = locale || i18n.language || 'en'
+  useHubStore.setState({ loading: true, error: null, currentLocale })
 
   try {
-    const hubData = await ApiClient.Hub.getData()
+    const hubData = await ApiClient.Hub.getData({ lang: currentLocale })
 
     useHubStore.setState({
       models: hubData.models,
       assistants: hubData.assistants,
       hubVersion: hubData.hub_version,
       lastUpdated: hubData.last_updated,
+      currentLocale,
       initialized: true,
       loading: false,
       error: null,
     })
 
     console.log(
-      `Hub initialized: ${hubData.hub_version} (${hubData.models.length} models, ${hubData.assistants.length} assistants)`,
+      `Hub initialized: ${hubData.hub_version} (${hubData.models.length} models, ${hubData.assistants.length} assistants) - locale: ${currentLocale}`,
     )
   } catch (error) {
     console.error('Hub initialization failed:', error)
@@ -57,21 +62,23 @@ export const initializeHub = async () => {
   }
 }
 
-export const refreshHub = async () => {
+export const refreshHub = async (locale?: string) => {
+  const currentLocale = locale || useHubStore.getState().currentLocale || 'en'
   useHubStore.setState({ loading: true, error: null })
 
   try {
-    const hubData = await ApiClient.Hub.refresh()
+    const hubData = await ApiClient.Hub.refresh({ lang: currentLocale })
     useHubStore.setState({
       models: hubData.models,
       assistants: hubData.assistants,
       lastUpdated: hubData.last_updated,
+      currentLocale,
       loading: false,
       error: null,
     })
 
     console.log(
-      `Hub refreshed: ${hubData.models.length} models, ${hubData.assistants.length} assistants`,
+      `Hub refreshed: ${hubData.models.length} models, ${hubData.assistants.length} assistants - locale: ${currentLocale}`,
     )
     return hubData
   } catch (error) {
@@ -167,3 +174,19 @@ export const searchAssistants = (
 export const setHubActiveTab = (tab: string) => {
   useHubStore.setState({ lastActiveTab: tab })
 }
+
+// Handle language change
+export const handleLanguageChange = async (newLocale: string) => {
+  const currentState = useHubStore.getState()
+  
+  // Only reload if locale changed and hub is initialized
+  if (currentState.initialized && currentState.currentLocale !== newLocale) {
+    console.log(`Hub locale changed from ${currentState.currentLocale} to ${newLocale}`)
+    await initializeHub(newLocale)
+  }
+}
+
+// Subscribe to i18n language changes
+i18n.on('languageChanged', (lng: string) => {
+  handleLanguageChange(lng).catch(console.error)
+})

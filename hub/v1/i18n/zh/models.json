@@ -1,0 +1,30 @@
+{
+  "hub_version": "v1",
+  "schema_version": 2,
+  "models": [
+    {
+      "id": "llama-3-8b-instruct",
+      "name": "Llama 3 8B Instruct",
+      "alias": "Llama 3 8B",
+      "description": "Meta的Llama 3 8B指令调优模型"
+    },
+    {
+      "id": "llama-3-1-8b-instruct",
+      "name": "Llama 3.1 8B Instruct",
+      "alias": "Llama 3.1 8B",
+      "description": "Meta最新的Llama 3.1 8B指令调优模型，具有改进的功能"
+    },
+    {
+      "id": "phi-3-mini-4k-instruct",
+      "name": "Phi-3 Mini 4K Instruct",
+      "alias": "Phi-3 Mini",
+      "description": "Microsoft的小型但功能强大的指令调优模型"
+    },
+    {
+      "id": "llava-v1.6-vicuna-7b",
+      "name": "LLaVA v1.6 Vicuna 7B",
+      "alias": "LLaVA Vicuna 7B",
+      "description": "基于Vicuna 7B的大型语言和视觉助手"
+    }
+  ]
+}

@@ -405,8 +405,8 @@ export type ApiEndpointParameters = {
   'Admin.deleteDownload': { download_id: string }
   'Admin.subscribeDownloadProgress': void
   // Hub endpoints
-  'Hub.getData': void
-  'Hub.refresh': void
+  'Hub.getData': { lang?: string }
+  'Hub.refresh': { lang?: string }
   'Hub.getVersion': void
   'Hub.getModelReadme': { model_id: string }
 }

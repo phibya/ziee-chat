@@ -6,6 +6,14 @@
     "models.json",
     "assistants.json"
   ],
+  "i18n_supported_languages": [
+    "vi",
+    "zh"
+  ],
+  "i18n_files": [
+    "models.json",
+    "assistants.json"
+  ],
   "fallback_enabled": true,
   "update_check_interval_hours": 24
 }

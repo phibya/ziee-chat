@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::processing::ContentProcessor;
+use crate::processing::common::spreadsheet;
 use crate::utils::pandoc::PandocUtils;
 
 pub struct OfficeProcessor;
@@ -116,11 +117,23 @@ impl ContentProcessor for OfficeProcessor {
                     }
                 }
             }
-            // Excel formats (placeholders for now)
-            "xls" | "xlsx" => {
-                match self.extract_text_placeholder(file_path, "Excel").await {
+            // Excel formats (using Calamine)
+            "xlsx" => {
+                match spreadsheet::convert_xlsx_to_text(file_path) {
                     Ok(text) => Ok(Some(text)),
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        eprintln!("Failed to extract text from XLSX: {}", e);
+                        Ok(None)
+                    }
+                }
+            }
+            "xls" => {
+                match spreadsheet::convert_xls_to_text(file_path) {
+                    Ok(text) => Ok(Some(text)),
+                    Err(e) => {
+                        eprintln!("Failed to extract text from XLS: {}", e);
+                        Ok(None)
+                    }
                 }
             }
             // PowerPoint formats (placeholders - Pandoc doesn't support these reliably)
@@ -130,9 +143,19 @@ impl ContentProcessor for OfficeProcessor {
                     Err(_) => Ok(None),
                 }
             }
-            // OpenDocument Spreadsheet/Presentation (placeholders for now)
-            "ods" | "odp" => {
-                match self.extract_text_placeholder(file_path, "OpenDocument").await {
+            // OpenDocument Spreadsheet (using Calamine)
+            "ods" => {
+                match spreadsheet::convert_ods_to_text(file_path) {
+                    Ok(text) => Ok(Some(text)),
+                    Err(e) => {
+                        eprintln!("Failed to extract text from ODS: {}", e);
+                        Ok(None)
+                    }
+                }
+            }
+            // OpenDocument Presentation (placeholder for now)
+            "odp" => {
+                match self.extract_text_placeholder(file_path, "OpenDocument Presentation").await {
                     Ok(text) => Ok(Some(text)),
                     Err(_) => Ok(None),
                 }

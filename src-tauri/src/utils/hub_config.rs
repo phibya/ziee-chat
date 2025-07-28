@@ -8,6 +8,8 @@ pub struct HubConfig {
     pub github_repo: String,
     pub github_branch: String,
     pub hub_files: Vec<String>,
+    pub i18n_supported_languages: Vec<String>,
+    pub i18n_files: Vec<String>,
     pub fallback_enabled: bool,
     pub update_check_interval_hours: u64,
 }

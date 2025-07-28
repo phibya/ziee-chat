@@ -4,6 +4,7 @@ use std::path::Path;
 pub mod processors;
 pub mod thumbnails;
 pub mod manager;
+pub mod common;
 
 pub use manager::ProcessingManager;
 

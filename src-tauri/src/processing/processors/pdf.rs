@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::processing::ContentProcessor;
+use crate::utils::pandoc::PandocUtils;
 
 pub struct PdfProcessor;
 
@@ -11,18 +12,26 @@ impl PdfProcessor {
         Self
     }
 
-    async fn extract_text_with_pdftotext(&self, file_path: &Path) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        let output = Command::new("pdftotext")
-            .arg("-")
+    async fn extract_text_with_pandoc(&self, file_path: &Path) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        // Get Pandoc path
+        let pandoc_path = PandocUtils::get_pandoc_path()
+            .ok_or_else(|| "Pandoc not found. PDF text extraction requires Pandoc.")?;
+
+        // Use Pandoc to convert PDF to plain text
+        let output = Command::new(&pandoc_path)
             .arg(file_path)
+            .arg("-t")
+            .arg("plain")
             .output()?;
 
         if !output.status.success() {
-            return Err(format!("pdftotext failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!("Pandoc PDF conversion failed: {}", String::from_utf8_lossy(&output.stderr)).into());
         }
 
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+        let content = String::from_utf8(output.stdout)?;
+        Ok(content)
     }
+
 
     async fn get_pdf_info(&self, file_path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
         let output = Command::new("pdfinfo")
@@ -81,11 +90,10 @@ impl ContentProcessor for PdfProcessor {
     }
 
     async fn extract_text(&self, file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
-        match self.extract_text_with_pdftotext(file_path).await {
+        match self.extract_text_with_pandoc(file_path).await {
             Ok(text) => Ok(Some(text)),
-            Err(_) => {
-                // Fallback: try with poppler-utils if available
-                // For now, just return None if pdftotext fails
+            Err(e) => {
+                eprintln!("Pandoc PDF extraction failed: {}", e);
                 Ok(None)
             }
         }
