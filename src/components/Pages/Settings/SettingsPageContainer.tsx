@@ -15,18 +15,23 @@ export function SettingsPageContainer({
   children,
 }: SettingsPageContainerProps) {
   return (
-    <Flex className="p-3 flex-col gap-3">
-      <Flex className="flex-col">
-        <Title level={3} className="m-0 p-0">
+    <Flex className="p-3 flex-col gap-3 h-full overflow-hidden">
+      <Flex className="flex-col gap-0">
+        <Title level={3} className="!m-0 !p-0 !leading-tight">
           {title}
         </Title>
         {subtitle && (
-          <Text type="secondary" className="text-base">
-            {subtitle}
+          <Text
+            type="secondary"
+            className=" !m-0 !p-0 text-base !leading-tight"
+          >
+            {subtitle} ashgdahjs
           </Text>
         )}
       </Flex>
-      <Flex className={'flex-col gap-3'}>{children}</Flex>
+      <Flex className={'flex-col gap-3 flex-1 overflow-auto !py-3'}>
+        {children}
+      </Flex>
     </Flex>
   )
 }

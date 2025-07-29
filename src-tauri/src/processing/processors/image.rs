@@ -31,9 +31,15 @@ impl ContentProcessor for ImageProcessor {
         }
     }
 
-    async fn extract_text(&self, _file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
-        // Images don't have extractable text content (OCR would be a separate feature)
-        Ok(None)
+    async fn extract_text(&self, file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
+        // Try new configurable extraction (OCR or LLM)
+        match crate::processing::extraction_utils::extract_text_with_config(file_path, "image").await {
+            Ok(text) => Ok(text),
+            Err(e) => {
+                eprintln!("Configurable image extraction failed: {}", e);
+                Ok(None)
+            }
+        }
     }
 
     async fn extract_metadata(&self, file_path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {

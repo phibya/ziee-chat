@@ -19,6 +19,7 @@ import {
   AdminAssistantsSettings,
   AdminGeneralSettings,
   AppearanceSettings,
+  DocumentExtractionSettings,
   ExtensionsSettings,
   GeneralSettings,
   HardwareSettings,
@@ -125,6 +126,13 @@ function App() {
                       <Route
                         path="admin-appearance"
                         element={<AdminAppearanceSettings />}
+                      />
+                    )}
+                  {!isDesktopApp &&
+                    hasPermission(Permission.config.documentExtraction.read) && (
+                      <Route
+                        path="admin-document-extraction"
+                        element={<DocumentExtractionSettings />}
                       />
                     )}
                   {!isDesktopApp &&

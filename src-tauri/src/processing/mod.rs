@@ -5,6 +5,7 @@ pub mod processors;
 pub mod thumbnails;
 pub mod manager;
 pub mod common;
+pub mod extraction_utils;
 
 pub use manager::ProcessingManager;
 

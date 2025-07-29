@@ -21,6 +21,8 @@ pub mod permissions {
     pub const CONFIG_APPEARANCE_EDIT: &str = "config::appearance::edit";
     pub const CONFIG_PROXY_READ: &str = "config::proxy::read";
     pub const CONFIG_PROXY_EDIT: &str = "config::proxy::edit";
+    pub const CONFIG_DOCUMENT_EXTRACTION_READ: &str = "config::document-extraction::read";
+    pub const CONFIG_DOCUMENT_EXTRACTION_EDIT: &str = "config::document-extraction::edit";
 
     // User settings permissions
     pub const SETTINGS_READ: &str = "settings::read";

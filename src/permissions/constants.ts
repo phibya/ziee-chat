@@ -61,6 +61,11 @@ export const PermissionDescription = {
   'config::assistants::read': 'Allows viewing assistants settings',
   'config::assistants::edit':
     'Allows creating, editing, and managing assistants',
+  // Document extraction permissions
+  'config::document-extraction::*': 'Grants all document extraction configuration permissions',
+  'config::document-extraction::read': 'Allows viewing document extraction settings',
+  'config::document-extraction::edit':
+    'Allows configuring document extraction methods and settings',
   // Chat permissions
   'chat::use': 'Allows using chat functionality',
   // Profile permissions

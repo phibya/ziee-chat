@@ -2,6 +2,7 @@ pub mod ai;
 mod api;
 mod auth;
 mod database;
+mod env;
 mod processing;
 mod route;
 mod utils;
@@ -47,6 +48,9 @@ pub fn get_app_data_dir() -> PathBuf {
 }
 
 async fn initialize_app_common() -> Result<(), String> {
+    // Initialize environment variables
+    env::initialize_environment();
+
     // Clear temp directory on startup
     if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
         eprintln!("Failed to clear temp directory on startup: {}", e);

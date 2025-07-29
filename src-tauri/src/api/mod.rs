@@ -3,6 +3,7 @@ pub mod assistants;
 pub mod auth;
 pub mod chat;
 pub mod configuration;
+pub(crate) mod document_extraction;
 pub mod download_instances;
 pub mod errors;
 pub mod files;

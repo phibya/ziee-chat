@@ -143,6 +143,30 @@ pub fn admin_routes() -> Router {
                 api::middleware::config_proxy_edit_middleware,
             )),
         )
+        .route(
+            "/api/admin/config/document-extraction/{file_type}",
+            get(api::document_extraction::get_extraction_config).layer(middleware::from_fn(
+                api::middleware::config_document_extraction_read_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/config/document-extraction/{file_type}/method",
+            put(api::document_extraction::set_extraction_method).layer(middleware::from_fn(
+                api::middleware::config_document_extraction_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/config/document-extraction/{file_type}/ocr",
+            put(api::document_extraction::set_ocr_settings).layer(middleware::from_fn(
+                api::middleware::config_document_extraction_edit_middleware,
+            )),
+        )
+        .route(
+            "/api/admin/config/document-extraction/{file_type}/llm",
+            put(api::document_extraction::set_llm_settings).layer(middleware::from_fn(
+                api::middleware::config_document_extraction_edit_middleware,
+            )),
+        )
         // Model provider routes
         .route(
             "/api/admin/providers",

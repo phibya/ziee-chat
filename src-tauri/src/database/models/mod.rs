@@ -1,6 +1,7 @@
 pub mod assistant;
 pub mod chat;
 pub mod config;
+pub mod document_extraction;
 pub mod download_instance;
 pub mod file;
 pub mod model;
@@ -14,6 +15,7 @@ pub mod user;
 pub use assistant::*;
 pub use chat::*;
 pub use config::*;
+pub use document_extraction::*;
 pub use download_instance::*;
 pub use file::*;
 pub use model::*;

@@ -9,6 +9,7 @@ import { useAuthStore } from './auth'
 import { useChatStore } from './chat'
 import { useChatHistoryStore } from './chatHistory'
 import { useConversationsStore } from './conversations'
+import { useDocumentExtractionStore } from './documentExtraction'
 import { useHubStore } from './hub'
 import { useLocalUploadStore } from './localUpload'
 import { useModelDownloadStore } from './modelDownload'
@@ -112,6 +113,20 @@ export {
   updateExistingConversation,
   useConversationsStore,
 } from './conversations'
+// Document Extraction store
+export {
+  getCurrentMethod,
+  getLlmSettingsForFileType,
+  getOcrSettingsForFileType,
+  getSettingsForFileType,
+  initializeDocumentExtraction,
+  setExtractionMethod,
+  setLlmSettings,
+  setOcrSettings,
+  useDocumentExtractionStore,
+  validateLlmSettings,
+  validateOcrSettings,
+} from './documentExtraction'
 // Local Upload store
 export {
   cancelLocalUpload,
@@ -307,6 +322,7 @@ export const Stores = {
   Chat: createStoreProxy(useChatStore),
   ChatHistory: createStoreProxy(useChatHistoryStore),
   Conversations: createStoreProxy(useConversationsStore),
+  DocumentExtraction: createStoreProxy(useDocumentExtractionStore),
   Hub: createStoreProxy(useHubStore),
   LocalUpload: createStoreProxy(useLocalUploadStore),
   ModelDownload: createStoreProxy(useModelDownloadStore),

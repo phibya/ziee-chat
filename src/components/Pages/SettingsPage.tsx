@@ -116,6 +116,9 @@ export function SettingsPage() {
         const hasAppearanceManagement = hasPermission(
           Permission.config.experimental.edit,
         )
+        const hasDocumentExtractionManagement = hasPermission(
+          Permission.config.documentExtraction.read,
+        )
         const hasProviderManagement = hasPermission(
           Permission.config.providers.read,
         )
@@ -131,6 +134,7 @@ export function SettingsPage() {
           hasUserManagement ||
           hasGroupManagement ||
           hasAppearanceManagement ||
+          hasDocumentExtractionManagement ||
           hasProviderManagement ||
           hasRepositoryManagement ||
           hasProxyManagement ||
@@ -159,6 +163,14 @@ export function SettingsPage() {
               key: 'admin-appearance',
               icon: <EyeOutlined />,
               label: t('settings.appearance'),
+            })
+          }
+
+          if (hasDocumentExtractionManagement) {
+            items.push({
+              key: 'admin-document-extraction',
+              icon: <ExperimentOutlined />,
+              label: 'Document Parser',
             })
           }
 

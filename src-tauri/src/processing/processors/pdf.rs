@@ -90,6 +90,17 @@ impl ContentProcessor for PdfProcessor {
     }
 
     async fn extract_text(&self, file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
+        // Try new configurable extraction first
+        match crate::processing::extraction_utils::extract_text_with_config(file_path, "pdf").await {
+            Ok(Some(text)) => return Ok(Some(text)),
+            Ok(None) => {}, // No text extracted, try fallback
+            Err(e) => {
+                eprintln!("Configurable PDF extraction failed: {}", e);
+                // Continue to fallback
+            }
+        }
+        
+        // Fallback to original Pandoc extraction
         match self.extract_text_with_pandoc(file_path).await {
             Ok(text) => Ok(Some(text)),
             Err(e) => {

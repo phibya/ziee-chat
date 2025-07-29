@@ -2,6 +2,7 @@ pub mod assistants;
 pub mod branches;
 pub mod chat;
 pub mod configuration;
+pub mod document_extraction;
 pub mod download_instances;
 pub mod files;
 pub mod models;

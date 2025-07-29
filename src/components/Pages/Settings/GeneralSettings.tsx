@@ -78,7 +78,7 @@ export function GeneralSettings() {
 
   return (
     <SettingsPageContainer title={t('pages.general')}>
-      <Flex className={'flex-col gap-3 h-full pb-2'}>
+      <Flex className={'flex-col gap-3 pb-2'}>
         <Card title={t('general.application')}>
           <Flex className="flex-col gap-3">
             <Flex

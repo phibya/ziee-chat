@@ -164,6 +164,158 @@ fn extract_pandoc(
     Err("Pandoc binary not found in archive".into())
 }
 
+fn build_tesseract(
+    target_dir: &Path,
+    target: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    println!("Building Tesseract...");
+
+    let tesseract_dir = Path::new("../tesseract");
+    if !tesseract_dir.exists() {
+        return Err("Tesseract source directory not found".into());
+    }
+
+    // Binary name with platform suffix
+    let binary_name = if target.contains("windows") {
+        format!("tesseract-{}.exe", target)
+    } else {
+        format!("tesseract-{}", target)
+    };
+
+    // Use dedicated tesseract directory in target
+    let tesseract_build_dir = target_dir.join("tesseract");
+    fs::create_dir_all(&tesseract_build_dir)?;
+    let target_path = tesseract_build_dir.join(&binary_name);
+
+    // Skip build if binary already exists
+    if target_path.exists() {
+        println!("Tesseract binary already exists at {:?}", target_path);
+        return Ok(target_path);
+    }
+
+    // Create build directory for CMake
+    let cmake_build_dir = tesseract_build_dir.join("build");
+    fs::create_dir_all(&cmake_build_dir)?;
+
+    // Configure with CMake - use absolute paths
+    let tesseract_absolute = std::env::current_dir()?.join(tesseract_dir);
+    let mut configure_cmd = Command::new("cmake");
+    configure_cmd
+        .arg("-S")
+        .arg(&tesseract_absolute)
+        .arg("-B")
+        .arg(&cmake_build_dir)
+        .arg("-DCMAKE_BUILD_TYPE=Release")
+        .arg("-DBUILD_SHARED_LIBS=OFF")
+        .arg("-DDISABLE_TIFF=ON")
+        .arg("-DDISABLE_CURL=ON")
+        .arg("-DDISABLE_ARCHIVE=ON");
+
+    // Add platform-specific CMake arguments
+    if target.contains("windows") {
+        configure_cmd.arg("-DCMAKE_GENERATOR_PLATFORM=x64");
+    }
+
+    println!("Running CMake configure: {:?}", configure_cmd);
+    let configure_output = configure_cmd.output()?;
+
+    if !configure_output.status.success() {
+        let stderr = String::from_utf8_lossy(&configure_output.stderr);
+        let stdout = String::from_utf8_lossy(&configure_output.stdout);
+        eprintln!("Failed to configure Tesseract: ");
+        eprintln!("STDOUT: {}", stdout);
+        eprintln!("STDERR: {}", stderr);
+        return Err("Failed to configure Tesseract with CMake".into());
+    }
+
+    // Build with CMake
+    let mut build_cmd = Command::new("cmake");
+    build_cmd
+        .arg("--build")
+        .arg(&cmake_build_dir)
+        .arg("--config")
+        .arg("Release")
+        .arg("--target")
+        .arg("tesseract");
+
+    println!("Running CMake build: {:?}", build_cmd);
+    let build_output = build_cmd.output()?;
+
+    if !build_output.status.success() {
+        let stderr = String::from_utf8_lossy(&build_output.stderr);
+        let stdout = String::from_utf8_lossy(&build_output.stdout);
+        eprintln!("Failed to build Tesseract:");
+        eprintln!("STDOUT: {}", stdout);
+        eprintln!("STDERR: {}", stderr);
+        return Err("Failed to build Tesseract".into());
+    }
+
+    // Find the built binary
+    let original_binary_name = if target.contains("windows") {
+        "tesseract.exe"
+    } else {
+        "tesseract"
+    };
+
+    // Try common build output locations
+    let possible_locations = [
+        cmake_build_dir.join("bin").join(original_binary_name),
+        cmake_build_dir.join("Release").join("bin").join(original_binary_name),
+        cmake_build_dir.join(original_binary_name),
+    ];
+
+    let built_binary = possible_locations
+        .iter()
+        .find(|path| path.exists())
+        .ok_or("Built Tesseract binary not found")?;
+
+    // Copy to target directory with platform-specific name
+    fs::copy(&built_binary, &target_path)?;
+
+    // Make it executable on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&target_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&target_path, perms)?;
+    }
+
+    println!("Successfully built Tesseract to {:?}", target_path);
+
+    // Also copy to standard locations for Tauri bundling (during every build)
+    let standardized_name = if target.contains("windows") {
+        "tesseract.exe"
+    } else {
+        "tesseract"
+    };
+
+    // Copy to both debug and release directories (same directory as the executable)
+    for build_profile in ["debug", "release"] {
+        let profile_dir = target_dir.join(build_profile);
+        let tesseract_exe_path = profile_dir.join(standardized_name);
+        
+        if let Err(e) = fs::copy(&target_path, &tesseract_exe_path) {
+            eprintln!("Warning: Failed to copy Tesseract to {} directory: {}", build_profile, e);
+        } else {
+            println!("Successfully copied Tesseract to {} directory: {:?}", build_profile, tesseract_exe_path);
+        }
+        
+        // Make executable version executable on Unix
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if tesseract_exe_path.exists() {
+                let mut exe_perms = fs::metadata(&tesseract_exe_path).unwrap().permissions();
+                exe_perms.set_mode(0o755);
+                fs::set_permissions(&tesseract_exe_path, exe_perms).unwrap();
+            }
+        }
+    }
+
+    Ok(target_path)
+}
+
 fn build_mistralrs_server(
     target_dir: &Path,
     target: &str,
@@ -650,6 +802,17 @@ fn main() {
             }
         }
     }
+
+    // Build Tesseract
+    println!("cargo:rerun-if-changed=tesseract");
+    let _tesseract_path = match build_tesseract(&target_dir, &target) {
+        Ok(path) => Some(path),
+        Err(e) => {
+            eprintln!("Warning: Failed to build Tesseract: {}", e);
+            eprintln!("Continuing without Tesseract binary");
+            None
+        }
+    };
 
     // Build mistralrs-server
     println!("cargo:rerun-if-changed=mistralrs-server");

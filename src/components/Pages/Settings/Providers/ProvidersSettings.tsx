@@ -293,7 +293,7 @@ export function ProvidersSettings() {
 
   return (
     <SettingsPageContainer title="Providers">
-      <Layout>
+      <div className={'flex w-full'}>
         {/* Desktop Sidebar */}
         {!isMobile && (
           <Sider
@@ -358,7 +358,7 @@ export function ProvidersSettings() {
 
         <EditLocalModelDrawer />
         <EditRemoteModelDrawer />
-      </Layout>
+      </div>
     </SettingsPageContainer>
   )
 }

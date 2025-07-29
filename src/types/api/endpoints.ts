@@ -34,6 +34,12 @@ import {
   UpdateDefaultLanguageRequest,
 } from './globalConfig'
 import {
+  DocumentExtractionConfigResponse,
+  SetMethodRequest,
+  SetOcrSettingsRequest,
+  SetLlmSettingsRequest,
+} from './document-extraction'
+import {
   File,
   FileListParams,
   FileListResponse,
@@ -141,6 +147,11 @@ export const ApiEndpoints = {
   'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
+  // Document extraction configuration
+  'Admin.getExtractionConfig': 'GET /api/admin/config/document-extraction/{file_type}',
+  'Admin.setExtractionMethod': 'PUT /api/admin/config/document-extraction/{file_type}/method',
+  'Admin.setOcrSettings': 'PUT /api/admin/config/document-extraction/{file_type}/ocr',
+  'Admin.setLlmSettings': 'PUT /api/admin/config/document-extraction/{file_type}/llm',
   'Utils.testProxy': 'POST /api/utils/test-proxy',
   // User settings management
   'UserSettings.getAll': 'GET /api/user/settings',
@@ -292,6 +303,11 @@ export type ApiEndpointParameters = {
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
   'Admin.getProxySettings': void
   'Admin.updateProxySettings': UpdateProxySettingsRequest
+  // Document extraction configuration
+  'Admin.getExtractionConfig': { file_type: string }
+  'Admin.setExtractionMethod': { file_type: string } & SetMethodRequest
+  'Admin.setOcrSettings': { file_type: string } & SetOcrSettingsRequest
+  'Admin.setLlmSettings': { file_type: string } & SetLlmSettingsRequest
   'Utils.testProxy': TestProxyConnectionRequest
   // User settings management
   'UserSettings.getAll': void
@@ -466,6 +482,11 @@ export type ApiEndpointResponses = {
   'Admin.updateDefaultLanguage': DefaultLanguageResponse
   'Admin.getProxySettings': ProxySettingsResponse
   'Admin.updateProxySettings': ProxySettingsResponse
+  // Document extraction configuration
+  'Admin.getExtractionConfig': DocumentExtractionConfigResponse
+  'Admin.setExtractionMethod': DocumentExtractionConfigResponse
+  'Admin.setOcrSettings': DocumentExtractionConfigResponse
+  'Admin.setLlmSettings': DocumentExtractionConfigResponse
   'Utils.testProxy': TestProxyConnectionResponse
   // User settings management
   'UserSettings.getAll': UserSettingsResponse
