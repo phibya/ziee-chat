@@ -140,9 +140,9 @@ impl AIProvider for GeminiProvider {
         let mut payload = json!({
             "contents": contents,
             "generationConfig": GeminiGenerationConfig {
-                temperature: request.temperature,
+                temperature: request.temperature.map(|t| t as f64),
                 max_output_tokens: request.max_tokens,
-                top_p: request.top_p,
+                top_p: request.top_p.map(|t| t as f64),
             }
         });
 
@@ -204,9 +204,9 @@ impl AIProvider for GeminiProvider {
         let mut payload = json!({
             "contents": contents,
             "generationConfig": GeminiGenerationConfig {
-                temperature: request.temperature,
+                temperature: request.temperature.map(|t| t as f64),
                 max_output_tokens: request.max_tokens,
-                top_p: request.top_p,
+                top_p: request.top_p.map(|t| t as f64),
             }
         });
 

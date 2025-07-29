@@ -67,13 +67,14 @@ export const ProjectKnowledgeCard: React.FC = () => {
         "
         openFileDialogOnClick={false}
       />
-      {/* Project Description */}
+      {/* Project Instructions */}
       <Flex className="gap-1 flex-col">
-        <Typography.Text strong>Project Instructions</Typography.Text>
+        <Typography.Title level={5}>Project Instructions</Typography.Title>
         <Card>
           <Text type="secondary">
-            {currentProject?.description ||
-              '"Goal: - To completely write the Proposal.tex. There are two...'}
+            {currentProject?.instruction ||
+              currentProject?.description ||
+              'No instructions provided for this project.'}
             <Button type="link" size="small" style={{ pointerEvents: 'auto' }}>
               Edit
             </Button>
@@ -106,7 +107,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
       )}
 
       {/* Documents */}
-      <Flex justify="space-between" align="center" className={'!mt-2'}>
+      <Flex justify="space-between" align="center" className={'!mt-3'}>
         <Typography.Title level={5}>Documents</Typography.Title>
         <Button
           icon={<UploadOutlined />}

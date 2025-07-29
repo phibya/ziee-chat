@@ -75,6 +75,18 @@ export function ProjectCard({ project }: ProjectCardProps) {
           </div>
         )}
 
+        {/* Instruction */}
+        {project.instruction && (
+          <div className="mb-3">
+            <Text className="text-xs font-medium text-gray-600 block mb-1">
+              Instruction:
+            </Text>
+            <Text type="secondary" className="text-sm line-clamp-2">
+              {project.instruction}
+            </Text>
+          </div>
+        )}
+
         {/* Stats and date - pushed to bottom */}
         <div className="mt-auto">
           {/* Last updated */}

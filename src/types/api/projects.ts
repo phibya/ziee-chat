@@ -3,6 +3,7 @@ export interface Project {
   user_id: string
   name: string
   description?: string
+  instruction?: string
   is_private: boolean
   document_count?: number
   conversation_count?: number
@@ -34,12 +35,14 @@ export interface ProjectConversation {
 export interface CreateProjectRequest {
   name: string
   description?: string
+  instruction?: string
   is_private?: boolean
 }
 
 export interface UpdateProjectRequest {
   name?: string
   description?: string
+  instruction?: string
   is_private?: boolean
 }
 

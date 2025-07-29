@@ -17,15 +17,16 @@ pub async fn create_project(
 
     let project = sqlx::query_as::<_, Project>(
         r#"
-        INSERT INTO projects (id, user_id, name, description, is_private)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, user_id, name, description, is_private, created_at, updated_at, 0 as conversation_count
+        INSERT INTO projects (id, user_id, name, description, instruction, is_private)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, user_id, name, description, instruction, is_private, created_at, updated_at, 0 as conversation_count
         "#,
     )
     .bind(id)
     .bind(user_id)
     .bind(&request.name)
     .bind(&request.description)
+    .bind(&request.instruction)
     .bind(is_private)
     .fetch_one(pool)
     .await?;
@@ -40,12 +41,12 @@ pub async fn get_project_by_id(
 ) -> Result<Option<Project>, sqlx::Error> {
     let project = sqlx::query_as::<_, Project>(
         r#"
-        SELECT p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at,
+        SELECT p.id, p.user_id, p.name, p.description, p.instruction, p.is_private, p.created_at, p.updated_at,
                COALESCE(COUNT(pc.id), 0) as conversation_count
         FROM projects p
         LEFT JOIN project_conversations pc ON p.id = pc.project_id
         WHERE p.id = $1 AND p.user_id = $2
-        GROUP BY p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at
+        GROUP BY p.id, p.user_id, p.name, p.description, p.instruction, p.is_private, p.created_at, p.updated_at
         "#,
     )
     .bind(project_id)
@@ -67,7 +68,7 @@ pub async fn list_projects(
 
     let (where_clause, search_param) = if let Some(search_term) = search {
         (
-            "WHERE user_id = $1 AND (name ILIKE $4 OR description ILIKE $4)",
+            "WHERE user_id = $1 AND (name ILIKE $4 OR description ILIKE $4 OR instruction ILIKE $4)",
             Some(format!("%{}%", search_term)),
         )
     } else {
@@ -93,12 +94,12 @@ pub async fn list_projects(
     // Get projects with conversation counts
     let projects_query = format!(
         r#"
-        SELECT p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at,
+        SELECT p.id, p.user_id, p.name, p.description, p.instruction, p.is_private, p.created_at, p.updated_at,
                COALESCE(COUNT(pc.id), 0) as conversation_count
         FROM projects p
         LEFT JOIN project_conversations pc ON p.id = pc.project_id
         {}
-        GROUP BY p.id, p.user_id, p.name, p.description, p.is_private, p.created_at, p.updated_at
+        GROUP BY p.id, p.user_id, p.name, p.description, p.instruction, p.is_private, p.created_at, p.updated_at
         ORDER BY p.updated_at DESC
         LIMIT $2 OFFSET $3
         "#,
@@ -143,7 +144,7 @@ pub async fn update_project(
     }
 
     // Use a simpler approach with conditional updates
-    if request.name.is_some() || request.description.is_some() || request.is_private.is_some() {
+    if request.name.is_some() || request.description.is_some() || request.instruction.is_some() || request.is_private.is_some() {
         // Get current values
         let current = existing_project.unwrap();
 
@@ -152,17 +153,22 @@ pub async fn update_project(
             .description
             .as_ref()
             .or(current.description.as_ref());
+        let instruction = request
+            .instruction
+            .as_ref()
+            .or(current.instruction.as_ref());
         let is_private = request.is_private.unwrap_or(current.is_private);
 
         sqlx::query(
             r#"
             UPDATE projects 
-            SET name = $1, description = $2, is_private = $3, updated_at = NOW()
-            WHERE id = $4 AND user_id = $5
+            SET name = $1, description = $2, instruction = $3, is_private = $4, updated_at = NOW()
+            WHERE id = $5 AND user_id = $6
             "#,
         )
         .bind(name)
         .bind(description)
+        .bind(instruction)
         .bind(is_private)
         .bind(project_id)
         .bind(user_id)

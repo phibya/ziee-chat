@@ -4,7 +4,7 @@ use pdfium_render::prelude::*;
 use image::{RgbImage, ImageBuffer};
 
 use crate::processing::ThumbnailGenerator;
-use crate::utils::resource_paths::ResourcePaths;
+use crate::utils::pdfium::initialize_pdfium;
 
 // Maximum number of thumbnails to generate for PDF files
 const MAX_PDF_THUMBNAILS: u32 = 5;
@@ -21,35 +21,11 @@ impl PdfThumbnailGenerator {
         file_path: &Path,
         output_dir: &Path,
     ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-        // Initialize PDFium - dynamic linking using platform-specific paths
-        let pdfium = {
-            // Get platform-specific library search paths
-            let library_name = if cfg!(target_os = "windows") {
-                "pdfium.dll"
-            } else if cfg!(target_os = "macos") {
-                "libpdfium.dylib"
-            } else {
-                "libpdfium.so"
-            };
-            
-            let search_paths = ResourcePaths::get_library_search_paths(library_name);
+        // Initialize PDFium using the centralized utility
+        let pdfium_bindings = initialize_pdfium()
+            .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)) as Box<dyn std::error::Error + Send + Sync>)?;
 
-            // Try each path in order
-            let mut pdfium_result = None;
-            for path in &search_paths {
-                if let Ok(lib) = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(path)) {
-                    pdfium_result = Some(lib);
-                    break;
-                }
-            }
-            
-            // Fallback to system library if bundled library not found
-            pdfium_result
-                .or_else(|| Pdfium::bind_to_system_library().ok())
-                .ok_or(format!("Failed to load PDFium library. Searched paths: {:?}. Make sure PDFium is installed or the binary is available.", search_paths))?  
-        };
-
-        let pdfium = Pdfium::new(pdfium);
+        let pdfium = Pdfium::new(pdfium_bindings);
 
         // Load the PDF document
         let document = pdfium.load_pdf_from_file(file_path, None)

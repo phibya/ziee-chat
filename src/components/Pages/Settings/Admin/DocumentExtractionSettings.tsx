@@ -8,7 +8,6 @@ import {
   Input,
   Radio,
   Select,
-  Slider,
   Typography,
   Alert,
 } from 'antd'

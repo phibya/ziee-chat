@@ -14,11 +14,11 @@ pub struct ChatRequest {
     pub messages: Vec<ChatMessage>,
     pub model: String,
     pub stream: bool,
-    pub temperature: Option<f64>,
+    pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
-    pub top_p: Option<f64>,
-    pub frequency_penalty: Option<f64>,
-    pub presence_penalty: Option<f64>,
+    pub top_p: Option<f32>,
+    pub frequency_penalty: Option<f32>,
+    pub presence_penalty: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

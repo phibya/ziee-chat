@@ -14,6 +14,7 @@ const { TextArea } = Input
 interface ProjectFormData {
   name: string
   description?: string
+  instruction?: string
   is_private?: boolean
 }
 
@@ -27,6 +28,7 @@ export const ProjectFormDrawer: React.FC = () => {
     const finalValues = {
       ...values,
       description: values.description || '',
+      instruction: values.instruction || '',
       is_private: true,
     }
 
@@ -53,6 +55,7 @@ export const ProjectFormDrawer: React.FC = () => {
         form.setFieldsValue({
           name: editingProject.name,
           description: editingProject.description,
+          instruction: editingProject.instruction,
           is_private: editingProject.is_private,
         })
       } else {
@@ -103,6 +106,10 @@ export const ProjectFormDrawer: React.FC = () => {
 
         <Form.Item name="description" label="Description">
           <TextArea placeholder="Enter project description" rows={4} />
+        </Form.Item>
+
+        <Form.Item name="instruction" label="Instruction">
+          <TextArea placeholder="Enter project instruction" rows={4} />
         </Form.Item>
       </Form>
     </Drawer>

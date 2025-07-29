@@ -4,15 +4,35 @@ use base64::Engine;
 use crate::database::queries::document_extraction;
 use crate::database::models::document_extraction::*;
 use crate::utils::resource_paths::ResourcePaths;
+use crate::utils::pdfium::initialize_pdfium;
 
-// Simple PDF text extraction using pdf-extract crate (if available) or pdfinfo fallback
+// Simple PDF text extraction using pdf-extract crate
 pub async fn extract_pdf_simple(file_path: &Path) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    // For now, return a placeholder - we can implement pdf-extract later
-    let filename = file_path.file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("unknown.pdf");
+    use pdf_extract;
+    use std::fs;
     
-    Ok(format!("[PDF file: {}]\n\nSimple PDF text extraction is not yet implemented. Please use OCR or LLM extraction methods.", filename))
+    // Read the PDF file into bytes
+    let pdf_bytes = tokio::task::spawn_blocking({
+        let file_path = file_path.to_owned();
+        move || fs::read(&file_path)
+    }).await??;
+    
+    // Extract text from PDF bytes using pdf-extract
+    let extracted_text = tokio::task::spawn_blocking(move || {
+        pdf_extract::extract_text_from_mem(&pdf_bytes)
+    }).await??;
+    
+    // Clean up the extracted text
+    let cleaned_text = clean_extracted_text(&extracted_text);
+    
+    if cleaned_text.trim().is_empty() {
+        let filename = file_path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("unknown.pdf");
+        return Ok(format!("[PDF file: {}]\n\nNo text content found in PDF. The PDF may contain only images or have text in a format that cannot be extracted. Please try OCR or LLM extraction methods.", filename));
+    }
+    
+    Ok(cleaned_text)
 }
 
 // OCR extraction using tesseract
@@ -65,34 +85,12 @@ pub async fn extract_image_llm(file_path: &Path, settings: &LlmExtractionSetting
 async fn pdf_to_images(file_path: &Path) -> Result<Vec<std::path::PathBuf>, Box<dyn std::error::Error + Send + Sync>> {
     use pdfium_render::prelude::*;
     use image::{RgbImage, ImageBuffer};
-    use crate::utils::resource_paths::ResourcePaths;
     
-    // Initialize PDFium (same as thumbnail generator)
-    let pdfium = {
-        let library_name = if cfg!(target_os = "windows") {
-            "pdfium.dll"
-        } else if cfg!(target_os = "macos") {
-            "libpdfium.dylib"
-        } else {
-            "libpdfium.so"
-        };
-        
-        let search_paths = ResourcePaths::get_library_search_paths(library_name);
-        
-        let mut pdfium_result = None;
-        for path in &search_paths {
-            if let Ok(lib) = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(path)) {
-                pdfium_result = Some(lib);
-                break;
-            }
-        }
-        
-        pdfium_result
-            .or_else(|| Pdfium::bind_to_system_library().ok())
-            .ok_or(format!("Failed to load PDFium library. Searched paths: {:?}", search_paths))?  
-    };
+    // Initialize PDFium using the centralized utility
+    let pdfium_bindings = initialize_pdfium()
+        .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)) as Box<dyn std::error::Error + Send + Sync>)?;
 
-    let pdfium = Pdfium::new(pdfium);
+    let pdfium = Pdfium::new(pdfium_bindings);
 
     // Load the PDF document
     let document = pdfium.load_pdf_from_file(file_path, None)
@@ -170,17 +168,91 @@ async fn run_tesseract_ocr(image_path: &Path, language: &str) -> Result<String, 
 
 // Helper function to call LLM vision API
 async fn call_llm_vision_api(image_path: &Path, settings: &LlmExtractionSettings) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use crate::ai::{ChatMessage, ChatRequest};
+    use crate::database::queries::{models::get_model_by_id, providers::get_provider_by_id};
+    use uuid::Uuid;
+    
+    // Validate model_id
+    let model_id_str = settings.model_id.as_ref()
+        .ok_or("No model ID specified for LLM vision extraction")?;
+    let model_id = Uuid::parse_str(model_id_str)
+        .map_err(|_| "Invalid model ID format")?;
+    
+    // Get model information
+    let model = get_model_by_id(model_id).await?
+        .ok_or("Model not found")?;
+    
+    // Get provider information
+    let provider = get_provider_by_id(model.provider_id).await?
+        .ok_or("Provider not found")?;
+    
+    // Check if model supports vision
+    if !model.capabilities.as_ref()
+        .map(|caps| caps.vision.unwrap_or(false))
+        .unwrap_or(false) {
+        return Err("Selected model does not support vision capabilities".into());
+    }
+    
     // Read image and convert to base64
     let image_data = std::fs::read(image_path)?;
     let base64_image = base64::engine::general_purpose::STANDARD.encode(&image_data);
     
-    // For now, return a placeholder - this will need to be implemented with actual model communication
-    let filename = image_path.file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("unknown");
+    // Create AI provider
+    let ai_provider = crate::api::chat::create_ai_provider_with_model_id(&provider, Some(model_id)).await?;
     
-    Ok(format!("[LLM Vision Extraction]\nModel: {}\nPrompt: {}\nImage: {}\n\nLLM vision extraction is not yet implemented. This would send the image to the vision model for text extraction.", 
-        settings.model_id.as_deref().unwrap_or("not configured"), settings.system_prompt, filename))
+    // Create vision-compatible content
+    // For OpenAI-compatible APIs, we'll create a message with image content
+    let vision_content = if provider.provider_type == "openai" || provider.provider_type == "groq" {
+        // Use OpenAI vision format with base64 image
+        format!("data:image/jpeg;base64,{}", base64_image)
+    } else {
+        // For other providers, embed image description in text
+        format!("[Image data: base64 encoded image]\n\n{}", settings.system_prompt)
+    };
+    
+    // Create messages for vision extraction
+    let messages = vec![
+        ChatMessage {
+            role: "system".to_string(),
+            content: settings.system_prompt.clone(),
+        },
+        ChatMessage {
+            role: "user".to_string(),
+            content: vision_content,
+        },
+    ];
+    
+    // Create chat request with document extraction parameters
+    let chat_request = ChatRequest {
+        messages,
+        model: model.name.clone(),
+        stream: false, // Use non-streaming for document extraction
+        temperature: Some(settings.parameters.temperature.unwrap_or(0.2)),
+        max_tokens: Some(2048), // Use fixed max tokens for document extraction
+        top_p: Some(settings.parameters.top_p.unwrap_or(0.9)),
+        frequency_penalty: settings.parameters.frequency_penalty,
+        presence_penalty: settings.parameters.presence_penalty,
+    };
+    
+    // Call the AI provider
+    match ai_provider.chat(chat_request).await {
+        Ok(response) => {
+            let extracted_text = response.content.trim();
+            
+            if extracted_text.is_empty() {
+                let filename = image_path.file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("unknown");
+                return Ok(format!("[Image: {}]\n\nNo text was extracted by the vision model. The image may not contain readable text.", filename));
+            }
+            
+            Ok(extracted_text.to_string())
+        }
+        Err(e) => {
+            eprintln!("LLM vision extraction failed: {}", e);
+            Err(format!("LLM vision extraction failed: {}", e).into())
+        }
+    }
 }
 
 // Main extraction function that uses configuration
@@ -215,4 +287,53 @@ pub async fn extract_text_with_config(file_path: &Path, file_type: &str) -> Resu
         }
         _ => Ok(None), // Unknown method
     }
+}
+
+/// Clean up extracted text by removing excessive whitespace and normalizing line breaks
+fn clean_extracted_text(text: &str) -> String {
+    use std::collections::HashSet;
+    
+    let lines: Vec<&str> = text.lines().collect();
+    let mut cleaned_lines = Vec::new();
+    let mut seen_lines = HashSet::new();
+    
+    for line in lines {
+        let trimmed = line.trim();
+        
+        // Skip empty lines and very short lines that are likely artifacts
+        if trimmed.is_empty() || trimmed.len() < 2 {
+            continue;
+        }
+        
+        // Skip duplicate lines (common in PDFs with headers/footers)
+        if seen_lines.contains(trimmed) {
+            continue;
+        }
+        
+        seen_lines.insert(trimmed.to_string());
+        cleaned_lines.push(trimmed);
+    }
+    
+    // Join lines with proper spacing
+    let result = cleaned_lines.join("\n");
+    
+    // Remove excessive whitespace
+    let result = result
+        .split_whitespace()
+        .collect::<Vec<&str>>()
+        .join(" ");
+    
+    // Restore paragraph breaks by looking for sentence endings
+    let result = result
+        .replace(". ", ".\n")
+        .replace("! ", "!\n")
+        .replace("? ", "?\n");
+    
+    // Clean up any double newlines
+    let result = result
+        .replace("\n\n", "\n")
+        .trim()
+        .to_string();
+    
+    result
 }

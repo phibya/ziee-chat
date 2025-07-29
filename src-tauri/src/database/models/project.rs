@@ -10,6 +10,7 @@ pub struct Project {
     pub user_id: Uuid,
     pub name: String,
     pub description: Option<String>,
+    pub instruction: Option<String>,
     pub is_private: bool,
     pub conversation_count: Option<i64>,
     pub created_at: DateTime<Utc>,
@@ -23,6 +24,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Project {
             user_id: row.try_get("user_id")?,
             name: row.try_get("name")?,
             description: row.try_get("description")?,
+            instruction: row.try_get("instruction")?,
             is_private: row.try_get("is_private")?,
             conversation_count: row.try_get("conversation_count").ok(),
             created_at: row.try_get("created_at")?,
@@ -57,6 +59,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for ProjectConversation {
 pub struct CreateProjectRequest {
     pub name: String,
     pub description: Option<String>,
+    pub instruction: Option<String>,
     pub is_private: Option<bool>,
 }
 
@@ -64,6 +67,7 @@ pub struct CreateProjectRequest {
 pub struct UpdateProjectRequest {
     pub name: Option<String>,
     pub description: Option<String>,
+    pub instruction: Option<String>,
     pub is_private: Option<bool>,
 }
 
