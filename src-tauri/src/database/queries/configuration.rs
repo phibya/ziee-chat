@@ -2,34 +2,34 @@ use crate::database::models::Configuration;
 use crate::database::models::proxy::ProxySettings;
 use serde_json::Value;
 
-pub async fn get_configuration(name: &str) -> Result<Option<Configuration>, sqlx::Error> {
+pub async fn get_configuration(key: &str) -> Result<Option<Configuration>, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
     sqlx::query_as::<_, Configuration>(
-        "SELECT id, name, value, description, created_at, updated_at FROM configurations WHERE name = $1"
+        "SELECT id, key, value, description, created_at, updated_at FROM configurations WHERE key = $1"
     )
-    .bind(name)
+    .bind(key)
     .fetch_optional(pool.as_ref())
     .await
 }
 
 pub async fn set_configuration(
-    name: &str,
+    key: &str,
     value: &Value,
     description: Option<&str>,
 ) -> Result<Configuration, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
     sqlx::query_as::<_, Configuration>(
         r#"
-        INSERT INTO configurations (name, value, description, updated_at)
+        INSERT INTO configurations (key, value, description, updated_at)
         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-        ON CONFLICT (name) DO UPDATE SET
+        ON CONFLICT (key) DO UPDATE SET
             value = EXCLUDED.value,
             description = EXCLUDED.description,
             updated_at = CURRENT_TIMESTAMP
-        RETURNING id, name, value, description, created_at, updated_at
+        RETURNING id, key, value, description, created_at, updated_at
         "#,
     )
-    .bind(name)
+    .bind(key)
     .bind(value)
     .bind(description)
     .fetch_one(pool.as_ref())
@@ -37,11 +37,11 @@ pub async fn set_configuration(
 }
 
 // Helper function to get a configuration value as a specific type
-pub async fn get_config_value<T>(name: &str) -> Result<Option<T>, sqlx::Error>
+pub async fn get_config_value<T>(key: &str) -> Result<Option<T>, sqlx::Error>
 where
     T: serde::de::DeserializeOwned,
 {
-    match get_configuration(name).await? {
+    match get_configuration(key).await? {
         Some(config) => match serde_json::from_value(config.value) {
             Ok(value) => Ok(Some(value)),
             Err(_) => Ok(None),
@@ -52,7 +52,7 @@ where
 
 // Helper function to set a configuration value from any serializable type
 pub async fn set_config_value<T>(
-    name: &str,
+    key: &str,
     value: &T,
     description: Option<&str>,
 ) -> Result<Configuration, sqlx::Error>
@@ -63,7 +63,7 @@ where
         Ok(val) => val,
         Err(_) => return Err(sqlx::Error::Protocol("Failed to serialize value".to_string())),
     };
-    set_configuration(name, &json_value, description).await
+    set_configuration(key, &json_value, description).await
 }
 
 pub async fn is_app_initialized() -> Result<bool, sqlx::Error> {

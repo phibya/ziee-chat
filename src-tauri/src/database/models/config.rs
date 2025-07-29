@@ -7,7 +7,7 @@ use sqlx::{FromRow, Row};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     pub id: i32,
-    pub name: String,
+    pub key: String,
     pub value: Value,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -18,7 +18,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Configuration {
     fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
         Ok(Configuration {
             id: row.try_get("id")?,
-            name: row.try_get("name")?,
+            key: row.try_get("key")?,
             value: row.try_get("value")?,
             description: row.try_get("description")?,
             created_at: row.try_get("created_at")?,
