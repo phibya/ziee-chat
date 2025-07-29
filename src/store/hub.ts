@@ -178,10 +178,12 @@ export const setHubActiveTab = (tab: string) => {
 // Handle language change
 export const handleLanguageChange = async (newLocale: string) => {
   const currentState = useHubStore.getState()
-  
+
   // Only reload if locale changed and hub is initialized
   if (currentState.initialized && currentState.currentLocale !== newLocale) {
-    console.log(`Hub locale changed from ${currentState.currentLocale} to ${newLocale}`)
+    console.log(
+      `Hub locale changed from ${currentState.currentLocale} to ${newLocale}`,
+    )
     await initializeHub(newLocale)
   }
 }

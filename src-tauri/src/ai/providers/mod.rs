@@ -5,6 +5,7 @@
 
 pub mod anthropic;
 pub mod custom;
+pub mod deepseek;
 pub mod gemini;
 pub mod groq;
 pub mod local;
@@ -15,6 +16,7 @@ pub mod openai_types;
 
 pub use anthropic::*;
 pub use custom::*;
+pub use deepseek::*;
 pub use gemini::*;
 pub use groq::*;
 pub use local::*;

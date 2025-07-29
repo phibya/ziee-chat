@@ -13,11 +13,11 @@ interface DocumentExtractionState {
   // Settings by file type
   pdfSettings: DocumentExtractionSettings
   imageSettings: DocumentExtractionSettings
-  
+
   // Loading states
   loading: boolean
   error: string | null
-  
+
   // Initialization state
   initialized: boolean
 }
@@ -66,7 +66,7 @@ export const initializeDocumentExtraction = async () => {
 
 export const setExtractionMethod = async (
   fileType: ExtractionFileType,
-  method: 'simple' | 'ocr' | 'llm'
+  method: 'simple' | 'ocr' | 'llm',
 ): Promise<void> => {
   try {
     const response = await ApiClient.Admin.setExtractionMethod({
@@ -87,7 +87,7 @@ export const setExtractionMethod = async (
 
 export const setOcrSettings = async (
   fileType: ExtractionFileType,
-  settings: OcrExtractionSettings
+  settings: OcrExtractionSettings,
 ): Promise<void> => {
   try {
     const response = await ApiClient.Admin.setOcrSettings({
@@ -108,7 +108,7 @@ export const setOcrSettings = async (
 
 export const setLlmSettings = async (
   fileType: ExtractionFileType,
-  settings: LlmExtractionSettings
+  settings: LlmExtractionSettings,
 ): Promise<void> => {
   try {
     const response = await ApiClient.Admin.setLlmSettings({
@@ -128,7 +128,9 @@ export const setLlmSettings = async (
 }
 
 // Helper functions for getting settings
-export const getSettingsForFileType = (fileType: ExtractionFileType): DocumentExtractionSettings => {
+export const getSettingsForFileType = (
+  fileType: ExtractionFileType,
+): DocumentExtractionSettings => {
   const state = useDocumentExtractionStore.getState()
   return fileType === 'pdf' ? state.pdfSettings : state.imageSettings
 }
@@ -138,53 +140,64 @@ export const getCurrentMethod = (fileType: ExtractionFileType): string => {
   return settings.method
 }
 
-export const getOcrSettingsForFileType = (fileType: ExtractionFileType): OcrExtractionSettings => {
+export const getOcrSettingsForFileType = (
+  fileType: ExtractionFileType,
+): OcrExtractionSettings => {
   const settings = getSettingsForFileType(fileType)
   return settings.ocr
 }
 
-export const getLlmSettingsForFileType = (fileType: ExtractionFileType): LlmExtractionSettings => {
+export const getLlmSettingsForFileType = (
+  fileType: ExtractionFileType,
+): LlmExtractionSettings => {
   const settings = getSettingsForFileType(fileType)
   return settings.llm
 }
 
 // Validation helpers
-export const validateLlmSettings = (settings: LlmExtractionSettings): string[] => {
+export const validateLlmSettings = (
+  settings: LlmExtractionSettings,
+): string[] => {
   const errors: string[] = []
-  
+
   if (!settings.model_id) {
     errors.push('Model ID is required')
   }
-  
+
   if (!settings.system_prompt.trim()) {
     errors.push('System prompt is required')
   }
-  
+
   if (settings.parameters.temperature !== undefined) {
-    if (settings.parameters.temperature < 0 || settings.parameters.temperature > 2) {
+    if (
+      settings.parameters.temperature < 0 ||
+      settings.parameters.temperature > 2
+    ) {
       errors.push('Temperature must be between 0 and 2')
     }
   }
-  
+
   if (settings.parameters.top_p !== undefined) {
     if (settings.parameters.top_p < 0 || settings.parameters.top_p > 1) {
       errors.push('Top-p must be between 0 and 1')
     }
   }
-  
+
   return errors
 }
 
-export const validateOcrSettings = (settings: OcrExtractionSettings): string[] => {
+export const validateOcrSettings = (
+  settings: OcrExtractionSettings,
+): string[] => {
   const errors: string[] = []
-  
+
   if (!settings.language) {
     errors.push('OCR language is required')
   }
-  
+
   if (!settings.engine) {
     errors.push('OCR engine is required')
   }
-  
+
   return errors
 }

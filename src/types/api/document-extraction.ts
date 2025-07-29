@@ -1,16 +1,16 @@
 // Document extraction types matching Rust backend
 
 export interface DocumentModelParameters {
-  context_size?: number;
-  gpu_layers?: number;
-  temperature?: number;
-  top_k?: number;
-  top_p?: number;
-  min_p?: number;
-  repeat_last_n?: number;
-  repeat_penalty?: number;
-  presence_penalty?: number;
-  frequency_penalty?: number;
+  context_size?: number
+  gpu_layers?: number
+  temperature?: number
+  top_k?: number
+  top_p?: number
+  min_p?: number
+  repeat_last_n?: number
+  repeat_penalty?: number
+  presence_penalty?: number
+  frequency_penalty?: number
 }
 
 export interface SimpleExtractionSettings {
@@ -18,48 +18,48 @@ export interface SimpleExtractionSettings {
 }
 
 export interface OcrExtractionSettings {
-  language: string;
-  engine: string;
+  language: string
+  engine: string
 }
 
 export interface LlmExtractionSettings {
-  model_id: string | null;
-  system_prompt: string;
-  parameters: DocumentModelParameters;
+  model_id: string | null
+  system_prompt: string
+  parameters: DocumentModelParameters
 }
 
 export interface DocumentExtractionSettings {
-  method: 'simple' | 'ocr' | 'llm';
-  simple: SimpleExtractionSettings;
-  ocr: OcrExtractionSettings;
-  llm: LlmExtractionSettings;
+  method: 'simple' | 'ocr' | 'llm'
+  simple: SimpleExtractionSettings
+  ocr: OcrExtractionSettings
+  llm: LlmExtractionSettings
 }
 
 // API Request/Response types
 export interface DocumentExtractionConfigResponse {
-  settings: DocumentExtractionSettings;
+  settings: DocumentExtractionSettings
 }
 
 export interface SetMethodRequest {
-  method: string;
+  method: string
 }
 
 export interface SetOcrSettingsRequest {
-  settings: OcrExtractionSettings;
+  settings: OcrExtractionSettings
 }
 
 export interface SetLlmSettingsRequest {
-  settings: LlmExtractionSettings;
+  settings: LlmExtractionSettings
 }
 
 // File types that support extraction
-export type ExtractionFileType = 'pdf' | 'image';
+export type ExtractionFileType = 'pdf' | 'image'
 
 // Default settings
 export const DEFAULT_OCR_SETTINGS: OcrExtractionSettings = {
   language: 'eng',
   engine: 'tesseract',
-};
+}
 
 export const DEFAULT_MODEL_PARAMETERS: DocumentModelParameters = {
   context_size: 4096,
@@ -72,20 +72,22 @@ export const DEFAULT_MODEL_PARAMETERS: DocumentModelParameters = {
   repeat_penalty: 1.05,
   presence_penalty: 0.1,
   frequency_penalty: 0.1,
-};
+}
 
 export const DEFAULT_LLM_SETTINGS: LlmExtractionSettings = {
   model_id: null,
-  system_prompt: 'Extract all text from this document image. Maintain formatting and structure.',
+  system_prompt:
+    'Extract all text from this document image. Maintain formatting and structure.',
   parameters: DEFAULT_MODEL_PARAMETERS,
-};
+}
 
-export const DEFAULT_DOCUMENT_EXTRACTION_SETTINGS: DocumentExtractionSettings = {
-  method: 'simple',
-  simple: {},
-  ocr: DEFAULT_OCR_SETTINGS,
-  llm: DEFAULT_LLM_SETTINGS,
-};
+export const DEFAULT_DOCUMENT_EXTRACTION_SETTINGS: DocumentExtractionSettings =
+  {
+    method: 'simple',
+    simple: {},
+    ocr: DEFAULT_OCR_SETTINGS,
+    llm: DEFAULT_LLM_SETTINGS,
+  }
 
 // OCR language options
 export const OCR_LANGUAGES = [
@@ -102,4 +104,4 @@ export const OCR_LANGUAGES = [
   { value: 'kor', label: 'Korean' },
   { value: 'ara', label: 'Arabic' },
   { value: 'hin', label: 'Hindi' },
-] as const;
+] as const

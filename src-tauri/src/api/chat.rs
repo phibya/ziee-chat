@@ -14,8 +14,9 @@ use uuid::Uuid;
 use crate::ai::{
     core::{AIProvider, ChatMessage, ChatRequest, ProxyConfig},
     providers::{
-        anthropic::AnthropicProvider, custom::CustomProvider, gemini::GeminiProvider,
-        groq::GroqProvider, local::LocalProvider, mistral::MistralProvider, openai::OpenAIProvider,
+        anthropic::AnthropicProvider, custom::CustomProvider, deepseek::DeepSeekProvider,
+        gemini::GeminiProvider, groq::GroqProvider, local::LocalProvider,
+        mistral::MistralProvider, openai::OpenAIProvider,
     },
 };
 use crate::api::errors::ErrorCode;
@@ -1064,6 +1065,14 @@ pub async fn create_ai_provider_with_model_id(
                 proxy_config,
             )?;
             Ok(Box::new(mistral_provider))
+        }
+        "deepseek" => {
+            let deepseek_provider = DeepSeekProvider::new(
+                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
+                provider.base_url.clone(),
+                proxy_config,
+            )?;
+            Ok(Box::new(deepseek_provider))
         }
         "custom" => {
             let custom_provider = CustomProvider::new(

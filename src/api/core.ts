@@ -397,21 +397,25 @@ export const callAsync = async <U extends ApiEndpointUrl>(
 
     //try to parse the response based on content type
     const contentType = response.headers.get('Content-Type') || ''
-    
+
     if (contentType.includes('application/json')) {
       return (await response.json()) as ResponseByUrl<U>
-    } else if (contentType.startsWith('text/') || 
-               contentType.includes('application/xml') ||
-               contentType.includes('application/javascript') ||
-               contentType.includes('application/json')) {
+    } else if (
+      contentType.startsWith('text/') ||
+      contentType.includes('application/xml') ||
+      contentType.includes('application/javascript') ||
+      contentType.includes('application/json')
+    ) {
       // Return text for text-like content types
       const textResponse = await response.text()
       return textResponse as unknown as ResponseByUrl<U>
-    } else if (contentType.startsWith('image/') ||
-               contentType.startsWith('video/') ||
-               contentType.startsWith('audio/') ||
-               contentType.includes('application/pdf') ||
-               contentType.includes('application/octet-stream')) {
+    } else if (
+      contentType.startsWith('image/') ||
+      contentType.startsWith('video/') ||
+      contentType.startsWith('audio/') ||
+      contentType.includes('application/pdf') ||
+      contentType.includes('application/octet-stream')
+    ) {
       // Return blob for binary content types
       const blobResponse = await response.blob()
       return blobResponse as unknown as ResponseByUrl<U>

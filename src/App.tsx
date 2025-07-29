@@ -129,7 +129,9 @@ function App() {
                       />
                     )}
                   {!isDesktopApp &&
-                    hasPermission(Permission.config.documentExtraction.read) && (
+                    hasPermission(
+                      Permission.config.documentExtraction.read,
+                    ) && (
                       <Route
                         path="admin-document-extraction"
                         element={<DocumentExtractionSettings />}

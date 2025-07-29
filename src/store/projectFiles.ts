@@ -296,7 +296,9 @@ export const getFileContent = async (fileId: string): Promise<string> => {
 }
 
 // Generate download token for a file
-export const generateFileDownloadToken = async (fileId: string): Promise<{ token: string; expires_at: string }> => {
+export const generateFileDownloadToken = async (
+  fileId: string,
+): Promise<{ token: string; expires_at: string }> => {
   try {
     const response = await ApiClient.Files.generateDownloadToken({ id: fileId })
     return response
@@ -307,7 +309,10 @@ export const generateFileDownloadToken = async (fileId: string): Promise<{ token
 }
 
 // Get download URL with token for a file (useful for <a> tags)
-export const getFileDownloadUrl = async (fileId: string, baseUrl?: string): Promise<string> => {
+export const getFileDownloadUrl = async (
+  fileId: string,
+  baseUrl?: string,
+): Promise<string> => {
   try {
     const tokenResponse = await generateFileDownloadToken(fileId)
     const apiBaseUrl = baseUrl || window.location.origin

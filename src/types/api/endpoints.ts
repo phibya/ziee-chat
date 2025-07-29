@@ -148,10 +148,14 @@ export const ApiEndpoints = {
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
   // Document extraction configuration
-  'Admin.getExtractionConfig': 'GET /api/admin/config/document-extraction/{file_type}',
-  'Admin.setExtractionMethod': 'PUT /api/admin/config/document-extraction/{file_type}/method',
-  'Admin.setOcrSettings': 'PUT /api/admin/config/document-extraction/{file_type}/ocr',
-  'Admin.setLlmSettings': 'PUT /api/admin/config/document-extraction/{file_type}/llm',
+  'Admin.getExtractionConfig':
+    'GET /api/admin/config/document-extraction/{file_type}',
+  'Admin.setExtractionMethod':
+    'PUT /api/admin/config/document-extraction/{file_type}/method',
+  'Admin.setOcrSettings':
+    'PUT /api/admin/config/document-extraction/{file_type}/ocr',
+  'Admin.setLlmSettings':
+    'PUT /api/admin/config/document-extraction/{file_type}/llm',
   'Utils.testProxy': 'POST /api/utils/test-proxy',
   // User settings management
   'UserSettings.getAll': 'GET /api/user/settings',
