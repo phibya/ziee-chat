@@ -134,7 +134,7 @@ export const loadConversationById = async (
 
 export const sendChatMessage = async (
   content: string,
-  _assistantId: string,
+  assistantId: string,
   modelId: string,
 ): Promise<void> => {
   const { currentConversation, activeBranchId } = useChatStore.getState()
@@ -189,6 +189,7 @@ export const sendChatMessage = async (
         conversation_id: currentConversation.id,
         content,
         model_id: modelId,
+        assistant_id: assistantId,
       },
       {
         SSE: (event: string, data: any) => {

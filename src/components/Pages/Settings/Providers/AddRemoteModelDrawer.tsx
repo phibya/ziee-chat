@@ -9,8 +9,8 @@ import {
   loadAllModelProviders,
   Stores,
 } from '../../../../store'
-import { BASIC_MODEL_FIELDS } from './shared/constants'
 import { ModelParametersSection } from './shared/ModelParametersSection'
+import { BASIC_MODEL_FIELDS } from '../../../../constants/modelParameters.ts'
 
 export function AddRemoteModelDrawer() {
   const { t } = useTranslation()

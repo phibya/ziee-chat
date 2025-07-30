@@ -6,7 +6,7 @@ use crate::database::{
     get_database_pool,
     models::{
         CreateModelRequest, Model, ModelFile, ModelStatusCounts, ModelStorageInfo,
-        UpdateModelRequest,
+        UpdateModelRequest, Provider,
     },
 };
 
@@ -426,4 +426,25 @@ pub async fn get_model_runtime_info(model_id: &Uuid) -> Result<Option<(i32, i32)
     }
 
     Ok(None)
+}
+
+/// Get provider by model ID (combines provider lookup in a single query)
+pub async fn get_provider_by_model_id(model_id: Uuid) -> Result<Option<Provider>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
+    let provider: Option<Provider> = sqlx::query_as(
+        r#"
+        SELECT p.id, p.name, p.type, p.enabled, p.api_key, p.base_url, 
+               p.built_in, p.proxy_settings, p.created_at, p.updated_at
+        FROM providers p
+        INNER JOIN models m ON p.id = m.provider_id
+        WHERE m.id = $1
+        "#,
+    )
+    .bind(model_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(provider)
 }

@@ -4,7 +4,7 @@ use crate::database::{
     get_database_pool,
     models::{
         Assistant, AssistantListResponse, CreateAssistantRequest,
-        UpdateAssistantRequest,
+        UpdateAssistantRequest, model::ModelParameters,
     },
 };
 
@@ -47,14 +47,7 @@ pub async fn create_assistant(
     .bind(&request.name)
     .bind(&request.description)
     .bind(&request.instructions)
-    .bind(request.parameters.unwrap_or(serde_json::json!({
-        "stream": true,
-        "temperature": 0.7,
-        "frequency_penalty": 0.7,
-        "presence_penalty": 0.7,
-        "top_p": 0.95,
-        "top_k": 2
-    })))
+    .bind(serde_json::to_value(request.parameters.unwrap_or_else(|| ModelParameters::default())).unwrap())
     .bind(created_by)
     .bind(is_template)
     .bind(is_default)
@@ -233,7 +226,7 @@ pub async fn update_assistant(
             .bind(&request.name)
             .bind(&request.description)
             .bind(&request.instructions)
-            .bind(&request.parameters)
+            .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
             .bind(request.is_template)
             .bind(request.is_default)
             .bind(request.is_active)
@@ -245,7 +238,7 @@ pub async fn update_assistant(
             .bind(&request.name)
             .bind(&request.description)
             .bind(&request.instructions)
-            .bind(&request.parameters)
+            .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
             .bind(request.is_template)
             .bind(request.is_default)
             .bind(request.is_active)
@@ -334,7 +327,7 @@ pub async fn clone_assistant_for_user(
     .bind(&template.name)
     .bind(&template.description)
     .bind(&template.instructions)
-    .bind(&template.parameters)
+    .bind(template.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
     .bind(user_id)
     .fetch_one(pool)
     .await?;

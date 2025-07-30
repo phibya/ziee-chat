@@ -12,17 +12,16 @@ pub async fn create_file(
     let file = sqlx::query_as::<_, File>(
         r#"
         INSERT INTO files (
-            id, user_id, filename, file_path, file_size, mime_type, 
+            id, user_id, filename, file_size, mime_type, 
             checksum, project_id, thumbnail_count, processing_metadata
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
         "#,
     )
     .bind(data.id)
     .bind(data.user_id)
     .bind(data.filename)
-    .bind(data.file_path)
     .bind(data.file_size)
     .bind(data.mime_type)
     .bind(data.checksum)

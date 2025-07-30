@@ -57,6 +57,8 @@ export interface SendMessageRequest {
   conversation_id: string
   content: string
   model_id: string
+  assistant_id: string
+  file_ids?: string[]
 }
 
 export interface SwitchBranchRequest {

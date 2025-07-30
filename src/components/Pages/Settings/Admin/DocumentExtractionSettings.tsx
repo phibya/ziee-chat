@@ -29,9 +29,10 @@ import type {
   OcrExtractionSettings,
   LlmExtractionSettings,
   DocumentModelParameters,
-} from '../../../../types/api/document-extraction'
-import { OCR_LANGUAGES } from '../../../../types/api/document-extraction'
-import { LOCAL_PARAMETERS, ModelParametersSection } from '../Providers/shared'
+} from '../../../../types'
+import { OCR_LANGUAGES } from '../../../../types'
+import { ModelParametersSection } from '../Providers/shared'
+import { MODEL_PARAMETERS } from '../../../../constants/modelParameters.ts'
 
 const { Text, Title } = Typography
 const { TextArea } = Input
@@ -82,7 +83,7 @@ function ParserCard({
         temperature: settings.llm.parameters.temperature || 0.2,
         topP: settings.llm.parameters.top_p || 0.9,
         topK: settings.llm.parameters.top_k || 20,
-        contextSize: settings.llm.parameters.context_size || 4096,
+        maxTokens: settings.llm.parameters.max_tokens || 4096,
       })
     }
   }, [settings, initialized, form])
@@ -120,7 +121,7 @@ function ParserCard({
           temperature: values.temperature,
           top_p: values.topP,
           top_k: values.topK,
-          context_size: values.contextSize,
+          max_tokens: values.maxTokens,
           // Include other existing parameters
           ...settings.llm.parameters,
         }
@@ -308,7 +309,7 @@ function ParserCard({
             <Title level={5}>Model Parameters</Title>
 
             <Flex gap="middle" className={'flex-col !mb-2'}>
-              <ModelParametersSection parameters={LOCAL_PARAMETERS} />
+              <ModelParametersSection parameters={MODEL_PARAMETERS} />
             </Flex>
           </>
         )}

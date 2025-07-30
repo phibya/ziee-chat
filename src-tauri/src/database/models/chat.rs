@@ -160,6 +160,7 @@ pub struct SendMessageRequest {
     pub content: String,
     pub role: String,
     pub model_id: Uuid,
+    pub file_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,4 +206,106 @@ pub struct ConversationSummary {
 pub struct ChatResponse {
     pub message: Message,
     pub conversation: Conversation,
+}
+
+// AI Provider related structs moved from ai/core/providers.rs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileReference {
+    pub file_id: Uuid,
+    pub filename: String,
+    pub file_size: i64,
+    pub mime_type: Option<String>,
+    pub checksum: Option<String>,
+}
+
+impl FileReference {
+    pub fn is_image(&self) -> bool {
+        self.mime_type
+            .as_ref()
+            .map(|mt| mt.starts_with("image/"))
+            .unwrap_or(false)
+    }
+    
+    pub fn is_pdf(&self) -> bool {
+        self.mime_type
+            .as_ref()
+            .map(|mt| mt == "application/pdf")
+            .unwrap_or(false)
+    }
+    
+    pub fn is_text(&self) -> bool {
+        self.mime_type
+            .as_ref()
+            .map(|mt| mt.starts_with("text/"))
+            .unwrap_or(false)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ContentPart {
+    Text(String),
+    FileReference(FileReference),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MessageContent {
+    Text(String),
+    Multimodal(Vec<ContentPart>),
+}
+
+impl From<String> for MessageContent {
+    fn from(text: String) -> Self {
+        MessageContent::Text(text)
+    }
+}
+
+impl MessageContent {
+    pub fn text(content: &str) -> Self {
+        MessageContent::Text(content.to_string())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: MessageContent,
+}
+
+impl ChatMessage {
+    pub fn text(role: &str, content: &str) -> Self {
+        Self {
+            role: role.to_string(),
+            content: MessageContent::Text(content.to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatRequest {
+    pub messages: Vec<ChatMessage>,
+    pub model_name: String,
+    pub model_id: Uuid,
+    pub provider_id: Uuid,
+    pub stream: bool,
+    pub parameters: Option<crate::database::models::model::ModelParameters>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AIProviderChatResponse {
+    pub content: String,
+    pub finish_reason: Option<String>,
+    pub usage: Option<Usage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Usage {
+    pub prompt_tokens: Option<u32>,
+    pub completion_tokens: Option<u32>,
+    pub total_tokens: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreamingChunk {
+    pub content: Option<String>,
+    pub finish_reason: Option<String>,
 }

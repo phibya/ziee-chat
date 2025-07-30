@@ -16,18 +16,13 @@ use crate::{
         models::file::*,
         queries::files,
     },
-    utils::file_storage::{FileStorage, extract_extension, get_mime_type_from_extension},
+    utils::file_storage::{extract_extension, get_mime_type_from_extension},
     processing::ProcessingManager,
-    get_app_data_dir,
+    FILE_STORAGE,
 };
 
-
-// Initialize global file storage and processing manager
+// Initialize global processing manager
 use once_cell::sync::Lazy;
-
-static FILE_STORAGE: Lazy<Arc<FileStorage>> = Lazy::new(|| {
-    Arc::new(FileStorage::new(&get_app_data_dir()))
-});
 
 static PROCESSING_MANAGER: Lazy<Arc<ProcessingManager>> = Lazy::new(|| {
     Arc::new(ProcessingManager::new(FILE_STORAGE.clone()))
@@ -167,7 +162,6 @@ async fn process_file_upload(
         id: file_id,
         user_id,
         filename,
-        file_path: file_path.to_string_lossy().to_string(),
         file_size: file_size as i64,
         mime_type,
         checksum: Some(checksum),
@@ -281,12 +275,13 @@ pub async fn download_file_with_token(
 
 // Internal download function shared by both endpoints
 async fn download_file_internal(file_db: File) -> Result<Response, StatusCode> {
-    let file_path = std::path::Path::new(&file_db.file_path);
+    let extension = extract_extension(&file_db.filename);
+    let file_path = FILE_STORAGE.get_original_path(file_db.id, &extension);
     if !file_path.exists() {
         return Err(StatusCode::NOT_FOUND);
     }
 
-    let file_data = FILE_STORAGE.read_file_bytes(file_path).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let file_data = FILE_STORAGE.read_file_bytes(&file_path).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let headers = [
         (header::CONTENT_TYPE, "application/octet-stream".to_string()),

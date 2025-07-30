@@ -1,8 +1,7 @@
 // Document extraction types matching Rust backend
 
 export interface DocumentModelParameters {
-  context_size?: number
-  gpu_layers?: number
+  max_tokens?: number
   temperature?: number
   top_k?: number
   top_p?: number
@@ -11,6 +10,8 @@ export interface DocumentModelParameters {
   repeat_penalty?: number
   presence_penalty?: number
   frequency_penalty?: number
+  seed?: number
+  stop?: string[]
 }
 
 export interface SimpleExtractionSettings {
@@ -62,8 +63,7 @@ export const DEFAULT_OCR_SETTINGS: OcrExtractionSettings = {
 }
 
 export const DEFAULT_MODEL_PARAMETERS: DocumentModelParameters = {
-  context_size: 4096,
-  gpu_layers: -1,
+  max_tokens: 4096,
   temperature: 0.2,
   top_k: 20,
   top_p: 0.9,

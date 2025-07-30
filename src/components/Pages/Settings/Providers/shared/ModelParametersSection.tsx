@@ -2,7 +2,7 @@ import { Typography } from 'antd'
 import {
   ModelParameterField,
   ParameterFieldConfig,
-} from './ModelParameterField'
+} from '../../../../shared/ModelParameterField'
 
 const { Title } = Typography
 

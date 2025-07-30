@@ -1,4 +1,4 @@
-import { Button, Flex, Form } from 'antd'
+import { Button, Card, Flex, Form } from 'antd'
 import { Drawer } from '../../../common/Drawer.tsx'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,9 +7,12 @@ import {
   Stores,
   updateExistingModel,
 } from '../../../../store'
-import { BASIC_MODEL_FIELDS } from './shared/constants'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
+import {
+  BASIC_MODEL_FIELDS,
+  MODEL_PARAMETERS,
+} from '../../../../constants/modelParameters.ts'
 
 export function EditRemoteModelDrawer() {
   const { t } = useTranslation()
@@ -84,6 +87,10 @@ export function EditRemoteModelDrawer() {
 
         <Flex className={`flex-col gap-3`}>
           <ModelCapabilitiesSection />
+
+          <Card title={t('providers.parameters')} size={'small'}>
+            <ModelParametersSection parameters={MODEL_PARAMETERS} />
+          </Card>
         </Flex>
       </Form>
     </Drawer>

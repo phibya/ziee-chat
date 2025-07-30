@@ -84,7 +84,7 @@ function TemplateAssistantCard({ assistant }: TemplateAssistantCardProps) {
         </div>
 
         {/* Actions Area - Always at bottom */}
-        <div className="mt-4 pt-3 border-t border-gray-100">
+        <div className="pt-3">
           <Flex align="center" className="gap-2 justify-end">
             <Button
               type="default"

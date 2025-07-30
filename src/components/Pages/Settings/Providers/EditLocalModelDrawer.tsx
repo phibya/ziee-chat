@@ -7,11 +7,14 @@ import {
   Stores,
   updateExistingModel,
 } from '../../../../store'
-import { BASIC_MODEL_FIELDS, LOCAL_PARAMETERS } from './shared/constants'
 import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
 import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
 import { ModelParametersSection } from './shared/ModelParametersSection'
 import { ModelSettingsSection } from './shared/ModelSettingsSection'
+import {
+  BASIC_MODEL_FIELDS,
+  MODEL_PARAMETERS,
+} from '../../../../constants/modelParameters.ts'
 
 export function EditLocalModelDrawer() {
   const { t } = useTranslation()
@@ -91,7 +94,7 @@ export function EditLocalModelDrawer() {
           <ModelSettingsSection />
 
           <Card title={t('providers.parameters')} size={'small'}>
-            <ModelParametersSection parameters={LOCAL_PARAMETERS} />
+            <ModelParametersSection parameters={MODEL_PARAMETERS} />
           </Card>
         </Flex>
       </Form>

@@ -9,12 +9,13 @@ mod utils;
 
 use crate::api::app::get_http_port;
 use crate::utils::hub_manager::{HubManager, HUB_MANAGER};
+use crate::utils::file_storage::FileStorage;
 use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
 use once_cell::sync::Lazy;
 use route::create_rest_router;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{webview::WebviewWindowBuilder, Manager};
 use tokio::signal;
 use tower_http::cors::CorsLayer;
@@ -46,6 +47,11 @@ pub fn set_app_data_dir(path: PathBuf) {
 pub fn get_app_data_dir() -> PathBuf {
     APP_DATA_DIR.lock().unwrap().clone()
 }
+
+// Global FILE_STORAGE instance
+pub static FILE_STORAGE: Lazy<Arc<FileStorage>> = Lazy::new(|| {
+    Arc::new(FileStorage::new(&get_app_data_dir()))
+});
 
 async fn initialize_app_common() -> Result<(), String> {
     // Initialize environment variables

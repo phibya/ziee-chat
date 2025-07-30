@@ -5,6 +5,7 @@
 //! It also includes local ML inference capabilities using the Candle framework.
 
 pub mod core;
+pub mod file_helpers;
 pub mod model_manager;
 pub mod models;
 pub mod providers;
@@ -30,8 +31,8 @@ pub enum ModelSelected {
 pub use core::device_detection;
 // Re-export commonly used items for convenience
 pub use core::{
-  build_http_client, AIProvider, ChatMessage, ChatRequest, ChatResponse, ProxyConfig,
-  StreamingChunk, StreamingResponse, Usage,
+  AIProvider, ChatMessage, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent, ProviderFileContent, ProxyConfig,
+  StreamingChunk, StreamingResponse, Usage, build_http_client,
 };
 pub use model_manager::{
   check_and_cleanup_model, is_model_running, start_model, stop_model, ModelStartParams,

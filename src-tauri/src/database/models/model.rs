@@ -48,9 +48,7 @@ impl ModelCapabilities {
 pub struct ModelParameters {
     // Context and generation parameters
     /// Context size for the model
-    pub context_size: Option<u32>,
-    /// Number of GPU layers to offload (-1 for all)
-    pub gpu_layers: Option<i32>,
+    pub max_tokens: Option<u32>,
     
     // Sampling parameters
     /// Temperature for randomness (0.0-2.0)
@@ -71,6 +69,12 @@ pub struct ModelParameters {
     pub presence_penalty: Option<f32>,
     /// Frequency penalty for repeated tokens
     pub frequency_penalty: Option<f32>,
+    
+    // Generation control
+    /// Random seed for reproducible outputs
+    pub seed: Option<i32>,
+    /// Stop sequences to terminate generation
+    pub stop: Option<Vec<String>>,
 }
 
 impl ModelParameters {
@@ -82,8 +86,7 @@ impl ModelParameters {
     /// Create parameters optimized for creative text generation
     pub fn creative() -> Self {
         Self {
-            context_size: Some(4096),
-            gpu_layers: Some(-1),
+            max_tokens: Some(4096),
             temperature: Some(0.8),
             top_k: Some(40),
             top_p: Some(0.95),
@@ -92,14 +95,15 @@ impl ModelParameters {
             repeat_penalty: Some(1.1),
             presence_penalty: Some(0.0),
             frequency_penalty: Some(0.0),
+            seed: None,
+            stop: None,
         }
     }
 
     /// Create parameters optimized for precise/factual generation
     pub fn precise() -> Self {
         Self {
-            context_size: Some(4096),
-            gpu_layers: Some(-1),
+            max_tokens: Some(4096),
             temperature: Some(0.2),
             top_k: Some(20),
             top_p: Some(0.9),
@@ -108,6 +112,8 @@ impl ModelParameters {
             repeat_penalty: Some(1.05),
             presence_penalty: Some(0.1),
             frequency_penalty: Some(0.1),
+            seed: None,
+            stop: None,
         }
     }
 
@@ -146,6 +152,20 @@ impl ModelParameters {
         if let Some(frequency_penalty) = self.frequency_penalty {
             if frequency_penalty < -2.0 || frequency_penalty > 2.0 {
                 return Err("frequency_penalty must be between -2.0 and 2.0".to_string());
+            }
+        }
+
+        if let Some(stop) = &self.stop {
+            if stop.len() > 4 {
+                return Err("stop sequences cannot exceed 4 items".to_string());
+            }
+            for stop_seq in stop {
+                if stop_seq.is_empty() {
+                    return Err("stop sequences cannot be empty".to_string());
+                }
+                if stop_seq.len() > 32 {
+                    return Err("stop sequences cannot exceed 32 characters each".to_string());
+                }
             }
         }
 

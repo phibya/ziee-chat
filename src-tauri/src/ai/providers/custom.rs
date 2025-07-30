@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use uuid::Uuid;
 
 use super::openai_compatible::OpenAICompatibleProvider;
 use crate::ai::core::providers::{AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingResponse};
@@ -13,11 +14,12 @@ impl CustomProvider {
         api_key: String,
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
+        provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Default to localhost for custom providers
         let base_url = base_url.unwrap_or_else(|| "http://localhost:8080".to_string());
 
-        let inner = OpenAICompatibleProvider::new(api_key, base_url, "custom", proxy_config)?;
+        let inner = OpenAICompatibleProvider::new(api_key, base_url, "custom", proxy_config, provider_id)?;
 
         Ok(Self { inner })
     }

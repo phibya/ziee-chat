@@ -1,4 +1,5 @@
 pub mod cancellation;
+pub mod chat;
 pub mod file_storage;
 pub mod git_service;
 pub mod hub_config;

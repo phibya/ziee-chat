@@ -214,24 +214,32 @@ async fn call_llm_vision_api(image_path: &Path, settings: &LlmExtractionSettings
     let messages = vec![
         ChatMessage {
             role: "system".to_string(),
-            content: settings.system_prompt.clone(),
+            content: crate::ai::MessageContent::Text(settings.system_prompt.clone()),
         },
         ChatMessage {
             role: "user".to_string(),
-            content: vision_content,
+            content: crate::ai::MessageContent::Text(vision_content),
         },
     ];
     
-    // Create chat request with document extraction parameters
-    let chat_request = ChatRequest {
-        messages,
-        model: model.name.clone(),
-        stream: false, // Use non-streaming for document extraction
+    // Create parameters for document extraction
+    let extraction_parameters = crate::database::models::model::ModelParameters {
         temperature: Some(settings.parameters.temperature.unwrap_or(0.2)),
         max_tokens: Some(2048), // Use fixed max tokens for document extraction
         top_p: Some(settings.parameters.top_p.unwrap_or(0.9)),
         frequency_penalty: settings.parameters.frequency_penalty,
         presence_penalty: settings.parameters.presence_penalty,
+        ..Default::default()
+    };
+
+    // Create chat request with document extraction parameters
+    let chat_request = ChatRequest {
+        messages,
+        model_name: model.name.clone(),
+        model_id: model.id,
+        provider_id: provider.id,
+        stream: false, // Use non-streaming for document extraction
+        parameters: Some(extraction_parameters),
     };
     
     // Call the AI provider

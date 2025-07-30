@@ -1,6 +1,6 @@
-import { ParameterFieldConfig } from './ModelParameterField'
+import { ParameterFieldConfig } from '../components/shared/ModelParameterField'
 
-export const LOCAL_PARAMETERS: ParameterFieldConfig[] = [
+export const MODEL_PARAMETERS: ParameterFieldConfig[] = [
   {
     name: ['parameters', 'temperature'],
     label: 'Temperature',
@@ -55,6 +55,20 @@ export const LOCAL_PARAMETERS: ParameterFieldConfig[] = [
     min: 0,
     placeholder: '64',
     help: 'Number of previous tokens to consider for repeat penalty',
+  },
+  {
+    name: ['parameters', 'seed'],
+    label: 'Seed',
+    type: 'number',
+    placeholder: 'Leave empty for random',
+    help: 'Random seed for reproducible outputs. Use the same seed to get consistent results.',
+  },
+  {
+    name: ['parameters', 'stop'],
+    label: 'Stop Sequences',
+    type: 'string-array',
+    placeholder: 'Enter stop sequence',
+    help: 'Stop generation when any of these sequences are encountered (max 4 sequences)',
   },
 ]
 

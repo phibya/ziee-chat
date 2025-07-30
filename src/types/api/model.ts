@@ -12,8 +12,7 @@ export interface ModelCapabilities {
 
 export interface ModelParameters {
   // Context and generation parameters
-  context_size?: number
-  gpu_layers?: number
+  max_tokens?: number
 
   // Sampling parameters
   temperature?: number
@@ -26,6 +25,10 @@ export interface ModelParameters {
   repeat_penalty?: number
   presence_penalty?: number
   frequency_penalty?: number
+
+  // Generation control
+  seed?: number // Random seed for reproducible outputs
+  stop?: string[] // Stop sequences to terminate generation
 }
 
 export interface ModelSettings {

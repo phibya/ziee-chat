@@ -18,6 +18,7 @@ use crate::ai::{
         gemini::GeminiProvider, groq::GroqProvider, local::LocalProvider,
         mistral::MistralProvider, openai::OpenAIProvider,
     },
+    ContentPart, MessageContent,
 };
 use crate::api::errors::ErrorCode;
 use crate::api::middleware::AuthenticatedUser;
@@ -29,10 +30,11 @@ use crate::database::{
     queries::{
         assistants::get_assistant_by_id,
         chat,
-        models::{get_model_by_id, get_provider_id_by_model_id},
+        models::{get_model_by_id, get_provider_by_model_id},
         providers::get_provider_by_id,
     },
 };
+use crate::utils::chat::{build_single_user_message, build_chat_messages};
 
 #[derive(Debug, Deserialize)]
 pub struct PaginationQuery {
@@ -52,6 +54,8 @@ pub struct ChatMessageRequest {
     pub conversation_id: Uuid,
     pub content: String,
     pub model_id: Uuid,
+    pub assistant_id: Uuid,
+    pub file_ids: Option<Vec<Uuid>>, // Optional file attachments
 }
 
 #[derive(Debug, Deserialize)]
@@ -179,33 +183,8 @@ pub async fn send_message_stream(
         // Send initial event
         let _ = tx.send(Ok(Event::default().data("start")));
 
-        // Get provider_id from model_id first
-        let provider_id = match get_provider_id_by_model_id(request.model_id).await {
-            Ok(Some(id)) => id,
-            Ok(None) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: "Model not found".to_string(),
-                        code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
-                return;
-            }
-            Err(e) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: format!("Error getting provider for model: {}", e),
-                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
-                return;
-            }
-        };
-
-        // Get the model provider configuration
-        let provider = match get_provider_by_id(provider_id).await {
+        // Get the model provider configuration directly from model_id
+        let provider = match get_provider_by_model_id(request.model_id).await {
             Ok(Some(provider)) => {
                 println!("DEBUG: Found provider: {:?}", provider.name);
                 provider
@@ -213,8 +192,8 @@ pub async fn send_message_stream(
             Ok(None) => {
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
-                        error: "Provider not found".to_string(),
-                        code: ErrorCode::ResourceProviderNotFound.as_str().to_string(),
+                        error: "Model or provider not found".to_string(),
+                        code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
                     })
                     .unwrap_or_default(),
                 )));
@@ -272,78 +251,29 @@ pub async fn send_message_stream(
             }
         };
 
-        // Get the assistant for instructions if available
-        let conversation =
-            match chat::get_conversation_by_id(request.conversation_id, auth_user.user.id).await {
-                Ok(Some(conv)) => conv,
-                Ok(None) => {
-                    let _ = tx.send(Ok(Event::default().event("error").data(
-                        &serde_json::to_string(&StreamErrorData {
-                            error: "Conversation not found".to_string(),
-                            code: ErrorCode::ResourceConversationNotFound.as_str().to_string(),
-                        })
-                        .unwrap_or_default(),
-                    )));
-                    return;
-                }
-                Err(e) => {
-                    let _ = tx.send(Ok(Event::default().event("error").data(
-                        &serde_json::to_string(&StreamErrorData {
-                            error: format!("Error getting conversation: {}", e),
-                            code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                        })
-                        .unwrap_or_default(),
-                    )));
-                    return;
-                }
-            };
-
-        // Build chat messages for AI provider
-        let mut messages = Vec::new();
-
-        // Add system message from assistant and get assistant parameters
-        let assistant_params = if let Some(assistant_id) = conversation.assistant_id {
-            if let Ok(Some(assistant)) =
-                get_assistant_by_id(assistant_id, Some(auth_user.user.id)).await
-            {
-                if let Some(instructions) = assistant.instructions {
-                    if !instructions.trim().is_empty() {
-                        messages.push(ChatMessage {
-                            role: "system".to_string(),
-                            content: instructions,
-                        });
-                    }
-                }
-                assistant.parameters.clone()
-            } else {
-                None
+        // Build chat messages for AI provider using utility function
+        let messages = match build_chat_messages(&request, auth_user.user.id).await {
+            Ok(messages) => messages,
+            Err(e) => {
+                let _ = tx.send(Ok(Event::default().event("error").data(
+                    &serde_json::to_string(&StreamErrorData {
+                        error: format!("Error building chat messages: {}", e),
+                        code: ErrorCode::SystemInternalError.as_str().to_string(),
+                    })
+                    .unwrap_or_default(),
+                )));
+                return;
             }
+        };
+
+        // Get assistant parameters for model configuration
+        let assistant_params = if let Ok(Some(assistant)) =
+            get_assistant_by_id(request.assistant_id, Some(auth_user.user.id)).await
+        {
+            assistant.parameters.clone()
         } else {
             None
         };
-
-        // Get conversation history and add it to messages
-        match chat::get_conversation_messages(request.conversation_id, auth_user.user.id).await {
-            Ok(conversation_messages) => {
-                // Add each message from the conversation history
-                for msg in conversation_messages {
-                    messages.push(ChatMessage {
-                        role: msg.role,
-                        content: msg.content,
-                    });
-                }
-            }
-            Err(e) => {
-                eprintln!("Warning: Could not load conversation history: {}", e);
-                // Continue without history rather than failing completely
-            }
-        }
-
-        // Add the current user's message
-        messages.push(ChatMessage {
-            role: "user".to_string(),
-            content: request.content.clone(),
-        });
 
         // Check if this is a new conversation (count messages before moving them)
         // Count messages excluding system messages (assistant instructions)
@@ -381,16 +311,24 @@ pub async fn send_message_stream(
         let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) =
             merge_parameters(&model.parameters, &assistant_params);
 
-        // Create chat request
-        let chat_request = ChatRequest {
-            messages,
-            model: model.name.clone(),
-            stream: true,
+        // Create ModelParameters from the merged values
+        let parameters = crate::database::models::model::ModelParameters {
             temperature,
             max_tokens,
             top_p,
             frequency_penalty,
             presence_penalty,
+            ..Default::default()
+        };
+
+        // Create chat request
+        let chat_request = ChatRequest {
+            messages,
+            model_name: model.name.clone(),
+            model_id: model.id,
+            provider_id: provider.id,
+            stream: true,
+            parameters: Some(parameters),
         };
 
         // First save the user message
@@ -399,6 +337,7 @@ pub async fn send_message_stream(
             content: request.content.clone(),
             role: "user".to_string(),
             model_id: request.model_id,
+            file_ids: request.file_ids.clone(),
         };
 
         if let Err(e) = chat::send_message(user_message_req, auth_user.user.id).await {
@@ -470,6 +409,7 @@ pub async fn send_message_stream(
                     content: full_content.clone(),
                     role: "assistant".to_string(),
                     model_id: request.model_id,
+                    file_ids: None, // Assistant messages don't have file attachments
                 };
 
                 match chat::send_message(assistant_message_req, auth_user.user.id).await {
@@ -531,41 +471,16 @@ async fn stream_ai_response(
     user_id: Uuid,
     save_user_message: bool,
     user_message_content: Option<String>,
-    assistant_params: Option<serde_json::Value>,
+    assistant_params: Option<crate::database::models::ModelParameters>,
 ) {
-    // Get provider_id from model_id first
-    let provider_id = match get_provider_id_by_model_id(model_id).await {
-        Ok(Some(id)) => id,
-        Ok(None) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: "Model not found".to_string(),
-                    code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
-            return;
-        }
-        Err(e) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: format!("Error getting provider for model: {}", e),
-                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
-            return;
-        }
-    };
-
-    // Get the model provider configuration
-    let provider = match get_provider_by_id(provider_id).await {
+    // Get the model provider configuration directly from model_id
+    let provider = match get_provider_by_model_id(model_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => {
             let _ = tx.send(Ok(Event::default().event("error").data(
                 &serde_json::to_string(&StreamErrorData {
-                    error: "Provider not found".to_string(),
-                    code: ErrorCode::ResourceProviderNotFound.as_str().to_string(),
+                    error: "Model or provider not found".to_string(),
+                    code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
                 })
                 .unwrap_or_default(),
             )));
@@ -620,7 +535,7 @@ async fn stream_ai_response(
         }
     };
 
-    // Create AI provider with model ID for Candle providers
+    // Create AI provider with model ID for local providers
     let ai_provider = match create_ai_provider_with_model_id(&provider, Some(model_id)).await {
         Ok(provider) => provider,
         Err(e) => {
@@ -639,16 +554,24 @@ async fn stream_ai_response(
     let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) =
         merge_parameters(&model.parameters, &assistant_params);
 
-    // Create chat request
-    let chat_request = ChatRequest {
-        messages,
-        model: model.name.clone(),
-        stream: true,
+    // Create ModelParameters from the merged values
+    let parameters = crate::database::models::model::ModelParameters {
         temperature,
         max_tokens,
         top_p,
         frequency_penalty,
         presence_penalty,
+        ..Default::default()
+    };
+
+    // Create chat request
+    let chat_request = ChatRequest {
+        messages,
+        model_name: model.name.clone(),
+        model_id: model.id,
+        provider_id: provider.id,
+        stream: true,
+        parameters: Some(parameters),
     };
 
     // Save user message if requested
@@ -659,6 +582,7 @@ async fn stream_ai_response(
                 content,
                 role: "user".to_string(),
                 model_id,
+                file_ids: None,
             };
 
             if let Err(e) = chat::send_message(user_message_req, user_id).await {
@@ -720,6 +644,7 @@ async fn stream_ai_response(
                 content: full_content.clone(),
                 role: "assistant".to_string(),
                 model_id,
+                file_ids: None,
             };
 
             match chat::send_message(assistant_message_req, user_id).await {
@@ -806,7 +731,7 @@ pub async fn edit_message_stream(
                                         if !instructions.trim().is_empty() {
                                             messages.push(ChatMessage {
                                                 role: "system".to_string(),
-                                                content: instructions,
+                                                content: MessageContent::Text(instructions),
                                             });
                                         }
                                     }
@@ -817,14 +742,14 @@ pub async fn edit_message_stream(
                             for msg in conversation_history {
                                 messages.push(ChatMessage {
                                     role: msg.role,
-                                    content: msg.content,
+                                    content: MessageContent::Text(msg.content),
                                 });
                             }
 
                             // Add the edited user message
                             messages.push(ChatMessage {
                                 role: "user".to_string(),
-                                content: message_content,
+                                content: MessageContent::Text(message_content),
                             });
 
                             // Get assistant parameters if available
@@ -1031,6 +956,7 @@ pub async fn create_ai_provider_with_model_id(
                 provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
                 provider.base_url.clone(),
                 proxy_config,
+                provider.id,
             )?;
             Ok(Box::new(openai_provider))
         }
@@ -1039,6 +965,7 @@ pub async fn create_ai_provider_with_model_id(
                 provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
                 provider.base_url.clone(),
                 proxy_config,
+                provider.id,
             )?;
             Ok(Box::new(anthropic_provider))
         }
@@ -1047,6 +974,7 @@ pub async fn create_ai_provider_with_model_id(
                 provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
                 provider.base_url.clone(),
                 proxy_config,
+                provider.id,
             )?;
             Ok(Box::new(groq_provider))
         }
@@ -1055,6 +983,7 @@ pub async fn create_ai_provider_with_model_id(
                 provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
                 provider.base_url.clone(),
                 proxy_config,
+                provider.id,
             )?;
             Ok(Box::new(gemini_provider))
         }
@@ -1063,6 +992,7 @@ pub async fn create_ai_provider_with_model_id(
                 provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
                 provider.base_url.clone(),
                 proxy_config,
+                provider.id,
             )?;
             Ok(Box::new(mistral_provider))
         }
@@ -1071,6 +1001,7 @@ pub async fn create_ai_provider_with_model_id(
                 provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
                 provider.base_url.clone(),
                 proxy_config,
+                provider.id,
             )?;
             Ok(Box::new(deepseek_provider))
         }
@@ -1079,6 +1010,7 @@ pub async fn create_ai_provider_with_model_id(
                 provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
                 provider.base_url.clone(),
                 proxy_config,
+                provider.id,
             )?;
             Ok(Box::new(custom_provider))
         }
@@ -1102,7 +1034,7 @@ pub async fn create_ai_provider_with_model_id(
                 .ok_or("Model is not running. Please start the model first.")?;
 
             // Create the Local provider with the model's port and name (no proxy for local connections)
-            let local_provider = LocalProvider::new(port as u16, model.name.clone())?;
+            let local_provider = LocalProvider::new(port as u16, model.name.clone(), provider.id)?;
 
             Ok(Box::new(local_provider))
         }
@@ -1165,25 +1097,29 @@ async fn generate_and_update_conversation_title(
             user_content.chars().take(200).collect::<String>()
         );
 
-        let chat_messages = vec![ChatMessage {
-            role: "user".to_string(),
-            content: title_prompt,
-        }];
+        let chat_messages = build_single_user_message(title_prompt);
 
         // Create AI provider instance
         let ai_provider = create_ai_provider_with_model_id(provider, Some(model.id)).await?;
 
         // For title generation, use specific parameters optimized for titles
         // Don't use assistant parameters as this is an internal system function
-        let chat_request = ChatRequest {
-            messages: chat_messages,
-            model: model.name.clone(),
-            stream: false,
+        let title_parameters = crate::database::models::model::ModelParameters {
             temperature: Some(0.3), // Lower temperature for more consistent titles
             max_tokens: Some(20),   // Short titles only
             top_p: Some(0.9),
             frequency_penalty: None,
             presence_penalty: None,
+            ..Default::default()
+        };
+
+        let chat_request = ChatRequest {
+            messages: chat_messages,
+            model_name: model.name.clone(),
+            model_id: model.id,
+            provider_id: provider.id,
+            stream: false,
+            parameters: Some(title_parameters),
         };
 
         // Call AI provider to generate title
@@ -1235,7 +1171,7 @@ async fn generate_and_update_conversation_title(
 /// Only include parameters that are actually defined (not null)
 fn merge_parameters(
     model_params: &Option<crate::database::models::ModelParameters>,
-    assistant_params: &Option<serde_json::Value>,
+    assistant_params: &Option<crate::database::models::ModelParameters>,
 ) -> (
     Option<f32>, // temperature
     Option<u32>, // max_tokens
@@ -1254,8 +1190,8 @@ fn merge_parameters(
         if let Some(temp) = model_params.temperature {
             temperature = Some(temp);
         }
-        if let Some(context_size) = model_params.context_size {
-            max_tokens = Some(context_size);
+        if let Some(m_tokens) = model_params.max_tokens {
+            max_tokens = Some(m_tokens);
         }
         if let Some(top_p_val) = model_params.top_p {
             top_p = Some(top_p_val);
@@ -1269,27 +1205,21 @@ fn merge_parameters(
     }
 
     // Then, override with assistant parameters (higher priority)
-    if let Some(assistant_obj) = assistant_params.as_ref().and_then(|p| p.as_object()) {
-        if let Some(temp) = assistant_obj.get("temperature").and_then(|t| t.as_f64()) {
-            temperature = Some(temp as f32);
+    if let Some(assistant_params) = assistant_params {
+        if let Some(temp) = assistant_params.temperature {
+            temperature = Some(temp);
         }
-        if let Some(max_tok) = assistant_obj.get("max_tokens").and_then(|t| t.as_i64()) {
-            max_tokens = Some(max_tok as u32);
+        if let Some(max_tok) = assistant_params.max_tokens {
+            max_tokens = Some(max_tok);
         }
-        if let Some(top_p_val) = assistant_obj.get("top_p").and_then(|t| t.as_f64()) {
-            top_p = Some(top_p_val as f32);
+        if let Some(top_p_val) = assistant_params.top_p {
+            top_p = Some(top_p_val);
         }
-        if let Some(freq_pen) = assistant_obj
-            .get("frequency_penalty")
-            .and_then(|t| t.as_f64())
-        {
-            frequency_penalty = Some(freq_pen as f32);
+        if let Some(freq_pen) = assistant_params.frequency_penalty {
+            frequency_penalty = Some(freq_pen);
         }
-        if let Some(pres_pen) = assistant_obj
-            .get("presence_penalty")
-            .and_then(|t| t.as_f64())
-        {
-            presence_penalty = Some(pres_pen as f32);
+        if let Some(pres_pen) = assistant_params.presence_penalty {
+            presence_penalty = Some(pres_pen);
         }
     }
 

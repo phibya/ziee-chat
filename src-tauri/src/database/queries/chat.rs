@@ -357,6 +357,23 @@ pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<
     .execute(&mut *tx)
     .await?;
 
+    // Insert file relationships if provided
+    if let Some(file_ids) = &request.file_ids {
+        for file_id in file_ids {
+            sqlx::query(
+                r#"
+                INSERT INTO messages_files (message_id, file_id, created_at)
+                VALUES ($1, $2, $3)
+                "#,
+            )
+            .bind(message_id)
+            .bind(file_id)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
     // Commit transaction
     tx.commit().await?;
 

@@ -4,6 +4,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
+use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
@@ -16,6 +17,7 @@ pub struct GeminiProvider {
     client: Client,
     api_key: String,
     base_url: String,
+    provider_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
@@ -77,6 +79,7 @@ impl GeminiProvider {
         api_key: String,
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
+        provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let base_url = base_url
             .unwrap_or_else(|| "https://generativelanguage.googleapis.com/v1beta".to_string());
@@ -86,6 +89,7 @@ impl GeminiProvider {
             client,
             api_key,
             base_url,
+            provider_id,
         })
     }
 
@@ -104,7 +108,19 @@ impl GeminiProvider {
                 Some(GeminiMessage {
                     role: role.to_string(),
                     parts: vec![GeminiMessagePart {
-                        text: msg.content.clone(),
+                        text: match &msg.content {
+                            crate::ai::MessageContent::Text(text) => text.clone(),
+                            crate::ai::MessageContent::Multimodal(parts) => {
+                                // For now, just join text parts
+                                parts.iter()
+                                    .filter_map(|part| match part {
+                                        crate::ai::ContentPart::Text(text) => Some(text.clone()),
+                                        crate::ai::ContentPart::FileReference(file_ref) => Some(format!("File: {}", file_ref.filename)),
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join("\n")
+                            }
+                        },
                     }],
                 })
             })
@@ -117,7 +133,19 @@ impl GeminiProvider {
             .find(|msg| msg.role == "system")
             .map(|msg| GeminiContent {
                 parts: vec![GeminiPart {
-                    text: msg.content.clone(),
+                    text: match &msg.content {
+                        crate::ai::MessageContent::Text(text) => text.clone(),
+                        crate::ai::MessageContent::Multimodal(parts) => {
+                            // For now, just join text parts
+                            parts.iter()
+                                .filter_map(|part| match part {
+                                    crate::ai::ContentPart::Text(text) => Some(text.clone()),
+                                    crate::ai::ContentPart::FileReference(file_ref) => Some(format!("File: {}", file_ref.filename)),
+                                })
+                                .collect::<Vec<_>>()
+                                .join("\n")
+                        }
+                    },
                 }],
             })
     }
@@ -131,24 +159,33 @@ impl AIProvider for GeminiProvider {
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!(
             "{}/models/{}:generateContent?key={}",
-            self.base_url, request.model, self.api_key
+            self.base_url, request.model_name, self.api_key
         );
 
         let contents = self.convert_messages_to_gemini(&request.messages);
         let system_instruction = self.create_system_instruction(&request.messages);
 
+        let params = request.parameters.as_ref();
         let mut payload = json!({
             "contents": contents,
             "generationConfig": GeminiGenerationConfig {
-                temperature: request.temperature.map(|t| t as f64),
-                max_output_tokens: request.max_tokens,
-                top_p: request.top_p.map(|t| t as f64),
+                temperature: params.and_then(|p| p.temperature).map(|t| t as f64),
+                max_output_tokens: params.and_then(|p| p.max_tokens),
+                top_p: params.and_then(|p| p.top_p).map(|t| t as f64),
             }
         });
 
         // Add system instruction if present
         if let Some(system_instruction) = system_instruction {
             payload["systemInstruction"] = json!({ "parts": system_instruction.parts });
+        }
+
+        // Add stop sequences if present (Gemini uses "stopSequences")
+        if let Some(params) = params {
+            if let Some(stop) = &params.stop {
+                payload["generationConfig"]["stopSequences"] = json!(stop);
+            }
+            // Note: Gemini doesn't support seed parameter
         }
 
         let response = self
@@ -195,24 +232,33 @@ impl AIProvider for GeminiProvider {
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!(
             "{}/models/{}:streamGenerateContent?key={}",
-            self.base_url, request.model, self.api_key
+            self.base_url, request.model_name, self.api_key
         );
 
         let contents = self.convert_messages_to_gemini(&request.messages);
         let system_instruction = self.create_system_instruction(&request.messages);
 
+        let params = request.parameters.as_ref();
         let mut payload = json!({
             "contents": contents,
             "generationConfig": GeminiGenerationConfig {
-                temperature: request.temperature.map(|t| t as f64),
-                max_output_tokens: request.max_tokens,
-                top_p: request.top_p.map(|t| t as f64),
+                temperature: params.and_then(|p| p.temperature).map(|t| t as f64),
+                max_output_tokens: params.and_then(|p| p.max_tokens),
+                top_p: params.and_then(|p| p.top_p).map(|t| t as f64),
             }
         });
 
         // Add system instruction if present
         if let Some(system_instruction) = system_instruction {
             payload["systemInstruction"] = json!({ "parts": system_instruction.parts });
+        }
+
+        // Add stop sequences if present (Gemini uses "stopSequences")
+        if let Some(params) = params {
+            if let Some(stop) = &params.stop {
+                payload["generationConfig"]["stopSequences"] = json!(stop);
+            }
+            // Note: Gemini doesn't support seed parameter
         }
 
         let response = self

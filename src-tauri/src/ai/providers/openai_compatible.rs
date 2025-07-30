@@ -4,6 +4,7 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::{Arc, Mutex};
+use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
@@ -16,6 +17,7 @@ pub struct OpenAICompatibleProvider {
     api_key: String,
     base_url: String,
     provider_name: &'static str,
+    provider_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
@@ -64,6 +66,7 @@ impl OpenAICompatibleProvider {
         base_url: String,
         provider_name: &'static str,
         proxy_config: Option<ProxyConfig>,
+        provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Use the common HTTP client builder
         let client = build_http_client(&base_url, proxy_config.as_ref())?;
@@ -73,20 +76,34 @@ impl OpenAICompatibleProvider {
             api_key,
             base_url,
             provider_name,
+            provider_id,
         })
     }
 
     fn build_request(&self, request: &ChatRequest, stream: bool) -> serde_json::Value {
-        json!({
-            "model": request.model,
+        let params = request.parameters.as_ref();
+        let mut payload = json!({
+            "model": request.model_name,
             "messages": request.messages,
-            "temperature": request.temperature.unwrap_or(0.7),
-            "max_tokens": request.max_tokens.unwrap_or(4096),
-            "top_p": request.top_p.unwrap_or(0.95),
-            "frequency_penalty": request.frequency_penalty.unwrap_or(0.0),
-            "presence_penalty": request.presence_penalty.unwrap_or(0.0),
+            "temperature": params.and_then(|p| p.temperature).unwrap_or(0.7),
+            "max_tokens": params.and_then(|p| p.max_tokens).unwrap_or(4096),
+            "top_p": params.and_then(|p| p.top_p).unwrap_or(0.95),
+            "frequency_penalty": params.and_then(|p| p.frequency_penalty).unwrap_or(0.0),
+            "presence_penalty": params.and_then(|p| p.presence_penalty).unwrap_or(0.0),
             "stream": stream
-        })
+        });
+
+        // Add optional parameters if present
+        if let Some(params) = params {
+            if let Some(seed) = params.seed {
+                payload["seed"] = json!(seed);
+            }
+            if let Some(stop) = &params.stop {
+                payload["stop"] = json!(stop);
+            }
+        }
+
+        payload
     }
 
     fn get_endpoint_url(&self) -> String {

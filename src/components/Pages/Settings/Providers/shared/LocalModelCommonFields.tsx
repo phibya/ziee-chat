@@ -1,8 +1,8 @@
 import { Form, Select } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { LOCAL_FILE_TYPE_OPTIONS } from '../../../../../constants/localModelTypes'
-import { LOCAL_MODEL_FIELDS } from '../shared/constants'
 import { ModelParametersSection } from './ModelParametersSection'
+import { LOCAL_MODEL_FIELDS } from '../../../../../constants/modelParameters.ts'
 
 interface LocalModelCommonFieldsProps {
   onFileFormatChange?: (value: string) => void
