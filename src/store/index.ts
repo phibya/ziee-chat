@@ -3,20 +3,20 @@
 import type { StoreApi, UseBoundStore } from 'zustand'
 // Admin store
 import { useShallow } from 'zustand/react/shallow'
-import { useAdminStore } from './admin'
+import { useAdminStore } from './admin/admin.ts'
 import { useAssistantsStore } from './assistants'
 import { useAuthStore } from './auth'
 import { useChatStore } from './chat'
 import { useChatHistoryStore } from './chatHistory'
 import { useConversationsStore } from './conversations'
-import { useDocumentExtractionStore } from './documentExtraction'
+import { useDocumentExtractionStore } from './admin/documentExtraction.ts'
 import { useHubStore } from './hub'
-import { useLocalUploadStore } from './localUpload'
-import { useModelDownloadStore } from './modelDownload'
+import { useLocalUploadStore } from './admin/localUpload.ts'
+import { useModelDownloadStore } from './admin/modelDownload.ts'
 import { useProjectsStore } from './projects'
 import { useProjectFilesStore } from './projectFiles'
-import { useProvidersStore } from './providers'
-import { useRepositoriesStore } from './repositories'
+import { useProvidersStore } from './admin/providers.ts'
+import { useRepositoriesStore } from './admin/repositories.ts'
 import { useUserSettingsStore } from './settings'
 import {
   useAddLocalModelDownloadDrawerStore,
@@ -57,7 +57,7 @@ export {
   updateSystemUserRegistrationSettings,
   updateUserGroup,
   useAdminStore,
-} from './admin'
+} from './admin/admin.ts'
 // Assistants store
 export {
   clearAssistantsStoreError,
@@ -126,7 +126,7 @@ export {
   useDocumentExtractionStore,
   validateLlmSettings,
   validateOcrSettings,
-} from './documentExtraction'
+} from './admin/documentExtraction.ts'
 // Local Upload store
 export {
   cancelLocalUpload,
@@ -135,7 +135,7 @@ export {
   showUploadProgress as showLocalUploadProgress,
   uploadLocalModel,
   useLocalUploadStore,
-} from './localUpload'
+} from './admin/localUpload.ts'
 // Model Download store
 export {
   cancelModelDownload,
@@ -146,7 +146,7 @@ export {
   findDownloadById,
   getAllActiveDownloads,
   useModelDownloadStore,
-} from './modelDownload'
+} from './admin/modelDownload.ts'
 // Hub store
 export {
   initializeHub,
@@ -206,7 +206,7 @@ export {
   updateExistingModel,
   updateModelProvider,
   useProvidersStore,
-} from './providers'
+} from './admin/providers.ts'
 // Repositories store
 export {
   clearRepositoriesStoreError,
@@ -217,7 +217,7 @@ export {
   testModelRepositoryConnection,
   updateModelRepository,
   useRepositoriesStore,
-} from './repositories'
+} from './admin/repositories.ts'
 // Settings store
 export {
   deleteUserSetting,

@@ -61,7 +61,7 @@ export const loadAdministratorAssistants = async (): Promise<void> => {
   try {
     useAssistantsStore.setState({ loading: true, error: null })
 
-    const response = await ApiClient.Assistant.list({
+    const response = await ApiClient.Admin.listAssistants({
       page: 1,
       per_page: 50,
     })
@@ -169,7 +169,7 @@ export const createAdministratorAssistant = async (
   try {
     useAssistantsStore.setState({ creating: true, error: null })
 
-    const assistant = await ApiClient.Assistant.create(data as any)
+    const assistant = await ApiClient.Admin.createAssistant(data as any)
 
     useAssistantsStore.setState(state => ({
       adminAssistants: [...state.adminAssistants, assistant],
@@ -196,7 +196,7 @@ export const updateAdministratorAssistant = async (
   try {
     useAssistantsStore.setState({ updating: true, error: null })
 
-    const assistant = await ApiClient.Assistant.update({
+    const assistant = await ApiClient.Admin.updateAssistant({
       assistant_id: id,
       ...data,
     })
@@ -227,7 +227,7 @@ export const deleteAdministratorAssistant = async (
   try {
     useAssistantsStore.setState({ deleting: true, error: null })
 
-    await ApiClient.Assistant.delete({ assistant_id: id })
+    await ApiClient.Admin.deleteAssistant({ assistant_id: id })
 
     useAssistantsStore.setState(state => ({
       adminAssistants: state.adminAssistants.filter(a => a.id !== id),

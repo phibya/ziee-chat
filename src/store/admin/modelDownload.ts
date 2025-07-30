@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { ApiClient } from '../api/client'
+import { ApiClient } from '../../api/client.ts'
 import type {
   DownloadFromRepositoryRequest,
   DownloadInstance,
   DownloadProgressUpdate,
-} from '../types/api/modelDownloads.ts'
+} from '../../types/api/modelDownloads.ts'
 
 interface ModelDownloadState {
   // Download instances map

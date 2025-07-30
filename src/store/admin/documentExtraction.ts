@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { ApiClient } from '../api/client'
+import { ApiClient } from '../../api/client.ts'
 import type {
   DocumentExtractionSettings,
   ExtractionFileType,
   OcrExtractionSettings,
   LlmExtractionSettings,
-} from '../types/api/document-extraction'
-import { DEFAULT_DOCUMENT_EXTRACTION_SETTINGS } from '../types/api/document-extraction'
+} from '../../types/api/document-extraction.ts'
+import { DEFAULT_DOCUMENT_EXTRACTION_SETTINGS } from '../../types/api/document-extraction.ts'
 
 interface DocumentExtractionState {
   // Settings by file type

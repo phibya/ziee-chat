@@ -163,22 +163,22 @@ export const ApiEndpoints = {
   'UserSettings.set': 'POST /api/user/settings',
   'UserSettings.delete': 'DELETE /api/user/settings/{key}',
   'UserSettings.deleteAll': 'DELETE /api/user/settings/all',
-  // Provider management
-  'Providers.list': 'GET /api/admin/providers',
-  'Providers.get': 'GET /api/admin/providers/{provider_id}',
-  'Providers.create': 'POST /api/admin/providers',
-  'Providers.update': 'PUT /api/admin/providers/{provider_id}',
-  'Providers.delete': 'DELETE /api/admin/providers/{provider_id}',
-  'Providers.clone': 'POST /api/admin/providers/{provider_id}/clone',
-  'Providers.addModel': 'POST /api/admin/providers/{provider_id}/models',
-  'Providers.listModels': 'GET /api/admin/providers/{provider_id}/models',
-  'Models.get': 'GET /api/admin/models/{model_id}',
-  'Models.update': 'PUT /api/admin/models/{model_id}',
-  'Models.delete': 'DELETE /api/admin/models/{model_id}',
-  'Models.start': 'POST /api/admin/models/{model_id}/start',
-  'Models.stop': 'POST /api/admin/models/{model_id}/stop',
-  'Models.enable': 'POST /api/admin/models/{model_id}/enable',
-  'Models.disable': 'POST /api/admin/models/{model_id}/disable',
+  // Admin provider management
+  'Admin.listProviders': 'GET /api/admin/providers',
+  'Admin.getProvider': 'GET /api/admin/providers/{provider_id}',
+  'Admin.createProvider': 'POST /api/admin/providers',
+  'Admin.updateProvider': 'PUT /api/admin/providers/{provider_id}',
+  'Admin.deleteProvider': 'DELETE /api/admin/providers/{provider_id}',
+  'Admin.cloneProvider': 'POST /api/admin/providers/{provider_id}/clone',
+  'Admin.addModelToProvider': 'POST /api/admin/providers/{provider_id}/models',
+  'Admin.listProviderModels': 'GET /api/admin/providers/{provider_id}/models',
+  'Admin.getModel': 'GET /api/admin/models/{model_id}',
+  'Admin.updateModel': 'PUT /api/admin/models/{model_id}',
+  'Admin.deleteModel': 'DELETE /api/admin/models/{model_id}',
+  'Admin.startModel': 'POST /api/admin/models/{model_id}/start',
+  'Admin.stopModel': 'POST /api/admin/models/{model_id}/stop',
+  'Admin.enableModel': 'POST /api/admin/models/{model_id}/enable',
+  'Admin.disableModel': 'POST /api/admin/models/{model_id}/disable',
   'Admin.getAvailableDevices': 'GET /api/admin/devices',
   // Model Upload endpoints for Local
   'ModelUploads.uploadAndCommit':
@@ -319,22 +319,22 @@ export type ApiEndpointParameters = {
   'UserSettings.set': UserSettingRequest
   'UserSettings.delete': { key: string }
   'UserSettings.deleteAll': void
-  // Provider management
-  'Providers.list': { page?: number; per_page?: number }
-  'Providers.get': { provider_id: string }
-  'Providers.create': CreateProviderRequest
-  'Providers.update': { provider_id: string } & UpdateProviderRequest
-  'Providers.delete': { provider_id: string }
-  'Providers.clone': { provider_id: string }
-  'Providers.addModel': { provider_id: string } & AddModelToProviderRequest
-  'Providers.listModels': { provider_id: string }
-  'Models.get': { model_id: string }
-  'Models.update': { model_id: string } & UpdateModelRequest
-  'Models.delete': { model_id: string }
-  'Models.start': { model_id: string }
-  'Models.stop': { model_id: string }
-  'Models.enable': { model_id: string }
-  'Models.disable': { model_id: string }
+  // Admin provider management
+  'Admin.listProviders': { page?: number; per_page?: number }
+  'Admin.getProvider': { provider_id: string }
+  'Admin.createProvider': CreateProviderRequest
+  'Admin.updateProvider': { provider_id: string } & UpdateProviderRequest
+  'Admin.deleteProvider': { provider_id: string }
+  'Admin.cloneProvider': { provider_id: string }
+  'Admin.addModelToProvider': { provider_id: string } & AddModelToProviderRequest
+  'Admin.listProviderModels': { provider_id: string }
+  'Admin.getModel': { model_id: string }
+  'Admin.updateModel': { model_id: string } & UpdateModelRequest
+  'Admin.deleteModel': { model_id: string }
+  'Admin.startModel': { model_id: string }
+  'Admin.stopModel': { model_id: string }
+  'Admin.enableModel': { model_id: string }
+  'Admin.disableModel': { model_id: string }
   'Admin.getAvailableDevices': void
   // Model Upload parameters
   'ModelUploads.uploadAndCommit': FormData
@@ -498,22 +498,22 @@ export type ApiEndpointResponses = {
   'UserSettings.set': UserSetting
   'UserSettings.delete': void
   'UserSettings.deleteAll': { deleted: number }
-  // Provider management
-  'Providers.list': ProviderListResponse
-  'Providers.get': Provider
-  'Providers.create': Provider
-  'Providers.update': Provider
-  'Providers.delete': void
-  'Providers.clone': Provider
-  'Providers.addModel': Model
-  'Providers.listModels': Model[]
-  'Models.get': Model
-  'Models.update': Model
-  'Models.delete': void
-  'Models.start': { success: boolean; message: string }
-  'Models.stop': { success: boolean; message: string }
-  'Models.enable': { success: boolean; message: string }
-  'Models.disable': { success: boolean; message: string }
+  // Admin provider management
+  'Admin.listProviders': ProviderListResponse
+  'Admin.getProvider': Provider
+  'Admin.createProvider': Provider
+  'Admin.updateProvider': Provider
+  'Admin.deleteProvider': void
+  'Admin.cloneProvider': Provider
+  'Admin.addModelToProvider': Model
+  'Admin.listProviderModels': Model[]
+  'Admin.getModel': Model
+  'Admin.updateModel': Model
+  'Admin.deleteModel': void
+  'Admin.startModel': void
+  'Admin.stopModel': void
+  'Admin.enableModel': void
+  'Admin.disableModel': void
   'Admin.getAvailableDevices': AvailableDevicesResponse
   // Model Upload responses
   'ModelUploads.uploadAndCommit': Model

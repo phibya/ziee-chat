@@ -6,6 +6,7 @@ export interface Conversation {
   id: string
   user_id: string
   title: string
+  project_id?: string
   assistant_id: string
   model_id: string
   active_branch_id: string
@@ -43,8 +44,9 @@ export interface MessageBranch {
 
 export interface CreateConversationRequest {
   title: string
-  assistant_id?: string
-  model_id?: string
+  project_id?: string
+  assistant_id: string
+  model_id: string
 }
 
 export interface UpdateConversationRequest {
@@ -80,6 +82,7 @@ export interface ConversationSummary {
   id: string
   title: string
   user_id: string
+  project_id?: string
   assistant_id?: string
   model_id?: string
   created_at: string

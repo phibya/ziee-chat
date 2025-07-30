@@ -34,14 +34,15 @@ pub async fn create_conversation(
     sqlx::query(
         r#"
         INSERT INTO conversations (
-            id, user_id, title, assistant_id, model_id,
+            id, user_id, title, project_id, assistant_id, model_id,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
     )
     .bind(conversation_id)
     .bind(user_id)
     .bind(&request.title)
+    .bind(request.project_id)
     .bind(request.assistant_id)
     .bind(request.model_id)
     .bind(now)
@@ -68,8 +69,9 @@ pub async fn create_conversation(
         id: conversation_id,
         user_id,
         title: request.title,
-        assistant_id: request.assistant_id,
-        model_id: request.model_id,
+        project_id: request.project_id,
+        assistant_id: Some(request.assistant_id),
+        model_id: Some(request.model_id),
         active_branch_id: Some(main_branch.id),
         created_at: now,
         updated_at: now,
@@ -87,7 +89,7 @@ pub async fn get_conversation_by_id(
     let row = sqlx::query(
         r#"
         SELECT
-            id, user_id, title, assistant_id, model_id,
+            id, user_id, title, project_id, assistant_id, model_id,
             active_branch_id, created_at, updated_at
         FROM conversations
         WHERE id = $1 AND user_id = $2
@@ -103,6 +105,7 @@ pub async fn get_conversation_by_id(
             id: row.get("id"),
             user_id: row.get("user_id"),
             title: row.get("title"),
+            project_id: row.get("project_id"),
             assistant_id: row.get("assistant_id"),
             model_id: row.get("model_id"),
             active_branch_id: row.get("active_branch_id"),
@@ -140,7 +143,7 @@ pub async fn list_conversations(
     let rows = sqlx::query(
         r#"
         SELECT
-            c.id, c.title, c.user_id, c.assistant_id, c.model_id,
+            c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
             m.content as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
@@ -169,6 +172,7 @@ pub async fn list_conversations(
             id: row.get("id"),
             title: row.get("title"),
             user_id: row.get("user_id"),
+            project_id: row.get("project_id"),
             assistant_id: row.get("assistant_id"),
             model_id: row.get("model_id"),
             created_at: row.get("created_at"),
@@ -227,7 +231,7 @@ pub async fn update_conversation(
         UPDATE conversations
         SET {}
         WHERE id = ${} AND user_id = ${}
-        RETURNING id, user_id, title, assistant_id, model_id, active_branch_id, created_at, updated_at
+        RETURNING id, user_id, title, project_id, assistant_id, model_id, active_branch_id, created_at, updated_at
         "#,
         update_clause,
         bind_index + 1,
@@ -256,6 +260,7 @@ pub async fn update_conversation(
             id: row.get("id"),
             user_id: row.get("user_id"),
             title: row.get("title"),
+            project_id: row.get("project_id"),
             assistant_id: row.get("assistant_id"),
             model_id: row.get("model_id"),
             active_branch_id: row.get("active_branch_id"),
@@ -746,7 +751,7 @@ pub async fn search_conversations(
     let rows = sqlx::query(
         r#"
         SELECT DISTINCT ON (c.id)
-            c.id, c.title, c.user_id, c.assistant_id, c.provider_id, c.model_id,
+            c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
             latest_msg.content as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
@@ -778,6 +783,7 @@ pub async fn search_conversations(
             id: row.get("id"),
             title: row.get("title"),
             user_id: row.get("user_id"),
+            project_id: row.get("project_id"),
             assistant_id: row.get("assistant_id"),
             model_id: row.get("model_id"),
             created_at: row.get("created_at"),

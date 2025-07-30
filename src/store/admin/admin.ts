@@ -1,10 +1,14 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { ApiClient } from '../api/client'
-import { Assistant, CreateAssistantRequest } from '../types/api/assistant'
-import { CreateUserGroupRequest, User, UserGroup } from '../types/api/user'
-import { UpdateProxySettingsRequest } from '../types/api/config'
-import { SupportedLanguage } from '../types'
+import { ApiClient } from '../../api/client.ts'
+import { Assistant, CreateAssistantRequest } from '../../types/api/assistant.ts'
+import {
+  CreateUserGroupRequest,
+  User,
+  UserGroup,
+} from '../../types/api/user.ts'
+import { UpdateProxySettingsRequest } from '../../types/api/config.ts'
+import { SupportedLanguage } from '../../types'
 
 // Using API types now - User and UserGroup imported above
 

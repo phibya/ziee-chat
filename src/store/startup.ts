@@ -2,7 +2,7 @@
 
 import { hasPermission, Permission } from '../permissions'
 import { useAuthStore } from './auth.ts'
-import { initializeDownloadTracking } from './modelDownload.ts'
+import { initializeDownloadTracking } from './admin/modelDownload.ts'
 import { initializeUserSettings } from './settings.ts'
 
 useAuthStore.subscribe(

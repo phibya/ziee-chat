@@ -435,7 +435,7 @@ pub async fn get_provider_by_model_id(model_id: Uuid) -> Result<Option<Provider>
     
     let provider: Option<Provider> = sqlx::query_as(
         r#"
-        SELECT p.id, p.name, p.type, p.enabled, p.api_key, p.base_url, 
+        SELECT p.id, p.name, p.provider_type, p.enabled, p.api_key, p.base_url, 
                p.built_in, p.proxy_settings, p.created_at, p.updated_at
         FROM providers p
         INNER JOIN models m ON p.id = m.provider_id

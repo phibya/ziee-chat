@@ -1,8 +1,12 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { ApiClient } from '../api/client'
-import { Model, ModelCapabilities, ModelSettings } from '../types/api/model'
-import { loadModelsForProvider } from './providers'
+import { ApiClient } from '../../api/client.ts'
+import {
+  Model,
+  ModelCapabilities,
+  ModelSettings,
+} from '../../types/api/model.ts'
+import { loadModelsForProvider } from './providers.ts'
 
 export interface FileUploadProgress {
   filename: string

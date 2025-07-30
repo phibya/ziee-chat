@@ -10,7 +10,12 @@ interface StringArrayInputProps {
   style?: React.CSSProperties
 }
 
-function StringArrayInput({ value = [], onChange, placeholder, style }: StringArrayInputProps) {
+function StringArrayInput({
+  value = [],
+  onChange,
+  placeholder,
+  style,
+}: StringArrayInputProps) {
   const [inputValue, setInputValue] = useState('')
 
   const handleAddTag = () => {
@@ -36,7 +41,7 @@ function StringArrayInput({ value = [], onChange, placeholder, style }: StringAr
   return (
     <div style={style}>
       <div style={{ marginBottom: 8 }}>
-        {value.map(tag => (
+        {value?.map(tag => (
           <Tag
             key={tag}
             closable
@@ -49,7 +54,7 @@ function StringArrayInput({ value = [], onChange, placeholder, style }: StringAr
       </div>
       <Input
         value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
+        onChange={e => setInputValue(e.target.value)}
         onKeyPress={handleKeyPress}
         onBlur={handleAddTag}
         placeholder={placeholder || 'Press Enter to add'}
@@ -120,7 +125,9 @@ export function ModelParameterField({
           />
         )
       case 'string-array':
-        return <StringArrayInput placeholder={placeholder} style={commonStyle} />
+        return (
+          <StringArrayInput placeholder={placeholder} style={commonStyle} />
+        )
       case 'text':
       default:
         return <Input placeholder={placeholder} style={commonStyle} />

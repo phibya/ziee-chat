@@ -1,5 +1,14 @@
 import { UploadOutlined } from '@ant-design/icons'
-import { App, Button, Card, Flex, Progress, Typography, Upload } from 'antd'
+import {
+  App,
+  Button,
+  Card,
+  Flex,
+  Progress,
+  theme,
+  Typography,
+  Upload,
+} from 'antd'
 import React, { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { loadProjectFiles, Stores, uploadFilesToProject } from '../../../store'
@@ -10,6 +19,7 @@ const { Text } = Typography
 export const ProjectKnowledgeCard: React.FC = () => {
   const { message } = App.useApp()
   const { projectId } = useParams<{ projectId: string }>()
+  const { token } = theme.useToken()
 
   // Projects store
   const { currentProject } = Stores.Projects
@@ -60,13 +70,29 @@ export const ProjectKnowledgeCard: React.FC = () => {
           return false
         }}
         showUploadList={false}
-        className="!p-0 !m-0
-        [&_.ant-upload-drag]:!border-none [&_.ant-upload-drag]:!bg-transparent
+        className={`
+        opacity-0
+        [&_.ant-upload-drag]:!cursor-default
+        [&_.ant-upload-drag]:!border-none
         [&_.ant-upload-drag-hover]:!border-dashed
+        [&:has(.ant-upload-drag-hover)]:z-[100]
+        [&:has(.ant-upload-drag-hover)]:opacity-100
         absolute left-2 right-2 top-3 bottom-2
-        "
+        transition-opacity duration-300 ease-in-out
+        `}
         openFileDialogOnClick={false}
-      />
+        style={{
+          backgroundColor: token.colorBgContainer,
+        }}
+      >
+        <Flex
+          className="h-full flex-col items-center justify-center gap-2"
+          style={{ pointerEvents: 'none' }}
+        >
+          <UploadOutlined style={{ fontSize: '24px' }} />
+          <Text type="secondary">Drag and drop files here</Text>
+        </Flex>
+      </Upload.Dragger>
       {/* Project Instructions */}
       <Flex className="gap-1 flex-col">
         <Typography.Title level={5}>Project Instructions</Typography.Title>

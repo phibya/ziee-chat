@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { ApiClient } from '../api/client'
+import { ApiClient } from '../../api/client.ts'
 import {
   CreateRepositoryRequest,
   Repository,
   TestRepositoryConnectionRequest,
   UpdateRepositoryRequest,
-} from '../types/api/repository'
+} from '../../types/api/repository.ts'
 
 interface RepositoriesState {
   // Data

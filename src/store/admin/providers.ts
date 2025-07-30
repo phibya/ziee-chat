@@ -1,12 +1,12 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { ApiClient } from '../api/client'
-import { Model, ModelCapabilities } from '../types/api/model'
+import { ApiClient } from '../../api/client.ts'
+import { Model, ModelCapabilities } from '../../types/api/model.ts'
 import {
   CreateProviderRequest,
   Provider,
   UpdateProviderRequest,
-} from '../types/api/provider'
+} from '../../types/api/provider.ts'
 
 // Type definitions are now imported from the API types
 
@@ -52,7 +52,7 @@ export const useProvidersStore = create<ProvidersState>()(
 export const loadAllModelProviders = async (): Promise<void> => {
   try {
     useProvidersStore.setState({ loading: true, error: null })
-    const response = await ApiClient.Providers.list({})
+    const response = await ApiClient.Admin.listProviders({})
     useProvidersStore.setState({
       providers: response.providers,
       loading: false,
@@ -72,7 +72,7 @@ export const createNewModelProvider = async (
 ): Promise<Provider> => {
   try {
     useProvidersStore.setState({ creating: true, error: null })
-    const newProvider = await ApiClient.Providers.create(provider)
+    const newProvider = await ApiClient.Admin.createProvider(provider)
     useProvidersStore.setState(state => ({
       providers: [...state.providers, newProvider],
       creating: false,
@@ -94,7 +94,7 @@ export const updateModelProvider = async (
 ): Promise<void> => {
   try {
     useProvidersStore.setState({ updating: true, error: null })
-    const updatedProvider = await ApiClient.Providers.update({
+    const updatedProvider = await ApiClient.Admin.updateProvider({
       provider_id: id,
       ...provider,
     })
@@ -115,7 +115,7 @@ export const updateModelProvider = async (
 export const deleteModelProvider = async (id: string): Promise<void> => {
   try {
     useProvidersStore.setState({ deleting: true, error: null })
-    await ApiClient.Providers.delete({ provider_id: id })
+    await ApiClient.Admin.deleteProvider({ provider_id: id })
     useProvidersStore.setState(state => ({
       providers: state.providers.filter(p => p.id !== id),
       modelsByProvider: Object.fromEntries(
@@ -138,7 +138,9 @@ export const deleteModelProvider = async (id: string): Promise<void> => {
 export const cloneExistingProvider = async (id: string): Promise<Provider> => {
   try {
     useProvidersStore.setState({ creating: true, error: null })
-    const clonedProvider = await ApiClient.Providers.clone({ provider_id: id })
+    const clonedProvider = await ApiClient.Admin.cloneProvider({
+      provider_id: id,
+    })
     useProvidersStore.setState(state => ({
       providers: [...state.providers, clonedProvider],
       creating: false,
@@ -164,7 +166,7 @@ export const loadModelsForProvider = async (
       error: null,
     }))
 
-    const models = await ApiClient.Providers.listModels({
+    const models = await ApiClient.Admin.listProviderModels({
       provider_id: providerId,
     })
 
@@ -203,7 +205,7 @@ export const addNewModelToProvider = async (
       error: null,
     }))
 
-    const newModel = await ApiClient.Providers.addModel({
+    const newModel = await ApiClient.Admin.addModelToProvider({
       provider_id: providerId,
       ...model,
     })
@@ -236,7 +238,7 @@ export const addNewModel = async (
     }))
 
     const { id: _, ...modelData } = data
-    const newModel = await ApiClient.Providers.addModel({
+    const newModel = await ApiClient.Admin.addModelToProvider({
       provider_id: providerId,
       ...modelData,
     } as any)
@@ -269,7 +271,7 @@ export const updateExistingModel = async (
       error: null,
     }))
 
-    const updatedModel = await ApiClient.Models.update({
+    const updatedModel = await ApiClient.Admin.updateModel({
       model_id: modelId,
       ...updates,
     })
@@ -302,7 +304,7 @@ export const deleteExistingModel = async (modelId: string): Promise<void> => {
       error: null,
     }))
 
-    await ApiClient.Models.delete({ model_id: modelId })
+    await ApiClient.Admin.deleteModel({ model_id: modelId })
 
     useProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
@@ -332,7 +334,7 @@ export const startModelExecution = async (modelId: string): Promise<void> => {
       error: null,
     }))
 
-    const response = await ApiClient.Models.start({ model_id: modelId })
+    await ApiClient.Admin.startModel({ model_id: modelId })
 
     useProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
@@ -340,11 +342,7 @@ export const startModelExecution = async (modelId: string): Promise<void> => {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
           model => {
             if (model.id === modelId) {
-              // If response is a success object, update model status; otherwise use response as model
-              if ('success' in response && 'message' in response) {
-                return { ...model, status: 'running' }
-              }
-              return response as Model
+              return { ...model, is_active: true }
             }
             return model
           },
@@ -371,7 +369,7 @@ export const stopModelExecution = async (modelId: string): Promise<void> => {
       error: null,
     }))
 
-    const response = await ApiClient.Models.stop({ model_id: modelId })
+    await ApiClient.Admin.stopModel({ model_id: modelId })
 
     useProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
@@ -379,11 +377,7 @@ export const stopModelExecution = async (modelId: string): Promise<void> => {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
           model => {
             if (model.id === modelId) {
-              // If response is a success object, update model status; otherwise use response as model
-              if ('success' in response && 'message' in response) {
-                return { ...model, status: 'stopped' }
-              }
-              return response as Model
+              return { ...model, is_active: false }
             }
             return model
           },
@@ -410,7 +404,7 @@ export const enableModelForUse = async (modelId: string): Promise<void> => {
       error: null,
     }))
 
-    const response = await ApiClient.Models.enable({ model_id: modelId })
+    await ApiClient.Admin.enableModel({ model_id: modelId })
 
     useProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
@@ -418,11 +412,7 @@ export const enableModelForUse = async (modelId: string): Promise<void> => {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
           model => {
             if (model.id === modelId) {
-              // If response is a success object, update model status; otherwise use response as model
-              if ('success' in response && 'message' in response) {
-                return { ...model, enabled: true }
-              }
-              return response as Model
+              return { ...model, enabled: true }
             }
             return model
           },
@@ -449,7 +439,7 @@ export const disableModelFromUse = async (modelId: string): Promise<void> => {
       error: null,
     }))
 
-    const response = await ApiClient.Models.disable({ model_id: modelId })
+    await ApiClient.Admin.disableModel({ model_id: modelId })
 
     useProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
@@ -457,11 +447,7 @@ export const disableModelFromUse = async (modelId: string): Promise<void> => {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
           model => {
             if (model.id === modelId) {
-              // If response is a success object, update model status; otherwise use response as model
-              if ('success' in response && 'message' in response) {
-                return { ...model, enabled: false }
-              }
-              return response as Model
+              return { ...model, enabled: false }
             }
             return model
           },

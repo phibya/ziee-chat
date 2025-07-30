@@ -215,6 +215,35 @@ fn is_model_file(path: &Path, file_name_lower: &str) -> bool {
     false
 }
 
+/// Read config.json and extract the number of layers
+fn get_model_layer_count(model_path: &str) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    let model_dir = Path::new(model_path);
+    let config_path = if model_dir.is_dir() {
+        model_dir.join("config.json")
+    } else {
+        // If model_path is a file, look for config.json in the same directory
+        model_dir.parent().unwrap_or(model_dir).join("config.json")
+    };
+
+    if !config_path.exists() {
+        return Err("config.json not found in model directory".into());
+    }
+
+    let config_content = std::fs::read_to_string(&config_path)?;
+    let config: serde_json::Value = serde_json::from_str(&config_content)?;
+
+    // Try different common field names for layer count
+    let layer_count = config
+        .get("num_hidden_layers")
+        .or_else(|| config.get("n_layers"))
+        .or_else(|| config.get("num_layers"))
+        .or_else(|| config.get("n_layer"))
+        .and_then(|v| v.as_u64())
+        .ok_or("No layer count field found in config.json")?;
+
+    Ok(layer_count as usize)
+}
+
 /// Calculate timeout based on model size
 /// Base timeout: 2 minutes (120 seconds)
 /// Additional time: 30 seconds per GB
@@ -820,13 +849,46 @@ pub async fn start_model(
             && !params.cpu
             && !matches!(params.device_type, crate::ai::DeviceType::Cpu)
         {
-            let device_layers_str = ids
-                .iter()
-                .enumerate()
-                .map(|(_i, id)| format!("{}:32", id)) // 32 layers per device by default
-                .collect::<Vec<_>>()
-                .join(";");
-            command.arg("--num-device-layers").arg(device_layers_str);
+            // Only add --num-device-layers if there are multiple devices
+            if ids.len() > 1 {
+                // Try to read layer count from config.json and distribute evenly
+                match get_model_layer_count(&params.model_path) {
+                    Ok(total_layers) => {
+                        let layers_per_device = total_layers / ids.len();
+                        let remainder = total_layers % ids.len();
+                        
+                        let device_layers_str = ids
+                            .iter()
+                            .enumerate()
+                            .map(|(i, id)| {
+                                // Distribute remainder to first devices
+                                let layers = if i < remainder {
+                                    layers_per_device + 1
+                                } else {
+                                    layers_per_device
+                                };
+                                format!("{}:{}", id, layers)
+                            })
+                            .collect::<Vec<_>>()
+                            .join(";");
+                        
+                        println!("Distributing {} layers across {} devices: {}", 
+                               total_layers, ids.len(), device_layers_str);
+                        command.arg("--num-device-layers").arg(device_layers_str);
+                    }
+                    Err(e) => {
+                        println!("Could not read layer count from config.json ({}), using default distribution", e);
+                        let device_layers_str = ids
+                            .iter()
+                            .enumerate()
+                            .map(|(_i, id)| format!("{}:32", id)) // 32 layers per device as fallback
+                            .collect::<Vec<_>>()
+                            .join(";");
+                        command.arg("--num-device-layers").arg(device_layers_str);
+                    }
+                }
+            }
+            // For single device, don't add --num-device-layers parameter at all
         }
     }
 

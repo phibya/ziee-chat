@@ -9,6 +9,7 @@ pub struct Conversation {
     pub id: Uuid,
     pub user_id: Uuid,
     pub title: String,
+    pub project_id: Option<Uuid>,
     pub assistant_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub active_branch_id: Option<Uuid>,
@@ -22,6 +23,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Conversation {
             id: row.try_get("id")?,
             user_id: row.try_get("user_id")?,
             title: row.try_get("title")?,
+            project_id: row.try_get("project_id")?,
             assistant_id: row.try_get("assistant_id")?,
             model_id: row.try_get("model_id")?,
             active_branch_id: row.try_get("active_branch_id")?,
@@ -143,8 +145,9 @@ impl FromRow<'_, sqlx::postgres::PgRow> for ConversationMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateConversationRequest {
     pub title: String,
-    pub assistant_id: Option<Uuid>,
-    pub model_id: Option<Uuid>,
+    pub project_id: Option<Uuid>,
+    pub assistant_id: Uuid,
+    pub model_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -194,6 +197,7 @@ pub struct ConversationSummary {
     pub id: Uuid,
     pub title: String,
     pub user_id: Uuid,
+    pub project_id: Option<Uuid>,
     pub assistant_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
