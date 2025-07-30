@@ -99,7 +99,7 @@ export const uploadLocalModel = async (
     }
 
     // Call the upload API with file upload progress tracking
-    const model = await ApiClient.ModelUploads.uploadAndCommit(formData, {
+    const model = await ApiClient.Admin.uploadAndCommitModel(formData, {
       fileUploadProgress: {
         onProgress: (
           progress: number,

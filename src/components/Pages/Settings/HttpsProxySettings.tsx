@@ -15,8 +15,8 @@ const { Text } = Typography
 export function HttpsProxySettings() {
   const { t } = useTranslation()
 
-  // Admin store
-  const { proxySettings, loading, error } = Stores.Admin
+  // Admin proxy settings store
+  const { proxySettings, loadingProxySettings, error } = Stores.AdminProxySettings
 
   useEffect(() => {
     loadSystemProxySettings()
@@ -33,7 +33,7 @@ export function HttpsProxySettings() {
     await updateSystemProxySettings(values)
   }
 
-  if (loading && !proxySettings) {
+  if (loadingProxySettings && !proxySettings) {
     return (
       <SettingsPageContainer title={t('proxy.title')}>
         <Card>

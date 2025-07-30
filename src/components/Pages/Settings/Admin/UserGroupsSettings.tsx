@@ -52,8 +52,8 @@ export function UserGroupsSettings() {
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
 
-  const { groups, currentGroupMembers, loading, loadingGroupMembers, error } =
-    Stores.Admin
+  const { groups, currentGroupMembers, loadingGroups, loadingGroupMembers, error } =
+    Stores.AdminUserGroups
   const { providers: providers } = Stores.Providers
 
   const [createModalVisible, setCreateModalVisible] = useState(false)
@@ -369,7 +369,7 @@ export function UserGroupsSettings() {
             columns={columns}
             dataSource={groups}
             rowKey="id"
-            loading={loading}
+            loading={loadingGroups}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,

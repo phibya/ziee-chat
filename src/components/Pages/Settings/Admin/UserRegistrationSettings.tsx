@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
-  clearSystemAdminError,
+  clearAdminUsersStoreError,
   loadSystemUserRegistrationSettings,
   Stores,
   updateSystemUserRegistrationSettings,
@@ -17,8 +17,8 @@ export function UserRegistrationSettings() {
   const [form] = Form.useForm()
   const { hasPermission } = usePermissions()
 
-  // Admin store
-  const { userRegistrationEnabled, loading, error } = Stores.Admin
+  // Admin users store
+  const { userRegistrationEnabled, loadingRegistrationSettings, error } = Stores.AdminUsers
 
   const canRead = hasPermission(Permission.config.userRegistration.read)
   const canEdit = hasPermission(Permission.config.userRegistration.edit)
@@ -33,7 +33,7 @@ export function UserRegistrationSettings() {
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearSystemAdminError()
+      clearAdminUsersStoreError()
     }
   }, [error, message])
 
@@ -83,7 +83,7 @@ export function UserRegistrationSettings() {
             </div>
           </div>
           <Form.Item name="enabled" valuePropName="checked" className="mb-0">
-            <Switch loading={loading} size="default" />
+            <Switch loading={loadingRegistrationSettings} size="default" />
           </Form.Item>
         </div>
       </Form>

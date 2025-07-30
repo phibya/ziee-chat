@@ -27,8 +27,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const [checkingRegistration, setCheckingRegistration] = useState(false)
   const { isLoading, error, isDesktop } = Stores.Auth
 
-  // Get registration status from admin store
-  const registrationEnabled = Stores.Admin.userRegistrationEnabled
+  // Get registration status from admin users store
+  const registrationEnabled = Stores.AdminUsers.userRegistrationEnabled
 
   // Check registration status for web app (except for setup mode)
   useEffect(() => {

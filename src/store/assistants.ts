@@ -3,10 +3,9 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { Assistant } from '../types/api/assistant'
 
-interface AssistantsState {
+interface UserAssistantsState {
   // Data
   assistants: Assistant[]
-  adminAssistants: Assistant[]
 
   // Loading states
   loading: boolean
@@ -18,12 +17,11 @@ interface AssistantsState {
   error: string | null
 }
 
-export const useAssistantsStore = create<AssistantsState>()(
+export const useUserAssistantsStore = create<UserAssistantsState>()(
   subscribeWithSelector(
-    (): AssistantsState => ({
+    (): UserAssistantsState => ({
       // Initial state
       assistants: [],
-      adminAssistants: [],
       loading: false,
       creating: false,
       updating: false,
@@ -33,49 +31,24 @@ export const useAssistantsStore = create<AssistantsState>()(
   ),
 )
 
-// Assistants actions
+// User assistants actions
 export const loadUserAssistants = async (): Promise<void> => {
   try {
-    useAssistantsStore.setState({ loading: true, error: null })
+    useUserAssistantsStore.setState({ loading: true, error: null })
 
     const response = await ApiClient.Assistant.list({
       page: 1,
       per_page: 50,
     })
 
-    useAssistantsStore.setState({
+    useUserAssistantsStore.setState({
       assistants: response.assistants,
       loading: false,
     })
   } catch (error) {
-    useAssistantsStore.setState({
+    useUserAssistantsStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to load assistants',
-      loading: false,
-    })
-    throw error
-  }
-}
-
-export const loadAdministratorAssistants = async (): Promise<void> => {
-  try {
-    useAssistantsStore.setState({ loading: true, error: null })
-
-    const response = await ApiClient.Admin.listAssistants({
-      page: 1,
-      per_page: 50,
-    })
-
-    useAssistantsStore.setState({
-      adminAssistants: response.assistants,
-      loading: false,
-    })
-  } catch (error) {
-    useAssistantsStore.setState({
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to load admin assistants',
       loading: false,
     })
     throw error
@@ -86,11 +59,11 @@ export const createUserAssistant = async (
   data: Partial<Assistant>,
 ): Promise<Assistant> => {
   try {
-    useAssistantsStore.setState({ creating: true, error: null })
+    useUserAssistantsStore.setState({ creating: true, error: null })
 
     const assistant = await ApiClient.Assistant.create(data as any)
 
-    useAssistantsStore.setState(state => ({
+    useUserAssistantsStore.setState(state => ({
       assistants: data.is_default
         ? [
             ...state.assistants.map(a => ({ ...a, is_default: false })),
@@ -102,7 +75,7 @@ export const createUserAssistant = async (
 
     return assistant
   } catch (error) {
-    useAssistantsStore.setState({
+    useUserAssistantsStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to create assistant',
       creating: false,
@@ -116,14 +89,14 @@ export const updateUserAssistant = async (
   data: Partial<Assistant>,
 ): Promise<Assistant> => {
   try {
-    useAssistantsStore.setState({ updating: true, error: null })
+    useUserAssistantsStore.setState({ updating: true, error: null })
 
     const assistant = await ApiClient.Assistant.update({
       assistant_id: id,
       ...data,
     })
 
-    useAssistantsStore.setState(state => ({
+    useUserAssistantsStore.setState(state => ({
       assistants: data.is_default
         ? state.assistants.map(a =>
             a.id === id ? assistant : { ...a, is_default: false },
@@ -134,7 +107,7 @@ export const updateUserAssistant = async (
 
     return assistant
   } catch (error) {
-    useAssistantsStore.setState({
+    useUserAssistantsStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to update assistant',
       updating: false,
@@ -145,16 +118,16 @@ export const updateUserAssistant = async (
 
 export const deleteUserAssistant = async (id: string): Promise<void> => {
   try {
-    useAssistantsStore.setState({ deleting: true, error: null })
+    useUserAssistantsStore.setState({ deleting: true, error: null })
 
     await ApiClient.Assistant.delete({ assistant_id: id })
 
-    useAssistantsStore.setState(state => ({
+    useUserAssistantsStore.setState(state => ({
       assistants: state.assistants.filter(a => a.id !== id),
       deleting: false,
     }))
   } catch (error) {
-    useAssistantsStore.setState({
+    useUserAssistantsStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to delete assistant',
       deleting: false,
@@ -163,88 +136,11 @@ export const deleteUserAssistant = async (id: string): Promise<void> => {
   }
 }
 
-export const createAdministratorAssistant = async (
-  data: Partial<Assistant>,
-): Promise<Assistant> => {
-  try {
-    useAssistantsStore.setState({ creating: true, error: null })
 
-    const assistant = await ApiClient.Admin.createAssistant(data as any)
-
-    useAssistantsStore.setState(state => ({
-      adminAssistants: [...state.adminAssistants, assistant],
-      creating: false,
-    }))
-
-    return assistant
-  } catch (error) {
-    useAssistantsStore.setState({
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to create admin assistant',
-      creating: false,
-    })
-    throw error
-  }
+export const clearUserAssistantsStoreError = (): void => {
+  useUserAssistantsStore.setState({ error: null })
 }
 
-export const updateAdministratorAssistant = async (
-  id: string,
-  data: Partial<Assistant>,
-): Promise<Assistant> => {
-  try {
-    useAssistantsStore.setState({ updating: true, error: null })
-
-    const assistant = await ApiClient.Admin.updateAssistant({
-      assistant_id: id,
-      ...data,
-    })
-
-    useAssistantsStore.setState(state => ({
-      adminAssistants: state.adminAssistants.map(a =>
-        a.id === id ? assistant : a,
-      ),
-      updating: false,
-    }))
-
-    return assistant
-  } catch (error) {
-    useAssistantsStore.setState({
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to update admin assistant',
-      updating: false,
-    })
-    throw error
-  }
-}
-
-export const deleteAdministratorAssistant = async (
-  id: string,
-): Promise<void> => {
-  try {
-    useAssistantsStore.setState({ deleting: true, error: null })
-
-    await ApiClient.Admin.deleteAssistant({ assistant_id: id })
-
-    useAssistantsStore.setState(state => ({
-      adminAssistants: state.adminAssistants.filter(a => a.id !== id),
-      deleting: false,
-    }))
-  } catch (error) {
-    useAssistantsStore.setState({
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete admin assistant',
-      deleting: false,
-    })
-    throw error
-  }
-}
-
-export const clearAssistantsStoreError = (): void => {
-  useAssistantsStore.setState({ error: null })
-}
+// Legacy compatibility
+export const useAssistantsStore = useUserAssistantsStore
+export const clearAssistantsStoreError = clearUserAssistantsStoreError

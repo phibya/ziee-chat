@@ -34,8 +34,10 @@ export const AdminAssistantsSettings: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
 
-  // Admin store
-  const { assistants, loading, error } = Stores.Admin
+  // Admin assistants store
+  const { assistants, loading, error } = Stores.AdminAssistants
+
+  console.log({ assistants })
 
   useEffect(() => {
     loadSystemAdminAssistants()

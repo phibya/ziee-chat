@@ -4,7 +4,11 @@ import type { StoreApi, UseBoundStore } from 'zustand'
 // Admin store
 import { useShallow } from 'zustand/react/shallow'
 import { useAdminStore } from './admin/admin.ts'
-import { useAssistantsStore } from './assistants'
+import { useUserAssistantsStore } from './assistants'
+import { useAdminAssistantsStore } from './admin/assistants'
+import { useAdminUsersStore } from './admin/users'
+import { useAdminUserGroupsStore } from './admin/userGroups'
+import { useAdminProxySettingsStore } from './admin/proxySettings'
 import { useAuthStore } from './auth'
 import { useChatStore } from './chat'
 import { useChatHistoryStore } from './chatHistory'
@@ -35,42 +39,63 @@ import {
 } from './ui'
 
 export {
-  assignUserToUserGroup,
   clearSystemAdminError,
-  createNewUserGroup,
-  createSystemAdminAssistant,
-  deleteSystemAdminAssistant,
-  deleteUserGroup,
-  loadAllSystemUsers,
-  loadAllUserGroups,
-  loadSystemAdminAssistants,
-  loadSystemProxySettings,
-  loadSystemUserRegistrationSettings,
-  loadUserGroupMembers,
-  removeUserFromUserGroup,
-  resetSystemUserPassword,
-  toggleSystemUserActiveStatus,
-  updateSystemAdminAssistant,
   updateSystemDefaultLanguage,
-  updateSystemProxySettings,
-  updateSystemUser,
-  updateSystemUserRegistrationSettings,
-  updateUserGroup,
   useAdminStore,
 } from './admin/admin.ts'
-// Assistants store
+// Admin User Groups store
 export {
-  clearAssistantsStoreError,
-  createAdministratorAssistant,
+  assignUserToUserGroup,
+  clearAdminUserGroupsStoreError,
+  createNewUserGroup,
+  deleteUserGroup,
+  loadAllUserGroups,
+  loadUserGroupMembers,
+  removeUserFromUserGroup,
+  updateUserGroup,
+  useAdminUserGroupsStore,
+} from './admin/userGroups'
+// Admin Proxy Settings store
+export {
+  clearAdminProxySettingsStoreError,
+  loadSystemProxySettings,
+  updateSystemProxySettings,
+  useAdminProxySettingsStore,
+} from './admin/proxySettings'
+// Admin Users store
+export {
+  clearAdminUsersStoreError,
+  loadAllSystemUsers,
+  loadSystemUserRegistrationSettings,
+  resetSystemUserPassword,
+  toggleSystemUserActiveStatus,
+  updateSystemUser,
+  updateSystemUserRegistrationSettings,
+  useAdminUsersStore,
+} from './admin/users'
+// User Assistants store
+export {
+  clearUserAssistantsStoreError,
   createUserAssistant,
-  deleteAdministratorAssistant,
   deleteUserAssistant,
-  loadAdministratorAssistants,
   loadUserAssistants,
-  updateAdministratorAssistant,
   updateUserAssistant,
+  useUserAssistantsStore,
+  // Legacy compatibility
   useAssistantsStore,
+  clearAssistantsStoreError,
 } from './assistants'
+// Admin Assistants store
+export {
+  clearAdminAssistantsStoreError,
+  createSystemAdminAssistant,
+  deleteSystemAdminAssistant,
+  loadAdministratorAssistants,
+  updateSystemAdminAssistant,
+  useAdminAssistantsStore,
+  // Legacy compatibility
+  loadSystemAdminAssistants,
+} from './admin/assistants'
 export {
   authenticateUser,
   clearAuthenticationError,
@@ -318,7 +343,11 @@ const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
 export const Stores = {
   Auth: createStoreProxy(useAuthStore),
   Admin: createStoreProxy(useAdminStore),
-  Assistants: createStoreProxy(useAssistantsStore),
+  AdminUsers: createStoreProxy(useAdminUsersStore),
+  AdminUserGroups: createStoreProxy(useAdminUserGroupsStore),
+  AdminProxySettings: createStoreProxy(useAdminProxySettingsStore),
+  Assistants: createStoreProxy(useUserAssistantsStore),
+  AdminAssistants: createStoreProxy(useAdminAssistantsStore),
   Chat: createStoreProxy(useChatStore),
   ChatHistory: createStoreProxy(useChatHistoryStore),
   Conversations: createStoreProxy(useConversationsStore),

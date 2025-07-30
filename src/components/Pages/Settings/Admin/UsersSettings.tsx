@@ -31,7 +31,8 @@ import { isDesktopApp } from '../../../../api/core.ts'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   assignUserToUserGroup,
-  clearSystemAdminError,
+  clearAdminUsersStoreError,
+  clearAdminUserGroupsStoreError,
   loadAllSystemUsers,
   loadAllUserGroups,
   removeUserFromUserGroup,
@@ -57,8 +58,9 @@ export function UsersSettings() {
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
 
-  // Admin store
-  const { users, groups, loading, error } = Stores.Admin
+  // Admin stores
+  const { users, loading: loadingUsers, error: usersError } = Stores.AdminUsers
+  const { groups, error: groupsError } = Stores.AdminUserGroups
 
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [passwordModalVisible, setPasswordModalVisible] = useState(false)
@@ -92,11 +94,15 @@ export function UsersSettings() {
 
   // Show errors
   useEffect(() => {
-    if (error) {
-      message.error(error)
-      clearSystemAdminError()
+    if (usersError) {
+      message.error(usersError)
+      clearAdminUsersStoreError()
     }
-  }, [error, message])
+    if (groupsError) {
+      message.error(groupsError)
+      clearAdminUserGroupsStoreError()
+    }
+  }, [usersError, groupsError, message])
 
   const handleEditUser = async (values: any) => {
     if (!selectedUser) return
@@ -368,7 +374,7 @@ export function UsersSettings() {
               columns={columns}
               dataSource={users}
               rowKey="id"
-              loading={loading}
+              loading={loadingUsers}
               pagination={{
                 pageSize: 10,
                 showSizeChanger: true,

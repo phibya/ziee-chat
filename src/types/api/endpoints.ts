@@ -180,8 +180,8 @@ export const ApiEndpoints = {
   'Admin.enableModel': 'POST /api/admin/models/{model_id}/enable',
   'Admin.disableModel': 'POST /api/admin/models/{model_id}/disable',
   'Admin.getAvailableDevices': 'GET /api/admin/devices',
-  // Model Upload endpoints for Local
-  'ModelUploads.uploadAndCommit':
+  // Admin Model Upload endpoints for Local
+  'Admin.uploadAndCommitModel':
     'POST /api/admin/uploaded-models/upload-and-commit',
   // Assistant endpoints - User
   'Assistant.list': 'GET /api/assistants',
@@ -336,8 +336,8 @@ export type ApiEndpointParameters = {
   'Admin.enableModel': { model_id: string }
   'Admin.disableModel': { model_id: string }
   'Admin.getAvailableDevices': void
-  // Model Upload parameters
-  'ModelUploads.uploadAndCommit': FormData
+  // Admin Model Upload parameters
+  'Admin.uploadAndCommitModel': FormData
   // Assistant endpoints - User
   'Assistant.list': { page?: number; per_page?: number }
   'Assistant.create': CreateAssistantRequest
@@ -515,8 +515,8 @@ export type ApiEndpointResponses = {
   'Admin.enableModel': void
   'Admin.disableModel': void
   'Admin.getAvailableDevices': AvailableDevicesResponse
-  // Model Upload responses
-  'ModelUploads.uploadAndCommit': Model
+  // Admin Model Upload responses
+  'Admin.uploadAndCommitModel': Model
   // Assistant endpoints - User
   'Assistant.list': AssistantListResponse
   'Assistant.create': Assistant

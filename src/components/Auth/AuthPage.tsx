@@ -13,8 +13,8 @@ export const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login')
   const { isLoading, needsSetup, isDesktop, isAuthenticated } = Stores.Auth
 
-  // Get registration status from admin store
-  const registrationEnabled = Stores.Admin.userRegistrationEnabled
+  // Get registration status from admin users store
+  const registrationEnabled = Stores.AdminUsers.userRegistrationEnabled
 
   const [checkingRegistration, setCheckingRegistration] = useState(false)
 
