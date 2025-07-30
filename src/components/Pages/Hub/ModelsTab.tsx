@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { searchModels, useHubStore } from '../../../store/hub'
 import { RepositoryDrawer } from '../Settings/ModelRepositorySettings/RepositoryDrawer.tsx'
 import { ModelCard } from './ModelCard'
-import { loadAllModelProviders, loadAllModelRepositories } from '../../../store'
+import {
+  loadAllModelProviders,
+  loadAllAdminModelRepositories,
+} from '../../../store'
 
 const { Text } = Typography
 
@@ -16,7 +19,7 @@ export function ModelsTab() {
   const [sortBy, setSortBy] = useState('popular')
 
   useEffect(() => {
-    loadAllModelRepositories()
+    loadAllAdminModelRepositories()
     loadAllModelProviders()
   }, [])
 

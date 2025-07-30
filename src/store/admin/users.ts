@@ -138,7 +138,10 @@ export const clearAdminUsersStoreError = (): void => {
 // Registration settings
 export const loadSystemUserRegistrationSettings = async (): Promise<void> => {
   try {
-    useAdminUsersStore.setState({ loadingRegistrationSettings: true, error: null })
+    useAdminUsersStore.setState({
+      loadingRegistrationSettings: true,
+      error: null,
+    })
 
     const { enabled } = await ApiClient.Admin.getUserRegistrationStatus()
 

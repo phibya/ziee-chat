@@ -5,10 +5,7 @@ import { SupportedLanguage } from '../../types'
 
 // Using API types now - User and UserGroup imported above
 
-
 interface AdminState {
-
-
   // Global states
   creating: boolean
   updating: boolean
@@ -27,8 +24,6 @@ export const useAdminStore = create<AdminState>()(
     }),
   ),
 )
-
-
 
 export const updateSystemDefaultLanguage = async (
   language: SupportedLanguage,

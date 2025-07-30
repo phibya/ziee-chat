@@ -7,10 +7,10 @@ import { App, Button, Form, Input, Select, Switch, Typography } from 'antd'
 import { useEffect } from 'react'
 import { Drawer } from '../../../common/Drawer.tsx'
 import {
-  createNewModelRepository,
+  createNewAdminModelRepository,
   Stores,
-  testModelRepositoryConnection,
-  updateModelRepository,
+  testAdminModelRepositoryConnection,
+  updateAdminModelRepository,
 } from '../../../../store'
 import {
   closeRepositoryDrawer,
@@ -31,7 +31,7 @@ export function RepositoryDrawer() {
   const { hasPermission } = usePermissions()
   const [repositoryForm] = Form.useForm()
   const { open, editingRepository, loading } = useRepositoryDrawerStore()
-  const { creating, updating, testing } = Stores.Repositories
+  const { creating, updating, testing } = Stores.AdminRepositories
 
   // Check permissions
   const canEditRepositories =
@@ -109,7 +109,7 @@ export function RepositoryDrawer() {
         },
       }
 
-      const result = await testModelRepositoryConnection(testData)
+      const result = await testAdminModelRepositoryConnection(testData)
 
       if (result.success) {
         message.success(
@@ -165,7 +165,7 @@ export function RepositoryDrawer() {
     try {
       if (editingRepository) {
         // Update existing repository
-        await updateModelRepository(editingRepository.id, repositoryData)
+        await updateAdminModelRepository(editingRepository.id, repositoryData)
         message.success('Repository updated successfully')
       } else {
         // Add new repository - need full CreateRepositoryRequest
@@ -182,7 +182,7 @@ export function RepositoryDrawer() {
           },
           enabled: values.enabled ?? true,
         }
-        await createNewModelRepository(createData)
+        await createNewAdminModelRepository(createData)
         message.success('Repository added successfully')
       }
 

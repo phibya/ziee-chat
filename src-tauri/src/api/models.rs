@@ -504,11 +504,12 @@ pub async fn disable_model(
     }
 }
 
-/// List models for a specific provider
-pub async fn list_provider_models(
-    Extension(auth_user): Extension<AuthenticatedUser>,
-    Path(provider_id): Path<Uuid>,
-) -> ApiResult<Json<Vec<Model>>> {
+// Base function for listing models for a provider with filtering
+async fn list_provider_models_base(
+    auth_user: &AuthenticatedUser,
+    provider_id: Uuid,
+    enabled_only: bool,
+) -> ApiResult<Vec<Model>> {
     // First verify the user has access to this provider
     let user_providers = match user_group_providers::get_providers_for_user(auth_user.user.id).await
     {
@@ -531,11 +532,38 @@ pub async fn list_provider_models(
     }
 
     // Get models for the provider
-    match models::get_models_by_provider_id(provider_id).await {
-        Ok(models) => Ok(Json(models)),
+    let models = match models::get_models_by_provider_id(provider_id).await {
+        Ok(models) => models,
         Err(e) => {
             eprintln!("Failed to get models for provider {}: {}", provider_id, e);
-            Err(AppError::internal_error("Database operation failed"))
+            return Err(AppError::internal_error("Database operation failed"));
         }
-    }
+    };
+
+    // Apply enabled_only filter if requested
+    let filtered_models = if enabled_only {
+        models.into_iter().filter(|m| m.enabled).collect()
+    } else {
+        models
+    };
+
+    Ok(filtered_models)
+}
+
+/// List models for a specific provider
+pub async fn list_provider_models(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(provider_id): Path<Uuid>,
+) -> ApiResult<Json<Vec<Model>>> {
+    let models = list_provider_models_base(&auth_user, provider_id, false).await?;
+    Ok(Json(models))
+}
+
+/// List active models for a specific provider
+pub async fn list_enabled_provider_models(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(provider_id): Path<Uuid>,
+) -> ApiResult<Json<Vec<Model>>> {
+    let models = list_provider_models_base(&auth_user, provider_id, true).await?;
+    Ok(Json(models))
 }

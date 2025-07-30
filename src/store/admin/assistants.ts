@@ -122,9 +122,7 @@ export const updateSystemAdminAssistant = async (
   }
 }
 
-export const deleteSystemAdminAssistant = async (
-  id: string,
-): Promise<void> => {
+export const deleteSystemAdminAssistant = async (id: string): Promise<void> => {
   try {
     useAdminAssistantsStore.setState({ deleting: true, error: null })
 

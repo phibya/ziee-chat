@@ -8,7 +8,7 @@ import {
   UpdateRepositoryRequest,
 } from '../../types/api/repository.ts'
 
-interface RepositoriesState {
+interface AdminRepositoriesState {
   // Data
   repositories: Repository[]
 
@@ -23,9 +23,9 @@ interface RepositoriesState {
   error: string | null
 }
 
-export const useRepositoriesStore = create<RepositoriesState>()(
+export const useAdminRepositoriesStore = create<AdminRepositoriesState>()(
   subscribeWithSelector(
-    (): RepositoriesState => ({
+    (): AdminRepositoriesState => ({
       // Initial state
       repositories: [],
       loading: false,
@@ -39,21 +39,21 @@ export const useRepositoriesStore = create<RepositoriesState>()(
 )
 
 // Repository actions
-export const loadAllModelRepositories = async (): Promise<void> => {
+export const loadAllAdminModelRepositories = async (): Promise<void> => {
   try {
-    useRepositoriesStore.setState({ loading: true, error: null })
+    useAdminRepositoriesStore.setState({ loading: true, error: null })
 
     const response = await ApiClient.Admin.listRepositories({
       page: 1,
       per_page: 50,
     })
 
-    useRepositoriesStore.setState({
+    useAdminRepositoriesStore.setState({
       repositories: response.repositories,
       loading: false,
     })
   } catch (error) {
-    useRepositoriesStore.setState({
+    useAdminRepositoriesStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to load repositories',
       loading: false,
@@ -62,22 +62,22 @@ export const loadAllModelRepositories = async (): Promise<void> => {
   }
 }
 
-export const createNewModelRepository = async (
+export const createNewAdminModelRepository = async (
   data: CreateRepositoryRequest,
 ): Promise<Repository> => {
   try {
-    useRepositoriesStore.setState({ creating: true, error: null })
+    useAdminRepositoriesStore.setState({ creating: true, error: null })
 
     const repository = await ApiClient.Admin.createRepository(data)
 
-    useRepositoriesStore.setState(state => ({
+    useAdminRepositoriesStore.setState(state => ({
       repositories: [...state.repositories, repository],
       creating: false,
     }))
 
     return repository
   } catch (error) {
-    useRepositoriesStore.setState({
+    useAdminRepositoriesStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to create repository',
       creating: false,
@@ -86,26 +86,26 @@ export const createNewModelRepository = async (
   }
 }
 
-export const updateModelRepository = async (
+export const updateAdminModelRepository = async (
   id: string,
   data: UpdateRepositoryRequest,
 ): Promise<Repository> => {
   try {
-    useRepositoriesStore.setState({ updating: true, error: null })
+    useAdminRepositoriesStore.setState({ updating: true, error: null })
 
     const repository = await ApiClient.Admin.updateRepository({
       repository_id: id,
       ...data,
     })
 
-    useRepositoriesStore.setState(state => ({
+    useAdminRepositoriesStore.setState(state => ({
       repositories: state.repositories.map(r => (r.id === id ? repository : r)),
       updating: false,
     }))
 
     return repository
   } catch (error) {
-    useRepositoriesStore.setState({
+    useAdminRepositoriesStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to update repository',
       updating: false,
@@ -114,18 +114,18 @@ export const updateModelRepository = async (
   }
 }
 
-export const deleteModelRepository = async (id: string): Promise<void> => {
+export const deleteAdminModelRepository = async (id: string): Promise<void> => {
   try {
-    useRepositoriesStore.setState({ deleting: true, error: null })
+    useAdminRepositoriesStore.setState({ deleting: true, error: null })
 
     await ApiClient.Admin.deleteRepository({ repository_id: id })
 
-    useRepositoriesStore.setState(state => ({
+    useAdminRepositoriesStore.setState(state => ({
       repositories: state.repositories.filter(r => r.id !== id),
       deleting: false,
     }))
   } catch (error) {
-    useRepositoriesStore.setState({
+    useAdminRepositoriesStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to delete repository',
       deleting: false,
@@ -134,19 +134,19 @@ export const deleteModelRepository = async (id: string): Promise<void> => {
   }
 }
 
-export const testModelRepositoryConnection = async (
+export const testAdminModelRepositoryConnection = async (
   data: TestRepositoryConnectionRequest,
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    useRepositoriesStore.setState({ testing: true, error: null })
+    useAdminRepositoriesStore.setState({ testing: true, error: null })
 
     const result = await ApiClient.Admin.testRepositoryConnection(data)
 
-    useRepositoriesStore.setState({ testing: false })
+    useAdminRepositoriesStore.setState({ testing: false })
 
     return result
   } catch (error) {
-    useRepositoriesStore.setState({
+    useAdminRepositoriesStore.setState({
       error:
         error instanceof Error
           ? error.message
@@ -157,15 +157,19 @@ export const testModelRepositoryConnection = async (
   }
 }
 
-export const clearRepositoriesStoreError = (): void => {
-  useRepositoriesStore.setState({ error: null })
+export const clearAdminRepositoriesStoreError = (): void => {
+  useAdminRepositoriesStore.setState({ error: null })
 }
 
-export const findRepositoryById = (id: string): Repository | undefined => {
-  return useRepositoriesStore.getState().repositories.find(r => r.id === id)
+export const findAdminRepositoryById = (id: string): Repository | undefined => {
+  return useAdminRepositoriesStore
+    .getState()
+    .repositories.find(r => r.id === id)
 }
 
-export const repositoryHasCredentials = (repository: Repository): boolean => {
+export const adminRepositoryHasCredentials = (
+  repository: Repository,
+): boolean => {
   // If auth type is none, no credentials are needed
   if (repository.auth_type === 'none') {
     return true

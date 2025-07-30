@@ -135,7 +135,7 @@ export function RecentConversations() {
         </div>
       ) : (
         conversations.map(conversation => (
-          <div key={conversation.id} className="group relative">
+          <div key={conversation.id} className="group relative !py-[0.5]">
             {editingId === conversation.id ? (
               <div className="flex items-center">
                 <Input

@@ -1,13 +1,6 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Button,
-  Divider,
-  Form,
-  Input,
-  Switch,
-  Typography,
-} from 'antd'
+import { Button, Divider, Form, Input, Switch, Typography } from 'antd'
 import { Drawer } from '../common/Drawer.tsx'
 import { Assistant } from '../../types/api/assistant'
 import {
@@ -155,7 +148,7 @@ export const AssistantFormDrawer: React.FC = () => {
         <Divider orientation="left" plain>
           <Text strong>{t('labels.parameters')}</Text>
         </Divider>
-        
+
         {MODEL_PARAMETERS.map((param, index) => (
           <ModelParameterField key={index} {...param} />
         ))}

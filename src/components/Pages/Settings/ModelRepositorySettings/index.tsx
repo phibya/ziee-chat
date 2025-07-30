@@ -10,10 +10,10 @@ import { useTranslation } from 'react-i18next'
 import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
-  deleteModelRepository,
-  loadAllModelRepositories,
+  deleteAdminModelRepository,
+  loadAllAdminModelRepositories,
   Stores,
-  updateModelRepository,
+  updateAdminModelRepository,
 } from '../../../../store'
 import { openRepositoryDrawer } from '../../../../store/ui'
 import { Repository } from '../../../../types/api/repository'
@@ -28,7 +28,7 @@ export function ModelRepositorySettings() {
   const { hasPermission } = usePermissions()
 
   // Use repository store
-  const { repositories, testing } = Stores.Repositories
+  const { repositories, testing } = Stores.AdminRepositories
 
   // Check permissions
   const canViewRepositories =
@@ -51,7 +51,7 @@ export function ModelRepositorySettings() {
 
   // Load repositories when component mounts
   useEffect(() => {
-    loadAllModelRepositories().catch((error: any) => {
+    loadAllAdminModelRepositories().catch((error: any) => {
       console.error('Failed to load repositories:', error)
     })
   }, [])
@@ -118,7 +118,7 @@ export function ModelRepositorySettings() {
     }
 
     try {
-      await deleteModelRepository(repositoryId)
+      await deleteAdminModelRepository(repositoryId)
       message.success('Repository removed successfully')
     } catch (error: any) {
       console.error('Failed to delete repository:', error)
@@ -136,7 +136,7 @@ export function ModelRepositorySettings() {
     }
 
     try {
-      await updateModelRepository(repositoryId, { enabled })
+      await updateAdminModelRepository(repositoryId, { enabled })
     } catch (error: any) {
       console.error('Failed to toggle repository:', error)
       message.error(error?.message || 'Failed to toggle repository')

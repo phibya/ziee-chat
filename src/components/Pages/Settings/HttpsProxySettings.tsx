@@ -16,7 +16,8 @@ export function HttpsProxySettings() {
   const { t } = useTranslation()
 
   // Admin proxy settings store
-  const { proxySettings, loadingProxySettings, error } = Stores.AdminProxySettings
+  const { proxySettings, loadingProxySettings, error } =
+    Stores.AdminProxySettings
 
   useEffect(() => {
     loadSystemProxySettings()

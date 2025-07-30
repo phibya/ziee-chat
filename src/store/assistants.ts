@@ -136,7 +136,6 @@ export const deleteUserAssistant = async (id: string): Promise<void> => {
   }
 }
 
-
 export const clearUserAssistantsStoreError = (): void => {
   useUserAssistantsStore.setState({ error: null })
 }

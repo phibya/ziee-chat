@@ -62,7 +62,7 @@ export function ProvidersSettings() {
   const navigate = useNavigate()
 
   // Model providers store
-  const { providers, loading, error } = Stores.Providers
+  const { providers, loading, error } = Stores.AdminProviders
 
   const [isMobile, setIsMobile] = useState(false)
 

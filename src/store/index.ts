@@ -19,8 +19,9 @@ import { useLocalUploadStore } from './admin/localUpload.ts'
 import { useModelDownloadStore } from './admin/modelDownload.ts'
 import { useProjectsStore } from './projects'
 import { useProjectFilesStore } from './projectFiles'
-import { useProvidersStore } from './admin/providers.ts'
-import { useRepositoriesStore } from './admin/repositories.ts'
+import { useAdminProvidersStore } from './admin/providers.ts'
+import { useUserProvidersStore } from './providers.ts'
+import { useAdminRepositoriesStore } from './admin/repositories.ts'
 import { useUserSettingsStore } from './settings'
 import {
   useAddLocalModelDownloadDrawerStore,
@@ -210,7 +211,17 @@ export {
   uploadFilesToProject,
   useProjectFilesStore,
 } from './projectFiles'
-// Providers store
+// User Providers store
+export {
+  clearUserProvidersError,
+  findUserModelById,
+  findUserProviderById,
+  loadUserModelsForProvider,
+  loadUserProviders,
+  loadUserProvidersWithAllModels,
+  useUserProvidersStore,
+} from './providers.ts'
+// Admin Providers store (Legacy compatibility - keep as default exports)
 export {
   addNewModel,
   addNewModelToProvider,
@@ -230,18 +241,19 @@ export {
   stopModelExecution,
   updateExistingModel,
   updateModelProvider,
-  useProvidersStore,
+  useAdminProvidersStore,
 } from './admin/providers.ts'
-// Repositories store
+// Admin Repositories store
 export {
-  clearRepositoriesStoreError,
-  createNewModelRepository,
-  deleteModelRepository,
-  findRepositoryById,
-  loadAllModelRepositories,
-  testModelRepositoryConnection,
-  updateModelRepository,
-  useRepositoriesStore,
+  adminRepositoryHasCredentials,
+  clearAdminRepositoriesStoreError,
+  createNewAdminModelRepository,
+  deleteAdminModelRepository,
+  findAdminRepositoryById,
+  loadAllAdminModelRepositories,
+  testAdminModelRepositoryConnection,
+  updateAdminModelRepository,
+  useAdminRepositoriesStore,
 } from './admin/repositories.ts'
 // Settings store
 export {
@@ -357,8 +369,9 @@ export const Stores = {
   ModelDownload: createStoreProxy(useModelDownloadStore),
   Projects: createStoreProxy(useProjectsStore),
   ProjectFiles: createStoreProxy(useProjectFilesStore),
-  Providers: createStoreProxy(useProvidersStore),
-  Repositories: createStoreProxy(useRepositoriesStore),
+  Providers: createStoreProxy(useUserProvidersStore),
+  AdminProviders: createStoreProxy(useAdminProvidersStore),
+  AdminRepositories: createStoreProxy(useAdminRepositoriesStore),
   Settings: createStoreProxy(useUserSettingsStore),
   UI: {
     Chat: createStoreProxy(useChatUIStore),

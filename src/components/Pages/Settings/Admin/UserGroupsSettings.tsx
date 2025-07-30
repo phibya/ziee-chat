@@ -52,9 +52,14 @@ export function UserGroupsSettings() {
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
 
-  const { groups, currentGroupMembers, loadingGroups, loadingGroupMembers, error } =
-    Stores.AdminUserGroups
-  const { providers: providers } = Stores.Providers
+  const {
+    groups,
+    currentGroupMembers,
+    loadingGroups,
+    loadingGroupMembers,
+    error,
+  } = Stores.AdminUserGroups
+  const { providers: providers } = Stores.AdminProviders
 
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)

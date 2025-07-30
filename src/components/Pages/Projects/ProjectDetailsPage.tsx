@@ -24,7 +24,6 @@ export const ProjectDetailsPage: React.FC = () => {
   // Projects store
   const { currentProject, loading, error } = Stores.Projects
 
-
   useEffect(() => {
     if (projectId) {
       loadProjectWithDetails(projectId).catch((error: any) => {
@@ -41,7 +40,6 @@ export const ProjectDetailsPage: React.FC = () => {
       clearProjectsStoreError()
     }
   }, [error, message])
-
 
   if (loading || !currentProject) {
     return <Typography.Text>Loading...</Typography.Text>

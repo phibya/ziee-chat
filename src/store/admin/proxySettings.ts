@@ -8,7 +8,7 @@ type ProxySettings = UpdateProxySettingsRequest
 interface AdminProxySettingsState {
   // Data
   proxySettings: ProxySettings | null
-  
+
   // Loading states
   loading: boolean
   loadingProxySettings: boolean
@@ -34,7 +34,10 @@ export const useAdminProxySettingsStore = create<AdminProxySettingsState>()(
 // Proxy settings actions
 export const loadSystemProxySettings = async (): Promise<void> => {
   try {
-    useAdminProxySettingsStore.setState({ loadingProxySettings: true, error: null })
+    useAdminProxySettingsStore.setState({
+      loadingProxySettings: true,
+      error: null,
+    })
 
     const settings = await ApiClient.Admin.getProxySettings()
 

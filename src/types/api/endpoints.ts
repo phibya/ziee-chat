@@ -104,99 +104,49 @@ import {
 
 // API endpoint definitions
 export const ApiEndpoints = {
-  'User.greet': 'POST /api/user/greet',
+  // ===========================
+  // CORE APPLICATION ENDPOINTS
+  // ===========================
+
+  // App system
   'App.getHttpPort': 'GET /get_http_port',
+
+  // Authentication
   'Auth.init': 'GET /api/auth/init',
   'Auth.setup': 'POST /api/auth/setup',
   'Auth.login': 'POST /api/auth/login',
   'Auth.logout': 'POST /api/auth/logout',
   'Auth.register': 'POST /api/auth/register',
   'Auth.me': 'GET /api/auth/me',
-  // Admin user management
-  'Admin.listUsers': 'GET /api/admin/users',
-  'Admin.getUser': 'GET /api/admin/users/{user_id}',
-  'Admin.updateUser': 'PUT /api/admin/users/{user_id}',
-  'Admin.toggleUserActive': 'POST /api/admin/users/{user_id}/toggle-active',
-  'Admin.resetPassword': 'POST /api/admin/users/reset-password',
-  // Admin group management
-  'Admin.listGroups': 'GET /api/admin/groups',
-  'Admin.createGroup': 'POST /api/admin/groups',
-  'Admin.getGroup': 'GET /api/admin/groups/{group_id}',
-  'Admin.updateGroup': 'PUT /api/admin/groups/{group_id}',
-  'Admin.deleteGroup': 'DELETE /api/admin/groups/{group_id}',
-  'Admin.getGroupMembers': 'GET /api/admin/groups/{group_id}/members',
-  'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
-  'Admin.removeUserFromGroup':
-    'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
-  // User Group Provider relationships
-  'Admin.getGroupProviders': 'GET /api/admin/groups/{group_id}/providers',
-  'Admin.assignProviderToGroup': 'POST /api/admin/groups/assign-provider',
-  'Admin.removeProviderFromGroup':
-    'DELETE /api/admin/groups/{group_id}/providers/{provider_id}',
-  'Admin.getProviderGroups': 'GET /api/admin/providers/{provider_id}/groups',
-  'Admin.listUserGroupProviderRelationships':
-    'GET /api/admin/user-group-provider-relationships',
+
   // Public configuration
   'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
   'Config.getDefaultLanguage': 'GET /api/config/default-language',
-  // Admin configuration management
-  'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
-  'Admin.updateUserRegistrationStatus':
-    'PUT /api/admin/config/user-registration',
-  'Admin.getDefaultLanguage': 'GET /api/admin/config/default-language',
-  'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
-  'Admin.getProxySettings': 'GET /api/admin/config/proxy',
-  'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
-  // Document extraction configuration
-  'Admin.getExtractionConfig':
-    'GET /api/admin/config/document-extraction/{file_type}',
-  'Admin.setExtractionMethod':
-    'PUT /api/admin/config/document-extraction/{file_type}/method',
-  'Admin.setOcrSettings':
-    'PUT /api/admin/config/document-extraction/{file_type}/ocr',
-  'Admin.setLlmSettings':
-    'PUT /api/admin/config/document-extraction/{file_type}/llm',
-  'Utils.testProxy': 'POST /api/utils/test-proxy',
-  // User settings management
+
+  // User settings
   'UserSettings.getAll': 'GET /api/user/settings',
   'UserSettings.get': 'GET /api/user/settings/{key}',
   'UserSettings.set': 'POST /api/user/settings',
   'UserSettings.delete': 'DELETE /api/user/settings/{key}',
   'UserSettings.deleteAll': 'DELETE /api/user/settings/all',
-  // Admin provider management
-  'Admin.listProviders': 'GET /api/admin/providers',
-  'Admin.getProvider': 'GET /api/admin/providers/{provider_id}',
-  'Admin.createProvider': 'POST /api/admin/providers',
-  'Admin.updateProvider': 'PUT /api/admin/providers/{provider_id}',
-  'Admin.deleteProvider': 'DELETE /api/admin/providers/{provider_id}',
-  'Admin.cloneProvider': 'POST /api/admin/providers/{provider_id}/clone',
-  'Admin.addModelToProvider': 'POST /api/admin/providers/{provider_id}/models',
-  'Admin.listProviderModels': 'GET /api/admin/providers/{provider_id}/models',
-  'Admin.getModel': 'GET /api/admin/models/{model_id}',
-  'Admin.updateModel': 'PUT /api/admin/models/{model_id}',
-  'Admin.deleteModel': 'DELETE /api/admin/models/{model_id}',
-  'Admin.startModel': 'POST /api/admin/models/{model_id}/start',
-  'Admin.stopModel': 'POST /api/admin/models/{model_id}/stop',
-  'Admin.enableModel': 'POST /api/admin/models/{model_id}/enable',
-  'Admin.disableModel': 'POST /api/admin/models/{model_id}/disable',
-  'Admin.getAvailableDevices': 'GET /api/admin/devices',
-  // Admin Model Upload endpoints for Local
-  'Admin.uploadAndCommitModel':
-    'POST /api/admin/uploaded-models/upload-and-commit',
-  // Assistant endpoints - User
+
+  // Utilities
+  'Utils.testProxy': 'POST /api/utils/test-proxy',
+  'User.greet': 'POST /api/user/greet',
+
+  // ===========================
+  // USER FEATURES
+  // ===========================
+
+  // User Assistants
   'Assistant.list': 'GET /api/assistants',
   'Assistant.create': 'POST /api/assistants',
   'Assistant.get': 'GET /api/assistants/{assistant_id}',
   'Assistant.update': 'PUT /api/assistants/{assistant_id}',
   'Assistant.delete': 'DELETE /api/assistants/{assistant_id}',
   'Assistant.getDefault': 'GET /api/assistants/default',
-  // Assistant endpoints - Admin
-  'Admin.listAssistants': 'GET /api/admin/assistants',
-  'Admin.createAssistant': 'POST /api/admin/assistants',
-  'Admin.getAssistant': 'GET /api/admin/assistants/{assistant_id}',
-  'Admin.updateAssistant': 'PUT /api/admin/assistants/{assistant_id}',
-  'Admin.deleteAssistant': 'DELETE /api/admin/assistants/{assistant_id}',
-  // Chat endpoints
+
+  // Chat Management
   'Chat.listConversations': 'GET /api/chat/conversations',
   'Chat.createConversation': 'POST /api/chat/conversations',
   'Chat.getConversation': 'GET /api/chat/conversations/{conversation_id}',
@@ -212,7 +162,8 @@ export const ApiEndpoints = {
     'PUT /api/chat/conversations/{conversation_id}/branch/switch',
   'Chat.searchConversations': 'GET /api/chat/conversations/search',
   'Chat.clearAllConversations': 'DELETE /api/chat/conversations/clear-all',
-  // Project endpoints
+
+  // Project Management
   'Projects.list': 'GET /api/projects',
   'Projects.create': 'POST /api/projects',
   'Projects.get': 'GET /api/projects/{project_id}',
@@ -226,7 +177,8 @@ export const ApiEndpoints = {
     'POST /api/projects/{project_id}/conversations/{conversation_id}',
   'Projects.unlinkConversation':
     'DELETE /api/projects/{project_id}/conversations/{conversation_id}',
-  // File endpoints
+
+  // File Management
   'Files.upload': 'POST /api/files/upload',
   'Files.get': 'GET /api/files/{id}',
   'Files.delete': 'DELETE /api/files/{id}',
@@ -234,8 +186,78 @@ export const ApiEndpoints = {
   'Files.generateDownloadToken': 'POST /api/files/{id}/download-token',
   'Files.downloadWithToken': 'GET /api/files/{id}/download-with-token',
   'Files.preview': 'GET /api/files/{id}/preview',
-  // Repository endpoints - Admin only (all repository operations are admin-only)
-  // Admin repository endpoints
+
+  // Hub
+  'Hub.getData': 'GET /api/hub/data',
+  'Hub.refresh': 'POST /api/hub/refresh',
+  'Hub.getVersion': 'GET /api/hub/version',
+  'Hub.getModelReadme': 'GET /api/hub/models/{model_id}/readme',
+
+  // User Provider Management
+  'Providers.list': 'GET /api/providers',
+  'Providers.listProviderModels': 'GET /api/providers/{provider_id}/models',
+
+  // ===========================
+  // ADMIN ENDPOINTS
+  // ===========================
+
+  // Admin - User Management
+  'Admin.listUsers': 'GET /api/admin/users',
+  'Admin.getUser': 'GET /api/admin/users/{user_id}',
+  'Admin.updateUser': 'PUT /api/admin/users/{user_id}',
+  'Admin.toggleUserActive': 'POST /api/admin/users/{user_id}/toggle-active',
+  'Admin.resetPassword': 'POST /api/admin/users/reset-password',
+
+  // Admin - User Group Management
+  'Admin.listGroups': 'GET /api/admin/groups',
+  'Admin.createGroup': 'POST /api/admin/groups',
+  'Admin.getGroup': 'GET /api/admin/groups/{group_id}',
+  'Admin.updateGroup': 'PUT /api/admin/groups/{group_id}',
+  'Admin.deleteGroup': 'DELETE /api/admin/groups/{group_id}',
+  'Admin.getGroupMembers': 'GET /api/admin/groups/{group_id}/members',
+  'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
+  'Admin.removeUserFromGroup':
+    'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
+
+  // Admin - Group Provider Relationships
+  'Admin.getGroupProviders': 'GET /api/admin/groups/{group_id}/providers',
+  'Admin.assignProviderToGroup': 'POST /api/admin/groups/assign-provider',
+  'Admin.removeProviderFromGroup':
+    'DELETE /api/admin/groups/{group_id}/providers/{provider_id}',
+  'Admin.getProviderGroups': 'GET /api/admin/providers/{provider_id}/groups',
+  'Admin.listUserGroupProviderRelationships':
+    'GET /api/admin/user-group-provider-relationships',
+
+  // Admin - Assistant Management
+  'Admin.listAssistants': 'GET /api/admin/assistants',
+  'Admin.createAssistant': 'POST /api/admin/assistants',
+  'Admin.getAssistant': 'GET /api/admin/assistants/{assistant_id}',
+  'Admin.updateAssistant': 'PUT /api/admin/assistants/{assistant_id}',
+  'Admin.deleteAssistant': 'DELETE /api/admin/assistants/{assistant_id}',
+
+  // Admin - Provider Management
+  'Admin.listProviders': 'GET /api/admin/providers',
+  'Admin.getProvider': 'GET /api/admin/providers/{provider_id}',
+  'Admin.createProvider': 'POST /api/admin/providers',
+  'Admin.updateProvider': 'PUT /api/admin/providers/{provider_id}',
+  'Admin.deleteProvider': 'DELETE /api/admin/providers/{provider_id}',
+  'Admin.cloneProvider': 'POST /api/admin/providers/{provider_id}/clone',
+  'Admin.addModelToProvider': 'POST /api/admin/providers/{provider_id}/models',
+  'Admin.listProviderModels': 'GET /api/admin/providers/{provider_id}/models',
+
+  // Admin - Model Management
+  'Admin.getModel': 'GET /api/admin/models/{model_id}',
+  'Admin.updateModel': 'PUT /api/admin/models/{model_id}',
+  'Admin.deleteModel': 'DELETE /api/admin/models/{model_id}',
+  'Admin.startModel': 'POST /api/admin/models/{model_id}/start',
+  'Admin.stopModel': 'POST /api/admin/models/{model_id}/stop',
+  'Admin.enableModel': 'POST /api/admin/models/{model_id}/enable',
+  'Admin.disableModel': 'POST /api/admin/models/{model_id}/disable',
+  'Admin.getAvailableDevices': 'GET /api/admin/devices',
+
+  // Admin - Model Upload & Repository Management
+  'Admin.uploadAndCommitModel':
+    'POST /api/admin/uploaded-models/upload-and-commit',
   'Admin.listRepositories': 'GET /api/admin/repositories',
   'Admin.getRepository': 'GET /api/admin/repositories/{repository_id}',
   'Admin.createRepository': 'POST /api/admin/repositories',
@@ -246,22 +268,36 @@ export const ApiEndpoints = {
     'POST /api/admin/models/download-from-repository',
   'Admin.initiateRepositoryDownload':
     'POST /api/admin/models/initiate-repository-download',
-  // Download instance endpoints - Admin (all download operations are admin-only)
+
+  // Admin - Download Management
   'Admin.listAllDownloads': 'GET /api/admin/downloads',
   'Admin.getDownload': 'GET /api/admin/downloads/{download_id}',
   'Admin.cancelDownload': 'POST /api/admin/downloads/{download_id}/cancel',
   'Admin.deleteDownload': 'DELETE /api/admin/downloads/{download_id}',
   'Admin.subscribeDownloadProgress': 'GET /api/admin/downloads/subscribe',
-  // Hub endpoints
-  'Hub.getData': 'GET /api/hub/data',
-  'Hub.refresh': 'POST /api/hub/refresh',
-  'Hub.getVersion': 'GET /api/hub/version',
-  'Hub.getModelReadme': 'GET /api/hub/models/{model_id}/readme',
+
+  // Admin - Configuration Management
+  'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
+  'Admin.updateUserRegistrationStatus':
+    'PUT /api/admin/config/user-registration',
+  'Admin.getDefaultLanguage': 'GET /api/admin/config/default-language',
+  'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
+  'Admin.getProxySettings': 'GET /api/admin/config/proxy',
+  'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
+
+  // Admin - Document Extraction Configuration
+  'Admin.getExtractionConfig':
+    'GET /api/admin/config/document-extraction/{file_type}',
+  'Admin.setExtractionMethod':
+    'PUT /api/admin/config/document-extraction/{file_type}/method',
+  'Admin.setOcrSettings':
+    'PUT /api/admin/config/document-extraction/{file_type}/ocr',
+  'Admin.setLlmSettings':
+    'PUT /api/admin/config/document-extraction/{file_type}/llm',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
 export type ApiEndpointParameters = {
-  'User.greet': { name: string }
   'App.getHttpPort': void
   'Auth.init': void
   'Auth.setup': CreateUserRequest
@@ -269,6 +305,7 @@ export type ApiEndpointParameters = {
   'Auth.logout': void
   'Auth.register': CreateUserRequest
   'Auth.me': void
+  'User.greet': void
   // Admin user management
   'Admin.listUsers': { page?: number; per_page?: number }
   'Admin.getUser': { user_id: string }
@@ -326,7 +363,9 @@ export type ApiEndpointParameters = {
   'Admin.updateProvider': { provider_id: string } & UpdateProviderRequest
   'Admin.deleteProvider': { provider_id: string }
   'Admin.cloneProvider': { provider_id: string }
-  'Admin.addModelToProvider': { provider_id: string } & AddModelToProviderRequest
+  'Admin.addModelToProvider': {
+    provider_id: string
+  } & AddModelToProviderRequest
   'Admin.listProviderModels': { provider_id: string }
   'Admin.getModel': { model_id: string }
   'Admin.updateModel': { model_id: string } & UpdateModelRequest
@@ -429,11 +468,13 @@ export type ApiEndpointParameters = {
   'Hub.refresh': { lang?: string }
   'Hub.getVersion': void
   'Hub.getModelReadme': { model_id: string }
+  // User Provider endpoints
+  'Providers.list': { page?: number; per_page?: number }
+  'Providers.listProviderModels': { provider_id: string }
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
 export type ApiEndpointResponses = {
-  'User.greet': string
   'App.getHttpPort': number
   'Auth.init': InitResponse
   'Auth.setup': AuthResponse
@@ -441,6 +482,7 @@ export type ApiEndpointResponses = {
   'Auth.logout': void
   'Auth.register': AuthResponse
   'Auth.me': User
+  'User.greet': void
   // Admin user management
   'Admin.listUsers': UserListResponse
   'Admin.getUser': User
@@ -584,6 +626,9 @@ export type ApiEndpointResponses = {
   'Hub.refresh': HubDataResponse
   'Hub.getVersion': HubVersionResponse
   'Hub.getModelReadme': { content: string }
+  // User Provider endpoints
+  'Providers.list': ProviderListResponse
+  'Providers.listProviderModels': Model[]
 }
 
 // Type helpers

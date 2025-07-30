@@ -67,4 +67,17 @@ pub fn user_routes() -> Router {
             get(api::assistants::get_default_assistant)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
+        // Provider routes - User endpoints (active providers/models only)
+        .route(
+            "/api/providers",
+            get(api::providers::list_enabled_providers).layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
+        )
+        .route(
+            "/api/providers/{provider_id}/models",
+            get(api::models::list_enabled_provider_models).layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
+        )
 }

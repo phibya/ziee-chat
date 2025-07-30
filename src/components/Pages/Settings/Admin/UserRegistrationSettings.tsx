@@ -18,7 +18,8 @@ export function UserRegistrationSettings() {
   const { hasPermission } = usePermissions()
 
   // Admin users store
-  const { userRegistrationEnabled, loadingRegistrationSettings, error } = Stores.AdminUsers
+  const { userRegistrationEnabled, loadingRegistrationSettings, error } =
+    Stores.AdminUsers
 
   const canRead = hasPermission(Permission.config.userRegistration.read)
   const canEdit = hasPermission(Permission.config.userRegistration.edit)

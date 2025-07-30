@@ -20,7 +20,7 @@ export function EditRemoteModelDrawer() {
   const [loading, setLoading] = useState(false)
 
   const { open, modelId } = Stores.UI.EditRemoteModelDrawer
-  const { modelsByProvider } = Stores.Providers
+  const { modelsByProvider } = Stores.AdminProviders
 
   // Find the current model from the store
   const currentModel = modelId

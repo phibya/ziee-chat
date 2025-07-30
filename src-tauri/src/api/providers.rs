@@ -22,14 +22,18 @@ pub struct PaginationQuery {
     per_page: Option<i32>,
 }
 
-// Provider endpoints
-pub async fn list_providers(
-    Extension(auth_user): Extension<AuthenticatedUser>,
-    Query(params): Query<PaginationQuery>,
-) -> ApiResult<Json<ProviderListResponse>> {
-    let page = params.page.unwrap_or(1);
-    let per_page = params.per_page.unwrap_or(20);
+#[derive(Debug, Deserialize)]
+pub struct ProviderFilters {
+    enabled_only: Option<bool>,
+}
 
+// Base function for listing providers with filtering
+async fn list_providers_base(
+    auth_user: &AuthenticatedUser,
+    page: i32,
+    per_page: i32,
+    enabled_only: bool,
+) -> ApiResult<ProviderListResponse> {
     // Get providers based on user permissions
     let user_providers = match user_group_providers::get_providers_for_user(auth_user.user.id).await
     {
@@ -43,23 +47,54 @@ pub async fn list_providers(
         }
     };
 
-    // Calculate pagination
-    let total = user_providers.len() as i64;
-    let start = ((page - 1) * per_page) as usize;
-    let end = (start + per_page as usize).min(user_providers.len());
+    // Apply enabled_only filter if requested
+    let filtered_providers = if enabled_only {
+        user_providers.into_iter().filter(|p| p.enabled).collect()
+    } else {
+        user_providers
+    };
 
-    let paginated_providers = if start < user_providers.len() {
-        user_providers[start..end].to_vec()
+    // Calculate pagination
+    let total = filtered_providers.len() as i64;
+    let start = ((page - 1) * per_page) as usize;
+    let end = (start + per_page as usize).min(filtered_providers.len());
+
+    let paginated_providers = if start < filtered_providers.len() {
+        filtered_providers[start..end].to_vec()
     } else {
         Vec::new()
     };
 
-    Ok(Json(ProviderListResponse {
+    Ok(ProviderListResponse {
         providers: paginated_providers,
         total,
         page,
         per_page,
-    }))
+    })
+}
+
+// Provider endpoints
+pub async fn list_providers(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Query(params): Query<PaginationQuery>,
+) -> ApiResult<Json<ProviderListResponse>> {
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20);
+    
+    let result = list_providers_base(&auth_user, page, per_page, false).await?;
+    Ok(Json(result))
+}
+
+// User-specific endpoint for active providers only
+pub async fn list_enabled_providers(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Query(params): Query<PaginationQuery>,
+) -> ApiResult<Json<ProviderListResponse>> {
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20);
+    
+    let result = list_providers_base(&auth_user, page, per_page, true).await?;
+    Ok(Json(result))
 }
 
 pub async fn get_provider(

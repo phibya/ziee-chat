@@ -35,7 +35,7 @@ export function LocalProviderSettings() {
 
   // Store data
   const { providers, modelsByProvider, loadingModels, modelOperations, error } =
-    Stores.Providers
+    Stores.AdminProviders
   const { downloads } = Stores.ModelDownload
 
   // Check permissions for web app

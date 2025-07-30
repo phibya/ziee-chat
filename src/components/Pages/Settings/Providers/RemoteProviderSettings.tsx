@@ -40,7 +40,7 @@ export function RemoteProviderSettings() {
 
   // Store data
   const { providers, modelsByProvider, loadingModels, modelOperations, error } =
-    Stores.Providers
+    Stores.AdminProviders
 
   // Check permissions for web app
   const canEditProviders =

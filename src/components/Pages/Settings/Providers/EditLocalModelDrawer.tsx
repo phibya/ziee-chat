@@ -22,7 +22,7 @@ export function EditLocalModelDrawer() {
   const [loading, setLoading] = useState(false)
 
   const { open, modelId } = Stores.UI.EditLocalModelDrawer
-  const { modelsByProvider } = Stores.Providers
+  const { modelsByProvider } = Stores.AdminProviders
 
   // Find the current model from the store
   const currentModel = modelId

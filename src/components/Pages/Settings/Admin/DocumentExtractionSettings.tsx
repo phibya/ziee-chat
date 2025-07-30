@@ -56,7 +56,7 @@ function ParserCard({
   const { hasPermission } = usePermissions()
 
   const { pdfSettings, imageSettings, initialized } = Stores.DocumentExtraction
-  const { modelsByProvider } = Stores.Providers
+  const { modelsByProvider } = Stores.AdminProviders
   const settings = fileType === 'pdf' ? pdfSettings : imageSettings
 
   // Watch for method changes to show/hide sections

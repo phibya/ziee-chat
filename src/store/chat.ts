@@ -134,13 +134,20 @@ export const loadConversationById = async (
   }
 }
 
+export interface SendChatMessageParams {
+  conversationId: string
+  content: string
+  assistantId: string
+  modelId: string
+  fileIds?: string[]
+}
+
 export const sendChatMessage = async (
-  content: string,
-  assistantId: string,
-  modelId: string,
+  params: SendChatMessageParams,
 ): Promise<void> => {
-  const { currentConversation, activeBranchId } = useChatStore.getState()
-  if (!currentConversation || !activeBranchId) return
+  const { conversationId, content, assistantId, modelId, fileIds } = params
+  const { activeBranchId } = useChatStore.getState()
+  if (!conversationId || !activeBranchId) return
 
   try {
     useChatStore.setState({
@@ -151,12 +158,9 @@ export const sendChatMessage = async (
     })
 
     // Add user message immediately
-    const { currentConversation, activeBranchId } = useChatStore.getState()
-    if (!currentConversation || !activeBranchId) return
-
     const userMessage: Message = {
       id: crypto.randomUUID(),
-      conversation_id: currentConversation.id,
+      conversation_id: conversationId,
       content,
       role: 'user',
       created_at: new Date().toISOString(),
@@ -172,7 +176,7 @@ export const sendChatMessage = async (
     // Create assistant message placeholder
     const assistantMessage: Message = {
       id: crypto.randomUUID(),
-      conversation_id: currentConversation.id,
+      conversation_id: conversationId,
       content: '',
       role: 'assistant',
       created_at: new Date().toISOString(),
@@ -188,10 +192,11 @@ export const sendChatMessage = async (
     // Send message with streaming
     await ApiClient.Chat.sendMessage(
       {
-        conversation_id: currentConversation.id,
+        conversation_id: conversationId,
         content,
         model_id: modelId,
         assistant_id: assistantId,
+        file_ids: fileIds,
       },
       {
         SSE: (event: string, data: any) => {

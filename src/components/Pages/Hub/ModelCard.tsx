@@ -13,7 +13,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { isDesktopApp } from '../../../api/core.ts'
 import type { HubModel } from '../../../types/api/hub'
 import { Stores } from '../../../store'
-import { repositoryHasCredentials } from '../../../store/admin/repositories.ts'
+import { adminRepositoryHasCredentials } from '../../../store/admin/repositories.ts'
 import { downloadModelFromRepository } from '../../../store/admin/modelDownload.ts'
 import { openRepositoryDrawer } from '../../../store/ui'
 import { DownloadItem } from '../../shared/DownloadItem.tsx'
@@ -28,8 +28,8 @@ interface ModelCardProps {
 
 export function ModelCard({ model }: ModelCardProps) {
   const { message, modal } = App.useApp()
-  const { repositories } = Stores.Repositories
-  const { providers } = Stores.Providers
+  const { repositories } = Stores.AdminRepositories
+  const { providers } = Stores.AdminProviders
   const { downloads } = Stores.ModelDownload
   const [showDetails, setShowDetails] = useState(false)
 
@@ -53,7 +53,7 @@ export function ModelCard({ model }: ModelCardProps) {
       return
     }
 
-    if (!model.public && !repositoryHasCredentials(repo)) {
+    if (!model.public && !adminRepositoryHasCredentials(repo)) {
       message.info(
         `Model ${model.alias} is private and requires credentials. Please configure the repository with valid credentials.`,
       )

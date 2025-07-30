@@ -12,7 +12,7 @@ import {
 
 // Upload-related types moved to localUpload.ts
 
-interface ProvidersState {
+interface AdminProvidersState {
   // Data
   providers: Provider[]
   modelsByProvider: Record<string, Model[]> // Store models by provider ID
@@ -31,9 +31,9 @@ interface ProvidersState {
   error: string | null
 }
 
-export const useProvidersStore = create<ProvidersState>()(
+export const useAdminProvidersStore = create<AdminProvidersState>()(
   subscribeWithSelector(
-    (): ProvidersState => ({
+    (): AdminProvidersState => ({
       // Initial state
       providers: [],
       modelsByProvider: {},
@@ -51,14 +51,14 @@ export const useProvidersStore = create<ProvidersState>()(
 // Provider actions
 export const loadAllModelProviders = async (): Promise<void> => {
   try {
-    useProvidersStore.setState({ loading: true, error: null })
+    useAdminProvidersStore.setState({ loading: true, error: null })
     const response = await ApiClient.Admin.listProviders({})
-    useProvidersStore.setState({
+    useAdminProvidersStore.setState({
       providers: response.providers,
       loading: false,
     })
   } catch (error) {
-    useProvidersStore.setState({
+    useAdminProvidersStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to load providers',
       loading: false,
@@ -71,15 +71,15 @@ export const createNewModelProvider = async (
   provider: CreateProviderRequest,
 ): Promise<Provider> => {
   try {
-    useProvidersStore.setState({ creating: true, error: null })
+    useAdminProvidersStore.setState({ creating: true, error: null })
     const newProvider = await ApiClient.Admin.createProvider(provider)
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       providers: [...state.providers, newProvider],
       creating: false,
     }))
     return newProvider
   } catch (error) {
-    useProvidersStore.setState({
+    useAdminProvidersStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to create provider',
       creating: false,
@@ -93,17 +93,17 @@ export const updateModelProvider = async (
   provider: UpdateProviderRequest,
 ): Promise<void> => {
   try {
-    useProvidersStore.setState({ updating: true, error: null })
+    useAdminProvidersStore.setState({ updating: true, error: null })
     const updatedProvider = await ApiClient.Admin.updateProvider({
       provider_id: id,
       ...provider,
     })
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       providers: state.providers.map(p => (p.id === id ? updatedProvider : p)),
       updating: false,
     }))
   } catch (error) {
-    useProvidersStore.setState({
+    useAdminProvidersStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to update provider',
       updating: false,
@@ -114,9 +114,9 @@ export const updateModelProvider = async (
 
 export const deleteModelProvider = async (id: string): Promise<void> => {
   try {
-    useProvidersStore.setState({ deleting: true, error: null })
+    useAdminProvidersStore.setState({ deleting: true, error: null })
     await ApiClient.Admin.deleteProvider({ provider_id: id })
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       providers: state.providers.filter(p => p.id !== id),
       modelsByProvider: Object.fromEntries(
         Object.entries(state.modelsByProvider).filter(
@@ -126,7 +126,7 @@ export const deleteModelProvider = async (id: string): Promise<void> => {
       deleting: false,
     }))
   } catch (error) {
-    useProvidersStore.setState({
+    useAdminProvidersStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to delete provider',
       deleting: false,
@@ -137,17 +137,17 @@ export const deleteModelProvider = async (id: string): Promise<void> => {
 
 export const cloneExistingProvider = async (id: string): Promise<Provider> => {
   try {
-    useProvidersStore.setState({ creating: true, error: null })
+    useAdminProvidersStore.setState({ creating: true, error: null })
     const clonedProvider = await ApiClient.Admin.cloneProvider({
       provider_id: id,
     })
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       providers: [...state.providers, clonedProvider],
       creating: false,
     }))
     return clonedProvider
   } catch (error) {
-    useProvidersStore.setState({
+    useAdminProvidersStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to clone provider',
       creating: false,
@@ -161,7 +161,7 @@ export const loadModelsForProvider = async (
   providerId: string,
 ): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       loadingModels: { ...state.loadingModels, [providerId]: true },
       error: null,
     }))
@@ -170,7 +170,7 @@ export const loadModelsForProvider = async (
       provider_id: providerId,
     })
 
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelsByProvider: {
         ...state.modelsByProvider,
         [providerId]: models,
@@ -178,7 +178,7 @@ export const loadModelsForProvider = async (
       loadingModels: { ...state.loadingModels, [providerId]: false },
     }))
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to load models',
       loadingModels: { ...state.loadingModels, [providerId]: false },
     }))
@@ -200,7 +200,7 @@ export const addNewModelToProvider = async (
   },
 ): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       loadingModels: { ...state.loadingModels, [providerId]: true },
       error: null,
     }))
@@ -210,7 +210,7 @@ export const addNewModelToProvider = async (
       ...model,
     })
 
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelsByProvider: {
         ...state.modelsByProvider,
         [providerId]: [...(state.modelsByProvider[providerId] || []), newModel],
@@ -218,7 +218,7 @@ export const addNewModelToProvider = async (
       loadingModels: { ...state.loadingModels, [providerId]: false },
     }))
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to add model',
       loadingModels: { ...state.loadingModels, [providerId]: false },
     }))
@@ -232,7 +232,7 @@ export const addNewModel = async (
   data: Partial<Model>,
 ): Promise<Model> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       loadingModels: { ...state.loadingModels, [providerId]: true },
       error: null,
     }))
@@ -243,7 +243,7 @@ export const addNewModel = async (
       ...modelData,
     } as any)
 
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelsByProvider: {
         ...state.modelsByProvider,
         [providerId]: [...(state.modelsByProvider[providerId] || []), newModel],
@@ -253,7 +253,7 @@ export const addNewModel = async (
 
     return newModel
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to add model',
       loadingModels: { ...state.loadingModels, [providerId]: false },
     }))
@@ -266,7 +266,7 @@ export const updateExistingModel = async (
   updates: { alias?: string; description?: string; enabled?: boolean },
 ): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
       error: null,
     }))
@@ -276,7 +276,7 @@ export const updateExistingModel = async (
       ...updates,
     })
 
-    useProvidersStore.setState(state => {
+    useAdminProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
       for (const providerId in newModelsByProvider) {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
@@ -289,7 +289,7 @@ export const updateExistingModel = async (
       }
     })
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to update model',
       modelOperations: { ...state.modelOperations, [modelId]: false },
     }))
@@ -299,14 +299,14 @@ export const updateExistingModel = async (
 
 export const deleteExistingModel = async (modelId: string): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
       error: null,
     }))
 
     await ApiClient.Admin.deleteModel({ model_id: modelId })
 
-    useProvidersStore.setState(state => {
+    useAdminProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
       for (const providerId in newModelsByProvider) {
         newModelsByProvider[providerId] = newModelsByProvider[
@@ -319,7 +319,7 @@ export const deleteExistingModel = async (modelId: string): Promise<void> => {
       }
     })
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to delete model',
       modelOperations: { ...state.modelOperations, [modelId]: false },
     }))
@@ -329,14 +329,14 @@ export const deleteExistingModel = async (modelId: string): Promise<void> => {
 
 export const startModelExecution = async (modelId: string): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
       error: null,
     }))
 
     await ApiClient.Admin.startModel({ model_id: modelId })
 
-    useProvidersStore.setState(state => {
+    useAdminProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
       for (const providerId in newModelsByProvider) {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
@@ -354,7 +354,7 @@ export const startModelExecution = async (modelId: string): Promise<void> => {
       }
     })
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to start model',
       modelOperations: { ...state.modelOperations, [modelId]: false },
     }))
@@ -364,14 +364,14 @@ export const startModelExecution = async (modelId: string): Promise<void> => {
 
 export const stopModelExecution = async (modelId: string): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
       error: null,
     }))
 
     await ApiClient.Admin.stopModel({ model_id: modelId })
 
-    useProvidersStore.setState(state => {
+    useAdminProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
       for (const providerId in newModelsByProvider) {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
@@ -389,7 +389,7 @@ export const stopModelExecution = async (modelId: string): Promise<void> => {
       }
     })
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to stop model',
       modelOperations: { ...state.modelOperations, [modelId]: false },
     }))
@@ -399,14 +399,14 @@ export const stopModelExecution = async (modelId: string): Promise<void> => {
 
 export const enableModelForUse = async (modelId: string): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
       error: null,
     }))
 
     await ApiClient.Admin.enableModel({ model_id: modelId })
 
-    useProvidersStore.setState(state => {
+    useAdminProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
       for (const providerId in newModelsByProvider) {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
@@ -424,7 +424,7 @@ export const enableModelForUse = async (modelId: string): Promise<void> => {
       }
     })
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to enable model',
       modelOperations: { ...state.modelOperations, [modelId]: false },
     }))
@@ -434,14 +434,14 @@ export const enableModelForUse = async (modelId: string): Promise<void> => {
 
 export const disableModelFromUse = async (modelId: string): Promise<void> => {
   try {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
       error: null,
     }))
 
     await ApiClient.Admin.disableModel({ model_id: modelId })
 
-    useProvidersStore.setState(state => {
+    useAdminProvidersStore.setState(state => {
       const newModelsByProvider = { ...state.modelsByProvider }
       for (const providerId in newModelsByProvider) {
         newModelsByProvider[providerId] = newModelsByProvider[providerId].map(
@@ -459,7 +459,7 @@ export const disableModelFromUse = async (modelId: string): Promise<void> => {
       }
     })
   } catch (error) {
-    useProvidersStore.setState(state => ({
+    useAdminProvidersStore.setState(state => ({
       error: error instanceof Error ? error.message : 'Failed to disable model',
       modelOperations: { ...state.modelOperations, [modelId]: false },
     }))
@@ -471,17 +471,17 @@ export const disableModelFromUse = async (modelId: string): Promise<void> => {
 
 // Utility actions
 export const clearProvidersError = (): void => {
-  useProvidersStore.setState({ error: null })
+  useAdminProvidersStore.setState({ error: null })
 }
 
 // Upload cancellation moved to localUpload.ts
 
 export const findProviderById = (id: string): Provider | undefined => {
-  return useProvidersStore.getState().providers.find(p => p.id === id)
+  return useAdminProvidersStore.getState().providers.find(p => p.id === id)
 }
 
 export const findModelById = (id: string): Model | undefined => {
-  const state = useProvidersStore.getState()
+  const state = useAdminProvidersStore.getState()
   for (const models of Object.values(state.modelsByProvider)) {
     const model = models.find(m => m.id === id)
     if (model) return model

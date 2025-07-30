@@ -16,7 +16,7 @@ export function EditProviderDrawer() {
   const [form] = Form.useForm()
 
   const { open, loading, providerId } = Stores.UI.EditProviderDrawer
-  const { providers } = Stores.Providers
+  const { providers } = Stores.AdminProviders
 
   // Find the current provider from the store
   const provider = providerId ? providers.find(p => p.id === providerId) : null
