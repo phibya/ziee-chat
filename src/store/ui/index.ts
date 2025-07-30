@@ -21,7 +21,7 @@ export {
   openAssistantDrawer,
   closeAssistantDrawer,
   setAssistantDrawerLoading,
-} from './assistantModal'
+} from './assistantDrawer.ts'
 export {
   useAddProviderDrawerStore,
   openAddProviderDrawer,
