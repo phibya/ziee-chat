@@ -14,6 +14,8 @@ pub mod models;
 pub mod permissions;
 pub mod projects;
 pub mod providers;
+pub mod rag_providers;
+pub mod rag_repositories;
 pub mod repositories;
 pub mod user;
 pub mod user_groups;

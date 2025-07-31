@@ -8,6 +8,9 @@ pub mod model;
 pub mod project;
 pub mod provider;
 pub mod proxy;
+pub mod rag_database;
+pub mod rag_provider;
+pub mod rag_repository;
 pub mod repository;
 pub mod user;
 
@@ -22,5 +25,8 @@ pub use model::*;
 pub use project::*;
 pub use provider::*;
 pub use proxy::*;
+pub use rag_database::*;
+pub use rag_provider::*;
+pub use rag_repository::*;
 pub use repository::*;
 pub use user::*;

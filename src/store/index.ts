@@ -22,6 +22,8 @@ import { useProjectFilesStore } from './projectFiles'
 import { useAdminProvidersStore } from './admin/providers.ts'
 import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
+import { useAdminRAGProvidersStore } from './admin/ragProviders.ts'
+import { useAdminRAGRepositoriesStore } from './admin/ragRepositories.ts'
 import { useUserSettingsStore } from './settings'
 import {
   useAddLocalModelDownloadDrawerStore,
@@ -255,6 +257,41 @@ export {
   updateAdminModelRepository,
   useAdminRepositoriesStore,
 } from './admin/repositories.ts'
+// Admin RAG Providers store
+export {
+  addNewDatabaseToRAGProvider,
+  clearRAGProvidersError,
+  cloneExistingRAGProvider,
+  createNewRAGProvider,
+  deleteExistingRAGDatabase,
+  deleteRAGProvider,
+  disableRAGDatabase,
+  enableRAGDatabase,
+  findRAGDatabaseById,
+  findRAGProviderById,
+  loadAllRAGProviders,
+  loadDatabasesForRAGProvider,
+  startRAGDatabase,
+  stopRAGDatabase,
+  updateExistingRAGDatabase,
+  updateRAGProvider,
+  useAdminRAGProvidersStore,
+} from './admin/ragProviders.ts'
+// Admin RAG Repositories store
+export {
+  clearRAGRepositoriesError,
+  createNewRAGRepository,
+  deleteRAGRepository,
+  downloadRAGDatabaseFromRepository,
+  findRAGRepositoryById,
+  loadAllRAGRepositories,
+  loadAvailableDatabasesFromRepository,
+  searchAvailableRAGDatabases,
+  searchRAGRepositories,
+  testRAGRepositoryConnection,
+  updateRAGRepository,
+  useAdminRAGRepositoriesStore,
+} from './admin/ragRepositories.ts'
 // Settings store
 export {
   deleteUserSetting,
@@ -289,6 +326,19 @@ export {
   closeMobileOverlay,
   closeProjectDrawer,
   closeViewDownloadModal,
+  // RAG drawer actions
+  closeAddRAGProviderDrawer,
+  closeAddRAGDatabaseDrawer,
+  closeAddRAGDatabaseDownloadDrawer,
+  closeEditRAGDatabaseDrawer,
+  openAddRAGProviderDrawer,
+  openAddRAGDatabaseDrawer,
+  openAddRAGDatabaseDownloadDrawer,
+  openEditRAGDatabaseDrawer,
+  setAddRAGProviderDrawerLoading,
+  setAddRAGDatabaseDrawerLoading,
+  setAddRAGDatabaseDownloadDrawerLoading,
+  setEditRAGDatabaseDrawerLoading,
   openAddLocalModelDownloadDrawer,
   openAddLocalModelUploadDrawer,
   openAddModelDrawer,
@@ -334,6 +384,11 @@ export {
   useEditRemoteModelDrawerStore,
   useLayoutUIStore,
   useViewDownloadModalStore,
+  // RAG drawer stores
+  useAddRAGProviderDrawerStore,
+  useAddRAGDatabaseDrawerStore,
+  useAddRAGDatabaseDownloadDrawerStore,
+  useEditRAGDatabaseDrawerStore,
 } from './ui'
 
 type ExtractState<T> = T extends UseBoundStore<StoreApi<infer State>>
@@ -372,6 +427,8 @@ export const Stores = {
   Providers: createStoreProxy(useUserProvidersStore),
   AdminProviders: createStoreProxy(useAdminProvidersStore),
   AdminRepositories: createStoreProxy(useAdminRepositoriesStore),
+  AdminRAGProviders: createStoreProxy(useAdminRAGProvidersStore),
+  AdminRAGRepositories: createStoreProxy(useAdminRAGRepositoriesStore),
   Settings: createStoreProxy(useUserSettingsStore),
   UI: {
     Chat: createStoreProxy(useChatUIStore),
@@ -392,5 +449,10 @@ export const Stores = {
       useAddLocalModelDownloadDrawerStore,
     ),
     ProjectDrawer: createStoreProxy(useProjectDrawerStore),
+    // RAG drawer stores - temporarily commented out for debugging
+    // AddRAGProviderDrawer: createStoreProxy(useAddRAGProviderDrawerStore),
+    // AddRAGDatabaseDrawer: createStoreProxy(useAddRAGDatabaseDrawerStore),
+    // AddRAGDatabaseDownloadDrawer: createStoreProxy(useAddRAGDatabaseDownloadDrawerStore),
+    // EditRAGDatabaseDrawer: createStoreProxy(useEditRAGDatabaseDrawerStore),
   },
 }

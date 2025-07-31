@@ -4,6 +4,8 @@ pub mod downloads;
 pub mod groups;
 pub mod models;
 pub mod providers;
+pub mod rag_providers;
+pub mod rag_repositories;
 pub mod repositories;
 pub mod users;
 
@@ -17,6 +19,8 @@ pub fn admin_routes() -> Router {
         .merge(providers::admin_provider_routes())
         .merge(models::admin_model_routes())
         .merge(repositories::admin_repository_routes())
+        .merge(rag_providers::admin_rag_provider_routes())
+        .merge(rag_repositories::admin_rag_repository_routes())
         .merge(assistants::admin_assistant_routes())
         .merge(downloads::admin_download_routes())
 }

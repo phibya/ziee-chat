@@ -121,6 +121,10 @@ async fn try_initialize_database_once(
             std::env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_string());
     }
     settings.data_dir = settings.installation_dir.clone().join("data");
+    
+    // Set timezone to UTC
+    settings.configuration.insert("timezone".to_string(), "UTC".to_string());
+    settings.configuration.insert("log_timezone".to_string(), "UTC".to_string());
 
     //get port from POSTGRES_PORT
     settings.port = std::env::var("POSTGRES_PORT")

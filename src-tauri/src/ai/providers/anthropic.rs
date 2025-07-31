@@ -470,10 +470,10 @@ impl AIProvider for AnthropicProvider {
         // This will be fixed when we integrate with the chat handler
         let processed_request = request; // TODO: Add provider_id parameter
         let body = self.prepare_request(&processed_request).await?;
-
+        
         let response = self
             .client
-            .post(&format!("{}/v1/messages", self.base_url))
+            .post(&format!("{}/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("Content-Type", "application/json")
             .header("anthropic-version", "2023-06-01")

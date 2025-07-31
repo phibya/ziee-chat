@@ -101,6 +101,23 @@ import {
   UserSettingRequest,
   UserSettingsResponse,
 } from './userSettings'
+import {
+  CreateRAGProviderRequest,
+  CreateRAGDatabaseRequest,
+  RAGProvider,
+  RAGProviderListResponse,
+  RAGDatabase,
+  UpdateRAGProviderRequest,
+  UpdateRAGDatabaseRequest,
+} from './ragProvider'
+import {
+  CreateRAGRepositoryRequest,
+  DownloadRAGDatabaseFromRepositoryRequest,
+  RAGRepository,
+  RAGRepositoryConnectionTestResponse,
+  RAGRepositoryListResponse,
+  UpdateRAGRepositoryRequest,
+} from './ragRepository'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -294,6 +311,39 @@ export const ApiEndpoints = {
     'PUT /api/admin/config/document-extraction/{file_type}/ocr',
   'Admin.setLlmSettings':
     'PUT /api/admin/config/document-extraction/{file_type}/llm',
+
+  // ===========================
+  // RAG PROVIDER MANAGEMENT
+  // ===========================
+
+  // Admin - RAG Provider Management
+  'Admin.listRAGProviders': 'GET /api/admin/rag-providers',
+  'Admin.getRAGProvider': 'GET /api/admin/rag-providers/{provider_id}',
+  'Admin.createRAGProvider': 'POST /api/admin/rag-providers',
+  'Admin.updateRAGProvider': 'PUT /api/admin/rag-providers/{provider_id}',
+  'Admin.deleteRAGProvider': 'DELETE /api/admin/rag-providers/{provider_id}',
+  'Admin.cloneRAGProvider': 'POST /api/admin/rag-providers/{provider_id}/clone',
+
+  // Admin - RAG Database Management
+  'Admin.listRAGProviderDatabases': 'GET /api/admin/rag-providers/{provider_id}/databases',
+  'Admin.addDatabaseToRAGProvider': 'POST /api/admin/rag-providers/{provider_id}/databases',
+  'Admin.getRAGDatabase': 'GET /api/admin/rag-databases/{database_id}',
+  'Admin.updateRAGDatabase': 'PUT /api/admin/rag-databases/{database_id}',
+  'Admin.deleteRAGDatabase': 'DELETE /api/admin/rag-databases/{database_id}',
+  'Admin.startRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/start',
+  'Admin.stopRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/stop',
+  'Admin.enableRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/enable',
+  'Admin.disableRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/disable',
+
+  // Admin - RAG Repository Management
+  'Admin.listRAGRepositories': 'GET /api/admin/rag-repositories',
+  'Admin.getRAGRepository': 'GET /api/admin/rag-repositories/{repository_id}',
+  'Admin.createRAGRepository': 'POST /api/admin/rag-repositories',
+  'Admin.updateRAGRepository': 'PUT /api/admin/rag-repositories/{repository_id}',
+  'Admin.deleteRAGRepository': 'DELETE /api/admin/rag-repositories/{repository_id}',
+  'Admin.testRAGRepositoryConnection': 'POST /api/admin/rag-repositories/{repository_id}/test-connection',
+  'Admin.listRAGRepositoryDatabases': 'GET /api/admin/rag-repositories/{repository_id}/databases',
+  'Admin.downloadRAGDatabaseFromRepository': 'POST /api/admin/rag-repositories/download-database',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -471,6 +521,37 @@ export type ApiEndpointParameters = {
   // User Provider endpoints
   'Providers.list': { page?: number; per_page?: number }
   'Providers.listProviderModels': { provider_id: string }
+
+  // RAG Provider Management - Parameters
+  'Admin.listRAGProviders': { page?: number; per_page?: number }
+  'Admin.getRAGProvider': { provider_id: string }
+  'Admin.createRAGProvider': CreateRAGProviderRequest
+  'Admin.updateRAGProvider': { provider_id: string } & UpdateRAGProviderRequest
+  'Admin.deleteRAGProvider': { provider_id: string }
+  'Admin.cloneRAGProvider': { provider_id: string }
+
+  // RAG Database Management - Parameters
+  'Admin.listRAGProviderDatabases': { provider_id: string }
+  'Admin.addDatabaseToRAGProvider': {
+    provider_id: string
+  } & CreateRAGDatabaseRequest
+  'Admin.getRAGDatabase': { database_id: string }
+  'Admin.updateRAGDatabase': { database_id: string } & UpdateRAGDatabaseRequest
+  'Admin.deleteRAGDatabase': { database_id: string }
+  'Admin.startRAGDatabase': { database_id: string }
+  'Admin.stopRAGDatabase': { database_id: string }
+  'Admin.enableRAGDatabase': { database_id: string }
+  'Admin.disableRAGDatabase': { database_id: string }
+
+  // RAG Repository Management - Parameters
+  'Admin.listRAGRepositories': { page?: number; per_page?: number }
+  'Admin.getRAGRepository': { repository_id: string }
+  'Admin.createRAGRepository': CreateRAGRepositoryRequest
+  'Admin.updateRAGRepository': { repository_id: string } & UpdateRAGRepositoryRequest
+  'Admin.deleteRAGRepository': { repository_id: string }
+  'Admin.testRAGRepositoryConnection': { repository_id: string }
+  'Admin.listRAGRepositoryDatabases': { repository_id: string }
+  'Admin.downloadRAGDatabaseFromRepository': DownloadRAGDatabaseFromRepositoryRequest
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -629,6 +710,35 @@ export type ApiEndpointResponses = {
   // User Provider endpoints
   'Providers.list': ProviderListResponse
   'Providers.listProviderModels': Model[]
+
+  // RAG Provider Management - Responses
+  'Admin.listRAGProviders': RAGProviderListResponse
+  'Admin.getRAGProvider': RAGProvider
+  'Admin.createRAGProvider': RAGProvider
+  'Admin.updateRAGProvider': RAGProvider
+  'Admin.deleteRAGProvider': void
+  'Admin.cloneRAGProvider': RAGProvider
+
+  // RAG Database Management - Responses
+  'Admin.listRAGProviderDatabases': RAGDatabase[]
+  'Admin.addDatabaseToRAGProvider': RAGDatabase
+  'Admin.getRAGDatabase': RAGDatabase
+  'Admin.updateRAGDatabase': RAGDatabase
+  'Admin.deleteRAGDatabase': void
+  'Admin.startRAGDatabase': void
+  'Admin.stopRAGDatabase': void
+  'Admin.enableRAGDatabase': void
+  'Admin.disableRAGDatabase': void
+
+  // RAG Repository Management - Responses
+  'Admin.listRAGRepositories': RAGRepositoryListResponse
+  'Admin.getRAGRepository': RAGRepository
+  'Admin.createRAGRepository': RAGRepository
+  'Admin.updateRAGRepository': RAGRepository
+  'Admin.deleteRAGRepository': void
+  'Admin.testRAGRepositoryConnection': RAGRepositoryConnectionTestResponse
+  'Admin.listRAGRepositoryDatabases': RAGDatabase[]
+  'Admin.downloadRAGDatabaseFromRepository': RAGDatabase
 }
 
 // Type helpers

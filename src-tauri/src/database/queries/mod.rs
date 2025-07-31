@@ -8,6 +8,8 @@ pub mod files;
 pub mod models;
 pub mod projects;
 pub mod providers;
+pub mod rag_providers;
+pub mod rag_repositories;
 pub mod repositories;
 pub mod user_group_providers;
 pub mod user_groups;

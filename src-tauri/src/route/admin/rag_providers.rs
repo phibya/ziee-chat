@@ -1,0 +1,40 @@
+use axum::{
+    routing::{delete, get, post, put},
+    Router,
+};
+
+use crate::api::rag_providers::{
+    // RAG Provider endpoints
+    list_rag_providers,
+    get_rag_provider,
+    create_rag_provider,
+    update_rag_provider,
+    delete_rag_provider,
+    clone_rag_provider,
+    // RAG Database endpoints
+    list_rag_provider_databases,
+    add_database_to_rag_provider,
+    get_rag_database,
+    update_rag_database,
+    delete_rag_database,
+    start_rag_database,
+    stop_rag_database,
+    enable_rag_database,
+    disable_rag_database,
+};
+
+pub fn admin_rag_provider_routes() -> Router {
+    Router::new()
+        // RAG Provider routes
+        .route("/api/admin/rag-providers", get(list_rag_providers).post(create_rag_provider))
+        .route("/api/admin/rag-providers/{provider_id}", get(get_rag_provider).put(update_rag_provider).delete(delete_rag_provider))
+        .route("/api/admin/rag-providers/{provider_id}/clone", post(clone_rag_provider))
+        
+        // RAG Database routes
+        .route("/api/admin/rag-providers/{provider_id}/databases", get(list_rag_provider_databases).post(add_database_to_rag_provider))
+        .route("/api/admin/rag-databases/{database_id}", get(get_rag_database).put(update_rag_database).delete(delete_rag_database))
+        .route("/api/admin/rag-databases/{database_id}/start", post(start_rag_database))
+        .route("/api/admin/rag-databases/{database_id}/stop", post(stop_rag_database))
+        .route("/api/admin/rag-databases/{database_id}/enable", post(enable_rag_database))
+        .route("/api/admin/rag-databases/{database_id}/disable", post(disable_rag_database))
+}

@@ -78,6 +78,22 @@ export function SettingsPage() {
         ]
       : []),
 
+    // RAG Providers for desktop apps
+    ...(isDesktopApp
+      ? [
+          {
+            key: 'rag-providers',
+            icon: <RobotOutlined />,
+            label: 'RAG Providers',
+          },
+          {
+            key: 'rag-repositories',
+            icon: <CloudDownloadOutlined />,
+            label: 'RAG Repositories',
+          },
+        ]
+      : []),
+
     {
       key: 'shortcuts',
       icon: <SlidersOutlined />,
@@ -187,6 +203,22 @@ export function SettingsPage() {
               key: 'repositories',
               icon: <CloudDownloadOutlined />,
               label: t('settings.modelRepository.title'),
+            })
+          }
+
+          if (hasProviderManagement) {
+            items.push({
+              key: 'rag-providers',
+              icon: <RobotOutlined />,
+              label: 'RAG Providers',
+            })
+          }
+
+          if (hasRepositoryManagement) {
+            items.push({
+              key: 'rag-repositories',
+              icon: <CloudDownloadOutlined />,
+              label: 'RAG Repositories',
             })
           }
 

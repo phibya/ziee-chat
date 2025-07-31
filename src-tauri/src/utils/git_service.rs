@@ -810,6 +810,10 @@ impl GitService {
             // Set GIT_LFS_PROGRESS to the temp file for real-time progress
             cmd.env("GIT_LFS_PROGRESS", &progress_file_path);
 
+            //print the command being executed
+            println!("Executing command: {:?}", cmd);
+
+
             // Spawn the child process
             let mut child = cmd.spawn().map_err(|e| GitError::Io(e))?;
 

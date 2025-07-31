@@ -27,6 +27,8 @@ import {
   ModelRepositorySettings,
   PrivacySettings,
   ProvidersSettings,
+  RAGProvidersSettings,
+  RAGRepositoriesSettings,
   ShortcutsSettings,
   UserGroupsSettings,
   UsersSettings,
@@ -99,6 +101,26 @@ function App() {
                     <Route
                       path="repositories"
                       element={<ModelRepositorySettings />}
+                    />
+                  )}
+                  {/* RAG Providers: Similar permissions to providers */}
+                  {(isDesktopApp ||
+                    (!isDesktopApp &&
+                      hasPermission(Permission.config.providers.read))) && (
+                    <>
+                      <Route path="rag-providers" element={<RAGProvidersSettings />} />
+                      <Route
+                        path="rag-providers/:provider_id"
+                        element={<RAGProvidersSettings />}
+                      />
+                    </>
+                  )}
+                  {/* RAG Repositories: Similar permissions to repositories */}
+                  {(isDesktopApp ||
+                    hasPermission(Permission.config.repositories.read)) && (
+                    <Route
+                      path="rag-repositories"
+                      element={<RAGRepositoriesSettings />}
                     />
                   )}
                   <Route path="shortcuts" element={<ShortcutsSettings />} />
