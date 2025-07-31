@@ -12,7 +12,7 @@ import {
 import React, { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { loadProjectFiles, Stores, uploadFilesToProject } from '../../../store'
-import { FileCard } from './FileCard'
+import { FileCard } from '../../common/FileCard.tsx'
 
 const { Text } = Typography
 
@@ -25,7 +25,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
   const { currentProject } = Stores.Projects
 
   // Project files store
-  const { uploading, uploadProgress, showProgress } = Stores.ProjectFiles
+  const { uploading, uploadProgress } = Stores.ProjectFiles
 
   // Get files for this project
   const projectFiles = projectId
@@ -109,7 +109,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
       </Flex>
 
       {/* Upload Progress */}
-      {showProgress && (
+      {uploadProgress.length > 0 && (
         <div className={'py-0 flex flex-col gap-1 pt-2'}>
           <Text strong>Uploading files...</Text>
           <div className={'py-4 flex flex-col gap-2'}>
@@ -146,6 +146,13 @@ export const ProjectKnowledgeCard: React.FC = () => {
 
       <div className={'overflow-y-auto mt-3 flex-1'}>
         <div className="flex gap-2 flex-wrap">
+          {/* Show uploading files */}
+          {uploading &&
+            uploadProgress.map((progress, index) => (
+              <FileCard key={`uploading-${index}`} uploadingFile={progress} />
+            ))}
+
+          {/* Show existing files */}
           {projectFiles.map(file => (
             <FileCard key={file.id} file={file} />
           ))}

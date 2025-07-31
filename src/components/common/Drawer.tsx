@@ -1,6 +1,6 @@
 import { Drawer as AntDrawer, DrawerProps as AntDrawerProps, theme } from 'antd'
 import React from 'react'
-import { ResizeHandle } from '../shared/ResizeHandle.tsx'
+import { ResizeHandle } from './ResizeHandle.tsx'
 
 export interface DrawerProps extends AntDrawerProps {
   children?: React.ReactNode

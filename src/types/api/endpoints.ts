@@ -325,25 +325,34 @@ export const ApiEndpoints = {
   'Admin.cloneRAGProvider': 'POST /api/admin/rag-providers/{provider_id}/clone',
 
   // Admin - RAG Database Management
-  'Admin.listRAGProviderDatabases': 'GET /api/admin/rag-providers/{provider_id}/databases',
-  'Admin.addDatabaseToRAGProvider': 'POST /api/admin/rag-providers/{provider_id}/databases',
+  'Admin.listRAGProviderDatabases':
+    'GET /api/admin/rag-providers/{provider_id}/databases',
+  'Admin.addDatabaseToRAGProvider':
+    'POST /api/admin/rag-providers/{provider_id}/databases',
   'Admin.getRAGDatabase': 'GET /api/admin/rag-databases/{database_id}',
   'Admin.updateRAGDatabase': 'PUT /api/admin/rag-databases/{database_id}',
   'Admin.deleteRAGDatabase': 'DELETE /api/admin/rag-databases/{database_id}',
   'Admin.startRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/start',
   'Admin.stopRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/stop',
-  'Admin.enableRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/enable',
-  'Admin.disableRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/disable',
+  'Admin.enableRAGDatabase':
+    'POST /api/admin/rag-databases/{database_id}/enable',
+  'Admin.disableRAGDatabase':
+    'POST /api/admin/rag-databases/{database_id}/disable',
 
   // Admin - RAG Repository Management
   'Admin.listRAGRepositories': 'GET /api/admin/rag-repositories',
   'Admin.getRAGRepository': 'GET /api/admin/rag-repositories/{repository_id}',
   'Admin.createRAGRepository': 'POST /api/admin/rag-repositories',
-  'Admin.updateRAGRepository': 'PUT /api/admin/rag-repositories/{repository_id}',
-  'Admin.deleteRAGRepository': 'DELETE /api/admin/rag-repositories/{repository_id}',
-  'Admin.testRAGRepositoryConnection': 'POST /api/admin/rag-repositories/{repository_id}/test-connection',
-  'Admin.listRAGRepositoryDatabases': 'GET /api/admin/rag-repositories/{repository_id}/databases',
-  'Admin.downloadRAGDatabaseFromRepository': 'POST /api/admin/rag-repositories/download-database',
+  'Admin.updateRAGRepository':
+    'PUT /api/admin/rag-repositories/{repository_id}',
+  'Admin.deleteRAGRepository':
+    'DELETE /api/admin/rag-repositories/{repository_id}',
+  'Admin.testRAGRepositoryConnection':
+    'POST /api/admin/rag-repositories/{repository_id}/test-connection',
+  'Admin.listRAGRepositoryDatabases':
+    'GET /api/admin/rag-repositories/{repository_id}/databases',
+  'Admin.downloadRAGDatabaseFromRepository':
+    'POST /api/admin/rag-repositories/download-database',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -547,7 +556,9 @@ export type ApiEndpointParameters = {
   'Admin.listRAGRepositories': { page?: number; per_page?: number }
   'Admin.getRAGRepository': { repository_id: string }
   'Admin.createRAGRepository': CreateRAGRepositoryRequest
-  'Admin.updateRAGRepository': { repository_id: string } & UpdateRAGRepositoryRequest
+  'Admin.updateRAGRepository': {
+    repository_id: string
+  } & UpdateRAGRepositoryRequest
   'Admin.deleteRAGRepository': { repository_id: string }
   'Admin.testRAGRepositoryConnection': { repository_id: string }
   'Admin.listRAGRepositoryDatabases': { repository_id: string }

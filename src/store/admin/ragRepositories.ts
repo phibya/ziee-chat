@@ -57,7 +57,9 @@ export const loadAllRAGRepositories = async (): Promise<void> => {
   } catch (error) {
     useAdminRAGRepositoriesStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to load RAG repositories',
+        error instanceof Error
+          ? error.message
+          : 'Failed to load RAG repositories',
       loading: false,
     })
     throw error
@@ -78,7 +80,9 @@ export const createNewRAGRepository = async (
   } catch (error) {
     useAdminRAGRepositoriesStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to create RAG repository',
+        error instanceof Error
+          ? error.message
+          : 'Failed to create RAG repository',
       creating: false,
     })
     throw error
@@ -96,13 +100,17 @@ export const updateRAGRepository = async (
       ...repository,
     })
     useAdminRAGRepositoriesStore.setState(state => ({
-      repositories: state.repositories.map(r => (r.id === id ? updatedRepository : r)),
+      repositories: state.repositories.map(r =>
+        r.id === id ? updatedRepository : r,
+      ),
       updating: false,
     }))
   } catch (error) {
     useAdminRAGRepositoriesStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to update RAG repository',
+        error instanceof Error
+          ? error.message
+          : 'Failed to update RAG repository',
       updating: false,
     })
     throw error
@@ -125,14 +133,18 @@ export const deleteRAGRepository = async (id: string): Promise<void> => {
   } catch (error) {
     useAdminRAGRepositoriesStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to delete RAG repository',
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete RAG repository',
       deleting: false,
     })
     throw error
   }
 }
 
-export const testRAGRepositoryConnection = async (id: string): Promise<void> => {
+export const testRAGRepositoryConnection = async (
+  id: string,
+): Promise<void> => {
   try {
     useAdminRAGRepositoriesStore.setState(state => ({
       testingConnection: { ...state.testingConnection, [id]: true },
@@ -148,7 +160,10 @@ export const testRAGRepositoryConnection = async (id: string): Promise<void> => 
     }))
   } catch (error) {
     useAdminRAGRepositoriesStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Repository connection test failed',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Repository connection test failed',
       testingConnection: { ...state.testingConnection, [id]: false },
     }))
     throw error
@@ -178,7 +193,10 @@ export const loadAvailableDatabasesFromRepository = async (
     }))
   } catch (error) {
     useAdminRAGRepositoriesStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to load available RAG databases',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to load available RAG databases',
       loadingDatabases: { ...state.loadingDatabases, [repositoryId]: false },
     }))
     throw error
@@ -203,7 +221,10 @@ export const downloadRAGDatabaseFromRepository = async (
   } catch (error) {
     const downloadKey = `${request.repository_id}-${request.database_id}`
     useAdminRAGRepositoriesStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to download RAG database',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to download RAG database',
       downloading: { ...state.downloading, [downloadKey]: false },
     }))
     throw error
@@ -215,28 +236,40 @@ export const clearRAGRepositoriesError = (): void => {
   useAdminRAGRepositoriesStore.setState({ error: null })
 }
 
-export const findRAGRepositoryById = (id: string): RAGRepository | undefined => {
-  return useAdminRAGRepositoriesStore.getState().repositories.find(r => r.id === id)
+export const findRAGRepositoryById = (
+  id: string,
+): RAGRepository | undefined => {
+  return useAdminRAGRepositoriesStore
+    .getState()
+    .repositories.find(r => r.id === id)
 }
 
-export const searchRAGRepositories = (repositories: RAGRepository[], query: string): RAGRepository[] => {
+export const searchRAGRepositories = (
+  repositories: RAGRepository[],
+  query: string,
+): RAGRepository[] => {
   if (!query.trim()) return repositories
 
   const searchTerm = query.toLowerCase()
-  return repositories.filter(repository =>
-    repository.name.toLowerCase().includes(searchTerm) ||
-    repository.description?.toLowerCase().includes(searchTerm) ||
-    repository.url.toLowerCase().includes(searchTerm)
+  return repositories.filter(
+    repository =>
+      repository.name.toLowerCase().includes(searchTerm) ||
+      repository.description?.toLowerCase().includes(searchTerm) ||
+      repository.url.toLowerCase().includes(searchTerm),
   )
 }
 
-export const searchAvailableRAGDatabases = (databases: RAGDatabase[], query: string): RAGDatabase[] => {
+export const searchAvailableRAGDatabases = (
+  databases: RAGDatabase[],
+  query: string,
+): RAGDatabase[] => {
   if (!query.trim()) return databases
 
   const searchTerm = query.toLowerCase()
-  return databases.filter(database =>
-    database.name.toLowerCase().includes(searchTerm) ||
-    database.alias.toLowerCase().includes(searchTerm) ||
-    database.description?.toLowerCase().includes(searchTerm)
+  return databases.filter(
+    database =>
+      database.name.toLowerCase().includes(searchTerm) ||
+      database.alias.toLowerCase().includes(searchTerm) ||
+      database.description?.toLowerCase().includes(searchTerm),
   )
 }

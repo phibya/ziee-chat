@@ -3,7 +3,6 @@
  * Types for managing RAG repositories in the application
  */
 
-
 export interface RAGRepository {
   id: string
   name: string

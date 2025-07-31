@@ -7,7 +7,10 @@ interface AddRAGRepositoryDrawerProps {
   onClose?: () => void
 }
 
-export function AddRAGRepositoryDrawer({ open = false, onClose }: AddRAGRepositoryDrawerProps) {
+export function AddRAGRepositoryDrawer({
+  open = false,
+  onClose,
+}: AddRAGRepositoryDrawerProps) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
@@ -76,10 +79,7 @@ export function AddRAGRepositoryDrawer({ open = false, onClose }: AddRAGReposito
           <Input placeholder="Enter repository name" />
         </Form.Item>
 
-        <Form.Item
-          label="Description"
-          name="description"
-        >
+        <Form.Item label="Description" name="description">
           <Input.TextArea placeholder="Enter description" rows={3} />
         </Form.Item>
 
@@ -124,11 +124,7 @@ export function AddRAGRepositoryDrawer({ open = false, onClose }: AddRAGReposito
           <Input.Password placeholder="Enter authentication token" />
         </Form.Item>
 
-        <Form.Item
-          label="Enabled"
-          name="enabled"
-          valuePropName="checked"
-        >
+        <Form.Item label="Enabled" name="enabled" valuePropName="checked">
           <Switch />
         </Form.Item>
       </Form>

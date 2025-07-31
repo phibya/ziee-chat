@@ -43,7 +43,8 @@ interface RAGDatabasesSectionProps {
 
 export function RAGDatabasesSection({ provider }: RAGDatabasesSectionProps) {
   const { message } = App.useApp()
-  const { databasesByProvider, loadingDatabases, databaseOperations } = Stores.AdminRAGProviders
+  const { databasesByProvider, loadingDatabases, databaseOperations } =
+    Stores.AdminRAGProviders
 
   const databases = databasesByProvider[provider.id] || []
   const isLoading = loadingDatabases[provider.id]
@@ -191,7 +192,7 @@ export function RAGDatabasesSection({ provider }: RAGDatabasesSectionProps) {
             label: 'Delete',
             onClick: () => handleDelete(record.id, record.name),
             danger: true,
-          }
+          },
         )
 
         return (
@@ -199,7 +200,7 @@ export function RAGDatabasesSection({ provider }: RAGDatabasesSectionProps) {
             <Switch
               size="small"
               checked={record.enabled}
-              onChange={(enabled) => handleEnable(record.id, enabled)}
+              onChange={enabled => handleEnable(record.id, enabled)}
               loading={databaseOperations[record.id]}
             />
             <Dropdown menu={{ items: menuItems }} trigger={['click']}>

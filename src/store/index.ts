@@ -200,19 +200,23 @@ export {
 } from './projects'
 // Project Files store
 export {
-  cancelFileUpload,
+  cancelProjectFileUpload,
   clearProjectFilesError,
   deleteProjectFile,
-  getFileContent,
-  getFileThumbnail,
-  getFileThumbnails,
   getProjectFiles,
-  hideUploadProgress,
+  hideProjectUploadProgress,
   loadProjectFiles,
-  showUploadProgress,
+  showProjectUploadProgress,
   uploadFilesToProject,
   useProjectFilesStore,
 } from './projectFiles'
+
+export {
+  getFileContent,
+  getFileThumbnail,
+  getFileThumbnails,
+} from './files'
+
 // User Providers store
 export {
   clearUserProvidersError,

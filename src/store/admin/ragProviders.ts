@@ -77,7 +77,9 @@ export const createNewRAGProvider = async (
   } catch (error) {
     useAdminRAGProvidersStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to create RAG provider',
+        error instanceof Error
+          ? error.message
+          : 'Failed to create RAG provider',
       creating: false,
     })
     throw error
@@ -101,7 +103,9 @@ export const updateRAGProvider = async (
   } catch (error) {
     useAdminRAGProvidersStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to update RAG provider',
+        error instanceof Error
+          ? error.message
+          : 'Failed to update RAG provider',
       updating: false,
     })
     throw error
@@ -124,14 +128,18 @@ export const deleteRAGProvider = async (id: string): Promise<void> => {
   } catch (error) {
     useAdminRAGProvidersStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to delete RAG provider',
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete RAG provider',
       deleting: false,
     })
     throw error
   }
 }
 
-export const cloneExistingRAGProvider = async (id: string): Promise<RAGProvider> => {
+export const cloneExistingRAGProvider = async (
+  id: string,
+): Promise<RAGProvider> => {
   try {
     useAdminRAGProvidersStore.setState({ creating: true, error: null })
     const clonedProvider = await ApiClient.Admin.cloneRAGProvider({
@@ -175,7 +183,8 @@ export const loadDatabasesForRAGProvider = async (
     }))
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to load RAG databases',
+      error:
+        error instanceof Error ? error.message : 'Failed to load RAG databases',
       loadingDatabases: { ...state.loadingDatabases, [providerId]: false },
     }))
     throw error
@@ -200,13 +209,17 @@ export const addNewDatabaseToRAGProvider = async (
     useAdminRAGProvidersStore.setState(state => ({
       databasesByProvider: {
         ...state.databasesByProvider,
-        [providerId]: [...(state.databasesByProvider[providerId] || []), newDatabase],
+        [providerId]: [
+          ...(state.databasesByProvider[providerId] || []),
+          newDatabase,
+        ],
       },
       loadingDatabases: { ...state.loadingDatabases, [providerId]: false },
     }))
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to add RAG database',
+      error:
+        error instanceof Error ? error.message : 'Failed to add RAG database',
       loadingDatabases: { ...state.loadingDatabases, [providerId]: false },
     }))
     throw error
@@ -231,25 +244,35 @@ export const updateExistingRAGDatabase = async (
     useAdminRAGProvidersStore.setState(state => {
       const newDatabasesByProvider = { ...state.databasesByProvider }
       for (const providerId in newDatabasesByProvider) {
-        newDatabasesByProvider[providerId] = newDatabasesByProvider[providerId].map(
-          database => (database.id === databaseId ? updatedDatabase : database),
+        newDatabasesByProvider[providerId] = newDatabasesByProvider[
+          providerId
+        ].map(database =>
+          database.id === databaseId ? updatedDatabase : database,
         )
       }
       return {
         databasesByProvider: newDatabasesByProvider,
-        databaseOperations: { ...state.databaseOperations, [databaseId]: false },
+        databaseOperations: {
+          ...state.databaseOperations,
+          [databaseId]: false,
+        },
       }
     })
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to update RAG database',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update RAG database',
       databaseOperations: { ...state.databaseOperations, [databaseId]: false },
     }))
     throw error
   }
 }
 
-export const deleteExistingRAGDatabase = async (databaseId: string): Promise<void> => {
+export const deleteExistingRAGDatabase = async (
+  databaseId: string,
+): Promise<void> => {
   try {
     useAdminRAGProvidersStore.setState(state => ({
       databaseOperations: { ...state.databaseOperations, [databaseId]: true },
@@ -267,12 +290,18 @@ export const deleteExistingRAGDatabase = async (databaseId: string): Promise<voi
       }
       return {
         databasesByProvider: newDatabasesByProvider,
-        databaseOperations: { ...state.databaseOperations, [databaseId]: false },
+        databaseOperations: {
+          ...state.databaseOperations,
+          [databaseId]: false,
+        },
       }
     })
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to delete RAG database',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete RAG database',
       databaseOperations: { ...state.databaseOperations, [databaseId]: false },
     }))
     throw error
@@ -292,23 +321,27 @@ export const startRAGDatabase = async (databaseId: string): Promise<void> => {
     useAdminRAGProvidersStore.setState(state => {
       const newDatabasesByProvider = { ...state.databasesByProvider }
       for (const providerId in newDatabasesByProvider) {
-        newDatabasesByProvider[providerId] = newDatabasesByProvider[providerId].map(
-          database => {
-            if (database.id === databaseId) {
-              return { ...database, is_active: true }
-            }
-            return database
-          },
-        )
+        newDatabasesByProvider[providerId] = newDatabasesByProvider[
+          providerId
+        ].map(database => {
+          if (database.id === databaseId) {
+            return { ...database, is_active: true }
+          }
+          return database
+        })
       }
       return {
         databasesByProvider: newDatabasesByProvider,
-        databaseOperations: { ...state.databaseOperations, [databaseId]: false },
+        databaseOperations: {
+          ...state.databaseOperations,
+          [databaseId]: false,
+        },
       }
     })
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to start RAG database',
+      error:
+        error instanceof Error ? error.message : 'Failed to start RAG database',
       databaseOperations: { ...state.databaseOperations, [databaseId]: false },
     }))
     throw error
@@ -327,23 +360,27 @@ export const stopRAGDatabase = async (databaseId: string): Promise<void> => {
     useAdminRAGProvidersStore.setState(state => {
       const newDatabasesByProvider = { ...state.databasesByProvider }
       for (const providerId in newDatabasesByProvider) {
-        newDatabasesByProvider[providerId] = newDatabasesByProvider[providerId].map(
-          database => {
-            if (database.id === databaseId) {
-              return { ...database, is_active: false }
-            }
-            return database
-          },
-        )
+        newDatabasesByProvider[providerId] = newDatabasesByProvider[
+          providerId
+        ].map(database => {
+          if (database.id === databaseId) {
+            return { ...database, is_active: false }
+          }
+          return database
+        })
       }
       return {
         databasesByProvider: newDatabasesByProvider,
-        databaseOperations: { ...state.databaseOperations, [databaseId]: false },
+        databaseOperations: {
+          ...state.databaseOperations,
+          [databaseId]: false,
+        },
       }
     })
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to stop RAG database',
+      error:
+        error instanceof Error ? error.message : 'Failed to stop RAG database',
       databaseOperations: { ...state.databaseOperations, [databaseId]: false },
     }))
     throw error
@@ -362,23 +399,29 @@ export const enableRAGDatabase = async (databaseId: string): Promise<void> => {
     useAdminRAGProvidersStore.setState(state => {
       const newDatabasesByProvider = { ...state.databasesByProvider }
       for (const providerId in newDatabasesByProvider) {
-        newDatabasesByProvider[providerId] = newDatabasesByProvider[providerId].map(
-          database => {
-            if (database.id === databaseId) {
-              return { ...database, enabled: true }
-            }
-            return database
-          },
-        )
+        newDatabasesByProvider[providerId] = newDatabasesByProvider[
+          providerId
+        ].map(database => {
+          if (database.id === databaseId) {
+            return { ...database, enabled: true }
+          }
+          return database
+        })
       }
       return {
         databasesByProvider: newDatabasesByProvider,
-        databaseOperations: { ...state.databaseOperations, [databaseId]: false },
+        databaseOperations: {
+          ...state.databaseOperations,
+          [databaseId]: false,
+        },
       }
     })
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to enable RAG database',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to enable RAG database',
       databaseOperations: { ...state.databaseOperations, [databaseId]: false },
     }))
     throw error
@@ -397,23 +440,29 @@ export const disableRAGDatabase = async (databaseId: string): Promise<void> => {
     useAdminRAGProvidersStore.setState(state => {
       const newDatabasesByProvider = { ...state.databasesByProvider }
       for (const providerId in newDatabasesByProvider) {
-        newDatabasesByProvider[providerId] = newDatabasesByProvider[providerId].map(
-          database => {
-            if (database.id === databaseId) {
-              return { ...database, enabled: false }
-            }
-            return database
-          },
-        )
+        newDatabasesByProvider[providerId] = newDatabasesByProvider[
+          providerId
+        ].map(database => {
+          if (database.id === databaseId) {
+            return { ...database, enabled: false }
+          }
+          return database
+        })
       }
       return {
         databasesByProvider: newDatabasesByProvider,
-        databaseOperations: { ...state.databaseOperations, [databaseId]: false },
+        databaseOperations: {
+          ...state.databaseOperations,
+          [databaseId]: false,
+        },
       }
     })
   } catch (error) {
     useAdminRAGProvidersStore.setState(state => ({
-      error: error instanceof Error ? error.message : 'Failed to disable RAG database',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to disable RAG database',
       databaseOperations: { ...state.databaseOperations, [databaseId]: false },
     }))
     throw error

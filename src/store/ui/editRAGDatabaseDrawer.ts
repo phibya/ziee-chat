@@ -7,11 +7,13 @@ interface EditRAGDatabaseDrawerState {
   database?: RAGDatabase
 }
 
-export const useEditRAGDatabaseDrawerStore = create<EditRAGDatabaseDrawerState>(() => ({
-  open: false,
-  loading: false,
-  database: undefined,
-}))
+export const useEditRAGDatabaseDrawerStore = create<EditRAGDatabaseDrawerState>(
+  () => ({
+    open: false,
+    loading: false,
+    database: undefined,
+  }),
+)
 
 // Modal actions
 export const openEditRAGDatabaseDrawer = (database: RAGDatabase) => {

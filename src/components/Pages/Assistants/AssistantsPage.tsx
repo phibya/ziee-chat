@@ -9,7 +9,7 @@ import {
   Stores,
 } from '../../../store'
 import { PageContainer } from '../../common/PageContainer.tsx'
-import { AssistantFormDrawer } from '../../shared/AssistantFormDrawer.tsx'
+import { AssistantFormDrawer } from '../../common/AssistantFormDrawer.tsx'
 import { isDesktopApp } from '../../../api/core.ts'
 import { AssistantCard } from './index.ts'
 import { TemplateAssistantDrawer } from './TemplateAssistantDrawer.tsx'

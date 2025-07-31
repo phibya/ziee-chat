@@ -1,5 +1,8 @@
 import { Badge, Card, Flex, Switch, Typography } from 'antd'
-import { RAGProvider, RAGProviderType } from '../../../../../types/api/ragProvider'
+import {
+  RAGProvider,
+  RAGProviderType,
+} from '../../../../../types/api/ragProvider'
 import { updateRAGProvider } from '../../../../../store'
 
 const { Title, Text } = Typography
@@ -39,14 +42,11 @@ export function RAGProviderHeader({ provider }: RAGProviderHeaderProps) {
               {provider.name}
             </Title>
             <Text type="secondary">
-              {provider.type.charAt(0).toUpperCase() + provider.type.slice(1)} RAG Provider
+              {provider.type.charAt(0).toUpperCase() + provider.type.slice(1)}{' '}
+              RAG Provider
             </Text>
             {provider.built_in && (
-              <Badge 
-                text="Built-in" 
-                color="blue" 
-                style={{ marginLeft: 8 }} 
-              />
+              <Badge text="Built-in" color="blue" style={{ marginLeft: 8 }} />
             )}
           </div>
         </Flex>

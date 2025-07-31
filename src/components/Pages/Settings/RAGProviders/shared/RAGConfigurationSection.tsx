@@ -9,7 +9,9 @@ interface RAGConfigurationSectionProps {
   provider: RAGProvider
 }
 
-export function RAGConfigurationSection({ provider }: RAGConfigurationSectionProps) {
+export function RAGConfigurationSection({
+  provider,
+}: RAGConfigurationSectionProps) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
@@ -39,17 +41,11 @@ export function RAGConfigurationSection({ provider }: RAGConfigurationSectionPro
           base_url: provider.base_url,
         }}
       >
-        <Form.Item
-          label="API Key"
-          name="api_key"
-        >
+        <Form.Item label="API Key" name="api_key">
           <Input.Password placeholder="Enter API key" />
         </Form.Item>
-        
-        <Form.Item
-          label="Base URL"
-          name="base_url"
-        >
+
+        <Form.Item label="Base URL" name="base_url">
           <Input placeholder="Enter base URL" />
         </Form.Item>
 

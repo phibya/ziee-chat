@@ -6,9 +6,9 @@ interface AddRAGDatabaseDownloadDrawerProps {
   providerId?: string
 }
 
-export function AddRAGDatabaseDownloadDrawer({ 
-  open = false, 
-  onClose
+export function AddRAGDatabaseDownloadDrawer({
+  open = false,
+  onClose,
 }: AddRAGDatabaseDownloadDrawerProps) {
   const handleClose = () => {
     onClose?.()
@@ -23,12 +23,13 @@ export function AddRAGDatabaseDownloadDrawer({
     >
       <div style={{ marginBottom: 16 }}>
         <Typography.Text type="secondary">
-          Select a RAG database from available repositories to download and add to your provider.
+          Select a RAG database from available repositories to download and add
+          to your provider.
         </Typography.Text>
       </div>
 
       {/* TODO: Load and display available databases from repositories */}
-      <Empty 
+      <Empty
         description="No RAG databases available for download"
         image={Empty.PRESENTED_IMAGE_SIMPLE}
       />

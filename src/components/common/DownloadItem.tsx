@@ -6,7 +6,11 @@ import {
   openViewDownloadModal,
 } from '../../store'
 import type { DownloadInstance } from '../../types'
-import { formatBytes, formatETA, formatSpeed } from '../../utils/downloadUtils'
+import {
+  formatBytes,
+  formatETA,
+  formatSpeed,
+} from '../../utils/downloadUtils.ts'
 import { Link } from 'react-router-dom'
 
 const { Text } = Typography

@@ -5,10 +5,12 @@ interface AddRAGProviderDrawerState {
   loading: boolean
 }
 
-export const useAddRAGProviderDrawerStore = create<AddRAGProviderDrawerState>(() => ({
-  open: false,
-  loading: false,
-}))
+export const useAddRAGProviderDrawerStore = create<AddRAGProviderDrawerState>(
+  () => ({
+    open: false,
+    loading: false,
+  }),
+)
 
 // Modal actions
 export const openAddRAGProviderDrawer = () => {

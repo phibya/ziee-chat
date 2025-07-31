@@ -8,19 +8,11 @@ import {
   Upload,
   theme,
   Typography,
-  Progress,
   App,
-  Card,
-  Skeleton,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  SendOutlined,
-  StopOutlined,
-  UploadOutlined,
-  CloseOutlined,
-} from '@ant-design/icons'
+import { SendOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons'
 import {
   Stores,
   sendChatMessage,
@@ -32,8 +24,8 @@ import {
   loadUserAssistants,
 } from '../../store'
 import { ApiClient } from '../../api/client'
-import { formatFileSize } from '../../utils/fileUtils'
-import type { File } from '../../types'
+import type { File, FileUploadProgress } from '../../types'
+import { FileCard } from '../common/FileCard'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -49,151 +41,6 @@ interface UploadedFile {
 
 interface ChatInputProps {
   projectId?: string
-}
-
-// File card component for chat input
-const ChatFileCard: React.FC<{
-  uploadedFile: UploadedFile
-  onRemove: (fileId: string) => void
-}> = ({ uploadedFile, onRemove }) => {
-  const { token } = theme.useToken()
-
-  if (uploadedFile.uploading) {
-    // Show skeleton loading state
-    return (
-      <div style={{ width: '111px' }}>
-        <Card
-          size="small"
-          style={{ height: '111px' }}
-          styles={{
-            body: {
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              position: 'relative',
-              padding: '8px',
-            },
-          }}
-        >
-          <Skeleton.Image style={{ width: '100%', height: '60px' }} />
-          <div className="mt-2">
-            <Progress
-              size="small"
-              percent={100}
-              status="active"
-              showInfo={false}
-            />
-          </div>
-        </Card>
-        <div className="w-full text-center text-xs text-ellipsis overflow-hidden mt-1">
-          <Text className="whitespace-nowrap">{uploadedFile.filename}</Text>
-        </div>
-      </div>
-    )
-  }
-
-  if (uploadedFile.error) {
-    // Show error state
-    return (
-      <div style={{ width: '111px' }}>
-        <Card
-          size="small"
-          style={{
-            height: '111px',
-            border: `1px solid ${token.colorError}`,
-          }}
-          styles={{
-            body: {
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              position: 'relative',
-            },
-          }}
-        >
-          <Button
-            danger
-            size="small"
-            icon={<CloseOutlined />}
-            onClick={() => onRemove(uploadedFile.id)}
-            className="!absolute top-1 right-1"
-          />
-
-          <Text className="text-4xl mb-2">❌</Text>
-          <Text type="danger" style={{ fontSize: '10px', textAlign: 'center' }}>
-            {uploadedFile.error}
-          </Text>
-        </Card>
-        <div className="w-full text-center text-xs text-ellipsis overflow-hidden mt-1">
-          <Text className="whitespace-nowrap" type="danger">
-            {uploadedFile.filename}
-          </Text>
-        </div>
-      </div>
-    )
-  }
-
-  // Show completed file card (similar to FileCard but simplified for chat)
-  return (
-    <div style={{ width: '111px' }}>
-      <Card
-        size="small"
-        className="group relative cursor-default"
-        style={{ height: '111px' }}
-        styles={{
-          body: {
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            position: 'relative',
-          },
-        }}
-      >
-        {/* Remove button - only visible on hover */}
-        <Button
-          danger
-          size="small"
-          icon={<CloseOutlined />}
-          onClick={() => onRemove(uploadedFile.id)}
-          className="!absolute top-1 right-1 opacity-0
-                    group-hover:opacity-100 transition-opacity"
-        />
-
-        <Text
-          className="absolute top-1 left-1 rounded px-1 !text-[9px]"
-          style={{
-            backgroundColor: token.colorBgContainer,
-          }}
-          strong
-        >
-          {uploadedFile.filename.split('.').pop()?.toUpperCase() || 'FILE'}
-        </Text>
-
-        <div className="flex flex-col items-center justify-center h-full">
-          <Text className="text-2xl mb-1">📄</Text>
-          <Text style={{ fontSize: '8px', textAlign: 'center' }}>
-            Ready to send
-          </Text>
-        </div>
-
-        <Text
-          className="absolute bottom-1 right-1 rounded px-1 !text-[9px]"
-          style={{
-            backgroundColor: token.colorBgContainer,
-          }}
-        >
-          {formatFileSize(uploadedFile.size)}
-        </Text>
-      </Card>
-      <div className="w-full text-center text-xs text-ellipsis overflow-hidden mt-1">
-        <Text className="whitespace-nowrap">{uploadedFile.filename}</Text>
-      </div>
-    </div>
-  )
 }
 
 export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
@@ -510,13 +357,54 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
           {/* File Upload Preview */}
           {uploadedFiles.length > 0 && (
             <div className="flex flex-wrap gap-2 p-3 rounded">
-              {uploadedFiles.map(uploadedFile => (
-                <ChatFileCard
-                  key={uploadedFile.id}
-                  uploadedFile={uploadedFile}
-                  onRemove={handleRemoveFile}
-                />
-              ))}
+              {uploadedFiles.map(uploadedFile => {
+                if (uploadedFile.uploading) {
+                  // Show uploading state using FileCard
+                  const uploadProgress: FileUploadProgress = {
+                    id: uploadedFile.id,
+                    filename: uploadedFile.filename,
+                    progress: 75, // Show indeterminate progress
+                    status: 'uploading',
+                    size: uploadedFile.size,
+                  }
+                  return (
+                    <FileCard
+                      key={uploadedFile.id}
+                      uploadingFile={uploadProgress}
+                      onRemove={handleRemoveFile}
+                      removeId={uploadedFile.id}
+                    />
+                  )
+                } else if (uploadedFile.error) {
+                  // Show error state using FileCard
+                  const uploadProgress: FileUploadProgress = {
+                    id: uploadedFile.id,
+                    filename: uploadedFile.filename,
+                    progress: 0,
+                    status: 'error',
+                    error: uploadedFile.error,
+                    size: uploadedFile.size,
+                  }
+                  return (
+                    <FileCard
+                      key={uploadedFile.id}
+                      uploadingFile={uploadProgress}
+                      onRemove={handleRemoveFile}
+                      removeId={uploadedFile.id}
+                    />
+                  )
+                } else {
+                  // Show completed file using FileCard
+                  return (
+                    <FileCard
+                      key={uploadedFile.id}
+                      file={uploadedFile.file}
+                      onRemove={handleRemoveFile}
+                      removeId={uploadedFile.id}
+                    />
+                  )
+                }
+              })}
             </div>
           )}
 

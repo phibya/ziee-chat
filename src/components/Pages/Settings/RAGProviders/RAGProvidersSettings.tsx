@@ -71,10 +71,10 @@ export function RAGProvidersSettings() {
   const { providers, loading, error } = Stores.AdminRAGProviders
 
   const [isMobile, setIsMobile] = useState(false)
-  
+
   // UI drawer states
   const addRAGProviderDrawer = useAddRAGProviderDrawerStore()
-  const addRAGDatabaseDrawer = useAddRAGDatabaseDrawerStore()  
+  const addRAGDatabaseDrawer = useAddRAGDatabaseDrawerStore()
   const addRAGDatabaseDownloadDrawer = useAddRAGDatabaseDownloadDrawerStore()
   const editRAGDatabaseDrawer = useEditRAGDatabaseDrawerStore()
 
@@ -353,21 +353,21 @@ export function RAGProvidersSettings() {
         </Layout>
 
         {/* Modals */}
-        <AddRAGProviderDrawer 
+        <AddRAGProviderDrawer
           open={addRAGProviderDrawer.open}
           onClose={closeAddRAGProviderDrawer}
         />
-        <AddRAGDatabaseDrawer 
+        <AddRAGDatabaseDrawer
           open={addRAGDatabaseDrawer.open}
           onClose={closeAddRAGDatabaseDrawer}
           providerId={addRAGDatabaseDrawer.providerId}
         />
-        <AddRAGDatabaseDownloadDrawer 
+        <AddRAGDatabaseDownloadDrawer
           open={addRAGDatabaseDownloadDrawer.open}
           onClose={closeAddRAGDatabaseDownloadDrawer}
           providerId={addRAGDatabaseDownloadDrawer.providerId}
         />
-        <EditRAGDatabaseDrawer 
+        <EditRAGDatabaseDrawer
           open={editRAGDatabaseDrawer.open}
           onClose={closeEditRAGDatabaseDrawer}
           database={editRAGDatabaseDrawer.database}

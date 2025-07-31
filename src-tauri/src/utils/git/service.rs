@@ -1,11 +1,10 @@
+use super::lfs::{LfsService, LfsProgress, LfsPhase, LfsError};
 use crate::utils::cancellation::CancellationToken;
-use crate::utils::resource_paths::ResourcePaths;
 use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use serde::Serialize;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::Path;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -45,42 +44,18 @@ pub enum GitError {
 
 pub struct GitService {
     cache_dir: std::path::PathBuf,
+    lfs_service: LfsService,
 }
 
-/// LFS pointer information
-#[derive(Debug, Clone)]
-struct LfsPointer {
-    oid: String,
-    size: u64,
-    path: PathBuf,
-}
 
 impl GitService {
     pub fn new() -> Self {
         let cache_dir = crate::get_app_data_dir().join("caches/models/git");
-        Self { cache_dir }
+        let lfs_cache_dir = cache_dir.join("lfs_cache");
+        let lfs_service = LfsService::new(lfs_cache_dir);
+        Self { cache_dir, lfs_service }
     }
 
-    /// Get the git-lfs binary path using ResourcePaths utility
-    fn get_git_lfs_binary_path() -> Result<PathBuf, GitError> {
-        // Try to find the git-lfs binary using ResourcePaths utility
-        if let Some(binary_path) = ResourcePaths::find_executable_binary("git-lfs") {
-            return Ok(binary_path);
-        }
-
-        // Fallback: try the direct path method
-        let binary_path = ResourcePaths::get_executable_binary_path("git-lfs");
-        
-        // Check if the binary exists
-        if !binary_path.exists() {
-            return Err(GitError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                format!("git-lfs binary not found at {:?}", binary_path),
-            )));
-        }
-
-        Ok(binary_path)
-    }
 
     /// Generate a unique cache key based on repository_id, URL, and branch
     fn generate_cache_key(
@@ -566,34 +541,9 @@ impl GitService {
         }
     }
 
-    /// Check if a file is an LFS pointer
-    fn is_lfs_pointer(content: &[u8]) -> bool {
-        // LFS pointers start with "version https://git-lfs.github.com/spec/v1"
-        content.starts_with(b"version https://git-lfs.github.com/spec/v1")
-    }
-
-    /// Parse LFS pointer content
-    fn parse_lfs_pointer(content: &str) -> Option<(String, u64)> {
-        let mut oid = None;
-        let mut size = None;
-
-        for line in content.lines() {
-            if let Some(oid_value) = line.strip_prefix("oid sha256:") {
-                oid = Some(oid_value.to_string());
-            } else if let Some(size_str) = line.strip_prefix("size ") {
-                if let Ok(size_value) = size_str.parse::<u64>() {
-                    size = Some(size_value);
-                }
-            }
-        }
-
-        match (oid, size) {
-            (Some(o), Some(s)) => Some((o, s)),
-            _ => None,
-        }
-    }
 
     /// Pull specific LFS files based on file paths with cancellation support
+    /// Now uses the native LFS implementation instead of git-lfs binary
     pub async fn pull_lfs_files_with_cancellation(
         &self,
         repo_path: &Path,
@@ -602,454 +552,52 @@ impl GitService {
         progress_tx: mpsc::UnboundedSender<GitProgress>,
         cancellation_token: Option<CancellationToken>,
     ) -> Result<(), GitError> {
-        println!(
-            "pull_lfs_files_with_cancellation called with {} files",
-            file_paths.len()
-        );
-
-        // Send initial debug message to verify channel is working
-        let _ = progress_tx.send(GitProgress {
-            phase: GitPhase::Connecting,
-            current: 0,
-            total: 0, // Will be updated once we know the total size
-            message: "Starting LFS file scan...".to_string(),
+        // Create a channel to receive LFS progress updates
+        let (lfs_progress_tx, mut lfs_progress_rx) = mpsc::unbounded_channel::<LfsProgress>();
+        
+        // Spawn a task to convert LFS progress to Git progress
+        let git_progress_tx = progress_tx.clone();
+        let progress_converter = tokio::spawn(async move {
+            while let Some(lfs_progress) = lfs_progress_rx.recv().await {
+                let git_progress = GitProgress {
+                    phase: match lfs_progress.phase {
+                        LfsPhase::Scanning => GitPhase::Connecting,
+                        LfsPhase::Downloading => GitPhase::CheckingOut,
+                        LfsPhase::Caching => GitPhase::CheckingOut,
+                        LfsPhase::Complete => GitPhase::Complete,
+                        LfsPhase::Error => GitPhase::Error,
+                    },
+                    current: lfs_progress.current,
+                    total: lfs_progress.total,
+                    message: lfs_progress.message,
+                };
+                
+                if git_progress_tx.send(git_progress).is_err() {
+                    break; // Channel closed
+                }
+            }
         });
 
-        if file_paths.is_empty() {
-            println!("No LFS files to pull - sending completion message");
-            // Send a completion message even if no files to pull
-            let _ = progress_tx.send(GitProgress {
-                phase: GitPhase::Complete,
-                current: 100,
-                total: 100,
-                message: "No LFS files to download".to_string(),
-            });
-            return Ok(());
-        }
-
-        // Check for cancellation before starting
-        if let Some(ref token) = cancellation_token {
-            if token.is_cancelled().await {
-                return Err(GitError::Cancelled);
-            }
-        }
-
-        // First scan which of the requested files are LFS pointers
-        let mut lfs_files = Vec::new();
-        let mut total_size = 0u64;
-
-        println!("Scanning {} files for LFS pointers...", file_paths.len());
-        for file_path in file_paths {
-            // Check for cancellation during scan
-            if let Some(ref token) = cancellation_token {
-                if token.is_cancelled().await {
-                    return Err(GitError::Cancelled);
-                }
-            }
-
-            let full_path = repo_path.join(file_path);
-            println!("Checking file: {}", full_path.display());
-
-            if let Ok(content) = std::fs::read(&full_path) {
-                if Self::is_lfs_pointer(&content) {
-                    println!("Found LFS pointer: {}", file_path);
-                    if let Ok(content_str) = String::from_utf8(content) {
-                        if let Some((oid, size)) = Self::parse_lfs_pointer(&content_str) {
-                            lfs_files.push(LfsPointer {
-                                oid,
-                                size,
-                                path: PathBuf::from(file_path),
-                            });
-                            total_size += size;
-                        }
-                    }
-                } else {
-                    println!("File {} is not an LFS pointer", file_path);
-                }
-            } else {
-                println!("Could not read file: {}", full_path.display());
-            }
-        }
-
-        println!(
-            "Found {} LFS files with total size {} bytes",
-            lfs_files.len(),
-            total_size
-        );
-
-        if lfs_files.is_empty() {
-            println!("No LFS files found - sending completion message");
-            // Send a completion message even if no LFS files found
-            let _ = progress_tx.send(GitProgress {
-                phase: GitPhase::Complete,
-                current: 0,
-                total: 0,
-                message: "No LFS files found to download".to_string(),
-            });
-            return Ok(());
-        }
-
-        // Now perform the actual LFS file fetching (merged from fetch_lfs_files_with_progress_and_cancellation)
-        if lfs_files.is_empty() {
-            return Ok(());
-        }
-
-        // Check for cancellation before starting
-        if let Some(ref token) = cancellation_token {
-            if token.is_cancelled().await {
-                return Err(GitError::Cancelled);
-            }
-        }
-
-        println!(
-            "Found {} LFS pointer files to fetch (total size: {} bytes)",
-            lfs_files.len(),
-            total_size
-        );
-
-        // Get the git-lfs binary path
-        let git_lfs_path = Self::get_git_lfs_binary_path()?;
-        println!("Using git-lfs binary at: {:?}", git_lfs_path);
-
-        let total_files = lfs_files.len();
-
-        // Change to the repository directory
-        let original_dir = std::env::current_dir().map_err(|e| GitError::Io(e))?;
-        std::env::set_current_dir(repo_path).map_err(|e| GitError::Io(e))?;
-
-        // Set up authentication environment variables if needed
-        let mut env_vars = Vec::new();
-        if let Some(token) = auth_token {
-            if token.contains(':') {
-                // Basic auth format: username:password
-                let parts: Vec<&str> = token.splitn(2, ':').collect();
-                if parts.len() == 2 {
-                    env_vars.push(("GIT_ASKPASS", "echo"));
-                    env_vars.push(("GIT_USERNAME", parts[0]));
-                    env_vars.push(("GIT_PASSWORD", parts[1]));
-                }
-            } else {
-                // Bearer token
-                env_vars.push(("GIT_ASKPASS", "echo"));
-                env_vars.push(("GIT_PASSWORD", token));
-            }
-        }
-
-        // Check for cancellation before starting LFS pull
-        if let Some(ref token) = cancellation_token {
-            if token.is_cancelled().await {
-                // Restore original directory before returning
-                let _ = std::env::set_current_dir(original_dir);
-                return Err(GitError::Cancelled);
-            }
-        }
-
-        // Instead of using git lfs pull (which doesn't give good progress),
-        // we'll download files individually for better progress tracking
-        let mut downloaded_size = 0u64;
-
-        for (index, lfs_pointer) in lfs_files.iter().enumerate() {
-            // Check for cancellation before each file
-            if let Some(ref token) = cancellation_token {
-                if token.is_cancelled().await {
-                    let _ = std::env::set_current_dir(&original_dir);
-                    return Err(GitError::Cancelled);
-                }
-            }
-
-            let file_name = lfs_pointer
-                .path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown");
-
-            // Send progress update for starting this file
-            let _ = progress_tx.send(GitProgress {
-                phase: GitPhase::CheckingOut,
-                current: downloaded_size,
-                total: total_size,
-                message: format!("Starting {} ({} of {})", file_name, index + 1, total_files),
+        // Use the new LFS service
+        let result = self.lfs_service
+            .pull_lfs_files_with_cancellation(
+                repo_path,
+                file_paths,
+                auth_token,
+                lfs_progress_tx,
+                cancellation_token,
+            )
+            .await
+            .map_err(|e| match e {
+                LfsError::Cancelled => GitError::Cancelled,
+                LfsError::Io(io_err) => GitError::Io(io_err),
+                LfsError::Git(git_msg) => GitError::Git(git2::Error::from_str(&git_msg)),
+                _ => GitError::Git(git2::Error::from_str(&e.to_string())),
             });
 
-            println!(
-                "Sent initial progress update for file {} ({} of {})",
-                file_name,
-                index + 1,
-                total_files
-            );
+        // Clean up the progress converter task
+        progress_converter.abort();
 
-            // Try to download this specific LFS file with real-time progress tracking
-            let file_path_str = lfs_pointer.path.to_string_lossy().to_string();
-            let lfs_filename = lfs_pointer
-                .path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .to_string();
-            let file_size = lfs_pointer.size;
-
-            println!(
-                "Downloading LFS file: {} ({} bytes)",
-                lfs_pointer.path.display(),
-                lfs_pointer.size
-            );
-
-            // Create a temporary file for progress tracking
-            let progress_file =
-                std::env::temp_dir().join(format!("git-lfs-progress-{}.log", Uuid::new_v4()));
-            let progress_file_path = progress_file.to_string_lossy().to_string();
-
-            let mut cmd = Command::new(&git_lfs_path);
-            cmd.args(&["pull", "--include", &file_path_str]);
-
-            // Add environment variables
-            for (key, value) in &env_vars {
-                cmd.env(key, value);
-            }
-
-            // Set GIT_LFS_PROGRESS to the temp file for real-time progress
-            cmd.env("GIT_LFS_PROGRESS", &progress_file_path);
-
-            //print the command being executed
-            println!("Executing command: {:?}", cmd);
-
-
-            // Spawn the child process
-            let mut child = cmd.spawn().map_err(|e| GitError::Io(e))?;
-
-            // Create a shared cancellation flag for the background thread
-            let cancelled_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-            let cancelled_flag_thread = cancelled_flag.clone();
-
-            // Spawn a background task to read the progress file in real-time
-            let progress_tx_clone = progress_tx.clone();
-            let progress_file_clone = progress_file.clone();
-            let lfs_filename_clone = lfs_filename.clone();
-
-            let progress_reader_handle = std::thread::spawn(move || {
-                use std::io::{Read, Seek, SeekFrom};
-                use std::time::{Duration, Instant};
-
-                // Wait a moment for the file to be created
-                std::thread::sleep(Duration::from_millis(100));
-                println!(
-                    "Progress reader thread started for file: {}",
-                    progress_file_clone.display()
-                );
-
-                // Send an initial progress update to show we're starting
-                let _ = progress_tx_clone.send(GitProgress {
-                    phase: GitPhase::CheckingOut,
-                    current: 0,
-                    total: 100,
-                    message: format!("Starting download of {}", lfs_filename_clone),
-                });
-                println!(
-                    "Sent initial background progress update for {}",
-                    lfs_filename_clone
-                );
-
-                // Keep reading the file until the process completes
-                let mut last_pos = 0;
-                let mut last_update = Instant::now();
-                let mut last_bytes_so_far = 0u64;
-
-                loop {
-                    if let Ok(mut file) = std::fs::File::open(&progress_file_clone) {
-                        // Seek to the last read position
-                        if let Ok(_) = file.seek(SeekFrom::Start(last_pos)) {
-                            let mut buffer = String::new();
-                            if let Ok(bytes_read) = file.read_to_string(&mut buffer) {
-                                if bytes_read > 0 {
-                                    last_pos += bytes_read as u64;
-
-                                    // Parse each line for progress info
-                                    for line in buffer.lines() {
-                                        // Parse git-lfs progress format: "download 1/1 55676250/4915916176 model-00003-of-00004.safetensors"
-                                        let parts: Vec<&str> = line.split_whitespace().collect();
-                                        if parts.len() >= 3 && parts[0] == "download" {
-                                            // Parse the bytes progress (e.g., "55676250/4915916176")
-                                            if let Some(progress_parts) = parts.get(2) {
-                                                let progress_split: Vec<&str> =
-                                                    progress_parts.split('/').collect();
-                                                if progress_split.len() == 2 {
-                                                    if let (Ok(current), Ok(_total)) = (
-                                                        progress_split[0].parse::<u64>(),
-                                                        progress_split[1].parse::<u64>(),
-                                                    ) {
-                                                        last_bytes_so_far = current;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Send update every 1 second with real progress
-                    if last_update.elapsed() >= Duration::from_secs(1) && last_bytes_so_far > 0 {
-                        let percent = if file_size > 0 {
-                            ((last_bytes_so_far * 100) / file_size).min(100)
-                        } else {
-                            0
-                        };
-
-                        // Send real-time progress update with actual byte values
-                        let _ = progress_tx_clone.send(GitProgress {
-                            phase: GitPhase::CheckingOut,
-                            current: last_bytes_so_far,
-                            total: file_size,
-                            message: format!(
-                                "Downloading {}: {}% ({:.1} MB / {:.1} MB)",
-                                lfs_filename_clone,
-                                percent,
-                                last_bytes_so_far as f64 / (1024.0 * 1024.0),
-                                file_size as f64 / (1024.0 * 1024.0)
-                            ),
-                        });
-
-                        last_update = Instant::now();
-                    }
-
-                    // Sleep briefly before checking again
-                    std::thread::sleep(Duration::from_millis(200));
-
-                    // Check for cancellation using the atomic flag
-                    if cancelled_flag_thread.load(std::sync::atomic::Ordering::Relaxed) {
-                        println!("Background progress reader thread cancelled");
-                        break;
-                    }
-
-                    // Check if we should stop (file removed or process finished)
-                    if !progress_file_clone.exists() {
-                        println!("Progress file no longer exists, exiting reader thread");
-                        break;
-                    }
-                }
-
-                println!("Progress reader thread exiting for {}", lfs_filename_clone);
-            });
-
-            // Wait for the process to complete with cancellation checking
-            println!("Waiting for git-lfs process to complete...");
-            let status = loop {
-                // Check for cancellation
-                if let Some(ref token) = cancellation_token {
-                    if token.is_cancelled().await {
-                        println!("Cancellation requested, killing git-lfs process");
-
-                        // Signal the background thread to stop
-                        cancelled_flag.store(true, std::sync::atomic::Ordering::Relaxed);
-
-                        // Kill the child process
-                        let _ = child.kill();
-                        let _ = child.wait();
-
-                        // Clean up the progress file
-                        let _ = std::fs::remove_file(&progress_file);
-
-                        // Wait for the progress reader to finish
-                        let _ = progress_reader_handle.join();
-
-                        // Restore original directory before returning
-                        let _ = std::env::set_current_dir(&original_dir);
-
-                        return Err(GitError::Cancelled);
-                    }
-                }
-
-                // Try to get the exit status without blocking
-                match child.try_wait().map_err(|e| GitError::Io(e))? {
-                    Some(status) => break status,
-                    None => {
-                        // Process is still running, wait a bit and check again
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                    }
-                }
-            };
-
-            println!("Git-lfs process completed with status: {:?}", status);
-
-            // Clean up the progress file
-            println!("Cleaning up progress file: {}", progress_file.display());
-            let _ = std::fs::remove_file(&progress_file);
-
-            // Wait for the progress reader to finish
-            println!("Waiting for progress reader thread to finish...");
-            let _ = progress_reader_handle.join();
-            println!("Progress reader thread finished");
-
-            if !status.success() {
-                let error_msg =
-                    format!("Failed to download LFS file {}", lfs_pointer.path.display());
-                println!("{}", error_msg);
-
-                // Restore original directory before returning error
-                let _ = std::env::set_current_dir(&original_dir);
-
-                // Send error progress update
-                let _ = progress_tx.send(GitProgress {
-                    phase: GitPhase::Error,
-                    current: 0,
-                    total: 100,
-                    message: error_msg.clone(),
-                });
-
-                return Err(GitError::Git(git2::Error::from_str(&error_msg)));
-            }
-
-            // Update downloaded size
-            downloaded_size += lfs_pointer.size;
-
-            println!(
-                "Successfully downloaded: {} ({} bytes)",
-                lfs_pointer.path.display(),
-                lfs_pointer.size
-            );
-
-            // Send updated progress after file completion
-            let _ = progress_tx.send(GitProgress {
-                phase: GitPhase::CheckingOut,
-                current: downloaded_size,
-                total: total_size,
-                message: format!("Completed {} ({} of {})", file_name, index + 1, total_files),
-            });
-
-            println!(
-                "Sent completion progress update for file {} ({} of {})",
-                file_name,
-                index + 1,
-                total_files
-            );
-        }
-
-        // Restore original directory
-        std::env::set_current_dir(original_dir).map_err(|e| GitError::Io(e))?;
-
-        // Check for cancellation one final time
-        if let Some(ref token) = cancellation_token {
-            if token.is_cancelled().await {
-                return Err(GitError::Cancelled);
-            }
-        }
-
-        // All files fetched successfully
-        match progress_tx.send(GitProgress {
-            phase: GitPhase::Complete,
-            current: total_size,
-            total: total_size,
-            message: format!("Successfully downloaded all {} LFS files", total_files),
-        }) {
-            Ok(_) => println!("Successfully sent LFS completion progress message"),
-            Err(e) => println!("Failed to send LFS completion progress message: {}", e),
-        }
-
-        println!(
-            "LFS download completed: {} files, {} total bytes",
-            total_files, total_size
-        );
-        Ok(())
+        result
     }
 }

@@ -26,7 +26,7 @@ import {
 } from '../../../../store'
 import { Assistant } from '../../../../types/api/assistant'
 import { SettingsPageContainer } from '../SettingsPageContainer'
-import { AssistantFormDrawer } from '../../../shared/AssistantFormDrawer.tsx'
+import { AssistantFormDrawer } from '../../../common/AssistantFormDrawer.tsx'
 
 const { Text } = Typography
 

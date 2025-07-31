@@ -70,29 +70,36 @@ export const uploadFilesToProject = async (
   files: globalThis.File[],
 ): Promise<File[]> => {
   try {
-    useProjectFilesStore.setState({
+    // Initialize upload progress with unique IDs (append to existing)
+    const newFileProgress = files.map(file => ({
+      id: crypto.randomUUID(),
+      filename: file.name,
+      progress: 0,
+      status: 'pending' as const,
+      size: file.size,
+    }))
+
+    useProjectFilesStore.setState(state => ({
       uploading: true,
-      uploadProgress: files.map(file => ({
-        filename: file.name,
-        progress: 0,
-        status: 'pending' as const,
-        size: file.size,
-      })),
+      uploadProgress: [...state.uploadProgress, ...newFileProgress],
       overallUploadProgress: 0,
       error: null,
       showProgress: true,
-    })
+    }))
 
     const uploadedFiles: File[] = []
 
     // Upload files sequentially to better track progress
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
+      const fileProgressId = newFileProgress[i].id
 
       // Update current file status to uploading
       useProjectFilesStore.setState(state => ({
-        uploadProgress: state.uploadProgress.map((fp, index) =>
-          index === i ? { ...fp, status: 'uploading' as const } : fp,
+        uploadProgress: state.uploadProgress.map((fp: FileUploadProgress) =>
+          fp.id === fileProgressId
+            ? { ...fp, status: 'uploading' as const }
+            : fp,
         ),
       }))
 
@@ -102,40 +109,42 @@ export const uploadFilesToProject = async (
       formData.append('project_id', projectId)
 
       try {
-        // Call the upload API with progress tracking
-        const response = await ApiClient.Projects.uploadFile(formData, {
+        // Call the upload API with progress tracking using ApiClient.Files.upload
+        const response = await ApiClient.Files.upload(formData, {
           fileUploadProgress: {
             onProgress: (progress: number) => {
               // Update file-specific progress
               useProjectFilesStore.setState(state => ({
-                uploadProgress: state.uploadProgress.map((fp, index) =>
-                  index === i ? { ...fp, progress: progress * 100 } : fp,
+                uploadProgress: state.uploadProgress.map(
+                  (fp: FileUploadProgress) =>
+                    fp.id === fileProgressId
+                      ? { ...fp, progress: progress * 100 }
+                      : fp,
                 ),
                 overallUploadProgress:
                   (i * 100 + progress * 100) / files.length,
               }))
             },
             onComplete: () => {
-              // Mark file as completed
+              // Remove completed file from upload progress
               useProjectFilesStore.setState(state => ({
-                uploadProgress: state.uploadProgress.map((fp, index) =>
-                  index === i
-                    ? { ...fp, progress: 100, status: 'completed' as const }
-                    : fp,
+                uploadProgress: state.uploadProgress.filter(
+                  (fp: FileUploadProgress) => fp.id !== fileProgressId,
                 ),
               }))
             },
             onError: (error: string) => {
               // Mark this file as failed
               useProjectFilesStore.setState(state => ({
-                uploadProgress: state.uploadProgress.map((fp, index) =>
-                  index === i
-                    ? {
-                        ...fp,
-                        status: 'error' as const,
-                        error: error,
-                      }
-                    : fp,
+                uploadProgress: state.uploadProgress.map(
+                  (fp: FileUploadProgress) =>
+                    fp.id === fileProgressId
+                      ? {
+                          ...fp,
+                          status: 'error' as const,
+                          error: error,
+                        }
+                      : fp,
                 ),
               }))
             },
@@ -146,8 +155,8 @@ export const uploadFilesToProject = async (
       } catch (fileError) {
         // Mark this file as failed
         useProjectFilesStore.setState(state => ({
-          uploadProgress: state.uploadProgress.map((fp, index) =>
-            index === i
+          uploadProgress: state.uploadProgress.map((fp: FileUploadProgress) =>
+            fp.id === fileProgressId
               ? {
                   ...fp,
                   status: 'error' as const,
@@ -161,6 +170,8 @@ export const uploadFilesToProject = async (
         }))
       }
     }
+
+    debugger
 
     // Update overall progress to complete
     useProjectFilesStore.setState(state => ({
@@ -176,10 +187,8 @@ export const uploadFilesToProject = async (
       },
     }))
 
-    // Hide progress after a delay
-    setTimeout(() => {
-      useProjectFilesStore.setState({ showProgress: false })
-    }, 2000)
+    // Note: Completed files are automatically removed from progress on completion
+    // Progress will be hidden when all uploads finish (no more progress items)
 
     return uploadedFiles
   } catch (error) {
@@ -220,7 +229,7 @@ export const deleteProjectFile = async (
 }
 
 // Utility actions
-export const cancelFileUpload = (): void => {
+export const cancelProjectFileUpload = (): void => {
   useProjectFilesStore.setState({
     uploading: false,
     uploadProgress: [],
@@ -233,11 +242,11 @@ export const clearProjectFilesError = (): void => {
   useProjectFilesStore.setState({ error: null })
 }
 
-export const hideUploadProgress = (): void => {
+export const hideProjectUploadProgress = (): void => {
   useProjectFilesStore.setState({ showProgress: false })
 }
 
-export const showUploadProgress = (): void => {
+export const showProjectUploadProgress = (): void => {
   useProjectFilesStore.setState({ showProgress: true })
 }
 
@@ -247,78 +256,21 @@ export const getProjectFiles = (projectId: string): File[] => {
   return state.filesByProject[projectId] || []
 }
 
-// Get file thumbnail
-export const getFileThumbnail = async (
-  fileId: string,
-): Promise<string | null> => {
-  try {
-    const response = await ApiClient.Files.preview({ id: fileId, page: 1 })
-    console.log({ response })
-    return window.URL.createObjectURL(response)
-  } catch (_error) {
-    console.debug('Thumbnail not available for file:', fileId)
-    return null
-  }
+// Remove a specific file upload progress by ID
+export const removeProjectFileUploadProgress = (progressId: string): void => {
+  useProjectFilesStore.setState(state => ({
+    uploadProgress: state.uploadProgress.filter(
+      (fp: FileUploadProgress) => fp.id !== progressId,
+    ),
+  }))
 }
 
-// Get multiple file thumbnails (up to 5)
-export const getFileThumbnails = async (
-  fileId: string,
-  thumbnailCount: number,
-): Promise<string[]> => {
-  const maxThumbnails = Math.min(thumbnailCount, 5)
-  const thumbnails: string[] = []
-
-  for (let page = 1; page <= maxThumbnails; page++) {
-    try {
-      const response = await ApiClient.Files.preview({ id: fileId, page })
-      const url = window.URL.createObjectURL(response)
-      thumbnails.push(url)
-    } catch (_error) {
-      console.debug(`Thumbnail ${page} not available for file:`, fileId)
-      break // Stop if a thumbnail is not available
-    }
-  }
-
-  return thumbnails
-}
-
-// Get file content for text files
-export const getFileContent = async (fileId: string): Promise<string> => {
-  try {
-    const blob = await ApiClient.Files.download({ id: fileId })
-    // Convert blob to text
-    return await blob.text()
-  } catch (error) {
-    console.error('Failed to fetch file content:', error)
-    throw error
-  }
-}
-
-// Generate download token for a file
-export const generateFileDownloadToken = async (
-  fileId: string,
-): Promise<{ token: string; expires_at: string }> => {
-  try {
-    const response = await ApiClient.Files.generateDownloadToken({ id: fileId })
-    return response
-  } catch (error) {
-    console.error('Failed to generate download token:', error)
-    throw error
-  }
-}
-
-// Get download URL with token for a file (useful for <a> tags)
-export const getFileDownloadUrl = async (
-  fileId: string,
-  baseUrl?: string,
-): Promise<string> => {
-  try {
-    const tokenResponse = await generateFileDownloadToken(fileId)
-    const apiBaseUrl = baseUrl || window.location.origin
-    return `${apiBaseUrl}/api/files/${fileId}/download-with-token?token=${tokenResponse.token}`
-  } catch (error) {
-    console.error('Failed to generate download URL:', error)
-    throw error
-  }
+// Get a specific file upload progress by ID
+export const getProjectFileUploadProgressById = (
+  progressId: string,
+): FileUploadProgress | undefined => {
+  const state = useProjectFilesStore.getState()
+  return state.uploadProgress.find(
+    (fp: FileUploadProgress) => fp.id === progressId,
+  )
 }

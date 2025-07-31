@@ -13,7 +13,7 @@ use crate::database::{
     models::*,
     queries::{models, repositories},
 };
-use crate::utils::git_service::{GitProgress, GitService};
+use crate::utils::git::{GitProgress, GitService, GitPhase, GitError};
 
 use crate::utils::model_storage::ModelStorage;
 
@@ -876,7 +876,7 @@ pub async fn initiate_repository_download(
                 };
 
                 let status = match git_progress.phase {
-                    crate::utils::git_service::GitPhase::Error => Some(DownloadStatus::Failed),
+                    GitPhase::Error => Some(DownloadStatus::Failed),
                     _ => None,
                 };
 
@@ -892,7 +892,7 @@ pub async fn initiate_repository_download(
                 // Break on error phase
                 if matches!(
                     git_progress.phase,
-                    crate::utils::git_service::GitPhase::Error
+                    GitPhase::Error
                 ) {
                     break;
                 }
@@ -1035,16 +1035,16 @@ pub async fn initiate_repository_download(
 
                         // Use the git_progress phase for better status reporting
                         let phase_string = match git_progress.phase {
-                            crate::utils::git_service::GitPhase::Connecting => {
+                            GitPhase::Connecting => {
                                 "Connecting to LFS".to_string()
                             }
-                            crate::utils::git_service::GitPhase::CheckingOut => {
+                            GitPhase::CheckingOut => {
                                 "Downloading LFS files".to_string()
                             }
-                            crate::utils::git_service::GitPhase::Complete => {
+                            GitPhase::Complete => {
                                 "LFS download complete".to_string()
                             }
-                            crate::utils::git_service::GitPhase::Error => {
+                            GitPhase::Error => {
                                 "LFS download error".to_string()
                             }
                             _ => "Downloading LFS files".to_string(),
@@ -1087,7 +1087,7 @@ pub async fn initiate_repository_download(
                 // Check LFS result after progress task is done
                 if let Err(e) = lfs_result {
                     // Check if the error is due to cancellation
-                    let is_cancelled = matches!(e, crate::utils::git_service::GitError::Cancelled);
+                    let is_cancelled = matches!(e, GitError::Cancelled);
                     let (status, error_msg) = if is_cancelled {
                         (
                             DownloadStatus::Cancelled,
@@ -1190,7 +1190,7 @@ pub async fn initiate_repository_download(
             }
             Err(e) => {
                 // Check if the error is due to cancellation
-                let is_cancelled = matches!(e, crate::utils::git_service::GitError::Cancelled);
+                let is_cancelled = matches!(e, GitError::Cancelled);
 
                 let (status, error_msg) = if is_cancelled {
                     (

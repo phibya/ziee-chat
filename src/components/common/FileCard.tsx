@@ -1,5 +1,9 @@
-import { DeleteOutlined, DownloadOutlined } from '@ant-design/icons'
-import { App, Button, Card, theme, Typography } from 'antd'
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  CloseOutlined,
+} from '@ant-design/icons'
+import { App, Button, Card, Spin, theme, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
 import {
   deleteProjectFile,
@@ -7,16 +11,20 @@ import {
   getFileThumbnail,
   getFileThumbnails,
   Stores,
-} from '../../../store'
-import { Drawer } from '../../common/Drawer'
-import { formatFileSize, isTextFile } from '../../../utils/fileUtils'
-import type { File } from '../../../types'
-import { generateFileDownloadToken } from '../../../store/projectFiles.ts'
+} from '../../store'
+import { Drawer } from './Drawer.tsx'
+import { formatFileSize, isTextFile } from '../../utils/fileUtils.ts'
+import type { File, FileUploadProgress } from '../../types'
+import { generateFileDownloadToken } from '../../store/files.ts'
 
 const { Text } = Typography
 
 interface FileCardProps {
-  file: File
+  file?: File
+  uploadingFile?: FileUploadProgress
+  size?: number
+  onRemove?: (fileId: string) => void
+  removeId?: string // Custom ID for remove operation
 }
 
 interface FileModalContentProps {
@@ -130,7 +138,13 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
   )
 }
 
-export const FileCard: React.FC<FileCardProps> = ({ file }) => {
+export const FileCard: React.FC<FileCardProps> = ({
+  file,
+  uploadingFile,
+  size = 111,
+  onRemove,
+  removeId,
+}) => {
   const { message, modal } = App.useApp()
   const { currentProject } = Stores.Projects
   const { token } = theme.useToken()
@@ -141,7 +155,7 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
 
   useEffect(() => {
-    if (file.thumbnail_count === 0) return
+    if (!file || file.thumbnail_count === 0) return
     const loadThumbnail = async () => {
       const url = await getFileThumbnail(file.id)
       setThumbnailUrl(url)
@@ -157,7 +171,7 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
         window.URL.revokeObjectURL(thumbnailUrl)
       }
     }
-  }, [file.id])
+  }, [file?.id])
 
   const handleFileDelete = async (fileId: string) => {
     if (!currentProject?.id) return
@@ -172,6 +186,8 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
   }
 
   const handleCardClick = async () => {
+    if (!file || uploadingFile) return
+
     if (isTextFile(file.filename)) {
       // Open drawer for text files
       setLoading(true)
@@ -199,17 +215,89 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
     }
   }
 
+  if (uploadingFile) {
+    return (
+      <div
+        style={{
+          width: size,
+        }}
+      >
+        <Card
+          size="small"
+          className="relative"
+          style={{
+            height: size,
+          }}
+          styles={{
+            body: {
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              position: 'relative',
+              padding: '8px',
+            },
+          }}
+        >
+          <Spin />
+
+          {/* Remove button for uploading files */}
+          {onRemove && (
+            <Button
+              danger
+              size="small"
+              icon={<CloseOutlined />}
+              onClick={() => onRemove(removeId || uploadingFile.filename)}
+              className="!absolute top-1 right-1"
+            />
+          )}
+
+          {/* File extension */}
+          <Text
+            className="absolute top-1 left-1 rounded px-1 !text-[9px]"
+            style={{
+              backgroundColor: token.colorBgContainer,
+            }}
+            strong
+          >
+            {uploadingFile.filename.split('.').pop()?.toUpperCase() || 'FILE'}
+          </Text>
+
+          {/* Upload status */}
+          {uploadingFile.status === 'error' && (
+            <Text
+              className="absolute top-1 right-1 rounded px-1 !text-[9px]"
+              style={{
+                backgroundColor: token.colorError,
+                color: token.colorWhite,
+              }}
+            >
+              ERROR
+            </Text>
+          )}
+        </Card>
+        <div className="w-full text-center text-xs text-ellipsis overflow-hidden">
+          <Text className={'whitespace-nowrap'}>{uploadingFile.filename}</Text>
+        </div>
+      </div>
+    )
+  }
+
+  if (!file) {
+    return null
+  }
+
   return (
     <div
       style={{
-        width: '111px',
+        width: size,
       }}
     >
       <Card
         size="small"
         className="group relative cursor-pointer"
         style={{
-          height: '111px',
+          height: size,
           backgroundImage: thumbnailUrl ? `url(${thumbnailUrl})` : undefined,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -227,16 +315,20 @@ export const FileCard: React.FC<FileCardProps> = ({ file }) => {
           },
         }}
       >
-        {/* Delete button - only visible on hover */}
+        {/* Delete/Remove button - only visible on hover */}
         <Button
           danger
           size="small"
-          icon={<DeleteOutlined />}
+          icon={onRemove ? <CloseOutlined /> : <DeleteOutlined />}
           onClick={e => {
             e.stopPropagation()
-            handleFileDelete(file.id).catch(error => {
-              console.error('Failed to delete file:', error)
-            })
+            if (onRemove) {
+              onRemove(removeId || file.id)
+            } else {
+              handleFileDelete(file.id).catch(error => {
+                console.error('Failed to delete file:', error)
+              })
+            }
           }}
           className="!absolute top-1 right-1 opacity-0
                     group-hover:opacity-100 transition-opacity bg-transparent"

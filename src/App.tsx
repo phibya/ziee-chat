@@ -108,7 +108,10 @@ function App() {
                     (!isDesktopApp &&
                       hasPermission(Permission.config.providers.read))) && (
                     <>
-                      <Route path="rag-providers" element={<RAGProvidersSettings />} />
+                      <Route
+                        path="rag-providers"
+                        element={<RAGProvidersSettings />}
+                      />
                       <Route
                         path="rag-providers/:provider_id"
                         element={<RAGProvidersSettings />}

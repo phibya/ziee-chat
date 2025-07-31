@@ -20,7 +20,7 @@ import {
   updateModelProvider,
 } from '../../../../store'
 import { DownloadInstance, Provider } from '../../../../types'
-import { DownloadItem } from '../../../shared/DownloadItem'
+import { DownloadItem } from '../../../common/DownloadItem.tsx'
 import { ModelsSection } from './shared/ModelsSection'
 import { ProviderHeader } from './shared/ProviderHeader'
 

@@ -1,4 +1,4 @@
-import { ParameterFieldConfig } from '../components/shared/ModelParameterField'
+import { ParameterFieldConfig } from '../components/common/ModelParameterField.tsx'
 
 export const MODEL_PARAMETERS: ParameterFieldConfig[] = [
   {

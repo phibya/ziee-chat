@@ -153,7 +153,7 @@ export function RAGRepositoriesSettings() {
           size="small"
           checked={record.enabled}
           disabled={!canEditRepositories}
-          onChange={(enabled) => {
+          onChange={enabled => {
             // TODO: Update repository enabled status
             console.log('Update repository enabled:', record.id, enabled)
           }}
@@ -191,7 +191,7 @@ export function RAGRepositoriesSettings() {
               label: 'Delete',
               onClick: async () => handleDelete(record.id, record.name),
               danger: true,
-            }
+            },
           )
         }
 
@@ -207,7 +207,11 @@ export function RAGRepositoriesSettings() {
   return (
     <SettingsPageContainer title="RAG Repositories">
       <Card>
-        <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <Flex
+          justify="space-between"
+          align="center"
+          style={{ marginBottom: 16 }}
+        >
           <Title level={4} style={{ margin: 0 }}>
             RAG Repositories
           </Title>
@@ -226,8 +230,9 @@ export function RAGRepositoriesSettings() {
         </Flex>
 
         <Typography.Paragraph type="secondary">
-          Manage RAG repositories that provide pre-configured databases for download.
-          Repositories are prioritized by their priority value (higher values first).
+          Manage RAG repositories that provide pre-configured databases for
+          download. Repositories are prioritized by their priority value (higher
+          values first).
         </Typography.Paragraph>
 
         {repositories.length === 0 ? (

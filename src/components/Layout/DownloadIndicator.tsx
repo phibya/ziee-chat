@@ -12,7 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Stores } from '../../store'
 import type { DownloadInstance } from '../../types/api/modelDownloads'
-import { DownloadItem } from '../shared/DownloadItem'
+import { DownloadItem } from '../common/DownloadItem.tsx'
 
 const { Text } = Typography
 

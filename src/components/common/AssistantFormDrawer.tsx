@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Divider, Form, Input, Switch, Typography } from 'antd'
-import { Drawer } from '../common/Drawer.tsx'
-import { Assistant } from '../../types/api/assistant'
+import { Drawer } from './Drawer.tsx'
+import { Assistant } from '../../types/api/assistant.ts'
 import {
   closeAssistantDrawer,
   createSystemAdminAssistant,
@@ -12,8 +12,8 @@ import {
   updateSystemAdminAssistant,
   updateUserAssistant,
 } from '../../store'
-import { ModelParameterField } from './ModelParameterField'
-import { MODEL_PARAMETERS } from '../../constants/modelParameters'
+import { ModelParameterField } from './ModelParameterField.tsx'
+import { MODEL_PARAMETERS } from '../../constants/modelParameters.ts'
 
 const { Text } = Typography
 const { TextArea } = Input

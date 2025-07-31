@@ -17,7 +17,10 @@ const RAG_PROVIDER_OPTIONS = [
   { value: 'custom', label: '🔧 Custom' },
 ]
 
-export function AddRAGProviderDrawer({ open = false, onClose }: AddRAGProviderDrawerProps) {
+export function AddRAGProviderDrawer({
+  open = false,
+  onClose,
+}: AddRAGProviderDrawerProps) {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
@@ -87,20 +90,17 @@ export function AddRAGProviderDrawer({ open = false, onClose }: AddRAGProviderDr
           name="type"
           rules={[{ required: true, message: 'Please select a type' }]}
         >
-          <Select options={RAG_PROVIDER_OPTIONS} placeholder="Select provider type" />
+          <Select
+            options={RAG_PROVIDER_OPTIONS}
+            placeholder="Select provider type"
+          />
         </Form.Item>
 
-        <Form.Item
-          label="API Key"
-          name="api_key"
-        >
+        <Form.Item label="API Key" name="api_key">
           <Input.Password placeholder="Enter API key (if required)" />
         </Form.Item>
 
-        <Form.Item
-          label="Base URL"
-          name="base_url"
-        >
+        <Form.Item label="Base URL" name="base_url">
           <Input placeholder="Enter base URL (if required)" />
         </Form.Item>
       </Form>

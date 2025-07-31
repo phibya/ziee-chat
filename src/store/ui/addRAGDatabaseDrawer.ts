@@ -6,11 +6,13 @@ interface AddRAGDatabaseDrawerState {
   providerId?: string
 }
 
-export const useAddRAGDatabaseDrawerStore = create<AddRAGDatabaseDrawerState>(() => ({
-  open: false,
-  loading: false,
-  providerId: undefined,
-}))
+export const useAddRAGDatabaseDrawerStore = create<AddRAGDatabaseDrawerState>(
+  () => ({
+    open: false,
+    loading: false,
+    providerId: undefined,
+  }),
+)
 
 // Modal actions
 export const openAddRAGDatabaseDrawer = (providerId?: string) => {
