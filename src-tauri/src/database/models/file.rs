@@ -14,6 +14,7 @@ pub struct File {
     pub checksum: Option<String>,
     pub project_id: Option<Uuid>,
     pub thumbnail_count: i32,
+    pub page_count: i32,
     pub processing_metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -30,6 +31,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for File {
             checksum: row.try_get("checksum")?,
             project_id: row.try_get("project_id")?,
             thumbnail_count: row.try_get("thumbnail_count")?,
+            page_count: row.try_get("page_count")?,
             processing_metadata: row.try_get("processing_metadata")?,
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
@@ -113,9 +115,9 @@ pub struct FileListParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessingResult {
     pub text_content: Option<String>,
-    pub base64_content: Option<String>,
     pub metadata: serde_json::Value,
     pub thumbnail_count: i32,
+    pub page_count: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -128,6 +130,7 @@ pub struct FileCreateData {
     pub checksum: Option<String>,
     pub project_id: Option<Uuid>,
     pub thumbnail_count: i32,
+    pub page_count: i32,
     pub processing_metadata: serde_json::Value,
 }
 

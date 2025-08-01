@@ -1,16 +1,17 @@
 use std::path::Path;
 use std::sync::Arc;
 use uuid::Uuid;
+use image::{ImageReader, imageops::FilterType, GenericImageView};
 
 use crate::utils::file_storage::FileStorage;
-use super::{ContentProcessor, ThumbnailGenerator, ProcessingResult};
-use super::processors::{TextProcessor, ImageProcessor, PdfProcessor, OfficeProcessor, VideoProcessor};
-use super::thumbnails::{ImageThumbnailGenerator, TextThumbnailGenerator, PdfThumbnailGenerator, OfficeThumbnailGenerator, VideoThumbnailGenerator};
+use super::{ContentProcessor, ImageGenerator as ImageGeneratorTrait, ProcessingResult, MAX_IMAGE_DIM};
+use super::processors::{TextProcessor, ImageProcessor, PdfProcessor, OfficeProcessor, SpreadsheetProcessor};
+use super::processors::{ImageGenerator, TextImageGenerator, PdfImageGenerator, OfficeImageGenerator, SpreadsheetImageGenerator};
 
 pub struct ProcessingManager {
     storage: Arc<FileStorage>,
     content_processors: Vec<Box<dyn ContentProcessor>>,
-    thumbnail_generators: Vec<Box<dyn ThumbnailGenerator>>,
+    image_generators: Vec<Box<dyn ImageGeneratorTrait>>,
 }
 
 impl ProcessingManager {
@@ -18,7 +19,7 @@ impl ProcessingManager {
         let mut manager = Self {
             storage,
             content_processors: Vec::new(),
-            thumbnail_generators: Vec::new(),
+            image_generators: Vec::new(),
         };
 
         // Register built-in processors
@@ -26,14 +27,14 @@ impl ProcessingManager {
         manager.register_content_processor(Box::new(ImageProcessor::new()));
         manager.register_content_processor(Box::new(PdfProcessor::new()));
         manager.register_content_processor(Box::new(OfficeProcessor::new()));
-        manager.register_content_processor(Box::new(VideoProcessor::new()));
+        manager.register_content_processor(Box::new(SpreadsheetProcessor::new()));
 
-        // Register built-in thumbnail generators
-        manager.register_thumbnail_generator(Box::new(ImageThumbnailGenerator::new()));
-        manager.register_thumbnail_generator(Box::new(TextThumbnailGenerator::new()));
-        manager.register_thumbnail_generator(Box::new(PdfThumbnailGenerator::new()));
-        manager.register_thumbnail_generator(Box::new(OfficeThumbnailGenerator::new()));
-        manager.register_thumbnail_generator(Box::new(VideoThumbnailGenerator::new()));
+        // Register built-in image generators
+        manager.register_image_generator(Box::new(ImageGenerator::new()));
+        manager.register_image_generator(Box::new(TextImageGenerator::new()));
+        manager.register_image_generator(Box::new(PdfImageGenerator::new()));
+        manager.register_image_generator(Box::new(OfficeImageGenerator::new()));
+        manager.register_image_generator(Box::new(SpreadsheetImageGenerator::new()));
 
         manager
     }
@@ -42,8 +43,8 @@ impl ProcessingManager {
         self.content_processors.push(processor);
     }
 
-    pub fn register_thumbnail_generator(&mut self, generator: Box<dyn ThumbnailGenerator>) {
-        self.thumbnail_generators.push(generator);
+    pub fn register_image_generator(&mut self, generator: Box<dyn ImageGeneratorTrait>) {
+        self.image_generators.push(generator);
     }
 
     pub async fn process_file(
@@ -66,29 +67,39 @@ impl ProcessingManager {
                     result.metadata = metadata;
                 }
 
-                // Convert to base64 if applicable
-                if let Ok(Some(base64)) = processor.to_base64(file_path).await {
-                    result.base64_content = Some(base64);
-                }
 
                 break; // Use first matching processor
             }
         }
 
-        // Generate thumbnails
-        for generator in &self.thumbnail_generators {
+        // Generate high-quality images only - thumbnails can be created by resizing these
+        for generator in &self.image_generators {
             if generator.can_generate(mime_type) {
-                // Extract file ID from path for thumbnail directory
+                // Extract file ID from path for directories
                 let file_id = self.extract_file_id_from_path(file_path)?;
-                let thumbnail_dir = self.storage.create_thumbnail_directory(file_id).await?;
+                
+                // Generate high-quality images
+                let image_dir = self.storage.create_image_directory(file_id).await?;
+                match generator.generate_images(file_path, &image_dir, MAX_IMAGE_DIM).await {
+                    Ok(image_count) => {
+                        result.page_count = image_count as i32;
+                        if image_count > 0 {
+                            println!("Generated {} high-quality images", image_count);
+                        }
 
-                match generator.generate_thumbnails(file_path, &thumbnail_dir).await {
-                    Ok(count) => {
-                        result.thumbnail_count = count as i32;
+                        // Generate thumbnails from the high-quality images (max 5)
+                        let thumbnail_dir = self.storage.create_thumbnail_directory(file_id).await?;
+                        let thumbnail_count = self.generate_thumbnails_from_images(&image_dir, &thumbnail_dir, image_count).await?;
+                        result.thumbnail_count = thumbnail_count as i32;
+
+                        if thumbnail_count > 0 {
+                            println!("Generated {} thumbnails", thumbnail_count);
+                        }
+
                         break; // Use first successful generator
                     }
                     Err(e) => {
-                        eprintln!("Failed to generate thumbnails: {}", e);
+                        eprintln!("Failed to generate images: {}", e);
                         continue;
                     }
                 }
@@ -106,5 +117,66 @@ impl ProcessingManager {
 
         let file_id = Uuid::parse_str(filename)?;
         Ok(file_id)
+    }
+
+    async fn generate_thumbnails_from_images(
+        &self,
+        image_dir: &Path,
+        thumbnail_dir: &Path,
+        image_count: u32,
+    ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+        let max_thumbnails = 5u32; // Maximum 5 thumbnails
+        let thumbnail_max_dim = 300u32; // Thumbnail max dimension
+
+        let mut thumbnail_count = 0;
+
+        // Process up to max_thumbnails or image_count, whichever is smaller
+        let limit = image_count.min(max_thumbnails);
+
+        for page_index in 1..=limit {
+            let image_path = image_dir.join(format!("page_{}.jpg", page_index));
+            
+            if !image_path.exists() {
+                continue;
+            }
+
+            // Load the high-quality image
+            let img = match ImageReader::open(&image_path) {
+                Ok(reader) => match reader.decode() {
+                    Ok(img) => img,
+                    Err(e) => {
+                        eprintln!("Failed to decode image {}: {}", image_path.display(), e);
+                        continue;
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Failed to open image {}: {}", image_path.display(), e);
+                    continue;
+                }
+            };
+
+            // Resize to thumbnail
+            let (width, height) = img.dimensions();
+            let thumbnail = if width <= thumbnail_max_dim && height <= thumbnail_max_dim {
+                img // Already small enough
+            } else {
+                let ratio = (thumbnail_max_dim as f32 / width.max(height) as f32).min(1.0);
+                let new_width = (width as f32 * ratio) as u32;
+                let new_height = (height as f32 * ratio) as u32;
+                img.resize(new_width, new_height, FilterType::Lanczos3)
+            };
+
+            // Save thumbnail
+            let thumbnail_path = thumbnail_dir.join(format!("page_{}.jpg", page_index));
+            match thumbnail.to_rgb8().save(&thumbnail_path) {
+                Ok(_) => thumbnail_count += 1,
+                Err(e) => {
+                    eprintln!("Failed to save thumbnail {}: {}", thumbnail_path.display(), e);
+                    continue;
+                }
+            }
+        }
+
+        Ok(thumbnail_count)
     }
 }

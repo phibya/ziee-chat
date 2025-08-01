@@ -20,7 +20,7 @@ impl FileStorage {
             &self.base_path,
             &self.base_path.join("originals"),
             &self.base_path.join("text"),
-            &self.base_path.join("base64"),
+            &self.base_path.join("images"),
             &self.base_path.join("thumbnails"),
         ];
 
@@ -46,10 +46,16 @@ impl FileStorage {
             .join(format!("{}.txt", file_id))
     }
 
-    pub fn get_base64_path(&self, file_id: Uuid) -> PathBuf {
+
+    pub fn get_image_dir(&self, file_id: Uuid) -> PathBuf {
         self.base_path
-            .join("base64")
-            .join(format!("{}.b64", file_id))
+            .join("images")
+            .join(file_id.to_string())
+    }
+
+    pub fn get_image_path(&self, file_id: Uuid, page: u32) -> PathBuf {
+        self.get_image_dir(file_id)
+            .join(format!("page_{}.jpg", page))
     }
 
     pub fn get_thumbnail_dir(&self, file_id: Uuid) -> PathBuf {
@@ -125,14 +131,6 @@ impl FileStorage {
         self.save_file_bytes(&text_path, content.as_bytes()).await
     }
 
-    pub async fn save_base64_content(
-        &self,
-        file_id: Uuid,
-        content: &str,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let base64_path = self.get_base64_path(file_id);
-        self.save_file_bytes(&base64_path, content.as_bytes()).await
-    }
 
     pub async fn read_text_content(
         &self,
@@ -149,20 +147,6 @@ impl FileStorage {
         }
     }
 
-    pub async fn read_base64_content(
-        &self,
-        file_id: Uuid,
-    ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
-        let base64_path = self.get_base64_path(file_id);
-        if !base64_path.exists() {
-            return Ok(None);
-        }
-        
-        match self.read_file_string(&base64_path).await {
-            Ok(content) => Ok(Some(content)),
-            Err(_) => Ok(None),
-        }
-    }
 
     pub async fn calculate_checksum(
         &self,
@@ -194,10 +178,11 @@ impl FileStorage {
             tokio_fs::remove_file(text_path).await?;
         }
 
-        // Delete base64 content
-        let base64_path = self.get_base64_path(file_id);
-        if base64_path.exists() {
-            tokio_fs::remove_file(base64_path).await?;
+
+        // Delete images directory
+        let image_dir = self.get_image_dir(file_id);
+        if image_dir.exists() {
+            tokio_fs::remove_dir_all(image_dir).await?;
         }
 
         // Delete thumbnails directory
@@ -207,6 +192,15 @@ impl FileStorage {
         }
 
         Ok(())
+    }
+
+    pub async fn create_image_directory(
+        &self,
+        file_id: Uuid,
+    ) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+        let image_dir = self.get_image_dir(file_id);
+        tokio_fs::create_dir_all(&image_dir).await?;
+        Ok(image_dir)
     }
 
     pub async fn create_thumbnail_directory(

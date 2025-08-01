@@ -54,14 +54,11 @@
     "resources": {
       "../hub": "hub",
       "../dist/ui": "ui",
-      "./target/pdfium/target/*": "lib",
-      "../tessdata/eng.traineddata": "tessdata/eng.traineddata",
-      "../tessdata/vie.traineddata": "tessdata/vie.traineddata"
+      "./target/pdfium/target/*": "lib"
     },
     "externalBin": [
       "target/mistralrs-build/mistralrs-server",
-      "target/pandoc/pandoc",
-      "target/tesseract/tesseract"
+      "target/pandoc/pandoc"
     ]
   }
 }

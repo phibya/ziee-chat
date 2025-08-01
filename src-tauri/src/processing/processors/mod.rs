@@ -2,10 +2,10 @@ pub mod text;
 pub mod image;
 pub mod pdf;
 pub mod office;
-pub mod video;
+pub mod spreadsheet;
 
-pub use text::TextProcessor;
-pub use image::ImageProcessor;
-pub use pdf::PdfProcessor;
-pub use office::OfficeProcessor;
-pub use video::VideoProcessor;
+pub use text::{TextProcessor, TextImageGenerator};
+pub use image::{ImageProcessor, ImageGenerator};
+pub use pdf::{PdfProcessor, PdfImageGenerator};
+pub use office::{OfficeProcessor, OfficeImageGenerator};
+pub use spreadsheet::{SpreadsheetProcessor, SpreadsheetImageGenerator};

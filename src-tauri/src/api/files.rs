@@ -153,9 +153,6 @@ async fn process_file_upload(
         FILE_STORAGE.save_text_content(file_id, text_content).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     }
 
-    if let Some(ref base64_content) = processing_result.base64_content {
-        FILE_STORAGE.save_base64_content(file_id, base64_content).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    }
 
     // Create file record
     let file_create_data = FileCreateData {
@@ -167,6 +164,7 @@ async fn process_file_upload(
         checksum: Some(checksum),
         project_id,
         thumbnail_count: processing_result.thumbnail_count,
+        page_count: processing_result.page_count,
         processing_metadata: processing_result.metadata,
     };
 

@@ -13,9 +13,9 @@ pub async fn create_file(
         r#"
         INSERT INTO files (
             id, user_id, filename, file_size, mime_type, 
-            checksum, project_id, thumbnail_count, processing_metadata
+            checksum, project_id, thumbnail_count, page_count, processing_metadata
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
         "#,
     )
@@ -27,6 +27,7 @@ pub async fn create_file(
     .bind(data.checksum)
     .bind(data.project_id)
     .bind(data.thumbnail_count)
+    .bind(data.page_count)
     .bind(data.processing_metadata)
     .fetch_one(pool)
     .await?;
@@ -149,6 +150,28 @@ pub async fn update_file_thumbnail_count(
     
     let result = sqlx::query("UPDATE files SET thumbnail_count = $1 WHERE id = $2")
         .bind(thumbnail_count)
+        .bind(file_id)
+        .execute(pool)
+        .await?;
+
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn update_file_processing_results(
+    file_id: Uuid,
+    thumbnail_count: i32,
+    page_count: i32,
+    processing_metadata: serde_json::Value,
+) -> Result<bool, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+    
+    let result = sqlx::query(
+        "UPDATE files SET thumbnail_count = $1, page_count = $2, processing_metadata = $3 WHERE id = $4"
+    )
+        .bind(thumbnail_count)
+        .bind(page_count)
+        .bind(processing_metadata)
         .bind(file_id)
         .execute(pool)
         .await?;

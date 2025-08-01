@@ -33,8 +33,10 @@ interface FileModalContentProps {
 
 const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
   const [thumbnails, setThumbnails] = useState<string[]>([])
+  const [thumbnailOrder, setThumbnailOrder] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [downloadToken, setDownloadToken] = useState<string | null>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
   const { message } = App.useApp()
 
   useEffect(() => {
@@ -61,6 +63,9 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
           file.thumbnail_count || 1,
         )
         setThumbnails(thumbnailUrls)
+        setThumbnailOrder(
+          Array.from({ length: thumbnailUrls.length }, (_, i) => i),
+        )
       } catch (error) {
         console.debug('Failed to load thumbnails:', error)
       } finally {
@@ -78,6 +83,28 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
     }
   }, [file.id, file.thumbnail_count])
 
+  const handleThumbnailClick = () => {
+    if (thumbnailOrder.length <= 1 || isAnimating) return
+
+    setIsAnimating(true)
+
+    // Add a slight delay to create a more smooth transition effect
+    setTimeout(() => {
+      // Move the front thumbnail to the end
+      const newOrder = [...thumbnailOrder]
+      const frontIndex = newOrder.shift()
+      if (frontIndex !== undefined) {
+        newOrder.push(frontIndex)
+      }
+      setThumbnailOrder(newOrder)
+    }, 50)
+
+    // Reset animation state after animation completes
+    setTimeout(() => {
+      setIsAnimating(false)
+    }, 350)
+  }
+
   return (
     <div className="flex flex-col items-center gap-4 py-4">
       <div className="text-center">
@@ -87,21 +114,32 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
           <div className="mb-4 relative">
             {/* Stack multiple thumbnails */}
             <div
-              className="relative"
+              className="relative cursor-pointer group"
               style={{ width: 'fit-content', margin: '0 auto' }}
+              onClick={handleThumbnailClick}
+              title={
+                thumbnailOrder.length > 1
+                  ? 'Click to cycle through thumbnails'
+                  : ''
+              }
             >
-              {thumbnails.map((url, index) => (
+              {thumbnailOrder.map((originalIndex, displayIndex) => (
                 <img
-                  key={index}
-                  src={url}
-                  alt={`${file.filename} - Page ${index + 1}`}
-                  className="max-w-full max-h-96 object-contain rounded shadow"
+                  key={`${originalIndex}-${displayIndex}`}
+                  src={thumbnails[originalIndex]}
+                  alt={`${file.filename} - Page ${originalIndex + 1}`}
+                  className="max-w-full max-h-96 object-contain rounded shadow transition-all duration-300 ease-in-out hover:scale-105"
                   style={{
-                    position: index === 0 ? 'relative' : 'absolute',
-                    top: index === 0 ? 0 : `${index * 8}px`,
-                    left: index === 0 ? 0 : `${index * 8}px`,
-                    zIndex: thumbnails.length - index,
-                    transform: index > 0 ? 'rotate(2deg)' : 'none',
+                    position: displayIndex === 0 ? 'relative' : 'absolute',
+                    top: displayIndex === 0 ? 0 : `${displayIndex * 8}px`,
+                    left: displayIndex === 0 ? 0 : `${displayIndex * 8}px`,
+                    zIndex: thumbnailOrder.length - displayIndex,
+                    transform: `${displayIndex > 0 ? 'rotate(2deg)' : 'none'} ${
+                      isAnimating && displayIndex === 0
+                        ? 'scale(0.95) translateY(-5px)'
+                        : ''
+                    }`,
+                    opacity: isAnimating && displayIndex === 0 ? 0.8 : 1,
                   }}
                 />
               ))}
