@@ -1,5 +1,4 @@
 import {
-  CopyOutlined,
   DeleteOutlined,
   DownOutlined,
   MenuOutlined,
@@ -24,7 +23,6 @@ import { isDesktopApp } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearProvidersError,
-  cloneExistingProvider,
   deleteModelProvider,
   loadAllModelProviders,
   openAddProviderDrawer,
@@ -169,21 +167,6 @@ export function ProvidersSettings() {
     })
   }
 
-  const handleCloneProvider = async (providerId: string) => {
-    if (!canEditProviders) {
-      message.error(t('providers.noPermissionClone'))
-      return
-    }
-
-    try {
-      await cloneExistingProvider(providerId)
-      message.success(t('providers.providerCloned'))
-    } catch (error) {
-      console.error('Failed to clone provider:', error)
-      // Error is handled by the store
-    }
-  }
-
   const getProviderActions = (provider: Provider) => {
     const actions: any[] = []
 
@@ -196,13 +179,6 @@ export function ProvidersSettings() {
       //     setSelectedProvider(provider.id)
       //   },
       // })
-
-      actions.push({
-        key: 'clone',
-        icon: <CopyOutlined />,
-        label: t('buttons.clone'),
-        onClick: () => handleCloneProvider(provider.id),
-      })
 
       actions.push({
         key: 'delete',

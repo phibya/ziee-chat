@@ -163,15 +163,32 @@ impl AnthropicProvider {
                     }));
                 }
                 ContentPart::FileReference(file_ref) => {
-                    // Process file reference using dedicated function
-                    let file_content = self.process_file_reference_content(file_ref).await?;
-                    content_array.push(file_content);
+                    // Check if file type is supported before processing
+                    if let Some(mime_type) = &file_ref.mime_type {
+                        if self.supported_file_types().contains(mime_type) {
+                            // Process file reference using dedicated function
+                            match self.process_file_reference_content(file_ref).await {
+                                Ok(file_content) => content_array.push(file_content),
+                                Err(e) => {
+                                    eprintln!("Error processing supported file {}: {}", file_ref.filename, e);
+                                    // Continue processing other parts instead of failing the entire request
+                                }
+                            }
+                        } else {
+                            println!("Skipping unsupported file type '{}' for file: {}", mime_type, file_ref.filename);
+                            // File is not supported - skip it completely (don't add to content_array)
+                        }
+                    } else {
+                        println!("Skipping file with unknown MIME type: {}", file_ref.filename);
+                        // No MIME type - skip it completely
+                    }
                 }
             }
         }
 
         Ok(content_array)
     }
+
 
     /// Process a file reference and convert it to appropriate Anthropic content format
     /// This handles unresolved file references by creating placeholder content
@@ -323,7 +340,7 @@ impl AnthropicProvider {
         // Make the upload request
         let response = self
             .client
-            .post(&format!("{}/v1/files", self.base_url))
+            .post(&format!("{}/files", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("anthropic-beta", "files-api-2025-04-14")
@@ -414,16 +431,9 @@ impl AIProvider for AnthropicProvider {
         let processed_request = request;
         let body = self.prepare_request(&processed_request).await?;
 
-        println!(
-            "DEBUG: Anthropic request body: {}",
-            serde_json::to_string_pretty(&body).unwrap_or_default()
-        );
-        println!("DEBUG: API key length: {}", self.api_key.len());
-        println!("DEBUG: Base URL: {}", self.base_url);
-
         let response = self
             .client
-            .post(&format!("{}/v1/messages", self.base_url))
+            .post(&format!("{}/messages", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("Content-Type", "application/json")
             .header("anthropic-version", "2023-06-01")
@@ -470,7 +480,7 @@ impl AIProvider for AnthropicProvider {
         // This will be fixed when we integrate with the chat handler
         let processed_request = request; // TODO: Add provider_id parameter
         let body = self.prepare_request(&processed_request).await?;
-        
+
         let response = self
             .client
             .post(&format!("{}/messages", self.base_url))
@@ -602,7 +612,7 @@ impl AIProvider for AnthropicProvider {
 
         let response = self
             .client
-            .post(&format!("{}/v1/files", self.base_url))
+            .post(&format!("{}/files", self.base_url))
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .header("anthropic-beta", "files-api-2025-04-14")
@@ -690,16 +700,13 @@ impl AIProvider for AnthropicProvider {
 impl AnthropicProvider {
     fn should_upload_file(&self, file_ref: &FileReference) -> bool {
         const MAX_FILE_SIZE: i64 = 500 * 1024 * 1024; // 500MB
-        const MIN_UPLOAD_SIZE: i64 = 1024 * 1024; // 1MB - smaller files embed directly
 
+        // Check file size limits
         if file_ref.file_size > MAX_FILE_SIZE {
             return false;
         }
 
-        if file_ref.file_size < MIN_UPLOAD_SIZE {
-            return false; // Too small, embed directly
-        }
-
+        // Always upload supported files regardless of size
         // Check supported file types
         if let Some(mime_type) = &file_ref.mime_type {
             self.supported_file_types().contains(mime_type)

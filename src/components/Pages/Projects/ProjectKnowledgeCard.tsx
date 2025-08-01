@@ -1,4 +1,4 @@
-import { UploadOutlined } from '@ant-design/icons'
+import { CloseCircleOutlined, UploadOutlined } from '@ant-design/icons'
 import {
   App,
   Button,
@@ -11,7 +11,12 @@ import {
 } from 'antd'
 import React, { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { loadProjectFiles, Stores, uploadFilesToProject } from '../../../store'
+import {
+  loadProjectFiles,
+  removeProjectFileUploadProgress,
+  Stores,
+  uploadFilesToProject,
+} from '../../../store'
 import { FileCard } from '../../common/FileCard.tsx'
 
 const { Text } = Typography
@@ -24,12 +29,12 @@ export const ProjectKnowledgeCard: React.FC = () => {
   // Projects store
   const { currentProject } = Stores.Projects
 
-  // Project files store
-  const { uploading, uploadProgress } = Stores.ProjectFiles
+  // Project files from Projects store (now merged)
+  const { uploading, uploadProgress, files } = Stores.Projects
 
   // Get files for this project
   const projectFiles = projectId
-    ? Stores.ProjectFiles.filesByProject[projectId] || []
+    ? files.filter(file => file.project_id === projectId)
     : []
 
   useEffect(() => {
@@ -113,7 +118,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
         <div className={'py-0 flex flex-col gap-1 pt-2'}>
           <Text strong>Uploading files...</Text>
           <div className={'py-4 flex flex-col gap-2'}>
-            {uploadProgress.map((progress, index) => (
+            {uploadProgress.map((progress: any, index: number) => (
               <div key={index}>
                 <Text style={{ fontSize: '12px' }}>{progress.filename}</Text>
                 <Progress
@@ -122,9 +127,17 @@ export const ProjectKnowledgeCard: React.FC = () => {
                   status={progress.status === 'error' ? 'exception' : 'active'}
                 />
                 {progress.error && (
-                  <Text type="danger" style={{ fontSize: '10px' }}>
-                    {progress.error}
-                  </Text>
+                  <Flex className={'justify-between w-full'}>
+                    <Text type="danger">{progress.error}</Text>
+                    <Button
+                      type="text"
+                      icon={<CloseCircleOutlined />}
+                      size="small"
+                      onClick={() => {
+                        removeProjectFileUploadProgress(progress.id)
+                      }}
+                    />
+                  </Flex>
                 )}
               </div>
             ))}
@@ -148,12 +161,12 @@ export const ProjectKnowledgeCard: React.FC = () => {
         <div className="flex gap-2 flex-wrap">
           {/* Show uploading files */}
           {uploading &&
-            uploadProgress.map((progress, index) => (
+            uploadProgress.map((progress: any, index: number) => (
               <FileCard key={`uploading-${index}`} uploadingFile={progress} />
             ))}
 
           {/* Show existing files */}
-          {projectFiles.map(file => (
+          {projectFiles.map((file: any) => (
             <FileCard key={file.id} file={file} />
           ))}
         </div>

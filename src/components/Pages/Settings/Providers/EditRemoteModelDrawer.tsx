@@ -20,13 +20,11 @@ export function EditRemoteModelDrawer() {
   const [loading, setLoading] = useState(false)
 
   const { open, modelId } = Stores.UI.EditRemoteModelDrawer
-  const { modelsByProvider } = Stores.AdminProviders
+  const { providers } = Stores.AdminProviders
 
-  // Find the current model from the store
+  // Find the current model from all providers
   const currentModel = modelId
-    ? Object.values(modelsByProvider)
-        .flat()
-        .find(m => m.id === modelId)
+    ? providers.flatMap(p => p.models).find(m => m.id === modelId)
     : null
 
   useEffect(() => {

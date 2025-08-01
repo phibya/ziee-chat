@@ -19,6 +19,7 @@ use url::Url;
 
 #[derive(Deserialize, Debug)]
 struct ApiResult {
+    transfer: String,
     objects: Vec<Object>,
 }
 
@@ -38,6 +39,7 @@ struct Action {
 #[derive(Deserialize, Serialize, Debug)]
 struct Download {
     href: String,
+    #[serde(default)]
     header: HashMap<String, String>,
 }
 
@@ -200,6 +202,7 @@ impl LfsService {
         repo_remote_url: &str,
         access_token: Option<&str>,
         randomizer_bytes: Option<usize>,
+        progress_tx: Option<&mpsc::UnboundedSender<LfsProgress>>,
     ) -> Result<NamedTempFile, LfsError> {
         const MEDIA_TYPE: &str = "application/vnd.git-lfs+json";
         let client = Client::builder().build()?;
@@ -216,6 +219,13 @@ impl LfsService {
             "objects": vec![Object::from_metadata(meta_data)],
             "hash_algo": "sha256"
         });
+
+        // if repo_remote_url not ends with .git, append it
+        let repo_remote_url = if repo_remote_url.ends_with(".git") {
+            repo_remote_url.to_string()
+        } else {
+            format!("{}.git", repo_remote_url)
+        };
 
         let request_url = repo_remote_url.to_owned() + "/info/lfs/objects/batch";
         let request_url = Self::url_with_auth(&request_url, access_token)?;
@@ -234,12 +244,23 @@ impl LfsService {
             
             return if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
                 Err(LfsError::AccessDenied)
+            } else if status == StatusCode::NOT_FOUND && body.contains("Cannot POST") {
+                // Likely a repository that doesn't support Git LFS batch API (e.g., some Hugging Face repos)
+                Err(LfsError::InvalidResponse(format!(
+                    "Repository does not support Git LFS batch API. This may be a Hugging Face repository without LFS enabled, or the files may not be LFS files. Status: {}", 
+                    status
+                )))
             } else {
                 Err(LfsError::ResponseNotOkay(format!("{}", status)))
             };
         }
         
-        let parsed_result = response.json::<ApiResult>().await?;
+        // Get response text for debugging before parsing
+        let response_text = response.text().await?;
+        debug!("LFS batch API response: {}", response_text);
+        
+        let parsed_result: ApiResult = serde_json::from_str(&response_text)
+            .map_err(|e| LfsError::InvalidResponse(format!("Failed to parse LFS response: {}", e)))?;
 
         // Download the file
         let object = parsed_result
@@ -290,6 +311,8 @@ impl LfsService {
 
         let mut hasher = Sha256::new();
         let mut stream = response.bytes_stream();
+        let mut downloaded_bytes = 0u64;
+        let total_size = meta_data.size;
         
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result?;
@@ -297,7 +320,18 @@ impl LfsService {
                 error!("Could not write tempfile");
                 LfsError::Io(e)
             })?;
-            hasher.update(chunk);
+            hasher.update(&chunk);
+            
+            // Update progress
+            downloaded_bytes += chunk.len() as u64;
+            if let Some(tx) = progress_tx {
+                let _ = tx.send(LfsProgress {
+                    phase: LfsPhase::Downloading,
+                    current: downloaded_bytes,
+                    total: total_size,
+                    message: format!("Downloading... {:.1}%", (downloaded_bytes as f64 / total_size as f64) * 100.0),
+                });
+            }
         }
         
         temp_file.as_file().flush().map_err(|e| {
@@ -322,6 +356,7 @@ impl LfsService {
         metadata: &LfsMetadata,
         access_token: Option<&str>,
         randomizer_bytes: Option<usize>,
+        progress_tx: Option<&mpsc::UnboundedSender<LfsProgress>>,
     ) -> Result<(PathBuf, FilePullMode), LfsError> {
         let cache_dir = Self::get_cache_dir(&repo_root, metadata).await?;
         debug!("cache dir {:?}", &cache_dir);
@@ -338,7 +373,7 @@ impl LfsService {
                 )
             })?;
 
-            let temp_file = Self::download_file(metadata, &repo_url, access_token, randomizer_bytes).await?;
+            let temp_file = Self::download_file(metadata, &repo_url, access_token, randomizer_bytes, progress_tx).await?;
             
             if cache_file.exists() {
                 info!("cache file {:?} is already written from other process", &cache_file);
@@ -358,6 +393,7 @@ impl LfsService {
         lfs_file: P,
         access_token: Option<&str>,
         randomizer_bytes: Option<usize>,
+        progress_tx: Option<&mpsc::UnboundedSender<LfsProgress>>,
     ) -> Result<FilePullMode, LfsError> {
         info!("Pulling file {}", lfs_file.as_ref().display());
         
@@ -373,12 +409,10 @@ impl LfsService {
         let metadata = LfsMetadata::parse_from_file(&lfs_file).await?;
         debug!("Downloading file");
         
-        let repo_root = Self::get_repo_root(&lfs_file).await.map_err(|e| {
-            LfsError::DirectoryTraversalError(format!("Could not find git repo root: {:?}", e))
-        })?;
+        let repo_root = Self::get_repo_root(&lfs_file).await?;
         
         let (file_name_cached, origin) =
-            Self::get_file_cached(&repo_root, &metadata, access_token, randomizer_bytes).await?;
+            Self::get_file_cached(&repo_root, &metadata, access_token, randomizer_bytes, progress_tx).await?;
             
         info!(
             "Found file (Origin: {:?}), linking to {}",
@@ -443,10 +477,12 @@ impl LfsService {
 
             let full_path = repo_path.join(file_path);
             
-            if let Ok(content) = fs::read(&full_path).await {
-                if content.starts_with(b"version https://git-lfs.github.com/spec/v1") {
-                    if let Ok(content_str) = String::from_utf8(content) {
-                        if let Some((oid, size)) = parse_lfs_pointer_content(&content_str) {
+            // Use the existing is_lfs_pointer_file function to check if file is an LFS pointer
+            if let Ok(is_lfs) = is_lfs_pointer_file(&full_path).await {
+                if is_lfs {
+                    // Read the file content to get metadata
+                    if let Ok(content) = fs::read_to_string(&full_path).await {
+                        if let Some((oid, size)) = parse_lfs_pointer_content(&content) {
                             lfs_files.push(LfsPointer {
                                 oid,
                                 size,
@@ -499,7 +535,7 @@ impl LfsService {
 
             // Download the file
             let full_file_path = repo_path.join(&lfs_pointer.path);
-            match Self::pull_file(&full_file_path, auth_token, None).await {
+            match Self::pull_file(&full_file_path, auth_token, None, Some(&progress_tx)).await {
                 Ok(_) => {
                     downloaded_size += lfs_pointer.size;
                     

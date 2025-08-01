@@ -34,12 +34,6 @@ import {
   UpdateDefaultLanguageRequest,
 } from './globalConfig'
 import {
-  DocumentExtractionConfigResponse,
-  SetMethodRequest,
-  SetOcrSettingsRequest,
-  SetLlmSettingsRequest,
-} from './document-extraction'
-import {
   File,
   FileListParams,
   FileListResponse,
@@ -63,7 +57,6 @@ import {
 import {
   CreateProjectRequest,
   Project,
-  ProjectConversation,
   ProjectDetailResponse,
   ProjectListParams,
   ProjectListResponse,
@@ -188,12 +181,6 @@ export const ApiEndpoints = {
   'Projects.delete': 'DELETE /api/projects/{project_id}',
   'Projects.uploadFile': 'POST /api/projects/{project_id}/files',
   'Projects.listFiles': 'GET /api/projects/{project_id}/files',
-  'Projects.deleteDocument':
-    'DELETE /api/projects/{project_id}/documents/{document_id}',
-  'Projects.linkConversation':
-    'POST /api/projects/{project_id}/conversations/{conversation_id}',
-  'Projects.unlinkConversation':
-    'DELETE /api/projects/{project_id}/conversations/{conversation_id}',
 
   // File Management
   'Files.upload': 'POST /api/files/upload',
@@ -302,16 +289,6 @@ export const ApiEndpoints = {
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
 
-  // Admin - Document Extraction Configuration
-  'Admin.getExtractionConfig':
-    'GET /api/admin/config/document-extraction/{file_type}',
-  'Admin.setExtractionMethod':
-    'PUT /api/admin/config/document-extraction/{file_type}/method',
-  'Admin.setOcrSettings':
-    'PUT /api/admin/config/document-extraction/{file_type}/ocr',
-  'Admin.setLlmSettings':
-    'PUT /api/admin/config/document-extraction/{file_type}/llm',
-
   // ===========================
   // RAG PROVIDER MANAGEMENT
   // ===========================
@@ -403,11 +380,7 @@ export type ApiEndpointParameters = {
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
   'Admin.getProxySettings': void
   'Admin.updateProxySettings': UpdateProxySettingsRequest
-  // Document extraction configuration
-  'Admin.getExtractionConfig': { file_type: string }
-  'Admin.setExtractionMethod': { file_type: string } & SetMethodRequest
-  'Admin.setOcrSettings': { file_type: string } & SetOcrSettingsRequest
-  'Admin.setLlmSettings': { file_type: string } & SetLlmSettingsRequest
+
   'Utils.testProxy': TestProxyConnectionRequest
   // User settings management
   'UserSettings.getAll': void
@@ -478,9 +451,6 @@ export type ApiEndpointParameters = {
   'Projects.delete': { project_id: string }
   'Projects.uploadFile': FormData
   'Projects.listFiles': { project_id: string } & FileListParams
-  'Projects.deleteDocument': { project_id: string; document_id: string }
-  'Projects.linkConversation': { project_id: string; conversation_id: string }
-  'Projects.unlinkConversation': { project_id: string; conversation_id: string }
   // File endpoints
   'Files.upload': FormData
   'Files.get': { id: string }
@@ -621,10 +591,6 @@ export type ApiEndpointResponses = {
   'Admin.getProxySettings': ProxySettingsResponse
   'Admin.updateProxySettings': ProxySettingsResponse
   // Document extraction configuration
-  'Admin.getExtractionConfig': DocumentExtractionConfigResponse
-  'Admin.setExtractionMethod': DocumentExtractionConfigResponse
-  'Admin.setOcrSettings': DocumentExtractionConfigResponse
-  'Admin.setLlmSettings': DocumentExtractionConfigResponse
   'Utils.testProxy': TestProxyConnectionResponse
   // User settings management
   'UserSettings.getAll': UserSettingsResponse
@@ -686,9 +652,6 @@ export type ApiEndpointResponses = {
   'Projects.delete': void
   'Projects.uploadFile': UploadFileResponse
   'Projects.listFiles': FileListResponse
-  'Projects.deleteDocument': void
-  'Projects.linkConversation': ProjectConversation
-  'Projects.unlinkConversation': void
   // File endpoints
   'Files.upload': UploadFileResponse
   'Files.get': File

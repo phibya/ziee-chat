@@ -10,7 +10,6 @@ import {
   deleteExistingModel,
   disableModelFromUse,
   enableModelForUse,
-  loadModels,
   openAddLocalModelDownloadDrawer,
   openAddLocalModelUploadDrawer,
   openEditLocalModelDrawer,
@@ -34,23 +33,22 @@ export function LocalProviderSettings() {
   const [isMobile, setIsMobile] = useState(false)
 
   // Store data
-  const { providers, modelsByProvider, loadingModels, modelOperations, error } =
-    Stores.AdminProviders
+  const { error, modelsLoading, modelOperations } = Stores.AdminProviders
   const { downloads } = Stores.ModelDownload
+
+  // Get current provider and its models
+  const currentProvider = Stores.AdminProviders.providers.find(
+    p => p.id === provider_id,
+  )
+  const models = currentProvider?.models || []
+  const loading = modelsLoading[provider_id!] || false
 
   // Check permissions for web app
   const canEditProviders =
     isDesktopApp || hasPermission(Permission.config.providers.edit)
 
-  // Find current provider
-  const currentProvider = providers.find(p => p.id === provider_id)
-  const currentModels = provider_id ? modelsByProvider[provider_id] || [] : []
-  const modelsLoading = provider_id
-    ? loadingModels[provider_id] || false
-    : false
-
   // Get active downloads for this provider
-  const providerDownloads = Object.values(downloads).filter(
+  const providerDownloads = downloads.filter(
     (download: DownloadInstance) => download.provider_id === provider_id,
   )
 
@@ -107,24 +105,21 @@ export function LocalProviderSettings() {
       await updateModelProvider(providerId, {
         enabled: enabled,
       })
-      const provider = providers.find(p => p.id === providerId)
       message.success(
-        `${provider?.name || 'Provider'} ${enabled ? 'enabled' : 'disabled'}`,
+        `${currentProvider?.name || 'Provider'} ${enabled ? 'enabled' : 'disabled'}`,
       )
     } catch (error: any) {
       console.error('Failed to update provider:', error)
       // Handle error similar to original implementation
       if (error.response?.status === 400) {
-        const provider = providers.find(p => p.id === providerId)
-        if (provider) {
-          const providerModels = modelsByProvider[provider.id] || []
-          if (providerModels.length === 0) {
+        if (currentProvider) {
+          if (models.length === 0) {
             message.error(
-              `Cannot enable "${provider.name}" - No models available`,
+              `Cannot enable "${currentProvider.name}" - No models available`,
             )
           } else {
             message.error(
-              `Cannot enable "${provider.name}" - Invalid configuration`,
+              `Cannot enable "${currentProvider.name}" - Invalid configuration`,
             )
           }
         } else {
@@ -148,8 +143,7 @@ export function LocalProviderSettings() {
 
       // Check if this was the last enabled model being disabled
       if (!enabled) {
-        const providerModels = currentModels
-        const remainingEnabledModels = providerModels.filter(
+        const remainingEnabledModels = models.filter(
           m => m.id !== modelId && m.enabled !== false,
         )
 
@@ -158,26 +152,24 @@ export function LocalProviderSettings() {
           try {
             await updateModelProvider(currentProvider.id, { enabled: false })
             const modelName =
-              providerModels.find(m => m.id === modelId)?.name || 'Model'
+              models.find(m => m.id === modelId)?.name || 'Model'
             message.success(
               `${modelName} disabled. ${currentProvider.name} provider disabled as no models remain active.`,
             )
           } catch (providerError) {
             console.error('Failed to disable provider:', providerError)
             const modelName =
-              providerModels.find(m => m.id === modelId)?.name || 'Model'
+              models.find(m => m.id === modelId)?.name || 'Model'
             message.warning(
               `${modelName} disabled, but failed to disable provider automatically`,
             )
           }
         } else {
-          const modelName =
-            currentModels.find(m => m.id === modelId)?.name || 'Model'
+          const modelName = models.find(m => m.id === modelId)?.name || 'Model'
           message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
         }
       } else {
-        const modelName =
-          currentModels.find(m => m.id === modelId)?.name || 'Model'
+        const modelName = models.find(m => m.id === modelId)?.name || 'Model'
         message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
       }
     } catch (error) {
@@ -208,8 +200,7 @@ export function LocalProviderSettings() {
         await stopModelExecution(modelId)
       }
 
-      const modelName =
-        currentModels.find(m => m.id === modelId)?.name || 'Model'
+      const modelName = models.find(m => m.id === modelId)?.name || 'Model'
       message.success(`${modelName} ${is_active ? 'started' : 'stopped'}`)
     } catch (error) {
       console.error('Failed to start/stop model:', error)
@@ -228,21 +219,6 @@ export function LocalProviderSettings() {
 
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
-
-  // Load models when provider is selected
-  useEffect(() => {
-    if (
-      provider_id &&
-      !modelsByProvider[provider_id] &&
-      !loadingModels[provider_id]
-    ) {
-      loadModels(provider_id)
-    }
-  }, [
-    provider_id,
-    provider_id ? modelsByProvider[provider_id] : undefined,
-    provider_id ? loadingModels[provider_id] : undefined,
-  ])
 
   // Show errors
   useEffect(() => {
@@ -322,8 +298,8 @@ export function LocalProviderSettings() {
       {/* Models Section */}
       <ModelsSection
         currentProvider={currentProvider}
-        currentModels={currentModels}
-        modelsLoading={modelsLoading}
+        currentModels={models}
+        modelsLoading={loading}
         canEditProviders={canEditProviders}
         isMobile={isMobile}
         modelOperations={modelOperations}

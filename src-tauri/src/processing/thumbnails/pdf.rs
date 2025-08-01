@@ -43,7 +43,7 @@ impl PdfThumbnailGenerator {
             let render_config = PdfRenderConfig::new()
                 .set_target_width(300)
                 .set_maximum_height(300)
-                .rotate_if_landscape(PdfPageRenderRotation::Degrees90, true);
+                .rotate_if_landscape(PdfPageRenderRotation::Degrees90, false);
 
             let bitmap = page.render_with_config(&render_config)
                 .map_err(|e| format!("Failed to render page {}: {}", page_index + 1, e))?;

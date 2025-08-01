@@ -555,6 +555,12 @@ impl GitService {
         // Create a channel to receive LFS progress updates
         let (lfs_progress_tx, mut lfs_progress_rx) = mpsc::unbounded_channel::<LfsProgress>();
         
+        println!(
+            "Pulling LFS files from repository: {} with paths: {:?}",
+            repo_path.display(),
+            file_paths
+        );
+
         // Spawn a task to convert LFS progress to Git progress
         let git_progress_tx = progress_tx.clone();
         let progress_converter = tokio::spawn(async move {

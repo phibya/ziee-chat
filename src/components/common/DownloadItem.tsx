@@ -131,7 +131,7 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
         />
         <Flex justify="space-between" align="center">
           <Text type="secondary" className="text-xs">
-            {download.progress_data
+            {download.progress_data && download.progress_data.total > 1000
               ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
               : '0 B / 0 B'}
           </Text>
@@ -203,7 +203,7 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
       />
       <Flex justify="space-between" align="center">
         <Text type="secondary" className="text-xs">
-          {download.progress_data
+          {download.progress_data && download.progress_data.total > 1000
             ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
             : '0 B / 0 B'}
         </Text>

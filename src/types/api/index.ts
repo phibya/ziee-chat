@@ -1,6 +1,5 @@
 export * from './auth'
 export * from './config'
-export * from './document-extraction'
 export * from './endpoints'
 export * from './hub'
 export * from './model'

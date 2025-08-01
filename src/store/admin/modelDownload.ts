@@ -8,8 +8,8 @@ import type {
 } from '../../types/api/modelDownloads.ts'
 
 interface ModelDownloadState {
-  // Download instances map
-  downloads: Record<string, DownloadInstance>
+  // Download instances array
+  downloads: DownloadInstance[]
   // SSE connection state
   sseConnected: boolean
   sseError: string | null
@@ -21,7 +21,7 @@ export const useModelDownloadStore = create<ModelDownloadState>()(
   subscribeWithSelector(
     (): ModelDownloadState => ({
       // Initial state
-      downloads: {},
+      downloads: [],
       sseConnected: false,
       sseError: null,
       reconnectAttempts: 0,
@@ -39,12 +39,9 @@ export const downloadModelFromRepository = async (
     const downloadInstance =
       await ApiClient.Admin.initiateRepositoryDownload(request)
 
-    // Add to downloads map
+    // Add to downloads array
     useModelDownloadStore.setState(state => ({
-      downloads: {
-        ...state.downloads,
-        [downloadInstance.id]: downloadInstance,
-      },
+      downloads: [...state.downloads, downloadInstance],
     }))
 
     // Call onStart callback with the download ID
@@ -68,10 +65,9 @@ export const cancelModelDownload = async (
     await ApiClient.Admin.cancelDownload({ download_id: downloadId })
 
     // Remove from local state immediately since backend will delete it
-    useModelDownloadStore.setState(state => {
-      const { [downloadId]: _, ...remaining } = state.downloads
-      return { downloads: remaining }
-    })
+    useModelDownloadStore.setState(state => ({
+      downloads: state.downloads.filter(download => download.id !== downloadId),
+    }))
   } catch (error) {
     console.error('Failed to cancel download:', error)
     throw error
@@ -86,10 +82,9 @@ export const deleteModelDownload = async (
     await ApiClient.Admin.deleteDownload({ download_id: downloadId })
 
     // Remove from local state
-    useModelDownloadStore.setState(state => {
-      const { [downloadId]: _, ...remaining } = state.downloads
-      return { downloads: remaining }
-    })
+    useModelDownloadStore.setState(state => ({
+      downloads: state.downloads.filter(download => download.id !== downloadId),
+    }))
   } catch (error) {
     console.error('Failed to delete download:', error)
     throw error
@@ -97,19 +92,18 @@ export const deleteModelDownload = async (
 }
 
 export const clearModelDownload = (downloadId: string): void => {
-  useModelDownloadStore.setState(state => {
-    const { [downloadId]: _, ...remaining } = state.downloads
-    return { downloads: remaining }
-  })
+  useModelDownloadStore.setState(state => ({
+    downloads: state.downloads.filter(download => download.id !== downloadId),
+  }))
 }
 
 export const clearAllModelDownloads = (): void => {
-  useModelDownloadStore.setState({ downloads: {} })
+  useModelDownloadStore.setState({ downloads: [] })
 }
 
 export const getAllActiveDownloads = (): DownloadInstance[] => {
   const state = useModelDownloadStore.getState()
-  return Object.values(state.downloads).filter(
+  return state.downloads.filter(
     download =>
       download.status === 'downloading' || download.status === 'pending',
   )
@@ -118,7 +112,9 @@ export const getAllActiveDownloads = (): DownloadInstance[] => {
 export const findDownloadById = (
   downloadId: string,
 ): DownloadInstance | undefined => {
-  return useModelDownloadStore.getState().downloads[downloadId]
+  return useModelDownloadStore
+    .getState()
+    .downloads.find(download => download.id === downloadId)
 }
 
 // SSE Subscription Management
@@ -153,17 +149,17 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
                 // Update downloads in store with progress updates
                 const currentDownloads =
                   useModelDownloadStore.getState().downloads
-                const updatedDownloads: Record<string, DownloadInstance> = {
-                  ...currentDownloads,
-                }
+                const updatedDownloads = [...currentDownloads]
 
                 data.downloads.forEach(
                   (progressUpdate: DownloadProgressUpdate) => {
-                    const existingDownload = updatedDownloads[progressUpdate.id]
-                    if (existingDownload) {
+                    const existingIndex = updatedDownloads.findIndex(
+                      download => download.id === progressUpdate.id,
+                    )
+                    if (existingIndex !== -1) {
                       // Merge progress update with existing download instance
-                      updatedDownloads[progressUpdate.id] = {
-                        ...existingDownload,
+                      updatedDownloads[existingIndex] = {
+                        ...updatedDownloads[existingIndex],
                         status: progressUpdate.status as any,
                         progress_data: {
                           phase: progressUpdate.phase || '',
@@ -181,15 +177,11 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
                 )
 
                 // Filter out cancelled and completed downloads before updating state
-                const filteredDownloads: Record<string, DownloadInstance> = {}
-                Object.entries(updatedDownloads).forEach(([id, download]) => {
-                  if (
+                const filteredDownloads = updatedDownloads.filter(
+                  download =>
                     download.status !== 'cancelled' &&
-                    download.status !== 'completed'
-                  ) {
-                    filteredDownloads[id] = download
-                  }
-                })
+                    download.status !== 'completed',
+                )
 
                 useModelDownloadStore.setState({
                   downloads: filteredDownloads,
@@ -294,18 +286,13 @@ const loadExistingDownloads = async (): Promise<void> => {
     const response = await ApiClient.Admin.listAllDownloads({})
 
     // Update store with existing downloads (exclude cancelled and completed)
-    const downloads: Record<string, DownloadInstance> = {}
-    response.downloads.forEach(download => {
-      if (['pending', 'downloading', 'failed'].includes(download.status)) {
-        downloads[download.id] = download
-      }
-    })
+    const downloads = response.downloads.filter(download =>
+      ['pending', 'downloading', 'failed'].includes(download.status),
+    )
 
     useModelDownloadStore.setState({ downloads })
 
-    console.log(
-      `Loaded ${response.downloads.length} existing downloads from server`,
-    )
+    console.log(`Loaded ${downloads.length} existing downloads from server`)
   } catch (error) {
     console.error('Failed to load existing downloads:', error)
   }
@@ -321,7 +308,7 @@ const setupDownloadTracking = (): void => {
   useModelDownloadStore.subscribe(
     state => state.downloads,
     downloads => {
-      const activeDownloads = Object.values(downloads).filter(
+      const activeDownloads = downloads.filter(
         d => d.status === 'downloading' || d.status === 'pending',
       )
 

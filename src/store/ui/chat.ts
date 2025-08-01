@@ -109,11 +109,14 @@ export const uploadFilesToChat = async (
       status: 'pending' as const,
       size: file.size,
     }))
-    
+
     useChatUIStore.setState(state => ({
       fileUploadProgressByUIInterface: {
         ...state.fileUploadProgressByUIInterface,
-        [uiInterface]: [...(state.fileUploadProgressByUIInterface[uiInterface] || []), ...newFileProgress],
+        [uiInterface]: [
+          ...(state.fileUploadProgressByUIInterface[uiInterface] || []),
+          ...newFileProgress,
+        ],
       },
     }))
 
@@ -128,8 +131,12 @@ export const uploadFilesToChat = async (
       useChatUIStore.setState(state => ({
         fileUploadProgressByUIInterface: {
           ...state.fileUploadProgressByUIInterface,
-          [uiInterface]: (state.fileUploadProgressByUIInterface[uiInterface] || []).map((fp: FileUploadProgress) =>
-            fp.id === fileProgressId ? { ...fp, status: 'uploading' as const } : fp,
+          [uiInterface]: (
+            state.fileUploadProgressByUIInterface[uiInterface] || []
+          ).map((fp: FileUploadProgress) =>
+            fp.id === fileProgressId
+              ? { ...fp, status: 'uploading' as const }
+              : fp,
           ),
         },
       }))
@@ -147,8 +154,12 @@ export const uploadFilesToChat = async (
               useChatUIStore.setState(state => ({
                 fileUploadProgressByUIInterface: {
                   ...state.fileUploadProgressByUIInterface,
-                  [uiInterface]: (state.fileUploadProgressByUIInterface[uiInterface] || []).map((fp: FileUploadProgress) =>
-                    fp.id === fileProgressId ? { ...fp, progress: progress * 100 } : fp,
+                  [uiInterface]: (
+                    state.fileUploadProgressByUIInterface[uiInterface] || []
+                  ).map((fp: FileUploadProgress) =>
+                    fp.id === fileProgressId
+                      ? { ...fp, progress: progress * 100 }
+                      : fp,
                   ),
                 },
               }))
@@ -158,8 +169,10 @@ export const uploadFilesToChat = async (
               useChatUIStore.setState(state => ({
                 fileUploadProgressByUIInterface: {
                   ...state.fileUploadProgressByUIInterface,
-                  [uiInterface]: (state.fileUploadProgressByUIInterface[uiInterface] || []).filter((fp: FileUploadProgress) =>
-                    fp.id !== fileProgressId,
+                  [uiInterface]: (
+                    state.fileUploadProgressByUIInterface[uiInterface] || []
+                  ).filter(
+                    (fp: FileUploadProgress) => fp.id !== fileProgressId,
                   ),
                 },
               }))
@@ -169,7 +182,9 @@ export const uploadFilesToChat = async (
               useChatUIStore.setState(state => ({
                 fileUploadProgressByUIInterface: {
                   ...state.fileUploadProgressByUIInterface,
-                  [uiInterface]: (state.fileUploadProgressByUIInterface[uiInterface] || []).map((fp: FileUploadProgress) =>
+                  [uiInterface]: (
+                    state.fileUploadProgressByUIInterface[uiInterface] || []
+                  ).map((fp: FileUploadProgress) =>
                     fp.id === fileProgressId
                       ? {
                           ...fp,
@@ -190,7 +205,9 @@ export const uploadFilesToChat = async (
         useChatUIStore.setState(state => ({
           fileUploadProgressByUIInterface: {
             ...state.fileUploadProgressByUIInterface,
-            [uiInterface]: (state.fileUploadProgressByUIInterface[uiInterface] || []).map((fp: FileUploadProgress) =>
+            [uiInterface]: (
+              state.fileUploadProgressByUIInterface[uiInterface] || []
+            ).map((fp: FileUploadProgress) =>
               fp.id === fileProgressId
                 ? {
                     ...fp,
@@ -211,7 +228,10 @@ export const uploadFilesToChat = async (
     useChatUIStore.setState(state => ({
       filesByUIInterface: {
         ...state.filesByUIInterface,
-        [uiInterface]: [...(state.filesByUIInterface[uiInterface] || []), ...uploadedFiles],
+        [uiInterface]: [
+          ...(state.filesByUIInterface[uiInterface] || []),
+          ...uploadedFiles,
+        ],
       },
     }))
 
@@ -234,16 +254,23 @@ export const removeFileFromChat = (uiInterface: string, fileId: string) => {
   useChatUIStore.setState(state => ({
     filesByUIInterface: {
       ...state.filesByUIInterface,
-      [uiInterface]: (state.filesByUIInterface[uiInterface] || []).filter((file: File) => file.id !== fileId),
+      [uiInterface]: (state.filesByUIInterface[uiInterface] || []).filter(
+        (file: File) => file.id !== fileId,
+      ),
     },
   }))
 }
 
-export const removeFileUploadProgress = (uiInterface: string, progressId: string) => {
+export const removeFileUploadProgress = (
+  uiInterface: string,
+  progressId: string,
+) => {
   useChatUIStore.setState(state => ({
     fileUploadProgressByUIInterface: {
       ...state.fileUploadProgressByUIInterface,
-      [uiInterface]: (state.fileUploadProgressByUIInterface[uiInterface] || []).filter((fp: FileUploadProgress) => fp.id !== progressId),
+      [uiInterface]: (
+        state.fileUploadProgressByUIInterface[uiInterface] || []
+      ).filter((fp: FileUploadProgress) => fp.id !== progressId),
     },
   }))
 }
@@ -271,7 +298,9 @@ export const cancelChatFileUpload = (uiInterface: string) => {
 }
 
 // Helper functions to get interface-specific data
-export const getFileUploadProgress = (uiInterface: string): FileUploadProgress[] => {
+export const getFileUploadProgress = (
+  uiInterface: string,
+): FileUploadProgress[] => {
   const state = useChatUIStore.getState()
   return state.fileUploadProgressByUIInterface[uiInterface] || []
 }
@@ -281,7 +310,10 @@ export const getChatFiles = (uiInterface: string): File[] => {
   return state.filesByUIInterface[uiInterface] || []
 }
 
-export const getFileUploadProgressByUIInterface = (): Record<string, FileUploadProgress[]> => {
+export const getFileUploadProgressByUIInterface = (): Record<
+  string,
+  FileUploadProgress[]
+> => {
   const state = useChatUIStore.getState()
   return state.fileUploadProgressByUIInterface
 }
@@ -291,7 +323,10 @@ export const getFilesByUIInterface = (): Record<string, File[]> => {
   return state.filesByUIInterface
 }
 
-export const getFileUploadProgressById = (uiInterface: string, progressId: string): FileUploadProgress | undefined => {
+export const getFileUploadProgressById = (
+  uiInterface: string,
+  progressId: string,
+): FileUploadProgress | undefined => {
   const state = useChatUIStore.getState()
   const progressList = state.fileUploadProgressByUIInterface[uiInterface] || []
   return progressList.find((fp: FileUploadProgress) => fp.id === progressId)

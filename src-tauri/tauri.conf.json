@@ -59,7 +59,6 @@
       "../tessdata/vie.traineddata": "tessdata/vie.traineddata"
     },
     "externalBin": [
-      "target/git-lfs/git-lfs",
       "target/mistralrs-build/mistralrs-server",
       "target/pandoc/pandoc",
       "target/tesseract/tesseract"

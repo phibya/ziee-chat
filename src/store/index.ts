@@ -13,12 +13,10 @@ import { useAuthStore } from './auth'
 import { useChatStore } from './chat'
 import { useChatHistoryStore } from './chatHistory'
 import { useConversationsStore } from './conversations'
-import { useDocumentExtractionStore } from './admin/documentExtraction.ts'
 import { useHubStore } from './hub'
 import { useLocalUploadStore } from './admin/localUpload.ts'
 import { useModelDownloadStore } from './admin/modelDownload.ts'
 import { useProjectsStore } from './projects'
-import { useProjectFilesStore } from './projectFiles'
 import { useAdminProvidersStore } from './admin/providers.ts'
 import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
@@ -141,20 +139,7 @@ export {
   updateExistingConversation,
   useConversationsStore,
 } from './conversations'
-// Document Extraction store
-export {
-  getCurrentMethod,
-  getLlmSettingsForFileType,
-  getOcrSettingsForFileType,
-  getSettingsForFileType,
-  initializeDocumentExtraction,
-  setExtractionMethod,
-  setLlmSettings,
-  setOcrSettings,
-  useDocumentExtractionStore,
-  validateLlmSettings,
-  validateOcrSettings,
-} from './admin/documentExtraction.ts'
+
 // Local Upload store
 export {
   cancelLocalUpload,
@@ -198,18 +183,17 @@ export {
   updateExistingProject,
   useProjectsStore,
 } from './projects'
-// Project Files store
+// Project Files functions (now in projects store)
 export {
   cancelProjectFileUpload,
-  clearProjectFilesError,
+  clearFilesError,
   deleteProjectFile,
   getProjectFiles,
-  hideProjectUploadProgress,
   loadProjectFiles,
-  showProjectUploadProgress,
   uploadFilesToProject,
-  useProjectFilesStore,
-} from './projectFiles'
+  removeProjectFileUploadProgress,
+  getProjectFileUploadProgressById,
+} from './projects'
 
 export {
   getFileContent,
@@ -227,27 +211,29 @@ export {
   loadUserProvidersWithAllModels,
   useUserProvidersStore,
 } from './providers.ts'
-// Admin Providers store (Legacy compatibility - keep as default exports)
+// Admin Providers store
 export {
+  clearProvidersError,
+  createNewModelProvider,
+  deleteModelProvider,
+  findProviderById,
+  loadAllModelProviders,
+  updateModelProvider,
+  useAdminProvidersStore,
+  // Models functions (now in providers store)
   addNewModel,
   addNewModelToProvider,
-  clearProvidersError,
-  cloneExistingProvider,
-  createNewModelProvider,
+  clearModelError,
   deleteExistingModel,
-  deleteModelProvider,
   disableModelFromUse,
   enableModelForUse,
   findModelById,
-  findProviderById,
-  loadAllModelProviders,
-  loadModels,
   loadModelsForProvider,
   startModelExecution,
   stopModelExecution,
   updateExistingModel,
-  updateModelProvider,
-  useAdminProvidersStore,
+  getModelsForProvider,
+  getCurrentProvider,
 } from './admin/providers.ts'
 // Admin Repositories store
 export {
@@ -422,14 +408,13 @@ export const Stores = {
   Chat: createStoreProxy(useChatStore),
   ChatHistory: createStoreProxy(useChatHistoryStore),
   Conversations: createStoreProxy(useConversationsStore),
-  DocumentExtraction: createStoreProxy(useDocumentExtractionStore),
   Hub: createStoreProxy(useHubStore),
   LocalUpload: createStoreProxy(useLocalUploadStore),
   ModelDownload: createStoreProxy(useModelDownloadStore),
   Projects: createStoreProxy(useProjectsStore),
-  ProjectFiles: createStoreProxy(useProjectFilesStore),
   Providers: createStoreProxy(useUserProvidersStore),
   AdminProviders: createStoreProxy(useAdminProvidersStore),
+  AdminModels: createStoreProxy(useAdminProvidersStore), // Legacy compatibility
   AdminRepositories: createStoreProxy(useAdminRepositoriesStore),
   AdminRAGProviders: createStoreProxy(useAdminRAGProvidersStore),
   AdminRAGRepositories: createStoreProxy(useAdminRAGRepositoriesStore),
