@@ -3,21 +3,18 @@ import {
   App,
   Button,
   Card,
-  Col,
+  Divider,
   Empty,
+  Flex,
   Input,
   Popconfirm,
-  Row,
-  Flex,
-  Tag,
+  theme,
   Tooltip,
   Typography,
 } from 'antd'
 import {
   ClearOutlined,
   DeleteOutlined,
-  EyeOutlined,
-  MessageOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -25,13 +22,13 @@ import { useTranslation } from 'react-i18next'
 import { ConversationSummary } from '../../types/api/chat'
 import { PageContainer } from '../common/PageContainer'
 import {
-  Stores,
-  loadChatHistoryConversationsList,
-  searchChatHistoryConversations,
-  deleteChatHistoryConversationById,
   clearAllUserChatHistoryConversations,
   clearChatHistorySearchResults,
   clearChatHistoryStoreError,
+  deleteChatHistoryConversationById,
+  loadChatHistoryConversationsList,
+  searchChatHistoryConversations,
+  Stores,
 } from '../../store'
 
 const { Title, Text } = Typography
@@ -41,6 +38,7 @@ export const ChatHistoryPage: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const navigate = useNavigate()
+  const { token } = theme.useToken()
 
   // Chat history store
   const {
@@ -127,110 +125,102 @@ export const ChatHistoryPage: React.FC = () => {
   const renderConversationCard = (conversation: ConversationSummary) => (
     <Card
       key={conversation.id}
-      className="mb-4 hover:shadow-md transition-shadow cursor-pointer"
+      className="mb-4 hover:shadow-md transition-shadow cursor-pointer relative group"
       onClick={() => handleViewConversation(conversation)}
       hoverable
-      actions={[
-        <Tooltip title={t('conversations.viewConversation')} key="view">
-          <EyeOutlined
-            onClick={e => {
-              e.stopPropagation()
-              handleViewConversation(conversation)
-            }}
-          />
-        </Tooltip>,
-        <Popconfirm
-          key="delete"
-          title={t('conversations.deleteConversation')}
-          description={t('history.deleteConfirm')}
-          onConfirm={() => handleDeleteConversation(conversation.id)}
-          okText="Yes"
-          cancelText="No"
-          okButtonProps={{ loading: deleting }}
-        >
-          <Tooltip title={t('buttons.delete')}>
-            <DeleteOutlined
-              className=""
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            />
-          </Tooltip>
-        </Popconfirm>,
-      ]}
     >
-      <Card.Meta
-        avatar={<MessageOutlined className="text-lg" />}
-        title={
-          <div className="flex items-center justify-between">
-            <Text strong className="text-base" ellipsis={{ tooltip: true }}>
-              {conversation.title}
-            </Text>
-            <div className="flex items-center gap-2 ml-2">
-              {conversation.message_count > 0 && (
-                <Tag color="blue" className="text-xs">
-                  {conversation.message_count} messages
-                </Tag>
-              )}
-              <Text type="secondary" className="text-xs whitespace-nowrap">
-                {formatDate(conversation.updated_at)}
+      <div className="flex items-start justify-between">
+        <Text strong className="text-base" ellipsis={{ tooltip: true }}>
+          {conversation.title}
+        </Text>
+        <div className="flex items-center gap-2 ml-2">
+          {conversation.message_count > 0 && (
+            <>
+              <Text type="secondary" className="text-xs font-normal">
+                {conversation.message_count} messages
               </Text>
-            </div>
-          </div>
-        }
-        description={
-          <div className="mt-2">
-            <Text type="secondary" ellipsis={{ tooltip: true }}>
-              {conversation.last_message || 'No messages yet'}
-            </Text>
-          </div>
-        }
-      />
+              <Divider type={'vertical'} />
+            </>
+          )}
+          <Text type="secondary" className="whitespace-nowrap font-normal">
+            {formatDate(conversation.updated_at)}
+          </Text>
+        </div>
+      </div>
+
+      <div className="mt-2">
+        <Text type="secondary" ellipsis={{ tooltip: false }}>
+          {conversation.last_message || 'No messages yet'}
+        </Text>
+      </div>
+
+      <Popconfirm
+        title={t('conversations.deleteConversation')}
+        description={t('history.deleteConfirm')}
+        onConfirm={() => handleDeleteConversation(conversation.id)}
+        okText="Yes"
+        cancelText="No"
+        okButtonProps={{ loading: deleting }}
+      >
+        <Tooltip title={t('buttons.delete')}>
+          <Button
+            className="!absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded"
+            style={{
+              backgroundColor: token.colorBgContainer,
+            }}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
+            <DeleteOutlined />
+          </Button>
+        </Tooltip>
+      </Popconfirm>
     </Card>
   )
 
   return (
     <PageContainer>
-      <Row gutter={[24, 24]}>
-        <Col span={24}>
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <Title level={2}>{t('pages.chatHistory')}</Title>
-              <Text type="secondary">
-                View and manage all your chat conversations
-              </Text>
-            </div>
-            <Flex className="gap-2">
-              <Search
-                placeholder={t('forms.searchConversations')}
-                allowClear
-                enterButton={<SearchOutlined />}
-                size="middle"
-                onSearch={setSearchText}
-                onChange={e => setSearchText(e.target.value)}
-                style={{ width: 300 }}
-              />
-              {conversations.length > 0 && (
-                <Popconfirm
-                  title={t('conversations.clearAllHistory')}
-                  description={t('history.clearAllConfirm')}
-                  onConfirm={handleClearAllHistory}
-                  okText="Yes"
-                  cancelText="No"
-                  okType="danger"
-                  okButtonProps={{ loading: clearing }}
-                >
-                  <Button
-                    danger
-                    icon={<ClearOutlined />}
-                    type="default"
-                    loading={clearing}
-                  >
-                    Clear All
-                  </Button>
-                </Popconfirm>
-              )}
-            </Flex>
+      <Flex className={'w-full h-full flex-col gap-4'}>
+        <div className="flex justify-between items-center w-full">
+          <div>
+            <Title level={2}>{t('pages.chatHistory')}</Title>
+            <Text type="secondary">
+              View and manage all your chat conversations
+            </Text>
           </div>
+          <Flex className="gap-2">
+            <Search
+              placeholder={t('forms.searchConversations')}
+              allowClear
+              enterButton={<SearchOutlined />}
+              size="middle"
+              onSearch={setSearchText}
+              onChange={e => setSearchText(e.target.value)}
+              style={{ width: 300 }}
+            />
+            {conversations.length > 0 && (
+              <Popconfirm
+                title={t('conversations.clearAllHistory')}
+                description={t('history.clearAllConfirm')}
+                onConfirm={handleClearAllHistory}
+                okText="Yes"
+                cancelText="No"
+                okType="danger"
+                okButtonProps={{ loading: clearing }}
+              >
+                <Button
+                  danger
+                  icon={<ClearOutlined />}
+                  type="default"
+                  loading={clearing}
+                >
+                  Clear All
+                </Button>
+              </Popconfirm>
+            )}
+          </Flex>
+        </div>
 
+        <Flex className="gap-2 flex-1 w-full flex-col mt-4 overflow-y-auto !pb-3">
           {(searchText.trim() ? searchResults : conversations).length === 0 &&
           !loading &&
           !isSearching ? (
@@ -257,7 +247,7 @@ export const ChatHistoryPage: React.FC = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
                 </div>
               ) : (
-                <>
+                <Flex className="flex-col gap-3 w-full">
                   {(searchText.trim() ? searchResults : conversations).map(
                     renderConversationCard,
                   )}
@@ -280,12 +270,12 @@ export const ChatHistoryPage: React.FC = () => {
                       </Text>
                     </Card>
                   )}
-                </>
+                </Flex>
               )}
             </div>
           )}
-        </Col>
-      </Row>
+        </Flex>
+      </Flex>
     </PageContainer>
   )
 }

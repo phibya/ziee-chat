@@ -8,12 +8,57 @@ import {
   Switch,
   Typography,
 } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 
 const { Text } = Typography
 
+// Quantization options based on mistral.rs ISQ documentation
+const QUANTIZATION_OPTIONS = {
+  // AFQ Types (Metal only)
+  AFQ: [
+    { value: 'AFQ2', label: 'AFQ2', deviceTypes: ['metal'] },
+    { value: 'AFQ3', label: 'AFQ3', deviceTypes: ['metal'] },
+    { value: 'AFQ4', label: 'AFQ4', deviceTypes: ['metal'] },
+    { value: 'AFQ6', label: 'AFQ6', deviceTypes: ['metal'] },
+    { value: 'AFQ8', label: 'AFQ8', deviceTypes: ['metal'] },
+  ],
+  // Q-Types (all devices, with CUDA restrictions)
+  Q_TYPES: [
+    { value: 'Q4_0', label: 'Q4_0', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q4_1', label: 'Q4_1', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q5_0', label: 'Q5_0', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q5_1', label: 'Q5_1', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q8_0', label: 'Q8_0', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q8_1', label: 'Q8_1', deviceTypes: ['cpu', 'metal'] }, // not on CUDA
+  ],
+  // K-Types (all devices, with CUDA restrictions)
+  K_TYPES: [
+    { value: 'Q2K', label: 'Q2K', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q3K', label: 'Q3K', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q4K', label: 'Q4K', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q5K', label: 'Q5K', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q6K', label: 'Q6K', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'Q8K', label: 'Q8K', deviceTypes: ['cpu', 'metal'] }, // not on CUDA
+  ],
+  // Other Types
+  OTHER: [
+    { value: 'HQQ4', label: 'HQQ4', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'HQQ8', label: 'HQQ8', deviceTypes: ['cpu', 'cuda', 'metal'] },
+    { value: 'FP8', label: 'FP8', deviceTypes: ['cpu', 'cuda', 'metal'] },
+  ],
+}
+
+// Flatten all quantization options
+const ALL_QUANTIZATION_OPTIONS = [
+  ...QUANTIZATION_OPTIONS.AFQ,
+  ...QUANTIZATION_OPTIONS.Q_TYPES,
+  ...QUANTIZATION_OPTIONS.K_TYPES,
+  ...QUANTIZATION_OPTIONS.OTHER,
+]
+
 export function ModelSettingsSection() {
   const [isMobile, setIsMobile] = useState(false)
+  const form = Form.useFormInstance()
 
   useEffect(() => {
     const checkMobile = () => {
@@ -25,6 +70,34 @@ export function ModelSettingsSection() {
 
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // Watch for device type changes
+  const selectedDeviceType =
+    Form.useWatch(['settings', 'device_type'], form) || 'cpu'
+  const currentQuantization = Form.useWatch(['settings', 'in_situ_quant'], form)
+
+  // Filter quantization options based on device type
+  const availableQuantizationOptions = useMemo(() => {
+    return ALL_QUANTIZATION_OPTIONS.filter(option =>
+      option.deviceTypes.includes(selectedDeviceType),
+    ).map(option => ({
+      value: option.value,
+      label: option.label,
+    }))
+  }, [selectedDeviceType])
+
+  // Clear incompatible quantization selection when device type changes
+  useEffect(() => {
+    if (currentQuantization) {
+      const isCurrentQuantizationCompatible = ALL_QUANTIZATION_OPTIONS.find(
+        option => option.value === currentQuantization,
+      )?.deviceTypes.includes(selectedDeviceType)
+
+      if (!isCurrentQuantizationCompatible) {
+        form.setFieldValue(['settings', 'in_situ_quant'], undefined)
+      }
+    }
+  }, [selectedDeviceType, currentQuantization, form])
 
   const getFieldName = (field: string) => ['settings', field]
 
@@ -306,7 +379,7 @@ export function ModelSettingsSection() {
 
           <ResponsiveConfigItem
             title="In-Situ Quantization"
-            description="In-situ quantization to apply"
+            description={`In-situ quantization to apply (${selectedDeviceType.toUpperCase()})`}
           >
             <Form.Item
               name={getFieldName('in_situ_quant')}
@@ -316,13 +389,7 @@ export function ModelSettingsSection() {
                 placeholder="None"
                 style={{ width: '100%' }}
                 allowClear
-                options={[
-                  { value: 'Q4_0', label: 'Q4_0' },
-                  { value: 'Q4_1', label: 'Q4_1' },
-                  { value: 'Q5_0', label: 'Q5_0' },
-                  { value: 'Q5_1', label: 'Q5_1' },
-                  { value: 'Q8_0', label: 'Q8_0' },
-                ]}
+                options={availableQuantizationOptions}
               />
             </Form.Item>
           </ResponsiveConfigItem>

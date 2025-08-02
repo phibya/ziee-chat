@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use base64::Engine;
 use futures_util::StreamExt;
 use reqwest::Client;
 use serde::Deserialize;
@@ -10,8 +9,9 @@ use uuid::Uuid;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent, StreamingChunk, StreamingResponse, Usage,
 };
+use crate::ai::file_helpers::{get_file_content_for_local_provider, LocalProviderFileContent};
 use crate::database::models::model::ModelCapabilities;
-use crate::FILE_STORAGE;
+use crate::database::queries::models::get_model_by_id;
 
 #[derive(Debug, Clone)]
 pub struct LocalProvider {
@@ -140,6 +140,21 @@ impl LocalProvider {
         format!("{}/v1/chat/completions", self.base_url)
     }
     
+    /// Fetch model capabilities from database using model_id
+    async fn get_model_capabilities(&self, model_id: Uuid) -> Option<ModelCapabilities> {
+        match get_model_by_id(model_id).await {
+            Ok(Some(model)) => model.capabilities,
+            Ok(None) => {
+                eprintln!("Model not found in database: {}", model_id);
+                None
+            }
+            Err(e) => {
+                eprintln!("Error fetching model from database: {}", e);
+                None
+            }
+        }
+    }
+    
     /// Process multimodal content parts into OpenAI-compatible format
     async fn process_multimodal_to_openai_format(
         &self,
@@ -163,9 +178,9 @@ impl LocalProvider {
                     }));
                 }
                 ContentPart::FileReference(file_ref) => {
-                    match self.process_file_to_openai_content(file_ref, supports_vision).await {
-                        Ok(content_block) => {
-                            content_array.push(content_block);
+                    match self.process_file_with_enhanced_support(file_ref, supports_vision).await {
+                        Ok(mut content_blocks) => {
+                            content_array.append(&mut content_blocks);
                         }
                         Err(e) => {
                             eprintln!("Warning: Failed to process file {}: {}", file_ref.filename, e);
@@ -183,106 +198,78 @@ impl LocalProvider {
         Ok(content_array)
     }
     
-    /// Process a file reference to OpenAI content block format
-    async fn process_file_to_openai_content(
+    /// Process a file reference with enhanced support for PDFs/documents with images
+    async fn process_file_with_enhanced_support(
         &self,
         file_ref: &FileReference,
         supports_vision: bool,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-        if file_ref.is_image() && supports_vision {
-            // For vision-enabled models, create image_url content block
-            self.create_image_content_block(file_ref).await
-        } else {
-            // For non-vision models or non-image files, create text content block
-            self.create_text_content_block(file_ref).await
-        }
-    }
-    
-    
-    /// Create OpenAI image_url content block for vision-enabled models
-    async fn create_image_content_block(
-        &self,
-        file_ref: &FileReference,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-        // Get file extension from filename
-        let extension = std::path::Path::new(&file_ref.filename)
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .unwrap_or("");
-        
-        let file_path = FILE_STORAGE.get_original_path(file_ref.file_id, extension);
-        let file_bytes = FILE_STORAGE.read_file_bytes(&file_path).await?;
-        
-        // Encode as base64 using the new API
-        let base64_content = base64::engine::general_purpose::STANDARD.encode(&file_bytes);
-        let mime_type = file_ref.mime_type.as_deref().unwrap_or("image/jpeg");
-        
-        // Create OpenAI-compatible image_url content block
-        Ok(json!({
-            "type": "image_url",
-            "image_url": {
-                "url": format!("data:{};base64,{}", mime_type, base64_content)
+    ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>> {
+        match get_file_content_for_local_provider(file_ref, supports_vision).await? {
+            LocalProviderFileContent::ImageBase64(base64_data) => {
+                // Create OpenAI-compatible image_url content block
+                Ok(vec![json!({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": base64_data
+                    }
+                })])
             }
-        }))
-    }
-    
-    /// Create text content block for non-image files
-    async fn create_text_content_block(
-        &self,
-        file_ref: &FileReference,
-    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-        let text_content;
-        
-        // Try to read processed text content first
-        if let Ok(Some(processed_text)) = FILE_STORAGE.read_text_content(file_ref.file_id).await {
-            text_content = format!(
-                "File: {} - Content:\n{}",
-                file_ref.filename,
-                processed_text.trim()
-            );
-        } else if file_ref.is_text() {
-            // Fallback: try to read raw file if it's a text file
-            let extension = std::path::Path::new(&file_ref.filename)
-                .extension()
-                .and_then(|ext| ext.to_str())
-                .unwrap_or("");
-            
-            let file_path = FILE_STORAGE.get_original_path(file_ref.file_id, extension);
-            
-            if let Ok(file_bytes) = FILE_STORAGE.read_file_bytes(&file_path).await {
-                if let Ok(raw_text) = String::from_utf8(file_bytes) {
-                    text_content = format!(
-                        "File: {} - Content:\n{}",
-                        file_ref.filename,
-                        raw_text.trim()
-                    );
-                } else {
-                    text_content = format!(
-                        "File: {} ({} bytes) - Binary file, content not available as text",
-                        file_ref.filename,
-                        file_ref.file_size
-                    );
+            LocalProviderFileContent::TextOnly(text_content) => {
+                // Create text content block
+                Ok(vec![json!({
+                    "type": "text",
+                    "text": format!("File: {} - Content:\n{}", file_ref.filename, text_content.trim())
+                })])
+            }
+            LocalProviderFileContent::TextAndImages { text, images } => {
+                let mut content_blocks = Vec::new();
+                
+                // Always add the text content first
+                content_blocks.push(json!({
+                    "type": "text",
+                    "text": format!("File: {} - Document Text Content:\n{}", file_ref.filename, text.trim())
+                }));
+                
+                // If vision is supported and images exist, add image blocks
+                if supports_vision && !images.is_empty() {
+                    for (i, image_base64) in images.iter().enumerate() {
+                        content_blocks.push(json!({
+                            "type": "image_url",                            
+                            "image_url": {
+                                "url": image_base64
+                            }
+                        }));
+                        
+                        // Add a text description for each page image
+                        content_blocks.push(json!({
+                            "type": "text",
+                            "text": format!("^ Page {} image from document {}", i + 1, file_ref.filename)
+                        }));
+                    }
+                } else if !images.is_empty() {
+                    // For non-vision models, add text note about images
+                    content_blocks.push(json!({
+                        "type": "text",
+                        "text": format!("Document contains {} page image(s) (not processed - requires vision support)", images.len())
+                    }));
                 }
-            } else {
-                text_content = format!(
-                    "File: {} - Could not read file content",
-                    file_ref.filename
-                );
+                
+                Ok(content_blocks)
             }
-        } else {
-            text_content = format!(
-                "File: {} ({} bytes) - Content not available as text",
-                file_ref.filename,
-                file_ref.file_size
-            );
+            LocalProviderFileContent::FileInfo { filename, size, mime_type } => {
+                // For unsupported file types, provide basic file information
+                let mime_info = mime_type.as_deref().unwrap_or("unknown");
+                let size_str = crate::ai::file_helpers::format_file_size(size);
+                
+                Ok(vec![json!({
+                    "type": "text",
+                    "text": format!("File: {} ({}, {}) - File type not supported for content extraction", 
+                        filename, size_str, mime_info)
+                })])
+            }
         }
-        
-        // Create OpenAI-compatible text content block
-        Ok(json!({
-            "type": "text",
-            "text": text_content
-        }))
     }
+    
 }
 
 #[async_trait]
@@ -292,7 +279,11 @@ impl AIProvider for LocalProvider {
         request: ChatRequest,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        let payload = self.build_request_with_capabilities(&request, false, None).await?;
+        
+        // Fetch model capabilities from database
+        let capabilities = self.get_model_capabilities(request.model_id).await;
+        
+        let payload = self.build_request_with_capabilities(&request, false, capabilities.as_ref()).await?;
 
         let response = self
             .client
@@ -329,7 +320,11 @@ impl AIProvider for LocalProvider {
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        let payload = self.build_request_with_capabilities(&request, true, None).await?;
+        
+        // Fetch model capabilities from database
+        let capabilities = self.get_model_capabilities(request.model_id).await;
+        
+        let payload = self.build_request_with_capabilities(&request, true, capabilities.as_ref()).await?;
 
         let response = self
             .client
@@ -413,7 +408,15 @@ impl LocalProvider {
         capabilities: Option<ModelCapabilities>,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        let payload = self.build_request_with_capabilities(&request, false, capabilities.as_ref()).await?;
+        
+        // Use provided capabilities or fetch from database
+        let final_capabilities = if capabilities.is_some() {
+            capabilities
+        } else {
+            self.get_model_capabilities(request.model_id).await
+        };
+        
+        let payload = self.build_request_with_capabilities(&request, false, final_capabilities.as_ref()).await?;
 
         let response = self
             .client
@@ -452,7 +455,15 @@ impl LocalProvider {
         capabilities: Option<ModelCapabilities>,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        let payload = self.build_request_with_capabilities(&request, true, capabilities.as_ref()).await?;
+        
+        // Use provided capabilities or fetch from database
+        let final_capabilities = if capabilities.is_some() {
+            capabilities
+        } else {
+            self.get_model_capabilities(request.model_id).await
+        };
+        
+        let payload = self.build_request_with_capabilities(&request, true, final_capabilities.as_ref()).await?;
 
         let response = self
             .client

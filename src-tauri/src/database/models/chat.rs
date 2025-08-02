@@ -243,6 +243,33 @@ impl FileReference {
             .map(|mt| mt.starts_with("text/"))
             .unwrap_or(false)
     }
+    
+    pub fn is_spreadsheet(&self) -> bool {
+        self.mime_type
+            .as_ref()
+            .map(|mt| {
+                mt == "application/vnd.ms-excel" 
+                || mt == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                || mt == "application/vnd.oasis.opendocument.spreadsheet"
+                || mt == "text/csv"
+            })
+            .unwrap_or(false)
+    }
+    
+    pub fn is_document(&self) -> bool {
+        self.mime_type
+            .as_ref()
+            .map(|mt| {
+                mt == "application/msword"
+                || mt == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                || mt == "application/vnd.ms-powerpoint"
+                || mt == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                || mt == "application/vnd.oasis.opendocument.text"
+                || mt == "application/vnd.oasis.opendocument.presentation"
+                || mt == "application/rtf"
+            })
+            .unwrap_or(false)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
