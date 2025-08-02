@@ -1,6 +1,7 @@
 /**
  * Chat API types - matching backend structure
  */
+import { File } from './files.ts'
 
 export interface Conversation {
   id: string
@@ -27,6 +28,7 @@ export interface Message {
     key: string
     value: any
   }>
+  files: File[]
 }
 
 export interface Branch {

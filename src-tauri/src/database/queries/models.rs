@@ -257,7 +257,7 @@ pub async fn create_model_file(
     let file_id = Uuid::new_v4();
     let now = Utc::now();
 
-    let row = sqlx::query(
+    let file = sqlx::query_as::<_, ModelFile>(
         r#"
         INSERT INTO model_files (
             id, model_id, filename, file_path, file_size_bytes, 
@@ -279,17 +279,6 @@ pub async fn create_model_file(
     .fetch_one(pool)
     .await?;
 
-    let file = ModelFile {
-        id: row.get("id"),
-        model_id: row.get("model_id"),
-        filename: row.get("filename"),
-        file_path: row.get("file_path"),
-        file_size_bytes: row.get("file_size_bytes"),
-        file_type: row.get("file_type"),
-        upload_status: row.get("upload_status"),
-        uploaded_at: row.get("uploaded_at"),
-    };
-
     Ok(file)
 }
 
@@ -297,7 +286,7 @@ pub async fn create_model_file(
 pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFile>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    let rows = sqlx::query(
+    let files = sqlx::query_as::<_, ModelFile>(
         "SELECT id, model_id, filename, file_path, file_size_bytes, 
                 file_type, upload_status, uploaded_at
          FROM model_files WHERE model_id = $1 ORDER BY uploaded_at ASC",
@@ -305,21 +294,6 @@ pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFile>, sqlx::Er
     .bind(model_id)
     .fetch_all(pool)
     .await?;
-
-    let mut files = Vec::new();
-    for row in rows {
-        let file = ModelFile {
-            id: row.get("id"),
-            model_id: row.get("model_id"),
-            filename: row.get("filename"),
-            file_path: row.get("file_path"),
-            file_size_bytes: row.get("file_size_bytes"),
-            file_type: row.get("file_type"),
-            upload_status: row.get("upload_status"),
-            uploaded_at: row.get("uploaded_at"),
-        };
-        files.push(file);
-    }
 
     Ok(files)
 }

@@ -25,6 +25,7 @@ interface FileCardProps {
   size?: number
   onRemove?: (fileId: string) => void
   removeId?: string // Custom ID for remove operation
+  canRemove?: boolean // Whether the remove button should be shown
 }
 
 interface FileModalContentProps {
@@ -182,6 +183,7 @@ export const FileCard: React.FC<FileCardProps> = ({
   size = 111,
   onRemove,
   removeId,
+  canRemove = true,
 }) => {
   const { message, modal } = App.useApp()
   const { currentProject } = Stores.Projects
@@ -367,6 +369,9 @@ export const FileCard: React.FC<FileCardProps> = ({
                 console.error('Failed to delete file:', error)
               })
             }
+          }}
+          style={{
+            display: canRemove ? 'block' : 'none',
           }}
           className="!absolute top-1 right-1 opacity-0
                     group-hover:opacity-100 transition-opacity bg-transparent"

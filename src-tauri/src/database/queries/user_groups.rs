@@ -12,7 +12,7 @@ pub async fn create_user_group(
 ) -> Result<UserGroup, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let row = sqlx::query(
+    let mut group = sqlx::query_as::<_, UserGroup>(
         r#"
         INSERT INTO user_groups (name, description, permissions)
         VALUES ($1, $2, $3)
@@ -25,52 +25,31 @@ pub async fn create_user_group(
     .fetch_one(&*pool)
     .await?;
 
-    let group_id: Uuid = row.get("id");
-    let provider_ids = get_provider_ids_for_group(group_id)
+    let provider_ids = get_provider_ids_for_group(group.id)
         .await
         .unwrap_or_default();
+    
+    group.provider_ids = provider_ids;
 
-    Ok(UserGroup {
-        id: group_id,
-        name: row.get("name"),
-        description: row.get("description"),
-        permissions: row.get("permissions"),
-        provider_ids,
-        is_protected: row.get("is_protected"),
-        is_active: row.get("is_active"),
-        created_at: row.get("created_at"),
-        updated_at: row.get("updated_at"),
-    })
+    Ok(group)
 }
 
 pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let row = sqlx::query("SELECT * FROM user_groups WHERE id = $1")
+    let mut group = sqlx::query_as::<_, UserGroup>("SELECT * FROM user_groups WHERE id = $1")
         .bind(group_id)
         .fetch_optional(&*pool)
         .await?;
 
-    let Some(row) = row else {
-        return Ok(None);
-    };
+    if let Some(ref mut group) = group {
+        let provider_ids = get_provider_ids_for_group(group.id)
+            .await
+            .unwrap_or_default();
+        group.provider_ids = provider_ids;
+    }
 
-    let group_id: Uuid = row.get("id");
-    let provider_ids = get_provider_ids_for_group(group_id)
-        .await
-        .unwrap_or_default();
-
-    Ok(Some(UserGroup {
-        id: group_id,
-        name: row.get("name"),
-        description: row.get("description"),
-        permissions: row.get("permissions"),
-        provider_ids,
-        is_protected: row.get("is_protected"),
-        is_active: row.get("is_active"),
-        created_at: row.get("created_at"),
-        updated_at: row.get("updated_at"),
-    }))
+    Ok(group)
 }
 
 pub async fn list_user_groups(
@@ -87,30 +66,18 @@ pub async fn list_user_groups(
     let total: i64 = total_row.get("count");
 
     // Get groups
-    let rows = sqlx::query("SELECT * FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2")
+    let mut groups = sqlx::query_as::<_, UserGroup>("SELECT * FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2")
         .bind(per_page)
         .bind(offset)
         .fetch_all(&*pool)
         .await?;
 
-    let mut groups = Vec::new();
-    for row in rows {
-        let group_id: Uuid = row.get("id");
-        let provider_ids = get_provider_ids_for_group(group_id)
+    // Load provider_ids for each group
+    for group in &mut groups {
+        let provider_ids = get_provider_ids_for_group(group.id)
             .await
             .unwrap_or_default();
-
-        groups.push(UserGroup {
-            id: group_id,
-            name: row.get("name"),
-            description: row.get("description"),
-            permissions: row.get("permissions"),
-            provider_ids,
-            is_protected: row.get("is_protected"),
-            is_active: row.get("is_active"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-        });
+        group.provider_ids = provider_ids;
     }
 
     Ok(UserGroupListResponse {
@@ -177,7 +144,7 @@ pub async fn update_user_group(
     query.push_str(&updates.join(","));
     query.push_str(&format!(" WHERE id = ${} RETURNING *", param_index));
 
-    let mut sql_query = sqlx::query(&query);
+    let mut sql_query = sqlx::query_as::<_, UserGroup>(&query);
 
     if let Some(name) = name {
         sql_query = sql_query.bind(name);
@@ -194,28 +161,16 @@ pub async fn update_user_group(
 
     sql_query = sql_query.bind(group_id);
 
-    let row = sql_query.fetch_optional(&*pool).await?;
+    let mut group = sql_query.fetch_optional(&*pool).await?;
 
-    let Some(row) = row else {
-        return Ok(None);
-    };
+    if let Some(ref mut group) = group {
+        let provider_ids = get_provider_ids_for_group(group.id)
+            .await
+            .unwrap_or_default();
+        group.provider_ids = provider_ids;
+    }
 
-    let group_id: Uuid = row.get("id");
-    let provider_ids = get_provider_ids_for_group(group_id)
-        .await
-        .unwrap_or_default();
-
-    Ok(Some(UserGroup {
-        id: group_id,
-        name: row.get("name"),
-        description: row.get("description"),
-        permissions: row.get("permissions"),
-        provider_ids,
-        is_protected: row.get("is_protected"),
-        is_active: row.get("is_active"),
-        created_at: row.get("created_at"),
-        updated_at: row.get("updated_at"),
-    }))
+    Ok(group)
 }
 
 pub async fn delete_user_group(group_id: Uuid) -> Result<bool, sqlx::Error> {
@@ -287,7 +242,7 @@ pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<boo
 pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let rows = sqlx::query(
+    let groups = sqlx::query_as::<_, UserGroup>(
         r#"
         SELECT ug.* FROM user_groups ug
         JOIN user_group_memberships ugm ON ug.id = ugm.group_id
@@ -299,20 +254,7 @@ pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Erro
     .fetch_all(&*pool)
     .await?;
 
-    let groups = rows
-        .into_iter()
-        .map(|row| UserGroup {
-            id: row.get("id"),
-            name: row.get("name"),
-            description: row.get("description"),
-            permissions: row.get("permissions"),
-            provider_ids: Vec::new(), // Loaded separately
-            is_protected: row.get("is_protected"),
-            is_active: row.get("is_active"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-        })
-        .collect();
+    // Note: provider_ids are left empty as they are loaded separately when needed
 
     Ok(groups)
 }

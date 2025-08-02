@@ -12,21 +12,18 @@ pub async fn create_branch_tx(
     let now = chrono::Utc::now();
 
     // Insert the branch
-    sqlx::query(
+    let branch = sqlx::query_as::<_, Branch>(
         r#"
         INSERT INTO branches (id, conversation_id, created_at)
         VALUES ($1, $2, $3)
+        RETURNING id, conversation_id, created_at
         "#,
     )
     .bind(branch_id)
     .bind(conversation_id)
     .bind(now)
-    .execute(&mut **tx)
+    .fetch_one(&mut **tx)
     .await?;
 
-    Ok(Branch {
-        id: branch_id,
-        conversation_id,
-        created_at: now,
-    })
+    Ok(branch)
 }

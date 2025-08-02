@@ -10,6 +10,7 @@ import {
 import { Message, MessageBranch } from '../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { MessageEditor } from './MessageEditor'
+import { FileCard } from '../common/FileCard'
 import {
   Stores,
   loadConversationMessageBranches,
@@ -122,7 +123,7 @@ export const ChatMessage = memo(function ChatMessage({
           <MessageEditor />
         ) : (
           <div
-            className={'w-full'}
+            className={'w-full flex flex-col gap-2'}
             style={{
               whiteSpace: isUser ? 'pre-wrap' : 'normal',
             }}
@@ -133,6 +134,20 @@ export const ChatMessage = memo(function ChatMessage({
               <Spin indicator={<LoadingOutlined spin />} />
             ) : (
               <MarkdownRenderer content={message.content.trim()} />
+            )}
+
+            {/* Render files if message has any */}
+            {message.files && message.files.length > 0 && (
+              <Flex className="mt-4 gap-2 flex-wrap">
+                {message.files.map(file => (
+                  <FileCard
+                    key={file.id}
+                    file={file}
+                    size={80}
+                    canRemove={false}
+                  />
+                ))}
+              </Flex>
             )}
           </div>
         )}

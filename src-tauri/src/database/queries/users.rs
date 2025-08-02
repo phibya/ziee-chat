@@ -28,77 +28,33 @@ async fn clone_default_assistants_for_user(user_id: Uuid) -> Result<(), sqlx::Er
 // Get user by ID with all related data
 pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> {
     let pool = get_database_pool()?;
-    let user_row = sqlx::query("SELECT * FROM users WHERE id = $1")
+    let user_base = sqlx::query_as::<_, UserBase>("SELECT * FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_optional(&*pool)
         .await?;
 
-    let Some(user_row) = user_row else {
+    let Some(user_base) = user_base else {
         return Ok(None);
     };
 
-    let user_base = UserBase {
-        id: user_row.get("id"),
-        username: user_row.get("username"),
-        created_at: user_row.get("created_at"),
-        profile: user_row.get("profile"),
-        is_active: user_row.get("is_active"),
-        is_protected: user_row.get("is_protected"),
-        last_login_at: user_row.get("last_login_at"),
-        updated_at: user_row.get("updated_at"),
-    };
-
-    let email_rows =
-        sqlx::query("SELECT * FROM user_emails WHERE user_id = $1 ORDER BY created_at")
-            .bind(user_id)
-            .fetch_all(&*pool)
-            .await?;
-
-    let emails: Vec<UserEmail> = email_rows
-        .into_iter()
-        .map(|row| UserEmail {
-            id: row.get("id"),
-            user_id: row.get("user_id"),
-            address: row.get("address"),
-            verified: row.get("verified"),
-            created_at: row.get("created_at"),
-        })
-        .collect();
-
-    let service_rows = sqlx::query("SELECT * FROM user_services WHERE user_id = $1")
-        .bind(user_id)
-        .fetch_all(&*pool)
-        .await?;
-
-    let services: Vec<UserService> = service_rows
-        .into_iter()
-        .map(|row| UserService {
-            id: row.get("id"),
-            user_id: row.get("user_id"),
-            service_name: row.get("service_name"),
-            service_data: row.get("service_data"),
-            created_at: row.get("created_at"),
-        })
-        .collect();
-
-    let token_rows = sqlx::query(
-        "SELECT * FROM user_login_tokens WHERE user_id = $1 ORDER BY when_created DESC",
+    let emails = sqlx::query_as::<_, UserEmail>(
+        "SELECT * FROM user_emails WHERE user_id = $1 ORDER BY created_at"
     )
     .bind(user_id)
     .fetch_all(&*pool)
     .await?;
 
-    let login_tokens: Vec<UserLoginToken> = token_rows
-        .into_iter()
-        .map(|row| UserLoginToken {
-            id: row.get("id"),
-            user_id: row.get("user_id"),
-            token: row.get("token"),
-            when_created: row.get("when_created"),
-            expires_at: row.get("expires_at"),
-            created_at: row.get("created_at"),
-        })
-        .collect();
+    let services = sqlx::query_as::<_, UserService>("SELECT * FROM user_services WHERE user_id = $1")
+        .bind(user_id)
+        .fetch_all(&*pool)
+        .await?;
+
+    let login_tokens = sqlx::query_as::<_, UserLoginToken>(
+        "SELECT * FROM user_login_tokens WHERE user_id = $1 ORDER BY when_created DESC"
+    )
+    .bind(user_id)
+    .fetch_all(&*pool)
+    .await?;
 
     // Get user groups
     let groups = super::user_groups::get_user_groups(user_id).await?;
@@ -367,43 +323,24 @@ pub async fn create_user_with_password_service(
     let is_first_user = user_count.0 == 0;
 
     // Insert user
-    let user_row = sqlx::query(
-    "INSERT INTO users (username, profile, is_protected) VALUES ($1, $2, $3) RETURNING id, username, created_at, profile, is_active, is_protected, last_login_at, updated_at"
-  )
+    let user_base = sqlx::query_as::<_, UserBase>(
+        "INSERT INTO users (username, profile, is_protected) VALUES ($1, $2, $3) RETURNING id, username, created_at, profile, is_active, is_protected, last_login_at, updated_at"
+    )
     .bind(&username)
     .bind(&profile)
     .bind(is_first_user) // Mark first user as protected
     .fetch_one(&mut *tx)
     .await?;
 
-    let user_base = UserBase {
-        id: user_row.get("id"),
-        username: user_row.get("username"),
-        created_at: user_row.get("created_at"),
-        profile: user_row.get("profile"),
-        is_active: user_row.get("is_active"),
-        is_protected: user_row.get("is_protected"),
-        last_login_at: user_row.get("last_login_at"),
-        updated_at: user_row.get("updated_at"),
-    };
-
     // Insert email
-    let email_row = sqlx::query(
-    "INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3) RETURNING id, user_id, address, verified, created_at"
-  )
+    let email_db = sqlx::query_as::<_, UserEmail>(
+        "INSERT INTO user_emails (user_id, address, verified) VALUES ($1, $2, $3) RETURNING id, user_id, address, verified, created_at"
+    )
     .bind(user_base.id)
     .bind(&email)
     .bind(false)
     .fetch_one(&mut *tx)
     .await?;
-
-    let email_db = UserEmail {
-        id: email_row.get("id"),
-        user_id: email_row.get("user_id"),
-        address: email_row.get("address"),
-        verified: email_row.get("verified"),
-        created_at: email_row.get("created_at"),
-    };
 
     // Insert password service if provided
     let mut services = Vec::new();
@@ -413,22 +350,14 @@ pub async fn create_user_with_password_service(
             "salt": password_service.salt
         });
 
-        let service_row = sqlx::query(
-      "INSERT INTO user_services (user_id, service_name, service_data) VALUES ($1, $2, $3) RETURNING id, user_id, service_name, service_data, created_at"
-    )
-      .bind(user_base.id)
-      .bind("password")
-      .bind(&password_service_json)
-      .fetch_one(&mut *tx)
-      .await?;
-
-        let service_db = UserService {
-            id: service_row.get("id"),
-            user_id: service_row.get("user_id"),
-            service_name: service_row.get("service_name"),
-            service_data: service_row.get("service_data"),
-            created_at: service_row.get("created_at"),
-        };
+        let service_db = sqlx::query_as::<_, UserService>(
+            "INSERT INTO user_services (user_id, service_name, service_data) VALUES ($1, $2, $3) RETURNING id, user_id, service_name, service_data, created_at"
+        )
+        .bind(user_base.id)
+        .bind("password")
+        .bind(&password_service_json)
+        .fetch_one(&mut *tx)
+        .await?;
 
         services.push(service_db);
     }
