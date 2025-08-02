@@ -340,7 +340,7 @@ pub async fn send_message_stream(
             file_ids: request.file_ids.clone(),
         };
 
-        if let Err(e) = chat::send_message(user_message_req, auth_user.user.id).await {
+        if let Err(e) = chat::save_message(user_message_req, auth_user.user.id).await {
             let _ = tx.send(Ok(Event::default().event("error").data(
                 &serde_json::to_string(&StreamErrorData {
                     error: format!("Error saving user message: {}", e),
@@ -412,7 +412,7 @@ pub async fn send_message_stream(
                     file_ids: None, // Assistant messages don't have file attachments
                 };
 
-                match chat::send_message(assistant_message_req, auth_user.user.id).await {
+                match chat::save_message(assistant_message_req, auth_user.user.id).await {
                     Ok(assistant_message) => {
                         // Send completion event
                         let _ = tx.send(Ok(Event::default().event("complete").data(
@@ -585,7 +585,7 @@ async fn stream_ai_response(
                 file_ids: None,
             };
 
-            if let Err(e) = chat::send_message(user_message_req, user_id).await {
+            if let Err(e) = chat::save_message(user_message_req, user_id).await {
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
                         error: format!("Error saving user message: {}", e),
@@ -647,7 +647,7 @@ async fn stream_ai_response(
                 file_ids: None,
             };
 
-            match chat::send_message(assistant_message_req, user_id).await {
+            match chat::save_message(assistant_message_req, user_id).await {
                 Ok(assistant_message) => {
                     // Send completion event
                     let _ = tx.send(Ok(Event::default().event("complete").data(

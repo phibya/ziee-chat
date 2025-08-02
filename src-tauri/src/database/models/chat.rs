@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
+use crate::database::models::File;
 
 // Main unified structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,6 +45,7 @@ pub struct Message {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub metadata: Option<Vec<MessageMetadata>>,
+    pub files: Vec<File>
 }
 
 impl FromRow<'_, sqlx::postgres::PgRow> for Message {
@@ -58,6 +60,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Message {
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
             metadata: None, // This is loaded separately via joins when needed
+            files: vec![], // This is loaded separately via joins when needed
         })
     }
 }
@@ -204,6 +207,23 @@ pub struct ConversationSummary {
     pub updated_at: DateTime<Utc>,
     pub last_message: Option<String>,
     pub message_count: i64,
+}
+
+impl FromRow<'_, sqlx::postgres::PgRow> for ConversationSummary {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(ConversationSummary {
+            id: row.try_get("id")?,
+            title: row.try_get("title")?,
+            user_id: row.try_get("user_id")?,
+            project_id: row.try_get("project_id")?,
+            assistant_id: row.try_get("assistant_id")?,
+            model_id: row.try_get("model_id")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+            last_message: row.try_get("last_message")?,
+            message_count: row.try_get("message_count")?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

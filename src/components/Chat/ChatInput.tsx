@@ -412,7 +412,10 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
                         label: assistant.name,
                         value: assistant.id,
                       }))}
-                      className={'!border-none'}
+                      className={`
+                      [&_.ant-select-selector]:!border-none
+                      [&_.ant-select-selection-wrap]:!text-center
+                      `}
                     />
                   </Form.Item>
 
@@ -424,6 +427,10 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
                       disabled={isDisabled}
                       size="small"
                       options={availableModels}
+                      className={`
+                      [&_.ant-select-selector]:!border-none
+                      [&_.ant-select-selection-wrap]:!text-center
+                      `}
                     />
                   </Form.Item>
 

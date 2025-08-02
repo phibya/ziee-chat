@@ -5,7 +5,73 @@ use crate::database::models::{
     UpdateConversationRequest,
 };
 use sqlx::{Error, Row};
+use std::collections::HashMap;
 use uuid::Uuid;
+
+/// Helper function to load files for messages
+async fn load_files_for_messages(
+    pool: &sqlx::PgPool,
+    message_ids: &[Uuid],
+) -> Result<HashMap<Uuid, Vec<crate::database::models::File>>, Error> {
+    if message_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    // Get all files for these messages
+    let file_rows = sqlx::query_as::<_, crate::database::models::File>(
+        r#"
+        SELECT f.id, f.user_id, f.filename, f.file_size, f.mime_type, f.checksum,
+               f.project_id, f.thumbnail_count, f.page_count, f.processing_metadata,
+               f.created_at, f.updated_at
+        FROM files f
+        INNER JOIN messages_files mf ON f.id = mf.file_id
+        WHERE mf.message_id = ANY($1)
+        "#,
+    )
+    .bind(message_ids)
+    .fetch_all(pool)
+    .await?;
+
+    // Get message-file relationships
+    let message_file_rows = sqlx::query(
+        r#"
+        SELECT message_id, file_id
+        FROM messages_files
+        WHERE message_id = ANY($1)
+        "#,
+    )
+    .bind(message_ids)
+    .fetch_all(pool)
+    .await?;
+
+    // Build a map of message_id -> file_ids
+    let mut message_file_map: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
+    for row in message_file_rows {
+        let message_id: Uuid = row.get("message_id");
+        let file_id: Uuid = row.get("file_id");
+        message_file_map.entry(message_id).or_insert_with(Vec::new).push(file_id);
+    }
+
+    // Build a map of file_id -> File
+    let mut file_map: HashMap<Uuid, crate::database::models::File> = HashMap::new();
+    for file in file_rows {
+        file_map.insert(file.id, file);
+    }
+
+    // Build the final map of message_id -> Vec<File>
+    let mut result: HashMap<Uuid, Vec<crate::database::models::File>> = HashMap::new();
+    for message_id in message_ids {
+        let empty_vec = Vec::new();
+        let file_ids = message_file_map.get(message_id).unwrap_or(&empty_vec);
+        let files = file_ids
+            .iter()
+            .filter_map(|file_id| file_map.get(file_id).cloned())
+            .collect();
+        result.insert(*message_id, files);
+    }
+
+    Ok(result)
+}
 
 /// Create a new conversation with proper branching
 /// According to CLAUDE.md:
@@ -86,7 +152,7 @@ pub async fn get_conversation_by_id(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let row = sqlx::query(
+    let conversation = sqlx::query_as::<_, Conversation>(
         r#"
         SELECT
             id, user_id, title, project_id, assistant_id, model_id,
@@ -100,20 +166,7 @@ pub async fn get_conversation_by_id(
     .fetch_optional(pool)
     .await?;
 
-    match row {
-        Some(row) => Ok(Some(Conversation {
-            id: row.get("id"),
-            user_id: row.get("user_id"),
-            title: row.get("title"),
-            project_id: row.get("project_id"),
-            assistant_id: row.get("assistant_id"),
-            model_id: row.get("model_id"),
-            active_branch_id: row.get("active_branch_id"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-        })),
-        None => Ok(None),
-    }
+    Ok(conversation)
 }
 
 /// List conversations for a user
@@ -140,7 +193,7 @@ pub async fn list_conversations(
     );
 
     // Get conversations with last message info
-    let rows = sqlx::query(
+    let conversations = sqlx::query_as::<_, ConversationSummary>(
         r#"
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
@@ -165,22 +218,6 @@ pub async fn list_conversations(
     .bind(offset)
     .fetch_all(pool)
     .await?;
-
-    let conversations = rows
-        .into_iter()
-        .map(|row| ConversationSummary {
-            id: row.get("id"),
-            title: row.get("title"),
-            user_id: row.get("user_id"),
-            project_id: row.get("project_id"),
-            assistant_id: row.get("assistant_id"),
-            model_id: row.get("model_id"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            last_message: row.get("last_message"),
-            message_count: row.get::<i64, _>("message_count"),
-        })
-        .collect();
 
     Ok(ConversationListResponse {
         conversations,
@@ -238,7 +275,7 @@ pub async fn update_conversation(
         bind_index + 2
     );
 
-    let mut query_builder = sqlx::query(&query);
+    let mut query_builder = sqlx::query_as::<_, Conversation>(&query);
 
     // Bind parameters in the same order as the updates
     if let Some(title) = request.title {
@@ -253,22 +290,9 @@ pub async fn update_conversation(
 
     query_builder = query_builder.bind(now).bind(conversation_id).bind(user_id);
 
-    let row = query_builder.fetch_optional(pool).await?;
+    let conversation = query_builder.fetch_optional(pool).await?;
 
-    match row {
-        Some(row) => Ok(Some(Conversation {
-            id: row.get("id"),
-            user_id: row.get("user_id"),
-            title: row.get("title"),
-            project_id: row.get("project_id"),
-            assistant_id: row.get("assistant_id"),
-            model_id: row.get("model_id"),
-            active_branch_id: row.get("active_branch_id"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-        })),
-        None => Ok(None),
-    }
+    Ok(conversation)
 }
 
 /// Delete a conversation
@@ -298,7 +322,7 @@ pub async fn delete_conversation(conversation_id: Uuid, user_id: Uuid) -> Result
 /// - Assign the chat item to the active branch
 /// - originated_from_id should be the same as id for new messages
 /// - edit_count should be 0 for new messages
-pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<Message, Error> {
+pub async fn save_message(request: SendMessageRequest, user_id: Uuid) -> Result<Message, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -382,7 +406,25 @@ pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<
     // Commit transaction
     tx.commit().await?;
 
-    // Return the created message
+    // Return the created message with files
+    let files = if let Some(file_ids) = &request.file_ids {
+        // Get file details for the returned message
+        sqlx::query_as::<_, crate::database::models::File>(
+            r#"
+            SELECT f.id, f.user_id, f.filename, f.file_size, f.mime_type, f.checksum, 
+                   f.project_id, f.thumbnail_count, f.page_count, f.processing_metadata, 
+                   f.created_at, f.updated_at
+            FROM files f
+            WHERE f.id = ANY($1)
+            "#,
+        )
+        .bind(file_ids)
+        .fetch_all(pool)
+        .await?
+    } else {
+        vec![]
+    };
+
     Ok(Message {
         id: message_id,
         conversation_id: request.conversation_id,
@@ -393,6 +435,7 @@ pub async fn send_message(request: SendMessageRequest, user_id: Uuid) -> Result<
         created_at: now,
         updated_at: now,
         metadata: None,
+        files,
     })
 }
 
@@ -417,8 +460,8 @@ pub async fn get_conversation_messages(
         None => return Ok(vec![]), // No active branch means no messages
     };
 
-    // Get messages for the active branch using the branch_messages relationship
-    let rows = sqlx::query(
+    // Get messages for the active branch
+    let mut messages = sqlx::query_as::<_, Message>(
         r#"
         SELECT
             m.id, m.conversation_id, m.role, m.content,
@@ -434,21 +477,16 @@ pub async fn get_conversation_messages(
     .fetch_all(pool)
     .await?;
 
-    // Convert rows to Message structs
-    let messages = rows
-        .into_iter()
-        .map(|row| Message {
-            id: row.get("id"),
-            conversation_id: row.get("conversation_id"),
-            role: row.get("role"),
-            content: row.get("content"),
-            originated_from_id: row.get("originated_from_id"),
-            edit_count: row.get("edit_count"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            metadata: None,
-        })
-        .collect();
+    // Get all files for these messages
+    let message_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
+
+    // Attach files to messages
+    for message in &mut messages {
+        if let Some(files) = files_by_message.get(&message.id) {
+            message.files = files.clone();
+        }
+    }
 
     Ok(messages)
 }
@@ -481,8 +519,8 @@ pub async fn get_conversation_messages_by_branch(
         return Ok(vec![]); // Branch doesn't exist for this conversation
     }
 
-    // Get messages for the specified branch using the branch_messages relationship
-    let rows = sqlx::query(
+    // Get messages for the specified branch
+    let mut messages = sqlx::query_as::<_, Message>(
         r#"
         SELECT
             m.id, m.conversation_id, m.role, m.content,
@@ -498,21 +536,16 @@ pub async fn get_conversation_messages_by_branch(
     .fetch_all(pool)
     .await?;
 
-    // Convert rows to Message structs
-    let messages = rows
-        .into_iter()
-        .map(|row| Message {
-            id: row.get("id"),
-            conversation_id: row.get("conversation_id"),
-            role: row.get("role"),
-            content: row.get("content"),
-            originated_from_id: row.get("originated_from_id"),
-            edit_count: row.get("edit_count"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            metadata: None,
-        })
-        .collect();
+    // Get all files for these messages
+    let message_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
+    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
+
+    // Attach files to messages
+    for message in &mut messages {
+        if let Some(files) = files_by_message.get(&message.id) {
+            message.files = files.clone();
+        }
+    }
 
     Ok(messages)
 }
@@ -663,7 +696,7 @@ pub async fn edit_message(
     .await?;
 
     // 7. Get conversation history for the response
-    let history_rows = sqlx::query(
+    let mut conversation_history = sqlx::query_as::<_, Message>(
         r#"
         SELECT
             m.id, m.conversation_id, m.role, m.content,
@@ -680,20 +713,10 @@ pub async fn edit_message(
     .fetch_all(&mut *tx)
     .await?;
 
-    let conversation_history: Vec<Message> = history_rows
-        .into_iter()
-        .map(|row| Message {
-            id: row.get("id"),
-            conversation_id: row.get("conversation_id"),
-            role: row.get("role"),
-            content: row.get("content"),
-            originated_from_id: row.get("originated_from_id"),
-            edit_count: row.get("edit_count"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            metadata: None,
-        })
-        .collect();
+    // Ensure all messages have empty files (they're not loaded in edit responses)
+    for message in &mut conversation_history {
+        message.files = vec![];
+    }
 
     // Commit transaction
     tx.commit().await?;
@@ -709,6 +732,7 @@ pub async fn edit_message(
         created_at: original_created_at,
         updated_at: now,
         metadata: None,
+        files: vec![], // Files not loaded for edit responses
     };
 
     Ok(Some(EditMessageResponse {
@@ -748,7 +772,7 @@ pub async fn search_conversations(
     let total: i64 = total_row.get("count");
 
     // Get conversations that match search with last message info
-    let rows = sqlx::query(
+    let conversations = sqlx::query_as::<_, ConversationSummary>(
         r#"
         SELECT DISTINCT ON (c.id)
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
@@ -776,22 +800,6 @@ pub async fn search_conversations(
     .bind(offset)
     .fetch_all(pool)
     .await?;
-
-    let conversations = rows
-        .into_iter()
-        .map(|row| ConversationSummary {
-            id: row.get("id"),
-            title: row.get("title"),
-            user_id: row.get("user_id"),
-            project_id: row.get("project_id"),
-            assistant_id: row.get("assistant_id"),
-            model_id: row.get("model_id"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
-            last_message: row.get("last_message"),
-            message_count: row.get::<i64, _>("message_count"),
-        })
-        .collect();
 
     Ok(ConversationListResponse {
         conversations,
@@ -923,7 +931,7 @@ pub async fn get_message_branches(
     };
 
     // Get all branches that contain messages with the same originated_from_id
-    let rows = sqlx::query(
+    let branches = sqlx::query_as::<_, MessageBranch>(
         r#"
         SELECT DISTINCT
             b.id, b.conversation_id, b.created_at, bm.is_clone
@@ -937,16 +945,6 @@ pub async fn get_message_branches(
     .bind(originated_from_id)
     .fetch_all(pool)
     .await?;
-
-    let branches = rows
-        .into_iter()
-        .map(|row| MessageBranch {
-            id: row.get("id"),
-            conversation_id: row.get("conversation_id"),
-            created_at: row.get("created_at"),
-            is_clone: row.get("is_clone"),
-        })
-        .collect();
 
     Ok(branches)
 }
