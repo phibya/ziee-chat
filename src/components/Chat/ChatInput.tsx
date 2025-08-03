@@ -1,51 +1,57 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  App,
   Button,
+  Card,
+  Divider,
   Flex,
+  Form,
   Input,
   Select,
-  Form,
-  Upload,
   theme,
   Typography,
-  App,
-  Divider,
-  Card,
+  Upload,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { SendOutlined, StopOutlined, FileOutlined } from '@ant-design/icons'
 import {
-  Stores,
-  sendChatMessage,
-  stopMessageStreaming,
-  createNewConversation,
-  loadConversationById,
+  CloseOutlined,
+  FileOutlined,
+  SendOutlined,
+  StopOutlined,
+} from '@ant-design/icons'
+import {
   addNewConversationToList,
-  loadUserProvidersWithAllModels,
+  createNewConversation,
+  editChatMessage,
+  loadConversationById,
   loadUserAssistants,
+  loadUserProvidersWithAllModels,
+  sendChatMessage,
+  stopEditingMessage,
+  stopMessageStreaming,
+  Stores,
 } from '../../store'
-import { ApiClient } from '../../api/client'
-import type { File, FileUploadProgress } from '../../types'
 import { FileCard } from '../common/FileCard'
+import {
+  ChatUIInterfaceID,
+  removeFileFromChat,
+  removeFileUploadProgress,
+  uploadFilesToChat,
+} from '../../store/ui/chatInput.ts'
 
 const { TextArea } = Input
 const { Text } = Typography
 
-interface UploadedFile {
-  id: string
-  filename: string
-  size: number
-  uploading: boolean
-  error?: string
-  file?: File // The complete file object once uploaded
-}
-
 interface ChatInputProps {
   projectId?: string
+  isEditing?: boolean
 }
 
-export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
+export const ChatInput = function ChatInput({
+  projectId,
+  isEditing = false,
+}: ChatInputProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [form] = Form.useForm()
@@ -53,12 +59,24 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
   const { message } = App.useApp()
   const { token } = theme.useToken()
 
+  const { editingMessageId, editingMessageContent } = Stores.UI.Chat
+  const uiInterfaceId: ChatUIInterfaceID =
+    isEditing && editingMessageId
+      ? editingMessageId
+      : conversationId
+        ? conversationId
+        : projectId
+          ? projectId
+          : 'new-chat'
+  const files = Stores.UI.Chat.filesByUIInterface[uiInterfaceId] || []
+  const newFiles = Stores.UI.Chat.newFilesByUIInterface[uiInterfaceId] || []
+  const uploadingFiles =
+    Stores.UI.Chat.fileUploadProgressByUIInterface[uiInterfaceId] || []
+
   // File upload state
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
   // Focus state for Card styling
   const [isFocused, setIsFocused] = useState(false)
   const [isDragging, setIsDragging] = useState(false) // Drag state for overlay control
-  // Drag state for overlay control
 
   const { currentConversation, sending, isStreaming } = Stores.Chat
   const { assistants } = Stores.Assistants
@@ -68,6 +86,13 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
   useEffect(() => {
     loadUserAssistants()
     loadUserProvidersWithAllModels()
+  }, [])
+
+  // Initialize form and files when in editing mode
+  useEffect(() => {
+    if (isEditing) {
+      form.setFieldValue('message', editingMessageContent)
+    }
   }, [])
 
   // Get available assistants (exclude templates) - memoized for performance
@@ -184,42 +209,48 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
       model: selectedModel,
     } = formValues
 
-    if (!messageToSend?.trim() || !selectedAssistant || !selectedModel) return
+    if (!messageToSend?.trim()) return
+
+    // Handle editing mode
+    if (isEditing && editingMessageId) {
+      try {
+        await editChatMessage(editingMessageId, {
+          assistantId: selectedAssistant,
+          modelId: selectedModel.split(':')[1],
+          content: messageToSend,
+          fileIds: [...files.map(f => f.id), ...newFiles.map(f => f.id)],
+        })
+        stopEditingMessage()
+      } catch (error) {
+        console.error('Failed to edit message:', error)
+      }
+      return
+    }
+
+    // Regular send mode
+    if (!selectedAssistant || !selectedModel) return
 
     form.setFieldValue('message', '') // Clear input immediately
 
-    // Get uploaded file IDs (only non-uploading files)
-    const fileIds = uploadedFiles
-      .filter(f => !f.uploading && !f.error)
-      .map(f => f.id)
-
     try {
-      if (conversationId) {
-        // Existing conversation: send message directly
-        await sendChatMessage({
-          conversationId,
-          content: messageToSend.trim(),
-          assistantId: selectedAssistant,
-          modelId: selectedModel.split(':')[1],
-          fileIds: fileIds.length > 0 ? fileIds : undefined,
-        })
-      } else {
-        // New conversation: create conversation then send message
-        const newConversationId = await handleCreateNewConversation()
-        if (newConversationId) {
-          await sendChatMessage({
-            conversationId: newConversationId,
-            content: messageToSend.trim(),
-            assistantId: selectedAssistant,
-            modelId: selectedModel.split(':')[1],
-            fileIds: fileIds.length > 0 ? fileIds : undefined,
-          })
-          await loadConversationById(newConversationId, false)
-        }
+      let currentConversationId =
+        conversationId || (await handleCreateNewConversation())
+      if (!currentConversationId) {
+        message.error(t('chat.errorCreatingConversation'))
+        return
       }
 
-      // Clear uploaded files after successful send
-      setUploadedFiles([])
+      await sendChatMessage({
+        conversationId: currentConversationId,
+        content: messageToSend.trim(),
+        assistantId: selectedAssistant,
+        modelId: selectedModel.split(':')[1],
+        fileIds: [...files.map(f => f.id), ...newFiles.map(f => f.id)],
+      })
+
+      if (!conversationId) {
+        await loadConversationById(currentConversationId, false)
+      }
     } catch (error) {
       console.error('Failed to send message:', error)
       // Restore the message if sending failed
@@ -228,60 +259,19 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
   }
 
   const handleFileUpload = async (files: globalThis.File[]) => {
-    const newFiles: UploadedFile[] = files.map(file => ({
-      id: crypto.randomUUID(),
-      filename: file.name,
-      size: file.size,
-      uploading: true,
-    }))
-
-    setUploadedFiles(prev => [...prev, ...newFiles])
-
-    // Upload files one by one
-    for (const file of files) {
-      const fileInfo = newFiles.find(f => f.filename === file.name)
-      if (!fileInfo) continue
-
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-
-        const response = await ApiClient.Files.upload(formData)
-
-        // Update file status to completed
-        setUploadedFiles(prev =>
-          prev.map(f =>
-            f.id === fileInfo.id
-              ? {
-                  ...f,
-                  id: response.file.id,
-                  uploading: false,
-                  file: response.file,
-                }
-              : f,
-          ),
-        )
-
-        message.success(`${file.name} uploaded successfully`)
-      } catch (error) {
-        console.error('Failed to upload file:', error)
-
-        // Update file status to error
-        setUploadedFiles(prev =>
-          prev.map(f =>
-            f.id === fileInfo.id
-              ? { ...f, uploading: false, error: 'Upload failed' }
-              : f,
-          ),
-        )
-
-        message.error(`Failed to upload ${file.name}`)
-      }
-    }
+    uploadFilesToChat(uiInterfaceId, files)
   }
 
   const handleRemoveFile = (fileId: string) => {
-    setUploadedFiles(prev => prev.filter(f => f.id !== fileId))
+    console.log({ fileId, uiInterfaceId })
+    removeFileFromChat(uiInterfaceId, fileId)
+    removeFileUploadProgress(uiInterfaceId, fileId)
+  }
+
+  const handleCancel = () => {
+    if (isEditing) {
+      stopEditingMessage()
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -434,30 +424,49 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
                     />
                   </Form.Item>
 
-                  {/* Send/Stop button */}
+                  {/* Send/Stop/Save/Cancel buttons */}
                   <div className="flex gap-1">
-                    {showStop && (
-                      <Button
-                        type="text"
-                        icon={<StopOutlined />}
-                        onClick={stopMessageStreaming}
-                        size="small"
-                      />
+                    {isEditing ? (
+                      <>
+                        <Button
+                          type="primary"
+                          icon={<SendOutlined rotate={270} />}
+                          onClick={handleSend}
+                          disabled={!form.getFieldValue('message')?.trim()}
+                          size="small"
+                        />
+                        <Button
+                          icon={<CloseOutlined />}
+                          onClick={handleCancel}
+                          size="small"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {showStop && (
+                          <Button
+                            type="text"
+                            icon={<StopOutlined />}
+                            onClick={stopMessageStreaming}
+                            size="small"
+                          />
+                        )}
+                        <Button
+                          type="primary"
+                          icon={<SendOutlined rotate={270} />}
+                          onClick={handleSend}
+                          disabled={
+                            !form.getFieldValue('message')?.trim() ||
+                            isDisabled ||
+                            !form.getFieldValue('assistant') ||
+                            !form.getFieldValue('model') ||
+                            uploadingFiles.length > 0
+                          }
+                          loading={sending}
+                          size="small"
+                        />
+                      </>
                     )}
-                    <Button
-                      type="primary"
-                      icon={<SendOutlined rotate={270} />}
-                      onClick={handleSend}
-                      disabled={
-                        !form.getFieldValue('message')?.trim() ||
-                        isDisabled ||
-                        !form.getFieldValue('assistant') ||
-                        !form.getFieldValue('model') ||
-                        uploadedFiles.some(f => f.uploading)
-                      }
-                      loading={sending}
-                      size="small"
-                    />
                   </div>
                 </div>
               </div>
@@ -465,59 +474,43 @@ export const ChatInput = function ChatInput({ projectId }: ChatInputProps) {
           </div>
 
           {/* Divider and File Upload Preview at the bottom */}
-          {uploadedFiles.length > 0 && (
+          {(files.length > 0 ||
+            newFiles.length > 0 ||
+            uploadingFiles.length > 0) && (
             <>
               <Divider style={{ margin: 0 }} />
               <div style={{ padding: '8px' }}>
                 <div className="flex flex-wrap gap-2">
-                  {uploadedFiles.map(uploadedFile => {
-                    if (uploadedFile.uploading) {
-                      // Show uploading state using FileCard
-                      const uploadProgress: FileUploadProgress = {
-                        id: uploadedFile.id,
-                        filename: uploadedFile.filename,
-                        progress: 75, // Show indeterminate progress
+                  {files.map(file => (
+                    <FileCard
+                      key={file.id}
+                      file={file}
+                      canDelete={false}
+                      canRemove={true}
+                      onRemove={handleRemoveFile}
+                    />
+                  ))}
+                  {newFiles.map(file => (
+                    <FileCard
+                      key={file.id}
+                      file={file}
+                      canDelete={true}
+                      onDelete={handleRemoveFile}
+                    />
+                  ))}
+                  {uploadingFiles.map(uploadingFile => (
+                    <FileCard
+                      key={uploadingFile.id}
+                      uploadingFile={{
+                        id: uploadingFile.id,
+                        filename: uploadingFile.filename,
+                        progress: uploadingFile.progress || 0,
                         status: 'uploading',
-                        size: uploadedFile.size,
-                      }
-                      return (
-                        <FileCard
-                          key={uploadedFile.id}
-                          uploadingFile={uploadProgress}
-                          onRemove={handleRemoveFile}
-                          removeId={uploadedFile.id}
-                        />
-                      )
-                    } else if (uploadedFile.error) {
-                      // Show error state using FileCard
-                      const uploadProgress: FileUploadProgress = {
-                        id: uploadedFile.id,
-                        filename: uploadedFile.filename,
-                        progress: 0,
-                        status: 'error',
-                        error: uploadedFile.error,
-                        size: uploadedFile.size,
-                      }
-                      return (
-                        <FileCard
-                          key={uploadedFile.id}
-                          uploadingFile={uploadProgress}
-                          onRemove={handleRemoveFile}
-                          removeId={uploadedFile.id}
-                        />
-                      )
-                    } else {
-                      // Show completed file using FileCard
-                      return (
-                        <FileCard
-                          key={uploadedFile.id}
-                          file={uploadedFile.file}
-                          onRemove={handleRemoveFile}
-                          removeId={uploadedFile.id}
-                        />
-                      )
-                    }
-                  })}
+                        size: uploadingFile.size,
+                      }}
+                      onRemove={handleRemoveFile}
+                    />
+                  ))}
                 </div>
               </div>
             </>

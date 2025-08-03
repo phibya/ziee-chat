@@ -13,7 +13,7 @@ export {
   setInputDisabled,
   setInputPlaceholder,
   resetChatUI,
-} from './chat'
+} from './chatInput.ts'
 
 // Individual modal exports
 export {

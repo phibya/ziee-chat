@@ -71,6 +71,7 @@ export interface SwitchBranchRequest {
 
 export interface EditMessageRequest {
   content: string
+  file_ids?: string[]
 }
 
 export interface ConversationListResponse {

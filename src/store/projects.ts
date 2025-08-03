@@ -370,27 +370,6 @@ export const uploadFilesToProject = async (
   }
 }
 
-// Delete a file
-export const deleteProjectFile = async (
-  _projectId: string,
-  fileId: string,
-): Promise<void> => {
-  try {
-    await ApiClient.Files.delete({ id: fileId })
-
-    // Remove from local state
-    useProjectsStore.setState(state => ({
-      files: state.files.filter(file => file.id !== fileId),
-    }))
-  } catch (error) {
-    useProjectsStore.setState({
-      filesError:
-        error instanceof Error ? error.message : 'Failed to delete file',
-    })
-    throw error
-  }
-}
-
 // Utility actions
 export const cancelProjectFileUpload = (): void => {
   useProjectsStore.setState({

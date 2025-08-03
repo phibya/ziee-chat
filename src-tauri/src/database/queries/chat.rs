@@ -1,7 +1,7 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
     Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, EditMessageResponse, Message, MessageBranch, SendMessageRequest,
+    EditMessageRequest, EditMessageResponse, Message, MessageBranch, SaveMessageRequest,
     UpdateConversationRequest,
 };
 use sqlx::{Error, Row};
@@ -322,7 +322,7 @@ pub async fn delete_conversation(conversation_id: Uuid, user_id: Uuid) -> Result
 /// - Assign the chat item to the active branch
 /// - originated_from_id should be the same as id for new messages
 /// - edit_count should be 0 for new messages
-pub async fn save_message(request: SendMessageRequest, user_id: Uuid) -> Result<Message, Error> {
+pub async fn save_message(request: SaveMessageRequest, user_id: Uuid) -> Result<Message, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -595,7 +595,6 @@ pub async fn edit_message(
 
     let conversation_id: Uuid = original.get("conversation_id");
     let role: String = original.get("role");
-    let original_content: String = original.get("content");
     let original_originated_from_id: Option<Uuid> = original.get("originated_from_id");
     let original_edit_count: Option<i32> = original.get("edit_count");
     let original_created_at: chrono::DateTime<chrono::Utc> = original.get("created_at");
@@ -609,9 +608,6 @@ pub async fn edit_message(
     if role != "user" {
         return Ok(None);
     }
-
-    // Check if content actually changed
-    let content_changed = original_content.trim() != request.content.trim();
 
     // 2. Create a new branch for this edit
     let new_branch = branches::create_branch_tx(&mut tx, conversation_id, None).await?;
@@ -676,6 +672,23 @@ pub async fn edit_message(
     .execute(&mut *tx)
     .await?;
 
+    // Insert file relationships if provided
+    if let Some(file_ids) = &request.file_ids {
+        for file_id in file_ids {
+            sqlx::query(
+                r#"
+                INSERT INTO messages_files (message_id, file_id, created_at)
+                VALUES ($1, $2, $3)
+                "#,
+            )
+            .bind(new_message_id)
+            .bind(file_id)
+            .bind(now)
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
     // 5. Set the new branch as the active branch for the conversation
     sqlx::query("UPDATE conversations SET active_branch_id = $1 WHERE id = $2")
         .bind(new_branch.id)
@@ -721,6 +734,24 @@ pub async fn edit_message(
     // Commit transaction
     tx.commit().await?;
 
+    // Get file details for the returned message if files were provided
+    let files = if let Some(file_ids) = &request.file_ids {
+        sqlx::query_as::<_, crate::database::models::File>(
+            r#"
+            SELECT f.id, f.user_id, f.filename, f.file_size, f.mime_type, f.checksum, 
+                   f.project_id, f.thumbnail_count, f.page_count, f.processing_metadata, 
+                   f.created_at, f.updated_at
+            FROM files f
+            WHERE f.id = ANY($1)
+            "#,
+        )
+        .bind(file_ids)
+        .fetch_all(pool)
+        .await?
+    } else {
+        vec![]
+    };
+
     // Return the response
     let message = Message {
         id: new_message_id,
@@ -732,12 +763,11 @@ pub async fn edit_message(
         created_at: original_created_at,
         updated_at: now,
         metadata: None,
-        files: vec![], // Files not loaded for edit responses
+        files,
     };
 
     Ok(Some(EditMessageResponse {
         message,
-        content_changed,
         conversation_history,
     }))
 }

@@ -14,7 +14,6 @@ import {
   Conversation,
   ConversationListResponse,
   CreateConversationRequest,
-  EditMessageRequest,
   Message,
   MessageBranch,
   SendMessageRequest,
@@ -162,8 +161,7 @@ export const ApiEndpoints = {
   'Chat.getConversation': 'GET /api/chat/conversations/{conversation_id}',
   'Chat.updateConversation': 'PUT /api/chat/conversations/{conversation_id}',
   'Chat.deleteConversation': 'DELETE /api/chat/conversations/{conversation_id}',
-  'Chat.sendMessage': 'POST /api/chat/messages/stream',
-  'Chat.editMessage': 'PUT /api/chat/messages/{message_id}',
+  'Chat.sendMessageStream': 'POST /api/chat/messages/stream',
   'Chat.editMessageStream': 'PUT /api/chat/messages/{message_id}/stream',
   'Chat.getMessageBranches': 'GET /api/chat/messages/{message_id}/branches',
   'Chat.getConversationMessages':
@@ -430,9 +428,8 @@ export type ApiEndpointParameters = {
     conversation_id: string
   } & UpdateConversationRequest
   'Chat.deleteConversation': { conversation_id: string }
-  'Chat.sendMessage': SendMessageRequest
-  'Chat.editMessage': { message_id: string } & EditMessageRequest
-  'Chat.editMessageStream': { message_id: string } & EditMessageRequest
+  'Chat.sendMessageStream': SendMessageRequest
+  'Chat.editMessageStream': { message_id: string } & SendMessageRequest
   'Chat.getMessageBranches': { message_id: string }
   'Chat.getConversationMessages': {
     conversation_id: string
@@ -636,8 +633,7 @@ export type ApiEndpointResponses = {
   'Chat.getConversation': Conversation
   'Chat.updateConversation': Conversation
   'Chat.deleteConversation': void
-  'Chat.sendMessage': any // Streaming response
-  'Chat.editMessage': Message
+  'Chat.sendMessageStream': any // Streaming response
   'Chat.editMessageStream': any // Streaming response
   'Chat.getMessageBranches': MessageBranch[]
   'Chat.getConversationMessages': Message[]

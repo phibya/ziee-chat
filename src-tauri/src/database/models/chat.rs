@@ -161,7 +161,7 @@ pub struct UpdateConversationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SendMessageRequest {
+pub struct SaveMessageRequest {
     pub conversation_id: Uuid,
     pub content: String,
     pub role: String,
@@ -172,12 +172,12 @@ pub struct SendMessageRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditMessageRequest {
     pub content: String,
+    pub file_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditMessageResponse {
     pub message: Message,
-    pub content_changed: bool,
     pub conversation_history: Vec<Message>,
 }
 

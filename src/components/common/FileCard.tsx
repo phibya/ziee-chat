@@ -1,16 +1,15 @@
 import {
+  CloseOutlined,
   DeleteOutlined,
   DownloadOutlined,
-  CloseOutlined,
 } from '@ant-design/icons'
 import { App, Button, Card, Spin, theme, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
 import {
-  deleteProjectFile,
+  deleteFile,
   getFileContent,
   getFileThumbnail,
   getFileThumbnails,
-  Stores,
 } from '../../store'
 import { Drawer } from './Drawer.tsx'
 import { formatFileSize, isTextFile } from '../../utils/fileUtils.ts'
@@ -23,9 +22,10 @@ interface FileCardProps {
   file?: File
   uploadingFile?: FileUploadProgress
   size?: number
-  onRemove?: (fileId: string) => void
-  removeId?: string // Custom ID for remove operation
+  onRemove?: (fileId: string) => void // remove from the list, not delete from server
   canRemove?: boolean // Whether the remove button should be shown
+  canDelete?: boolean // Whether the delete button should be shown
+  onDelete?: (fileId: string) => void // delete from server
 }
 
 interface FileModalContentProps {
@@ -181,12 +181,12 @@ export const FileCard: React.FC<FileCardProps> = ({
   file,
   uploadingFile,
   size = 111,
-  onRemove,
-  removeId,
   canRemove = true,
+  canDelete = true,
+  onRemove,
+  onDelete,
 }) => {
   const { message, modal } = App.useApp()
-  const { currentProject } = Stores.Projects
   const { token } = theme.useToken()
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -214,15 +214,20 @@ export const FileCard: React.FC<FileCardProps> = ({
   }, [file?.id])
 
   const handleFileDelete = async (fileId: string) => {
-    if (!currentProject?.id) return
-
+    if (!canDelete) return
     try {
-      await deleteProjectFile(currentProject.id, fileId)
+      await deleteFile(fileId)
       message.success('File deleted successfully')
+      onDelete?.(fileId)
     } catch (error) {
       console.error('Failed to delete file:', error)
       message.error('Failed to delete file')
     }
+  }
+
+  const handleFileRemove = async (fileId: string) => {
+    if (!canRemove) return
+    onRemove?.(fileId)
   }
 
   const handleCardClick = async () => {
@@ -287,7 +292,7 @@ export const FileCard: React.FC<FileCardProps> = ({
               danger
               size="small"
               icon={<CloseOutlined />}
-              onClick={() => onRemove(removeId || uploadingFile.filename)}
+              onClick={() => onRemove(uploadingFile.id)}
               className="!absolute top-1 right-1"
             />
           )}
@@ -356,26 +361,26 @@ export const FileCard: React.FC<FileCardProps> = ({
         }}
       >
         {/* Delete/Remove button - only visible on hover */}
-        <Button
-          danger
-          size="small"
-          icon={onRemove ? <CloseOutlined /> : <DeleteOutlined />}
-          onClick={e => {
-            e.stopPropagation()
-            if (onRemove) {
-              onRemove(removeId || file.id)
-            } else {
-              handleFileDelete(file.id).catch(error => {
-                console.error('Failed to delete file:', error)
-              })
-            }
-          }}
-          style={{
-            display: canRemove ? 'block' : 'none',
-          }}
-          className="!absolute top-1 right-1 opacity-0
+        {(canDelete || canRemove) && (
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={e => {
+              e.stopPropagation()
+              if (canDelete) {
+                handleFileDelete(file.id)
+              } else {
+                handleFileRemove(file.id)
+              }
+            }}
+            style={{
+              display: canRemove ? 'block' : 'none',
+            }}
+            className="!absolute top-1 right-1 opacity-0
                     group-hover:opacity-100 transition-opacity bg-transparent"
-        />
+          />
+        )}
 
         <Text
           className="absolute top-1 left-1 rounded px-1 !text-[9px]"

@@ -1,12 +1,22 @@
 // Get file thumbnail
 import { ApiClient } from '../api/client.ts'
+import { useProjectsStore } from './projects.ts'
+import { File } from '../types'
+
+export const getFile = async (fileId: string): Promise<File> => {
+  try {
+    return await ApiClient.Files.get({ id: fileId })
+  } catch (error) {
+    console.error('Failed to fetch file:', error)
+    throw error
+  }
+}
 
 export const getFileThumbnail = async (
   fileId: string,
 ): Promise<string | null> => {
   try {
     const response = await ApiClient.Files.preview({ id: fileId, page: 1 })
-    console.log({ response })
     return window.URL.createObjectURL(response)
   } catch (_error) {
     console.debug('Thumbnail not available for file:', fileId)
@@ -57,6 +67,39 @@ export const generateFileDownloadToken = async (
     return response
   } catch (error) {
     console.error('Failed to generate download token:', error)
+    throw error
+  }
+}
+
+export const uploadFile = async (
+  file: globalThis.File,
+  progressCallback?: (progress: number) => void,
+): Promise<File> => {
+  const formData = new FormData()
+  formData.append('file', file, file.name)
+
+  const response = await ApiClient.Files.upload(formData, {
+    fileUploadProgress: {
+      onProgress: progressCallback,
+    },
+  })
+
+  return response.file
+}
+
+export const deleteFile = async (fileId: string): Promise<void> => {
+  try {
+    await ApiClient.Files.delete({ id: fileId })
+
+    // Remove from local state
+    useProjectsStore.setState(state => ({
+      files: state.files.filter(file => file.id !== fileId),
+    }))
+  } catch (error) {
+    useProjectsStore.setState({
+      filesError:
+        error instanceof Error ? error.message : 'Failed to delete file',
+    })
     throw error
   }
 }

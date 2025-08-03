@@ -187,7 +187,6 @@ export {
 export {
   cancelProjectFileUpload,
   clearFilesError,
-  deleteProjectFile,
   getProjectFiles,
   loadProjectFiles,
   uploadFilesToProject,
@@ -196,9 +195,12 @@ export {
 } from './projects'
 
 export {
+  getFile,
   getFileContent,
   getFileThumbnail,
   getFileThumbnails,
+  uploadFile,
+  deleteFile,
 } from './files'
 
 // User Providers store

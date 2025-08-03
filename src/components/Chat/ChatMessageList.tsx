@@ -41,6 +41,7 @@ export const ChatMessageList = memo(function ChatMessageList() {
             updated_at: new Date().toISOString(),
             edit_count: 0,
             originated_from_id: 'streaming-temp',
+            files: [],
           }}
         />
       )}

@@ -3,6 +3,8 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { Conversation, Message, MessageBranch } from '../types/api/chat'
 import { useConversationsStore } from './conversations.ts'
+import { getFile } from './files.ts'
+import { stopEditingMessage } from './ui'
 
 export interface ChatState {
   // Current conversation state
@@ -157,6 +159,8 @@ export const sendChatMessage = async (
       streamingMessage: '',
     })
 
+    const files = await Promise.all((fileIds || []).map(getFile))
+
     // Add user message immediately
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -167,6 +171,7 @@ export const sendChatMessage = async (
       updated_at: new Date().toISOString(),
       edit_count: 0,
       originated_from_id: crypto.randomUUID(),
+      files: files,
     }
 
     useChatStore.setState(state => ({
@@ -183,6 +188,7 @@ export const sendChatMessage = async (
       updated_at: new Date().toISOString(),
       edit_count: 0,
       originated_from_id: crypto.randomUUID(),
+      files: [],
     }
 
     useChatStore.setState(state => ({
@@ -190,7 +196,7 @@ export const sendChatMessage = async (
     }))
 
     // Send message with streaming
-    await ApiClient.Chat.sendMessage(
+    await ApiClient.Chat.sendMessageStream(
       {
         conversation_id: conversationId,
         content,
@@ -250,7 +256,7 @@ export const sendChatMessage = async (
 
 export const editChatMessage = async (
   messageId: string,
-  newContent: string,
+  params: Omit<SendChatMessageParams, 'conversationId'>,
 ): Promise<void> => {
   const { currentConversation } = useChatStore.getState()
   if (!currentConversation) return
@@ -271,6 +277,8 @@ export const editChatMessage = async (
       throw new Error('Message not found')
     }
 
+    const files = await Promise.all((params.fileIds || []).map(getFile))
+
     // Update the user message immediately with the new content
     useChatStore.setState(state => {
       let currentMessages = state.currentMessages.filter(
@@ -279,10 +287,14 @@ export const editChatMessage = async (
 
       return {
         currentMessages: currentMessages.map(msg =>
-          msg.id === messageId ? { ...msg, content: newContent } : msg,
+          msg.id === messageId
+            ? { ...msg, content: params.content, files }
+            : msg,
         ),
       }
     })
+
+    stopEditingMessage()
 
     // Create assistant message placeholder for streaming
     const assistantMessage: Message = {
@@ -294,6 +306,7 @@ export const editChatMessage = async (
       updated_at: new Date().toISOString(),
       edit_count: 0,
       originated_from_id: messageId,
+      files: [],
     }
 
     useChatStore.setState(state => ({
@@ -304,7 +317,11 @@ export const editChatMessage = async (
     await ApiClient.Chat.editMessageStream(
       {
         message_id: messageId,
-        content: newContent,
+        conversation_id: currentConversation.id,
+        model_id: params.modelId,
+        assistant_id: params.assistantId,
+        content: params.content,
+        file_ids: params.fileIds,
       },
       {
         SSE: (event: string, data: any) => {

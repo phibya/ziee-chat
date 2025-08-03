@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons'
 import { Message, MessageBranch } from '../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
-import { MessageEditor } from './MessageEditor'
+import { ChatInput } from './ChatInput'
 import { FileCard } from '../common/FileCard'
 import {
   Stores,
@@ -86,7 +86,11 @@ export const ChatMessage = memo(function ChatMessage({
   }
 
   const handleEdit = () => {
-    startEditingMessage(message.id, message.content)
+    startEditingMessage({
+      messageId: message.id,
+      content: message.content,
+      files: message.files,
+    })
   }
 
   const handleSwitchBranch = async (branchId: string) => {
@@ -120,7 +124,7 @@ export const ChatMessage = memo(function ChatMessage({
       {/* Message content */}
       <Flex className={`${isUser ? '!pt-0.5' : ''} flex-1`}>
         {isEditing ? (
-          <MessageEditor />
+          <ChatInput isEditing={true} />
         ) : (
           <div
             className={'w-full flex flex-col gap-2'}
