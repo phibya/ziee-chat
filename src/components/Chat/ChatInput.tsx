@@ -24,57 +24,52 @@ import {
   addNewConversationToList,
   createNewConversation,
   editChatMessage,
-  loadConversationById,
   loadUserAssistants,
   loadUserProvidersWithAllModels,
   sendChatMessage,
-  stopEditingMessage,
   stopMessageStreaming,
   Stores,
 } from '../../store'
 import { FileCard } from '../common/FileCard'
-import {
-  ChatUIInterfaceID,
-  removeFileFromChat,
-  removeFileUploadProgress,
-  uploadFilesToChat,
-} from '../../store/ui/chatInput.ts'
+import { createChatInputUIStore } from '../../store/ui/chatInput.ts'
+import { Message } from '../../types/api/chat.ts'
 
 const { TextArea } = Input
 const { Text } = Typography
 
-interface ChatInputProps {
-  projectId?: string
-  isEditing?: boolean
-}
-
 export const ChatInput = function ChatInput({
-  projectId,
-  isEditing = false,
-}: ChatInputProps) {
+  editingMessage,
+  onCancel,
+}: {
+  editingMessage?: Message
+  onCancel?: () => void
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [form] = Form.useForm()
   const { conversationId } = useParams<{ conversationId?: string }>()
+  const { projectId } = useParams<{ projectId?: string }>()
   const { message } = App.useApp()
   const { token } = theme.useToken()
 
-  const { editingMessageId, editingMessageContent } = Stores.UI.Chat
-  const uiInterfaceId: ChatUIInterfaceID =
-    isEditing && editingMessageId
-      ? editingMessageId
-      : conversationId
-        ? conversationId
-        : projectId
-          ? projectId
-          : 'new-chat'
-  const files = Stores.UI.Chat.filesByUIInterface[uiInterfaceId] || []
-  const newFiles = Stores.UI.Chat.newFilesByUIInterface[uiInterfaceId] || []
-  const uploadingFiles =
-    Stores.UI.Chat.fileUploadProgressByUIInterface[uiInterfaceId] || []
+  const store = useMemo(() => {
+    const id = conversationId || projectId || 'new-chat'
+    return createChatInputUIStore(id, editingMessage)
+  }, [])
+  const {
+    files,
+    newFiles,
+    uploadingFiles,
+    isDisabled,
+    uploadFiles,
+    removeFile,
+    removeUploadingFile,
+    setContent,
+    destroy,
+  } = store
+  const isEditing = !!editingMessage
 
   // File upload state
-  // Focus state for Card styling
   const [isFocused, setIsFocused] = useState(false)
   const [isDragging, setIsDragging] = useState(false) // Drag state for overlay control
 
@@ -90,9 +85,10 @@ export const ChatInput = function ChatInput({
 
   // Initialize form and files when in editing mode
   useEffect(() => {
-    if (isEditing) {
-      form.setFieldValue('message', editingMessageContent)
-    }
+    form.setFieldValue(
+      'message',
+      editingMessage?.content || store.__state.content || '',
+    )
   }, [])
 
   // Get available assistants (exclude templates) - memoized for performance
@@ -209,26 +205,36 @@ export const ChatInput = function ChatInput({
       model: selectedModel,
     } = formValues
 
-    if (!messageToSend?.trim()) return
+    if (!messageToSend?.trim()) {
+      message.info('Please enter a message')
+      return
+    }
+
+    if (!selectedAssistant) {
+      message.info('Please select an assistant')
+      return
+    }
+
+    if (!selectedModel) {
+      message.info('Please select a model')
+      return
+    }
 
     // Handle editing mode
-    if (isEditing && editingMessageId) {
+    if (isEditing) {
       try {
-        await editChatMessage(editingMessageId, {
+        await editChatMessage(editingMessage.id, {
           assistantId: selectedAssistant,
           modelId: selectedModel.split(':')[1],
           content: messageToSend,
           fileIds: [...files.map(f => f.id), ...newFiles.map(f => f.id)],
         })
-        stopEditingMessage()
+        destroy()
       } catch (error) {
         console.error('Failed to edit message:', error)
       }
       return
     }
-
-    // Regular send mode
-    if (!selectedAssistant || !selectedModel) return
 
     form.setFieldValue('message', '') // Clear input immediately
 
@@ -249,7 +255,7 @@ export const ChatInput = function ChatInput({
       })
 
       if (!conversationId) {
-        await loadConversationById(currentConversationId, false)
+        destroy()
       }
     } catch (error) {
       console.error('Failed to send message:', error)
@@ -259,19 +265,19 @@ export const ChatInput = function ChatInput({
   }
 
   const handleFileUpload = async (files: globalThis.File[]) => {
-    uploadFilesToChat(uiInterfaceId, files)
+    uploadFiles(files)
   }
 
   const handleRemoveFile = (fileId: string) => {
-    console.log({ fileId, uiInterfaceId })
-    removeFileFromChat(uiInterfaceId, fileId)
-    removeFileUploadProgress(uiInterfaceId, fileId)
+    removeFile(fileId)
+    removeUploadingFile(fileId)
   }
 
   const handleCancel = () => {
     if (isEditing) {
-      stopEditingMessage()
+      destroy()
     }
+    onCancel?.()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -289,7 +295,6 @@ export const ChatInput = function ChatInput({
     setIsFocused(false)
   }
 
-  const isDisabled = sending
   const showStop = sending || isStreaming
 
   return (
@@ -356,6 +361,7 @@ export const ChatInput = function ChatInput({
             assistant: undefined,
             model: undefined,
           }}
+          disabled={isDisabled}
         >
           {/* Main input row with add file button on left and selectors + send on right */}
           <div style={{ padding: '8px' }}>
@@ -370,6 +376,9 @@ export const ChatInput = function ChatInput({
                     autoSize={{ minRows: 1, maxRows: 6 }}
                     disabled={isDisabled}
                     className="resize-none !border-none focus:!border-none focus:!outline-none focus:!shadow-none"
+                    onChange={() => {
+                      setContent(form.getFieldValue('message') || '')
+                    }}
                   />
                 </Form.Item>
               </div>
@@ -455,13 +464,7 @@ export const ChatInput = function ChatInput({
                           type="primary"
                           icon={<SendOutlined rotate={270} />}
                           onClick={handleSend}
-                          disabled={
-                            !form.getFieldValue('message')?.trim() ||
-                            isDisabled ||
-                            !form.getFieldValue('assistant') ||
-                            !form.getFieldValue('model') ||
-                            uploadingFiles.length > 0
-                          }
+                          disabled={isDisabled}
                           loading={sending}
                           size="small"
                         />

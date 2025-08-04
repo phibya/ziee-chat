@@ -15,8 +15,6 @@ import {
   Stores,
   loadConversationMessageBranches,
   switchMessageBranch,
-  startEditingMessage,
-  setMessageToolBoxVisible,
 } from '../../store'
 
 interface BranchInfo {
@@ -36,11 +34,8 @@ export const ChatMessage = memo(function ChatMessage({
   const { token } = theme.useToken()
 
   const { currentConversation } = Stores.Chat
-
-  const { editingMessageId, showMessageToolBox } = Stores.UI.Chat
-
-  const isEditing = editingMessageId === message.id
-  const showToolBox = showMessageToolBox[message.id] || false
+  const [isEditing, setIsEditing] = useState(false)
+  const [isToolBoxVisible, setMessageToolBoxVisible] = useState(false)
 
   const [branchInfo, setBranchInfo] = useState<BranchInfo>({
     branches: [],
@@ -49,7 +44,7 @@ export const ChatMessage = memo(function ChatMessage({
     isLoading: false,
   })
   const handleMouseOverOrClick = async (isClicked: boolean = false) => {
-    setMessageToolBoxVisible(message.id, !isClicked ? true : !showToolBox)
+    setMessageToolBoxVisible(p => (!isClicked ? true : !p))
     if (
       message.edit_count > 0 &&
       !branchInfo.isLoading &&
@@ -82,15 +77,11 @@ export const ChatMessage = memo(function ChatMessage({
   }
 
   const handleMouseLeave = () => {
-    setMessageToolBoxVisible(message.id, false)
+    setMessageToolBoxVisible(false)
   }
 
   const handleEdit = () => {
-    startEditingMessage({
-      messageId: message.id,
-      content: message.content,
-      files: message.files,
-    })
+    setIsEditing(true)
   }
 
   const handleSwitchBranch = async (branchId: string) => {
@@ -124,7 +115,10 @@ export const ChatMessage = memo(function ChatMessage({
       {/* Message content */}
       <Flex className={`${isUser ? '!pt-0.5' : ''} flex-1`}>
         {isEditing ? (
-          <ChatInput isEditing={true} />
+          <ChatInput
+            editingMessage={message}
+            onCancel={() => setIsEditing(false)}
+          />
         ) : (
           <div
             className={'w-full flex flex-col gap-2'}
@@ -163,7 +157,7 @@ export const ChatMessage = memo(function ChatMessage({
           className="flex items-center absolute -bottom-2.5 right-2 border rounded-md backdrop-blur-2xl"
           style={{
             borderColor: token.colorBorderSecondary,
-            display: showToolBox ? 'flex' : 'none',
+            display: isToolBoxVisible ? 'flex' : 'none',
           }}
         >
           <Button size="small" type="text" onClick={handleEdit}>

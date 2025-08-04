@@ -58,7 +58,7 @@ export const ProjectDetailsPage: React.FC = () => {
           {/* Chat Input */}
           <Flex className={'min-h-62'}>
             <Flex className={'flex-col w-full self-center'}>
-              <ChatInput projectId={projectId} />
+              <ChatInput />
             </Flex>
           </Flex>
 

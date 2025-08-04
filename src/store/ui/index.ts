@@ -4,16 +4,7 @@ export {
   setMobileOverlayOpen,
   closeMobileOverlay,
 } from './layout'
-export {
-  useChatUIStore,
-  startEditingMessage,
-  stopEditingMessage,
-  updateEditingContent,
-  setMessageToolBoxVisible,
-  setInputDisabled,
-  setInputPlaceholder,
-  resetChatUI,
-} from './chatInput.ts'
+export { createChatInputUIStore } from './chatInput.ts'
 
 // Individual modal exports
 export {

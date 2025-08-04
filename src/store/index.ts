@@ -1,8 +1,3 @@
-// Auth store
-
-import type { StoreApi, UseBoundStore } from 'zustand'
-// Admin store
-import { useShallow } from 'zustand/react/shallow'
 import { useAdminStore } from './admin/admin.ts'
 import { useUserAssistantsStore } from './assistants'
 import { useAdminAssistantsStore } from './admin/assistants'
@@ -30,7 +25,6 @@ import {
   useAddProviderDrawerStore,
   useAddRemoteModelDrawerStore,
   useAssistantDrawerStore,
-  useChatUIStore,
   useEditLocalModelDrawerStore,
   useEditProviderDrawerStore,
   useEditRemoteModelDrawerStore,
@@ -38,6 +32,7 @@ import {
   useProjectDrawerStore,
   useViewDownloadModalStore,
 } from './ui'
+import { createStoreProxy } from '../utils/createStoreProxy.ts'
 
 export {
   clearSystemAdminError,
@@ -342,7 +337,6 @@ export {
   openEditRemoteModelDrawer,
   openProjectDrawer,
   openViewDownloadModal,
-  resetChatUI,
   setAddLocalModelDownloadDrawerLoading,
   setAddLocalModelUploadDrawerLoading,
   setAddModelDrawerLoading,
@@ -353,15 +347,9 @@ export {
   setEditProviderDrawerLoading,
   setEditRemoteModelDrawerLoading,
   setProjectDrawerLoading,
-  setInputDisabled,
-  setInputPlaceholder,
   setIsMobile,
-  setMessageToolBoxVisible,
   setMobileOverlayOpen,
   setViewDownloadModalLoading,
-  startEditingMessage,
-  stopEditingMessage,
-  updateEditingContent,
   useAddLocalModelDownloadDrawerStore,
   // Upload and Download modal stores
   useAddLocalModelUploadDrawerStore,
@@ -370,7 +358,6 @@ export {
   useAddRemoteModelDrawerStore,
   // Individual modal stores
   useAssistantDrawerStore,
-  useChatUIStore,
   useEditLocalModelDrawerStore,
   useEditProviderDrawerStore,
   useEditRemoteModelDrawerStore,
@@ -381,23 +368,9 @@ export {
   useAddRAGDatabaseDrawerStore,
   useAddRAGDatabaseDownloadDrawerStore,
   useEditRAGDatabaseDrawerStore,
+  // Chat Input UI store
+  createChatInputUIStore,
 } from './ui'
-
-type ExtractState<T> = T extends UseBoundStore<StoreApi<infer State>>
-  ? State
-  : never
-
-const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
-  useStore: T,
-): Readonly<ExtractState<T>> => {
-  return new Proxy({} as Readonly<ExtractState<T>>, {
-    get: (_, prop) => {
-      return useStore(
-        useShallow((state: ExtractState<T>) => (state as any)[prop]),
-      )
-    },
-  })
-}
 
 export const Stores = {
   Auth: createStoreProxy(useAuthStore),
@@ -422,7 +395,6 @@ export const Stores = {
   AdminRAGRepositories: createStoreProxy(useAdminRAGRepositoriesStore),
   Settings: createStoreProxy(useUserSettingsStore),
   UI: {
-    Chat: createStoreProxy(useChatUIStore),
     Layout: createStoreProxy(useLayoutUIStore),
     // Individual drawer stores
     AssistantDrawer: createStoreProxy(useAssistantDrawerStore),

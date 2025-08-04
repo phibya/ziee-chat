@@ -4,13 +4,11 @@ import { ApiClient } from '../api/client'
 import { Conversation, Message, MessageBranch } from '../types/api/chat'
 import { useConversationsStore } from './conversations.ts'
 import { getFile } from './files.ts'
-import { stopEditingMessage } from './ui'
 
 export interface ChatState {
   // Current conversation state
   currentConversation: Conversation | null
   currentMessages: Message[]
-  currentBranches: MessageBranch[]
   activeBranchId: string | null
 
   // Loading states
@@ -32,7 +30,6 @@ export const useChatStore = create<ChatState>()(
       // Initial state
       currentConversation: null,
       currentMessages: [],
-      currentBranches: [],
       activeBranchId: null,
       loading: false,
       sending: false,
@@ -114,14 +111,12 @@ export const loadConversationById = async (
       useChatStore.setState({
         currentConversation: conversation,
         currentMessages: messages,
-        currentBranches: [],
         activeBranchId: conversation.active_branch_id,
         loading: false,
       })
     } else {
       useChatStore.setState({
         currentConversation: conversation,
-        currentBranches: [],
         activeBranchId: conversation.active_branch_id,
         loading: false,
       })
@@ -294,8 +289,6 @@ export const editChatMessage = async (
       }
     })
 
-    stopEditingMessage()
-
     // Create assistant message placeholder for streaming
     const assistantMessage: Message = {
       id: 'streaming-temp',
@@ -386,26 +379,9 @@ export const editChatMessage = async (
 export const loadConversationMessageBranches = async (
   messageId: string,
 ): Promise<MessageBranch[]> => {
-  try {
-    useChatStore.setState({ loadingBranches: true, error: null })
-
-    let branches = await ApiClient.Chat.getMessageBranches({
-      message_id: messageId,
-    })
-
-    useChatStore.setState({
-      currentBranches: branches,
-      loadingBranches: false,
-    })
-
-    return branches
-  } catch (error) {
-    useChatStore.setState({
-      error: error instanceof Error ? error.message : 'Failed to load branches',
-      loadingBranches: false,
-    })
-    throw error
-  }
+  return await ApiClient.Chat.getMessageBranches({
+    message_id: messageId,
+  })
 }
 
 export const switchMessageBranch = async (
@@ -456,7 +432,6 @@ export const resetChatState = (): void => {
   useChatStore.setState({
     currentConversation: null,
     currentMessages: [],
-    currentBranches: [],
     activeBranchId: null,
     loading: false,
     sending: false,
