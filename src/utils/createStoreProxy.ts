@@ -1,22 +1,30 @@
 import type { StoreApi, UseBoundStore } from 'zustand/index'
 import { useShallow } from 'zustand/react/shallow'
 
-type ExtractState<T> = T extends UseBoundStore<StoreApi<infer State>>
-  ? State & {
-      __state: State
-    }
+type RemoveVoid<T> = T extends void ? never : T
+
+type ExtractZustandState<T> = T extends UseBoundStore<infer Store>
+  ? Store extends StoreApi<infer State>
+    ? RemoveVoid<State> & { __state: RemoveVoid<State> }
+    : Store extends { getState(): infer State }
+      ? State extends void | infer S
+        ? S extends void
+          ? never
+          : S
+        : RemoveVoid<State> & { __state: RemoveVoid<State> }
+      : never
   : never
 
 export const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
   useStore: T,
-): Readonly<ExtractState<T>> => {
-  return new Proxy({} as Readonly<ExtractState<T>>, {
+): Readonly<ExtractZustandState<T>> => {
+  return new Proxy({} as Readonly<ExtractZustandState<T>>, {
     get: (_, prop) => {
       if (prop === '__state') {
         return useStore.getState()
       }
       return useStore(
-        useShallow((state: ExtractState<T>) => (state as any)[prop]),
+        useShallow((state: ExtractZustandState<T>) => (state as any)[prop]),
       )
     },
   })

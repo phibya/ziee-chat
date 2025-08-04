@@ -227,7 +227,7 @@ export const ChatInput = function ChatInput({
           assistantId: selectedAssistant,
           modelId: selectedModel.split(':')[1],
           content: messageToSend,
-          fileIds: [...files.map(f => f.id), ...newFiles.map(f => f.id)],
+          fileIds: [...files.keys(), ...newFiles.keys()],
         })
         destroy()
       } catch (error) {
@@ -251,7 +251,7 @@ export const ChatInput = function ChatInput({
         content: messageToSend.trim(),
         assistantId: selectedAssistant,
         modelId: selectedModel.split(':')[1],
-        fileIds: [...files.map(f => f.id), ...newFiles.map(f => f.id)],
+        fileIds: [...files.keys(), ...newFiles.keys()],
       })
 
       if (!conversationId) {
@@ -477,14 +477,12 @@ export const ChatInput = function ChatInput({
           </div>
 
           {/* Divider and File Upload Preview at the bottom */}
-          {(files.length > 0 ||
-            newFiles.length > 0 ||
-            uploadingFiles.length > 0) && (
+          {(files.size > 0 || newFiles.size > 0 || uploadingFiles.size > 0) && (
             <>
               <Divider style={{ margin: 0 }} />
               <div style={{ padding: '8px' }}>
                 <div className="flex flex-wrap gap-2">
-                  {files.map(file => (
+                  {Array.from(files.values()).map(file => (
                     <FileCard
                       key={file.id}
                       file={file}
@@ -493,7 +491,7 @@ export const ChatInput = function ChatInput({
                       onRemove={handleRemoveFile}
                     />
                   ))}
-                  {newFiles.map(file => (
+                  {Array.from(newFiles.values()).map(file => (
                     <FileCard
                       key={file.id}
                       file={file}
@@ -501,7 +499,7 @@ export const ChatInput = function ChatInput({
                       onDelete={handleRemoveFile}
                     />
                   ))}
-                  {uploadingFiles.map(uploadingFile => (
+                  {Array.from(uploadingFiles.values()).map(uploadingFile => (
                     <FileCard
                       key={uploadingFile.id}
                       uploadingFile={{
