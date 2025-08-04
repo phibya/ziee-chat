@@ -8,6 +8,7 @@ import {
   openAssistantDrawer,
   Stores,
 } from '../../../store'
+import { Assistant } from '../../../types/api/assistant'
 import { PageContainer } from '../../common/PageContainer.tsx'
 import { AssistantFormDrawer } from '../../common/AssistantFormDrawer.tsx'
 import { isDesktopApp } from '../../../api/core.ts'
@@ -23,8 +24,12 @@ export const AssistantsPage: React.FC = () => {
   // Assistants store
   const { assistants: allAssistants, loading, error } = Stores.Assistants
 
-  const assistants = allAssistants.filter(a => !a.is_template)
-  const templateAssistants = allAssistants.filter(a => a.is_template)
+  const assistants = Array.from(allAssistants.values()).filter(
+    (a: Assistant) => !a.is_template,
+  )
+  const templateAssistants = Array.from(allAssistants.values()).filter(
+    (a: Assistant) => a.is_template,
+  )
 
   const [templateModalVisible, setTemplateModalVisible] = useState(false)
 
@@ -95,7 +100,7 @@ export const AssistantsPage: React.FC = () => {
             </Card>
           ) : (
             <Row gutter={[16, 16]}>
-              {assistants.map(assistant => (
+              {assistants.map((assistant: Assistant) => (
                 <Col xs={24} sm={12} md={8} lg={6} key={assistant.id}>
                   <AssistantCard assistant={assistant} />
                 </Col>

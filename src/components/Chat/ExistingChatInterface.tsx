@@ -1,13 +1,7 @@
-import { App, Flex } from 'antd'
-import { useEffect, useState } from 'react'
+import { Flex } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import {
-  Stores,
-  loadUserAssistants,
-  loadConversationById,
-  clearChatError,
-} from '../../store'
+import { useChatStore } from '../../store'
 import { ChatHeader } from './ChatHeader'
 import { ChatInput } from './ChatInput'
 import { ChatMessageList } from './ChatMessageList'
@@ -19,52 +13,26 @@ export function ExistingChatInterface() {
     return null
   }
   const { t } = useTranslation()
-  const { message } = App.useApp()
-
   // Chat store
-  const {
-    currentConversation,
-    loading: chatLoading,
-    error: chatError,
-  } = Stores.Chat
+  const { conversation, loading, error } = useChatStore()
 
-  // Assistants loading state
-  const [assistantsLoading, setAssistantsLoading] = useState(false)
-
-  useEffect(() => {
-    initializeData()
-  }, [])
-
-  useEffect(() => {
-    if (conversationId) {
-      loadConversationById(conversationId, true)
-    }
-  }, [conversationId])
-
-  // Show errors
-  useEffect(() => {
-    if (chatError) {
-      message.error(chatError)
-      clearChatError()
-    }
-  }, [chatError, message, clearChatError])
-
-  const initializeData = async () => {
-    try {
-      setAssistantsLoading(true)
-      await loadUserAssistants()
-    } catch (error: any) {
-      message.error(error?.message || t('common.failedToLoadData'))
-    } finally {
-      setAssistantsLoading(false)
-    }
+  if (loading) {
+    return (
+      <Flex className="flex-col items-center justify-center h-full">
+        <div className="text-lg">{t('chat.loading')}</div>
+      </Flex>
+    )
   }
 
-  if (chatLoading || assistantsLoading) {
-    return <div>Loading...</div>
+  if (error) {
+    return (
+      <Flex className="flex-col items-center justify-center h-full">
+        <div className="text-lg text-red-500">{t('chat.error', { error })}</div>
+      </Flex>
+    )
   }
 
-  if (!currentConversation) {
+  if (!conversation) {
     return <div>Conversation not found</div>
   }
 

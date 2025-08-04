@@ -20,7 +20,7 @@ export interface Message {
   conversation_id: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  originated_from_id?: string
+  originated_from_id: string
   edit_count: number
   created_at: string
   updated_at: string

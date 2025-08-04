@@ -175,6 +175,44 @@ async fn stream_ai_response(
   request: ChatMessageRequest,
   user_id: Uuid,
 ) {
+  // IMPORTANT: Capture the conversation's active branch immediately to prevent
+  // race conditions if the user switches branches during streaming
+  let active_branch_id = match chat::get_conversation_by_id(request.conversation_id, user_id).await {
+    Ok(Some(conversation)) => match conversation.active_branch_id {
+      Some(branch_id) => branch_id,
+      None => {
+        let _ = tx.send(Ok(Event::default().event("error").data(
+          &serde_json::to_string(&StreamErrorData {
+            error: "Conversation has no active branch".to_string(),
+            code: ErrorCode::SystemInternalError.as_str().to_string(),
+          })
+            .unwrap_or_default(),
+        )));
+        return;
+      }
+    },
+    Ok(None) => {
+      let _ = tx.send(Ok(Event::default().event("error").data(
+        &serde_json::to_string(&StreamErrorData {
+          error: "Conversation not found".to_string(),
+          code: ErrorCode::ResourceNotFound.as_str().to_string(),
+        })
+          .unwrap_or_default(),
+      )));
+      return;
+    }
+    Err(e) => {
+      let _ = tx.send(Ok(Event::default().event("error").data(
+        &serde_json::to_string(&StreamErrorData {
+          error: format!("Error getting conversation: {}", e),
+          code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+        })
+          .unwrap_or_default(),
+      )));
+      return;
+    }
+  };
+
   // Get the model provider configuration directly from model_id
   let provider = match get_provider_by_model_id(request.model_id).await {
     Ok(Some(provider)) => {
@@ -383,7 +421,7 @@ async fn stream_ai_response(
         file_ids: None, // Assistant messages don't have file attachments
       };
 
-      match chat::save_message(assistant_message_req, user_id).await {
+      match chat::save_message(assistant_message_req, user_id, Some(active_branch_id)).await {
         Ok(assistant_message) => {
           // Send completion event
           let _ = tx.send(Ok(Event::default().event("complete").data(
@@ -447,7 +485,7 @@ pub async fn send_message_stream(
       file_ids: request.file_ids.clone(),
     };
 
-    if let Err(e) = chat::save_message(user_message_req, auth_user.user.id).await {
+    if let Err(e) = chat::save_message(user_message_req, auth_user.user.id, None).await {
       let _ = tx.send(Ok(Event::default().event("error").data(
         &serde_json::to_string(&StreamErrorData {
           error: format!("Error saving user message: {}", e),
@@ -487,8 +525,15 @@ pub async fn edit_message_stream(
 
     // Edit the message first
     match chat::edit_message(message_id, edit_message, auth_user.user.id).await {
-      Ok(Some(_edit_response)) => {
-        // Message edited successfully, proceed with AI response
+      Ok(Some(edit_response)) => {
+        // send the edited message as a data event
+        let _ = tx.send(Ok(Event::default().event("edited-message").data(
+          &serde_json::to_string(&edit_response.message).unwrap_or_default(),
+        )));
+        //send the created branch as a data event
+        let _ = tx.send(Ok(Event::default().event("created-branch").data(
+          &serde_json::to_string(&edit_response.branch).unwrap_or_default(),
+        )));
       }
       Ok(None) => {
         let _ = tx.send(Ok(Event::default().event("error").data(

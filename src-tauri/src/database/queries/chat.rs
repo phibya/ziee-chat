@@ -317,40 +317,69 @@ pub async fn delete_conversation(conversation_id: Uuid, user_id: Uuid) -> Result
 }
 
 /// Send a message in a conversation
+/// Save a new message to the database. If branch_id is provided, saves to that branch.
+/// Otherwise, saves to the conversation's active branch.
 /// According to CLAUDE.md:
 /// - Messages should belong to a branch, not to a conversation
-/// - Assign the chat item to the active branch
 /// - originated_from_id should be the same as id for new messages
 /// - edit_count should be 0 for new messages
-pub async fn save_message(request: SaveMessageRequest, user_id: Uuid) -> Result<Message, Error> {
+pub async fn save_message(
+    request: SaveMessageRequest,
+    user_id: Uuid,
+    branch_id: Option<Uuid>,
+) -> Result<Message, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    // Get the conversation to find the active branch
-    let conversation = match get_conversation_by_id(request.conversation_id, user_id).await? {
-        Some(conv) => conv,
-        None => return Err(Error::RowNotFound),
-    };
+    // Determine which branch to use
+    let target_branch_id = match branch_id {
+        Some(branch_id) => {
+            // Verify the branch belongs to a conversation owned by the user
+            let conversation_check = sqlx::query(
+                r#"
+                SELECT c.id
+                FROM conversations c
+                INNER JOIN branches b ON c.id = b.conversation_id
+                WHERE b.id = $1 AND c.user_id = $2
+                LIMIT 1
+                "#,
+            )
+            .bind(branch_id)
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?;
 
-    // Ensure we have an active branch
-    let active_branch_id = match conversation.active_branch_id {
-        Some(branch_id) => branch_id,
+            if conversation_check.is_none() {
+                return Err(Error::RowNotFound);
+            }
+            branch_id
+        }
         None => {
-            return Err(Error::Configuration(
-                "Conversation has no active branch".into(),
-            ))
+            // Get the conversation to find the active branch
+            let conversation = match get_conversation_by_id(request.conversation_id, user_id).await? {
+                Some(conv) => conv,
+                None => return Err(Error::RowNotFound),
+            };
+
+            // Ensure we have an active branch
+            match conversation.active_branch_id {
+                Some(branch_id) => branch_id,
+                None => {
+                    return Err(Error::Configuration(
+                        "Conversation has no active branch".into(),
+                    ))
+                }
+            }
         }
     };
 
     let message_id = Uuid::new_v4();
     let now = chrono::Utc::now();
 
-    // Note: provider_id is no longer stored in messages, derived from model_id relationship when needed
-
     // Start transaction for atomic message + branch_message creation
     let mut tx = pool.begin().await?;
 
-    // Insert the message without branch_id
+    // Insert the message
     sqlx::query(
         r#"
         INSERT INTO messages (
@@ -379,7 +408,7 @@ pub async fn save_message(request: SaveMessageRequest, user_id: Uuid) -> Result<
         ) VALUES ($1, $2, $3, $4)
         "#,
     )
-    .bind(active_branch_id)
+    .bind(target_branch_id)
     .bind(message_id)
     .bind(now)
     .bind(false) // New messages are not clones
@@ -708,28 +737,13 @@ pub async fn edit_message(
     .execute(&mut *tx)
     .await?;
 
-    // 7. Get conversation history for the response
-    let mut conversation_history = sqlx::query_as::<_, Message>(
-        r#"
-        SELECT
-            m.id, m.conversation_id, m.role, m.content,
-            m.originated_from_id, m.edit_count,
-            m.created_at, m.updated_at
-        FROM messages m
-        INNER JOIN branch_messages bm ON m.id = bm.message_id
-        WHERE bm.branch_id = $1 AND m.created_at < $2
-        ORDER BY m.created_at ASC
-        "#,
-    )
-    .bind(new_branch.id)
-    .bind(original_created_at)
-    .fetch_all(&mut *tx)
-    .await?;
-
-    // Ensure all messages have empty files (they're not loaded in edit responses)
-    for message in &mut conversation_history {
-        message.files = vec![];
-    }
+    // 7. Create MessageBranch for the response (new branches are not clones)
+    let message_branch = MessageBranch {
+        id: new_branch.id,
+        conversation_id: new_branch.conversation_id,
+        created_at: new_branch.created_at,
+        is_clone: false,
+    };
 
     // Commit transaction
     tx.commit().await?;
@@ -768,7 +782,7 @@ pub async fn edit_message(
 
     Ok(Some(EditMessageResponse {
         message,
-        conversation_history,
+        branch: message_branch,
     }))
 }
 
@@ -934,33 +948,7 @@ pub async fn get_message_branches(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    // First, get the message at this timestamp to find its originated_from_id
-    let original_message = sqlx::query(
-        r#"
-        SELECT m.originated_from_id
-        FROM messages m
-        INNER JOIN conversations c ON m.conversation_id = c.id
-        WHERE m.id = $1 AND c.user_id = $2
-        LIMIT 1
-        "#,
-    )
-    .bind(message_id)
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
-
-    let originated_from_id = match original_message {
-        Some(row) => {
-            let id: Option<Uuid> = row.get("originated_from_id");
-            match id {
-                Some(id) => id,
-                None => return Ok(vec![]), // Legacy message without originated_from_id
-            }
-        }
-        None => return Ok(vec![]),
-    };
-
-    // Get all branches that contain messages with the same originated_from_id
+    // Get all branches that contain messages with the same originated_from_id as the specified message
     let branches = sqlx::query_as::<_, MessageBranch>(
         r#"
         SELECT DISTINCT
@@ -968,11 +956,17 @@ pub async fn get_message_branches(
         FROM branches b
         INNER JOIN branch_messages bm ON b.id = bm.branch_id
         INNER JOIN messages m ON bm.message_id = m.id
-        WHERE m.originated_from_id = $1
+        INNER JOIN messages source_msg ON m.originated_from_id = source_msg.originated_from_id
+        INNER JOIN conversations c ON source_msg.conversation_id = c.id
+        WHERE source_msg.id = $1 
+          AND c.user_id = $2
+          AND source_msg.originated_from_id IS NOT NULL
+          AND bm.is_clone = false
         ORDER BY b.created_at ASC
         "#,
     )
-    .bind(originated_from_id)
+    .bind(message_id)
+    .bind(user_id)
     .fetch_all(pool)
     .await?;
 

@@ -6,6 +6,8 @@ import { ApiClient } from '../../api/client.ts'
 import { Message } from '../../types/api/chat.ts'
 import { createStoreProxy } from '../../utils/createStoreProxy.ts'
 import { StoreApi, UseBoundStore } from 'zustand/index'
+import { useEffect, useMemo } from 'react'
+import { useParams } from 'react-router-dom'
 
 // Enable Map and Set support in Immer
 enableMapSet()
@@ -150,4 +152,22 @@ export const createChatInputUIStore = (
   const storeProxy = createStoreProxy(store)
   ChatInputStoreMap.set(id, storeProxy)
   return storeProxy
+}
+
+export const useChatInputUIStore = (editingMessage?: Message) => {
+  const { conversationId } = useParams<{ conversationId?: string }>()
+  const { projectId } = useParams<{ projectId?: string }>()
+
+  useEffect(() => {
+    return () => {
+      if (editingMessage?.id) {
+        ChatInputStoreMap.delete(editingMessage.id)
+      }
+    }
+  }, [])
+
+  return useMemo(() => {
+    const id = editingMessage?.id || conversationId || projectId || 'new-chat'
+    return createChatInputUIStore(id, editingMessage)
+  }, [])
 }

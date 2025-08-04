@@ -1,11 +1,16 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+import { enableMapSet } from 'immer'
 import { ApiClient } from '../api/client'
 import { Assistant } from '../types/api/assistant'
 
+// Enable Map and Set support in Immer
+enableMapSet()
+
 interface UserAssistantsState {
   // Data
-  assistants: Assistant[]
+  assistants: Map<string, Assistant>
 
   // Loading states
   loading: boolean
@@ -19,15 +24,17 @@ interface UserAssistantsState {
 
 export const useUserAssistantsStore = create<UserAssistantsState>()(
   subscribeWithSelector(
-    (): UserAssistantsState => ({
-      // Initial state
-      assistants: [],
-      loading: false,
-      creating: false,
-      updating: false,
-      deleting: false,
-      error: null,
-    }),
+    immer(
+      (): UserAssistantsState => ({
+        // Initial state
+        assistants: new Map<string, Assistant>(),
+        loading: false,
+        creating: false,
+        updating: false,
+        deleting: false,
+        error: null,
+      }),
+    ),
   ),
 )
 
@@ -42,7 +49,9 @@ export const loadUserAssistants = async (): Promise<void> => {
     })
 
     useUserAssistantsStore.setState({
-      assistants: response.assistants,
+      assistants: new Map(
+        response.assistants.map(assistant => [assistant.id, assistant]),
+      ),
       loading: false,
     })
   } catch (error) {
@@ -63,15 +72,17 @@ export const createUserAssistant = async (
 
     const assistant = await ApiClient.Assistant.create(data as any)
 
-    useUserAssistantsStore.setState(state => ({
-      assistants: data.is_default
-        ? [
-            ...state.assistants.map(a => ({ ...a, is_default: false })),
-            assistant,
-          ]
-        : [...state.assistants, assistant],
-      creating: false,
-    }))
+    useUserAssistantsStore.setState(state => {
+      if (data.is_default) {
+        // Set all other assistants' is_default to false
+        state.assistants.forEach(a => {
+          a.is_default = false
+        })
+      }
+      // Add the new assistant
+      state.assistants.set(assistant.id, assistant)
+      state.creating = false
+    })
 
     return assistant
   } catch (error) {
@@ -96,14 +107,19 @@ export const updateUserAssistant = async (
       ...data,
     })
 
-    useUserAssistantsStore.setState(state => ({
-      assistants: data.is_default
-        ? state.assistants.map(a =>
-            a.id === id ? assistant : { ...a, is_default: false },
-          )
-        : state.assistants.map(a => (a.id === id ? assistant : a)),
-      updating: false,
-    }))
+    useUserAssistantsStore.setState(state => {
+      if (data.is_default) {
+        // Set all other assistants' is_default to false
+        state.assistants.forEach((a, assistantId) => {
+          if (assistantId !== id) {
+            a.is_default = false
+          }
+        })
+      }
+      // Update the assistant
+      state.assistants.set(id, assistant)
+      state.updating = false
+    })
 
     return assistant
   } catch (error) {
@@ -122,10 +138,10 @@ export const deleteUserAssistant = async (id: string): Promise<void> => {
 
     await ApiClient.Assistant.delete({ assistant_id: id })
 
-    useUserAssistantsStore.setState(state => ({
-      assistants: state.assistants.filter(a => a.id !== id),
-      deleting: false,
-    }))
+    useUserAssistantsStore.setState(state => {
+      state.assistants.delete(id)
+      state.deleting = false
+    })
   } catch (error) {
     useUserAssistantsStore.setState({
       error:

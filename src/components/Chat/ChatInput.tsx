@@ -14,35 +14,30 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import {
-  CloseOutlined,
-  FileOutlined,
-  SendOutlined,
-  StopOutlined,
-} from '@ant-design/icons'
+import { CloseOutlined, FileOutlined, SendOutlined } from '@ant-design/icons'
 import {
   addNewConversationToList,
   createNewConversation,
-  editChatMessage,
   loadUserAssistants,
   loadUserProvidersWithAllModels,
-  sendChatMessage,
-  stopMessageStreaming,
   Stores,
+  useChatStore,
 } from '../../store'
 import { FileCard } from '../common/FileCard'
-import { createChatInputUIStore } from '../../store/ui/chatInput.ts'
-import { Message } from '../../types/api/chat.ts'
+import { useChatInputUIStore } from '../../store/ui/chatInput.ts'
+import { Conversation, Message } from '../../types/api/chat.ts'
+import { Assistant } from '../../types/api/assistant'
+import { createChatStore } from '../../store/chat.ts'
 
 const { TextArea } = Input
 const { Text } = Typography
 
 export const ChatInput = function ChatInput({
   editingMessage,
-  onCancel,
+  onDoneEditing,
 }: {
   editingMessage?: Message
-  onCancel?: () => void
+  onDoneEditing?: () => void
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -52,10 +47,7 @@ export const ChatInput = function ChatInput({
   const { message } = App.useApp()
   const { token } = theme.useToken()
 
-  const store = useMemo(() => {
-    const id = conversationId || projectId || 'new-chat'
-    return createChatInputUIStore(id, editingMessage)
-  }, [])
+  const store = useChatInputUIStore(editingMessage)
   const {
     files,
     newFiles,
@@ -65,7 +57,7 @@ export const ChatInput = function ChatInput({
     removeFile,
     removeUploadingFile,
     setContent,
-    destroy,
+    destroy: destroyStore,
   } = store
   const isEditing = !!editingMessage
 
@@ -73,7 +65,8 @@ export const ChatInput = function ChatInput({
   const [isFocused, setIsFocused] = useState(false)
   const [isDragging, setIsDragging] = useState(false) // Drag state for overlay control
 
-  const { currentConversation, sending, isStreaming } = Stores.Chat
+  const { conversation, sending, isStreaming, sendMessage, editMessage } =
+    useChatStore()
   const { assistants } = Stores.Assistants
   const { providers, modelsByProvider } = Stores.Providers
   const { user } = Stores.Auth
@@ -93,7 +86,9 @@ export const ChatInput = function ChatInput({
 
   // Get available assistants (exclude templates) - memoized for performance
   const availableAssistants = useMemo(() => {
-    return assistants.filter(a => !a.is_template)
+    return Array.from(assistants.values()).filter(
+      (a: Assistant) => !a.is_template,
+    )
   }, [assistants])
 
   // Get available models grouped by provider - memoized for performance
@@ -146,13 +141,13 @@ export const ChatInput = function ChatInput({
 
   // For existing conversations, sync selections with conversation data
   useEffect(() => {
-    if (currentConversation) {
-      form.setFieldValue('assistant', currentConversation.assistant_id)
+    if (conversation) {
+      form.setFieldValue('assistant', conversation.assistant_id)
       // Find the provider for this model
       let matchingModel = null
       for (const providerGroup of availableModels) {
         matchingModel = providerGroup.options.find(model =>
-          model.value.endsWith(`:${currentConversation.model_id}`),
+          model.value.endsWith(`:${conversation.model_id}`),
         )
         if (matchingModel) break
       }
@@ -160,44 +155,47 @@ export const ChatInput = function ChatInput({
         form.setFieldValue('model', matchingModel.value)
       }
     }
-  }, [currentConversation, availableModels, form])
+  }, [conversation, availableModels, form])
 
-  const handleCreateNewConversation = async (): Promise<string | null> => {
-    const formValues = form.getFieldsValue()
-    const { assistant: selectedAssistant, model: selectedModel } = formValues
+  const handleCreateNewConversation =
+    async (): Promise<Conversation | null> => {
+      const formValues = form.getFieldsValue()
+      const { assistant: selectedAssistant, model: selectedModel } = formValues
 
-    if (!selectedAssistant || !selectedModel) return null
+      if (!selectedAssistant || !selectedModel) return null
 
-    const [, modelId] = selectedModel.split(':')
+      const [, modelId] = selectedModel.split(':')
 
-    try {
-      const newConversationId = await createNewConversation(
-        selectedAssistant,
-        modelId,
-        projectId,
-      )
+      try {
+        const newConversation = await createNewConversation(
+          selectedAssistant,
+          modelId,
+          projectId,
+        )
 
-      // Add to conversations store immediately
-      addNewConversationToList({
-        id: newConversationId,
-        title: 'New Conversation',
-        user_id: user?.id || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        last_message: undefined,
-        message_count: 0,
-      })
+        // Add to conversations store immediately
+        addNewConversationToList({
+          id: newConversation.id,
+          title: newConversation.title,
+          user_id: user?.id || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_message: undefined,
+          message_count: 0,
+        })
 
-      navigate(`/conversation/${newConversationId}`)
+        navigate(`/conversation/${newConversation.id}`)
+        destroyStore()
 
-      return newConversationId
-    } catch (error) {
-      console.error('Failed to create conversation:', error)
-      return null
+        return newConversation
+      } catch (error) {
+        console.error('Failed to create conversation:', error)
+        return null
+      }
     }
-  }
 
   const handleSend = async () => {
+    if (isStreaming || sending || isDisabled) return
     const formValues = form.getFieldsValue()
     const {
       message: messageToSend,
@@ -223,13 +221,13 @@ export const ChatInput = function ChatInput({
     // Handle editing mode
     if (isEditing) {
       try {
-        await editChatMessage(editingMessage.id, {
+        await editMessage(editingMessage.id, {
           assistantId: selectedAssistant,
           modelId: selectedModel.split(':')[1],
           content: messageToSend,
           fileIds: [...files.keys(), ...newFiles.keys()],
         })
-        destroy()
+        onDoneEditing?.() // Close the input after editing
       } catch (error) {
         console.error('Failed to edit message:', error)
       }
@@ -239,23 +237,29 @@ export const ChatInput = function ChatInput({
     form.setFieldValue('message', '') // Clear input immediately
 
     try {
-      let currentConversationId =
-        conversationId || (await handleCreateNewConversation())
-      if (!currentConversationId) {
-        message.error(t('chat.errorCreatingConversation'))
-        return
-      }
+      if (conversationId) {
+        // If we have a conversationId, use it
+        await sendMessage({
+          content: messageToSend.trim(),
+          assistantId: selectedAssistant,
+          modelId: selectedModel.split(':')[1],
+          fileIds: [...files.keys(), ...newFiles.keys()],
+        })
+      } else {
+        let newConversation = await handleCreateNewConversation()
+        if (!newConversation) {
+          message.error(t('chat.errorCreatingConversation'))
+          return
+        }
 
-      await sendChatMessage({
-        conversationId: currentConversationId,
-        content: messageToSend.trim(),
-        assistantId: selectedAssistant,
-        modelId: selectedModel.split(':')[1],
-        fileIds: [...files.keys(), ...newFiles.keys()],
-      })
+        const conversationStore = createChatStore(newConversation)
 
-      if (!conversationId) {
-        destroy()
+        await conversationStore.__state.sendMessage({
+          content: messageToSend.trim(),
+          assistantId: selectedAssistant,
+          modelId: selectedModel.split(':')[1],
+          fileIds: [...files.keys(), ...newFiles.keys()],
+        })
       }
     } catch (error) {
       console.error('Failed to send message:', error)
@@ -274,10 +278,8 @@ export const ChatInput = function ChatInput({
   }
 
   const handleCancel = () => {
-    if (isEditing) {
-      destroy()
-    }
-    onCancel?.()
+    destroyStore()
+    onDoneEditing?.()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -294,8 +296,6 @@ export const ChatInput = function ChatInput({
   const handleTextAreaBlur = () => {
     setIsFocused(false)
   }
-
-  const showStop = sending || isStreaming
 
   return (
     <div className="w-full relative">
@@ -407,10 +407,12 @@ export const ChatInput = function ChatInput({
                       style={{ width: 140 }}
                       disabled={isDisabled}
                       size="small"
-                      options={availableAssistants.map(assistant => ({
-                        label: assistant.name,
-                        value: assistant.id,
-                      }))}
+                      options={availableAssistants.map(
+                        (assistant: Assistant) => ({
+                          label: assistant.name,
+                          value: assistant.id,
+                        }),
+                      )}
                       className={`
                       [&_.ant-select-selector]:!border-none
                       [&_.ant-select-selection-wrap]:!text-center
@@ -441,8 +443,11 @@ export const ChatInput = function ChatInput({
                           type="primary"
                           icon={<SendOutlined rotate={270} />}
                           onClick={handleSend}
-                          disabled={!form.getFieldValue('message')?.trim()}
-                          size="small"
+                          disabled={
+                            isStreaming ||
+                            isDisabled ||
+                            !form.getFieldValue('message')?.trim()
+                          }
                         />
                         <Button
                           icon={<CloseOutlined />}
@@ -451,24 +456,13 @@ export const ChatInput = function ChatInput({
                         />
                       </>
                     ) : (
-                      <>
-                        {showStop && (
-                          <Button
-                            type="text"
-                            icon={<StopOutlined />}
-                            onClick={stopMessageStreaming}
-                            size="small"
-                          />
-                        )}
-                        <Button
-                          type="primary"
-                          icon={<SendOutlined rotate={270} />}
-                          onClick={handleSend}
-                          disabled={isDisabled}
-                          loading={sending}
-                          size="small"
-                        />
-                      </>
+                      <Button
+                        type="primary"
+                        icon={<SendOutlined rotate={270} />}
+                        onClick={handleSend}
+                        disabled={isStreaming || sending || isDisabled}
+                        loading={sending}
+                      />
                     )}
                   </div>
                 </div>

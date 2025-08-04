@@ -178,7 +178,7 @@ pub struct EditMessageRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditMessageResponse {
     pub message: Message,
-    pub conversation_history: Vec<Message>,
+    pub branch: MessageBranch,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

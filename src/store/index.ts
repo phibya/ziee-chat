@@ -5,7 +5,6 @@ import { useAdminUsersStore } from './admin/users'
 import { useAdminUserGroupsStore } from './admin/userGroups'
 import { useAdminProxySettingsStore } from './admin/proxySettings'
 import { useAuthStore } from './auth'
-import { useChatStore } from './chat'
 import { useChatHistoryStore } from './chatHistory'
 import { useConversationsStore } from './conversations'
 import { useHubStore } from './hub'
@@ -102,15 +101,7 @@ export {
 } from './auth'
 // Chat store
 export {
-  clearChatError,
   createNewConversation,
-  editChatMessage,
-  loadConversationById,
-  loadConversationMessageBranches,
-  resetChatState,
-  sendChatMessage,
-  stopMessageStreaming,
-  switchMessageBranch,
   useChatStore,
 } from './chat'
 // Chat History store
@@ -380,7 +371,6 @@ export const Stores = {
   AdminProxySettings: createStoreProxy(useAdminProxySettingsStore),
   Assistants: createStoreProxy(useUserAssistantsStore),
   AdminAssistants: createStoreProxy(useAdminAssistantsStore),
-  Chat: createStoreProxy(useChatStore),
   ChatHistory: createStoreProxy(useChatHistoryStore),
   Conversations: createStoreProxy(useConversationsStore),
   Hub: createStoreProxy(useHubStore),

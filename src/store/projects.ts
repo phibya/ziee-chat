@@ -3,16 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { Project } from '../types/api/projects'
 import { File, FileUploadProgress } from '../types/api/files'
-
-interface Conversation {
-  id: string
-  title: string
-  project_id: string
-  last_message: string
-  message_count: number
-  created_at: string
-  updated_at: string
-}
+import { Conversation } from '../types/api/chat.ts'
 
 interface ProjectsState {
   // Data

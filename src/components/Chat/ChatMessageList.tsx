@@ -2,20 +2,19 @@ import { memo, useEffect, useRef } from 'react'
 import { Flex, Typography } from 'antd'
 import { MessageOutlined } from '@ant-design/icons'
 import { ChatMessage } from './ChatMessage'
-import { Stores } from '../../store'
+import { useChatStore } from '../../store'
 
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
-  const { currentMessages, sending, isStreaming, streamingMessage } =
-    Stores.Chat
+  const { messages, sending, isStreaming, streamingMessage } = useChatStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [currentMessages.length]) // Use length instead of entire array to prevent unnecessary rerenders
+  }, [messages.length]) // Use length instead of entire array to prevent unnecessary rerenders
 
-  if (currentMessages.length === 0) {
+  if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center py-20">
         <MessageOutlined className="text-5xl mb-4" />
@@ -26,7 +25,7 @@ export const ChatMessageList = memo(function ChatMessageList() {
 
   return (
     <Flex className={'flex-col gap-1 w-full'}>
-      {currentMessages.map(msg => (
+      {messages.map(msg => (
         <ChatMessage key={msg.id} message={msg} />
       ))}
 
