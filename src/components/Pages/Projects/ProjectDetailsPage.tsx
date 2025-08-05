@@ -1,47 +1,32 @@
 import { App, Flex, Typography } from 'antd'
-import React, { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
-import {
-  clearProjectsStoreError,
-  loadProjectWithDetails,
-  Stores,
-} from '../../../store'
+import React, { useEffect, useRef } from 'react'
+import { useParams } from 'react-router-dom'
+import { useProjectStore } from '../../../store'
 import { PageContainer } from '../../common/PageContainer.tsx'
 import { ChatInput } from '../../Chat/ChatInput.tsx'
+import { ConversationHistory } from '../../common/ConversationHistory'
 import { ProjectFormDrawer } from './ProjectFormDrawer.tsx'
 import { ProjectKnowledgeCard } from './ProjectKnowledgeCard.tsx'
-import { RecentConversationsSection } from './RecentConversationsSection.tsx'
 
 const { Title } = Typography
 
 export const ProjectDetailsPage: React.FC = () => {
-  const { t } = useTranslation()
   const { message } = App.useApp()
   const { projectId } = useParams<{ projectId: string }>()
-  const navigate = useNavigate()
+  const searchBoxContainerRef = useRef<HTMLDivElement>(null)
 
-  // Projects store
-  const { currentProject, loading, error } = Stores.Projects
-
-  useEffect(() => {
-    if (projectId) {
-      loadProjectWithDetails(projectId).catch((error: any) => {
-        message.error(error?.message || t('common.failedToUpdate'))
-        navigate('/projects')
-      })
-    }
-  }, [projectId])
+  // Project store
+  const { project, loading, error, clearError } = useProjectStore(projectId)
 
   // Show errors
   useEffect(() => {
     if (error) {
       message.error(error)
-      clearProjectsStoreError()
+      clearError()
     }
   }, [error, message])
 
-  if (loading || !currentProject) {
+  if (loading || !project) {
     return <Typography.Text>Loading...</Typography.Text>
   }
 
@@ -52,7 +37,7 @@ export const ProjectDetailsPage: React.FC = () => {
         <Flex vertical className={'flex-1 h-full'}>
           {/* Header */}
           <Flex className="justify-between">
-            <Title level={2}>{currentProject.name}</Title>
+            <Title level={2}>{project.name}</Title>
           </Flex>
 
           {/* Chat Input */}
@@ -63,7 +48,17 @@ export const ProjectDetailsPage: React.FC = () => {
           </Flex>
 
           {/* Recent Conversations */}
-          <RecentConversationsSection />
+          <Flex className={'flex-col gap-3 flex-1'}>
+            <Flex justify="space-between" align="center">
+              <Typography.Title level={5}>
+                Recent Conversations
+              </Typography.Title>
+              <div ref={searchBoxContainerRef} />
+            </Flex>
+            <ConversationHistory
+              getSearchBoxContainer={() => searchBoxContainerRef.current}
+            />
+          </Flex>
         </Flex>
 
         {/* Right Side - Project Knowledge */}

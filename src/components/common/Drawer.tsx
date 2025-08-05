@@ -34,14 +34,13 @@ export const Drawer: React.FC<DrawerProps> = props => {
       maskClosable={maskClosable}
       {...restProps}
       closable={false}
+      classNames={{
+        wrapper: '!m-3 !rounded-lg !overflow-hidden !bg-transparent',
+      }}
       styles={{
-        body: {
-          padding: 12,
-        },
         header: {
           borderBottom: 'none',
           padding: '12px 12px 6px 12px',
-          zIndex: 1002,
         },
         footer: {
           borderTop: 'none',
@@ -50,15 +49,15 @@ export const Drawer: React.FC<DrawerProps> = props => {
         mask: {
           backdropFilter: 'blur(5px)',
         },
+        wrapper: {
+          border: `1px solid ${token.colorBorder}`,
+          maxWidth: `calc(100vw - 1.5rem)`,
+        },
       }}
-      style={{
-        borderRadius: '8px 0 0 8px',
-        border: `1px solid ${token.colorBorder}`,
-        borderRight: 'none',
-      }}
+      // className={`!bg-transparent !m-3 ${className}`}
       drawerRender={node => {
         return (
-          <div className={'w-full h-full relative flex flex-col'}>
+          <div className={'w-full h-full'}>
             {node}
             <ResizeHandle placement={'left'} parentLevel={[1]} />
           </div>

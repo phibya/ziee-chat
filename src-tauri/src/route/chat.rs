@@ -59,9 +59,4 @@ pub fn chat_routes() -> Router {
             get(api::chat::search_conversations)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
-        .route(
-            "/api/chat/conversations/clear-all",
-            delete(api::chat::clear_all_conversations)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
 }

@@ -4,9 +4,9 @@ import { Drawer } from '../../common/Drawer.tsx'
 import {
   closeProjectDrawer,
   createNewProject,
+  createProjectStore,
   setProjectDrawerLoading,
   Stores,
-  updateExistingProject,
 } from '../../../store'
 
 const { TextArea } = Input
@@ -15,7 +15,6 @@ interface ProjectFormData {
   name: string
   description?: string
   instruction?: string
-  is_private?: boolean
 }
 
 export const ProjectFormDrawer: React.FC = () => {
@@ -29,13 +28,13 @@ export const ProjectFormDrawer: React.FC = () => {
       ...values,
       description: values.description || '',
       instruction: values.instruction || '',
-      is_private: true,
     }
 
     setProjectDrawerLoading(true)
     try {
       if (editingProject) {
-        await updateExistingProject(editingProject.id, finalValues)
+        const projectStore = createProjectStore(editingProject.id)
+        await projectStore.__state.updateProject(finalValues)
       } else {
         await createNewProject(finalValues)
       }
@@ -55,14 +54,9 @@ export const ProjectFormDrawer: React.FC = () => {
         form.setFieldsValue({
           name: editingProject.name,
           description: editingProject.description,
-          instruction: editingProject.instruction,
-          is_private: editingProject.is_private,
         })
       } else {
-        // Creating new project
-        form.setFieldsValue({
-          is_private: false,
-        })
+        // Creating new project - no default values needed
       }
     } else {
       // Reset when drawer closes
@@ -106,10 +100,6 @@ export const ProjectFormDrawer: React.FC = () => {
 
         <Form.Item name="description" label="Description">
           <TextArea placeholder="Enter project description" rows={4} />
-        </Form.Item>
-
-        <Form.Item name="instruction" label="Instruction">
-          <TextArea placeholder="Enter project instruction" rows={4} />
         </Form.Item>
       </Form>
     </Drawer>

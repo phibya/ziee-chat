@@ -142,13 +142,13 @@ pub async fn delete_project(
 pub async fn link_conversation(
     Extension(user): Extension<AuthenticatedUser>,
     Path((project_id, conversation_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<crate::database::models::ProjectConversation>, StatusCode> {
+) -> Result<Json<crate::database::models::chat::Conversation>, StatusCode> {
     let pool = get_database_pool().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     match projects::link_conversation_to_project(&pool, project_id, conversation_id, user.user_id)
         .await
     {
-        Ok(Some(project_conversation)) => Ok(Json(project_conversation)),
+        Ok(Some(conversation)) => Ok(Json(conversation)),
         Ok(None) => Err(StatusCode::NOT_FOUND),
         Err(e) => {
             eprintln!("Failed to link conversation to project: {:?}", e);

@@ -1,5 +1,5 @@
 import { ProviderProxySettings } from '../../../../types/api/provider'
-import { ProxySettingsForm } from '../shared'
+import { ProxySettingsForm } from '../common'
 
 interface ProviderProxySettingsProps {
   initialSettings: ProviderProxySettings

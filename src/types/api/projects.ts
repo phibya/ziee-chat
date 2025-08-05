@@ -4,9 +4,6 @@ export interface Project {
   name: string
   description?: string
   instruction?: string
-  is_private: boolean
-  document_count?: number
-  conversation_count?: number
   created_at: string
   updated_at: string
 }
@@ -36,14 +33,12 @@ export interface CreateProjectRequest {
   name: string
   description?: string
   instruction?: string
-  is_private?: boolean
 }
 
 export interface UpdateProjectRequest {
   name?: string
   description?: string
   instruction?: string
-  is_private?: boolean
 }
 
 export interface ProjectListResponse {

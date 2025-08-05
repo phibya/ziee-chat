@@ -169,7 +169,6 @@ export const ApiEndpoints = {
   'Chat.switchConversationBranch':
     'PUT /api/chat/conversations/{conversation_id}/branch/switch',
   'Chat.searchConversations': 'GET /api/chat/conversations/search',
-  'Chat.clearAllConversations': 'DELETE /api/chat/conversations/clear-all',
 
   // Project Management
   'Projects.list': 'GET /api/projects',
@@ -421,7 +420,11 @@ export type ApiEndpointParameters = {
   'Admin.updateAssistant': { assistant_id: string } & UpdateAssistantRequest
   'Admin.deleteAssistant': { assistant_id: string }
   // Chat endpoints
-  'Chat.listConversations': { page?: number; per_page?: number }
+  'Chat.listConversations': {
+    page?: number
+    per_page?: number
+    project_id?: string
+  }
   'Chat.createConversation': CreateConversationRequest
   'Chat.getConversation': { conversation_id: string }
   'Chat.updateConversation': {
@@ -438,8 +441,12 @@ export type ApiEndpointParameters = {
   'Chat.switchConversationBranch': {
     conversation_id: string
   } & SwitchBranchRequest
-  'Chat.searchConversations': { q: string; page?: number; per_page?: number }
-  'Chat.clearAllConversations': void
+  'Chat.searchConversations': {
+    q: string
+    page?: number
+    per_page?: number
+    project_id?: string
+  }
   // Project endpoints
   'Projects.list': ProjectListParams
   'Projects.create': CreateProjectRequest
@@ -639,7 +646,6 @@ export type ApiEndpointResponses = {
   'Chat.getConversationMessages': Message[]
   'Chat.switchConversationBranch': { success: boolean; message: string }
   'Chat.searchConversations': ConversationListResponse
-  'Chat.clearAllConversations': { deleted_count: number; message: string }
   // Project endpoints
   'Projects.list': ProjectListResponse
   'Projects.create': Project

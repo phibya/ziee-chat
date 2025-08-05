@@ -29,12 +29,13 @@ import {
 } from '../../store'
 import { RecentConversations } from '../Chat/RecentConversations.tsx'
 import { DownloadIndicator } from './DownloadIndicator'
+import { isDesktopApp } from '../../api/core.ts'
 
 export function LeftPanel() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, isDesktop } = Stores.Auth
+  const { user } = Stores.Auth
   const { isMobile } = Stores.UI.Layout
   const { token } = theme.useToken()
 
@@ -62,7 +63,7 @@ export function LeftPanel() {
 
   return (
     <div
-      className="h-dvh flex flex-col px-1 min-w-[200px] relative"
+      className="h-dvh flex flex-col px-1 max-w-[200px] relative"
       style={{
         borderRight: `1px solid ${token.colorBorderSecondary}`,
       }}
@@ -143,7 +144,9 @@ export function LeftPanel() {
       </Typography.Text>
 
       {/*/!* Recent Conversations *!/*/}
-      <RecentConversations />
+      <div className="flex-1 overflow-y-auto">
+        <RecentConversations />
+      </div>
 
       <Divider size={'small'} />
 
@@ -186,7 +189,7 @@ export function LeftPanel() {
       <DownloadIndicator />
 
       {/* User Profile Section */}
-      {user && !isDesktop && (
+      {user && !isDesktopApp && (
         <>
           <Divider size={'small'} />
           <Dropdown

@@ -123,79 +123,81 @@ export function RecentConversations() {
   }
 
   return (
-    <div className="flex-1 overflow-auto max-w-42 pl-2 flex flex-col gap-1">
-      {isLoading ? (
-        <div className="text-center">
-          <div>{t('common.loading')}</div>
-        </div>
-      ) : conversations.length === 0 ? (
-        <div className="text-center">
-          <MessageOutlined />
-          <div>{t('conversations.noConversations')}</div>
-        </div>
-      ) : (
-        conversations.map(conversation => (
-          <div key={conversation.id} className="group relative !py-[0.5]">
-            {editingId === conversation.id ? (
-              <div className="flex items-center">
-                <Input
-                  value={editingTitle}
-                  onChange={e => setEditingTitle(e.target.value)}
-                  onPressEnter={handleSaveTitle}
-                  onBlur={handleSaveTitle}
-                  autoFocus
-                  size="small"
-                />
-                <Button size="small" type="text" onClick={handleCancelEdit}>
-                  ×
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Link to={`/conversation/${conversation.id}`}>
-                  <Typography.Text
-                    ellipsis
-                    onClick={() => handleConversationClick(conversation.id)}
-                  >
-                    {conversation.title}
-                  </Typography.Text>
-                </Link>
-
-                {/* Action buttons - only visible on hover */}
-                <div
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 flex rounded"
-                  style={{
-                    backgroundColor: token.colorBgContainer,
-                  }}
-                >
-                  <Tooltip title={t('conversations.rename')}>
-                    <Button
-                      size="small"
-                      type="text"
-                      icon={<EditOutlined />}
-                      onClick={e => {
-                        e.stopPropagation()
-                        handleEditTitle(conversation)
-                      }}
-                    />
-                  </Tooltip>
-                  <Tooltip title={t('conversations.delete')}>
-                    <Button
-                      size="small"
-                      type="text"
-                      icon={<DeleteOutlined />}
-                      onClick={e => {
-                        e.stopPropagation()
-                        handleDeleteConversation(conversation)
-                      }}
-                    />
-                  </Tooltip>
-                </div>
-              </>
-            )}
+    <div className={'w-full h-full'}>
+      <div className="flex-1 max-w-42 pl-2 flex flex-col gap-1">
+        {isLoading ? (
+          <div className="text-center">
+            <div>{t('common.loading')}</div>
           </div>
-        ))
-      )}
+        ) : conversations.length === 0 ? (
+          <div className="text-center">
+            <MessageOutlined />
+            <div>{t('conversations.noConversations')}</div>
+          </div>
+        ) : (
+          conversations.map(conversation => (
+            <div key={conversation.id} className="group relative !py-[0.5]">
+              {editingId === conversation.id ? (
+                <div className="flex items-center">
+                  <Input
+                    value={editingTitle}
+                    onChange={e => setEditingTitle(e.target.value)}
+                    onPressEnter={handleSaveTitle}
+                    onBlur={handleSaveTitle}
+                    autoFocus
+                    size="small"
+                  />
+                  <Button size="small" type="text" onClick={handleCancelEdit}>
+                    ×
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Link to={`/conversation/${conversation.id}`}>
+                    <Typography.Text
+                      ellipsis
+                      onClick={() => handleConversationClick(conversation.id)}
+                    >
+                      {conversation.title}
+                    </Typography.Text>
+                  </Link>
+
+                  {/* Action buttons - only visible on hover */}
+                  <div
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 flex rounded"
+                    style={{
+                      backgroundColor: token.colorBgContainer,
+                    }}
+                  >
+                    <Tooltip title={t('conversations.rename')}>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleEditTitle(conversation)
+                        }}
+                      />
+                    </Tooltip>
+                    <Tooltip title={t('conversations.delete')}>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleDeleteConversation(conversation)
+                        }}
+                      />
+                    </Tooltip>
+                  </div>
+                </>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }

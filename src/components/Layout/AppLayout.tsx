@@ -57,7 +57,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           trigger={null}
           breakpoint="lg"
           collapsedWidth={0}
-          className={`overflow-auto h-screen fixed top-0 left-0 bottom-0 ${
+          className={`overflow-auto h-screen fixed top-0 left-0 bottom-0 !transition-none ${
             isMobile ? 'z-[1050]' : ''
           }`}
           theme={'light'}

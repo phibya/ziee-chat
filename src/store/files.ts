@@ -1,6 +1,6 @@
 // Get file thumbnail
 import { ApiClient } from '../api/client.ts'
-import { useProjectsStore } from './projects.ts'
+// import { createProjectStore } from './project.ts' // For future use
 import { File } from '../types'
 
 export const getFile = async (fileId: string): Promise<File> => {
@@ -87,19 +87,20 @@ export const uploadFile = async (
   return response.file
 }
 
-export const deleteFile = async (fileId: string): Promise<void> => {
+export const deleteFile = async (fileId: string, projectId?: string): Promise<void> => {
   try {
     await ApiClient.Files.delete({ id: fileId })
 
-    // Remove from local state
-    useProjectsStore.setState(state => ({
-      files: state.files.filter(file => file.id !== fileId),
-    }))
+    // Remove from local state if projectId provided
+    if (projectId) {
+      // Note: This needs to be implemented as a proper store action
+      console.warn('File deletion from project store needs proper action implementation')
+    }
   } catch (error) {
-    useProjectsStore.setState({
-      filesError:
-        error instanceof Error ? error.message : 'Failed to delete file',
-    })
+    if (projectId) {
+      // Note: Error handling needs to be implemented as a proper store action
+      console.warn('File deletion error handling needs proper store action implementation')
+    }
     throw error
   }
 }

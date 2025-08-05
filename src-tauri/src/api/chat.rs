@@ -39,6 +39,7 @@ use crate::utils::chat::{build_chat_messages, build_single_user_message};
 pub struct PaginationQuery {
   page: Option<i32>,
   per_page: Option<i32>,
+  project_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +47,7 @@ pub struct SearchQuery {
   q: String,
   page: Option<i32>,
   per_page: Option<i32>,
+  project_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -129,7 +131,8 @@ pub async fn list_conversations(
   let page = params.page.unwrap_or(1);
   let per_page = params.per_page.unwrap_or(20);
 
-  match chat::list_conversations(auth_user.user.id, page, per_page).await {
+  let project_id = params.project_id.as_deref().map(|s| Uuid::parse_str(s).ok()).flatten();
+  match chat::list_conversations(auth_user.user.id, page, per_page, project_id).await {
     Ok(response) => Ok(Json(response)),
     Err(e) => {
       eprintln!("Error listing conversations: {}", e);
@@ -628,7 +631,8 @@ pub async fn search_conversations(
   let page = params.page.unwrap_or(1);
   let per_page = params.per_page.unwrap_or(20);
 
-  match chat::search_conversations(auth_user.user.id, &params.q, page, per_page).await {
+  let project_id = params.project_id.as_deref().map(|s| Uuid::parse_str(s).ok()).flatten();
+  match chat::search_conversations(auth_user.user.id, &params.q, page, per_page, project_id).await {
     Ok(response) => Ok(Json(response)),
     Err(e) => {
       eprintln!("Error searching conversations: {}", e);
@@ -769,21 +773,6 @@ pub async fn create_ai_provider_with_model_id(
   }
 }
 
-/// Clear all chat history for the authenticated user
-pub async fn clear_all_conversations(
-  Extension(auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
-  match chat::delete_all_conversations(auth_user.user.id).await {
-    Ok(deleted_count) => Ok(Json(serde_json::json!({
-            "deleted_count": deleted_count,
-            "message": "All conversations deleted successfully"
-        }))),
-    Err(e) => {
-      eprintln!("Error clearing all conversations: {}", e);
-      Err(StatusCode::INTERNAL_SERVER_ERROR)
-    }
-  }
-}
 
 /// Get messages for a conversation with specific branch
 pub async fn get_conversation_messages_by_branch(

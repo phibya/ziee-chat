@@ -174,6 +174,7 @@ pub async fn list_conversations(
     user_id: Uuid,
     page: i32,
     per_page: i32,
+    project_id: Option<Uuid>,
 ) -> Result<ConversationListResponse, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
@@ -181,10 +182,17 @@ pub async fn list_conversations(
     let offset = (page - 1) * per_page;
 
     // Get total count
-    let total_row = sqlx::query("SELECT COUNT(*) as count FROM conversations WHERE user_id = $1")
-        .bind(user_id)
-        .fetch_one(pool)
-        .await?;
+    let (total_query, total_bind_params) = if let Some(proj_id) = project_id {
+        ("SELECT COUNT(*) as count FROM conversations WHERE user_id = $1 AND project_id = $2", Some(proj_id))
+    } else {
+        ("SELECT COUNT(*) as count FROM conversations WHERE user_id = $1 AND project_id IS NULL", None)
+    };
+    
+    let mut total_query_builder = sqlx::query(total_query).bind(user_id);
+    if let Some(proj_id) = total_bind_params {
+        total_query_builder = total_query_builder.bind(proj_id);
+    }
+    let total_row = total_query_builder.fetch_one(pool).await?;
     let total: i64 = total_row.get("count");
 
     println!(
@@ -193,8 +201,8 @@ pub async fn list_conversations(
     );
 
     // Get conversations with last message info
-    let conversations = sqlx::query_as::<_, ConversationSummary>(
-        r#"
+    let (conversations_query, conversations_bind_params) = if let Some(proj_id) = project_id {
+        (r#"
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
@@ -208,16 +216,38 @@ pub async fn list_conversations(
             WHERE role = 'assistant'
             ORDER BY conversation_id, created_at DESC
         ) m ON c.id = m.conversation_id
-        WHERE c.user_id = $1
+        WHERE c.user_id = $1 AND c.project_id = $2
+        ORDER BY c.updated_at DESC
+        LIMIT $3 OFFSET $4
+        "#, Some(proj_id))
+    } else {
+        (r#"
+        SELECT
+            c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
+            c.created_at, c.updated_at,
+            m.content as last_message,
+            (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
+        FROM conversations c
+        LEFT JOIN (
+            SELECT DISTINCT ON (conversation_id)
+                conversation_id, content
+            FROM messages
+            WHERE role = 'assistant'
+            ORDER BY conversation_id, created_at DESC
+        ) m ON c.id = m.conversation_id
+        WHERE c.user_id = $1 AND c.project_id IS NULL
         ORDER BY c.updated_at DESC
         LIMIT $2 OFFSET $3
-        "#,
-    )
-    .bind(user_id)
-    .bind(per_page)
-    .bind(offset)
-    .fetch_all(pool)
-    .await?;
+        "#, None)
+    };
+    
+    let mut conversations_query_builder = sqlx::query_as::<_, ConversationSummary>(conversations_query).bind(user_id);
+    if let Some(proj_id) = conversations_bind_params {
+        conversations_query_builder = conversations_query_builder.bind(proj_id).bind(per_page).bind(offset);
+    } else {
+        conversations_query_builder = conversations_query_builder.bind(per_page).bind(offset);
+    }
+    let conversations = conversations_query_builder.fetch_all(pool).await?;
 
     Ok(ConversationListResponse {
         conversations,
@@ -792,6 +822,7 @@ pub async fn search_conversations(
     query: &str,
     page: i32,
     per_page: i32,
+    project_id: Option<Uuid>,
 ) -> Result<ConversationListResponse, Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
@@ -800,24 +831,38 @@ pub async fn search_conversations(
     let search_pattern = format!("%{}%", query);
 
     // Get total count for search results
-    let total_row = sqlx::query(
-        r#"
+    let (total_query, total_bind_params) = if let Some(proj_id) = project_id {
+        (r#"
         SELECT COUNT(DISTINCT c.id) as count
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
         WHERE c.user_id = $1
+        AND c.project_id = $2
+        AND (c.title ILIKE $3 OR m.content ILIKE $3)
+        "#, Some(proj_id))
+    } else {
+        (r#"
+        SELECT COUNT(DISTINCT c.id) as count
+        FROM conversations c
+        LEFT JOIN messages m ON c.id = m.conversation_id
+        WHERE c.user_id = $1
+        AND c.project_id IS NULL
         AND (c.title ILIKE $2 OR m.content ILIKE $2)
-        "#,
-    )
-    .bind(user_id)
-    .bind(&search_pattern)
-    .fetch_one(pool)
-    .await?;
+        "#, None)
+    };
+    
+    let mut total_query_builder = sqlx::query(total_query).bind(user_id);
+    if let Some(proj_id) = total_bind_params {
+        total_query_builder = total_query_builder.bind(proj_id).bind(&search_pattern);
+    } else {
+        total_query_builder = total_query_builder.bind(&search_pattern);
+    }
+    let total_row = total_query_builder.fetch_one(pool).await?;
     let total: i64 = total_row.get("count");
 
     // Get conversations that match search with last message info
-    let conversations = sqlx::query_as::<_, ConversationSummary>(
-        r#"
+    let (conversations_query, conversations_bind_params) = if let Some(proj_id) = project_id {
+        (r#"
         SELECT DISTINCT ON (c.id)
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
@@ -833,17 +878,42 @@ pub async fn search_conversations(
             ORDER BY conversation_id, created_at DESC
         ) latest_msg ON c.id = latest_msg.conversation_id
         WHERE c.user_id = $1
+        AND c.project_id = $2
+        AND (c.title ILIKE $3 OR m.content ILIKE $3)
+        ORDER BY c.id, c.updated_at DESC
+        LIMIT $4 OFFSET $5
+        "#, Some(proj_id))
+    } else {
+        (r#"
+        SELECT DISTINCT ON (c.id)
+            c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
+            c.created_at, c.updated_at,
+            latest_msg.content as last_message,
+            (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
+        FROM conversations c
+        LEFT JOIN messages m ON c.id = m.conversation_id
+        LEFT JOIN (
+            SELECT DISTINCT ON (conversation_id)
+                conversation_id, content
+            FROM messages
+            WHERE role = 'assistant'
+            ORDER BY conversation_id, created_at DESC
+        ) latest_msg ON c.id = latest_msg.conversation_id
+        WHERE c.user_id = $1
+        AND c.project_id IS NULL
         AND (c.title ILIKE $2 OR m.content ILIKE $2)
         ORDER BY c.id, c.updated_at DESC
         LIMIT $3 OFFSET $4
-        "#,
-    )
-    .bind(user_id)
-    .bind(&search_pattern)
-    .bind(per_page)
-    .bind(offset)
-    .fetch_all(pool)
-    .await?;
+        "#, None)
+    };
+    
+    let mut conversations_query_builder = sqlx::query_as::<_, ConversationSummary>(conversations_query).bind(user_id);
+    if let Some(proj_id) = conversations_bind_params {
+        conversations_query_builder = conversations_query_builder.bind(proj_id).bind(&search_pattern).bind(per_page).bind(offset);
+    } else {
+        conversations_query_builder = conversations_query_builder.bind(&search_pattern).bind(per_page).bind(offset);
+    }
+    let conversations = conversations_query_builder.fetch_all(pool).await?;
 
     Ok(ConversationListResponse {
         conversations,
@@ -851,33 +921,6 @@ pub async fn search_conversations(
         page,
         per_page,
     })
-}
-
-/// Delete all conversations for a user
-pub async fn delete_all_conversations(user_id: Uuid) -> Result<i64, Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    // Delete all messages for user's conversations first
-    let _result = sqlx::query(
-        r#"
-        DELETE FROM messages
-        WHERE conversation_id IN (
-            SELECT id FROM conversations WHERE user_id = $1
-        )
-        "#,
-    )
-    .bind(user_id)
-    .execute(pool)
-    .await?;
-
-    // Delete all conversations for the user
-    let result = sqlx::query("DELETE FROM conversations WHERE user_id = $1")
-        .bind(user_id)
-        .execute(pool)
-        .await?;
-
-    Ok(result.rows_affected() as i64)
 }
 
 /// Generate conversation title from first user message

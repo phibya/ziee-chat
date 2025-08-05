@@ -5,12 +5,12 @@ import { useAdminUsersStore } from './admin/users'
 import { useAdminUserGroupsStore } from './admin/userGroups'
 import { useAdminProxySettingsStore } from './admin/proxySettings'
 import { useAuthStore } from './auth'
-import { useChatHistoryStore } from './chatHistory'
 import { useConversationsStore } from './conversations'
 import { useHubStore } from './hub'
 import { useLocalUploadStore } from './admin/localUpload.ts'
 import { useModelDownloadStore } from './admin/modelDownload.ts'
 import { useProjectsStore } from './projects'
+// import { useProjectStore } from './project' // Imported via export below
 import { useAdminProvidersStore } from './admin/providers.ts'
 import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
@@ -105,16 +105,7 @@ export {
   useChatStore,
 } from './chat'
 // Chat History store
-export {
-  clearAllUserChatHistoryConversations,
-  clearChatHistorySearchResults,
-  clearChatHistoryStoreError,
-  deleteChatHistoryConversationById,
-  loadChatHistoryConversationsList,
-  searchChatHistoryConversations,
-  updateChatHistoryConversationTitleById,
-  useChatHistoryStore,
-} from './chatHistory'
+export { useChatHistoryStore } from './chatHistory'
 // Conversations store
 export {
   addNewConversationToList,
@@ -157,28 +148,21 @@ export {
   getAssistantsByCategory,
   useHubStore,
 } from './hub'
-// Projects store
+// Projects store (project list)
 export {
   clearProjectsStoreError,
   createNewProject,
   deleteExistingProject,
   loadAllUserProjects,
-  loadProjectById,
-  loadProjectWithDetails,
   resetProjectsStore,
-  updateExistingProject,
+  updateProjectInList,
   useProjectsStore,
 } from './projects'
-// Project Files functions (now in projects store)
+// Project store (individual project)
 export {
-  cancelProjectFileUpload,
-  clearFilesError,
-  getProjectFiles,
-  loadProjectFiles,
-  uploadFilesToProject,
-  removeProjectFileUploadProgress,
-  getProjectFileUploadProgressById,
-} from './projects'
+  createProjectStore,
+  useProjectStore,
+} from './project'
 
 export {
   getFile,
@@ -371,7 +355,6 @@ export const Stores = {
   AdminProxySettings: createStoreProxy(useAdminProxySettingsStore),
   Assistants: createStoreProxy(useUserAssistantsStore),
   AdminAssistants: createStoreProxy(useAdminAssistantsStore),
-  ChatHistory: createStoreProxy(useChatHistoryStore),
   Conversations: createStoreProxy(useConversationsStore),
   Hub: createStoreProxy(useHubStore),
   LocalUpload: createStoreProxy(useLocalUploadStore),

@@ -9,15 +9,11 @@ import {
   Typography,
   Upload,
 } from 'antd'
-import React, { useEffect } from 'react'
+import React, { useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import {
-  loadProjectFiles,
-  removeProjectFileUploadProgress,
-  Stores,
-  uploadFilesToProject,
-} from '../../../store'
+import { useProjectStore } from '../../../store'
 import { FileCard } from '../../common/FileCard.tsx'
+import { ProjectInstructionDrawer } from './ProjectInstructionDrawer.tsx'
 
 const { Text } = Typography
 
@@ -25,32 +21,31 @@ export const ProjectKnowledgeCard: React.FC = () => {
   const { message } = App.useApp()
   const { projectId } = useParams<{ projectId: string }>()
   const { token } = theme.useToken()
+  const [instructionDrawerOpen, setInstructionDrawerOpen] = useState(false)
+  const [savingInstruction, setSavingInstruction] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Projects store
-  const { currentProject } = Stores.Projects
-
-  // Project files from Projects store (now merged)
-  const { uploading, uploadProgress, files } = Stores.Projects
+  // Project store
+  const {
+    project,
+    updateProject,
+    uploading,
+    uploadProgress,
+    files,
+    uploadFiles,
+    removeUploadProgress,
+  } = useProjectStore(projectId)
 
   // Get files for this project
   const projectFiles = projectId
     ? files.filter(file => file.project_id === projectId)
     : []
 
-  useEffect(() => {
-    if (projectId) {
-      // Load project files
-      loadProjectFiles(projectId).catch((error: any) => {
-        console.error('Failed to load project files:', error)
-      })
-    }
-  }, [projectId])
-
   const handleFileUpload = async (files: globalThis.File[]) => {
-    if (!currentProject || !projectId) return
+    if (!project || !projectId) return
 
     try {
-      await uploadFilesToProject(projectId, files)
+      await uploadFiles(files)
       message.success(`${files.length} file(s) uploaded successfully`)
     } catch (error) {
       console.error('Failed to upload files:', error)
@@ -58,10 +53,39 @@ export const ProjectKnowledgeCard: React.FC = () => {
     }
   }
 
+  const handleSaveInstruction = async (instruction: string) => {
+    if (!project) return
+
+    setSavingInstruction(true)
+    try {
+      await updateProject({ instruction })
+      message.success('Project instructions updated successfully')
+    } catch (error) {
+      console.error('Failed to update instruction:', error)
+      message.error('Failed to update project instructions')
+      throw error
+    } finally {
+      setSavingInstruction(false)
+    }
+  }
+
+  const handleAddFilesClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (files && files.length > 0) {
+      await handleFileUpload(Array.from(files))
+      // Reset the input so the same files can be selected again if needed
+      event.target.value = ''
+    }
+  }
+
   return (
     <Card
       title="Project knowledge"
-      className="w-96 !my-1 overflow-y-hidden flex flex-col"
+      className="w-96 !mt-1 !mb-2 overflow-y-hidden flex flex-col"
       classNames={{
         body: 'flex flex-col relative overflow-y-hidden flex-1',
       }}
@@ -100,16 +124,24 @@ export const ProjectKnowledgeCard: React.FC = () => {
       </Upload.Dragger>
       {/* Project Instructions */}
       <Flex className="gap-1 flex-col">
-        <Typography.Title level={5}>Project Instructions</Typography.Title>
-        <Card>
-          <Text type="secondary">
-            {currentProject?.instruction ||
-              currentProject?.description ||
+        <Text strong>Project Instructions</Text>
+        <Card
+          classNames={{
+            body: '!p-2 !px-3 flex items-center justify-between',
+          }}
+        >
+          <Text type="secondary" ellipsis={true}>
+            {project?.instruction ||
               'No instructions provided for this project.'}
-            <Button type="link" size="small" style={{ pointerEvents: 'auto' }}>
-              Edit
-            </Button>
           </Text>
+          <Button
+            type="link"
+            size="small"
+            style={{ pointerEvents: 'auto' }}
+            onClick={() => setInstructionDrawerOpen(true)}
+          >
+            Edit
+          </Button>
         </Card>
       </Flex>
 
@@ -134,7 +166,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
                       icon={<CloseCircleOutlined />}
                       size="small"
                       onClick={() => {
-                        removeProjectFileUploadProgress(progress.id)
+                        removeUploadProgress(progress.id)
                       }}
                     />
                   </Flex>
@@ -147,13 +179,14 @@ export const ProjectKnowledgeCard: React.FC = () => {
 
       {/* Documents */}
       <Flex justify="space-between" align="center" className={'!mt-3'}>
-        <Typography.Title level={5}>Documents</Typography.Title>
-        <Button
-          icon={<UploadOutlined />}
-          loading={uploading}
+        <Text strong>Documents</Text>
+        <Button 
+          loading={uploading} 
           style={{ pointerEvents: 'auto' }}
+          onClick={handleAddFilesClick}
+          icon={<UploadOutlined />}
         >
-          + Add Files
+          Add Files
         </Button>
       </Flex>
 
@@ -171,6 +204,23 @@ export const ProjectKnowledgeCard: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
+
+      <ProjectInstructionDrawer
+        open={instructionDrawerOpen}
+        onClose={() => setInstructionDrawerOpen(false)}
+        onSave={handleSaveInstruction}
+        currentInstruction={project?.instruction}
+        loading={savingInstruction}
+      />
     </Card>
   )
 }

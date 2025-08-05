@@ -7,7 +7,7 @@ import {
   Stores,
   updateSystemProxySettings,
 } from '../../../store'
-import { ProxySettingsForm } from './shared'
+import { ProxySettingsForm } from './common'
 import { SettingsPageContainer } from './SettingsPageContainer'
 
 const { Text } = Typography

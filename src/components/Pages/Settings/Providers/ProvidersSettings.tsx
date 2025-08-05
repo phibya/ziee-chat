@@ -40,7 +40,7 @@ import { RemoteProviderSettings } from './RemoteProviderSettings'
 import { SettingsPageContainer } from '../SettingsPageContainer'
 
 const { Title, Text } = Typography
-const { Sider, Content } = Layout
+const { Content } = Layout
 
 const PROVIDER_ICONS: Record<ProviderType, string> = {
   local: '🕯',
@@ -269,18 +269,12 @@ export function ProvidersSettings() {
 
   return (
     <SettingsPageContainer title="Providers">
-      <div className={'flex w-full'}>
+      <Flex className={'w-full'}>
         {/* Desktop Sidebar */}
         {!isMobile && (
-          <Sider
-            width={200}
-            theme="light"
-            style={{ backgroundColor: 'transparent' }}
-          >
-            <div>
-              <ProviderMenu />
-            </div>
-          </Sider>
+          <div className={'w-48'}>
+            <ProviderMenu />
+          </div>
         )}
 
         {/* Main Content */}
@@ -334,7 +328,7 @@ export function ProvidersSettings() {
 
         <EditLocalModelDrawer />
         <EditRemoteModelDrawer />
-      </div>
+      </Flex>
     </SettingsPageContainer>
   )
 }

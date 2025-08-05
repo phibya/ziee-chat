@@ -78,82 +78,8 @@ export function AdminGeneralSettings() {
 
   return (
     <SettingsPageContainer title={t('admin.title')}>
-      <Card title={t('admin.application')}>
-        <Flex vertical className="gap-2 w-full">
-          <Flex
-            justify="space-between"
-            align={isMobile ? 'flex-start' : 'center'}
-            vertical={isMobile}
-            gap={isMobile ? 'small' : 0}
-          >
-            <div>
-              <Text strong>{t('admin.appVersion')}</Text>
-              <div>
-                <Text type="secondary">v0.6.4</Text>
-              </div>
-            </div>
-            <Text type="secondary">v0.6.4</Text>
-          </Flex>
-          <Divider style={{ margin: 0 }} />
-          {hasPermission(Permission.config.updates.read) && (
-            <Flex
-              justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
-              vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
-            >
-              <div>
-                <Text strong>{t('admin.checkForUpdates')}</Text>
-                <div>
-                  <Text type="secondary">{t('admin.checkForUpdatesDesc')}</Text>
-                </div>
-              </div>
-              <Button
-                type="default"
-                disabled={!hasPermission(Permission.config.updates.edit)}
-              >
-                {t('admin.checkForUpdates')}
-              </Button>
-            </Flex>
-          )}
-        </Flex>
-      </Card>
-
-      {hasPermission(Permission.config.experimental.read) && (
-        <Card title={t('admin.advanced')}>
-          <Form
-            form={form}
-            onValuesChange={handleFormChange}
-            initialValues={{
-              experimentalFeatures,
-            }}
-          >
-            <Flex justify="space-between" align="center">
-              <div>
-                <Text strong>{t('admin.experimentalFeatures')}</Text>
-                <div>
-                  <Text type="secondary">
-                    {t('admin.experimentalFeaturesDesc')}
-                  </Text>
-                </div>
-              </div>
-              <Form.Item
-                name="experimentalFeatures"
-                valuePropName="checked"
-                style={{ margin: 0 }}
-              >
-                <Switch
-                  size="small"
-                  disabled={!hasPermission(Permission.config.experimental.edit)}
-                />
-              </Form.Item>
-            </Flex>
-          </Form>
-        </Card>
-      )}
-
-      {hasPermission(Permission.config.dataFolder.read) && (
-        <Card title={t('admin.dataFolder')}>
+      <Flex className={'flex-col gap-3 w-full'}>
+        <Card title={t('admin.application')}>
           <Flex vertical className="gap-2 w-full">
             <Flex
               justify="space-between"
@@ -162,62 +88,142 @@ export function AdminGeneralSettings() {
               gap={isMobile ? 'small' : 0}
             >
               <div>
-                <Text strong>{t('admin.appData')}</Text>
+                <Text strong>{t('admin.appVersion')}</Text>
                 <div>
-                  <Text type="secondary">{t('admin.appDataDesc')}</Text>
-                </div>
-                <div>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>
-                    /var/lib/app/data
-                  </Text>
+                  <Text type="secondary">v0.6.4</Text>
                 </div>
               </div>
-              <Button
-                type="default"
-                icon={<FolderOpenOutlined />}
-                disabled={!hasPermission(Permission.config.dataFolder.edit)}
-              >
-                {t('admin.changeLocation')}
-              </Button>
+              <Text type="secondary">v0.6.4</Text>
             </Flex>
             <Divider style={{ margin: 0 }} />
-            <Flex
-              justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
-              vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
-            >
-              <div>
-                <Text strong>{t('admin.appLogs')}</Text>
-                <div>
-                  <Text type="secondary">{t('admin.appLogsDesc')}</Text>
-                </div>
-              </div>
+            {hasPermission(Permission.config.updates.read) && (
               <Flex
+                justify="space-between"
+                align={isMobile ? 'flex-start' : 'center'}
                 vertical={isMobile}
-                className={isMobile ? 'gap-2 w-full' : 'gap-2'}
+                gap={isMobile ? 'small' : 0}
               >
+                <div>
+                  <Text strong>{t('admin.checkForUpdates')}</Text>
+                  <div>
+                    <Text type="secondary">
+                      {t('admin.checkForUpdatesDesc')}
+                    </Text>
+                  </div>
+                </div>
                 <Button
                   type="default"
-                  icon={<FileTextOutlined />}
-                  block={isMobile}
-                  disabled={!hasPermission(Permission.config.dataFolder.edit)}
+                  disabled={!hasPermission(Permission.config.updates.edit)}
                 >
-                  {t('admin.openLogs')}
+                  {t('admin.checkForUpdates')}
                 </Button>
+              </Flex>
+            )}
+          </Flex>
+        </Card>
+
+        {hasPermission(Permission.config.experimental.read) && (
+          <Card title={t('admin.advanced')}>
+            <Form
+              form={form}
+              onValuesChange={handleFormChange}
+              initialValues={{
+                experimentalFeatures,
+              }}
+            >
+              <Flex justify="space-between" align="center">
+                <div>
+                  <Text strong>{t('admin.experimentalFeatures')}</Text>
+                  <div>
+                    <Text type="secondary">
+                      {t('admin.experimentalFeaturesDesc')}
+                    </Text>
+                  </div>
+                </div>
+                <Form.Item
+                  name="experimentalFeatures"
+                  valuePropName="checked"
+                  style={{ margin: 0 }}
+                >
+                  <Switch
+                    size="small"
+                    disabled={
+                      !hasPermission(Permission.config.experimental.edit)
+                    }
+                  />
+                </Form.Item>
+              </Flex>
+            </Form>
+          </Card>
+        )}
+
+        {hasPermission(Permission.config.dataFolder.read) && (
+          <Card title={t('admin.dataFolder')}>
+            <Flex vertical className="gap-2 w-full">
+              <Flex
+                justify="space-between"
+                align={isMobile ? 'flex-start' : 'center'}
+                vertical={isMobile}
+                gap={isMobile ? 'small' : 0}
+              >
+                <div>
+                  <Text strong>{t('admin.appData')}</Text>
+                  <div>
+                    <Text type="secondary">{t('admin.appDataDesc')}</Text>
+                  </div>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      /var/lib/app/data
+                    </Text>
+                  </div>
+                </div>
                 <Button
                   type="default"
                   icon={<FolderOpenOutlined />}
-                  block={isMobile}
                   disabled={!hasPermission(Permission.config.dataFolder.edit)}
                 >
-                  {t('admin.showInFinder')}
+                  {t('admin.changeLocation')}
                 </Button>
               </Flex>
+              <Divider style={{ margin: 0 }} />
+              <Flex
+                justify="space-between"
+                align={isMobile ? 'flex-start' : 'center'}
+                vertical={isMobile}
+                gap={isMobile ? 'small' : 0}
+              >
+                <div>
+                  <Text strong>{t('admin.appLogs')}</Text>
+                  <div>
+                    <Text type="secondary">{t('admin.appLogsDesc')}</Text>
+                  </div>
+                </div>
+                <Flex
+                  vertical={isMobile}
+                  className={isMobile ? 'gap-2 w-full' : 'gap-2'}
+                >
+                  <Button
+                    type="default"
+                    icon={<FileTextOutlined />}
+                    block={isMobile}
+                    disabled={!hasPermission(Permission.config.dataFolder.edit)}
+                  >
+                    {t('admin.openLogs')}
+                  </Button>
+                  <Button
+                    type="default"
+                    icon={<FolderOpenOutlined />}
+                    block={isMobile}
+                    disabled={!hasPermission(Permission.config.dataFolder.edit)}
+                  >
+                    {t('admin.showInFinder')}
+                  </Button>
+                </Flex>
+              </Flex>
             </Flex>
-          </Flex>
-        </Card>
-      )}
+          </Card>
+        )}
+      </Flex>
     </SettingsPageContainer>
   )
 }

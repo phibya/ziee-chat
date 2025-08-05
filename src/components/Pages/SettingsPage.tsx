@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { isDesktopApp } from '../../api/core'
 import { Permission, usePermissions } from '../../permissions'
-import { PageContainer } from '../common/PageContainer.tsx'
 
 const { Title } = Typography
 const { Sider } = Layout
@@ -299,7 +298,7 @@ export function SettingsPage() {
       {!isMobile && (
         <Sider
           theme={'light'}
-          className={'h-screen overflow-auto w-fit px-1'}
+          className={'h-screen overflow-auto w-fit px-1 !transition-none'}
           width={'fit-content'}
           style={{
             borderRight: `1px solid ${token.colorBorderSecondary}`,
@@ -325,9 +324,7 @@ export function SettingsPage() {
 
       {/* Main Content */}
       <Layout>
-        <PageContainer>
-          <Outlet />
-        </PageContainer>
+        <Outlet />
       </Layout>
     </Layout>
   )
