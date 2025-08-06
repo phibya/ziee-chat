@@ -92,69 +92,74 @@ export const ProjectsPage: React.FC = () => {
         </div>
       }
     >
-      {/* Search and Sort */}
-      <div className="flex w-full items-center mb-6 gap-3 flex-wrap max-w-6xl px-3">
-        <Search
-          placeholder={t('forms.searchProjects')}
-          prefix={<SearchOutlined />}
-          className={'w-full items-center justify-center flex-1'}
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          allowClear
-        />
-        <div className="flex items-center gap-2">
-          <Text type="secondary">Sort by</Text>
-          <Select
-            value={sortBy}
-            onChange={setSortBy}
-            style={{ width: 120 }}
-            options={[
-              { label: t('labels.activity'), value: 'activity' },
-              { label: t('labels.name'), value: 'name' },
-              { label: t('labels.created'), value: 'created' },
-            ]}
+      <div
+        className={'flex flex-col overflow-hidden h-full w-full items-center'}
+      >
+        {/* Search and Sort */}
+        <div className="flex w-full items-center mb-6 gap-3 flex-wrap max-w-6xl px-3">
+          <Search
+            placeholder={t('forms.searchProjects')}
+            prefix={<SearchOutlined />}
+            className={'w-full items-center justify-center flex-1'}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            allowClear
           />
+          <div className="flex items-center gap-2">
+            <Text type="secondary">Sort by</Text>
+            <Select
+              value={sortBy}
+              onChange={setSortBy}
+              style={{ width: 120 }}
+              options={[
+                { label: t('labels.activity'), value: 'activity' },
+                { label: t('labels.name'), value: 'name' },
+                { label: t('labels.created'), value: 'created' },
+              ]}
+            />
+          </div>
         </div>
-      </div>
 
-      {/* Projects Grid */}
-      <div className="flex items-center w-full justify-center overflow-y-auto">
-        <div className="max-w-6xl flex flex-wrap gap-4 p-3 w-full">
-          {getFilteredAndSortedProjects().map(project => (
-            <div className={'min-w-56 flex-1'}>
-              <ProjectCard project={project} />
-            </div>
-          ))}
-          {/* Placeholder divs for grid layout */}
-          <div className={'min-w-56 flex-1'}></div>
-          <div className={'min-w-56 flex-1'}></div>
-          <div className={'min-w-56 flex-1'}></div>
+        {/* Projects Grid */}
+        <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
+          <div className="max-w-6xl flex flex-wrap gap-4 p-3 w-full h-auto self-center overflow-y-auto">
+            {getFilteredAndSortedProjects().map(project => (
+              <div className={'min-w-72 flex-1'}>
+                <ProjectCard project={project} />
+              </div>
+            ))}
+            {/* Placeholder divs for grid layout */}
+            <div className={'min-w-72 flex-1'}></div>
+            <div className={'min-w-72 flex-1'}></div>
+            <div className={'min-w-72 flex-1'}></div>
+          </div>
+          <div className={'w-full flex-1'} />
         </div>
-      </div>
 
-      {/* Empty State */}
-      {!loading && getFilteredAndSortedProjects().length === 0 && (
-        <div className="text-center py-12">
-          <FolderOutlined className="text-6xl mb-4" />
-          <Title level={3} type="secondary">
-            {searchQuery ? 'No projects found' : 'No projects yet'}
-          </Title>
-          <Text type="secondary" className="block mb-4">
-            {searchQuery
-              ? 'Try adjusting your search criteria'
-              : 'Create your first project to get started'}
-          </Text>
-          {!searchQuery && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => openProjectDrawer()}
-            >
-              Create project
-            </Button>
-          )}
-        </div>
-      )}
+        {/* Empty State */}
+        {!loading && getFilteredAndSortedProjects().length === 0 && (
+          <div className="text-center py-12">
+            <FolderOutlined className="text-6xl mb-4" />
+            <Title level={3} type="secondary">
+              {searchQuery ? 'No projects found' : 'No projects yet'}
+            </Title>
+            <Text type="secondary" className="block mb-4">
+              {searchQuery
+                ? 'Try adjusting your search criteria'
+                : 'Create your first project to get started'}
+            </Text>
+            {!searchQuery && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => openProjectDrawer()}
+              >
+                Create project
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
 
       <ProjectFormDrawer />
     </PageContainer>
