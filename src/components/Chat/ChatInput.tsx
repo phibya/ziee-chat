@@ -436,7 +436,7 @@ export const ChatInput = function ChatInput({
                   </Form.Item>
 
                   {/* Send/Stop/Save/Cancel buttons */}
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 items-center">
                     {isEditing ? (
                       <>
                         <Button

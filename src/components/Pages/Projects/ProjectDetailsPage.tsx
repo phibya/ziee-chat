@@ -32,38 +32,60 @@ export const ProjectDetailsPage: React.FC = () => {
 
   return (
     <PageContainer>
-      <Flex className={'w-full h-full gap-8 overflow-y-hidden'}>
+      <Flex
+        className={
+          'w-full h-full gap-3 overflow-y-hidden max-w-6xl self-center !py-3'
+        }
+      >
         {/* Left Side - Chat Input and Conversations */}
-        <Flex vertical className={'flex-1 h-full'}>
+        <Flex vertical className={'flex-1 h-full flex-col overflow-y-hidden'}>
           {/* Header */}
-          <Flex className="justify-between">
+          <Flex className={'!px-3'}>
             <Title level={2}>{project.name}</Title>
           </Flex>
 
           {/* Chat Input */}
-          <Flex className={'min-h-62'}>
-            <Flex className={'flex-col w-full self-center'}>
-              <ChatInput />
-            </Flex>
+          <Flex className={'min-h-62 !px-3 flex-col content-center'}>
+            <div className={'my-auto'}>
+              <div className="text-3xl font-light mb-4 text-center">
+                Hi! How can I assist you with your project?
+              </div>
+              <Flex className={'flex-col w-full self-center'}>
+                <ChatInput />
+              </Flex>
+            </div>
           </Flex>
 
           {/* Recent Conversations */}
-          <Flex className={'flex-col gap-3 flex-1'}>
-            <Flex justify="space-between" align="center">
+          <Flex
+            className={
+              'flex-col gap-3 flex-1 overflow-y-hidden overflow-x-visible'
+            }
+          >
+            <Flex
+              justify="space-between"
+              align="center"
+              className={'w-full flex-wrap !px-3'}
+            >
               <Typography.Title level={5}>
                 Recent Conversations
               </Typography.Title>
               <div ref={searchBoxContainerRef} />
             </Flex>
-            <ConversationHistory
-              getSearchBoxContainer={() => searchBoxContainerRef.current}
-            />
+            <div className={'flex flex-1 overflow-auto'}>
+              <ConversationHistory
+                getSearchBoxContainer={() => searchBoxContainerRef.current}
+              />
+            </div>
           </Flex>
         </Flex>
 
         {/* Right Side - Project Knowledge */}
-        <ProjectKnowledgeCard />
+        <div className={'h-full !pr-3 flex'}>
+          <ProjectKnowledgeCard />
+        </div>
       </Flex>
+
       <ProjectFormDrawer />
     </PageContainer>
   )

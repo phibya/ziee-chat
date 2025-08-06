@@ -269,16 +269,16 @@ export function ProvidersSettings() {
 
   return (
     <SettingsPageContainer title="Providers">
+      {/* Desktop Sidebar */}
+
       <Flex className={'w-full'}>
-        {/* Desktop Sidebar */}
         {!isMobile && (
-          <div className={'w-48'}>
+          <div className={'w-42 overflow-y-auto h-full'}>
             <ProviderMenu />
           </div>
         )}
-
         {/* Main Content */}
-        <Layout className={'px-2'}>
+        <Layout className={'px-2 flex-1'}>
           <Content>
             {/* Mobile Header with Provider Selector */}
             {isMobile && (

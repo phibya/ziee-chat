@@ -73,7 +73,9 @@ export const ProjectKnowledgeCard: React.FC = () => {
     fileInputRef.current?.click()
   }
 
-  const handleFileInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const files = event.target.files
     if (files && files.length > 0) {
       await handleFileUpload(Array.from(files))
@@ -85,7 +87,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
   return (
     <Card
       title="Project knowledge"
-      className="w-96 !mt-1 !mb-2 overflow-y-hidden flex flex-col"
+      className="w-96  overflow-y-hidden flex flex-col"
       classNames={{
         body: 'flex flex-col relative overflow-y-hidden flex-1',
       }}
@@ -180,8 +182,8 @@ export const ProjectKnowledgeCard: React.FC = () => {
       {/* Documents */}
       <Flex justify="space-between" align="center" className={'!mt-3'}>
         <Text strong>Documents</Text>
-        <Button 
-          loading={uploading} 
+        <Button
+          loading={uploading}
           style={{ pointerEvents: 'auto' }}
           onClick={handleAddFilesClick}
           icon={<UploadOutlined />}

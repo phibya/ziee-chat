@@ -157,7 +157,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
           return container ? createPortal(searchBox, container) : null
         })()}
 
-      <Flex className="w-full h-full flex-col gap-4 overflow-y-hidden flex-1">
+      <Flex className="w-full h-full flex-col gap-4 overflow-y-hidden overflow-x-visible flex-1">
         {/* Search box - render inline if no container provided */}
         {!getSearchBoxContainer && (
           <div className="flex justify-end items-center w-full">
@@ -207,12 +207,14 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
         )}
 
         {/* Conversation list */}
-        <Flex className="flex-1 w-full flex-col !pb-3 overflow-y-auto">
-          <div className={'gap-2 max-w-6xl w-full self-center px-3'}>
+        <Flex className="flex-1 w-full flex-col !pb-3 overflow-y-auto overflow-x-visible">
+          <div
+            className={'gap-2 max-w-6xl w-full self-center overflow-x-visible'}
+          >
             {(searchText.trim() ? searchResults : conversations).length === 0 &&
             !loading &&
             !isSearching ? (
-              <Card>
+              <Card className={'!mx-3'}>
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
@@ -229,32 +231,33 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 </Empty>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 overflow-y-auto overflow-x-visible">
                 {loading || isSearching ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
                   </div>
                 ) : (
-                  <Flex className="flex-col gap-3 w-full flex-1 overflow-y-auto">
+                  <Flex className="flex-col gap-3 w-full flex-1 overflow-y-auto overflow-x-visible">
                     {(searchText.trim() ? searchResults : conversations).map(
                       conversation => (
-                        <ConversationSummaryCard
-                          key={conversation.id}
-                          conversation={conversation}
-                          onDelete={handleDeleteConversation}
-                          isSelected={selectedConversations.has(
-                            conversation.id,
-                          )}
-                          onSelect={handleConversationSelect}
-                          isInSelectionMode={isInSelectionMode}
-                        />
+                        <div key={conversation.id} className="px-3">
+                          <ConversationSummaryCard
+                            conversation={conversation}
+                            onDelete={handleDeleteConversation}
+                            isSelected={selectedConversations.has(
+                              conversation.id,
+                            )}
+                            onSelect={handleConversationSelect}
+                            isInSelectionMode={isInSelectionMode}
+                          />
+                        </div>
                       ),
                     )}
 
                     {/* Pagination info */}
                     {getCurrentList().length > 0 && (
                       <Card
-                        className="text-center"
+                        className="text-center !mx-3"
                         classNames={{
                           body: '!p-2 gap-2 flex justify-center items-center flex-wrap',
                         }}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { App, Button, Col, Input, Row, Select, Typography } from 'antd'
+import { App, Button, Input, Select, Typography } from 'antd'
 import { FolderOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { PageContainer } from '../../common/PageContainer.tsx'
@@ -78,27 +78,26 @@ export const ProjectsPage: React.FC = () => {
   }
 
   return (
-    <PageContainer>
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <Title level={2} className="!mb-0">
-          Projects
-        </Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => openProjectDrawer()}
-        >
-          New project
-        </Button>
-      </div>
-
+    <PageContainer
+      title={'Projects'}
+      extra={
+        <div className={'w-full flex justify-end'}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => openProjectDrawer()}
+          >
+            New project
+          </Button>
+        </div>
+      }
+    >
       {/* Search and Sort */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex w-full items-center mb-6 gap-3 flex-wrap max-w-6xl px-3">
         <Search
           placeholder={t('forms.searchProjects')}
           prefix={<SearchOutlined />}
-          style={{ width: 400 }}
+          className={'w-full items-center justify-center flex-1'}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           allowClear
@@ -119,13 +118,19 @@ export const ProjectsPage: React.FC = () => {
       </div>
 
       {/* Projects Grid */}
-      <Row gutter={[16, 16]}>
-        {getFilteredAndSortedProjects().map(project => (
-          <Col xs={24} sm={12} lg={8} xl={6} key={project.id}>
-            <ProjectCard project={project} />
-          </Col>
-        ))}
-      </Row>
+      <div className="flex items-center w-full justify-center overflow-y-auto">
+        <div className="max-w-6xl flex flex-wrap gap-4 p-3 w-full">
+          {getFilteredAndSortedProjects().map(project => (
+            <div className={'min-w-56 flex-1'}>
+              <ProjectCard project={project} />
+            </div>
+          ))}
+          {/* Placeholder divs for grid layout */}
+          <div className={'min-w-56 flex-1'}></div>
+          <div className={'min-w-56 flex-1'}></div>
+          <div className={'min-w-56 flex-1'}></div>
+        </div>
+      </div>
 
       {/* Empty State */}
       {!loading && getFilteredAndSortedProjects().length === 0 && (

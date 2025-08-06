@@ -37,19 +37,17 @@ export function ExistingChatInterface() {
   }
 
   return (
-    <Flex className="flex-col h-dvh gap-3 relative">
-      <div className={'absolute top-0 left-0 w-full z-10 backdrop-blur-2xl'}>
+    <Flex className="flex-col h-dvh gap-1">
+      <div className={'top-0 left-0 w-full z-10'}>
         <ChatHeader />
       </div>
-      <Flex
-        className={
-          'max-w-4xl self-center w-full flex-1 h-full overflow-auto !pt-20 !mb-10'
-        }
-      >
-        <ChatMessageList />
+      <Flex className={'w-full flex-1 h-full overflow-auto'}>
+        <div className={'self-center max-w-4xl w-full h-full m-auto px-4 pt-2'}>
+          <ChatMessageList />
+        </div>
       </Flex>
-      <div className={'absolute bottom-0 w-full pb-2 justify-items-center'}>
-        <div className={'max-w-4xl w-full'}>
+      <div className={'w-full pb-2 justify-items-center'}>
+        <div className={'max-w-4xl w-full px-2'}>
           <ChatInput />
         </div>
       </div>

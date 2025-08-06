@@ -10,13 +10,13 @@ export const ChatHeader = memo(function ChatHeader() {
 
   return (
     <Flex
-      className="items-center justify-between w-full !p-3"
+      className="items-center justify-between w-full !px-3 !py-2"
       style={{
         borderBottom: `1px solid ${token.colorBorderSecondary}`,
       }}
     >
       <div className="flex items-center gap-3">
-        <Text strong className="text-lg" ellipsis>
+        <Text strong ellipsis>
           {conversation?.title || 'Untitled Conversation'}
         </Text>
       </div>

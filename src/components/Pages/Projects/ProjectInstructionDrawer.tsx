@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { Button, Form, Input } from 'antd'
+import { Button, Form, Input, Typography } from 'antd'
 import { Drawer } from '../../common/Drawer.tsx'
 
 const { TextArea } = Input
@@ -16,13 +16,9 @@ interface ProjectInstructionDrawerProps {
   loading?: boolean
 }
 
-export const ProjectInstructionDrawer: React.FC<ProjectInstructionDrawerProps> = ({
-  open,
-  onClose,
-  onSave,
-  currentInstruction,
-  loading = false,
-}) => {
+export const ProjectInstructionDrawer: React.FC<
+  ProjectInstructionDrawerProps
+> = ({ open, onClose, onSave, currentInstruction, loading = false }) => {
   const [form] = Form.useForm<ProjectInstructionFormData>()
 
   const handleSubmit = async (values: ProjectInstructionFormData) => {
@@ -67,20 +63,23 @@ export const ProjectInstructionDrawer: React.FC<ProjectInstructionDrawerProps> =
       width={500}
       maskClosable={false}
     >
-      <Form form={form} onFinish={handleSubmit} layout="vertical">
-        <Form.Item
-          name="instruction"
-          label="Instructions"
-          tooltip="Provide detailed instructions to guide AI conversations within this project"
-        >
-          <TextArea
-            placeholder="Enter project instructions to guide AI conversations..."
-            rows={12}
-            showCount
-            maxLength={2000}
-          />
-        </Form.Item>
-      </Form>
+      <div className="flex flex-col gap-2">
+        <Typography.Text type={'secondary'}>
+          Enter instructions to guide AI conversations for this project. These
+          instructions will be used to provide context and help the AI
+          understand the project better.
+        </Typography.Text>
+
+        <Form form={form} onFinish={handleSubmit} layout="vertical">
+          <Form.Item name="instruction" label="Instructions" noStyle>
+            <TextArea
+              placeholder="Enter project instructions to guide AI conversations..."
+              rows={12}
+              showCount
+            />
+          </Form.Item>
+        </Form>
+      </div>
     </Drawer>
   )
 }
