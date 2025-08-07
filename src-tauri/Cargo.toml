@@ -96,3 +96,6 @@ winapi = { version = "0.3", features = ["processthreadsapi", "winnt", "handleapi
 
 [features]
 default = []
+
+[profile.dev.package.gemm-f16]
+opt-level = 3
