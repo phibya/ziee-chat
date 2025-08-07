@@ -53,7 +53,7 @@ export interface ChatHistoryState {
   clearSearchResults: () => void
   clearError: () => void
   reset: () => void
-  
+
   // Selection actions
   selectConversation: (id: string) => void
   deselectConversation: (id: string) => void
@@ -116,7 +116,7 @@ export const createChatHistoryStore = (projectId?: string) => {
         loadConversationsList: async (page = 1) => {
           const isFirstPage = page === 1
           const loadingState = isFirstPage ? 'loading' : 'loadingMore'
-          
+
           if (get().loading || get().loadingMore) {
             // If already loading, do nothing
             return
@@ -161,7 +161,7 @@ export const createChatHistoryStore = (projectId?: string) => {
         searchConversations: async (query: string, page = 1) => {
           const isFirstPage = page === 1
           const loadingState = isFirstPage ? 'isSearching' : 'loadingMore'
-          
+
           try {
             set({
               [loadingState]: true,
@@ -246,7 +246,7 @@ export const createChatHistoryStore = (projectId?: string) => {
             set(state => {
               const newSelected = new Set(state.selectedConversations)
               newSelected.delete(id)
-              
+
               return {
                 conversations: state.conversations.filter(c => c.id !== id),
                 searchResults: state.searchResults.filter(c => c.id !== id),
@@ -265,7 +265,6 @@ export const createChatHistoryStore = (projectId?: string) => {
             throw error
           }
         },
-
 
         updateConversationTitleById: async (id: string, title: string) => {
           try {
@@ -361,7 +360,9 @@ export const createChatHistoryStore = (projectId?: string) => {
 
         selectAllConversations: () => {
           const state = get()
-          const currentList = state.searchQuery.trim() ? state.searchResults : state.conversations
+          const currentList = state.searchQuery.trim()
+            ? state.searchResults
+            : state.conversations
           const allIds = new Set(currentList.map(conv => conv.id))
           set({ selectedConversations: allIds })
         },
@@ -373,7 +374,7 @@ export const createChatHistoryStore = (projectId?: string) => {
         deleteSelectedConversations: async () => {
           const state = get()
           const selectedIds = Array.from(state.selectedConversations)
-          
+
           if (selectedIds.length === 0) return
 
           try {
@@ -381,12 +382,18 @@ export const createChatHistoryStore = (projectId?: string) => {
 
             // Delete all selected conversations
             await Promise.all(
-              selectedIds.map(id => ApiClient.Chat.deleteConversation({ conversation_id: id }))
+              selectedIds.map(id =>
+                ApiClient.Chat.deleteConversation({ conversation_id: id }),
+              ),
             )
 
             // Remove deleted conversations from both lists
-            const updatedConversations = state.conversations.filter(c => !selectedIds.includes(c.id))
-            const updatedSearchResults = state.searchResults.filter(c => !selectedIds.includes(c.id))
+            const updatedConversations = state.conversations.filter(
+              c => !selectedIds.includes(c.id),
+            )
+            const updatedSearchResults = state.searchResults.filter(
+              c => !selectedIds.includes(c.id),
+            )
 
             set({
               conversations: updatedConversations,
@@ -396,7 +403,10 @@ export const createChatHistoryStore = (projectId?: string) => {
             })
           } catch (error) {
             set({
-              error: error instanceof Error ? error.message : 'Failed to delete conversations',
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to delete conversations',
               deleting: false,
             })
             throw error

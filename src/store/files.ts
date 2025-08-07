@@ -87,19 +87,26 @@ export const uploadFile = async (
   return response.file
 }
 
-export const deleteFile = async (fileId: string, projectId?: string): Promise<void> => {
+export const deleteFile = async (
+  fileId: string,
+  projectId?: string,
+): Promise<void> => {
   try {
     await ApiClient.Files.delete({ id: fileId })
 
     // Remove from local state if projectId provided
     if (projectId) {
       // Note: This needs to be implemented as a proper store action
-      console.warn('File deletion from project store needs proper action implementation')
+      console.warn(
+        'File deletion from project store needs proper action implementation',
+      )
     }
   } catch (error) {
     if (projectId) {
       // Note: Error handling needs to be implemented as a proper store action
-      console.warn('File deletion error handling needs proper store action implementation')
+      console.warn(
+        'File deletion error handling needs proper store action implementation',
+      )
     }
     throw error
   }

@@ -34,7 +34,7 @@ import {
 } from './components/Pages/Settings'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { Permission, usePermissions } from './permissions'
-import { ThemeProvider } from './providers/ThemeProvider'
+import { ThemeProvider } from './components/providers/ThemeProvider'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
 import { useTranslation } from 'react-i18next'

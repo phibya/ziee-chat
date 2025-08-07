@@ -8,8 +8,8 @@ mod route;
 mod utils;
 
 use crate::api::app::get_http_port;
-use crate::utils::hub_manager::{HubManager, HUB_MANAGER};
 use crate::utils::file_storage::FileStorage;
+use crate::utils::hub_manager::{HubManager, HUB_MANAGER};
 use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
 use once_cell::sync::Lazy;
 use route::create_rest_router;
@@ -49,9 +49,8 @@ pub fn get_app_data_dir() -> PathBuf {
 }
 
 // Global FILE_STORAGE instance
-pub static FILE_STORAGE: Lazy<Arc<FileStorage>> = Lazy::new(|| {
-    Arc::new(FileStorage::new(&get_app_data_dir()))
-});
+pub static FILE_STORAGE: Lazy<Arc<FileStorage>> =
+    Lazy::new(|| Arc::new(FileStorage::new(&get_app_data_dir())));
 
 async fn initialize_app_common() -> Result<(), String> {
     // Initialize environment variables
@@ -228,8 +227,28 @@ pub fn run() {
                         tauri::WebviewUrl::App("index.html".into()),
                     )
                     .title("Ziee")
-                    .inner_size(1200.0, 800.0)
-                    .decorations(false)
+                    .inner_size(1024.0, 800.0)
+                    .min_inner_size(375.0, 667.0)
+                    .resizable(true)
+                    .fullscreen(false)
+                    .center()
+                    .hidden_title(true)
+                    .decorations(true)
+                    .transparent(true)
+                    .title_bar_style(tauri::TitleBarStyle::Overlay)
+                    .traffic_light_position(tauri::LogicalPosition::new(12.0, 22.0))
+                    .effects(tauri::utils::config::WindowEffectsConfig {
+                        effects: vec![
+                            tauri::window::Effect::FullScreenUI,
+                            tauri::window::Effect::Mica,
+                            tauri::window::Effect::Acrylic,
+                            tauri::window::Effect::Blur,
+                            tauri::window::Effect::Tabbed,
+                        ],
+                        state: Some(tauri::window::EffectState::Active),
+                        radius: Some(8.0),
+                        color: None,
+                    })
                     .build()
                     {
                         eprintln!("Failed to create webview window: {}", e);

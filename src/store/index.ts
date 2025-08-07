@@ -324,6 +324,8 @@ export {
   setProjectDrawerLoading,
   setIsMobile,
   setMobileOverlayOpen,
+  setSidebarCollapsed,
+  toggleSidebar,
   setViewDownloadModalLoading,
   useAddLocalModelDownloadDrawerStore,
   // Upload and Download modal stores

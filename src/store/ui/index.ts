@@ -3,6 +3,8 @@ export {
   setIsMobile,
   setMobileOverlayOpen,
   closeMobileOverlay,
+  setSidebarCollapsed,
+  toggleSidebar,
 } from './layout'
 export { createChatInputUIStore } from './chatInput.ts'
 

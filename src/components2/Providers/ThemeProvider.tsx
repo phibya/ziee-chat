@@ -1,8 +1,8 @@
 import { ConfigProvider } from 'antd'
 import { useEffect } from 'react'
 import { useUpdate } from 'react-use'
-import { ThemeContext } from '../hooks/useTheme'
-import { useUserAppearanceTheme } from '../store'
+import { ThemeContext } from '../../hooks/useTheme.ts'
+import { useUserAppearanceTheme } from '../../store'
 import { themes } from '../themes'
 import { AppThemeConfig } from '../themes/light.ts'
 
@@ -46,6 +46,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       root.classList.remove('dark')
     }
   }, [isDarkMode])
+
+  console.log({ currentTheme })
 
   return (
     <ThemeContext.Provider value={currentTheme}>
