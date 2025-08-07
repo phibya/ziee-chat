@@ -199,7 +199,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         {/* Content */}
         <div className="flex-1">
-          <div className="w-full">{children}</div>
+          <div className="w-full h-full">{children}</div>
         </div>
         {!isSidebarCollapsed && (
           <div

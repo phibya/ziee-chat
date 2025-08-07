@@ -8,21 +8,10 @@ import { useTranslation } from 'react-i18next'
 import { useUserAppearanceLanguage } from './store'
 import { ProjectsPage } from './components2/Pages/Projects/ProjectsPage'
 import { ProjectDetailsPage } from './components2/Pages/Projects/ProjectDetailsPage'
+import { NewChatInterface } from './components2/Pages/Chat/NewChatInterface'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
 import './store/startup'
-
-// Simple placeholder component for testing
-function HomePage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Welcome to Ziee</h1>
-      <p className="text-gray-600">
-        New macOS-style interface is working! This is a placeholder homepage.
-      </p>
-    </div>
-  )
-}
 
 function App2() {
   const { i18n } = useTranslation()
@@ -42,7 +31,7 @@ function App2() {
           <AntdApp>
             <AppLayout>
               <Routes>
-                <Route path="/" element={<HomePage />} />
+                <Route path="/" element={<NewChatInterface />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route
                   path="/projects/:projectId"

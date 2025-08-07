@@ -28,6 +28,8 @@ import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
 import { Conversation, Message } from '../../../types/api/chat.ts'
 import { Assistant } from '../../../types/api/assistant'
 import { createChatStore } from '../../../store/chat.ts'
+import { LuFilePlus } from 'react-icons/lu'
+import { BsFileEarmarkPlus } from 'react-icons/bs'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -329,7 +331,7 @@ export const ChatInput = function ChatInput({
           className="h-full flex-col items-center justify-center gap-3"
           style={{ pointerEvents: 'none' }}
         >
-          <FileOutlined className={'text-4xl'} />
+          <BsFileEarmarkPlus className={'text-4xl'} />
           <Text type="secondary">Drop files here to upload</Text>
         </Flex>
       </Upload.Dragger>
@@ -382,7 +384,7 @@ export const ChatInput = function ChatInput({
                   />
                 </Form.Item>
               </div>
-              <div className="w-full flex gap-3 justify-between">
+              <div className="w-full flex gap-1 justify-betwee flex-wrap">
                 <Upload
                   multiple
                   beforeUpload={(_, fileList) => {
@@ -394,76 +396,86 @@ export const ChatInput = function ChatInput({
                   showUploadList={false}
                 >
                   <Button
-                    icon={<FileOutlined />}
+                    type="text"
+                    style={{
+                      fontSize: '20px',
+                    }}
+                    icon={<BsFileEarmarkPlus />}
                     disabled={isDisabled}
                     title="Add files"
                   />
                 </Upload>
 
-                <div className={'gap-2 flex items-center'}>
-                  <Form.Item name="assistant" noStyle>
-                    <Select
-                      placeholder="Assistant"
-                      style={{ width: 140 }}
-                      disabled={isDisabled}
-                      size="small"
-                      options={availableAssistants.map(
-                        (assistant: Assistant) => ({
-                          label: assistant.name,
-                          value: assistant.id,
-                        }),
-                      )}
-                      className={`
+                <div className={'gap-2 flex flex-1 items-center justify-end'}>
+                  <div className={'flex flex-1 items-center justify-end'}>
+                    <Form.Item name="assistant" noStyle>
+                      <Select
+                        placeholder="Assistant"
+                        style={{ width: 140 }}
+                        disabled={isDisabled}
+                        size="small"
+                        options={availableAssistants.map(
+                          (assistant: Assistant) => ({
+                            label: assistant.name,
+                            value: assistant.id,
+                          }),
+                        )}
+                        className={`
+                        !p-0
                       [&_.ant-select-selector]:!border-none
                       [&_.ant-select-selection-wrap]:!text-center
                       `}
-                    />
-                  </Form.Item>
+                      />
+                    </Form.Item>
 
-                  {/* Model selector */}
-                  <Form.Item name="model" noStyle>
-                    <Select
-                      placeholder="Model"
-                      style={{ width: 160 }}
-                      disabled={isDisabled}
-                      size="small"
-                      options={availableModels}
-                      className={`
+                    {/* Model selector */}
+                    <Form.Item name="model" noStyle>
+                      <Select
+                        placeholder="Model"
+                        style={{ width: 140 }}
+                        disabled={isDisabled}
+                        size="small"
+                        options={availableModels}
+                        className={`
+                        !p-0
                       [&_.ant-select-selector]:!border-none
                       [&_.ant-select-selection-wrap]:!text-center
                       `}
-                    />
-                  </Form.Item>
+                      />
+                    </Form.Item>
+                  </div>
 
                   {/* Send/Stop/Save/Cancel buttons */}
-                  <div className="flex gap-1 items-center">
-                    {isEditing ? (
-                      <>
+                  <div className="flex gap-1 items-end">
+                    <div className={'items-center justify-end flex'}>
+                      {isEditing ? (
+                        <>
+                          <Button
+                            type="primary"
+                            icon={<SendOutlined rotate={270} />}
+                            onClick={handleSend}
+                            disabled={
+                              isStreaming ||
+                              isDisabled ||
+                              !form.getFieldValue('message')?.trim()
+                            }
+                          />
+                          <Button
+                            icon={<CloseOutlined />}
+                            onClick={handleCancel}
+                            size="small"
+                          />
+                        </>
+                      ) : (
                         <Button
                           type="primary"
                           icon={<SendOutlined rotate={270} />}
                           onClick={handleSend}
-                          disabled={
-                            isStreaming ||
-                            isDisabled ||
-                            !form.getFieldValue('message')?.trim()
-                          }
+                          disabled={isStreaming || sending || isDisabled}
+                          loading={sending}
                         />
-                        <Button
-                          icon={<CloseOutlined />}
-                          onClick={handleCancel}
-                          size="small"
-                        />
-                      </>
-                    ) : (
-                      <Button
-                        type="primary"
-                        icon={<SendOutlined rotate={270} />}
-                        onClick={handleSend}
-                        disabled={isStreaming || sending || isDisabled}
-                        loading={sending}
-                      />
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
