@@ -223,7 +223,7 @@ pub fn run() {
 
                   // Open webview after initialization is complete
                   println!("Production mode: Opening default Tauri webview");
-                  if let Err(e) = WebviewWindowBuilder::new(
+                  let mut main_window_builder = WebviewWindowBuilder::new(
                       &app_handle,
                       "main",
                       tauri::WebviewUrl::App("index.html".into()),
@@ -246,11 +246,14 @@ pub fn run() {
                         state: Some(tauri::window::EffectState::Active),
                         radius: Some(8.0),
                         color: None,
-                    })
-                    .build()
-                  {
-                      eprintln!("Failed to create webview window: {}", e);
+                    });
+
+                  #[cfg(target_os = "macos")] {
+                      main_window_builder = main_window_builder.title_bar_style(tauri::TitleBarStyle::Overlay);
                   }
+
+                  main_window_builder.build().unwrap();
+
 
                   let main_window = app_handle.get_webview_window("main").unwrap();
                   main_window.create_overlay_titlebar().unwrap();
