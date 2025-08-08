@@ -235,8 +235,6 @@ pub fn run() {
                     .fullscreen(false)
                     .center()
                     .decorations(true)
-                    .title_bar_style(tauri::TitleBarStyle::Overlay)
-                    .traffic_light_position(tauri::LogicalPosition::new(12.0, 22.0))
                     .effects(tauri::utils::config::WindowEffectsConfig {
                         effects: vec![
                             tauri::window::Effect::FullScreenUI,
@@ -259,6 +257,7 @@ pub fn run() {
 
                   #[cfg(target_os = "macos")] {
                       main_window.make_transparent().unwrap();
+                      main_window.set_traffic_lights_inset(12.0, 22.0).unwrap();
                   }
 
                   // Keep the server running
