@@ -14,7 +14,7 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CloseOutlined, FileOutlined, SendOutlined } from '@ant-design/icons'
+import { CloseOutlined, SendOutlined } from '@ant-design/icons'
 import {
   addNewConversationToList,
   createNewConversation,
@@ -28,7 +28,6 @@ import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
 import { Conversation, Message } from '../../../types/api/chat.ts'
 import { Assistant } from '../../../types/api/assistant'
 import { createChatStore } from '../../../store/chat.ts'
-import { LuFilePlus } from 'react-icons/lu'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
 
 const { TextArea } = Input
