@@ -1,4 +1,4 @@
-use postgresql_embedded::{PostgreSQL, Settings};
+use postgresql_embedded::{PostgreSQL, Settings, VersionReq};
 use sqlx::PgPool;
 use std::net::{TcpListener, SocketAddr};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -106,7 +106,7 @@ pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Er
 async fn try_initialize_database_once(
 ) -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>> {
     let mut settings = Settings::default();
-    settings.version = postgresql_embedded::V17.clone();
+    settings.version = VersionReq::parse("=17.5.0")?;
     settings.temporary = false;
     settings.installation_dir = crate::get_app_data_dir().join("postgres");
     settings.username = "postgres".to_string();

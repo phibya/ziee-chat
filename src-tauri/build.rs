@@ -213,7 +213,11 @@ fn main() {
 
     // Determine the target platform
     let target = env::var("TARGET").unwrap();
-
+    
+    // Set PostgreSQL version for postgresql_embedded crate
+    env::set_var("POSTGRESQL_VERSION", "17.5.0");
+    println!("cargo:rustc-env=POSTGRESQL_VERSION=17.5.0");
+    println!("Setting PostgreSQL version to 17.5.0");
 
     // Get the output directory and build profile
     let out_dir = env::var("OUT_DIR").unwrap();
