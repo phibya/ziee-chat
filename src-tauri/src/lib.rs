@@ -17,25 +17,25 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{webview::WebviewWindowBuilder, Manager};
+use tauri_plugin_decorum::WebviewWindowExt;
 use tokio::signal;
 use tower_http::cors::CorsLayer;
-use tauri_plugin_decorum::WebviewWindowExt;
 
 pub static APP_NAME: Lazy<String> =
     Lazy::new(|| std::env::var("APP_NAME").unwrap_or_else(|_| "ziee".to_string()));
 pub static APP_DATA_DIR: Lazy<Mutex<PathBuf>> = Lazy::new(|| {
     let default_path = std::env::var("APP_DATA_DIR")
-      .unwrap_or_else(|_| {
-          // {homedir}/.ziee
-          let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-          home_dir
-            .join(".ziee")
-            .to_str()
-            .unwrap_or_default()
-            .to_string()
-      })
-      .parse()
-      .unwrap();
+        .unwrap_or_else(|_| {
+            // {homedir}/.ziee
+            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+            home_dir
+                .join(".ziee")
+                .to_str()
+                .unwrap_or_default()
+                .to_string()
+        })
+        .parse()
+        .unwrap();
     Mutex::new(default_path)
 });
 
@@ -168,73 +168,73 @@ pub fn run() {
         println!("Starting Tauri application with API on port: {}", port);
 
         tauri::Builder::default()
-          .plugin(tauri_plugin_decorum::init())
-          .plugin(tauri_plugin_opener::init())
-          .invoke_handler(tauri::generate_handler![get_http_port,])
-          .setup(move |app| {
-              // Set APP_DATA_DIR to Tauri's app data directory only if APP_DATA_DIR env is not provided
-              if std::env::var("APP_DATA_DIR").is_err() {
-                  let app_handle = app.handle().clone();
-                  match app_handle.path().app_data_dir() {
-                      Ok(app_data_dir) => {
-                          set_app_data_dir(app_data_dir);
-                          println!(
-                              "Using Tauri app data directory: {}",
-                              get_app_data_dir().display()
-                          );
-                      }
-                      Err(e) => {
-                          eprintln!("Failed to get Tauri app data directory: {}", e);
-                          println!(
-                              "Using default app data directory: {}",
-                              get_app_data_dir().display()
-                          );
-                      }
-                  }
-              } else {
-                  println!(
-                      "Using custom APP_DATA_DIR from environment: {}",
-                      get_app_data_dir().display()
-                  );
-              }
+            .plugin(tauri_plugin_decorum::init())
+            .plugin(tauri_plugin_opener::init())
+            .invoke_handler(tauri::generate_handler![get_http_port,])
+            .setup(move |app| {
+                // Set APP_DATA_DIR to Tauri's app data directory only if APP_DATA_DIR env is not provided
+                if std::env::var("APP_DATA_DIR").is_err() {
+                    let app_handle = app.handle().clone();
+                    match app_handle.path().app_data_dir() {
+                        Ok(app_data_dir) => {
+                            set_app_data_dir(app_data_dir);
+                            println!(
+                                "Using Tauri app data directory: {}",
+                                get_app_data_dir().display()
+                            );
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to get Tauri app data directory: {}", e);
+                            println!(
+                                "Using default app data directory: {}",
+                                get_app_data_dir().display()
+                            );
+                        }
+                    }
+                } else {
+                    println!(
+                        "Using custom APP_DATA_DIR from environment: {}",
+                        get_app_data_dir().display()
+                    );
+                }
 
-              // Create the API router
-              let api_router = route::create_rest_router();
+                // Create the API router
+                let api_router = route::create_rest_router();
 
-              // Initialize app and start API server before opening webview
-              let app_handle = app.handle().clone();
-              tauri::async_runtime::spawn(async move {
-                  // Initialize database and hub manager
-                  if let Err(e) = initialize_app_common().await {
-                      eprintln!("{}", e);
-                      return;
-                  } else {
-                      println!("App initialized successfully (desktop mode)");
-                  }
+                // Initialize app and start API server before opening webview
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    // Initialize database and hub manager
+                    if let Err(e) = initialize_app_common().await {
+                        eprintln!("{}", e);
+                        return;
+                    } else {
+                        println!("App initialized successfully (desktop mode)");
+                    }
 
-                  // Start API server
-                  println!("Starting API server on port: {}", port);
-                  let server_handle = tokio::spawn(async move {
-                      start_api_server(port, api_router).await;
-                  });
+                    // Start API server
+                    println!("Starting API server on port: {}", port);
+                    let server_handle = tokio::spawn(async move {
+                        start_api_server(port, api_router).await;
+                    });
 
-                  // Give the server a moment to start
-                  tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    // Give the server a moment to start
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-                  // Open webview after initialization is complete
-                  println!("Production mode: Opening default Tauri webview");
-                  let mut main_window_builder = WebviewWindowBuilder::new(
-                      &app_handle,
-                      "main",
-                      tauri::WebviewUrl::App("index.html".into()),
-                  )
+                    // Open webview after initialization is complete
+                    println!("Production mode: Opening default Tauri webview");
+                    let mut main_window_builder = WebviewWindowBuilder::new(
+                        &app_handle,
+                        "main",
+                        tauri::WebviewUrl::App("index.html".into()),
+                    )
                     .title("")
                     .inner_size(1024.0, 800.0)
                     .min_inner_size(375.0, 667.0)
                     .resizable(true)
                     .fullscreen(false)
+                    .decorations(false)
                     .center()
-                    .decorations(true)
                     .effects(tauri::utils::config::WindowEffectsConfig {
                         effects: vec![
                             tauri::window::Effect::FullScreenUI,
@@ -248,43 +248,52 @@ pub fn run() {
                         color: None,
                     });
 
-                  #[cfg(target_os = "macos")] {
-                      main_window_builder = main_window_builder.title_bar_style(tauri::TitleBarStyle::Overlay);
-                  }
+                    #[cfg(target_os = "macos")]
+                    {
+                        main_window_builder = main_window_builder
+                            .title_bar_style(tauri::TitleBarStyle::Overlay)
+                            .decorations(true);
+                    }
 
-                  main_window_builder.build().unwrap();
+                    #[cfg(target_os = "linux")]
+                    {
+                        main_window_builder = main_window_builder
+                            .transparent(true)
+                    }
 
+                    main_window_builder.build().unwrap();
 
-                  let main_window = app_handle.get_webview_window("main").unwrap();
-                  main_window.create_overlay_titlebar().unwrap();
+                    let main_window = app_handle.get_webview_window("main").unwrap();
+                    main_window.create_overlay_titlebar().unwrap();
 
-                  #[cfg(target_os = "macos")] {
-                      main_window.make_transparent().unwrap();
-                      main_window.set_traffic_lights_inset(12.0, 22.0).unwrap();
-                  }
+                    #[cfg(target_os = "macos")]
+                    {
+                        main_window.make_transparent().unwrap();
+                        main_window.set_traffic_lights_inset(12.0, 26.0).unwrap();
+                    }
 
-                  // Keep the server running
-                  let _ = server_handle.await;
-              });
+                    // Keep the server running
+                    let _ = server_handle.await;
+                });
 
-              Ok(())
-          })
-          .on_window_event(|_window, event| {
-              if let tauri::WindowEvent::CloseRequested { .. } = event {
-                  // Clear temp directory and cleanup database before closing
-                  let handle = tauri::async_runtime::spawn(async move {
-                      cleanup_app_common().await;
-                  });
+                Ok(())
+            })
+            .on_window_event(|_window, event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    // Clear temp directory and cleanup database before closing
+                    let handle = tauri::async_runtime::spawn(async move {
+                        cleanup_app_common().await;
+                    });
 
-                  // Wait for cleanup to complete
-                  std::thread::spawn(move || {
-                      let rt = tokio::runtime::Runtime::new().unwrap();
-                      rt.block_on(handle).unwrap();
-                  });
-              }
-          })
-          .run(tauri::generate_context!())
-          .expect("error while running tauri application");
+                    // Wait for cleanup to complete
+                    std::thread::spawn(move || {
+                        let rt = tokio::runtime::Runtime::new().unwrap();
+                        rt.block_on(handle).unwrap();
+                    });
+                }
+            })
+            .run(tauri::generate_context!())
+            .expect("error while running tauri application");
     }
 }
 
@@ -296,40 +305,40 @@ async fn start_api_server(port: u16, api_router: Router) {
             port
         );
         api_router
-          .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
-          .layer(CorsLayer::permissive())
-          .fallback(proxy_to_vite)
+            .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
+            .layer(CorsLayer::permissive())
+            .fallback(proxy_to_vite)
     } else if std::env::var("HEADLESS").unwrap_or_default() == "true" {
         // Headless mode: Serve UI folder if it exists
         println!("Headless mode: API + Frontend server on port {}", port);
         use tower_http::services::ServeDir;
         let static_dir = std::env::current_exe()
-          .unwrap()
-          .parent()
-          .unwrap()
-          .join("ui");
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("ui");
 
         if static_dir.exists() {
             println!("Serving UI from: {}", static_dir.display());
             api_router
-              .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
-              .layer(CorsLayer::permissive())
-              .fallback_service(ServeDir::new(static_dir))
+                .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
+                .layer(CorsLayer::permissive())
+                .fallback_service(ServeDir::new(static_dir))
         } else {
             println!(
                 "Warning: UI folder not found at {}, serving API only",
                 static_dir.display()
             );
             api_router
-              .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
-              .layer(CorsLayer::permissive())
+                .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
+                .layer(CorsLayer::permissive())
         }
     } else {
         // Production mode: API only (webview handles frontend)
         println!("Production mode: API server only on port {}", port);
         api_router
-          .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
-          .layer(CorsLayer::permissive())
+            .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
+            .layer(CorsLayer::permissive())
     };
 
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
@@ -349,12 +358,12 @@ async fn start_api_server(port: u16, api_router: Router) {
 // Proxy handler to forward requests to Vite dev server
 async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http::StatusCode> {
     let vite_url =
-      std::env::var("TAURI_DEV_HOST").unwrap_or_else(|_| "http://localhost:1420".to_string());
+        std::env::var("TAURI_DEV_HOST").unwrap_or_else(|_| "http://localhost:1420".to_string());
     let uri = req.uri();
     let path_and_query = uri
-      .path_and_query()
-      .map(|x| x.as_str())
-      .unwrap_or(uri.path());
+        .path_and_query()
+        .map(|x| x.as_str())
+        .unwrap_or(uri.path());
 
     let proxy_url = format!("{}{}", vite_url, path_and_query);
 
@@ -364,9 +373,9 @@ async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http:
             let status = response.status();
             let headers = response.headers().clone();
             let body = response
-              .bytes()
-              .await
-              .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+                .bytes()
+                .await
+                .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
 
             let mut builder = Response::builder().status(status);
 
@@ -376,8 +385,8 @@ async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http:
             }
 
             builder
-              .body(Body::from(body))
-              .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(body))
+                .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)
         }
         Err(_) => Err(axum::http::StatusCode::BAD_GATEWAY),
     }
@@ -403,16 +412,16 @@ pub fn get_available_port() -> u16 {
 async fn shutdown_signal() {
     let ctrl_c = async {
         signal::ctrl_c()
-          .await
-          .expect("failed to install Ctrl+C handler");
+            .await
+            .expect("failed to install Ctrl+C handler");
     };
 
     #[cfg(unix)]
     let terminate = async {
         signal::unix::signal(signal::unix::SignalKind::terminate())
-          .expect("failed to install signal handler")
-          .recv()
-          .await;
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
     };
 
     #[cfg(not(unix))]
