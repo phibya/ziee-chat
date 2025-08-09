@@ -10,6 +10,8 @@ import { ProjectsPage } from './components2/Pages/Projects/ProjectsPage'
 import { ProjectDetailsPage } from './components2/Pages/Projects/ProjectDetailsPage'
 import { NewChatInterface, ExistingChatInterface } from './components2/Pages/Chat'
 import { ChatHistoryPage } from './components2/Pages/ChatHistoryPage'
+import { HubPage } from './components2/Pages/Hub/HubPage'
+import { AssistantsPage } from './components2/Pages/Assistants/AssistantsPage'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
 import './store/startup'
@@ -43,6 +45,8 @@ function App2() {
                   path="/projects/:projectId"
                   element={<ProjectDetailsPage />}
                 />
+                <Route path="/hub/:activeTab?" element={<HubPage />} />
+                <Route path="/assistants" element={<AssistantsPage />} />
               </Routes>
             </AppLayout>
           </AntdApp>

@@ -424,6 +424,9 @@ export const FileCard: React.FC<FileCardProps> = ({
         onClose={() => setIsDrawerOpen(false)}
         width={600}
         footer={[<Button onClick={() => setIsDrawerOpen(false)}>Close</Button>]}
+        classNames={{
+          body: '!px-3 !pb-1 !pt-0',
+        }}
       >
         <Card className="font-mono text-sm whitespace-pre-wrap p-4 rounded max-h-full overflow-auto">
           {fileContent}

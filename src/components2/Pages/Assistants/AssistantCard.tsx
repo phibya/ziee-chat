@@ -1,13 +1,8 @@
-import {
-  CalendarOutlined,
-  DeleteOutlined,
-  EditOutlined,
-} from '@ant-design/icons'
-import { App, Button, Card, Dropdown, Flex, Typography } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { CalendarOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { App, Button, Card, Dropdown, Flex, Tag, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
-import type { Project } from '../../../types/api/projects'
-import { deleteExistingProject, openProjectDrawer } from '../../../store'
+import { deleteUserAssistant, openAssistantDrawer } from '../../../store'
+import { Assistant } from '../../../types/api/assistant'
 import { CgMenuRightAlt } from 'react-icons/cg'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -16,27 +11,30 @@ dayjs.extend(relativeTime)
 
 const { Text } = Typography
 
-interface ProjectCardProps {
-  project: Project
+interface AssistantCardProps {
+  assistant: Assistant
 }
 
-export function ProjectCard({ project }: ProjectCardProps) {
-  const navigate = useNavigate()
+export function AssistantCard({ assistant }: AssistantCardProps) {
   const { t } = useTranslation()
   const { message, modal } = App.useApp()
 
 
-  const handleCardClick = () => {
-    navigate(`/projects/${project.id}`)
+  const handleDelete = async () => {
+    try {
+      await deleteUserAssistant(assistant.id)
+      message.success(t('assistants.assistantDeleted'))
+    } catch (error) {
+      console.error('Failed to delete assistant:', error)
+    }
   }
 
-  const handleDeleteProject = async (project: Project) => {
-    try {
-      await deleteExistingProject(project.id)
-      message.success(t('projects.projectDeleted'))
-    } catch (error) {
-      console.error('Failed to delete project:', error)
-    }
+  const handleEdit = () => {
+    openAssistantDrawer(assistant)
+  }
+
+  const handleCardClick = () => {
+    openAssistantDrawer(assistant)
   }
 
   return (
@@ -49,16 +47,34 @@ export function ProjectCard({ project }: ProjectCardProps) {
       onClick={handleCardClick}
     >
       <Flex className="h-full flex-col flex-1">
-        {/* Header with name and actions */}
+        {/* Header with name and tags */}
         <Typography.Text strong className="m-0 pr-2">
-          {project.name}
+          {assistant.name}
         </Typography.Text>
 
+        {/* Tags */}
+        {(assistant.is_default || !assistant.is_active) && (
+          <div className="mb-2">
+            <Flex className="gap-1">
+              {assistant.is_default && (
+                <Tag color="blue" className="text-xs">
+                  {t('assistants.default')}
+                </Tag>
+              )}
+              {!assistant.is_active && (
+                <Tag color="red" className="text-xs">
+                  {t('assistants.inactive')}
+                </Tag>
+              )}
+            </Flex>
+          </div>
+        )}
+
         {/* Description */}
-        {project.description && (
+        {assistant.description && (
           <div className="mb-3">
             <Text type="secondary" className="text-sm line-clamp-2">
-              {project.description}
+              {assistant.description}
             </Text>
           </div>
         )}
@@ -66,7 +82,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
         {/* Stats and date - pushed to bottom */}
         <div
           style={{
-            marginTop: project.description ? 'auto' : '12px',
+            marginTop: assistant.description ? 'auto' : '12px',
           }}
         >
           {/* Last updated */}
@@ -74,7 +90,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <Flex align="center" gap="small">
               <CalendarOutlined className="text-gray-400" />
               <Text type="secondary" className="text-xs">
-                Updated {dayjs(project.updated_at).fromNow()}
+                Updated {dayjs(assistant.updated_at).fromNow()}
               </Text>
             </Flex>
           </div>
@@ -91,7 +107,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   onClick: e => {
                     e.domEvent.stopPropagation()
                     e.domEvent.preventDefault()
-                    openProjectDrawer(project)
+                    handleEdit()
                   },
                 },
                 {
@@ -107,7 +123,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                       content: `Are you sure?`,
                       okText: 'Delete',
                       okType: 'danger',
-                      onOk: () => handleDeleteProject(project),
+                      onOk: handleDelete,
                     })
                   },
                 },
