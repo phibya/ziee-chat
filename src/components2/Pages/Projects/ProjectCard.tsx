@@ -25,7 +25,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const { t } = useTranslation()
   const { message, modal } = App.useApp()
 
-
   const handleCardClick = () => {
     navigate(`/projects/${project.id}`)
   }

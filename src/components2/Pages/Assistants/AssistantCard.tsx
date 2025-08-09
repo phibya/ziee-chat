@@ -1,4 +1,8 @@
-import { CalendarOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import {
+  CalendarOutlined,
+  DeleteOutlined,
+  EditOutlined,
+} from '@ant-design/icons'
 import { App, Button, Card, Dropdown, Flex, Tag, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { deleteUserAssistant, openAssistantDrawer } from '../../../store'
@@ -18,7 +22,6 @@ interface AssistantCardProps {
 export function AssistantCard({ assistant }: AssistantCardProps) {
   const { t } = useTranslation()
   const { message, modal } = App.useApp()
-
 
   const handleDelete = async () => {
     try {

@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { App, Button, Dropdown, Input, Typography } from 'antd'
-import { CopyOutlined, PlusOutlined, RobotOutlined, SearchOutlined } from '@ant-design/icons'
+import {
+  CopyOutlined,
+  PlusOutlined,
+  RobotOutlined,
+  SearchOutlined,
+} from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import {
   clearAssistantsStoreError,
