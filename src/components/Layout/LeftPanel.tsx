@@ -52,7 +52,7 @@ export function LeftPanel() {
   }
 
   const getSelectedKeys = () => {
-    if (location.pathname === '/chat-history') return ['chat-history']
+    if (location.pathname === '/conversations') return ['conversations']
     if (location.pathname === '/projects') return ['projects']
     if (location.pathname === '/artifacts') return ['artifacts']
     if (location.pathname.startsWith('/hub')) return ['hub']
@@ -106,11 +106,11 @@ export function LeftPanel() {
         selectedKeys={getSelectedKeys()}
         items={[
           {
-            key: 'chat-history',
+            key: 'conversations',
             icon: <HistoryOutlined />,
-            label: <Link to="/chat-history">{t('navigation.chats')}</Link>,
+            label: <Link to="/conversations">{t('navigation.chats')}</Link>,
             onClick: () => {
-              navigate('/chat-history')
+              navigate('/conversations')
               handleItemClick()
             },
           },

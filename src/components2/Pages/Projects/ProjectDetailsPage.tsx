@@ -1,4 +1,4 @@
-import { App, Button, Card, Flex, Typography } from 'antd'
+import { App, Button, Card, Flex, theme, Typography } from 'antd'
 import React, { useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { openProjectDrawer, useProjectStore } from '../../../store'
@@ -21,6 +21,7 @@ export const ProjectDetailsPage: React.FC = () => {
   const navigate = useNavigate()
   const windowMinSize = useWindowMinSize()
   const [isKnowledgeCardOpen, setIsKnowledgeCardOpen] = React.useState(false)
+  const { token } = theme.useToken()
 
   // Project store
   const { project, loading, error, clearError } = useProjectStore(projectId)
@@ -67,12 +68,12 @@ export const ProjectDetailsPage: React.FC = () => {
               </div>
             ) : (
               <div className={'h-full flex items-center'}>
-                <IoIosArrowBack className={'mx-2 text-md'} />
                 <Button
                   type={'text'}
-                  className={'!px-1'}
+                  className={'!pl-0 !pr-2'}
                   onClick={() => navigate('/projects')}
                 >
+                  <IoIosArrowBack />
                   All projects
                 </Button>
               </div>
@@ -108,15 +109,21 @@ export const ProjectDetailsPage: React.FC = () => {
         {/*Left Side - Chat Input and Conversations*/}
         <div className={'flex flex-col flex-1 overflow-y-hidden'}>
           {windowMinSize.xs && (
-            <Typography.Title
-              level={4}
-              className="!m-0 !leading-tight px-1 !font-semibold"
-            >
-              {project.name}
-            </Typography.Title>
+            <div className={'w-full py-6'}>
+              <Typography.Title
+                level={4}
+                className="!m-0 !leading-tight px-3 !font-semibold"
+              >
+                {project.name}
+              </Typography.Title>
+            </div>
           )}
-          <div className={'flex px-3 flex-col content-center'}>
-            <div className={'my-auto'}>
+          <div
+            className={
+              'flex flex-col w-full px-3 flex-1 justify-center min-h-72'
+            }
+          >
+            <div className={'w-full'}>
               <div className="text-3xl font-light mb-4 text-center">
                 Hi! How can I assist you with your project?
               </div>
@@ -128,18 +135,21 @@ export const ProjectDetailsPage: React.FC = () => {
           {/* Recent Conversations */}
           <div
             className={
-              'flex flex-col gap-3 flex-1 overflow-y-hidden overflow-x-visible'
+              'flex flex-col gap-3 overflow-y-hidden overflow-x-visible min-h-1/2'
             }
           >
             <Flex
               justify="space-between"
               align="center"
-              className={'w-full flex-wrap !px-3'}
+              className={'w-full flex-wrap !px-3 gap-x-4'}
             >
               <Typography.Title level={5}>
                 Recent Conversations
               </Typography.Title>
-              <div ref={searchBoxContainerRef} />
+              <div
+                className={'flex-1 max-w-sm min-w-[200px]'}
+                ref={searchBoxContainerRef}
+              />
             </Flex>
             <div className={'flex flex-1 overflow-auto'}>
               <ConversationHistory
@@ -155,6 +165,11 @@ export const ProjectDetailsPage: React.FC = () => {
               className="overflow-y-hidden flex flex-col w-full h-full"
               classNames={{
                 body: 'flex flex-col relative overflow-y-hidden flex-1',
+              }}
+              styles={{
+                body: {
+                  backgroundColor: token.colorBgContainer,
+                },
               }}
             >
               <ProjectKnowledgeCard />

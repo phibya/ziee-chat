@@ -1,6 +1,6 @@
 import { Button, Flex, Form, Input, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import { updateExistingConversation, useChatStore } from '../../../store'
 import { ChatInput } from './ChatInput'
@@ -9,16 +9,15 @@ import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
 import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
 import tinycolor from 'tinycolor2'
 import { EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { IoIosArrowBack } from 'react-icons/io'
 
 export function ExistingChatInterface() {
   const { conversationId } = useParams<{ conversationId?: string }>()
   const { token } = theme.useToken()
   const [form] = Form.useForm()
   const [isEditing, setIsEditing] = useState(false)
+  const navigate = useNavigate()
 
-  if (!conversationId) {
-    return null
-  }
   const { t } = useTranslation()
   // Chat store
   const { conversation, loading, error } = useChatStore()
@@ -45,6 +44,10 @@ export function ExistingChatInterface() {
   const handleCancel = () => {
     form.resetFields()
     setIsEditing(false)
+  }
+
+  if (!conversationId) {
+    return null
   }
 
   if (loading) {
@@ -135,6 +138,13 @@ export function ExistingChatInterface() {
               </Form>
             ) : (
               <>
+                <Button
+                  type={'text'}
+                  className={'!px-1'}
+                  onClick={() => navigate('/conversations')}
+                >
+                  <IoIosArrowBack className={'text-md'} />
+                </Button>
                 <Typography.Title
                   level={5}
                   ellipsis

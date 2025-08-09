@@ -10,7 +10,7 @@ export const darkTheme: AppThemeConfig = {
   token: {
     ...TokenOverrides,
     colorBgLayout: BaseBackgroundColor, // Dark background for layout
-    colorBgContainer: '#282828',
+    colorBgContainer: '#242424',
     colorBgBase: BaseBackgroundColor, // Base background color for components
     colorBorder: tinycolor(BaseBackgroundColor).lighten(15).toString(),
     colorBorderSecondary: tinycolor(BaseBackgroundColor).lighten(7).toString(),

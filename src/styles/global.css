@@ -3,13 +3,6 @@
 
 @custom-variant hover (&:hover);
 
-/* Transparent window styles with blur */
-html,
-body,
-#root {
-  background: transparent !important;
-}
-
 .ant-menu-vertical {
   border-inline-end: none !important;
 

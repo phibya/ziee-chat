@@ -35,6 +35,7 @@ import { Assistant } from '../../../types/api/assistant'
 import { createChatStore } from '../../../store/chat.ts'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
 import { IoIosArrowDown } from 'react-icons/io'
+import { debounce } from '../../../utils/debounce.ts'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -280,15 +281,24 @@ export const ChatInput = function ChatInput({
 
     form.setFieldValue('message', '') // Clear input immediately
 
+    const payload = {
+      content: messageToSend.trim(),
+      assistantId: selectedAssistant,
+      modelId: selectedModel.split(':')[1],
+      fileIds: [...files.keys(), ...newFiles.keys()],
+    }
+
+    let newFilesBackup = new Map(newFiles) // Backup newFiles before clearing
+
+    //clear newFiles
+    store.__setState({
+      newFiles: new Map(),
+    })
+
     try {
       if (conversationId) {
         // If we have a conversationId, use it
-        await sendMessage({
-          content: messageToSend.trim(),
-          assistantId: selectedAssistant,
-          modelId: selectedModel.split(':')[1],
-          fileIds: [...files.keys(), ...newFiles.keys()],
-        })
+        await sendMessage(payload)
       } else {
         let newConversation = await handleCreateNewConversation()
         if (!newConversation) {
@@ -298,23 +308,22 @@ export const ChatInput = function ChatInput({
 
         const conversationStore = createChatStore(newConversation)
 
-        await conversationStore.__state.sendMessage({
-          content: messageToSend.trim(),
-          assistantId: selectedAssistant,
-          modelId: selectedModel.split(':')[1],
-          fileIds: [...files.keys(), ...newFiles.keys()],
-        })
+        await conversationStore.__state.sendMessage(payload)
       }
     } catch (error) {
       console.error('Failed to send message:', error)
       // Restore the message if sending failed
       form.setFieldValue('message', messageToSend)
+      // Restore newFiles if sending failed
+      store.__setState({
+        newFiles: newFilesBackup,
+      })
     }
   }
 
-  const handleFileUpload = async (files: globalThis.File[]) => {
-    uploadFiles(files)
-  }
+  const handleFileUpload = debounce(async (files: globalThis.File[]) => {
+    return await uploadFiles(files)
+  }, 100)
 
   const handleRemoveFile = (fileId: string) => {
     removeFile(fileId)
@@ -351,9 +360,11 @@ export const ChatInput = function ChatInput({
       <Upload.Dragger
         multiple
         beforeUpload={(_, fileList) => {
-          handleFileUpload(fileList).catch(error => {
-            console.error('Failed to upload files:', error)
-          })
+          if (fileList) {
+            handleFileUpload(fileList)?.catch?.(error => {
+              console.error('Failed to upload files:', error)
+            })
+          }
           return false
         }}
         showUploadList={false}
@@ -438,9 +449,11 @@ export const ChatInput = function ChatInput({
                 <Upload
                   multiple
                   beforeUpload={(_, fileList) => {
-                    handleFileUpload(fileList).catch(error => {
-                      console.error('Failed to upload files:', error)
-                    })
+                    if (fileList) {
+                      handleFileUpload(fileList)?.catch?.(error => {
+                        console.error('Failed to upload files:', error)
+                      })
+                    }
                     return false
                   }}
                   showUploadList={false}
@@ -558,7 +571,7 @@ export const ChatInput = function ChatInput({
             <>
               <Divider style={{ margin: 0 }} />
               <div style={{ padding: '8px' }}>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2 w-full overflow-x-auto">
                   {Array.from(files.values()).map(file => (
                     <FileCard
                       key={file.id}

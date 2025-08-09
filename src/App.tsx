@@ -67,7 +67,7 @@ function App() {
                   element={<ChatPage />}
                 />
                 <Route path="/assistants" element={<AssistantsPage />} />
-                <Route path="/chat-history" element={<ChatHistoryPage />} />
+                <Route path="/conversations" element={<ChatHistoryPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route
                   path="/projects/:projectId"

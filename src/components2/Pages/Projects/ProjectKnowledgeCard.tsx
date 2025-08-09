@@ -138,21 +138,24 @@ export const ProjectKnowledgeCard: React.FC = () => {
         <Text strong>Project Instructions</Text>
         <Card
           classNames={{
-            body: '!p-2 !px-3 flex items-center justify-between',
+            body: '!p-2 !px-3 flex items-center justify-between w-full flex gap-2 overflow-hidden',
           }}
         >
-          <Text type="secondary" ellipsis={true}>
-            {project?.instruction ||
-              'No instructions provided for this project.'}
-          </Text>
-          <Button
-            type="link"
-            size="small"
-            style={{ pointerEvents: 'auto' }}
-            onClick={() => setInstructionDrawerOpen(true)}
-          >
-            Edit
-          </Button>
+          <div className={'flex-1 overflow-hidden'}>
+            <Text type="secondary" ellipsis={true}>
+              {project?.instruction || 'No instructions provided'}
+            </Text>
+          </div>
+          <div>
+            <Button
+              type="link"
+              size="small"
+              style={{ pointerEvents: 'auto' }}
+              onClick={() => setInstructionDrawerOpen(true)}
+            >
+              Edit
+            </Button>
+          </div>
         </Card>
       </Flex>
 
@@ -207,7 +210,7 @@ export const ProjectKnowledgeCard: React.FC = () => {
 
           {/* Show existing files */}
           {projectFiles.map((file: any) => (
-            <FileCard key={file.id} file={file} />
+            <FileCard key={file.id} file={file} size={103} />
           ))}
         </div>
       </div>

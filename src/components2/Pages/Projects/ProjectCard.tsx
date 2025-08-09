@@ -75,7 +75,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
         )}
 
         {/* Stats and date - pushed to bottom */}
-        <div className="mt-auto">
+        <div
+          style={{
+            marginTop: project.description ? 'auto' : '12px',
+          }}
+        >
           {/* Last updated */}
           <div className="mb-2">
             <Flex align="center" gap="small">

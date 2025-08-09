@@ -99,8 +99,8 @@ export function LeftSidebar() {
   const { user } = Stores.Auth
 
   const isActive = (path: string) => {
-    if (path === '/chat-history')
-      return location.pathname.startsWith('/chat-history')
+    if (path === '/conversations')
+      return location.pathname.startsWith('/conversations')
     if (path === '/projects') return location.pathname.startsWith('/projects')
     if (path === '/artifacts') return location.pathname.startsWith('/artifacts')
     if (path === '/hub') return location.pathname.startsWith('/hub')
@@ -118,6 +118,7 @@ export function LeftSidebar() {
         borderRight: windowMinSize.xs
           ? 'none'
           : '1px solid ' + token.colorBorderSecondary,
+        backgroundColor: isDesktopApp ? 'transparent' : token.colorBgContainer,
       }}
     >
       <TauriDragRegion className={'h-[50px]'} />
@@ -134,8 +135,8 @@ export function LeftSidebar() {
           <SidebarItem
             icon={<HistoryOutlined />}
             label={t('navigation.chats')}
-            isActive={isActive('/chat-history')}
-            to="/chat-history"
+            isActive={isActive('/conversations')}
+            to="/conversations"
           />
           <SidebarItem
             icon={<FolderOutlined />}

@@ -130,6 +130,28 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [])
 
+  useEffect(() => {
+    //set root document background color based on theme
+    const root = document.documentElement
+    if (isDesktopApp) {
+      root.style.backgroundColor = 'transparent'
+    } else {
+      root.style.backgroundColor = token.colorBgLayout
+      // set theme in meta tag as well
+      const metaThemeColor = document.querySelector(
+        'meta[name="theme-color"]',
+      ) as HTMLMetaElement
+      if (metaThemeColor) {
+        metaThemeColor.content = token.colorBgLayout
+      } else {
+        const newMetaThemeColor = document.createElement('meta')
+        newMetaThemeColor.name = 'theme-color'
+        newMetaThemeColor.content = token.colorBgLayout
+        document.head.appendChild(newMetaThemeColor)
+      }
+    }
+  }, [token.colorBgLayout])
+
   const toggleSidebar = () => {
     if (sidebarRef.current) {
       sidebarRef.current.style.transition = 'transform 200ms ease-out'
@@ -144,7 +166,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div
-      className="h-screen w-screen flex overflow-hidden"
+      className="h-dvh w-screen flex overflow-hidden"
       style={{
         backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
       }}

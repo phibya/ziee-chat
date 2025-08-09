@@ -37,7 +37,7 @@ function App2() {
                   path="/conversation/:conversationId"
                   element={<ExistingChatInterface />}
                 />
-                <Route path="/chat-history" element={<ChatHistoryPage />} />
+                <Route path="/conversations" element={<ChatHistoryPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route
                   path="/projects/:projectId"
