@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   App,
   Button,
@@ -14,7 +14,12 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CloseOutlined, SendOutlined } from '@ant-design/icons'
+import {
+  CloseOutlined,
+  RobotOutlined,
+  SendOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
 import {
   addNewConversationToList,
   createNewConversation,
@@ -29,16 +34,25 @@ import { Conversation, Message } from '../../../types/api/chat.ts'
 import { Assistant } from '../../../types/api/assistant'
 import { createChatStore } from '../../../store/chat.ts'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
+import { IoIosArrowDown } from 'react-icons/io'
 
 const { TextArea } = Input
 const { Text } = Typography
 
+const UI_BREAKPOINT = 480 // Define a breakpoint for UI adjustments
+
+const calculateIsBreaking = (width: number): boolean => width <= UI_BREAKPOINT
+
 export const ChatInput = function ChatInput({
   editingMessage,
   onDoneEditing,
+  className = '',
+  style,
 }: {
   editingMessage?: Message
   onDoneEditing?: () => void
+  className?: string
+  style?: React.CSSProperties
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -47,6 +61,8 @@ export const ChatInput = function ChatInput({
   const { projectId } = useParams<{ projectId?: string }>()
   const { message } = App.useApp()
   const { token } = theme.useToken()
+  const [isBreaking, setIsBreaking] = useState<boolean>(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const store = useChatInputUIStore(editingMessage)
   const {
@@ -75,6 +91,33 @@ export const ChatInput = function ChatInput({
   useEffect(() => {
     loadUserAssistants()
     loadUserProvidersWithAllModels()
+  }, [])
+
+  // ResizeObserver to listen to container width changes for UI breakpoints
+  useEffect(() => {
+    const containerElement = containerRef.current
+    if (!containerElement) return
+
+    const updateBreaking = (width: number) => {
+      const newIsBreaking = calculateIsBreaking(width)
+      setIsBreaking(newIsBreaking)
+    }
+
+    // Set initial breaking state immediately
+    updateBreaking(containerElement.offsetWidth)
+
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect
+        updateBreaking(width)
+      }
+    })
+
+    resizeObserver.observe(containerElement)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
   }, [])
 
   // Initialize form and files when in editing mode
@@ -299,7 +342,11 @@ export const ChatInput = function ChatInput({
   }
 
   return (
-    <div className="w-full relative">
+    <div
+      ref={containerRef}
+      className={`w-full relative ${className}`}
+      style={style}
+    >
       {/* Drag and Drop Overlay */}
       <Upload.Dragger
         multiple
@@ -322,7 +369,7 @@ export const ChatInput = function ChatInput({
         `}
         openFileDialogOnClick={false}
         style={{
-          backgroundColor: token.colorBgContainer,
+          backgroundColor: token.colorBgLayout,
           borderRadius: token.borderRadius,
         }}
       >
@@ -330,7 +377,7 @@ export const ChatInput = function ChatInput({
           className="h-full flex-col items-center justify-center gap-3"
           style={{ pointerEvents: 'none' }}
         >
-          <BsFileEarmarkPlus className={'text-4xl'} />
+          <BsFileEarmarkPlus className={'text-2xl'} />
           <Text type="secondary">Drop files here to upload</Text>
         </Flex>
       </Upload.Dragger>
@@ -351,6 +398,7 @@ export const ChatInput = function ChatInput({
             : token.colorBorderSecondary,
           transition: 'border-color 0.2s, box-shadow 0.2s',
           pointerEvents: isDragging ? 'none' : 'auto',
+          backgroundColor: token.colorBgLayout,
         }}
       >
         <Form
@@ -366,7 +414,7 @@ export const ChatInput = function ChatInput({
         >
           {/* Main input row with add file button on left and selectors + send on right */}
           <div style={{ padding: '8px' }}>
-            <Flex className="flex-col gap-2 w-full">
+            <Flex className="flex-col gap-1 w-full">
               <div className="w-full">
                 <Form.Item name="message" className="mb-0" noStyle>
                   <TextArea
@@ -380,10 +428,13 @@ export const ChatInput = function ChatInput({
                     onChange={() => {
                       setContent(form.getFieldValue('message') || '')
                     }}
+                    style={{
+                      backgroundColor: token.colorBgLayout,
+                    }}
                   />
                 </Form.Item>
               </div>
-              <div className="w-full flex gap-1 justify-betwee flex-wrap">
+              <div className={`w-full flex justify-between`}>
                 <Upload
                   multiple
                   beforeUpload={(_, fileList) => {
@@ -397,6 +448,7 @@ export const ChatInput = function ChatInput({
                   <Button
                     type="text"
                     style={{
+                      width: 40,
                       fontSize: '20px',
                     }}
                     icon={<BsFileEarmarkPlus />}
@@ -405,48 +457,68 @@ export const ChatInput = function ChatInput({
                   />
                 </Upload>
 
-                <div className={'gap-2 flex flex-1 items-center justify-end'}>
-                  <div className={'flex flex-1 items-center justify-end'}>
-                    <Form.Item name="assistant" noStyle>
-                      <Select
-                        placeholder="Assistant"
-                        style={{ width: 140 }}
-                        disabled={isDisabled}
-                        size="small"
-                        options={availableAssistants.map(
-                          (assistant: Assistant) => ({
-                            label: assistant.name,
-                            value: assistant.id,
-                          }),
-                        )}
-                        className={`
-                        !p-0
-                      [&_.ant-select-selector]:!border-none
-                      [&_.ant-select-selection-wrap]:!text-center
-                      `}
-                      />
-                    </Form.Item>
+                <div className={'flex items-center gap-1'}>
+                  <Form.Item name="assistant" noStyle>
+                    <Select
+                      popupMatchSelectWidth={false}
+                      placeholder="Assistant"
+                      options={availableAssistants.map(
+                        (assistant: Assistant) => ({
+                          label: assistant.name,
+                          value: assistant.id,
+                        }),
+                      )}
+                      style={{ width: isBreaking ? 40 : 140 }}
+                      labelRender={isBreaking ? () => '' : undefined}
+                      variant={'borderless'}
+                      prefix={
+                        isBreaking && (
+                          <Button
+                            type={'text'}
+                            style={{
+                              fontSize: '18px',
+                            }}
+                          >
+                            <RobotOutlined />
+                          </Button>
+                        )
+                      }
+                      suffixIcon={<IoIosArrowDown />}
+                    />
+                  </Form.Item>
 
-                    {/* Model selector */}
-                    <Form.Item name="model" noStyle>
-                      <Select
-                        placeholder="Model"
-                        style={{ width: 140 }}
-                        disabled={isDisabled}
-                        size="small"
-                        options={availableModels}
-                        className={`
-                        !p-0
-                      [&_.ant-select-selector]:!border-none
-                      [&_.ant-select-selection-wrap]:!text-center
-                      `}
-                      />
-                    </Form.Item>
-                  </div>
+                  {/* Model selector */}
+                  <Form.Item name="model" noStyle>
+                    <Select
+                      popupMatchSelectWidth={false}
+                      placeholder="Model"
+                      disabled={isDisabled}
+                      size="small"
+                      options={availableModels}
+                      style={{ width: isBreaking ? 40 : 140 }}
+                      labelRender={isBreaking ? () => '' : undefined}
+                      variant={'borderless'}
+                      prefix={
+                        isBreaking && (
+                          <Button
+                            type={'text'}
+                            style={{
+                              fontSize: '18px',
+                            }}
+                          >
+                            <SettingOutlined />
+                          </Button>
+                        )
+                      }
+                      suffixIcon={<IoIosArrowDown />}
+                    />
+                  </Form.Item>
+                </div>
 
+                <div className={`gap-2 flex flex-1 items-center justify-end`}>
                   {/* Send/Stop/Save/Cancel buttons */}
                   <div className="flex gap-1 items-end">
-                    <div className={'items-center justify-end flex'}>
+                    <div className={'items-center justify-end  gap-1 flex'}>
                       {isEditing ? (
                         <>
                           <Button

@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { useUserAppearanceLanguage } from './store'
 import { ProjectsPage } from './components2/Pages/Projects/ProjectsPage'
 import { ProjectDetailsPage } from './components2/Pages/Projects/ProjectDetailsPage'
-import { NewChatInterface } from './components2/Pages/Chat/NewChatInterface'
+import { NewChatInterface, ExistingChatInterface } from './components2/Pages/Chat'
+import { ChatHistoryPage } from './components2/Pages/ChatHistoryPage'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
 import './store/startup'
@@ -32,6 +33,11 @@ function App2() {
             <AppLayout>
               <Routes>
                 <Route path="/" element={<NewChatInterface />} />
+                <Route
+                  path="/conversation/:conversationId"
+                  element={<ExistingChatInterface />}
+                />
+                <Route path="/chat-history" element={<ChatHistoryPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route
                   path="/projects/:projectId"

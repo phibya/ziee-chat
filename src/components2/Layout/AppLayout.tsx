@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { LeftSidebar } from './LeftSidebar'
-import { Stores, setSidebarCollapsed } from '../../store'
+import { Stores, setSidebarCollapsed, setMainContentWidth } from '../../store'
 import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { isDesktopApp } from '../../api/core.ts'
@@ -11,12 +11,13 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { isSidebarCollapsed } = Stores.UI.Layout
+  const { isSidebarCollapsed, isFullscreen } = Stores.UI.Layout
   const { token } = theme.useToken()
   const windowMinSize = useWindowMinSize()
 
   const sidebarRef = useRef<HTMLDivElement>(null)
   const spacerRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
   const currentWidth = useRef(200)
 
   const MIN_WIDTH = 150
@@ -110,6 +111,25 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [windowMinSize.xs])
 
+  // ResizeObserver to listen to main content width changes
+  useEffect(() => {
+    const mainContentElement = mainContentRef.current
+    if (!mainContentElement) return
+
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect
+        setMainContentWidth(Math.round(width))
+      }
+    })
+
+    resizeObserver.observe(mainContentElement)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   const toggleSidebar = () => {
     if (sidebarRef.current) {
       sidebarRef.current.style.transition = 'transform 200ms ease-out'
@@ -123,7 +143,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden ">
+    <div
+      className="h-screen w-screen flex overflow-hidden"
+      style={{
+        backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
+      }}
+    >
       {/* Sidebar - Always visible, width controlled by container */}
       <div
         ref={sidebarRef}
@@ -135,7 +160,6 @@ export function AppLayout({ children }: AppLayoutProps) {
                 zIndex: 3,
                 position: 'fixed',
                 background: token.colorBgContainer,
-                borderRight: '1px solid ' + token.colorBorder,
                 transform: isSidebarCollapsed
                   ? 'translateX(-100%)'
                   : 'translateX(0)',
@@ -150,7 +174,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div
         className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
         style={{
-          left: isDesktopApp ? 86 : 12,
+          left: isDesktopApp && !isFullscreen ? 86 : 12,
           top: 0,
         }}
       >
@@ -192,14 +216,19 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div
         className="flex-1 flex flex-col z-2 relative overflow-hidden"
         style={{
-          backgroundColor: token.colorBgContainer,
+          backgroundColor: token.colorBgLayout,
         }}
       >
         {/* Toolbar with Traffic Lights */}
 
         {/* Content */}
-        <div className="flex-1">
-          <div className="w-full h-full">{children}</div>
+        <div className="flex-1 overflow-hidden relative">
+          <div
+            ref={mainContentRef}
+            className="w-full h-full overflow-hidden relative"
+          >
+            {children}
+          </div>
         </div>
         {!isSidebarCollapsed && (
           <div

@@ -49,7 +49,7 @@ export interface ChatState {
 }
 
 // Store map to keep the proxies
-const ChatStoreMap = new Map<
+export const ChatStoreMap = new Map<
   string,
   ReturnType<typeof createStoreProxy<UseBoundStore<StoreApi<ChatState>>>>
 >()

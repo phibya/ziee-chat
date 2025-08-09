@@ -10,7 +10,6 @@ body,
   background: transparent !important;
 }
 
-
 .ant-menu-vertical {
   border-inline-end: none !important;
 
@@ -18,4 +17,28 @@ body,
     height: 1.75rem;
     line-height: 2.35;
   }
+}
+
+/*** Works on common browsers ***/
+::selection {
+  background-color: rgba(0, 255, 234, 0.32) !important;
+}
+
+/*** Mozilla based browsers ***/
+::-moz-selection {
+  background-color: rgba(0, 255, 234, 0.32) !important;
+}
+
+/***For Other Browsers ***/
+::-o-selection {
+  background-color: rgba(0, 255, 234, 0.32) !important;
+}
+
+::-ms-selection {
+  background-color: rgba(0, 255, 234, 0.32) !important;
+}
+
+/*** For Webkit ***/
+::-webkit-selection {
+  background-color: rgba(0, 255, 234, 0.32) !important;
 }

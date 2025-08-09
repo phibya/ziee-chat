@@ -22,6 +22,7 @@ interface FileCardProps {
   file?: File
   uploadingFile?: FileUploadProgress
   size?: number
+  showFileName?: boolean // Whether to show the file name below the card
   onRemove?: (fileId: string) => void // remove from the list, not delete from server
   canRemove?: boolean // Whether the remove button should be shown
   canDelete?: boolean // Whether the delete button should be shown
@@ -181,6 +182,7 @@ export const FileCard: React.FC<FileCardProps> = ({
   file,
   uploadingFile,
   size = 111,
+  showFileName = true,
   canRemove = true,
   canDelete = true,
   onRemove,
@@ -321,7 +323,12 @@ export const FileCard: React.FC<FileCardProps> = ({
             </Text>
           )}
         </Card>
-        <div className="w-full text-center text-xs text-ellipsis overflow-hidden">
+        <div
+          className="w-full text-center text-xs text-ellipsis overflow-hidden"
+          style={{
+            display: showFileName ? 'block' : 'none',
+          }}
+        >
           <Text className={'whitespace-nowrap'}>{uploadingFile.filename}</Text>
         </div>
       </div>
@@ -401,7 +408,12 @@ export const FileCard: React.FC<FileCardProps> = ({
           {formatFileSize(file.file_size)}
         </Text>
       </Card>
-      <div className="w-full text-center text-xs text-ellipsis overflow-hidden">
+      <div
+        className="w-full text-center text-xs text-ellipsis overflow-hidden"
+        style={{
+          display: showFileName ? 'block' : 'none',
+        }}
+      >
         <Text className={'whitespace-nowrap'}>{file.filename}</Text>
       </div>
 

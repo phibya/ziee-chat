@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ConversationSummary } from '../types/api/chat'
 import { ApiClient } from '../api/client'
+import { ChatState, ChatStoreMap } from './chat.ts'
 
 interface ConversationsState {
   conversations: ConversationSummary[]
@@ -63,6 +64,19 @@ export const updateExistingConversation = async (
         conv.id === id ? { ...conv, ...updates } : conv,
       ),
     }))
+
+    const chatStore = ChatStoreMap.get(id)
+    if (chatStore) {
+      chatStore.__setState(
+        state =>
+          ({
+            conversation: {
+              ...state.conversation,
+              ...updates,
+            },
+          }) as Partial<ChatState>,
+      )
+    }
   } catch (error) {
     useConversationsStore.setState({
       error:

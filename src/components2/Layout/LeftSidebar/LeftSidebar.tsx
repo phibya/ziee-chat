@@ -8,7 +8,6 @@ import {
   HistoryOutlined,
   LogoutOutlined,
   PlusOutlined,
-  RobotOutlined,
   SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -18,6 +17,7 @@ import { isDesktopApp } from '../../../api/core.ts'
 import { RecentConversations } from './RecentConversations'
 import { TauriDragRegion } from '../../Common/TauriDragRegion'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
+import { HiOutlineFaceSmile } from 'react-icons/hi2'
 
 const { Text } = Typography
 
@@ -94,6 +94,7 @@ export function LeftSidebar() {
   const { t } = useTranslation()
   const location = useLocation()
   const { token } = theme.useToken()
+  const windowMinSize = useWindowMinSize()
 
   const { user } = Stores.Auth
 
@@ -111,10 +112,12 @@ export function LeftSidebar() {
 
   return (
     <div
-      className="h-full border-r flex flex-col overflow-hidden"
+      className="h-full flex flex-col overflow-hidden"
       style={{
         width: '100%', // Take full width of container
-        borderColor: token.colorBorderSecondary,
+        borderRight: windowMinSize.xs
+          ? 'none'
+          : '1px solid ' + token.colorBorderSecondary,
       }}
     >
       <TauriDragRegion className={'h-[50px]'} />
@@ -166,7 +169,7 @@ export function LeftSidebar() {
             to="/hub"
           />
           <SidebarItem
-            icon={<RobotOutlined />}
+            icon={<HiOutlineFaceSmile />}
             label={t('navigation.assistants')}
             isActive={isActive('/assistants')}
             to="/assistants"

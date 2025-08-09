@@ -51,17 +51,20 @@ export const Drawer: React.FC<DrawerProps> = props => {
           padding: '6px 12px 12px 12px',
         },
         mask: {
-          backdropFilter: 'brightness(0.7)',
+          backdropFilter: 'brightness(0.75)',
           backgroundColor: tinycolor(token.colorBgLayout)
-            .setAlpha(0.7)
+            .setAlpha(0.75)
             .toString(),
         },
         wrapper: {
-          border: `1px solid ${token.colorBorder}`,
+          border: `1px solid ${token.colorBorderSecondary}`,
           borderRadius: isDesktopApp ? 8 : windowMinSize.xs ? 0 : 8,
           maxWidth: `calc(100vw - ${isDesktopApp ? 90 : windowMinSize.xs ? 0 : 24}px)`,
           boxShadow: 'none',
           margin: windowMinSize.xs ? 0 : 12,
+        },
+        content: {
+          backgroundColor: token.colorBgLayout,
         },
       }}
       // className={`!bg-transparent !m-3 ${className}`}

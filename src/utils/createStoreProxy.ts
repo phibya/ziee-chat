@@ -5,13 +5,19 @@ type RemoveVoid<T> = T extends void ? never : T
 
 type ExtractZustandState<T> = T extends UseBoundStore<infer Store>
   ? Store extends StoreApi<infer State>
-    ? RemoveVoid<State> & { __state: RemoveVoid<State> }
+    ? RemoveVoid<State> & {
+        __state: RemoveVoid<State>
+        __setState: StoreApi<State>['setState']
+      }
     : Store extends { getState(): infer State }
       ? State extends void | infer S
         ? S extends void
           ? never
           : S
-        : RemoveVoid<State> & { __state: RemoveVoid<State> }
+        : RemoveVoid<State> & {
+            __state: RemoveVoid<State>
+            __setState: any
+          }
       : never
   : never
 
@@ -22,6 +28,9 @@ export const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
     get: (_, prop) => {
       if (prop === '__state') {
         return useStore.getState()
+      }
+      if (prop === '__setState') {
+        return useStore.setState.bind(useStore)
       }
       return useStore(
         useShallow((state: ExtractZustandState<T>) => (state as any)[prop]),

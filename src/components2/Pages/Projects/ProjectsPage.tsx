@@ -13,14 +13,15 @@ import { ProjectCard } from './ProjectCard.tsx'
 import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
 import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
 import { PiSortAscending } from 'react-icons/pi'
-import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
+import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 
 const { Title, Text } = Typography
 
 export const ProjectsPage: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const windowMinSize = useWindowMinSize()
+  const pageMinSize = useMainContentMinSize()
+  const [isSearchBoxVisible, setIsSearchBoxVisible] = useState(false)
 
   // Projects store
   const { projects, loading, error } = Stores.Projects
@@ -101,7 +102,18 @@ export const ProjectsPage: React.FC = () => {
             Projects
           </Typography.Title>
           <div className="h-full flex items-center justify-between">
-            {windowMinSize.xs ? null : searchInputComponent}
+            {!pageMinSize.xs ? (
+              searchInputComponent
+            ) : (
+              <Button
+                type={isSearchBoxVisible ? 'primary' : 'text'}
+                icon={<SearchOutlined />}
+                style={{
+                  fontSize: '18px',
+                }}
+                onClick={() => setIsSearchBoxVisible(!isSearchBoxVisible)}
+              />
+            )}
             <div className={'flex gap-0'}>
               <Dropdown
                 menu={{
@@ -149,12 +161,12 @@ export const ProjectsPage: React.FC = () => {
 
       {/* Page Content */}
       <div className="flex-1 flex flex-col overflow-hidden items-center p-3">
-        {windowMinSize.xs ? (
+        {pageMinSize.xs && isSearchBoxVisible && (
           <div className={'w-full max-w-96'}>{searchInputComponent}</div>
-        ) : null}
+        )}
         {/* Projects Grid */}
         <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-          <div className="max-w-6xl flex flex-wrap gap-4 p-3 w-full h-auto self-center overflow-y-auto">
+          <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full h-auto self-center overflow-y-auto">
             {getFilteredAndSortedProjects().map(project => (
               <div className={'min-w-72 flex-1'}>
                 <ProjectCard project={project} />

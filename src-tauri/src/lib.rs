@@ -278,18 +278,35 @@ pub fn run() {
 
                 Ok(())
             })
-            .on_window_event(|_window, event| {
-                if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    // Clear temp directory and cleanup database before closing
-                    let handle = tauri::async_runtime::spawn(async move {
-                        cleanup_app_common().await;
-                    });
+            .on_window_event(|window, event| {
+                match event {
+                    tauri::WindowEvent::CloseRequested { .. } => {
+                        // Clear temp directory and cleanup database before closing
+                        let handle = tauri::async_runtime::spawn(async move {
+                            cleanup_app_common().await;
+                        });
 
-                    // Wait for cleanup to complete
-                    std::thread::spawn(move || {
-                        let rt = tokio::runtime::Runtime::new().unwrap();
-                        rt.block_on(handle).unwrap();
-                    });
+                        // Wait for cleanup to complete
+                        std::thread::spawn(move || {
+                            let rt = tokio::runtime::Runtime::new().unwrap();
+                            rt.block_on(handle).unwrap();
+                        });
+                    }
+                    #[cfg(target_os = "macos")]
+                    tauri::WindowEvent::Resized(..) => {
+                        // Listen to resize events to detect fullscreen state changes
+                        if let Ok(is_fullscreen) = window.is_fullscreen() {
+                            if !is_fullscreen {
+                                // Window is no longer fullscreen, reset traffic lights
+                                if let Some(webview_window) = window.app_handle().get_webview_window("main") {
+                                    if let Err(e) = webview_window.set_traffic_lights_inset(12.0, 26.0) {
+                                        eprintln!("Failed to set traffic lights inset: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             })
             .run(tauri::generate_context!())
@@ -341,7 +358,7 @@ async fn start_api_server(port: u16, api_router: Router) {
             .layer(CorsLayer::permissive())
     };
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], port));
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
     match tokio::net::TcpListener::bind(&addr).await {
         Ok(listener) => {

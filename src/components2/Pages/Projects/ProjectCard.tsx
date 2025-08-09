@@ -2,15 +2,15 @@ import {
   CalendarOutlined,
   DeleteOutlined,
   EditOutlined,
-  MoreOutlined,
 } from '@ant-design/icons'
 import { App, Button, Card, Dropdown, Flex, Typography } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { Project } from '../../../types/api/projects'
 import { deleteExistingProject, openProjectDrawer } from '../../../store'
+import { CgMenuRightAlt } from 'react-icons/cg'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 interface ProjectCardProps {
   project: Project
@@ -55,16 +55,15 @@ export function ProjectCard({ project }: ProjectCardProps) {
       hoverable
       className="h-full"
       classNames={{
-        body: 'h-full flex flex-col',
+        body: 'h-full flex flex-col !p-3 !pb-1',
       }}
-      styles={{ body: { padding: '16px' } }}
       onClick={handleCardClick}
     >
       <Flex className="h-full flex-col flex-1">
         {/* Header with name and actions */}
-        <Title level={4} className="m-0">
+        <Typography.Text strong className="m-0 pr-2">
           {project.name}
-        </Title>
+        </Typography.Text>
 
         {/* Description */}
         {project.description && (
@@ -125,7 +124,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           >
             <Button
               type="text"
-              icon={<MoreOutlined />}
+              icon={<CgMenuRightAlt />}
               onClick={e => e.stopPropagation()}
               size="small"
             />

@@ -401,6 +401,10 @@ fn main() {
     let (pandoc_platform, pandoc_arch, pandoc_extension) = if target.contains("windows") {
         if target.contains("x86_64") {
             ("windows", "x86_64", "zip")
+        } else if target.contains("aarch64") {
+            // Use x86_64 binary for Windows aarch64 (will run via emulation)
+            println!("Using x86_64 Pandoc binary for Windows aarch64 target");
+            ("windows", "x86_64", "zip")
         } else {
             panic!("Unsupported Windows architecture for Pandoc: {}", target);
         }

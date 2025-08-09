@@ -75,6 +75,9 @@ export const ConversationSummaryCard: React.FC<
     <Card
       key={conversation.id}
       className="cursor-pointer relative group hover:!shadow-md transition-shadow"
+      classNames={{
+        body: '!px-3 !py-2 flex gap-2 flex-col',
+      }}
       onClick={handleCardClick}
       hoverable
       style={{
@@ -100,7 +103,7 @@ export const ConversationSummaryCard: React.FC<
         </div>
       </div>
 
-      <div className="mt-2">
+      <div>
         <Text type="secondary" ellipsis={{ tooltip: false }}>
           {conversation.last_message || 'No messages yet'}
         </Text>

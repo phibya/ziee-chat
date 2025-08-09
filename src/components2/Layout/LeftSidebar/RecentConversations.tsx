@@ -1,20 +1,20 @@
-import { App, Button, Input, Modal, Typography } from 'antd'
-import { useState, useEffect } from 'react'
+import { App, Button, Modal, theme, Typography } from 'antd'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
   DeleteOutlined,
-  EditOutlined,
   ExclamationCircleOutlined,
   MessageOutlined,
 } from '@ant-design/icons'
 import {
   loadAllRecentConversations,
   removeConversationFromList,
-  updateExistingConversation,
+  setSidebarCollapsed,
   Stores,
 } from '../../../store'
 import { ConversationSummary } from '../../../types/api/chat'
+import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 
 const { confirm } = Modal
 const { Text } = Typography
@@ -23,10 +23,10 @@ export function RecentConversations() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { message } = App.useApp()
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingTitle, setEditingTitle] = useState('')
+  const { token } = theme.useToken()
 
   const { conversations, isLoading } = Stores.Conversations
+  const windowMinSize = useWindowMinSize()
 
   useEffect(() => {
     // Only load if we don't have conversations yet
@@ -37,35 +37,7 @@ export function RecentConversations() {
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/conversation/${conversationId}`)
-  }
-
-  const handleEditTitle = (conversation: ConversationSummary) => {
-    setEditingId(conversation.id)
-    setEditingTitle(conversation.title)
-  }
-
-  const handleSaveTitle = async () => {
-    if (!editingId || !editingTitle.trim()) return
-
-    try {
-      await updateExistingConversation(editingId, {
-        title: editingTitle.trim(),
-      })
-
-      setEditingId(null)
-      setEditingTitle('')
-      message.success(t('conversations.renamed') || 'Renamed successfully')
-    } catch (error: any) {
-      console.error('Failed to update conversation:', error)
-      message.error(
-        error?.message || t('common.failedToRename') || 'Failed to rename',
-      )
-    }
-  }
-
-  const handleCancelEdit = () => {
-    setEditingId(null)
-    setEditingTitle('')
+    windowMinSize.xs && setSidebarCollapsed(true)
   }
 
   const handleDeleteConversation = (conversation: ConversationSummary) => {
@@ -106,65 +78,31 @@ export function RecentConversations() {
       ) : (
         conversations.map((conversation: ConversationSummary) => (
           <div key={conversation.id} className="group relative">
-            {editingId === conversation.id ? (
-              <div className="flex items-center px-3 py-1 mx-2">
-                <Input
-                  value={editingTitle}
-                  onChange={e => setEditingTitle(e.target.value)}
-                  onPressEnter={handleSaveTitle}
-                  onBlur={handleSaveTitle}
-                  autoFocus
-                  size="small"
-                />
-                <Button size="small" type="text" onClick={handleCancelEdit}>
-                  ×
-                </Button>
-              </div>
-            ) : (
-              <div
-                className="flex items-center px-3 py-1 mx-2 rounded-md cursor-pointer transition-colors duration-150 text-gray-700 hover:bg-gray-200"
-                onClick={() => handleConversationClick(conversation.id)}
-              >
-                <Text className="flex-1 truncate">{conversation.title}</Text>
+            <div
+              className="flex items-center px-3 py-1 mx-2 rounded-md cursor-pointer transition-colors duration-150"
+              onClick={() => handleConversationClick(conversation.id)}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = token.colorPrimaryHover
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+              }}
+            >
+              <Text className="flex-1 truncate">{conversation.title}</Text>
 
-                {/* Action buttons - only visible on hover */}
-                <div className="opacity-0 group-hover:opacity-100 flex ml-2">
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<EditOutlined />}
-                    onClick={e => {
-                      e.stopPropagation()
-                      handleEditTitle(conversation)
-                    }}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      minWidth: '20px',
-                      padding: '0',
-                      fontSize: '10px',
-                    }}
-                  />
-                  <Button
-                    size="small"
-                    type="text"
-                    icon={<DeleteOutlined />}
-                    onClick={e => {
-                      e.stopPropagation()
-                      handleDeleteConversation(conversation)
-                    }}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      minWidth: '20px',
-                      padding: '0',
-                      fontSize: '10px',
-                      color: '#ff4d4f',
-                    }}
-                  />
-                </div>
+              {/* Action buttons - only visible on hover */}
+              <div className="opacity-0 group-hover:opacity-100 flex absolute right-3">
+                <Button
+                  size="small"
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleDeleteConversation(conversation)
+                  }}
+                />
               </div>
-            )}
+            </div>
           </div>
         ))
       )}

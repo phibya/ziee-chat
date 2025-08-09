@@ -5,6 +5,7 @@ export {
   closeMobileOverlay,
   setSidebarCollapsed,
   toggleSidebar,
+  setMainContentWidth,
 } from './layout'
 export { createChatInputUIStore } from './chatInput.ts'
 

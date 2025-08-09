@@ -17,7 +17,6 @@ import { useChatHistoryStore } from '../../store'
 import { ConversationSummaryCard } from './ConversationSummaryCard'
 
 const { Text } = Typography
-const { Search } = Input
 
 interface ConversationHistoryProps {
   getSearchBoxContainer?: () => HTMLElement | null
@@ -137,12 +136,11 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
 
   // Search box component
   const searchBox = (
-    <Search
+    <Input
       placeholder={t('forms.searchConversations')}
       allowClear
-      enterButton={<SearchOutlined />}
       size="middle"
-      onSearch={setSearchText}
+      prefix={<SearchOutlined />}
       onChange={e => setSearchText(e.target.value)}
       className="self-center w-full"
     />
@@ -157,7 +155,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
           return container ? createPortal(searchBox, container) : null
         })()}
 
-      <Flex className="w-full h-full flex-col gap-4 overflow-y-hidden overflow-x-visible flex-1">
+      <div className="w-full h-full flex flex-col gap-3 overflow-y-hidden overflow-x-visible flex-1">
         {/* Search box - render inline if no container provided */}
         {!getSearchBoxContainer && (
           <div className="flex justify-end items-center w-full">
@@ -167,21 +165,23 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
 
         {/* Bulk actions bar */}
         {selectedConversations.size > 0 && (
-          <div className="max-w-6xl w-full self-center px-3">
+          <div className="max-w-4xl w-full self-center px-3 pt-3">
             <Card
               classNames={{
                 body: '!p-3',
               }}
             >
-              <Flex justify="space-between" align="center">
+              <Flex
+                justify="space-between"
+                align="center"
+                className={'flex-wrap gap-2'}
+              >
                 <Text strong>
                   {selectedConversations.size} conversation
                   {selectedConversations.size > 1 ? 's' : ''} selected
                 </Text>
                 <Flex className={'gap-2'}>
-                  <Button onClick={handleDeselectAll} size="small">
-                    Deselect All
-                  </Button>
+                  <Button onClick={handleDeselectAll}>Deselect All</Button>
                   <Popconfirm
                     title="Delete selected conversations"
                     description={`Are you sure you want to delete ${selectedConversations.size} conversation${selectedConversations.size > 1 ? 's' : ''}?`}
@@ -191,12 +191,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                     okType="danger"
                     okButtonProps={{ loading: deleting }}
                   >
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      loading={deleting}
-                      size="small"
-                    >
+                    <Button danger icon={<DeleteOutlined />} loading={deleting}>
                       Delete Selected
                     </Button>
                   </Popconfirm>
@@ -207,9 +202,9 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
         )}
 
         {/* Conversation list */}
-        <Flex className="flex-1 w-full flex-col !pb-3 overflow-y-auto overflow-x-visible">
+        <Flex className="flex-1 w-full flex-col !py-3 overflow-y-auto overflow-x-visible">
           <div
-            className={'gap-2 max-w-6xl w-full self-center overflow-x-visible'}
+            className={'gap-2 max-w-4xl w-full self-center overflow-x-visible'}
           >
             {(searchText.trim() ? searchResults : conversations).length === 0 &&
             !loading &&
@@ -231,7 +226,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 </Empty>
               </Card>
             ) : (
-              <div className="space-y-4 overflow-y-auto overflow-x-visible">
+              <div className="space-y-3 overflow-y-auto overflow-x-visible">
                 {loading || isSearching ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
@@ -282,7 +277,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             )}
           </div>
         </Flex>
-      </Flex>
+      </div>
     </>
   )
 }
