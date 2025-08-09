@@ -18,7 +18,7 @@ import {
 import { openRepositoryDrawer } from '../../../../store/ui'
 import { Repository } from '../../../../types/api/repository'
 import { RepositoryDrawer } from './RepositoryDrawer'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
 

@@ -9,7 +9,7 @@ import {
   loadAllModelProviders,
   Stores,
 } from '../../../../store'
-import { ModelParametersSection } from './shared/ModelParametersSection'
+import { ModelParametersSection } from './common/ModelParametersSection'
 import { BASIC_MODEL_FIELDS } from '../../../../constants/modelParameters.ts'
 
 export function AddRemoteModelDrawer() {

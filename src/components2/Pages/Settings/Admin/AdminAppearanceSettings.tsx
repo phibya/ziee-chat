@@ -9,7 +9,7 @@ import {
   updateSystemDefaultLanguage,
 } from '../../../../store'
 import { LANGUAGE_OPTIONS } from '../../../../types'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
 

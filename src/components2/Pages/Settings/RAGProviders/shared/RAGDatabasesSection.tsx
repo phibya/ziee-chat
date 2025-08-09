@@ -198,13 +198,12 @@ export function RAGDatabasesSection({ provider }: RAGDatabasesSectionProps) {
         return (
           <Flex gap="small">
             <Switch
-              size="small"
               checked={record.enabled}
               onChange={enabled => handleEnable(record.id, enabled)}
               loading={databaseOperations[record.id]}
             />
             <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-              <Button size="small">Actions</Button>
+              <Button>Actions</Button>
             </Dropdown>
           </Flex>
         )

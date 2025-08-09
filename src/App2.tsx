@@ -75,11 +75,19 @@ function App2() {
                   <Route path="privacy" element={<PrivacySettings />} />
                   <Route path="providers" element={<ProvidersSettings />} />
                   <Route
+                    path="providers/:providerId"
+                    element={<ProvidersSettings />}
+                  />
+                  <Route
                     path="repositories"
                     element={<ModelRepositorySettings />}
                   />
                   <Route
                     path="rag-providers"
+                    element={<RAGProvidersSettings />}
+                  />
+                  <Route
+                    path="rag-providers/:providerId"
                     element={<RAGProvidersSettings />}
                   />
                   <Route

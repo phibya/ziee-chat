@@ -230,7 +230,7 @@ pub fn run() {
                     )
                     .title("")
                     .inner_size(1024.0, 800.0)
-                    .min_inner_size(375.0, 667.0)
+                    .min_inner_size(375.0, 600.0)
                     .resizable(true)
                     .fullscreen(false)
                     .decorations(false)

@@ -268,9 +268,7 @@ export function LocalConfigurationSection({
   )
 
   return wrapInCard ? (
-    <Card size="small" title={t('providers.localConfiguration')}>
-      {content}
-    </Card>
+    <Card title={t('providers.localConfiguration')}>{content}</Card>
   ) : (
     content
   )

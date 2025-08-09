@@ -90,7 +90,7 @@ function App() {
                     <>
                       <Route path="providers" element={<ProvidersSettings />} />
                       <Route
-                        path="providers/:provider_id"
+                        path="providers/:providerId"
                         element={<ProvidersSettings />}
                       />
                     </>
@@ -112,7 +112,7 @@ function App() {
                         element={<RAGProvidersSettings />}
                       />
                       <Route
-                        path="rag-providers/:provider_id"
+                        path="rag-providers/:providerId"
                         element={<RAGProvidersSettings />}
                       />
                     </>

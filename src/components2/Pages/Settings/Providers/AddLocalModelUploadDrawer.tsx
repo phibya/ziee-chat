@@ -22,7 +22,7 @@ import {
   uploadLocalModel,
 } from '../../../../store'
 import { formatBytes } from '../../../../utils/downloadUtils'
-import { LocalModelCommonFields } from './shared/LocalModelCommonFields'
+import { LocalModelCommonFields } from './common/LocalModelCommonFields'
 
 const { Text } = Typography
 
@@ -321,9 +321,8 @@ export function AddLocalModelUploadDrawer() {
         </Form.Item>
 
         {filteredFiles.length > 0 && (
-          <Card title={t('providers.selectedFiles')} size="small">
+          <Card title={t('providers.selectedFiles')}>
             <List
-              size="small"
               dataSource={filteredFiles}
               renderItem={item => (
                 <List.Item
@@ -385,7 +384,7 @@ export function AddLocalModelUploadDrawer() {
 
         {uploading &&
           (uploadProgress.length > 0 || overallUploadProgress > 0) && (
-            <Card title={t('providers.uploadProgress')} size="small">
+            <Card title={t('providers.uploadProgress')}>
               {overallUploadProgress > 0 && (
                 <div style={{ marginBottom: '12px' }}>
                   <Text strong>Overall Progress:</Text>

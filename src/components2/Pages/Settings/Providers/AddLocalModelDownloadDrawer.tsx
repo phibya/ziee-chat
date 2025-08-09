@@ -22,7 +22,7 @@ import {
   Stores,
 } from '../../../../store'
 import { Repository } from '../../../../types/api/repository'
-import { LocalModelCommonFields } from './shared/LocalModelCommonFields'
+import { LocalModelCommonFields } from './common/LocalModelCommonFields'
 
 const { Text } = Typography
 
@@ -255,7 +255,6 @@ export function AddLocalModelDownloadDrawer() {
         {viewDownload && viewDownload.progress_data && (
           <Card
             title={t('providers.downloadProgress')}
-            size="small"
             style={{ marginBottom: 16 }}
           >
             <Text>

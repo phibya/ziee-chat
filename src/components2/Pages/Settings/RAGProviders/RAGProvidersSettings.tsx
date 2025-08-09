@@ -41,7 +41,7 @@ import {
 import { RAGProvider, RAGProviderType } from '../../../../types/api/ragProvider'
 import { LocalRAGProviderSettings } from './LocalRAGProviderSettings'
 import { RemoteRAGProviderSettings } from './RemoteRAGProviderSettings'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { AddRAGProviderDrawer } from './AddRAGProviderDrawer'
 import { AddRAGDatabaseDrawer } from './AddRAGDatabaseDrawer'
 import { AddRAGDatabaseDownloadDrawer } from './AddRAGDatabaseDownloadDrawer'
@@ -235,7 +235,6 @@ export function RAGProvidersSettings() {
             <Button
               type="text"
               icon={<MenuOutlined />}
-              size="small"
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />
           </Dropdown>

@@ -7,10 +7,10 @@ import {
   Stores,
   updateExistingModel,
 } from '../../../../store'
-import { DeviceSelectionSection } from './shared/DeviceSelectionSection'
-import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
-import { ModelParametersSection } from './shared/ModelParametersSection'
-import { ModelSettingsSection } from './shared/ModelSettingsSection'
+import { DeviceSelectionSection } from './common/DeviceSelectionSection'
+import { ModelCapabilitiesSection } from './common/ModelCapabilitiesSection'
+import { ModelParametersSection } from './common/ModelParametersSection'
+import { ModelSettingsSection } from './common/ModelSettingsSection'
 import {
   BASIC_MODEL_FIELDS,
   MODEL_PARAMETERS,

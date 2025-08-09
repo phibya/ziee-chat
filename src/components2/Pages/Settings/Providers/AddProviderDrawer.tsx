@@ -16,7 +16,7 @@ import {
   CreateProviderRequest,
   ProviderType,
 } from '../../../../types/api/provider'
-import { ApiConfigurationSection } from './shared'
+import { ApiConfigurationSection } from './common'
 
 export function AddProviderDrawer() {
   const { t } = useTranslation()

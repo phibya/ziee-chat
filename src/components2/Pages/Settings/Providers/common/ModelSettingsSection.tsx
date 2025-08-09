@@ -129,7 +129,7 @@ export function ModelSettingsSection() {
   return (
     <Flex vertical className="gap-4 w-full">
       {/* Sequence & Memory Management */}
-      <Card size="small" title="Sequence & Memory Management">
+      <Card title="Sequence & Memory Management">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Max Sequences"
@@ -200,7 +200,7 @@ export function ModelSettingsSection() {
       </Card>
 
       {/* PagedAttention Configuration */}
-      <Card size="small" title="PagedAttention Configuration">
+      <Card title="PagedAttention Configuration">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="PagedAttention GPU Memory (MB)"
@@ -310,7 +310,7 @@ export function ModelSettingsSection() {
       </Card>
 
       {/* Performance Optimization */}
-      <Card size="small" title="Performance Optimization">
+      <Card title="Performance Optimization">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Prefix Cache Count"
@@ -351,7 +351,7 @@ export function ModelSettingsSection() {
       </Card>
 
       {/* Model Configuration */}
-      <Card size="small" title="Model Configuration">
+      <Card title="Model Configuration">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Data Type"
@@ -416,7 +416,7 @@ export function ModelSettingsSection() {
       </Card>
 
       {/* Vision Model Settings */}
-      <Card size="small" title="Vision Model Settings">
+      <Card title="Vision Model Settings">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Max Edge Length (Vision)"

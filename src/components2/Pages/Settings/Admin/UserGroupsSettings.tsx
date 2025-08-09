@@ -43,7 +43,7 @@ import {
   UpdateUserGroupRequest,
   UserGroup,
 } from '../../../../types'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 
 const { Title, Text } = Typography
 const { TextArea } = Input

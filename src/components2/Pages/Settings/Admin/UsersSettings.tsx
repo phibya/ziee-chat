@@ -47,7 +47,7 @@ import {
   User,
   UserGroup,
 } from '../../../../types'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
 const { Title, Text } = Typography
@@ -569,7 +569,7 @@ export function UsersSettings() {
                       okText="Yes"
                       cancelText="No"
                     >
-                      <Button type="link" danger size="small">
+                      <Button type="link" danger>
                         Remove
                       </Button>
                     </Popconfirm>

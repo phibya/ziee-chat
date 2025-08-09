@@ -1,4 +1,4 @@
-import { Flex, Typography } from 'antd'
+import { Typography } from 'antd'
 import { ReactNode } from 'react'
 
 const { Title, Text } = Typography
@@ -15,28 +15,31 @@ export function SettingsPageContainer({
   children,
 }: SettingsPageContainerProps) {
   return (
-    <Flex className="p-3 flex-col gap-3 h-full overflow-hidden">
-      <div className="w-full flex justify-center pt-3 !px-3">
-        <div className={'max-w-6xl w-full !px-3 flex flex-col gap-0'}>
-          <Title level={3} className="!m-0 !leading-tight">
+    <div className="flex flex-col gap-3 h-full overflow-y-auto">
+      <div className="w-full flex justify-center pt-3">
+        <div className={'max-w-4xl w-full flex flex-col gap-2 px-3'}>
+          <Title level={4} className="!m-0 !leading-tight">
             {title}
           </Title>
           {subtitle && (
             <Text
               type="secondary"
-              className=" !m-0 !p-0 !pt-1 text-base !leading-tight"
+              className=" !m-0 !p-0 text-base !leading-tight"
             >
               {subtitle}
             </Text>
           )}
         </div>
       </div>
-      <div className={'flex-1 w-full overflow-auto flex justify-center'}>
-        <div className={'max-w-6xl w-full gap-3 !px-3'}>
+      <div className={'flex w-full flex-1 justify-center pb-3'}>
+        <div
+          className={
+            'max-w-4xl w-full h-full flex flex-col gap-3 px-3 self-center'
+          }
+        >
           {children}
-          <div className="h-3" />
         </div>
       </div>
-    </Flex>
+    </div>
   )
 }

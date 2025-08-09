@@ -18,7 +18,7 @@ export function ApiConfigurationSection({
   const { t } = useTranslation()
 
   return (
-    <Card size="small" title={t('providers.apiConfiguration')}>
+    <Card title={t('providers.apiConfiguration')}>
       {showApiKey && (
         <Form.Item
           name="api_key"

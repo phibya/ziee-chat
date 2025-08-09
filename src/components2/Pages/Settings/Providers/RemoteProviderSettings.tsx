@@ -20,8 +20,8 @@ import {
   updateModelProvider,
 } from '../../../../store'
 import { ProviderProxySettingsForm } from './ProviderProxySettings'
-import { ModelsSection } from './shared/ModelsSection'
-import { ProviderHeader } from './shared/ProviderHeader'
+import { ModelsSection } from './common/ModelsSection'
+import { ProviderHeader } from './common/ProviderHeader'
 
 const { Title, Text } = Typography
 
@@ -29,11 +29,10 @@ export function RemoteProviderSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
-  const { provider_id } = useParams<{ provider_id?: string }>()
+  const { providerId } = useParams<{ providerId?: string }>()
 
   const [form] = Form.useForm()
   const [nameForm] = Form.useForm()
-  const [isMobile, setIsMobile] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [pendingSettings, setPendingSettings] = useState<any>(null)
 
@@ -42,10 +41,10 @@ export function RemoteProviderSettings() {
 
   // Get current provider and its models
   const currentProvider = Stores.AdminProviders.providers.find(
-    p => p.id === provider_id,
+    p => p.id === providerId,
   )
   const models = currentProvider?.models || []
-  const loading = modelsLoading[provider_id!] || false
+  const loading = modelsLoading[providerId!] || false
 
   // Check permissions for web app
   const canEditProviders =
@@ -54,7 +53,7 @@ export function RemoteProviderSettings() {
   // Helper functions for provider validation
   const canEnableProvider = (provider: any): boolean => {
     if (provider.enabled) return true // Already enabled
-    const providerModels = provider.id === provider_id ? models : []
+    const providerModels = provider.id === providerId ? models : []
     if (providerModels.length === 0) return false
     if (provider.type === 'local') return true
     if (!provider.api_key || provider.api_key.trim() === '') return false
@@ -69,7 +68,7 @@ export function RemoteProviderSettings() {
 
   const getEnableDisabledReason = (provider: any): string | null => {
     if (provider.enabled) return null
-    const providerModels = provider.id === provider_id ? models : []
+    const providerModels = provider.id === providerId ? models : []
     if (providerModels.length === 0)
       return 'No models available. Add at least one model first.'
     if (provider.type === 'local') return null
@@ -91,20 +90,6 @@ export function RemoteProviderSettings() {
       message.success(t('providers.copiedToClipboard'))
     } else {
       message.error(t('providers.clipboardNotAvailable'))
-    }
-  }
-
-  // Event handlers
-  const handleNameChange = async (changedValues: any) => {
-    if (!currentProvider || !canEditProviders) return
-
-    try {
-      await updateModelProvider(currentProvider.id, {
-        name: changedValues.name,
-      })
-    } catch (error) {
-      console.error('Failed to update provider:', error)
-      // Error is handled by the store
     }
   }
 
@@ -260,18 +245,6 @@ export function RemoteProviderSettings() {
     }
   }
 
-  // Effects
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
   // Show errors
   useEffect(() => {
     if (error) {
@@ -303,33 +276,13 @@ export function RemoteProviderSettings() {
 
   return (
     <Flex className={'flex-col gap-3'}>
-      {/* Provider Header */}
-      {!isMobile && (
-        <ProviderHeader
-          currentProvider={currentProvider}
-          isMobile={isMobile}
-          canEditProviders={canEditProviders}
-          nameForm={nameForm}
-          onNameChange={handleNameChange}
-          onProviderToggle={handleProviderToggle}
-          canEnableProvider={canEnableProvider}
-          getEnableDisabledReason={getEnableDisabledReason}
-        />
-      )}
-
-      {/* Mobile Provider Header */}
-      {isMobile && (
-        <ProviderHeader
-          currentProvider={currentProvider}
-          isMobile={isMobile}
-          canEditProviders={canEditProviders}
-          nameForm={nameForm}
-          onNameChange={handleNameChange}
-          onProviderToggle={handleProviderToggle}
-          canEnableProvider={canEnableProvider}
-          getEnableDisabledReason={getEnableDisabledReason}
-        />
-      )}
+      <ProviderHeader
+        currentProvider={currentProvider}
+        canEditProviders={canEditProviders}
+        onProviderToggle={handleProviderToggle}
+        canEnableProvider={canEnableProvider}
+        getEnableDisabledReason={getEnableDisabledReason}
+      />
 
       {/* API Configuration */}
       <Form
@@ -415,7 +368,6 @@ export function RemoteProviderSettings() {
         currentModels={models}
         modelsLoading={loading}
         canEditProviders={canEditProviders}
-        isMobile={isMobile}
         modelOperations={modelOperations}
         onAddModel={handleAddModel}
         onToggleModel={handleToggleModel}
