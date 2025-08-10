@@ -194,7 +194,7 @@ export const AssistantsPage: React.FC = () => {
       </TitleBarWrapper>
 
       {/* Page Content */}
-      <div className="flex-1 flex flex-col overflow-hidden items-center p-3">
+      <div className="flex-1 flex flex-col overflow-hidden items-center">
         {pageMinSize.xs && isSearchBoxVisible && (
           <div className={'w-full max-w-96'}>{searchInputComponent}</div>
         )}
@@ -205,19 +205,22 @@ export const AssistantsPage: React.FC = () => {
               <div>Loading assistants...</div>
             </div>
           ) : (
-            <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full h-auto self-center overflow-y-auto">
-              {getFilteredAndSortedAssistants().map((assistant: Assistant) => (
-                <div key={assistant.id} className={'min-w-72 flex-1'}>
-                  <AssistantCard assistant={assistant} />
-                </div>
-              ))}
-              {/* Placeholder divs for grid layout */}
-              <div className={'min-w-72 flex-1'}></div>
-              <div className={'min-w-72 flex-1'}></div>
-              <div className={'min-w-72 flex-1'}></div>
+            <div className={'flex flex-1 flex-col overflow-y-auto h-full'}>
+              <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full h-auto p-3 self-center">
+                {getFilteredAndSortedAssistants().map(
+                  (assistant: Assistant) => (
+                    <div key={assistant.id} className={'min-w-70 flex-1'}>
+                      <AssistantCard assistant={assistant} />
+                    </div>
+                  ),
+                )}
+                {/* Placeholder divs for grid layout */}
+                <div className={'min-w-70 flex-1'}></div>
+                <div className={'min-w-70 flex-1'}></div>
+                <div className={'min-w-70 flex-1'}></div>
+              </div>
             </div>
           )}
-          <div className={'w-full flex-1'} />
         </div>
 
         {/* Empty State */}

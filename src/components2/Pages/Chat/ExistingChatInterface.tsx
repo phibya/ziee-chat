@@ -75,8 +75,8 @@ export function ExistingChatInterface() {
       <TitleBarWrapper
         className="z-2 backdrop-blur-3xl"
         style={{
-          backgroundColor: tinycolor(token.colorBgContainer)
-            .setAlpha(0.9)
+          backgroundColor: tinycolor(token.colorBgLayout)
+            .setAlpha(0.85)
             .toRgbString(),
         }}
       >

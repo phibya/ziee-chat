@@ -152,6 +152,32 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [token.colorBgLayout])
 
+  // Visual viewport listener for mobile keyboard adjustments
+  useEffect(() => {
+    const updateBodyHeight = () => {
+      if (window.visualViewport) {
+        const height = window.visualViewport.height
+        document.body.style.height = `${height}px`
+
+        // Automatically scroll to top when viewport changes
+        document.documentElement.scrollTop = 0
+      }
+    }
+
+    // Check if visual viewport is supported (mainly mobile devices)
+    if (window.visualViewport) {
+      // Set initial height
+      updateBodyHeight()
+
+      // Listen for viewport changes (keyboard show/hide)
+      window.visualViewport.addEventListener('resize', updateBodyHeight)
+
+      return () => {
+        window.visualViewport?.removeEventListener('resize', updateBodyHeight)
+      }
+    }
+  }, [])
+
   const toggleSidebar = () => {
     if (sidebarRef.current) {
       sidebarRef.current.style.transition = 'transform 200ms ease-out'
@@ -166,7 +192,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div
-      className="h-dvh w-screen flex overflow-hidden"
+      className="h-full w-screen flex overflow-hidden"
       style={{
         backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
       }}
@@ -196,7 +222,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div
         className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
         style={{
-          left: isDesktopApp && !isFullscreen ? 86 : 12,
+          left: isDesktopApp && !isFullscreen ? 78 : 12,
           top: 0,
         }}
       >

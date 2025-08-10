@@ -160,24 +160,25 @@ export const ProjectsPage: React.FC = () => {
       </TitleBarWrapper>
 
       {/* Page Content */}
-      <div className="flex-1 flex flex-col overflow-hidden items-center p-3">
+      <div className="flex-1 flex flex-col overflow-hidden items-center">
         {pageMinSize.xs && isSearchBoxVisible && (
           <div className={'w-full max-w-96'}>{searchInputComponent}</div>
         )}
         {/* Projects Grid */}
         <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-          <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full h-auto self-center overflow-y-auto">
-            {getFilteredAndSortedProjects().map(project => (
-              <div className={'min-w-72 flex-1'}>
-                <ProjectCard project={project} />
-              </div>
-            ))}
-            {/* Placeholder divs for grid layout */}
-            <div className={'min-w-72 flex-1'}></div>
-            <div className={'min-w-72 flex-1'}></div>
-            <div className={'min-w-72 flex-1'}></div>
+          <div className={'h-full flex flex-col overflow-y-auto'}>
+            <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full self-center px-3">
+              {getFilteredAndSortedProjects().map(project => (
+                <div className={'min-w-70 flex-1'}>
+                  <ProjectCard project={project} />
+                </div>
+              ))}
+              {/* Placeholder divs for grid layout */}
+              <div className={'min-w-70 flex-1'}></div>
+              <div className={'min-w-70 flex-1'}></div>
+              <div className={'min-w-70 flex-1'}></div>
+            </div>
           </div>
-          <div className={'w-full flex-1'} />
         </div>
 
         {/* Empty State */}

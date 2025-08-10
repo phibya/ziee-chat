@@ -68,9 +68,13 @@ export const Drawer: React.FC<DrawerProps> = props => {
                 <IoIosArrowBack />
               </div>
             </Button>
-            <Typography.Title level={5} className={'!m-0'}>
-              {props.title}
-            </Typography.Title>
+            {typeof props.title === 'string' ? (
+              <Typography.Title level={5} className={'!m-0'}>
+                {props.title}
+              </Typography.Title>
+            ) : (
+              props.title
+            )}
           </div>
         ) : null
       }
@@ -111,7 +115,14 @@ export const Drawer: React.FC<DrawerProps> = props => {
       // className={`!bg-transparent !m-3 ${className}`}
       drawerRender={node => {
         return (
-          <div className={'w-full h-full'}>
+          <div
+            className={'w-full h-full'}
+            onTouchStart={e => e.stopPropagation()}
+            onTouchMove={e => e.stopPropagation()}
+            onTouchEnd={e => e.stopPropagation()}
+            onScroll={e => e.stopPropagation()}
+            onWheel={e => e.stopPropagation()}
+          >
             <div className={'w-full h-full'}>{node}</div>
             <ResizeHandle placement={'left'} parentLevel={[1]} />
           </div>

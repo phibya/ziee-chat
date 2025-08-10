@@ -1,10 +1,20 @@
 import { theme, ThemeConfig } from 'antd'
 import { ComponentOverrides, TokenOverrides } from './override.ts'
+import tinycolor from 'tinycolor2'
+
+const BaseBackgroundColor = tinycolor('#f0f2f5').lighten(2.5).toString() // Light background color for the light theme
 
 const baseTheme = {
   algorithm: [theme.defaultAlgorithm, theme.compactAlgorithm],
   token: {
     ...TokenOverrides,
+    colorBgLayout: BaseBackgroundColor,
+    colorBgContainer: '#ffffff', // Light background for layout
+    colorBgBase: BaseBackgroundColor, // Base background color for components
+    colorBorder: tinycolor(BaseBackgroundColor).darken(15).toString(),
+    colorBorderSecondary: tinycolor(BaseBackgroundColor).darken(7).toString(),
+    colorHighlight: tinycolor(BaseBackgroundColor).darken(20).toString(),
+    colorBgMask: tinycolor('#f0f2f5').darken(5).toString(),
   },
   components: {
     ...ComponentOverrides,

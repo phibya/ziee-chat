@@ -74,11 +74,11 @@ export const ConversationSummaryCard: React.FC<
   return (
     <Card
       key={conversation.id}
+      onClick={handleCardClick}
       className="cursor-pointer relative group hover:!shadow-md transition-shadow"
       classNames={{
         body: '!px-3 !py-2 flex gap-2 flex-col',
       }}
-      onClick={handleCardClick}
       hoverable
       style={{
         borderColor: isSelected ? token.colorPrimary : undefined,

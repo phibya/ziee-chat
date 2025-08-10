@@ -10,7 +10,7 @@ import {
   ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Button, Dropdown, Flex, Menu, Typography } from 'antd'
+import { Button, Dropdown, Flex, Menu, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { isDesktopApp } from '../../api/core'
@@ -34,6 +34,7 @@ export function SettingsPage() {
   const location = useLocation()
   const { hasPermission } = usePermissions()
   const mainContentMinSize = useMainContentMinSize()
+  const { token } = theme.useToken()
 
   const baseMenuItems = [
     {
@@ -302,12 +303,11 @@ export function SettingsPage() {
             <div className="flex flex-1 items-center px-2">
               <IoIosArrowForward />
               <Dropdown
+                overlayStyle={{
+                  border: '1px solid ' + token.colorBorderSecondary,
+                }}
                 overlayClassName={`
-                  max-h-[calc(100vh-64px)]
-                  overflow-y-auto
                   rounded-md
-                  [&._ant-dropdown-menu]:!max-h-[calc(200vh)]
-                  [&._ant-dropdown-menu]:!overflow-y-hidden
                   `}
                 menu={{
                   items: menuItems.map((item: any) => {

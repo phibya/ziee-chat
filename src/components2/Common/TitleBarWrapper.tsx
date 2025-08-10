@@ -21,11 +21,12 @@ export const TitleBarWrapper = ({
       style={{
         paddingLeft:
           isSidebarCollapsed && isDesktopApp && !isFullscreen
-            ? 128
+            ? 110
             : isSidebarCollapsed
               ? 48
               : 12,
         borderColor: token.colorBorderSecondary,
+        backgroundColor: token.colorBgLayout,
         ...style,
       }}
     >

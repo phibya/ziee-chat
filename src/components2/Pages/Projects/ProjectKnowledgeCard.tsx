@@ -13,21 +13,30 @@ import {
   Typography,
   Upload,
 } from 'antd'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { useProjectStore } from '../../../store'
 import { FileCard } from '../../Common/FileCard.tsx'
 import { ProjectInstructionDrawer } from './ProjectInstructionDrawer.tsx'
+import { useUpdate } from 'react-use'
 
 const { Text } = Typography
 
-export const ProjectKnowledgeCard: React.FC = () => {
+interface ProjectKnowledgeCardProps {
+  getHeaderRef?: () => HTMLDivElement | null
+}
+
+export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
+  getHeaderRef,
+}) => {
   const { message } = App.useApp()
   const { projectId } = useParams<{ projectId: string }>()
   const { token } = theme.useToken()
   const [instructionDrawerOpen, setInstructionDrawerOpen] = useState(false)
   const [savingInstruction, setSavingInstruction] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const update = useUpdate()
 
   // Project store
   const {
@@ -39,6 +48,10 @@ export const ProjectKnowledgeCard: React.FC = () => {
     uploadFiles,
     removeUploadProgress,
   } = useProjectStore(projectId)
+
+  useEffect(() => {
+    if (getHeaderRef) update()
+  }, [])
 
   // Get files for this project
   const projectFiles = projectId
@@ -88,8 +101,24 @@ export const ProjectKnowledgeCard: React.FC = () => {
     }
   }
 
+  const header = (
+    <div className={'w-full flex justify-between'}>
+      <Typography.Title level={5} className={'!m-0'}>
+        Project knowledge
+      </Typography.Title>
+      <Button
+        icon={<PlusOutlined />}
+        onClick={handleAddFilesClick}
+        style={{ pointerEvents: 'auto' }}
+        loading={uploading}
+      />
+    </div>
+  )
+
   return (
-    <div>
+    <div
+      className={'h-full flex flex-col overflow-y-hidden overflow-x-visible'}
+    >
       <Upload.Dragger
         multiple
         beforeUpload={(_, fileList) => {
@@ -122,19 +151,17 @@ export const ProjectKnowledgeCard: React.FC = () => {
           <Text type="secondary">Drag and drop files here</Text>
         </Flex>
       </Upload.Dragger>
-      <div className={'w-full flex justify-between'}>
-        <Typography.Title level={5} className={'pb-2'}>
-          Project knowledge
-        </Typography.Title>
-        <Button
-          icon={<PlusOutlined />}
-          onClick={handleAddFilesClick}
-          style={{ pointerEvents: 'auto' }}
-          loading={uploading}
-        />
-      </div>
+      {
+        //portal if getHeaderRef is provided
+        getHeaderRef && getHeaderRef() ? (
+          createPortal(header, getHeaderRef()!)
+        ) : (
+          <div className={'w-full px-3 pt-3 pb-2'}>{header}</div>
+        )
+      }
+
       {/* Project Instructions */}
-      <Flex className="gap-1 flex-col">
+      <div className="flex gap-1 flex-col !px-3">
         <Text strong>Project Instructions</Text>
         <Card
           classNames={{
@@ -157,11 +184,11 @@ export const ProjectKnowledgeCard: React.FC = () => {
             </Button>
           </div>
         </Card>
-      </Flex>
+      </div>
 
       {/* Upload Progress */}
       {uploadProgress.length > 0 && (
-        <div className={'py-0 flex flex-col gap-1 pt-2'}>
+        <div className={'py-0 flex flex-col gap-1 pt-2 px-3'}>
           <Text strong>Uploading files...</Text>
           <div className={'py-4 flex flex-col gap-2'}>
             {uploadProgress.map((progress: any, index: number) => (
@@ -192,26 +219,34 @@ export const ProjectKnowledgeCard: React.FC = () => {
       )}
 
       {/* Documents */}
-      <Flex justify="space-between" align="center" className={'!mt-3'}>
+      <div className={'!mt-3 flex px-3'}>
         <Text strong>Documents</Text>
-      </Flex>
+      </div>
 
-      <div className={'overflow-y-auto mt-3 flex-1'}>
-        <div className="flex gap-2 flex-wrap">
-          {/* Show uploading files */}
-          {uploading &&
-            uploadProgress.map((progress: any, index: number) => (
-              <FileCard
-                key={`uploading-${index}`}
-                uploadingFile={progress}
-                size={90}
-              />
+      <div className={'overflow-y-auto mt-3 flex-1 px-3'}>
+        <div>
+          <div className="flex gap-2 flex-wrap">
+            {/* Show uploading files */}
+            {uploading &&
+              uploadProgress.map((progress: any, index: number) => (
+                <div className={'flex-1 min-w-20 max-w-28'}>
+                  <FileCard
+                    key={`uploading-${index}`}
+                    uploadingFile={progress}
+                  />
+                </div>
+              ))}
+
+            {/* Show existing files */}
+            {projectFiles.map((file: any) => (
+              <div className={'flex-1 min-w-20 max-w-28'}>
+                <FileCard key={file.id} file={file} />
+              </div>
             ))}
-
-          {/* Show existing files */}
-          {projectFiles.map((file: any) => (
-            <FileCard key={file.id} file={file} size={103} />
-          ))}
+            {new Array(10).fill(0).map((_, i) => (
+              <div key={i} className={'flex-1 min-w-20 max-w-28'} />
+            ))}
+          </div>
         </div>
       </div>
 

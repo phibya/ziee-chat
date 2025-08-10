@@ -23,6 +23,7 @@ import {
 import {
   addNewConversationToList,
   createNewConversation,
+  deleteFile,
   loadUserAssistants,
   loadUserProvidersWithAllModels,
   Stores,
@@ -331,6 +332,10 @@ export const ChatInput = function ChatInput({
   }
 
   const handleCancel = () => {
+    //delete all new files
+    newFiles.forEach((_, fileId) => {
+      deleteFile(fileId)
+    })
     destroyStore()
     onDoneEditing?.()
   }
@@ -409,7 +414,7 @@ export const ChatInput = function ChatInput({
             : token.colorBorderSecondary,
           transition: 'border-color 0.2s, box-shadow 0.2s',
           pointerEvents: isDragging ? 'none' : 'auto',
-          backgroundColor: token.colorBgLayout,
+          backgroundColor: token.colorBgContainer,
         }}
       >
         <Form
@@ -440,7 +445,7 @@ export const ChatInput = function ChatInput({
                       setContent(form.getFieldValue('message') || '')
                     }}
                     style={{
-                      backgroundColor: token.colorBgLayout,
+                      backgroundColor: 'transparent',
                     }}
                   />
                 </Form.Item>
@@ -573,34 +578,40 @@ export const ChatInput = function ChatInput({
               <div style={{ padding: '8px' }}>
                 <div className="flex gap-2 w-full overflow-x-auto">
                   {Array.from(files.values()).map(file => (
-                    <FileCard
-                      key={file.id}
-                      file={file}
-                      canDelete={false}
-                      canRemove={true}
-                      onRemove={handleRemoveFile}
-                    />
+                    <div className={'flex-1 min-w-20 max-w-24'}>
+                      <FileCard
+                        key={file.id}
+                        file={file}
+                        canDelete={false}
+                        canRemove={true}
+                        onRemove={handleRemoveFile}
+                      />
+                    </div>
                   ))}
                   {Array.from(newFiles.values()).map(file => (
-                    <FileCard
-                      key={file.id}
-                      file={file}
-                      canDelete={true}
-                      onDelete={handleRemoveFile}
-                    />
+                    <div className={'flex-1 min-w-20 max-w-24'}>
+                      <FileCard
+                        key={file.id}
+                        file={file}
+                        canDelete={true}
+                        onDelete={handleRemoveFile}
+                      />
+                    </div>
                   ))}
                   {Array.from(uploadingFiles.values()).map(uploadingFile => (
-                    <FileCard
-                      key={uploadingFile.id}
-                      uploadingFile={{
-                        id: uploadingFile.id,
-                        filename: uploadingFile.filename,
-                        progress: uploadingFile.progress || 0,
-                        status: 'uploading',
-                        size: uploadingFile.size,
-                      }}
-                      onRemove={handleRemoveFile}
-                    />
+                    <div className={'flex-1 min-w-20 max-w-24'}>
+                      <FileCard
+                        key={uploadingFile.id}
+                        uploadingFile={{
+                          id: uploadingFile.id,
+                          filename: uploadingFile.filename,
+                          progress: uploadingFile.progress || 0,
+                          status: 'uploading',
+                          size: uploadingFile.size,
+                        }}
+                        onRemove={handleRemoveFile}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

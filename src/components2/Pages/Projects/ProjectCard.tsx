@@ -40,11 +40,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Card
-      hoverable
-      className="h-full"
+      className="cursor-pointer relative group hover:!shadow-md transition-shadow h-full"
       classNames={{
-        body: 'h-full flex flex-col !p-3 !pb-1',
+        body: '!px-3 !pb-0 !py-2 flex gap-2 flex-col',
       }}
+      hoverable
       onClick={handleCardClick}
     >
       <Flex className="h-full flex-col flex-1">

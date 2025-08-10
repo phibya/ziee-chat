@@ -22,6 +22,7 @@ export const ProjectDetailsPage: React.FC = () => {
   const windowMinSize = useWindowMinSize()
   const [isKnowledgeCardOpen, setIsKnowledgeCardOpen] = React.useState(false)
   const { token } = theme.useToken()
+  const knowledgeCardHeaderRef = useRef<HTMLDivElement>(null)
 
   // Project store
   const { project, loading, error, clearError } = useProjectStore(projectId)
@@ -107,9 +108,9 @@ export const ProjectDetailsPage: React.FC = () => {
         }
       >
         {/*Left Side - Chat Input and Conversations*/}
-        <div className={'flex flex-col flex-1 overflow-y-hidden'}>
+        <div className={'flex flex-col flex-1 overflow-y-auto h-full'}>
           {windowMinSize.xs && (
-            <div className={'w-full py-6'}>
+            <div className={'w-full pt-3 pb-6'}>
               <Typography.Title
                 level={4}
                 className="!m-0 !leading-tight px-3 !font-semibold"
@@ -133,11 +134,7 @@ export const ProjectDetailsPage: React.FC = () => {
             </div>
           </div>
           {/* Recent Conversations */}
-          <div
-            className={
-              'flex flex-col gap-3 overflow-y-hidden overflow-x-visible min-h-1/2'
-            }
-          >
+          <div className={'flex flex-col gap-3 overflow-x-visible'}>
             <Flex
               justify="space-between"
               align="center"
@@ -151,7 +148,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 ref={searchBoxContainerRef}
               />
             </Flex>
-            <div className={'flex flex-1 overflow-auto'}>
+            <div className={'flex flex-1'}>
               <ConversationHistory
                 getSearchBoxContainer={() => searchBoxContainerRef.current}
               />
@@ -160,11 +157,11 @@ export const ProjectDetailsPage: React.FC = () => {
         </div>
         {/* Right Side - Project Knowledge */}
         {!windowMinSize.md ? (
-          <div className={`p-3 w-96`}>
+          <div className={`p-3 w-96 h-full`}>
             <Card
               className="overflow-y-hidden flex flex-col w-full h-full"
               classNames={{
-                body: 'flex flex-col relative overflow-y-hidden flex-1',
+                body: '!p-0 flex flex-col relative overflow-y-hidden flex-1',
               }}
               styles={{
                 body: {
@@ -177,20 +174,26 @@ export const ProjectDetailsPage: React.FC = () => {
           </div>
         ) : (
           <Drawer
+            title={
+              <div
+                className={'flex-1 pr-2 pt-1'}
+                ref={knowledgeCardHeaderRef}
+              />
+            }
             open={isKnowledgeCardOpen}
             onClose={() => setIsKnowledgeCardOpen(false)}
             maskClosable
+            classNames={{
+              body: '!px-0 !pt-0',
+            }}
           >
             <div className={'h-full w-full flex flex-col gap-2'}>
               <div
                 className={'flex flex-col relative overflow-y-hidden flex-1'}
               >
-                <ProjectKnowledgeCard />
-              </div>
-              <div>
-                <Button onClick={() => setIsKnowledgeCardOpen(false)}>
-                  Close
-                </Button>
+                <ProjectKnowledgeCard
+                  getHeaderRef={() => knowledgeCardHeaderRef.current}
+                />
               </div>
             </div>
           </Drawer>

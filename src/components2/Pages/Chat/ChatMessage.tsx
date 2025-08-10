@@ -62,26 +62,28 @@ export const ChatMessage = memo(function ChatMessage({
   }
 
   return (
-    <div className={'w-full flex flex-col'}>
+    <div className={'w-full flex flex-col overflow-visible'}>
       {/* Render files if message has any */}
       {isUser && message.files && message.files.length > 0 && (
-        <div className="flex gap-2 flex-wrap w-full overflow-x-auto pb-2 !pl-2">
+        <div className="flex gap-2 w-full overflow-x-auto pb-2 !pl-2">
           {message.files.map(file => (
-            <FileCard
-              key={file.id}
-              file={file}
-              size={80}
-              canRemove={false}
-              showFileName={false}
-            />
+            <div className={'flex-1 min-w-18 max-w-24'}>
+              <FileCard
+                key={file.id}
+                file={file}
+                canRemove={false}
+                showFileName={false}
+              />
+            </div>
           ))}
         </div>
       )}
       <div
         key={message.id}
-        className={`flex gap-2 p-3 pr-4 rounded-lg relative w-fit min-w-36 ${isEditing ? 'w-full' : ''}`}
+        className={`flex gap-2 p-2 pr-2 rounded-lg relative w-fit min-w-36 ${isEditing ? 'w-full' : ''}`}
         style={{
           backgroundColor: isUser ? token.colorBgMask : 'transparent',
+          border: isUser ? `1px solid ${token.colorBorderSecondary}` : 'none',
         }}
         onMouseOver={() => handleMouseOverOrClick()}
         onClick={() => handleMouseOverOrClick(true)}
@@ -92,7 +94,9 @@ export const ChatMessage = memo(function ChatMessage({
         </div>
 
         {/* Message content */}
-        <div className={`${isUser ? '!pt-0.5' : ''} flex flex-1 -mt-[2px]`}>
+        <div
+          className={`${isUser ? '!pt-0.5' : ''} flex flex-1 -mt-[2px] w-full overflow-x-hidden`}
+        >
           {isEditing ? (
             <ChatInput
               editingMessage={message}
@@ -100,7 +104,7 @@ export const ChatMessage = memo(function ChatMessage({
             />
           ) : (
             <div
-              className={'w-full flex flex-col gap-2'}
+              className={'w-full flex flex-col gap-2 pr-2'}
               style={{
                 whiteSpace: isUser ? 'pre-wrap' : 'normal',
               }}
