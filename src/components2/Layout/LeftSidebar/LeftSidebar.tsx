@@ -12,7 +12,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons'
 import { logoutUser, setSidebarCollapsed, Stores } from '../../../store'
-import { DownloadIndicator } from '../DownloadIndicator'
+import { DownloadIndicator } from './DownloadIndicator.tsx'
 import { isDesktopApp } from '../../../api/core.ts'
 import { RecentConversations } from './RecentConversations'
 import { TauriDragRegion } from '../../Common/TauriDragRegion'

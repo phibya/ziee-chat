@@ -18,9 +18,14 @@ const { Text } = Typography
 interface DownloadItemProps {
   download: DownloadInstance
   mode?: 'full' | 'compact' | 'minimal'
+  onClick?: () => void
 }
 
-export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
+export function DownloadItem({
+  download,
+  mode = 'full',
+  onClick,
+}: DownloadItemProps) {
   const { message } = App.useApp()
   const { token } = theme.useToken()
 
@@ -63,11 +68,12 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
             className="text-xs truncate flex-1 pr-2"
             onClick={() => {
               openViewDownloadModal(download.id)
+              if (onClick) onClick()
             }}
           >
             {download.request_data.alias}
           </Link>
-          <Text type="secondary" className="text-xs">
+          <Text type="secondary" className="!text-xs">
             {percent}%
           </Text>
         </Flex>
@@ -81,10 +87,10 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
         />
         {(speed || eta) && (
           <Flex justify="space-between" align="center" className="mt-1">
-            <Text type="secondary" className="text-xs">
+            <Text type="secondary" className="!text-xs">
               {speed || ''}
             </Text>
-            <Text type="secondary" className="text-xs">
+            <Text type="secondary" className="!text-xs">
               {eta ? `ETA: ${eta}` : ''}
             </Text>
           </Flex>

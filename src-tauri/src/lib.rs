@@ -328,7 +328,11 @@ async fn start_api_server(port: u16, api_router: Router) {
     } else if std::env::var("HEADLESS").unwrap_or_default() == "true" {
         // Headless mode: Serve UI folder if it exists
         println!("Headless mode: API + Frontend server on port {}", port);
-        use tower_http::services::ServeDir;
+        use tower_http::services::{ServeDir, ServeFile};
+        use tower_http::set_header::SetResponseHeaderLayer;
+        use http::header::CACHE_CONTROL;
+        use http::HeaderValue;
+        use tower::ServiceBuilder;
         let static_dir = std::env::current_exe()
             .unwrap()
             .parent()
@@ -337,10 +341,36 @@ async fn start_api_server(port: u16, api_router: Router) {
 
         if static_dir.exists() {
             println!("Serving UI from: {}", static_dir.display());
-            api_router
+            
+            // Create assets service with aggressive caching
+            let assets_dir = static_dir.join("assets");
+            let assets_service = if assets_dir.exists() {
+                Some(ServiceBuilder::new()
+                    .layer(SetResponseHeaderLayer::overriding(
+                        CACHE_CONTROL,
+                        HeaderValue::from_static("public, max-age=31536000, immutable")
+                    ))
+                    .service(ServeDir::new(&assets_dir)))
+            } else {
+                None
+            };
+            
+            // Create main SPA service with fallback to index.html
+            let index_path = static_dir.join("index.html");
+            let spa_service = ServeDir::new(&static_dir)
+                .not_found_service(ServeFile::new(&index_path));
+            
+            let mut router = api_router
                 .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
-                .layer(CorsLayer::permissive())
-                .fallback_service(ServeDir::new(static_dir))
+                .layer(CorsLayer::permissive());
+            
+            // Add assets route with caching if assets directory exists
+            if let Some(assets_service) = assets_service {
+                router = router.nest_service("/assets", assets_service);
+            }
+            
+            // Add SPA fallback service
+            router.fallback_service(spa_service)
         } else {
             println!(
                 "Warning: UI folder not found at {}, serving API only",

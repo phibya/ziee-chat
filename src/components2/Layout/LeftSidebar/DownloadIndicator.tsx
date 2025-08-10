@@ -10,15 +10,19 @@ import {
   Typography,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { Stores } from '../../store'
-import type { DownloadInstance } from '../../types/api/modelDownloads'
-import { DownloadItem } from '../common/DownloadItem.tsx'
+import { Stores, toggleSidebar } from '../../../store'
+import type { DownloadInstance } from '../../../types/api/modelDownloads'
+import { DownloadItem } from '../../Common/DownloadItem'
+import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
+import { useState } from 'react'
 
 const { Text } = Typography
 
 export function DownloadIndicator() {
   const { t } = useTranslation()
   const { token } = theme.useToken()
+  const windowMinSize = useWindowMinSize()
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false)
 
   // Get active downloads from store
   const downloads = Object.values(Stores.ModelDownload.downloads)
@@ -44,7 +48,7 @@ export function DownloadIndicator() {
   // Create the popover content
   const popoverContent = (
     <div className="w-60">
-      <Text strong className="block mb-2">
+      <Text className="block mb-1">
         {t('downloads.activeDownloads', {
           count: downloads.length,
           defaultValue: `${downloads.length} Active Downloads`,
@@ -57,6 +61,13 @@ export function DownloadIndicator() {
               key={download.id}
               download={download}
               mode="minimal"
+              onClick={() => {
+                console.log('click download item')
+                if (windowMinSize.xs) {
+                  toggleSidebar()
+                }
+                setIsPopoverOpen(false)
+              }}
             />
             {i < downloads.length - 1 && (
               <Divider className={'!m-0 !leading-0'} />
@@ -72,7 +83,9 @@ export function DownloadIndicator() {
       content={popoverContent}
       title={null}
       trigger="click"
-      placement="rightTop"
+      placement={windowMinSize.xs ? 'top' : 'rightTop'}
+      open={isPopoverOpen}
+      onOpenChange={open => setIsPopoverOpen(open)}
     >
       <Button
         type="text"
@@ -80,6 +93,7 @@ export function DownloadIndicator() {
         style={{
           border: `1px solid ${token.colorBorder}`,
         }}
+        onClick={() => setIsPopoverOpen(!isPopoverOpen)}
       >
         <Flex vertical className="w-full" gap={4}>
           <Flex align="center" justify="space-between">
