@@ -146,6 +146,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
     }
 
     let response: Response
+    let abortController: AbortController | undefined = undefined
 
     // Use XMLHttpRequest for FormData uploads with progress tracking
     if (isFormData && fileUploadProgress && body) {
@@ -292,12 +293,21 @@ export const callAsync = async <U extends ApiEndpointUrl>(
         xhr.send(body)
       })
     } else {
+      // Create AbortController for SSE stream management if SSE callbacks are provided
+      abortController = sseCallbacks ? new AbortController() : undefined
+
       // Use fetch for non-FormData requests or when no progress tracking is needed
       response = await fetch(`${bUrl}${endpointPath}`, {
         method,
         headers,
         body,
+        signal: abortController?.signal,
       })
+
+      // Send initial __init event with abortController for SSE streams
+      if (abortController && sseCallbacks) {
+        sseCallbacks('__init', { abortController })
+      }
     }
 
     // Handle SSE streaming if callbacks are provided and response is text/event-stream
@@ -323,6 +333,12 @@ export const callAsync = async <U extends ApiEndpointUrl>(
         let currentEvent = ''
 
         while (true) {
+          // Check if abort was requested
+          if (abortController?.signal.aborted) {
+            reader.releaseLock()
+            break
+          }
+
           const { done, value } = await reader.read()
           if (done) break
 
@@ -425,7 +441,12 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       return textResponse as unknown as ResponseByUrl<U>
     }
   } catch (error) {
-    console.error(`Error calling endpoint ${endpointUrl}:`, error)
+    // Handle AbortErrors more gracefully - they're expected during cleanup
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log(`Request to ${endpointUrl} was aborted`)
+    } else {
+      console.error(`Error calling endpoint ${endpointUrl}:`, error)
+    }
     throw error // Re-throw to allow caller to handle it
   }
 }

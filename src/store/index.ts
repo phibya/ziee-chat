@@ -4,6 +4,7 @@ import { useAdminAssistantsStore } from './admin/assistants'
 import { useAdminUsersStore } from './admin/users'
 import { useAdminUserGroupsStore } from './admin/userGroups'
 import { useAdminProxySettingsStore } from './admin/proxySettings'
+import { useHardwareStore } from './admin/hardware'
 import { useAuthStore } from './auth'
 import { useConversationsStore } from './conversations'
 import { useHubStore } from './hub'
@@ -58,6 +59,14 @@ export {
   updateSystemProxySettings,
   useAdminProxySettingsStore,
 } from './admin/proxySettings'
+// Admin Hardware store
+export {
+  clearHardwareError,
+  loadHardwareInfo,
+  subscribeToHardwareUsage,
+  disconnectHardwareUsage,
+  useHardwareStore,
+} from './admin/hardware'
 // Admin Users store
 export {
   clearAdminUsersStoreError,
@@ -357,6 +366,7 @@ export const Stores = {
   AdminUsers: createStoreProxy(useAdminUsersStore),
   AdminUserGroups: createStoreProxy(useAdminUserGroupsStore),
   AdminProxySettings: createStoreProxy(useAdminProxySettingsStore),
+  AdminHardware: createStoreProxy(useHardwareStore),
   Assistants: createStoreProxy(useUserAssistantsStore),
   AdminAssistants: createStoreProxy(useAdminAssistantsStore),
   Conversations: createStoreProxy(useConversationsStore),

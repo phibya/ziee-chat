@@ -10,7 +10,7 @@ resolver = "2"
 [package]
 name = "ziee"
 version = "0.1.0"
-description = "A Tauri App"
+description = "Zie Chat"
 authors = ["you"]
 edition = "2021"
 default-run = "ziee"
@@ -67,7 +67,21 @@ tempfile = "3.8"
 url = "2.5"
 http = "1.0"
 git2 = { version = "0.19", features = ["vendored-openssl"] }
+sysinfo = "0.32"
+lazy_static = "1.4"
 eventsource-stream = "0.2"
+
+# GPU detection and monitoring
+nvml-wrapper = { version = "0.10", optional = true }
+opencl3 = { version = "0.10", optional = true }
+ash = { version = "0.38", optional = true }
+wgpu-hal = { version = "26", optional = true }
+libamdgpu_top = { version = "0.9", optional = true }
+
+# macOS-specific dependencies  
+[target.'cfg(target_os = "macos")'.dependencies]
+metal = { version = "0.27", optional = true }
+core-foundation = { version = "0.9", optional = true }
 
 # File processing dependencies
 image = "0.25"
@@ -97,7 +111,8 @@ nix = { version = "0.29", features = ["signal", "process"] }
 winapi = { version = "0.3", features = ["processthreadsapi", "winnt", "handleapi"] }
 
 [features]
-default = []
+default = ["gpu-detect"]
+gpu-detect = ["nvml-wrapper", "opencl3", "ash", "wgpu-hal", "libamdgpu_top", "metal", "core-foundation"]
 
 [profile.dev.package.gemm-f16]
 opt-level = 3

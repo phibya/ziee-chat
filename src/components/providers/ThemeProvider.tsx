@@ -47,6 +47,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
   }, [isDarkMode])
 
+  console.log(currentTheme)
+
   return (
     <ThemeContext.Provider value={currentTheme}>
       <ConfigProvider theme={currentTheme}>{children}</ConfigProvider>

@@ -7,5 +7,8 @@ export const ComponentOverrides = {
   Button: {
     // Override button tokens
   },
+  Statistic: {
+    contentFontSize: 18,
+  },
   // Other component overrides can go here
 }

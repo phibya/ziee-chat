@@ -32,6 +32,7 @@ import {
   DefaultLanguageResponse,
   UpdateDefaultLanguageRequest,
 } from './globalConfig'
+import { HardwareInfoResponse } from './hardware'
 import {
   File,
   FileListParams,
@@ -286,6 +287,10 @@ export const ApiEndpoints = {
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
 
+  // Admin - Hardware Management
+  'Admin.getHardwareInfo': 'GET /api/admin/hardware',
+  'Admin.subscribeHardwareUsage': 'GET /api/admin/hardware/usage-stream',
+
   // ===========================
   // RAG PROVIDER MANAGEMENT
   // ===========================
@@ -377,6 +382,9 @@ export type ApiEndpointParameters = {
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
   'Admin.getProxySettings': void
   'Admin.updateProxySettings': UpdateProxySettingsRequest
+  // Admin hardware management
+  'Admin.getHardwareInfo': void
+  'Admin.subscribeHardwareUsage': void
 
   'Utils.testProxy': TestProxyConnectionRequest
   // User settings management
@@ -594,6 +602,9 @@ export type ApiEndpointResponses = {
   'Admin.updateDefaultLanguage': DefaultLanguageResponse
   'Admin.getProxySettings': ProxySettingsResponse
   'Admin.updateProxySettings': ProxySettingsResponse
+  // Admin hardware management
+  'Admin.getHardwareInfo': HardwareInfoResponse
+  'Admin.subscribeHardwareUsage': void // SSE endpoint
   // Document extraction configuration
   'Utils.testProxy': TestProxyConnectionResponse
   // User settings management

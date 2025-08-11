@@ -44,7 +44,10 @@ export function DownloadIndicator() {
   // Find downloads with errors first, otherwise use the first download
   const errorDownload = downloads.find(d => d.status === 'failed')
   const displayDownload = errorDownload || downloads[0]
-  const displayPercent = displayDownload.status === 'failed' ? 100 : getProgressPercent(displayDownload)
+  const displayPercent =
+    displayDownload.status === 'failed'
+      ? 100
+      : getProgressPercent(displayDownload)
   const hasError = displayDownload.status === 'failed'
 
   // Create the popover content
@@ -103,7 +106,11 @@ export function DownloadIndicator() {
               <Badge
                 count={downloads.length}
                 size="small"
-                style={{ backgroundColor: hasError ? token.colorError : token.colorPrimary }}
+                style={{
+                  backgroundColor: hasError
+                    ? token.colorError
+                    : token.colorPrimary,
+                }}
               >
                 <DownloadOutlined />
               </Badge>

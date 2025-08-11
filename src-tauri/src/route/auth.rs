@@ -4,14 +4,14 @@ use axum::Router;
 
 pub fn auth_routes() -> Router {
     Router::new()
-        .route("/api/auth/init", get(api::auth::check_init_status))
-        .route("/api/auth/setup", post(api::auth::init_app))
-        .route("/api/auth/login", post(api::auth::login))
-        .route("/api/auth/register", post(api::auth::register))
+        .route("/auth/init", get(api::auth::check_init_status))
+        .route("/auth/setup", post(api::auth::init_app))
+        .route("/auth/login", post(api::auth::login))
+        .route("/auth/register", post(api::auth::register))
 }
 
 pub fn protected_auth_routes() -> Router {
     Router::new()
-        .route("/api/auth/logout", post(api::auth::logout))
-        .route("/api/auth/me", get(api::auth::me))
+        .route("/auth/logout", post(api::auth::logout))
+        .route("/auth/me", get(api::auth::me))
 }

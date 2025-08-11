@@ -6,7 +6,7 @@ use axum::Router;
 pub fn utils_routes() -> Router {
     Router::new()
         .route(
-            "/api/utils/test-proxy",
+            "/utils/test-proxy",
             post(api::configuration::test_proxy_connection_public),
         )
 }

@@ -258,9 +258,7 @@ export function AddLocalModelDownloadDrawer() {
             style={{ marginBottom: 16 }}
           >
             {viewDownload.status === 'failed' && viewDownload.error_message ? (
-              <Text type="danger">
-                {viewDownload.error_message}
-              </Text>
+              <Text type="danger">{viewDownload.error_message}</Text>
             ) : (
               <>
                 {viewDownload.progress_data && (
@@ -295,7 +293,9 @@ export function AddLocalModelDownloadDrawer() {
                     <Text type="secondary" style={{ fontSize: '12px' }}>
                       Speed:{' '}
                       {Math.round(
-                        (viewDownload.progress_data.download_speed / 1024 / 1024) *
+                        (viewDownload.progress_data.download_speed /
+                          1024 /
+                          1024) *
                           10,
                       ) / 10}{' '}
                       MB/s
@@ -303,7 +303,9 @@ export function AddLocalModelDownloadDrawer() {
                         <>
                           {' '}
                           • ETA:{' '}
-                          {Math.round(viewDownload.progress_data.eta_seconds / 60)}{' '}
+                          {Math.round(
+                            viewDownload.progress_data.eta_seconds / 60,
+                          )}{' '}
                           minutes
                         </>
                       )}

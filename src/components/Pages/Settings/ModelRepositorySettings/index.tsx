@@ -4,7 +4,16 @@ import {
   EditOutlined,
   PlusOutlined,
 } from '@ant-design/icons'
-import { App, Button, Card, Divider, Flex, Switch, Typography, Empty } from 'antd'
+import {
+  App,
+  Button,
+  Card,
+  Divider,
+  Flex,
+  Switch,
+  Typography,
+  Empty,
+} from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isDesktopApp } from '../../../../api/core'
@@ -154,7 +163,7 @@ export function ModelRepositorySettings() {
         checked={repository.enabled}
         onChange={checked => handleToggleRepository(repository.id, checked)}
         disabled={!canEditRepositories}
-      />
+      />,
     )
 
     if (canEditRepositories) {
@@ -167,7 +176,7 @@ export function ModelRepositorySettings() {
           onClick={() => testRepositoryConnection(repository)}
         >
           Test
-        </Button>
+        </Button>,
       )
 
       actions.push(
@@ -178,7 +187,7 @@ export function ModelRepositorySettings() {
           onClick={() => handleEditRepository(repository)}
         >
           Edit
-        </Button>
+        </Button>,
       )
 
       if (!repository.built_in) {
@@ -191,7 +200,7 @@ export function ModelRepositorySettings() {
             onClick={() => handleDeleteRepository(repository.id)}
           >
             Delete
-          </Button>
+          </Button>,
         )
       }
     }
@@ -225,9 +234,11 @@ export function ModelRepositorySettings() {
         <Flex className="flex-col gap-4">
           <div>
             {repositories.length === 0 ? (
-              <Empty 
-                description="No repositories configured" 
-                image={<CloudDownloadOutlined className="text-4xl opacity-50" />}
+              <Empty
+                description="No repositories configured"
+                image={
+                  <CloudDownloadOutlined className="text-4xl opacity-50" />
+                }
               >
                 <Text type="secondary">Add a repository to get started</Text>
               </Empty>
@@ -241,7 +252,9 @@ export function ModelRepositorySettings() {
                         <div className="flex items-center gap-2 mb-2 flex-wrap-reverse">
                           <div className="flex-1 min-w-48">
                             <Flex align="center" gap="small">
-                              <Text className="font-medium">{repository.name}</Text>
+                              <Text className="font-medium">
+                                {repository.name}
+                              </Text>
                               {repository.built_in && (
                                 <Text type="secondary" className="text-xs">
                                   (Built-in)
@@ -278,7 +291,9 @@ export function ModelRepositorySettings() {
                         </div>
                       </div>
                     </div>
-                    {index < repositories.length - 1 && <Divider className="my-0" />}
+                    {index < repositories.length - 1 && (
+                      <Divider className="my-0" />
+                    )}
                   </div>
                 ))}
               </div>
