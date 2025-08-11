@@ -30,7 +30,7 @@ i18n
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
       caches: ['localStorage'],
-      lookupLocalStorage: 'jan-chat-language',
+      lookupLocalStorage: 'ziee-chat-language',
     },
   })
 

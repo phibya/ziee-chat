@@ -162,7 +162,9 @@ export const ProjectsPage: React.FC = () => {
       {/* Page Content */}
       <div className="flex-1 flex flex-col overflow-hidden items-center">
         {pageMinSize.xs && isSearchBoxVisible && (
-          <div className={'w-full max-w-96'}>{searchInputComponent}</div>
+          <div className={'w-full max-w-96 px-3 pt-3'}>
+            {searchInputComponent}
+          </div>
         )}
         {/* Projects Grid */}
         <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">

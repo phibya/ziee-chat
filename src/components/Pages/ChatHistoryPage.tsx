@@ -37,7 +37,7 @@ export const ChatHistoryPage: React.FC = () => {
           </div>
         </div>
       </TitleBarWrapper>
-      <div className="w-full flex-1 flex flex-col gap-3 overflow-y-hidden">
+      <div className="w-full flex-1 flex flex-col overflow-y-hidden">
         {pageMinSize.xs ? (
           <div
             className={'w-full flex items-center justify-center px-3 pt-3'}

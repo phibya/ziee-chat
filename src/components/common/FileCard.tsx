@@ -115,7 +115,7 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
           <div className="mb-4 relative">
             {/* Stack multiple thumbnails */}
             <div
-              className="relative cursor-pointer group"
+              className="relative group"
               style={{ width: 'fit-content', margin: '0 auto' }}
               onClick={handleThumbnailClick}
               title={
@@ -252,6 +252,12 @@ export const FileCard: React.FC<FileCardProps> = ({
         footer: null, // Footer is handled within FileModalContent
         closable: true,
         maskClosable: true,
+        styles: {
+          content: {
+            backgroundColor: token.colorBgLayout,
+            border: `1px solid ${token.colorBorderSecondary}`,
+          },
+        },
       })
     }
   }
@@ -273,7 +279,7 @@ export const FileCard: React.FC<FileCardProps> = ({
             className="block w-full h-auto opacity-0"
             style={{ aspectRatio: '1' }}
           />
-          
+
           {/* Spinner - centered */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Spin />

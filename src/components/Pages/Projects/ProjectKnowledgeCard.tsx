@@ -103,7 +103,7 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
 
   const header = (
     <div className={'w-full flex justify-between'}>
-      <Typography.Title level={5} className={'!m-0'}>
+      <Typography.Title level={5} className={'!m-0 !pt-[2px]'}>
         Project knowledge
       </Typography.Title>
       <Button

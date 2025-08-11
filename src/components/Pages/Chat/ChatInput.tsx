@@ -450,7 +450,7 @@ export const ChatInput = function ChatInput({
                   />
                 </Form.Item>
               </div>
-              <div className={`w-full flex justify-between`}>
+              <div className={`w-full flex justify-between gap-0`}>
                 <Upload
                   multiple
                   beforeUpload={(_, fileList) => {
@@ -464,18 +464,15 @@ export const ChatInput = function ChatInput({
                   showUploadList={false}
                 >
                   <Button
-                    type="text"
-                    style={{
-                      width: 40,
-                      fontSize: '20px',
-                    }}
-                    icon={<BsFileEarmarkPlus />}
+                    type="default"
                     disabled={isDisabled}
                     title="Add files"
-                  />
+                  >
+                    <BsFileEarmarkPlus />
+                  </Button>
                 </Upload>
 
-                <div className={'flex items-center gap-1'}>
+                <div className={'flex items-center gap-[6px]'}>
                   <Form.Item name="assistant" noStyle>
                     <Select
                       popupMatchSelectWidth={false}
@@ -491,12 +488,7 @@ export const ChatInput = function ChatInput({
                       variant={'borderless'}
                       prefix={
                         isBreaking && (
-                          <Button
-                            type={'text'}
-                            style={{
-                              fontSize: '18px',
-                            }}
-                          >
+                          <Button>
                             <RobotOutlined />
                           </Button>
                         )
@@ -518,12 +510,7 @@ export const ChatInput = function ChatInput({
                       variant={'borderless'}
                       prefix={
                         isBreaking && (
-                          <Button
-                            type={'text'}
-                            style={{
-                              fontSize: '18px',
-                            }}
-                          >
+                          <Button>
                             <SettingOutlined />
                           </Button>
                         )

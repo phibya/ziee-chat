@@ -3,7 +3,16 @@ import {
   ReloadOutlined,
   RobotOutlined,
 } from '@ant-design/icons'
-import { App, Button, Dropdown, Flex, Spin, Tabs, Typography } from 'antd'
+import {
+  App,
+  Button,
+  Dropdown,
+  Flex,
+  Segmented,
+  Spin,
+  theme,
+  Typography,
+} from 'antd'
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TitleBarWrapper } from '../../Common/TitleBarWrapper'
@@ -22,6 +31,7 @@ export function HubPage() {
   const navigate = useNavigate()
   const { activeTab: urlActiveTab } = useParams<{ activeTab?: string }>()
   const mainContentMinSize = useMainContentMinSize()
+  const { token } = theme.useToken()
 
   // Hub store state
   const { models, assistants, initialized, loading, error, lastActiveTab } =
@@ -122,51 +132,15 @@ export function HubPage() {
       )
     }
 
-    // Desktop: Show tabs for navigation only, content rendered separately
+    // Desktop: Content only, tabs are in title bar
     return (
-      <Flex className="flex h-full w-full flex-col">
-        <div className="pt-1 px-3 max-w-6xl self-center w-full">
-          <Tabs
-            activeKey={activeTab}
-            onChange={(key: string) => {
-              setHubActiveTab(key)
-              navigate(`/hub/${key}`)
-            }}
-            items={[
-              {
-                key: 'models',
-                label: (
-                  <Flex className={'gap-1'}>
-                    <AppstoreOutlined />
-                    Models ({models.length})
-                  </Flex>
-                ),
-                children: null, // No content in tabs
-              },
-              {
-                key: 'assistants',
-                label: (
-                  <Flex className={'gap-1'}>
-                    <RobotOutlined />
-                    Assistants ({assistants.length})
-                  </Flex>
-                ),
-                children: null, // No content in tabs
-              },
-            ]}
-            tabBarStyle={{
-              marginBottom: 0,
-            }}
-          />
+      <div className="flex flex-1 w-full overflow-y-auto flex-col">
+        <div className="max-w-6xl w-full flex flex-col self-center px-3">
+          <TabWrapper>
+            {activeTab === 'models' ? <ModelsTab /> : <AssistantsTab />}
+          </TabWrapper>
         </div>
-        <div className="flex flex-1 w-full overflow-y-auto flex-col">
-          <div className="max-w-6xl w-full flex flex-col self-center px-3">
-            <TabWrapper>
-              {activeTab === 'models' ? <ModelsTab /> : <AssistantsTab />}
-            </TabWrapper>
-          </div>
-        </div>
-      </Flex>
+      </div>
     )
   }
 
@@ -182,6 +156,49 @@ export function HubPage() {
           >
             Hub
           </Typography.Title>
+
+          {/* Desktop: Show segmented control in title bar center */}
+          {!mainContentMinSize.xs && (
+            <div className="flex-1 flex h-full justify-center items-center">
+              <Segmented
+                value={activeTab}
+                onChange={(value: string) => {
+                  setHubActiveTab(value)
+                  navigate(`/hub/${value}`)
+                }}
+                className={`
+                [&_.ant-segmented-item-label]:!px-4
+                [&_.ant-segmented-item-label]:!py-1
+                `}
+                style={{
+                  backgroundColor: token.colorBgMask,
+                }}
+                shape="round"
+                options={[
+                  {
+                    value: 'models',
+                    label: (
+                      <Flex align="center" gap={4}>
+                        <AppstoreOutlined />
+                        Models ({models.length})
+                      </Flex>
+                    ),
+                  },
+                  {
+                    value: 'assistants',
+                    label: (
+                      <Flex align="center" gap={4}>
+                        <RobotOutlined />
+                        Assistants ({assistants.length})
+                      </Flex>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          )}
+
+          {/* Mobile: Show dropdown in title bar */}
           {mainContentMinSize.xs && (
             <div className="flex flex-1 items-center px-2">
               <IoIosArrowForward />
@@ -230,6 +247,7 @@ export function HubPage() {
               </Dropdown>
             </div>
           )}
+
           <Button
             icon={<ReloadOutlined />}
             onClick={handleRefresh}

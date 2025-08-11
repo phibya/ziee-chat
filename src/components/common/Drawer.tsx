@@ -5,7 +5,7 @@ import {
   theme,
   Typography,
 } from 'antd'
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 import { ResizeHandle } from './ResizeHandle.tsx'
 import tinycolor from 'tinycolor2'
 import { isDesktopApp } from '../../api/core.ts'
@@ -20,6 +20,42 @@ export interface DrawerProps extends AntDrawerProps {
 export const Drawer: React.FC<DrawerProps> = props => {
   const { token } = theme.useToken()
   const windowMinSize = useWindowMinSize()
+
+  const drawerDivRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLDivElement>(null)
+
+  // Monitor the left position of the drawer div and adjust title padding
+  useEffect(() => {
+    if (!isDesktopApp) return
+    if (!props.open) return
+
+    console.log('Setting up ResizeObserver for drawer position monitoring')
+    const monitorPosition = () => {
+      if (drawerDivRef.current && titleRef.current) {
+        const rect = drawerDivRef.current.getBoundingClientRect()
+        if (rect.left < 72) {
+          titleRef.current.style.paddingLeft = 72 - rect.left + 'px'
+        } else {
+          titleRef.current.style.paddingLeft = ''
+        }
+      }
+    }
+
+    const resizeObserver = new ResizeObserver(monitorPosition)
+
+    if (drawerDivRef.current) {
+      resizeObserver.observe(drawerDivRef.current)
+    }
+
+    setTimeout(() => {
+      monitorPosition()
+    }, 300)
+
+    return () => {
+      console.log('Disconnecting ResizeObserver')
+      resizeObserver.disconnect()
+    }
+  }, [props.open])
 
   const {
     placement = 'right',
@@ -53,7 +89,12 @@ export const Drawer: React.FC<DrawerProps> = props => {
       }}
       title={
         props.title ? (
-          <div className={'flex w-full items-center gap-1 py-2 px-1 relative'}>
+          <div
+            ref={titleRef}
+            className={
+              'flex w-full items-center gap-1 py-2 pt-[10px] px-1 relative'
+            }
+          >
             <TauriDragRegion
               className={'h-full w-full absolute top-0 left-0'}
             />
@@ -102,7 +143,8 @@ export const Drawer: React.FC<DrawerProps> = props => {
               ? 'none'
               : `1px solid ${token.colorBorderSecondary}`,
           borderRadius: isDesktopApp ? 8 : windowMinSize.xs ? 0 : 8,
-          maxWidth: `calc(100vw - ${isDesktopApp ? 90 : windowMinSize.xs ? 0 : 24}px)`,
+          // maxWidth: `calc(100vw - ${isDesktopApp ? 90 : windowMinSize.xs ? 0 : 24}px)`,
+          maxWidth: `calc(100vw - ${isDesktopApp && windowMinSize.xs ? 0 : isDesktopApp ? 90 : windowMinSize.xs ? 0 : 24}px)`,
           boxShadow: 'none',
           margin: windowMinSize.xs ? 0 : 12,
           ...(restProps.styles?.wrapper || {}),
@@ -116,6 +158,7 @@ export const Drawer: React.FC<DrawerProps> = props => {
       drawerRender={node => {
         return (
           <div
+            ref={drawerDivRef}
             className={'w-full h-full'}
             onTouchStart={e => e.stopPropagation()}
             onTouchMove={e => e.stopPropagation()}

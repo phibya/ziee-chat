@@ -176,7 +176,7 @@ export const ProjectDetailsPage: React.FC = () => {
           <Drawer
             title={
               <div
-                className={'flex-1 pr-2 pt-1'}
+                className={'flex-1 pr-2 pt-0'}
                 ref={knowledgeCardHeaderRef}
               />
             }
