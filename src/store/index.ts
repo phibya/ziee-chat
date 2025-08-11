@@ -28,6 +28,7 @@ import {
   useEditProviderDrawerStore,
   useEditRemoteModelDrawerStore,
   useLayoutUIStore,
+  usePathHistoryStore,
   useProjectDrawerStore,
   useViewDownloadModalStore,
 } from './ui'
@@ -372,6 +373,7 @@ export const Stores = {
   Settings: createStoreProxy(useUserSettingsStore),
   UI: {
     Layout: createStoreProxy(useLayoutUIStore),
+    PathHistory: createStoreProxy(usePathHistoryStore),
     // Individual drawer stores
     AssistantDrawer: createStoreProxy(useAssistantDrawerStore),
     AddProviderDrawer: createStoreProxy(useAddProviderDrawerStore),

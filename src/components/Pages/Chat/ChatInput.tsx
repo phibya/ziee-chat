@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   App,
   Button,
@@ -14,30 +14,47 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { CloseOutlined, FileOutlined, SendOutlined } from '@ant-design/icons'
+import {
+  CloseOutlined,
+  RobotOutlined,
+  SendOutlined,
+  SettingOutlined,
+} from '@ant-design/icons'
 import {
   addNewConversationToList,
   createNewConversation,
+  deleteFile,
   loadUserAssistants,
   loadUserProvidersWithAllModels,
   Stores,
   useChatStore,
 } from '../../../store'
-import { FileCard } from '../../common/FileCard'
+import { FileCard } from '../../Common/FileCard'
 import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
 import { Conversation, Message } from '../../../types/api/chat.ts'
 import { Assistant } from '../../../types/api/assistant'
 import { createChatStore } from '../../../store/chat.ts'
+import { BsFileEarmarkPlus } from 'react-icons/bs'
+import { IoIosArrowDown } from 'react-icons/io'
+import { debounce } from '../../../utils/debounce.ts'
 
 const { TextArea } = Input
 const { Text } = Typography
 
+const UI_BREAKPOINT = 480 // Define a breakpoint for UI adjustments
+
+const calculateIsBreaking = (width: number): boolean => width <= UI_BREAKPOINT
+
 export const ChatInput = function ChatInput({
   editingMessage,
   onDoneEditing,
+  className = '',
+  style,
 }: {
   editingMessage?: Message
   onDoneEditing?: () => void
+  className?: string
+  style?: React.CSSProperties
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -46,6 +63,8 @@ export const ChatInput = function ChatInput({
   const { projectId } = useParams<{ projectId?: string }>()
   const { message } = App.useApp()
   const { token } = theme.useToken()
+  const [isBreaking, setIsBreaking] = useState<boolean>(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const store = useChatInputUIStore(editingMessage)
   const {
@@ -74,6 +93,33 @@ export const ChatInput = function ChatInput({
   useEffect(() => {
     loadUserAssistants()
     loadUserProvidersWithAllModels()
+  }, [])
+
+  // ResizeObserver to listen to container width changes for UI breakpoints
+  useEffect(() => {
+    const containerElement = containerRef.current
+    if (!containerElement) return
+
+    const updateBreaking = (width: number) => {
+      const newIsBreaking = calculateIsBreaking(width)
+      setIsBreaking(newIsBreaking)
+    }
+
+    // Set initial breaking state immediately
+    updateBreaking(containerElement.offsetWidth)
+
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect
+        updateBreaking(width)
+      }
+    })
+
+    resizeObserver.observe(containerElement)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
   }, [])
 
   // Initialize form and files when in editing mode
@@ -236,15 +282,24 @@ export const ChatInput = function ChatInput({
 
     form.setFieldValue('message', '') // Clear input immediately
 
+    const payload = {
+      content: messageToSend.trim(),
+      assistantId: selectedAssistant,
+      modelId: selectedModel.split(':')[1],
+      fileIds: [...files.keys(), ...newFiles.keys()],
+    }
+
+    let newFilesBackup = new Map(newFiles) // Backup newFiles before clearing
+
+    //clear newFiles
+    store.__setState({
+      newFiles: new Map(),
+    })
+
     try {
       if (conversationId) {
         // If we have a conversationId, use it
-        await sendMessage({
-          content: messageToSend.trim(),
-          assistantId: selectedAssistant,
-          modelId: selectedModel.split(':')[1],
-          fileIds: [...files.keys(), ...newFiles.keys()],
-        })
+        await sendMessage(payload)
       } else {
         let newConversation = await handleCreateNewConversation()
         if (!newConversation) {
@@ -254,23 +309,22 @@ export const ChatInput = function ChatInput({
 
         const conversationStore = createChatStore(newConversation)
 
-        await conversationStore.__state.sendMessage({
-          content: messageToSend.trim(),
-          assistantId: selectedAssistant,
-          modelId: selectedModel.split(':')[1],
-          fileIds: [...files.keys(), ...newFiles.keys()],
-        })
+        await conversationStore.__state.sendMessage(payload)
       }
     } catch (error) {
       console.error('Failed to send message:', error)
       // Restore the message if sending failed
       form.setFieldValue('message', messageToSend)
+      // Restore newFiles if sending failed
+      store.__setState({
+        newFiles: newFilesBackup,
+      })
     }
   }
 
-  const handleFileUpload = async (files: globalThis.File[]) => {
-    uploadFiles(files)
-  }
+  const handleFileUpload = debounce(async (files: globalThis.File[]) => {
+    return await uploadFiles(files)
+  }, 100)
 
   const handleRemoveFile = (fileId: string) => {
     removeFile(fileId)
@@ -278,6 +332,10 @@ export const ChatInput = function ChatInput({
   }
 
   const handleCancel = () => {
+    //delete all new files
+    newFiles.forEach((_, fileId) => {
+      deleteFile(fileId)
+    })
     destroyStore()
     onDoneEditing?.()
   }
@@ -298,14 +356,20 @@ export const ChatInput = function ChatInput({
   }
 
   return (
-    <div className="w-full relative">
+    <div
+      ref={containerRef}
+      className={`w-full relative ${className}`}
+      style={style}
+    >
       {/* Drag and Drop Overlay */}
       <Upload.Dragger
         multiple
         beforeUpload={(_, fileList) => {
-          handleFileUpload(fileList).catch(error => {
-            console.error('Failed to upload files:', error)
-          })
+          if (fileList) {
+            handleFileUpload(fileList)?.catch?.(error => {
+              console.error('Failed to upload files:', error)
+            })
+          }
           return false
         }}
         showUploadList={false}
@@ -321,7 +385,7 @@ export const ChatInput = function ChatInput({
         `}
         openFileDialogOnClick={false}
         style={{
-          backgroundColor: token.colorBgContainer,
+          backgroundColor: token.colorBgLayout,
           borderRadius: token.borderRadius,
         }}
       >
@@ -329,7 +393,7 @@ export const ChatInput = function ChatInput({
           className="h-full flex-col items-center justify-center gap-3"
           style={{ pointerEvents: 'none' }}
         >
-          <FileOutlined className={'text-4xl'} />
+          <BsFileEarmarkPlus className={'text-2xl'} />
           <Text type="secondary">Drop files here to upload</Text>
         </Flex>
       </Upload.Dragger>
@@ -350,6 +414,7 @@ export const ChatInput = function ChatInput({
             : token.colorBorderSecondary,
           transition: 'border-color 0.2s, box-shadow 0.2s',
           pointerEvents: isDragging ? 'none' : 'auto',
+          backgroundColor: token.colorBgContainer,
         }}
       >
         <Form
@@ -365,7 +430,7 @@ export const ChatInput = function ChatInput({
         >
           {/* Main input row with add file button on left and selectors + send on right */}
           <div style={{ padding: '8px' }}>
-            <Flex className="flex-col gap-2 w-full">
+            <Flex className="flex-col gap-1 w-full">
               <div className="w-full">
                 <Form.Item name="message" className="mb-0" noStyle>
                   <TextArea
@@ -379,91 +444,127 @@ export const ChatInput = function ChatInput({
                     onChange={() => {
                       setContent(form.getFieldValue('message') || '')
                     }}
+                    style={{
+                      backgroundColor: 'transparent',
+                    }}
                   />
                 </Form.Item>
               </div>
-              <div className="w-full flex gap-3 justify-between">
+              <div className={`w-full flex justify-between`}>
                 <Upload
                   multiple
                   beforeUpload={(_, fileList) => {
-                    handleFileUpload(fileList).catch(error => {
-                      console.error('Failed to upload files:', error)
-                    })
+                    if (fileList) {
+                      handleFileUpload(fileList)?.catch?.(error => {
+                        console.error('Failed to upload files:', error)
+                      })
+                    }
                     return false
                   }}
                   showUploadList={false}
                 >
                   <Button
-                    icon={<FileOutlined />}
+                    type="text"
+                    style={{
+                      width: 40,
+                      fontSize: '20px',
+                    }}
+                    icon={<BsFileEarmarkPlus />}
                     disabled={isDisabled}
                     title="Add files"
                   />
                 </Upload>
 
-                <div className={'gap-2 flex items-center'}>
+                <div className={'flex items-center gap-1'}>
                   <Form.Item name="assistant" noStyle>
                     <Select
+                      popupMatchSelectWidth={false}
                       placeholder="Assistant"
-                      style={{ width: 140 }}
-                      disabled={isDisabled}
-                      size="small"
                       options={availableAssistants.map(
                         (assistant: Assistant) => ({
                           label: assistant.name,
                           value: assistant.id,
                         }),
                       )}
-                      className={`
-                      [&_.ant-select-selector]:!border-none
-                      [&_.ant-select-selection-wrap]:!text-center
-                      `}
+                      style={{ width: isBreaking ? 40 : 140 }}
+                      labelRender={isBreaking ? () => '' : undefined}
+                      variant={'borderless'}
+                      prefix={
+                        isBreaking && (
+                          <Button
+                            type={'text'}
+                            style={{
+                              fontSize: '18px',
+                            }}
+                          >
+                            <RobotOutlined />
+                          </Button>
+                        )
+                      }
+                      suffixIcon={<IoIosArrowDown />}
                     />
                   </Form.Item>
 
                   {/* Model selector */}
                   <Form.Item name="model" noStyle>
                     <Select
+                      popupMatchSelectWidth={false}
                       placeholder="Model"
-                      style={{ width: 160 }}
                       disabled={isDisabled}
                       size="small"
                       options={availableModels}
-                      className={`
-                      [&_.ant-select-selector]:!border-none
-                      [&_.ant-select-selection-wrap]:!text-center
-                      `}
+                      style={{ width: isBreaking ? 40 : 140 }}
+                      labelRender={isBreaking ? () => '' : undefined}
+                      variant={'borderless'}
+                      prefix={
+                        isBreaking && (
+                          <Button
+                            type={'text'}
+                            style={{
+                              fontSize: '18px',
+                            }}
+                          >
+                            <SettingOutlined />
+                          </Button>
+                        )
+                      }
+                      suffixIcon={<IoIosArrowDown />}
                     />
                   </Form.Item>
+                </div>
 
+                <div className={`gap-2 flex flex-1 items-center justify-end`}>
                   {/* Send/Stop/Save/Cancel buttons */}
-                  <div className="flex gap-1 items-center">
-                    {isEditing ? (
-                      <>
+                  <div className="flex gap-1 items-end">
+                    <div className={'items-center justify-end  gap-1 flex'}>
+                      {isEditing ? (
+                        <>
+                          <Button
+                            type="primary"
+                            icon={<SendOutlined rotate={270} />}
+                            onClick={handleSend}
+                            disabled={
+                              isStreaming ||
+                              isDisabled ||
+                              !form.getFieldValue('message')?.trim()
+                            }
+                          />
+                          <Button
+                            icon={<CloseOutlined />}
+                            onClick={handleCancel}
+                            size="small"
+                          />
+                        </>
+                      ) : (
                         <Button
                           type="primary"
                           icon={<SendOutlined rotate={270} />}
                           onClick={handleSend}
-                          disabled={
-                            isStreaming ||
-                            isDisabled ||
-                            !form.getFieldValue('message')?.trim()
-                          }
+                          disabled={isStreaming || sending || isDisabled}
+                          loading={sending}
                         />
-                        <Button
-                          icon={<CloseOutlined />}
-                          onClick={handleCancel}
-                          size="small"
-                        />
-                      </>
-                    ) : (
-                      <Button
-                        type="primary"
-                        icon={<SendOutlined rotate={270} />}
-                        onClick={handleSend}
-                        disabled={isStreaming || sending || isDisabled}
-                        loading={sending}
-                      />
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -475,36 +576,42 @@ export const ChatInput = function ChatInput({
             <>
               <Divider style={{ margin: 0 }} />
               <div style={{ padding: '8px' }}>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2 w-full overflow-x-auto">
                   {Array.from(files.values()).map(file => (
-                    <FileCard
-                      key={file.id}
-                      file={file}
-                      canDelete={false}
-                      canRemove={true}
-                      onRemove={handleRemoveFile}
-                    />
+                    <div className={'flex-1 min-w-20 max-w-24'}>
+                      <FileCard
+                        key={file.id}
+                        file={file}
+                        canDelete={false}
+                        canRemove={true}
+                        onRemove={handleRemoveFile}
+                      />
+                    </div>
                   ))}
                   {Array.from(newFiles.values()).map(file => (
-                    <FileCard
-                      key={file.id}
-                      file={file}
-                      canDelete={true}
-                      onDelete={handleRemoveFile}
-                    />
+                    <div className={'flex-1 min-w-20 max-w-24'}>
+                      <FileCard
+                        key={file.id}
+                        file={file}
+                        canDelete={true}
+                        onDelete={handleRemoveFile}
+                      />
+                    </div>
                   ))}
                   {Array.from(uploadingFiles.values()).map(uploadingFile => (
-                    <FileCard
-                      key={uploadingFile.id}
-                      uploadingFile={{
-                        id: uploadingFile.id,
-                        filename: uploadingFile.filename,
-                        progress: uploadingFile.progress || 0,
-                        status: 'uploading',
-                        size: uploadingFile.size,
-                      }}
-                      onRemove={handleRemoveFile}
-                    />
+                    <div className={'flex-1 min-w-20 max-w-24'}>
+                      <FileCard
+                        key={uploadingFile.id}
+                        uploadingFile={{
+                          id: uploadingFile.id,
+                          filename: uploadingFile.filename,
+                          progress: uploadingFile.progress || 0,
+                          status: 'uploading',
+                          size: uploadingFile.size,
+                        }}
+                        onRemove={handleRemoveFile}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>

@@ -21,7 +21,7 @@ const { Text } = Typography
 interface FileCardProps {
   file?: File
   uploadingFile?: FileUploadProgress
-  size?: number
+  showFileName?: boolean // Whether to show the file name below the card
   onRemove?: (fileId: string) => void // remove from the list, not delete from server
   canRemove?: boolean // Whether the remove button should be shown
   canDelete?: boolean // Whether the delete button should be shown
@@ -180,7 +180,7 @@ const FileModalContent: React.FC<FileModalContentProps> = ({ file }) => {
 export const FileCard: React.FC<FileCardProps> = ({
   file,
   uploadingFile,
-  size = 111,
+  showFileName = true,
   canRemove = true,
   canDelete = true,
   onRemove,
@@ -191,7 +191,6 @@ export const FileCard: React.FC<FileCardProps> = ({
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [fileContent, setFileContent] = useState<string>('')
-  const [loading, setLoading] = useState(false)
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -235,7 +234,6 @@ export const FileCard: React.FC<FileCardProps> = ({
 
     if (isTextFile(file.filename)) {
       // Open drawer for text files
-      setLoading(true)
       try {
         const content = await getFileContent(file.id)
         setFileContent(content)
@@ -243,8 +241,6 @@ export const FileCard: React.FC<FileCardProps> = ({
       } catch (error) {
         console.error('Failed to fetch file content:', error)
         message.error('Failed to load file content')
-      } finally {
-        setLoading(false)
       }
     } else {
       // Open modal for non-text files
@@ -262,29 +258,26 @@ export const FileCard: React.FC<FileCardProps> = ({
 
   if (uploadingFile) {
     return (
-      <div
-        style={{
-          width: size,
-        }}
-      >
-        <Card
-          size="small"
-          className="relative"
+      <div className={'relative flex flex-col w-full h-full'}>
+        <div
+          className="group relative rounded min-h-20 min-w-20 max-h-28 max-w-28 w-full h-full flex items-center justify-center"
           style={{
-            height: size,
-          }}
-          styles={{
-            body: {
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              position: 'relative',
-              padding: '8px',
-            },
+            border: `1px solid ${token.colorBorderSecondary}`,
+            backgroundColor: token.colorBgContainer,
           }}
         >
-          <Spin />
+          {/* Square aspect ratio enforcer - invisible 1x1 base64 image */}
+          <img
+            src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB2aWV3Qm94PSIwIDAgMSAxIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9InRyYW5zcGFyZW50Ii8+PC9zdmc+"
+            alt=""
+            className="block w-full h-auto opacity-0"
+            style={{ aspectRatio: '1' }}
+          />
+          
+          {/* Spinner - centered */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Spin />
+          </div>
 
           {/* Remove button for uploading files */}
           {onRemove && (
@@ -320,9 +313,19 @@ export const FileCard: React.FC<FileCardProps> = ({
               ERROR
             </Text>
           )}
-        </Card>
-        <div className="w-full text-center text-xs text-ellipsis overflow-hidden">
-          <Text className={'whitespace-nowrap'}>{uploadingFile.filename}</Text>
+        </div>
+        <div
+          className="w-full text-center text-xs text-ellipsis overflow-hidden"
+          style={{
+            display: showFileName ? 'block' : 'none',
+          }}
+        >
+          <Text
+            ellipsis={true}
+            className={'whitespace-nowrap !truncate !text-xs'}
+          >
+            {uploadingFile.filename}
+          </Text>
         </div>
       </div>
     )
@@ -333,90 +336,96 @@ export const FileCard: React.FC<FileCardProps> = ({
   }
 
   return (
-    <div
-      style={{
-        width: size,
-      }}
-    >
-      <Card
-        size="small"
-        className="group relative cursor-pointer"
-        style={{
-          height: size,
-          backgroundImage: thumbnailUrl ? `url(${thumbnailUrl})` : undefined,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-        onClick={handleCardClick}
-        loading={loading}
-        styles={{
-          body: {
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            position: 'relative',
-          },
-        }}
-      >
-        {/* Delete/Remove button - only visible on hover */}
-        {(canDelete || canRemove) && (
-          <Button
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={e => {
-              e.stopPropagation()
-              if (canDelete) {
-                handleFileDelete(file.id)
-              } else {
-                handleFileRemove(file.id)
-              }
-            }}
-            style={{
-              display: canRemove ? 'block' : 'none',
-            }}
-            className="!absolute top-1 right-1 opacity-0
-                    group-hover:opacity-100 transition-opacity bg-transparent"
+    <>
+      <div className={'relative flex flex-col w-full h-full'}>
+        <div
+          className="group relative cursor-pointer rounded min-h-20 min-w-20 max-h-28 max-w-28 w-full h-full"
+          style={{
+            backgroundImage: thumbnailUrl ? `url(${thumbnailUrl})` : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            border: `1px solid ${token.colorBorderSecondary}`,
+          }}
+          onClick={handleCardClick}
+        >
+          {/* Square aspect ratio enforcer - invisible 1x1 base64 image */}
+          <img
+            src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiB2aWV3Qm94PSIwIDAgMSAxIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxIiBoZWlnaHQ9IjEiIGZpbGw9InRyYW5zcGFyZW50Ii8+PC9zdmc+"
+            alt=""
+            className="block w-full h-auto opacity-0"
+            style={{ aspectRatio: '1' }}
           />
-        )}
+          {/* Delete/Remove button - only visible on hover */}
+          {(canDelete || canRemove) && (
+            <Button
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              onClick={e => {
+                e.stopPropagation()
+                if (canDelete) {
+                  handleFileDelete(file.id)
+                } else {
+                  handleFileRemove(file.id)
+                }
+              }}
+              style={{
+                display: canRemove ? 'block' : 'none',
+              }}
+              className="!absolute top-1 right-1 opacity-0
+                    group-hover:opacity-100 transition-opacity bg-transparent"
+            />
+          )}
 
-        <Text
-          className="absolute top-1 left-1 rounded px-1 !text-[9px]"
-          style={{
-            backgroundColor: token.colorBgContainer,
-          }}
-          strong
-        >
-          {file.filename.split('.').pop()?.toUpperCase() || 'FILE'}
-        </Text>
+          <Text
+            className="absolute top-1 left-1 rounded px-1 !text-[9px]"
+            style={{
+              backgroundColor: token.colorBgContainer,
+            }}
+            strong
+          >
+            {file.filename.split('.').pop()?.toUpperCase() || 'FILE'}
+          </Text>
 
-        <Text
-          className="absolute bottom-1 right-1 rounded px-1  !text-[9px]"
+          <Text
+            className="absolute bottom-1 right-1 rounded px-1  !text-[9px]"
+            style={{
+              backgroundColor: token.colorBgContainer,
+            }}
+          >
+            {formatFileSize(file.file_size)}
+          </Text>
+        </div>
+        <div
+          className="w-full text-center text-xs text-ellipsis overflow-hidden"
           style={{
-            backgroundColor: token.colorBgContainer,
+            display: showFileName ? 'block' : 'none',
           }}
         >
-          {formatFileSize(file.file_size)}
-        </Text>
-      </Card>
-      <div className="w-full text-center text-xs text-ellipsis overflow-hidden">
-        <Text className={'whitespace-nowrap'}>{file.filename}</Text>
+          <Text
+            ellipsis={true}
+            className={'whitespace-nowrap !truncate !text-xs'}
+          >
+            {file.filename}
+          </Text>
+        </div>
+
+        {/* Drawer for text file content */}
       </div>
-
-      {/* Drawer for text file content */}
       <Drawer
         title={file.filename}
         open={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         width={600}
-        footer={[<Button onClick={() => setIsDrawerOpen(false)}>Close</Button>]}
+        classNames={{
+          body: '!px-3 !pt-0',
+        }}
       >
         <Card className="font-mono text-sm whitespace-pre-wrap p-4 rounded max-h-full overflow-auto">
           {fileContent}
         </Card>
       </Drawer>
-    </div>
+    </>
   )
 }

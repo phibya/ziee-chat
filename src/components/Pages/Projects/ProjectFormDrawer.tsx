@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { Button, Form, Input } from 'antd'
-import { Drawer } from '../../common/Drawer.tsx'
+import { Drawer } from '../../Common/Drawer.tsx'
 import {
   closeProjectDrawer,
   createNewProject,

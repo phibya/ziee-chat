@@ -1,5 +1,5 @@
 import { Button, Card, Flex, Form } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
+import { Drawer } from '../../../Common/Drawer'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -7,8 +7,8 @@ import {
   Stores,
   updateExistingModel,
 } from '../../../../store'
-import { ModelCapabilitiesSection } from './shared/ModelCapabilitiesSection'
-import { ModelParametersSection } from './shared/ModelParametersSection'
+import { ModelCapabilitiesSection } from './common/ModelCapabilitiesSection'
+import { ModelParametersSection } from './common/ModelParametersSection'
 import {
   BASIC_MODEL_FIELDS,
   MODEL_PARAMETERS,

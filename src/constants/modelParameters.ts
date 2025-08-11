@@ -1,4 +1,16 @@
-import { ParameterFieldConfig } from '../components/common/ModelParameterField.tsx'
+export interface ParameterFieldConfig {
+  name: string | string[]
+  label: string
+  help?: string
+  placeholder?: string
+  type: 'number' | 'text' | 'password' | 'textarea' | 'select' | 'string-array'
+  min?: number
+  max?: number
+  step?: number
+  required?: boolean
+  options?: Array<{ value: string | number; label: string }>
+  rules?: any[]
+}
 
 export const MODEL_PARAMETERS: ParameterFieldConfig[] = [
   {

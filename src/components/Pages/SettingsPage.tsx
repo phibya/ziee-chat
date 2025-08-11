@@ -3,7 +3,6 @@ import {
   ExperimentOutlined,
   EyeOutlined,
   LockOutlined,
-  MenuOutlined,
   RobotOutlined,
   SettingOutlined,
   SlidersOutlined,
@@ -11,39 +10,25 @@ import {
   ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Button, Drawer, Layout, Menu, theme, Typography } from 'antd'
-import { useEffect, useState } from 'react'
+import { Button, Dropdown, Flex, Menu, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { isDesktopApp } from '../../api/core'
 import { Permission, usePermissions } from '../../permissions'
-
-const { Title } = Typography
-const { Sider } = Layout
+import { useMainContentMinSize } from '../hooks/useWindowMinSize'
+import { TitleBarWrapper } from '../Common/TitleBarWrapper'
+import { TauriDragRegion } from '../Common/TauriDragRegion'
+import { IoIosArrowDown, IoIosArrowForward } from 'react-icons/io'
+import { useEffect } from 'react'
+import { setPreviousSettingPagePath } from '../../store/ui/navigate.ts'
 
 export function SettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [isMobile, setIsMobile] = useState(false)
-  const [drawerVisible, setDrawerVisible] = useState(false)
   const { hasPermission } = usePermissions()
+  const mainContentMinSize = useMainContentMinSize()
   const { token } = theme.useToken()
-
-  // Extract the current settings section from the URL
-  const currentSection = location.pathname.split('/').pop() || 'general'
-
-  // Check if screen is mobile size
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768) // md breakpoint
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   const baseMenuItems = [
     {
@@ -249,83 +234,135 @@ export function SettingsPage() {
 
   const menuItems = [...baseMenuItems, ...adminMenuItems]
 
+  // Extract the current settings section from the URL and validate it
+  const urlSection = location.pathname.match(/\/settings\/([^/]+)/)?.[1]
+  const validSections = menuItems
+    .filter(item => 'key' in item && item.key)
+    .map(item => (item as any).key)
+
+  const currentSection = validSections.includes(urlSection)
+    ? urlSection
+    : 'general'
+
+  useEffect(() => {
+    setPreviousSettingPagePath(location.pathname)
+  }, [location.pathname])
+
   const handleMenuClick = (key: string) => {
     navigate(`/settings/${key}`)
-    if (isMobile) {
-      setDrawerVisible(false)
-    }
+  }
+
+  // Get current section display info
+  const getCurrentSectionInfo = () => {
+    const currentItem = menuItems.find(
+      item => 'key' in item && item.key === currentSection,
+    )
+    return (
+      currentItem || { icon: <SettingOutlined />, label: t('settings.title') }
+    )
   }
 
   const SettingsMenu = () => (
-    <>
-      <div className={'p-2.5'}>
-        <Title level={4} style={{ margin: 0 }}>
-          <SettingOutlined style={{ marginRight: 8 }} />
-          {t('settings.title')}
-        </Title>
-      </div>
-      <Menu
-        className={'w-fit'}
-        style={{
-          lineHeight: 1,
-        }}
-        selectedKeys={[currentSection]}
-        items={menuItems}
-        onClick={({ key }) => handleMenuClick(key)}
-      />
-    </>
+    <Menu
+      className={`
+      w-fit
+      h-full
+      overflow-y-auto
+      !p-1
+      [&_.ant-menu]:!px-2
+      [&_.ant-menu-item]:!h-8
+      [&_.ant-menu-item]:!leading-[32px]
+      `}
+      style={{
+        lineHeight: 1,
+      }}
+      selectedKeys={[currentSection || 'general']}
+      items={menuItems}
+      onClick={({ key }) => handleMenuClick(key)}
+    />
   )
 
   return (
-    <Layout className="h-screen w-full">
-      {/* Mobile Header */}
-      {isMobile && (
-        <div className="flex items-center justify-between p-4">
-          <Button
-            type="text"
-            icon={<MenuOutlined />}
-            onClick={() => setDrawerVisible(true)}
-          />
-          <Title level={3} style={{ margin: 0 }}>
-            <SettingOutlined style={{ marginRight: 8 }} />
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Page Header */}
+      <TitleBarWrapper>
+        <div className="h-full flex items-center justify-between w-full">
+          <TauriDragRegion className={'h-full w-full absolute top-0 left-0'} />
+          <Typography.Title level={4} className="!m-0 !leading-tight truncate">
             {t('settings.title')}
-          </Title>
-          <div className="w-8" />
+          </Typography.Title>
+          {mainContentMinSize.xs && (
+            <div className="flex flex-1 items-center px-2">
+              <IoIosArrowForward />
+              <Dropdown
+                overlayStyle={{
+                  border: '1px solid ' + token.colorBorderSecondary,
+                }}
+                overlayClassName={`
+                  rounded-md
+                  `}
+                menu={{
+                  items: menuItems.map((item: any) => {
+                    if ('type' in item && item.type === 'divider') {
+                      return { type: 'divider' }
+                    }
+                    if ('type' in item && item.type === 'group') {
+                      return {
+                        type: 'group',
+                        label: (
+                          <div className={'-ml-1'}>
+                            <Typography.Text
+                              strong
+                              type={'secondary'}
+                              className={'!text-xs'}
+                            >
+                              {item.label}
+                            </Typography.Text>
+                          </div>
+                        ),
+                      }
+                    }
+                    return {
+                      key: item.key,
+                      label: (
+                        <Flex className={'gap-2'}>
+                          {item.icon}
+                          {item.label}
+                        </Flex>
+                      ),
+                    }
+                  }),
+                  onClick: ({ key }) => {
+                    handleMenuClick(key)
+                  },
+                  selectedKeys: [currentSection || 'general'],
+                }}
+                trigger={['click']}
+              >
+                <Button type="text" className={'mt-[2px]'}>
+                  {getCurrentSectionInfo().icon} {getCurrentSectionInfo().label}{' '}
+                  <IoIosArrowDown />
+                </Button>
+              </Dropdown>
+            </div>
+          )}
         </div>
-      )}
+      </TitleBarWrapper>
 
-      {/* Desktop Sidebar */}
-      {!isMobile && (
-        <Sider
-          theme={'light'}
-          className={'h-screen overflow-auto w-fit px-1 !transition-none'}
-          width={'fit-content'}
-          style={{
-            borderRight: `1px solid ${token.colorBorderSecondary}`,
-          }}
-        >
-          <SettingsMenu />
-        </Sider>
-      )}
+      {/* Page Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop Sidebar */}
+        {!mainContentMinSize.xs && (
+          <div className="w-fit">
+            <SettingsMenu />
+          </div>
+        )}
 
-      {/* Mobile Drawer */}
-      <Drawer
-        title={null}
-        placement="left"
-        onClose={() => setDrawerVisible(false)}
-        open={drawerVisible}
-        styles={{
-          body: { padding: 0 },
-        }}
-        width={280}
-      >
-        <SettingsMenu />
-      </Drawer>
-
-      {/* Main Content */}
-      <Layout>
-        <Outlet />
-      </Layout>
-    </Layout>
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden">
+          <Outlet />
+        </div>
+      </div>
+    </div>
   )
 }

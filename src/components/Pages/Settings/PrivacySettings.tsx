@@ -1,6 +1,6 @@
 import { Card, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { SettingsPageContainer } from './SettingsPageContainer'
+import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
 

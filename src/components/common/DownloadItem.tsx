@@ -12,15 +12,21 @@ import {
   formatSpeed,
 } from '../../utils/downloadUtils.ts'
 import { Link } from 'react-router-dom'
+import React from 'react'
 
 const { Text } = Typography
 
 interface DownloadItemProps {
   download: DownloadInstance
   mode?: 'full' | 'compact' | 'minimal'
+  onClick?: () => void
 }
 
-export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
+export function DownloadItem({
+  download,
+  mode = 'full',
+  onClick,
+}: DownloadItemProps) {
   const { message } = App.useApp()
   const { token } = theme.useToken()
 
@@ -43,7 +49,9 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
     }
   }
 
-  const handleCancelDownload = async () => {
+  const handleCancelDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
     try {
       await cancelModelDownload(download.id)
       message.success('Download cancelled successfully')
@@ -62,29 +70,37 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
             to={`/settings/providers/${download.provider_id}`}
             className="text-xs truncate flex-1 pr-2"
             onClick={() => {
-              openViewDownloadModal(download.id)
+              if (onClick) onClick()
             }}
           >
             {download.request_data.alias}
           </Link>
-          <Text type="secondary" className="text-xs">
-            {percent}%
-          </Text>
+          {download.status !== 'failed' && (
+            <Text type="secondary" className="!text-xs">
+              {percent}%
+            </Text>
+          )}
         </Flex>
-        <Progress
-          percent={percent}
-          size="small"
-          status="active"
-          strokeColor={token.colorPrimary}
-          showInfo={false}
-          strokeWidth={4}
-        />
-        {(speed || eta) && (
+        {download.status === 'failed' && download.error_message ? (
+          <Text type="danger" className="!text-xs">
+            {download.error_message}
+          </Text>
+        ) : (
+          <Progress
+            percent={percent}
+            size="small"
+            status="active"
+            strokeColor={token.colorPrimary}
+            showInfo={false}
+            strokeWidth={4}
+          />
+        )}
+        {(speed || eta) && download.status !== 'failed' && (
           <Flex justify="space-between" align="center" className="mt-1">
-            <Text type="secondary" className="text-xs">
+            <Text type="secondary" className="!text-xs">
               {speed || ''}
             </Text>
-            <Text type="secondary" className="text-xs">
+            <Text type="secondary" className="!text-xs">
               {eta ? `ETA: ${eta}` : ''}
             </Text>
           </Flex>
@@ -101,9 +117,6 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
           <Link
             to={`/settings/providers/${download.provider_id}`}
             className="text-xs truncate flex-1 pr-2"
-            onClick={() => {
-              openViewDownloadModal(download.id)
-            }}
           >
             {download.request_data.alias}
           </Link>
@@ -122,32 +135,40 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
             )}
           </Flex>
         </Flex>
-        <Progress
-          percent={percent}
-          status="active"
-          strokeColor={token.colorPrimary}
-          size="small"
-          className="mb-2"
-        />
-        <Flex justify="space-between" align="center">
-          <Text type="secondary" className="text-xs">
-            {download.progress_data && download.progress_data.total > 1000
-              ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
-              : '0 B / 0 B'}
+        {download.status === 'failed' && download.error_message ? (
+          <Text type="danger" className="text-xs mb-2 block">
+            {download.error_message}
           </Text>
-          <Flex className="gap-2">
-            {speed && (
-              <Text type="secondary" className="text-xs">
-                {speed}
-              </Text>
-            )}
-            {eta && (
-              <Text type="secondary" className="text-xs">
-                {eta}
-              </Text>
-            )}
+        ) : (
+          <Progress
+            percent={percent}
+            status="active"
+            strokeColor={token.colorPrimary}
+            size="small"
+            className="mb-2"
+          />
+        )}
+        {download.status !== 'failed' && (
+          <Flex justify="space-between" align="center">
+            <Text type="secondary" className="text-xs">
+              {download.progress_data && download.progress_data.total > 1000
+                ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
+                : '0 B / 0 B'}
+            </Text>
+            <Flex className="gap-2">
+              {speed && (
+                <Text type="secondary" className="text-xs">
+                  {speed}
+                </Text>
+              )}
+              {eta && (
+                <Text type="secondary" className="text-xs">
+                  {eta}
+                </Text>
+              )}
+            </Flex>
           </Flex>
-        </Flex>
+        )}
       </div>
     )
   }
@@ -160,9 +181,11 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
           <div className="text-base font-medium mb-1">
             {download.request_data.alias}
           </div>
-          <Text type="secondary" className="text-xs">
-            {download.progress_data?.message || 'Preparing download...'}
-          </Text>
+          {download.status !== 'failed' && (
+            <Text type="secondary" className="text-xs">
+              {download.progress_data?.message || 'Preparing download...'}
+            </Text>
+          )}
         </div>
         <Flex className="gap-2">
           <Button
@@ -194,32 +217,40 @@ export function DownloadItem({ download, mode = 'full' }: DownloadItemProps) {
           )}
         </Flex>
       </Flex>
-      <Progress
-        percent={percent}
-        status="active"
-        strokeColor={token.colorPrimary}
-        size="small"
-        className="mb-2"
-      />
-      <Flex justify="space-between" align="center">
-        <Text type="secondary" className="text-xs">
-          {download.progress_data && download.progress_data.total > 1000
-            ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
-            : '0 B / 0 B'}
+      {download.status === 'failed' && download.error_message ? (
+        <Text type="danger" className="text-xs mb-2 block">
+          {download.error_message}
         </Text>
-        <Flex className={'gap-2'}>
-          {speed && (
-            <Text type="secondary" className="text-xs">
-              Speed: {speed}
-            </Text>
-          )}
-          {eta && (
-            <Text type="secondary" className="text-xs">
-              ETA: {eta}
-            </Text>
-          )}
+      ) : (
+        <Progress
+          percent={percent}
+          status="active"
+          strokeColor={token.colorPrimary}
+          size="small"
+          className="mb-2"
+        />
+      )}
+      {download.status !== 'failed' && (
+        <Flex justify="space-between" align="center">
+          <Text type="secondary" className="text-xs">
+            {download.progress_data && download.progress_data.total > 1000
+              ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
+              : '0 B / 0 B'}
+          </Text>
+          <Flex className={'gap-2'}>
+            {speed && (
+              <Text type="secondary" className="text-xs">
+                Speed: {speed}
+              </Text>
+            )}
+            {eta && (
+              <Text type="secondary" className="text-xs">
+                ETA: {eta}
+              </Text>
+            )}
+          </Flex>
         </Flex>
-      </Flex>
+      )}
     </div>
   )
 }

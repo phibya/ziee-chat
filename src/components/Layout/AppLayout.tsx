@@ -1,123 +1,290 @@
-import { MenuUnfoldOutlined } from '@ant-design/icons'
-import { Button, Layout } from 'antd'
-import { useEffect } from 'react'
-import {
-  setIsMobile,
-  setMobileOverlayOpen,
-  setUILeftPanelCollapsed,
-  Stores,
-} from '../../store'
-import { useUILeftPanelCollapsed } from '../../store/settings.ts'
-import { LeftPanel } from './LeftPanel'
-
-const { Sider, Content } = Layout
+import React, { useCallback, useEffect, useRef } from 'react'
+import { LeftSidebar } from './LeftSidebar'
+import { Stores, setSidebarCollapsed, setMainContentWidth } from '../../store'
+import { Button, theme } from 'antd'
+import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
+import { isDesktopApp } from '../../api/core.ts'
+import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
 
 interface AppLayoutProps {
   children: React.ReactNode
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const leftPanelCollapsed = useUILeftPanelCollapsed()
-  const { isMobile, mobileOverlayOpen } = Stores.UI.Layout
+  const { isSidebarCollapsed, isFullscreen } = Stores.UI.Layout
+  const { token } = theme.useToken()
+  const windowMinSize = useWindowMinSize()
 
-  // Check if screen is mobile size
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const spacerRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+  const currentWidth = useRef(200)
+
+  const MIN_WIDTH = 150
+  const MAX_WIDTH = 400
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault()
+
+      const handleMouseMove = (e: MouseEvent) => {
+        const newWidth = e.clientX
+
+        if (spacerRef.current) {
+          spacerRef.current.style.transition = 'none'
+        }
+
+        if (newWidth < MIN_WIDTH / 2) {
+          if (spacerRef.current) {
+            spacerRef.current.style.transition = 'all 200ms ease-out'
+          }
+          setSidebarCollapsed(true)
+        } else if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+          // If coming from collapsed state, re-enable transition for smooth expand
+          if (isSidebarCollapsed) {
+            if (spacerRef.current) {
+              spacerRef.current.style.transition = 'all 200ms ease-out'
+            }
+
+            setTimeout(() => {
+              setSidebarCollapsed(false)
+              currentWidth.current = newWidth
+              if (sidebarRef.current) {
+                sidebarRef.current.style.width = `${newWidth}px`
+              }
+              if (spacerRef.current) {
+                spacerRef.current.style.width = `${newWidth}px`
+              }
+
+              // Resume no-transition dragging after expand
+              setTimeout(() => {
+                if (sidebarRef.current) {
+                  sidebarRef.current.style.transition = 'none'
+                }
+                if (spacerRef.current) {
+                  spacerRef.current.style.transition = 'none'
+                }
+              }, 300) // Wait for transition to complete
+            }, 10)
+          } else {
+            // Disable the transition for smooth dragging
+            setSidebarCollapsed(false)
+            currentWidth.current = newWidth
+            if (sidebarRef.current) {
+              sidebarRef.current.style.width = `${newWidth}px`
+            }
+            if (spacerRef.current) {
+              spacerRef.current.style.width = `${newWidth}px`
+            }
+          }
+        } else if (newWidth > MAX_WIDTH) {
+          currentWidth.current = MAX_WIDTH
+          if (sidebarRef.current) {
+            sidebarRef.current.style.width = `${MAX_WIDTH}px`
+          }
+          if (spacerRef.current) {
+            spacerRef.current.style.width = `${MAX_WIDTH}px`
+          }
+        }
+      }
+
+      const handleMouseUp = () => {
+        if (spacerRef.current) {
+          spacerRef.current.style.transition = 'all 200ms ease-out'
+        }
+
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+    },
+    [MIN_WIDTH, MAX_WIDTH],
+  )
+
   useEffect(() => {
-    const checkMobile = () => {
-      const wasMobile = isMobile
-      const isNowMobile = window.innerWidth < 1024 // lg breakpoint
-      setIsMobile(isNowMobile)
+    if (windowMinSize.xs) {
+      if (!isSidebarCollapsed) {
+        setSidebarCollapsed(true)
+      }
+    }
+  }, [windowMinSize.xs])
 
-      // Close mobile overlay when switching from mobile to desktop
-      if (wasMobile && !isNowMobile && mobileOverlayOpen) {
-        setMobileOverlayOpen(false)
+  // ResizeObserver to listen to main content width changes
+  useEffect(() => {
+    const mainContentElement = mainContentRef.current
+    if (!mainContentElement) return
+
+    const resizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect
+        setMainContentWidth(Math.round(width))
+      }
+    })
+
+    resizeObserver.observe(mainContentElement)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    //set root document background color based on theme
+    const root = document.documentElement
+    if (isDesktopApp) {
+      root.style.backgroundColor = 'transparent'
+    } else {
+      root.style.backgroundColor = token.colorBgLayout
+      // set theme in meta tag as well
+      const metaThemeColor = document.querySelector(
+        'meta[name="theme-color"]',
+      ) as HTMLMetaElement
+      if (metaThemeColor) {
+        metaThemeColor.content = token.colorBgLayout
+      } else {
+        const newMetaThemeColor = document.createElement('meta')
+        newMetaThemeColor.name = 'theme-color'
+        newMetaThemeColor.content = token.colorBgLayout
+        document.head.appendChild(newMetaThemeColor)
+      }
+    }
+  }, [token.colorBgLayout])
+
+  // Visual viewport listener for mobile keyboard adjustments
+  useEffect(() => {
+    const updateBodyHeight = () => {
+      if (window.visualViewport) {
+        const height = window.visualViewport.height
+        document.body.style.height = `${height}px`
+
+        // Automatically scroll to top when viewport changes
+        document.documentElement.scrollTop = 0
       }
     }
 
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
+    // Check if visual viewport is supported (mainly mobile devices)
+    if (window.visualViewport) {
+      // Set initial height
+      updateBodyHeight()
 
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [isMobile, mobileOverlayOpen, setIsMobile, setMobileOverlayOpen])
+      // Listen for viewport changes (keyboard show/hide)
+      window.visualViewport.addEventListener('resize', updateBodyHeight)
 
-  // Force collapse on mobile
-  useEffect(() => {
-    if (isMobile && !leftPanelCollapsed) {
-      setUILeftPanelCollapsed(true)
+      return () => {
+        window.visualViewport?.removeEventListener('resize', updateBodyHeight)
+      }
     }
-  }, [isMobile, leftPanelCollapsed])
+  }, [])
+
+  const toggleSidebar = () => {
+    if (sidebarRef.current) {
+      sidebarRef.current.style.transition = 'transform 200ms ease-out'
+    }
+    setSidebarCollapsed(!isSidebarCollapsed)
+    setTimeout(() => {
+      if (sidebarRef.current) {
+        sidebarRef.current.style.transition = 'none'
+      }
+    }, 200)
+  }
 
   return (
-    <Layout className={'h-screen overflow-hidden'}>
-      {/* Left Panel - Only show when not collapsed on desktop or when overlay is open on mobile */}
-      {(!isMobile && !leftPanelCollapsed) || (isMobile && mobileOverlayOpen) ? (
-        <Sider
-          width={'fit-content'}
-          collapsible
-          collapsed={false}
-          trigger={null}
-          breakpoint="lg"
-          collapsedWidth={0}
-          className={`overflow-auto h-screen fixed top-0 left-0 bottom-0 !transition-none ${
-            isMobile ? 'z-[1050]' : ''
-          }`}
-          theme={'light'}
+    <div
+      className="h-full w-screen flex overflow-hidden"
+      style={{
+        backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
+      }}
+    >
+      {/* Sidebar - Always visible, width controlled by container */}
+      <div
+        ref={sidebarRef}
+        className="absolute h-full z-1"
+        style={{
+          width: `${currentWidth.current}px`,
+          ...(windowMinSize.xs
+            ? {
+                zIndex: 3,
+                position: 'fixed',
+                background: token.colorBgContainer,
+                transform: isSidebarCollapsed
+                  ? 'translateX(-100%)'
+                  : 'translateX(0)',
+                width: '100%',
+              }
+            : {}),
+        }}
+      >
+        <LeftSidebar />
+      </div>
+
+      <div
+        className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
+        style={{
+          left: isDesktopApp && !isFullscreen ? 78 : 12,
+          top: 0,
+        }}
+      >
+        {/* Collapse/Expand Sidebar Button */}
+        <Button
+          type="text"
+          onClick={toggleSidebar}
+          className="flex items-center justify-center"
+          style={{
+            width: '24px',
+            height: '24px',
+            padding: 0,
+            fontSize: '30px',
+            borderRadius: '4px',
+            minWidth: '20px',
+          }}
         >
-          <LeftPanel />
-        </Sider>
-      ) : null}
+          {isSidebarCollapsed ? <GoSidebarCollapse /> : <GoSidebarExpand />}
+        </Button>
+      </div>
 
-      {/* Floating Toggle Button - Only show when panel is collapsed on desktop */}
-      {!isMobile && leftPanelCollapsed && (
-        <div className="fixed top-4 left-4 z-[1060]">
-          <Button
-            type="default"
-            icon={<MenuUnfoldOutlined />}
-            onClick={() => setUILeftPanelCollapsed(false)}
-          />
-        </div>
-      )}
+      {/* Spacer div for layout */}
+      <div
+        ref={spacerRef}
+        className="flex-shrink-0 z-2 pointer-events-none"
+        style={
+          windowMinSize.xs
+            ? {
+                width: 0,
+              }
+            : {
+                width: isSidebarCollapsed ? 0 : `${currentWidth.current}px`,
+                transition: 'all 200ms ease-out', // Default transition, overridden during dragging
+              }
+        }
+      />
 
-      {/* Mobile Toggle Button - Show when panel is not open on mobile */}
-      {isMobile && !mobileOverlayOpen && (
-        <div className="fixed top-4 left-4 z-[1060]">
-          <button
-            onClick={() => setMobileOverlayOpen(true)}
-            className="bg-white border border-gray-300 rounded-md p-2 shadow-md hover:bg-gray-50 transition-colors"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-            }}
+      {/* Main Content Area */}
+      <div
+        className="flex-1 flex flex-col z-2 relative overflow-hidden"
+        style={{
+          backgroundColor: token.colorBgLayout,
+        }}
+      >
+        {/* Toolbar with Traffic Lights */}
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden relative">
+          <div
+            ref={mainContentRef}
+            className="w-full h-full overflow-hidden relative"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 12h18M3 6h18M3 18h18" />
-            </svg>
-          </button>
+            {children}
+          </div>
         </div>
-      )}
-
-      {/* Mobile Overlay Backdrop */}
-      {isMobile && mobileOverlayOpen && (
-        <div
-          className="fixed inset-0 z-[1040]"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setMobileOverlayOpen(false)}
-        />
-      )}
-
-      {/* Main Content */}
-      <Content className="w-full h-screen overflow-hidden">{children}</Content>
-    </Layout>
+        {!isSidebarCollapsed && (
+          <div
+            className="absolute top-0 left-0 w-1 h-full cursor-col-resize"
+            onMouseDown={handleMouseDown}
+          />
+        )}
+      </div>
+    </div>
   )
 }

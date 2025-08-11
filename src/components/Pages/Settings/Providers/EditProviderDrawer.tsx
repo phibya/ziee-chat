@@ -1,6 +1,6 @@
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { Button, Card, Flex, Form, Input, Switch } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
+import { Drawer } from '../../../Common/Drawer'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -98,7 +98,7 @@ export function EditProviderDrawer() {
         {/* API Configuration for non-local providers */}
         {provider.type !== 'local' && (
           <Flex vertical className="gap-2 w-full">
-            <Card size="small" title={t('providers.apiConfiguration')}>
+            <Card title={t('providers.apiConfiguration')}>
               <Form.Item
                 name="api_key"
                 label={t('providers.apiKey')}

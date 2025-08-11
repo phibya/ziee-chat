@@ -119,7 +119,6 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
         {/* Action Buttons */}
         <div className="mt-auto flex gap-2">
           <Button
-            size="small"
             icon={<InfoCircleOutlined />}
             onClick={e => {
               e.stopPropagation()
@@ -131,7 +130,6 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
           </Button>
           <Button
             type="primary"
-            size="small"
             icon={<RobotOutlined />}
             onClick={e => {
               e.stopPropagation()

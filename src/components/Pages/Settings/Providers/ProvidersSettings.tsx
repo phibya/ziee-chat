@@ -1,22 +1,16 @@
-import {
-  DeleteOutlined,
-  DownOutlined,
-  MenuOutlined,
-  PlusOutlined,
-} from '@ant-design/icons'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import {
   App,
   Button,
   Dropdown,
   Empty,
   Flex,
-  Layout,
   Menu,
   Modal,
   Spin,
   Typography,
 } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { isDesktopApp } from '../../../../api/core'
@@ -37,10 +31,11 @@ import { EditLocalModelDrawer } from './EditLocalModelDrawer.tsx'
 import { EditRemoteModelDrawer } from './EditRemoteModelDrawer.tsx'
 import { LocalProviderSettings } from './LocalProviderSettings'
 import { RemoteProviderSettings } from './RemoteProviderSettings'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { CgMenuRightAlt } from 'react-icons/cg'
+import { useMainContentMinSize } from '../../../hooks/useWindowMinSize.ts'
+import { IoIosArrowDown } from 'react-icons/io'
 
 const { Title, Text } = Typography
-const { Content } = Layout
 
 const PROVIDER_ICONS: Record<ProviderType, string> = {
   local: '🕯',
@@ -56,13 +51,12 @@ export function ProvidersSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
-  const { provider_id } = useParams<{ provider_id?: string }>()
+  const { providerId } = useParams<{ providerId?: string }>()
   const navigate = useNavigate()
+  const mainContentMinSize = useMainContentMinSize()
 
   // Model providers store
   const { providers, loading, error } = Stores.AdminProviders
-
-  const [isMobile, setIsMobile] = useState(false)
 
   // Check permissions for web app
   const canEditProviders =
@@ -82,18 +76,7 @@ export function ProvidersSettings() {
     )
   }
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  const currentProvider = providers.find(p => p.id === provider_id)
+  const currentProvider = providers.find(p => p.id === providerId)
 
   useEffect(() => {
     loadAllModelProviders()
@@ -110,9 +93,9 @@ export function ProvidersSettings() {
   // Handle URL parameter and provider selection
   useEffect(() => {
     if (providers.length > 0) {
-      if (provider_id) {
-        // If URL has provider_id, check if it's valid
-        const providerExists = providers.find(p => p.id === provider_id)
+      if (providerId) {
+        // If URL has providerId, check if it's valid
+        const providerExists = providers.find(p => p.id === providerId)
         if (!providerExists) {
           // Provider doesn't exist, redirect to first provider
           navigate(`/settings/providers/${providers[0].id}`, {
@@ -126,7 +109,7 @@ export function ProvidersSettings() {
         })
       }
     }
-  }, [providers, provider_id, navigate])
+  }, [providers, providerId])
 
   const handleDeleteProvider = async (providerId: string) => {
     if (!canEditProviders) {
@@ -146,7 +129,7 @@ export function ProvidersSettings() {
       onOk: async () => {
         try {
           await deleteModelProvider(providerId)
-          if (provider_id === providerId) {
+          if (providerId === providerId) {
             const remainingProviders = providers.filter(
               p => p.id !== providerId,
             )
@@ -207,8 +190,7 @@ export function ProvidersSettings() {
           >
             <Button
               type="text"
-              icon={<MenuOutlined />}
-              size="small"
+              icon={<CgMenuRightAlt />}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />
           </Dropdown>
@@ -228,7 +210,17 @@ export function ProvidersSettings() {
 
   const ProviderMenu = () => (
     <Menu
-      selectedKeys={provider_id ? [provider_id] : []}
+      className={`
+      w-full
+      h-full
+      !m-0
+      overflow-y-auto
+      [&_.ant-menu]:!px-0
+      [&_.ant-menu-item]:!h-8
+      [&_.ant-menu-item]:!leading-[32px]
+      !bg-transparent
+      !border-none`}
+      selectedKeys={providerId ? [providerId] : []}
       items={menuItems}
       onClick={({ key }) => {
         if (key === 'add-provider') {
@@ -237,7 +229,6 @@ export function ProvidersSettings() {
           navigate(`/settings/providers/${key}`)
         }
       }}
-      className={'!bg-transparent'}
     />
   )
 
@@ -268,56 +259,71 @@ export function ProvidersSettings() {
   }
 
   return (
-    <SettingsPageContainer title="Providers">
-      {/* Desktop Sidebar */}
-
-      <Flex className={'w-full'}>
-        {!isMobile && (
-          <div className={'w-42 overflow-y-auto h-full'}>
-            <ProviderMenu />
-          </div>
-        )}
-        {/* Main Content */}
-        <Layout className={'px-2 flex-1'}>
-          <Content>
-            {/* Mobile Header with Provider Selector */}
-            {isMobile && (
-              <div style={{ marginBottom: '24px' }}>
-                <Dropdown
-                  menu={{
-                    items: menuItems,
-                    onClick: ({ key }) => {
-                      if (key === 'add-provider') {
-                        openAddProviderDrawer()
-                      } else {
-                        navigate(`/settings/providers/${key}`)
-                      }
-                    },
-                  }}
-                  trigger={['click']}
-                >
-                  <Button
-                    size="large"
-                    style={{ width: '100%', textAlign: 'left' }}
-                  >
-                    <Flex justify="space-between" align="center">
-                      <Flex align="center" gap="middle">
-                        <span style={{ fontSize: '20px' }}>
-                          {currentProvider
-                            ? PROVIDER_ICONS[currentProvider.type]
-                            : ''}
-                        </span>
-                        <span>{currentProvider?.name}</span>
-                      </Flex>
-                      <DownOutlined />
-                    </Flex>
-                  </Button>
-                </Dropdown>
+    <div className="flex flex-col gap-3 h-full overflow-y-hidden">
+      <div
+        className={'flex w-full flex-1 overflow-y-auto relative justify-center'}
+      >
+        <div className={'w-full h-full max-w-4xl flex self-center'}>
+          {!mainContentMinSize.sm && (
+            <div
+              className={'w-42 flex flex-col gap-2 overflow-y-auto h-full pt-3'}
+            >
+              <div className={'w-full px-3'}>
+                <Title level={4} className="!m-0 !leading-tight">
+                  Providers
+                </Title>
               </div>
-            )}
-            {renderProviderSettings()}
-          </Content>
-        </Layout>
+              <div className={'flex-1 pl-2'}>
+                <ProviderMenu />
+              </div>
+            </div>
+          )}
+          {/* Main Content */}
+          <div className={'flex flex-1'}>
+            <div className={'flex w-full flex-col py-3 px-3 overflow-y-auto'}>
+              {mainContentMinSize.sm && (
+                <div className={'w-full flex flex-row gap-2 items-center mb-4'}>
+                  <Dropdown
+                    className={'w-full'}
+                    menu={{
+                      items: menuItems.map(item => ({
+                        // @ts-ignore
+                        icon: item.icon,
+                        key: item.key,
+                        label: item.label,
+                      })),
+                      onClick: ({ key }) => {
+                        if (key === 'add-provider') {
+                          openAddProviderDrawer()
+                        } else {
+                          navigate(`/settings/providers/${key}`)
+                        }
+                      },
+                      selectedKeys: providerId ? [providerId] : [],
+                    }}
+                    trigger={['click']}
+                  >
+                    <Button className="w-fit" size={'large'}>
+                      {currentProvider ? (
+                        <Flex className="gap-2 items-center">
+                          <span className="text-lg">
+                            {PROVIDER_ICONS[currentProvider.type]}
+                          </span>
+                          {currentProvider.name}
+                        </Flex>
+                      ) : (
+                        'Select Provider'
+                      )}
+                      <IoIosArrowDown />
+                    </Button>
+                  </Dropdown>
+                </div>
+              )}
+              {renderProviderSettings()}
+              <div className={'w-full h-3 block'} />
+            </div>
+          </div>
+        </div>
 
         {/* Modals */}
         <AddProviderDrawer />
@@ -328,7 +334,7 @@ export function ProvidersSettings() {
 
         <EditLocalModelDrawer />
         <EditRemoteModelDrawer />
-      </Flex>
-    </SettingsPageContainer>
+      </div>
+    </div>
   )
 }

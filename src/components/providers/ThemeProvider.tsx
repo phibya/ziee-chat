@@ -3,8 +3,8 @@ import { useEffect } from 'react'
 import { useUpdate } from 'react-use'
 import { ThemeContext } from '../../hooks/useTheme.ts'
 import { useUserAppearanceTheme } from '../../store'
-import { themes } from '../../themes'
-import { AppThemeConfig } from '../../themes/light.ts'
+import { themes } from '../themes'
+import { AppThemeConfig } from '../themes/light.ts'
 
 interface ThemeProviderProps {
   children: React.ReactNode

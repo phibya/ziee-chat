@@ -2,12 +2,13 @@ import { ClearOutlined, SearchOutlined } from '@ant-design/icons'
 import { Button, Flex, Input, Select, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
 import { searchModels, useHubStore } from '../../../store/hub'
-import { RepositoryDrawer } from '../Settings/ModelRepositorySettings/RepositoryDrawer.tsx'
 import { ModelCard } from './ModelCard'
 import {
   loadAllModelProviders,
   loadAllAdminModelRepositories,
 } from '../../../store'
+import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
+import { VscFilter } from 'react-icons/vsc'
 
 const { Text } = Typography
 
@@ -17,6 +18,8 @@ export function ModelsTab() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('popular')
+  const mainContentMinSize = useMainContentMinSize()
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     loadAllAdminModelRepositories()
@@ -105,59 +108,87 @@ export function ModelsTab() {
     return filtered
   }, [models, searchTerm, selectedTags, selectedCapabilities, sortBy])
 
-  return (
+  const filters = (
     <>
+      <Select
+        mode="multiple"
+        placeholder="Filter by tags"
+        value={selectedTags}
+        onChange={setSelectedTags}
+        className="flex-1"
+        allowClear
+        maxTagCount="responsive"
+        options={modelTags.map(tag => ({
+          key: tag,
+          value: tag,
+          label: tag,
+        }))}
+        popupMatchSelectWidth={false}
+      />
+      <Select
+        mode="multiple"
+        placeholder="Capabilities"
+        value={selectedCapabilities}
+        onChange={setSelectedCapabilities}
+        className="flex-1"
+        allowClear
+        maxTagCount="responsive"
+        options={modelCapabilities.map(capability => ({
+          key: capability.key,
+          value: capability.key,
+          label: capability.label,
+        }))}
+        popupMatchSelectWidth={false}
+      />
+      <Select
+        placeholder="Sort by"
+        value={sortBy}
+        onChange={setSortBy}
+        className="flex-1"
+        options={[
+          { value: 'popular', label: 'Popular' },
+          { value: 'name', label: 'Name' },
+          { value: 'size', label: 'Size' },
+        ]}
+        popupMatchSelectWidth={false}
+      />
+    </>
+  )
+
+  const toolbar = (
+    <div className="flex gap-2 flex-wrap">
+      <div className={'flex gap-2 w-full'}>
+        <Input
+          placeholder="Search models..."
+          prefix={<SearchOutlined />}
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          allowClear
+          className="flex-1"
+        />
+        {!mainContentMinSize.xs ? (
+          filters
+        ) : (
+          <Button
+            type={showFilters ? 'primary' : 'default'}
+            className={'!text-lg'}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <VscFilter />
+          </Button>
+        )}
+      </div>
+      {mainContentMinSize.xs && showFilters && (
+        <div className={'flex gap-2 w-full'}>{filters}</div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col gap-3 h-full overflow-hidden">
       {/* Search and Filters */}
-      <div className="mb-3">
-        <Flex className="mb-4 gap-3">
-          <Input
-            placeholder="Search models..."
-            prefix={<SearchOutlined />}
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            allowClear
-            className="flex-1"
-          />
-          <Select
-            mode="multiple"
-            placeholder="Filter by tags"
-            value={selectedTags}
-            onChange={setSelectedTags}
-            className="flex-1"
-            allowClear
-            maxTagCount="responsive"
-            options={modelTags.map(tag => ({
-              key: tag,
-              value: tag,
-              label: tag,
-            }))}
-          />
-          <Select
-            mode="multiple"
-            placeholder="Capabilities"
-            value={selectedCapabilities}
-            onChange={setSelectedCapabilities}
-            className="flex-1"
-            allowClear
-            maxTagCount="responsive"
-            options={modelCapabilities.map(capability => ({
-              key: capability.key,
-              value: capability.key,
-              label: capability.label,
-            }))}
-          />
-          <Select
-            placeholder="Sort by"
-            value={sortBy}
-            onChange={setSortBy}
-            className="flex-1"
-            options={[
-              { value: 'popular', label: 'Popular' },
-              { value: 'name', label: 'Name' },
-              { value: 'size', label: 'Size' },
-            ]}
-          />
-        </Flex>
+      <div>
+        {toolbar}
         {(searchTerm ||
           selectedTags.length > 0 ||
           selectedCapabilities.length > 0) && (
@@ -186,19 +217,19 @@ export function ModelsTab() {
       </div>
 
       {/* Models Grid */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
-        {filteredModels.map(model => (
-          <ModelCard key={model.id} model={model} />
-        ))}
-      </div>
-
-      {filteredModels.length === 0 && (
-        <div className="text-center py-12">
-          <Text type="secondary">No models found</Text>
+      <div className="flex-1 overflow-auto">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+          {filteredModels.map(model => (
+            <ModelCard key={model.id} model={model} />
+          ))}
         </div>
-      )}
 
-      <RepositoryDrawer />
-    </>
+        {filteredModels.length === 0 && (
+          <div className="text-center py-12">
+            <Text type="secondary">No models found</Text>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

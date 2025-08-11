@@ -23,7 +23,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
+import { Drawer } from '../../../Common/Drawer'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -47,7 +47,7 @@ import {
   User,
   UserGroup,
 } from '../../../../types'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { UserRegistrationSettings } from './UserRegistrationSettings.tsx'
 
 const { Title, Text } = Typography
@@ -569,7 +569,7 @@ export function UsersSettings() {
                       okText="Yes"
                       cancelText="No"
                     >
-                      <Button type="link" danger size="small">
+                      <Button type="link" danger>
                         Remove
                       </Button>
                     </Popconfirm>

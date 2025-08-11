@@ -1,4 +1,8 @@
-import { CloseCircleOutlined, UploadOutlined } from '@ant-design/icons'
+import {
+  CloseCircleOutlined,
+  PlusOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
 import {
   App,
   Button,
@@ -9,21 +13,30 @@ import {
   Typography,
   Upload,
 } from 'antd'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { useProjectStore } from '../../../store'
-import { FileCard } from '../../common/FileCard.tsx'
+import { FileCard } from '../../Common/FileCard.tsx'
 import { ProjectInstructionDrawer } from './ProjectInstructionDrawer.tsx'
+import { useUpdate } from 'react-use'
 
 const { Text } = Typography
 
-export const ProjectKnowledgeCard: React.FC = () => {
+interface ProjectKnowledgeCardProps {
+  getHeaderRef?: () => HTMLDivElement | null
+}
+
+export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
+  getHeaderRef,
+}) => {
   const { message } = App.useApp()
   const { projectId } = useParams<{ projectId: string }>()
   const { token } = theme.useToken()
   const [instructionDrawerOpen, setInstructionDrawerOpen] = useState(false)
   const [savingInstruction, setSavingInstruction] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const update = useUpdate()
 
   // Project store
   const {
@@ -35,6 +48,10 @@ export const ProjectKnowledgeCard: React.FC = () => {
     uploadFiles,
     removeUploadProgress,
   } = useProjectStore(projectId)
+
+  useEffect(() => {
+    if (getHeaderRef) update()
+  }, [])
 
   // Get files for this project
   const projectFiles = projectId
@@ -84,13 +101,23 @@ export const ProjectKnowledgeCard: React.FC = () => {
     }
   }
 
+  const header = (
+    <div className={'w-full flex justify-between'}>
+      <Typography.Title level={5} className={'!m-0'}>
+        Project knowledge
+      </Typography.Title>
+      <Button
+        icon={<PlusOutlined />}
+        onClick={handleAddFilesClick}
+        style={{ pointerEvents: 'auto' }}
+        loading={uploading}
+      />
+    </div>
+  )
+
   return (
-    <Card
-      title="Project knowledge"
-      className="w-96  overflow-y-hidden flex flex-col"
-      classNames={{
-        body: 'flex flex-col relative overflow-y-hidden flex-1',
-      }}
+    <div
+      className={'h-full flex flex-col overflow-y-hidden overflow-x-visible'}
     >
       <Upload.Dragger
         multiple
@@ -124,32 +151,44 @@ export const ProjectKnowledgeCard: React.FC = () => {
           <Text type="secondary">Drag and drop files here</Text>
         </Flex>
       </Upload.Dragger>
+      {
+        //portal if getHeaderRef is provided
+        getHeaderRef && getHeaderRef() ? (
+          createPortal(header, getHeaderRef()!)
+        ) : (
+          <div className={'w-full px-3 pt-3 pb-2'}>{header}</div>
+        )
+      }
+
       {/* Project Instructions */}
-      <Flex className="gap-1 flex-col">
+      <div className="flex gap-1 flex-col !px-3">
         <Text strong>Project Instructions</Text>
         <Card
           classNames={{
-            body: '!p-2 !px-3 flex items-center justify-between',
+            body: '!p-2 !px-3 flex items-center justify-between w-full flex gap-2 overflow-hidden',
           }}
         >
-          <Text type="secondary" ellipsis={true}>
-            {project?.instruction ||
-              'No instructions provided for this project.'}
-          </Text>
-          <Button
-            type="link"
-            size="small"
-            style={{ pointerEvents: 'auto' }}
-            onClick={() => setInstructionDrawerOpen(true)}
-          >
-            Edit
-          </Button>
+          <div className={'flex-1 overflow-hidden'}>
+            <Text type="secondary" ellipsis={true}>
+              {project?.instruction || 'No instructions provided'}
+            </Text>
+          </div>
+          <div>
+            <Button
+              type="link"
+              size="small"
+              style={{ pointerEvents: 'auto' }}
+              onClick={() => setInstructionDrawerOpen(true)}
+            >
+              Edit
+            </Button>
+          </div>
         </Card>
-      </Flex>
+      </div>
 
       {/* Upload Progress */}
       {uploadProgress.length > 0 && (
-        <div className={'py-0 flex flex-col gap-1 pt-2'}>
+        <div className={'py-0 flex flex-col gap-1 pt-2 px-3'}>
           <Text strong>Uploading files...</Text>
           <div className={'py-4 flex flex-col gap-2'}>
             {uploadProgress.map((progress: any, index: number) => (
@@ -180,30 +219,34 @@ export const ProjectKnowledgeCard: React.FC = () => {
       )}
 
       {/* Documents */}
-      <Flex justify="space-between" align="center" className={'!mt-3'}>
+      <div className={'!mt-3 flex px-3'}>
         <Text strong>Documents</Text>
-        <Button
-          loading={uploading}
-          style={{ pointerEvents: 'auto' }}
-          onClick={handleAddFilesClick}
-          icon={<UploadOutlined />}
-        >
-          Add Files
-        </Button>
-      </Flex>
+      </div>
 
-      <div className={'overflow-y-auto mt-3 flex-1'}>
-        <div className="flex gap-2 flex-wrap">
-          {/* Show uploading files */}
-          {uploading &&
-            uploadProgress.map((progress: any, index: number) => (
-              <FileCard key={`uploading-${index}`} uploadingFile={progress} />
+      <div className={'overflow-y-auto mt-3 flex-1 px-3'}>
+        <div>
+          <div className="flex gap-2 flex-wrap">
+            {/* Show uploading files */}
+            {uploading &&
+              uploadProgress.map((progress: any, index: number) => (
+                <div className={'flex-1 min-w-20 max-w-28'}>
+                  <FileCard
+                    key={`uploading-${index}`}
+                    uploadingFile={progress}
+                  />
+                </div>
+              ))}
+
+            {/* Show existing files */}
+            {projectFiles.map((file: any) => (
+              <div className={'flex-1 min-w-20 max-w-28'}>
+                <FileCard key={file.id} file={file} />
+              </div>
             ))}
-
-          {/* Show existing files */}
-          {projectFiles.map((file: any) => (
-            <FileCard key={file.id} file={file} />
-          ))}
+            {new Array(10).fill(0).map((_, i) => (
+              <div key={i} className={'flex-1 min-w-20 max-w-28'} />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -223,6 +266,6 @@ export const ProjectKnowledgeCard: React.FC = () => {
         currentInstruction={project?.instruction}
         loading={savingInstruction}
       />
-    </Card>
+    </div>
   )
 }

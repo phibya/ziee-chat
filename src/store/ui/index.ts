@@ -108,3 +108,5 @@ export {
   closeEditRAGDatabaseDrawer,
   setEditRAGDatabaseDrawerLoading,
 } from './editRAGDatabaseDrawer'
+
+export { usePathHistoryStore } from './navigate'

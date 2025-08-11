@@ -26,7 +26,7 @@ import {
   testRAGRepositoryConnection,
   clearRAGRepositoriesError,
 } from '../../../../store'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { AddRAGRepositoryDrawer } from './AddRAGRepositoryDrawer'
 import { EditRAGRepositoryDrawer } from './EditRAGRepositoryDrawer'
 
@@ -150,7 +150,6 @@ export function RAGRepositoriesSettings() {
       width: 100,
       render: (_: any, record: any) => (
         <Switch
-          size="small"
           checked={record.enabled}
           disabled={!canEditRepositories}
           onChange={enabled => {
@@ -197,7 +196,7 @@ export function RAGRepositoriesSettings() {
 
         return (
           <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-            <Button size="small">Actions</Button>
+            <Button>Actions</Button>
           </Dropdown>
         )
       },

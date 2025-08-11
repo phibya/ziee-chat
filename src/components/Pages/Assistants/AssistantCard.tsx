@@ -1,8 +1,17 @@
-import { DeleteOutlined, EditOutlined, MoreOutlined } from '@ant-design/icons'
+import {
+  CalendarOutlined,
+  DeleteOutlined,
+  EditOutlined,
+} from '@ant-design/icons'
 import { App, Button, Card, Dropdown, Flex, Tag, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { deleteUserAssistant, openAssistantDrawer } from '../../../store'
 import { Assistant } from '../../../types/api/assistant'
+import { CgMenuRightAlt } from 'react-icons/cg'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+
+dayjs.extend(relativeTime)
 
 const { Text } = Typography
 
@@ -33,42 +42,61 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
 
   return (
     <Card
-      hoverable
-      className="cursor-pointer h-full flex flex-col"
-      onClick={handleCardClick}
+      className="cursor-pointer relative group hover:!shadow-md transition-shadow h-full"
       classNames={{
-        body: 'h-full flex flex-col',
+        body: '!px-3 !pb-0 !py-2 flex gap-2 flex-col',
       }}
+      hoverable
+      onClick={handleCardClick}
     >
-      <Flex className="h-full flex-col justify-between">
-        {/* Content Area - Grows to fill space */}
-        <div className="flex-1">
-          <Card.Meta
-            title={
-              <div className="flex flex-col gap-1 pr-4">
-                <div className={'text-ellipsis overflow-hidden'}>
-                  <Typography.Title level={4} className={'whitespace-nowrap'}>
-                    {assistant.name}
-                  </Typography.Title>
-                </div>
-                <Flex className="gap-2">
-                  {assistant.is_default && (
-                    <Tag color="blue">{t('assistants.default')}</Tag>
-                  )}
-                  {!assistant.is_active && (
-                    <Tag color="red">{t('assistants.inactive')}</Tag>
-                  )}
-                </Flex>
-              </div>
-            }
-            description={
-              <div>
-                <Text type="secondary" className="block mb-2">
-                  {assistant.description || 'No description'}
-                </Text>
-              </div>
-            }
-          />
+      <Flex className="h-full flex-col flex-1">
+        {/* Header with name and tags */}
+        <Typography.Text strong className="m-0 pr-2">
+          {assistant.name}
+        </Typography.Text>
+
+        {/* Tags */}
+        {(assistant.is_default || !assistant.is_active) && (
+          <div className="mb-2">
+            <Flex className="gap-1">
+              {assistant.is_default && (
+                <Tag color="blue" className="text-xs">
+                  {t('assistants.default')}
+                </Tag>
+              )}
+              {!assistant.is_active && (
+                <Tag color="red" className="text-xs">
+                  {t('assistants.inactive')}
+                </Tag>
+              )}
+            </Flex>
+          </div>
+        )}
+
+        {/* Description */}
+        {assistant.description && (
+          <div className="mb-3">
+            <Text type="secondary" className="text-sm line-clamp-2">
+              {assistant.description}
+            </Text>
+          </div>
+        )}
+
+        {/* Stats and date - pushed to bottom */}
+        <div
+          style={{
+            marginTop: assistant.description ? 'auto' : '12px',
+          }}
+        >
+          {/* Last updated */}
+          <div className="mb-2">
+            <Flex align="center" gap="small">
+              <CalendarOutlined className="text-gray-400" />
+              <Text type="secondary" className="text-xs">
+                Updated {dayjs(assistant.updated_at).fromNow()}
+              </Text>
+            </Flex>
+          </div>
         </div>
 
         <div className="absolute top-2 right-2">
@@ -108,7 +136,7 @@ export function AssistantCard({ assistant }: AssistantCardProps) {
           >
             <Button
               type="text"
-              icon={<MoreOutlined />}
+              icon={<CgMenuRightAlt />}
               onClick={e => e.stopPropagation()}
               size="small"
             />

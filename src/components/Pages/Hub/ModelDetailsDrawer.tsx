@@ -6,8 +6,8 @@ import {
   ToolOutlined,
   UnlockOutlined,
 } from '@ant-design/icons'
-import { Button, Card, Flex, Tag, Typography } from 'antd'
-import { Drawer } from '../../common/Drawer'
+import { Card, Flex, Tag, Typography } from 'antd'
+import { Drawer } from '../../Common/Drawer'
 import type { HubModel } from '../../../types/api/hub'
 
 const { Title, Text } = Typography
@@ -26,17 +26,7 @@ export function ModelDetailsDrawer({
   if (!model) return null
 
   return (
-    <Drawer
-      title={model.alias}
-      open={open}
-      onClose={onClose}
-      width={600}
-      footer={[
-        <Button key="close" onClick={onClose}>
-          Close
-        </Button>,
-      ]}
-    >
+    <Drawer title={model.alias} open={open} onClose={onClose} width={600}>
       <Flex vertical className="gap-4">
         {/* Basic Info */}
         <div>

@@ -4,7 +4,7 @@ import {
   EditOutlined,
   PlusOutlined,
 } from '@ant-design/icons'
-import { App, Button, Card, Flex, List, Switch, Typography } from 'antd'
+import { App, Button, Card, Divider, Flex, Switch, Typography, Empty } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isDesktopApp } from '../../../../api/core'
@@ -18,7 +18,7 @@ import {
 import { openRepositoryDrawer } from '../../../../store/ui'
 import { Repository } from '../../../../types/api/repository'
 import { RepositoryDrawer } from './RepositoryDrawer'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
 
@@ -143,6 +143,62 @@ export function ModelRepositorySettings() {
     }
   }
 
+  const getRepositoryActions = (repository: Repository) => {
+    const actions: React.ReactNode[] = []
+
+    // Always include the enable/disable switch first
+    actions.push(
+      <Switch
+        key="enable"
+        className="!mr-2"
+        checked={repository.enabled}
+        onChange={checked => handleToggleRepository(repository.id, checked)}
+        disabled={!canEditRepositories}
+      />
+    )
+
+    if (canEditRepositories) {
+      actions.push(
+        <Button
+          key="test"
+          type="text"
+          icon={<CloudDownloadOutlined />}
+          loading={testing}
+          onClick={() => testRepositoryConnection(repository)}
+        >
+          Test
+        </Button>
+      )
+
+      actions.push(
+        <Button
+          key="edit"
+          type="text"
+          icon={<EditOutlined />}
+          onClick={() => handleEditRepository(repository)}
+        >
+          Edit
+        </Button>
+      )
+
+      if (!repository.built_in) {
+        actions.push(
+          <Button
+            key="delete"
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteRepository(repository.id)}
+          >
+            Delete
+          </Button>
+        )
+      }
+    }
+
+    return actions.filter(Boolean)
+  }
+
   return (
     <SettingsPageContainer
       title={t('settings.modelRepository.title')}
@@ -159,106 +215,55 @@ export function ModelRepositorySettings() {
         extra={
           canEditRepositories && (
             <Button
-              type="primary"
+              type={'text'}
               icon={<PlusOutlined />}
               onClick={handleAddRepository}
-            >
-              Add Repository
-            </Button>
+            />
           )
         }
       >
         <Flex className="flex-col gap-4">
           <div>
             {repositories.length === 0 ? (
-              <div className="text-center py-8">
-                <CloudDownloadOutlined className="text-4xl mb-2 opacity-50" />
-                <div>
-                  <Text type="secondary">No repositories configured</Text>
-                </div>
-                <div>
-                  <Text type="secondary">Add a repository to get started</Text>
-                </div>
-              </div>
+              <Empty 
+                description="No repositories configured" 
+                image={<CloudDownloadOutlined className="text-4xl opacity-50" />}
+              >
+                <Text type="secondary">Add a repository to get started</Text>
+              </Empty>
             ) : (
-              <List
-                dataSource={repositories}
-                renderItem={(repository: Repository) => (
-                  <List.Item
-                    actions={
-                      canEditRepositories
-                        ? [
-                            <Switch
-                              key="toggle"
-                              checked={repository.enabled}
-                              onChange={checked =>
-                                handleToggleRepository(repository.id, checked)
-                              }
-                            />,
-                            <Button
-                              key="test"
-                              type="text"
-                              icon={<CloudDownloadOutlined />}
-                              loading={testing}
-                              onClick={() =>
-                                testRepositoryConnection(repository)
-                              }
-                            >
-                              Test
-                            </Button>,
-                            <Button
-                              key="edit"
-                              type="text"
-                              icon={<EditOutlined />}
-                              onClick={() => handleEditRepository(repository)}
-                            >
-                              Edit
-                            </Button>,
-                            ...(repository.built_in
-                              ? []
-                              : [
-                                  <Button
-                                    key="delete"
-                                    type="text"
-                                    danger
-                                    icon={<DeleteOutlined />}
-                                    onClick={() =>
-                                      handleDeleteRepository(repository.id)
-                                    }
-                                  >
-                                    Delete
-                                  </Button>,
-                                ]),
-                          ]
-                        : [
-                            <Switch
-                              key="toggle"
-                              checked={repository.enabled}
-                              disabled
-                            />,
-                          ]
-                    }
-                  >
-                    <List.Item.Meta
-                      title={
-                        <Flex align="center" gap="small">
-                          <Text strong>{repository.name}</Text>
-                          {repository.built_in && (
-                            <Text type="secondary" className="text-xs">
-                              (Built-in)
-                            </Text>
-                          )}
-                          {!repository.enabled && (
-                            <Text type="secondary" className="text-xs">
-                              (Disabled)
-                            </Text>
-                          )}
-                        </Flex>
-                      }
-                      description={
-                        <Flex className="flex-col gap-1">
-                          <Text type="secondary">{repository.url}</Text>
-                          <Text type="secondary" className="text-xs">
+              <div>
+                {repositories.map((repository, index) => (
+                  <div key={repository.id}>
+                    <div className="flex items-start gap-3 flex-wrap">
+                      {/* Repository Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap-reverse">
+                          <div className="flex-1 min-w-48">
+                            <Flex align="center" gap="small">
+                              <Text className="font-medium">{repository.name}</Text>
+                              {repository.built_in && (
+                                <Text type="secondary" className="text-xs">
+                                  (Built-in)
+                                </Text>
+                              )}
+                              {!repository.enabled && (
+                                <Text type="secondary" className="text-xs">
+                                  (Disabled)
+                                </Text>
+                              )}
+                            </Flex>
+                          </div>
+                          <div className="flex gap-1 items-center justify-end">
+                            {getRepositoryActions(repository)}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Text type="secondary" className="block">
+                            {repository.url}
+                          </Text>
+                          <Text type="secondary" className="text-xs block">
                             Authentication:{' '}
                             {repository.auth_type === 'none'
                               ? 'None'
@@ -270,12 +275,13 @@ export function ModelRepositorySettings() {
                                     ? 'Bearer Token'
                                     : repository.auth_type}
                           </Text>
-                        </Flex>
-                      }
-                    />
-                  </List.Item>
-                )}
-              />
+                        </div>
+                      </div>
+                    </div>
+                    {index < repositories.length - 1 && <Divider className="my-0" />}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </Flex>

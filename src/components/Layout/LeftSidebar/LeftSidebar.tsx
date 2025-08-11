@@ -97,6 +97,7 @@ export function LeftSidebar() {
   const windowMinSize = useWindowMinSize()
 
   const { user } = Stores.Auth
+  const { previousSettingPagePath } = Stores.UI.PathHistory
 
   const isActive = (path: string) => {
     if (path === '/conversations')
@@ -179,7 +180,7 @@ export function LeftSidebar() {
             icon={<SettingOutlined />}
             label={t('navigation.settings')}
             isActive={isActive('/settings')}
-            to="/settings"
+            to={previousSettingPagePath}
           />
         </div>
 

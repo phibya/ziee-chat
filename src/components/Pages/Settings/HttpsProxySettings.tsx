@@ -8,7 +8,7 @@ import {
   updateSystemProxySettings,
 } from '../../../store'
 import { ProxySettingsForm } from './common'
-import { SettingsPageContainer } from './SettingsPageContainer'
+import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
 

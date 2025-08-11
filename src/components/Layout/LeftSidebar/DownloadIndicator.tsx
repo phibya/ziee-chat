@@ -41,9 +41,11 @@ export function DownloadIndicator() {
     )
   }
 
-  // Get the first download for the button display
-  const firstDownload = downloads[0]
-  const firstDownloadPercent = getProgressPercent(firstDownload)
+  // Find downloads with errors first, otherwise use the first download
+  const errorDownload = downloads.find(d => d.status === 'failed')
+  const displayDownload = errorDownload || downloads[0]
+  const displayPercent = displayDownload.status === 'failed' ? 100 : getProgressPercent(displayDownload)
+  const hasError = displayDownload.status === 'failed'
 
   // Create the popover content
   const popoverContent = (
@@ -101,24 +103,24 @@ export function DownloadIndicator() {
               <Badge
                 count={downloads.length}
                 size="small"
-                style={{ backgroundColor: token.colorPrimary }}
+                style={{ backgroundColor: hasError ? token.colorError : token.colorPrimary }}
               >
                 <DownloadOutlined />
               </Badge>
               <Text className="text-xs" type="secondary">
-                Downloading
+                {hasError ? 'Error' : 'Downloading'}
               </Text>
             </Flex>
             <Text className="text-xs" type="secondary">
-              {firstDownloadPercent}%
+              {hasError ? 'Failed' : `${displayPercent}%`}
             </Text>
           </Flex>
 
           <Progress
-            percent={firstDownloadPercent}
+            percent={displayPercent}
             size="small"
-            status="active"
-            strokeColor={token.colorPrimary}
+            status={hasError ? 'exception' : 'active'}
+            strokeColor={hasError ? token.colorError : token.colorPrimary}
             showInfo={false}
             strokeWidth={3}
             className={'!leading-0'}

@@ -852,18 +852,16 @@ pub async fn initiate_repository_download(
         let progress_task = tokio::spawn(async move {
             let mut tracker = ProgressTracker::new();
             while let Some(git_progress) = progress_rx.recv().await {
-                // For git cloning, use actual byte estimates based on progress
-                let estimated_bytes = if git_progress.total > 0 {
-                    git_progress.current * 10 // Rough estimate: 10KB per unit
-                } else {
-                    git_progress.current // Fallback: 1KB per unit
-                };
+                // For git cloning, git_progress.current and total represent actual progress units
+                // Use the actual bytes if available, otherwise estimate
+                let current_bytes = git_progress.current;
+                let total_bytes = git_progress.total;
 
-                // Calculate speed and ETA
-                let (speed_bps_f64, _) = tracker.update(estimated_bytes);
+                // Calculate speed and ETA using actual values
+                let (speed_bps_f64, _) = tracker.update(current_bytes);
                 let speed_bps = speed_bps_f64.map(|s| s as i64);
                 let eta_seconds = tracker
-                    .calculate_eta(estimated_bytes, git_progress.total * 10240, speed_bps_f64)
+                    .calculate_eta(current_bytes, total_bytes, speed_bps_f64)
                     .map(|eta| eta as i64);
 
                 let progress_data = DownloadProgressData {
@@ -1025,12 +1023,13 @@ pub async fn initiate_repository_download(
                 let lfs_progress_task = tokio::spawn(async move {
                     let mut lfs_tracker = ProgressTracker::new();
                     while let Some(git_progress) = lfs_progress_rx.recv().await {
-                        // For LFS downloads, use actual byte counts for better speed calculation
-                        let current_bytes = git_progress.current; // Assume KB units, adjust as needed
+                        // For LFS downloads, git_progress.current and git_progress.total are in bytes
+                        let current_bytes = git_progress.current;
+                        let total_bytes = git_progress.total;
                         let (speed_bps_f64, _) = lfs_tracker.update(current_bytes);
                         let speed_bps = speed_bps_f64.map(|s| s as i64);
                         let eta_seconds = lfs_tracker
-                            .calculate_eta(current_bytes, git_progress.total, speed_bps_f64)
+                            .calculate_eta(current_bytes, total_bytes, speed_bps_f64)
                             .map(|eta| eta as i64);
 
                         // Use the git_progress phase for better status reporting

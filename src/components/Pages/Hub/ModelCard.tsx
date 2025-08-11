@@ -16,7 +16,7 @@ import { Stores } from '../../../store'
 import { adminRepositoryHasCredentials } from '../../../store/admin/repositories.ts'
 import { downloadModelFromRepository } from '../../../store/admin/modelDownload.ts'
 import { openRepositoryDrawer } from '../../../store/ui'
-import { DownloadItem } from '../../common/DownloadItem.tsx'
+import { DownloadItem } from '../../Common/DownloadItem.tsx'
 import { Provider } from '../../../types'
 import { ModelDetailsDrawer } from './ModelDetailsDrawer'
 
@@ -45,7 +45,6 @@ export function ModelCard({ model }: ModelCardProps) {
   const handleDownload = async (model: HubModel) => {
     console.log('Downloading model:', model.id)
     const repo = repositories.find(repo => repo.url === model.repository_url)
-    console.log({ repo })
     if (!repo) {
       message.error(
         `Repository not found for model ${model.alias}. Please check the repository configuration.`,
@@ -303,7 +302,6 @@ export function ModelCard({ model }: ModelCardProps) {
         <div className="mt-auto flex gap-1 flex-col">
           <div className="flex gap-2 mb-2">
             <Button
-              size="small"
               icon={<FileTextOutlined />}
               onClick={e => {
                 e.stopPropagation()
@@ -315,7 +313,6 @@ export function ModelCard({ model }: ModelCardProps) {
             </Button>
             <Button
               type="primary"
-              size="small"
               icon={<DownloadOutlined />}
               onClick={e => {
                 e.stopPropagation()

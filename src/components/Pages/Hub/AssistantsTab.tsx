@@ -3,6 +3,8 @@ import { Button, Flex, Input, Select, Typography } from 'antd'
 import { useMemo, useState } from 'react'
 import { searchAssistants, useHubStore } from '../../../store/hub'
 import { AssistantCard } from './AssistantCard'
+import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
+import { VscFilter } from 'react-icons/vsc'
 
 const { Text } = Typography
 
@@ -11,6 +13,8 @@ export function AssistantsTab() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('popular')
+  const mainContentMinSize = useMainContentMinSize()
+  const [showFilters, setShowFilters] = useState(false)
 
   const clearAllFilters = () => {
     setSearchTerm('')
@@ -53,44 +57,71 @@ export function AssistantsTab() {
     return filtered
   }, [assistants, searchTerm, selectedTags, sortBy])
 
+  const filters = (
+    <>
+      <Select
+        mode="multiple"
+        placeholder="Filter by tags"
+        value={selectedTags}
+        onChange={setSelectedTags}
+        className="flex-1"
+        allowClear
+        maxTagCount="responsive"
+        options={assistantTags.map(tag => ({
+          key: tag,
+          value: tag,
+          label: tag,
+        }))}
+        popupMatchSelectWidth={false}
+      />
+      <Select
+        placeholder="Sort by"
+        value={sortBy}
+        onChange={setSortBy}
+        className="flex-1"
+        options={[
+          { value: 'popular', label: 'Popular' },
+          { value: 'name', label: 'Name' },
+        ]}
+        popupMatchSelectWidth={false}
+      />
+    </>
+  )
+
+  const toolbar = (
+    <div className="flex gap-2 flex-wrap">
+      <div className={'flex gap-2 w-full'}>
+        <Input
+          placeholder="Search assistants..."
+          prefix={<SearchOutlined />}
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          allowClear
+          className="flex-1"
+        />
+        {!mainContentMinSize.xs ? (
+          filters
+        ) : (
+          <Button
+            type={showFilters ? 'primary' : 'default'}
+            className={'!text-lg'}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <VscFilter />
+          </Button>
+        )}
+      </div>
+      {mainContentMinSize.xs && showFilters && (
+        <div className={'flex gap-2 w-full'}>{filters}</div>
+      )}
+    </div>
+  )
+
   return (
-    <Flex className={'flex-col gap-3'}>
+    <div className="flex flex-col gap-3 h-full overflow-hidden">
       {/* Search and Filters */}
       <div>
-        <Flex className="gap-3">
-          <Input
-            placeholder="Search assistants..."
-            prefix={<SearchOutlined />}
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            allowClear
-            className="flex-1"
-          />
-          <Select
-            mode="multiple"
-            placeholder="Filter by tags"
-            value={selectedTags}
-            onChange={setSelectedTags}
-            className="flex-1"
-            allowClear
-            maxTagCount="responsive"
-            options={assistantTags.map(tag => ({
-              key: tag,
-              value: tag,
-              label: tag,
-            }))}
-          />
-          <Select
-            placeholder="Sort by"
-            value={sortBy}
-            onChange={setSortBy}
-            className="flex-1"
-            options={[
-              { value: 'popular', label: 'Popular' },
-              { value: 'name', label: 'Name' },
-            ]}
-          />
-        </Flex>
+        {toolbar}
         {(searchTerm || selectedTags.length > 0) && (
           <Flex align="center" gap={8}>
             <Text type="secondary" className="text-xs">
@@ -115,17 +146,19 @@ export function AssistantsTab() {
       </div>
 
       {/* Assistants Grid */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
-        {filteredAssistants.map(assistant => (
-          <AssistantCard key={assistant.id} assistant={assistant} />
-        ))}
-      </div>
-
-      {filteredAssistants.length === 0 && (
-        <div className="text-center py-12">
-          <Text type="secondary">No assistants found</Text>
+      <div className="flex-1 overflow-auto">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+          {filteredAssistants.map(assistant => (
+            <AssistantCard key={assistant.id} assistant={assistant} />
+          ))}
         </div>
-      )}
-    </Flex>
+
+        {filteredAssistants.length === 0 && (
+          <div className="text-center py-12">
+            <Text type="secondary">No assistants found</Text>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

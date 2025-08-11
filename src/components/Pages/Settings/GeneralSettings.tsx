@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../permissions'
 import { isDesktopApp } from '../../../api/core'
-import { SettingsPageContainer } from './SettingsPageContainer'
+import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
 
@@ -149,7 +149,6 @@ export function GeneralSettings() {
                   style={{ margin: 0 }}
                 >
                   <Switch
-                    size="small"
                     disabled={
                       !hasPermission(Permission.config.experimental.edit)
                     }
@@ -260,7 +259,7 @@ export function GeneralSettings() {
                   valuePropName="checked"
                   style={{ margin: 0 }}
                 >
-                  <Switch size="small" />
+                  <Switch />
                 </Form.Item>
               </Flex>
             </Form>

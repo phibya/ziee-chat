@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { App, Button, Input, Select, Typography } from 'antd'
+import { App, Button, Dropdown, Input, Typography } from 'antd'
 import { FolderOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { PageContainer } from '../../common/PageContainer.tsx'
 import {
   clearProjectsStoreError,
   loadAllUserProjects,
@@ -11,13 +10,18 @@ import {
 } from '../../../store'
 import { ProjectFormDrawer } from './ProjectFormDrawer.tsx'
 import { ProjectCard } from './ProjectCard.tsx'
+import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
+import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
+import { PiSortAscending } from 'react-icons/pi'
+import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 
 const { Title, Text } = Typography
-const { Search } = Input
 
 export const ProjectsPage: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
+  const pageMinSize = useMainContentMinSize()
+  const [isSearchBoxVisible, setIsSearchBoxVisible] = useState(false)
 
   // Projects store
   const { projects, loading, error } = Stores.Projects
@@ -77,63 +81,104 @@ export const ProjectsPage: React.FC = () => {
     return sortedProjects
   }
 
+  const searchInputComponent = (
+    <Input
+      placeholder={t('forms.searchProjects')}
+      prefix={<SearchOutlined />}
+      className={'w-full items-center justify-center flex-1 pr-1'}
+      value={searchQuery}
+      onChange={e => setSearchQuery(e.target.value)}
+      allowClear
+    />
+  )
+
   return (
-    <PageContainer
-      title={'Projects'}
-      extra={
-        <div className={'w-full flex justify-end'}>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => openProjectDrawer()}
-          >
-            New project
-          </Button>
-        </div>
-      }
-    >
-      <div
-        className={'flex flex-col overflow-hidden h-full w-full items-center'}
-      >
-        {/* Search and Sort */}
-        <div className="flex w-full items-center mb-6 gap-3 flex-wrap max-w-6xl px-3">
-          <Search
-            placeholder={t('forms.searchProjects')}
-            prefix={<SearchOutlined />}
-            className={'w-full items-center justify-center flex-1'}
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            allowClear
-          />
-          <div className="flex items-center gap-2">
-            <Text type="secondary">Sort by</Text>
-            <Select
-              value={sortBy}
-              onChange={setSortBy}
-              style={{ width: 120 }}
-              options={[
-                { label: t('labels.activity'), value: 'activity' },
-                { label: t('labels.name'), value: 'name' },
-                { label: t('labels.created'), value: 'created' },
-              ]}
-            />
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Page Header */}
+      <TitleBarWrapper>
+        <div className="h-full flex items-center justify-between w-full ">
+          <TauriDragRegion className={'h-full w-full absolute top-0 left-0'} />
+          <Typography.Title level={4} className="!m-0 !leading-tight">
+            Projects
+          </Typography.Title>
+          <div className="h-full flex items-center justify-between">
+            {!pageMinSize.xs ? (
+              searchInputComponent
+            ) : (
+              <Button
+                type={isSearchBoxVisible ? 'primary' : 'text'}
+                icon={<SearchOutlined />}
+                style={{
+                  fontSize: '18px',
+                }}
+                onClick={() => setIsSearchBoxVisible(!isSearchBoxVisible)}
+              />
+            )}
+            <div className={'flex gap-0'}>
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: 'activity',
+                      label: t('labels.activity'),
+                      onClick: () => setSortBy('activity'),
+                    },
+                    {
+                      key: 'name',
+                      label: t('labels.name'),
+                      onClick: () => setSortBy('name'),
+                    },
+                    {
+                      key: 'created',
+                      label: t('labels.created'),
+                      onClick: () => setSortBy('created'),
+                    },
+                  ],
+                  selectedKeys: [sortBy],
+                }}
+                trigger={['click']}
+              >
+                <Button
+                  type="text"
+                  icon={<PiSortAscending />}
+                  style={{
+                    fontSize: '20px',
+                  }}
+                />
+              </Dropdown>
+              <Button
+                type="text"
+                icon={<PlusOutlined />}
+                onClick={() => openProjectDrawer()}
+                style={{
+                  fontSize: '16px',
+                }}
+              />
+            </div>
           </div>
         </div>
+      </TitleBarWrapper>
 
+      {/* Page Content */}
+      <div className="flex-1 flex flex-col overflow-hidden items-center">
+        {pageMinSize.xs && isSearchBoxVisible && (
+          <div className={'w-full max-w-96'}>{searchInputComponent}</div>
+        )}
         {/* Projects Grid */}
         <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-          <div className="max-w-6xl flex flex-wrap gap-4 p-3 w-full h-auto self-center overflow-y-auto">
-            {getFilteredAndSortedProjects().map(project => (
-              <div className={'min-w-72 flex-1'}>
-                <ProjectCard project={project} />
-              </div>
-            ))}
-            {/* Placeholder divs for grid layout */}
-            <div className={'min-w-72 flex-1'}></div>
-            <div className={'min-w-72 flex-1'}></div>
-            <div className={'min-w-72 flex-1'}></div>
+          <div className={'h-full flex flex-col overflow-y-auto'}>
+            <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full self-center px-3">
+              {getFilteredAndSortedProjects().map(project => (
+                <div className={'min-w-70 flex-1'}>
+                  <ProjectCard project={project} />
+                </div>
+              ))}
+              {/* Placeholder divs for grid layout */}
+              <div className={'min-w-70 flex-1'}></div>
+              <div className={'min-w-70 flex-1'}></div>
+              <div className={'min-w-70 flex-1'}></div>
+            </div>
           </div>
-          <div className={'w-full flex-1'} />
         </div>
 
         {/* Empty State */}
@@ -162,6 +207,6 @@ export const ProjectsPage: React.FC = () => {
       </div>
 
       <ProjectFormDrawer />
-    </PageContainer>
+    </div>
   )
 }

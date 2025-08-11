@@ -1,6 +1,6 @@
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import { App, Button, Card, Divider, Dropdown, Flex, Form } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import { isDesktopApp } from '../../../../api/core'
@@ -19,18 +19,17 @@ import {
   updateModelProvider,
 } from '../../../../store'
 import { DownloadInstance, Provider } from '../../../../types'
-import { DownloadItem } from '../../../common/DownloadItem.tsx'
-import { ModelsSection } from './shared/ModelsSection'
-import { ProviderHeader } from './shared/ProviderHeader'
+import { DownloadItem } from '../../../Common/DownloadItem'
+import { ModelsSection } from './common/ModelsSection'
+import { ProviderHeader } from './common/ProviderHeader'
 
 export function LocalProviderSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const { hasPermission } = usePermissions()
-  const { provider_id } = useParams<{ provider_id?: string }>()
+  const { providerId } = useParams<{ providerId?: string }>()
 
   const [nameForm] = Form.useForm()
-  const [isMobile, setIsMobile] = useState(false)
 
   // Store data
   const { error, modelsLoading, modelOperations } = Stores.AdminProviders
@@ -38,10 +37,10 @@ export function LocalProviderSettings() {
 
   // Get current provider and its models
   const currentProvider = Stores.AdminProviders.providers.find(
-    p => p.id === provider_id,
+    p => p.id === providerId,
   )
   const models = currentProvider?.models || []
-  const loading = modelsLoading[provider_id!] || false
+  const loading = modelsLoading[providerId!] || false
 
   // Check permissions for web app
   const canEditProviders =
@@ -49,7 +48,7 @@ export function LocalProviderSettings() {
 
   // Get active downloads for this provider
   const providerDownloads = downloads.filter(
-    (download: DownloadInstance) => download.provider_id === provider_id,
+    (download: DownloadInstance) => download.provider_id === providerId,
   )
 
   // Helper functions for provider validation
@@ -78,20 +77,6 @@ export function LocalProviderSettings() {
       return null
     } catch {
       return 'Invalid base URL format'
-    }
-  }
-
-  // Event handlers
-  const handleNameChange = async (changedValues: any) => {
-    if (!currentProvider || !canEditProviders) return
-
-    try {
-      await updateModelProvider(currentProvider.id, {
-        name: changedValues.name,
-      })
-    } catch (error) {
-      console.error('Failed to update provider:', error)
-      // Error is handled by the store
     }
   }
 
@@ -208,18 +193,6 @@ export function LocalProviderSettings() {
     }
   }
 
-  // Effects
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
   // Show errors
   useEffect(() => {
     if (error) {
@@ -270,10 +243,7 @@ export function LocalProviderSettings() {
     <Flex className={'flex-col gap-3'}>
       <ProviderHeader
         currentProvider={currentProvider}
-        isMobile={isMobile}
         canEditProviders={canEditProviders}
-        nameForm={nameForm}
-        onNameChange={handleNameChange}
         onProviderToggle={handleProviderToggle}
         canEnableProvider={canEnableProvider}
         getEnableDisabledReason={getEnableDisabledReason}
@@ -301,7 +271,6 @@ export function LocalProviderSettings() {
         currentModels={models}
         modelsLoading={loading}
         canEditProviders={canEditProviders}
-        isMobile={isMobile}
         modelOperations={modelOperations}
         onAddModel={() => {
           // Not used since we have customAddButton

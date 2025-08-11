@@ -1,5 +1,5 @@
 import { Button, Form, Input, Select, Switch } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
+import { Drawer } from '../../../Common/Drawer'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,7 +16,7 @@ import {
   CreateProviderRequest,
   ProviderType,
 } from '../../../../types/api/provider'
-import { ApiConfigurationSection } from './shared'
+import { ApiConfigurationSection } from './common'
 
 export function AddProviderDrawer() {
   const { t } = useTranslation()

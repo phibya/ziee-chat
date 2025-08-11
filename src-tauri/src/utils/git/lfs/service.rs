@@ -203,6 +203,8 @@ impl LfsService {
         access_token: Option<&str>,
         randomizer_bytes: Option<usize>,
         progress_tx: Option<&mpsc::UnboundedSender<LfsProgress>>,
+        base_progress: u64,
+        total_size_all_files: u64,
     ) -> Result<NamedTempFile, LfsError> {
         const MEDIA_TYPE: &str = "application/vnd.git-lfs+json";
         let client = Client::builder().build()?;
@@ -312,7 +314,8 @@ impl LfsService {
         let mut hasher = Sha256::new();
         let mut stream = response.bytes_stream();
         let mut downloaded_bytes = 0u64;
-        let total_size = meta_data.size;
+        // Don't overwrite total_size parameter - it contains the sum of all files
+        // meta_data.size is only the size of the current file
         
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result?;
@@ -325,11 +328,12 @@ impl LfsService {
             // Update progress
             downloaded_bytes += chunk.len() as u64;
             if let Some(tx) = progress_tx {
+                let current_total_progress = base_progress + downloaded_bytes;
                 let _ = tx.send(LfsProgress {
                     phase: LfsPhase::Downloading,
-                    current: downloaded_bytes,
-                    total: total_size,
-                    message: format!("Downloading... {:.1}%", (downloaded_bytes as f64 / total_size as f64) * 100.0),
+                    current: current_total_progress,
+                    total: total_size_all_files,
+                    message: format!("Downloading... {:.1}%", (current_total_progress as f64 / total_size_all_files as f64) * 100.0),
                 });
             }
         }
@@ -357,6 +361,8 @@ impl LfsService {
         access_token: Option<&str>,
         randomizer_bytes: Option<usize>,
         progress_tx: Option<&mpsc::UnboundedSender<LfsProgress>>,
+        base_progress: u64,
+        total_size_all_files: u64,
     ) -> Result<(PathBuf, FilePullMode), LfsError> {
         let cache_dir = Self::get_cache_dir(&repo_root, metadata).await?;
         debug!("cache dir {:?}", &cache_dir);
@@ -373,7 +379,7 @@ impl LfsService {
                 )
             })?;
 
-            let temp_file = Self::download_file(metadata, &repo_url, access_token, randomizer_bytes, progress_tx).await?;
+            let temp_file = Self::download_file(metadata, &repo_url, access_token, randomizer_bytes, progress_tx, base_progress, total_size_all_files).await?;
             
             if cache_file.exists() {
                 info!("cache file {:?} is already written from other process", &cache_file);
@@ -394,6 +400,8 @@ impl LfsService {
         access_token: Option<&str>,
         randomizer_bytes: Option<usize>,
         progress_tx: Option<&mpsc::UnboundedSender<LfsProgress>>,
+        base_progress: Option<u64>,
+        total_size_all_files: Option<u64>,
     ) -> Result<FilePullMode, LfsError> {
         info!("Pulling file {}", lfs_file.as_ref().display());
         
@@ -412,7 +420,7 @@ impl LfsService {
         let repo_root = Self::get_repo_root(&lfs_file).await?;
         
         let (file_name_cached, origin) =
-            Self::get_file_cached(&repo_root, &metadata, access_token, randomizer_bytes, progress_tx).await?;
+            Self::get_file_cached(&repo_root, &metadata, access_token, randomizer_bytes, progress_tx, base_progress.unwrap_or(0), total_size_all_files.unwrap_or(metadata.size)).await?;
             
         info!(
             "Found file (Origin: {:?}), linking to {}",
@@ -535,7 +543,7 @@ impl LfsService {
 
             // Download the file
             let full_file_path = repo_path.join(&lfs_pointer.path);
-            match Self::pull_file(&full_file_path, auth_token, None, Some(&progress_tx)).await {
+            match Self::pull_file(&full_file_path, auth_token, None, Some(&progress_tx), Some(downloaded_size), Some(total_size)).await {
                 Ok(_) => {
                     downloaded_size += lfs_pointer.size;
                     

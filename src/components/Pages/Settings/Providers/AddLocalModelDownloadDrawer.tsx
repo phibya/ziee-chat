@@ -8,7 +8,7 @@ import {
   Select,
   Typography,
 } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
+import { Drawer } from '../../../Common/Drawer'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiClient } from '../../../../api/client'
@@ -22,7 +22,7 @@ import {
   Stores,
 } from '../../../../store'
 import { Repository } from '../../../../types/api/repository'
-import { LocalModelCommonFields } from './shared/LocalModelCommonFields'
+import { LocalModelCommonFields } from './common/LocalModelCommonFields'
 
 const { Text } = Typography
 
@@ -252,56 +252,65 @@ export function AddLocalModelDownloadDrawer() {
       maskClosable={false}
     >
       <div>
-        {viewDownload && viewDownload.progress_data && (
+        {viewDownload && (
           <Card
             title={t('providers.downloadProgress')}
-            size="small"
             style={{ marginBottom: 16 }}
           >
-            <Text>
-              {viewDownload.progress_data?.phase || viewDownload.status}
-            </Text>
-            <Progress
-              percent={Math.round(
-                ((viewDownload.progress_data.current || 0) /
-                  (viewDownload.progress_data.total || 1)) *
-                  100,
-              )}
-              status={
-                viewDownload.status === 'downloading'
-                  ? 'active'
-                  : viewDownload.status === 'completed'
-                    ? 'success'
-                    : viewDownload.status === 'failed'
-                      ? 'exception'
-                      : 'normal'
-              }
-              format={percent => `${percent}%`}
-            />
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              {viewDownload.progress_data.message ||
-                viewDownload.error_message ||
-                ''}
-            </Text>
-            {viewDownload.progress_data.download_speed && (
-              <div style={{ marginTop: 8 }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Speed:{' '}
-                  {Math.round(
-                    (viewDownload.progress_data.download_speed / 1024 / 1024) *
-                      10,
-                  ) / 10}{' '}
-                  MB/s
-                  {viewDownload.progress_data.eta_seconds && (
-                    <>
-                      {' '}
-                      • ETA:{' '}
-                      {Math.round(viewDownload.progress_data.eta_seconds / 60)}{' '}
-                      minutes
-                    </>
+            {viewDownload.status === 'failed' && viewDownload.error_message ? (
+              <Text type="danger">
+                {viewDownload.error_message}
+              </Text>
+            ) : (
+              <>
+                {viewDownload.progress_data && (
+                  <Text>
+                    {viewDownload.progress_data?.phase || viewDownload.status}
+                  </Text>
+                )}
+                <Progress
+                  percent={Math.round(
+                    ((viewDownload.progress_data?.current || 0) /
+                      (viewDownload.progress_data?.total || 1)) *
+                      100,
                   )}
-                </Text>
-              </div>
+                  status={
+                    viewDownload.status === 'downloading'
+                      ? 'active'
+                      : viewDownload.status === 'completed'
+                        ? 'success'
+                        : viewDownload.status === 'failed'
+                          ? 'exception'
+                          : 'normal'
+                  }
+                  format={percent => `${percent}%`}
+                />
+                {viewDownload.progress_data && (
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {viewDownload.progress_data.message || ''}
+                  </Text>
+                )}
+                {viewDownload.progress_data?.download_speed && (
+                  <div style={{ marginTop: 8 }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Speed:{' '}
+                      {Math.round(
+                        (viewDownload.progress_data.download_speed / 1024 / 1024) *
+                          10,
+                      ) / 10}{' '}
+                      MB/s
+                      {viewDownload.progress_data.eta_seconds && (
+                        <>
+                          {' '}
+                          • ETA:{' '}
+                          {Math.round(viewDownload.progress_data.eta_seconds / 60)}{' '}
+                          minutes
+                        </>
+                      )}
+                    </Text>
+                  </div>
+                )}
+              </>
             )}
           </Card>
         )}

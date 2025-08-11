@@ -90,7 +90,6 @@ export function UploadProgress({
         <div>
           <Title level={5}>{t('providers.fileDetails')}</Title>
           <List
-            size="small"
             dataSource={files}
             renderItem={file => (
               <List.Item>
@@ -117,7 +116,6 @@ export function UploadProgress({
                   {file.status === 'uploading' && (
                     <Progress
                       percent={file.progress}
-                      size="small"
                       status="active"
                       showInfo={false}
                     />

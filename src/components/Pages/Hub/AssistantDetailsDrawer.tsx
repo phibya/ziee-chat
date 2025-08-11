@@ -3,7 +3,7 @@ import { Button, Card, Flex, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { App } from 'antd'
-import { Drawer } from '../../common/Drawer'
+import { Drawer } from '../../Common/Drawer'
 import type { HubAssistant } from '../../../types/api/hub'
 import { createUserAssistant } from '../../../store/assistants'
 
@@ -59,9 +59,6 @@ export function AssistantDetailsDrawer({
       onClose={onClose}
       width={600}
       footer={[
-        <Button key="close" onClick={onClose}>
-          Close
-        </Button>,
         <Button
           key="use"
           type="primary"

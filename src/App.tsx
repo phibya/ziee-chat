@@ -1,53 +1,48 @@
 import { useEffect } from 'react'
-import {
-  BrowserRouter as Router,
-  Navigate,
-  Route,
-  Routes,
-} from 'react-router-dom'
-import { isDesktopApp } from './api/core'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import { AuthGuard } from './components/Auth'
+import { ThemeProvider } from './components/Providers/ThemeProvider'
 import { AppLayout } from './components/Layout/AppLayout'
-import { AssistantsPage } from './components/Pages/Assistants'
-import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
-import { ChatPage } from './components/Pages/ChatPage'
-import { HubPage } from './components/Pages/Hub'
-import { ProjectDetailsPage } from './components/Pages/Projects/ProjectDetailsPage.tsx'
-import { ProjectsPage } from './components/Pages/Projects/ProjectsPage.tsx'
+import { App as AntdApp } from 'antd'
+import { useTranslation } from 'react-i18next'
+import { useUserAppearanceLanguage } from './store'
+import { ProjectsPage } from './components/Pages/Projects/ProjectsPage'
+import { ProjectDetailsPage } from './components/Pages/Projects/ProjectDetailsPage'
 import {
-  AdminAppearanceSettings,
-  AdminAssistantsSettings,
-  AdminGeneralSettings,
-  AppearanceSettings,
-  ExtensionsSettings,
+  NewChatInterface,
+  ExistingChatInterface,
+} from './components/Pages/Chat'
+import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
+import { HubPage } from './components/Pages/Hub/HubPage'
+import { AssistantsPage } from './components/Pages/Assistants'
+import { SettingsPage } from './components/Pages/SettingsPage'
+import {
   GeneralSettings,
-  HardwareSettings,
-  HttpsProxySettings,
-  ModelRepositorySettings,
+  AppearanceSettings,
   PrivacySettings,
   ProvidersSettings,
+  ModelRepositorySettings,
   RAGProvidersSettings,
   RAGRepositoriesSettings,
   ShortcutsSettings,
+  HardwareSettings,
+  HttpsProxySettings,
+  ExtensionsSettings,
   UserGroupsSettings,
   UsersSettings,
+  AdminAppearanceSettings,
+  AdminAssistantsSettings,
+  AdminGeneralSettings,
 } from './components/Pages/Settings'
-import { SettingsPage } from './components/Pages/SettingsPage'
-import { Permission, usePermissions } from './permissions'
-import { ThemeProvider } from './components/providers/ThemeProvider'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
-import { useTranslation } from 'react-i18next'
 import './store/startup'
-import { useUserAppearanceLanguage } from './store'
-import { App as AntdApp } from 'antd'
 
 function App() {
   const { i18n } = useTranslation()
   const language = useUserAppearanceLanguage()
-  const { hasPermission } = usePermissions()
 
-  // // Update language when settings change
+  // Update language when settings change
   useEffect(() => {
     if (i18n.language !== language) {
       i18n.changeLanguage(language)
@@ -61,106 +56,64 @@ function App() {
           <AntdApp>
             <AppLayout>
               <Routes>
-                <Route path="/" element={<ChatPage />} />
+                <Route path="/" element={<NewChatInterface />} />
                 <Route
                   path="/conversation/:conversationId"
-                  element={<ChatPage />}
+                  element={<ExistingChatInterface />}
                 />
-                <Route path="/assistants" element={<AssistantsPage />} />
                 <Route path="/conversations" element={<ChatHistoryPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route
                   path="/projects/:projectId"
                   element={<ProjectDetailsPage />}
                 />
-                <Route path="/hub" element={<HubPage />} />
-                <Route path="/hub/:activeTab" element={<HubPage />} />
+                <Route path="/hub/:activeTab?" element={<HubPage />} />
+                <Route path="/assistants" element={<AssistantsPage />} />
                 <Route path="/settings" element={<SettingsPage />}>
-                  <Route
-                    index
-                    element={<Navigate to="/settings/general" replace />}
-                  />
+                  <Route path="" element={<GeneralSettings />} />
                   <Route path="general" element={<GeneralSettings />} />
                   <Route path="appearance" element={<AppearanceSettings />} />
                   <Route path="privacy" element={<PrivacySettings />} />
-                  {/* Providers: Main settings for desktop, Admin section for web */}
-                  {(isDesktopApp ||
-                    (!isDesktopApp &&
-                      hasPermission(Permission.config.providers.read))) && (
-                    <>
-                      <Route path="providers" element={<ProvidersSettings />} />
-                      <Route
-                        path="providers/:providerId"
-                        element={<ProvidersSettings />}
-                      />
-                    </>
-                  )}
-                  {(isDesktopApp ||
-                    hasPermission(Permission.config.repositories.read)) && (
-                    <Route
-                      path="repositories"
-                      element={<ModelRepositorySettings />}
-                    />
-                  )}
-                  {/* RAG Providers: Similar permissions to providers */}
-                  {(isDesktopApp ||
-                    (!isDesktopApp &&
-                      hasPermission(Permission.config.providers.read))) && (
-                    <>
-                      <Route
-                        path="rag-providers"
-                        element={<RAGProvidersSettings />}
-                      />
-                      <Route
-                        path="rag-providers/:providerId"
-                        element={<RAGProvidersSettings />}
-                      />
-                    </>
-                  )}
-                  {/* RAG Repositories: Similar permissions to repositories */}
-                  {(isDesktopApp ||
-                    hasPermission(Permission.config.repositories.read)) && (
-                    <Route
-                      path="rag-repositories"
-                      element={<RAGRepositoriesSettings />}
-                    />
-                  )}
+                  <Route path="providers" element={<ProvidersSettings />} />
+                  <Route
+                    path="providers/:providerId"
+                    element={<ProvidersSettings />}
+                  />
+                  <Route
+                    path="repositories"
+                    element={<ModelRepositorySettings />}
+                  />
+                  <Route
+                    path="rag-providers"
+                    element={<RAGProvidersSettings />}
+                  />
+                  <Route
+                    path="rag-providers/:providerId"
+                    element={<RAGProvidersSettings />}
+                  />
+                  <Route
+                    path="rag-repositories"
+                    element={<RAGRepositoriesSettings />}
+                  />
                   <Route path="shortcuts" element={<ShortcutsSettings />} />
                   <Route path="hardware" element={<HardwareSettings />} />
                   <Route path="https-proxy" element={<HttpsProxySettings />} />
                   <Route path="extensions" element={<ExtensionsSettings />} />
-                  {!isDesktopApp && hasPermission(Permission.users.read) && (
-                    <Route path="users" element={<UsersSettings />} />
-                  )}
-                  {!isDesktopApp && hasPermission(Permission.groups.read) && (
-                    <Route
-                      path="user-groups"
-                      element={<UserGroupsSettings />}
-                    />
-                  )}
-                  {!isDesktopApp &&
-                    hasPermission(Permission.config.experimental.edit) && (
-                      <Route
-                        path="admin-general"
-                        element={<AdminGeneralSettings />}
-                      />
-                    )}
-                  {!isDesktopApp &&
-                    hasPermission(Permission.config.experimental.edit) && (
-                      <Route
-                        path="admin-appearance"
-                        element={<AdminAppearanceSettings />}
-                      />
-                    )}
-                  {!isDesktopApp &&
-                    hasPermission(Permission.config.assistants.read) && (
-                      <Route
-                        path="admin-assistants"
-                        element={<AdminAssistantsSettings />}
-                      />
-                    )}
+                  <Route
+                    path="admin-general"
+                    element={<AdminGeneralSettings />}
+                  />
+                  <Route
+                    path="admin-appearance"
+                    element={<AdminAppearanceSettings />}
+                  />
+                  <Route
+                    path="admin-assistants"
+                    element={<AdminAssistantsSettings />}
+                  />
+                  <Route path="users" element={<UsersSettings />} />
+                  <Route path="user-groups" element={<UserGroupsSettings />} />
                 </Route>
-                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AppLayout>
           </AntdApp>

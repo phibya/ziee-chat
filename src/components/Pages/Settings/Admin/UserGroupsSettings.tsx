@@ -23,7 +23,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { Drawer } from '../../../common/Drawer.tsx'
+import { Drawer } from '../../../Common/Drawer'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { isDesktopApp } from '../../../../api/core.ts'
@@ -43,7 +43,7 @@ import {
   UpdateUserGroupRequest,
   UserGroup,
 } from '../../../../types'
-import { SettingsPageContainer } from '../SettingsPageContainer'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 
 const { Title, Text } = Typography
 const { TextArea } = Input

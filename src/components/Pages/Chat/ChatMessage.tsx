@@ -10,7 +10,7 @@ import {
 import { Message } from '../../../types/api/chat'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ChatInput } from './ChatInput'
-import { FileCard } from '../../common/FileCard'
+import { FileCard } from '../../Common/FileCard'
 import { useChatStore } from '../../../store'
 import { useMessageBranchStore } from '../../../store/messageBranches.ts'
 
@@ -62,108 +62,114 @@ export const ChatMessage = memo(function ChatMessage({
   }
 
   return (
-    <Flex
-      key={message.id}
-      className={`flex gap-2 !p-2 rounded-lg relative w-fit min-w-36 ${isEditing ? 'w-full' : ''}`}
-      style={{
-        backgroundColor: isUser ? token.colorBgContainer : 'transparent',
-      }}
-      onMouseOver={() => handleMouseOverOrClick()}
-      onClick={() => handleMouseOverOrClick(true)}
-      onMouseLeave={handleMouseLeave}
-    >
-      <div className={`flex mb-0 ${!isUser ? 'hidden' : ''}`}>
-        <Avatar size={24} icon={<UserOutlined />} />
-      </div>
-
-      {/* Message content */}
-      <Flex className={`${isUser ? '!pt-0.5' : ''} flex-1`}>
-        {isEditing ? (
-          <ChatInput
-            editingMessage={message}
-            onDoneEditing={() => setIsEditing(false)}
-          />
-        ) : (
-          <div
-            className={'w-full flex flex-col gap-2'}
-            style={{
-              whiteSpace: isUser ? 'pre-wrap' : 'normal',
-            }}
-          >
-            {isUser ? (
-              message.content
-            ) : message.id === 'streaming-temp' && !message.content ? (
-              <Spin indicator={<LoadingOutlined spin />} />
-            ) : (
-              <MarkdownRenderer content={message.content.trim()} />
-            )}
-
-            {/* Render files if message has any */}
-            {message.files && message.files.length > 0 && (
-              <Flex className="mt-4 gap-2 flex-wrap">
-                {message.files.map(file => (
-                  <FileCard
-                    key={file.id}
-                    file={file}
-                    size={80}
-                    canRemove={false}
-                  />
-                ))}
-              </Flex>
-            )}
-          </div>
-        )}
-      </Flex>
-
-      {/* Tools/Actions at the bottom for user messages */}
-      {isUser && !isEditing && (
-        <div
-          className="flex items-center absolute -bottom-2.5 right-2 border rounded-md backdrop-blur-2xl"
-          style={{
-            borderColor: token.colorBorderSecondary,
-            display: isToolBoxVisible ? 'flex' : 'none',
-          }}
-        >
-          <Button size="small" type="text" onClick={handleEdit}>
-            {t('chat.edit')}
-          </Button>
-
-          <Flex
-            className={'gap-0'}
-            style={{
-              display: branches.length > 1 ? 'flex' : 'none',
-            }}
-          >
-            <Button
-              size="small"
-              type="text"
-              icon={<LeftOutlined />}
-              disabled={branchIndex <= 0}
-              onClick={() => {
-                const prevBranch = branches[branchIndex - 1]
-                if (prevBranch) {
-                  handleSwitchBranch(prevBranch.id)
-                }
-              }}
-            />
-            <Typography.Text>
-              {branchIndex + 1} / {branches.length}
-            </Typography.Text>
-            <Button
-              size="small"
-              type="text"
-              icon={<RightOutlined />}
-              disabled={branchIndex >= branches.length - 1}
-              onClick={() => {
-                const nextBranch = branches[branchIndex + 1]
-                if (nextBranch) {
-                  handleSwitchBranch(nextBranch.id)
-                }
-              }}
-            />
-          </Flex>
+    <div className={'w-full flex flex-col overflow-visible'}>
+      {/* Render files if message has any */}
+      {isUser && message.files && message.files.length > 0 && (
+        <div className="flex gap-2 w-full overflow-x-auto pb-2 !pl-2">
+          {message.files.map(file => (
+            <div className={'flex-1 min-w-18 max-w-24'}>
+              <FileCard
+                key={file.id}
+                file={file}
+                canRemove={false}
+                showFileName={false}
+              />
+            </div>
+          ))}
         </div>
       )}
-    </Flex>
+      <div
+        key={message.id}
+        className={`flex gap-2 p-2 pr-2 rounded-lg relative w-fit min-w-36 ${isEditing ? 'w-full' : ''}`}
+        style={{
+          backgroundColor: isUser ? token.colorBgMask : 'transparent',
+          border: isUser ? `1px solid ${token.colorBorderSecondary}` : 'none',
+        }}
+        onMouseOver={() => handleMouseOverOrClick()}
+        onClick={() => handleMouseOverOrClick(true)}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className={`flex ${!isUser ? 'hidden' : ''}`}>
+          <Avatar size={24} icon={<UserOutlined />} />
+        </div>
+
+        {/* Message content */}
+        <div
+          className={`${isUser ? '!pt-0.5' : ''} flex flex-1 -mt-[2px] w-full overflow-x-hidden`}
+        >
+          {isEditing ? (
+            <ChatInput
+              editingMessage={message}
+              onDoneEditing={() => setIsEditing(false)}
+            />
+          ) : (
+            <div
+              className={'w-full flex flex-col gap-2 pr-2'}
+              style={{
+                whiteSpace: isUser ? 'pre-wrap' : 'normal',
+              }}
+            >
+              {isUser ? (
+                message.content
+              ) : message.id === 'streaming-temp' && !message.content ? (
+                <Spin indicator={<LoadingOutlined spin />} />
+              ) : (
+                <MarkdownRenderer content={message.content.trim()} />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Tools/Actions at the bottom for user messages */}
+        {isUser && !isEditing && (
+          <div
+            className="flex items-center absolute -bottom-2.5 right-2 border rounded-md backdrop-blur-2xl"
+            style={{
+              borderColor: token.colorBorderSecondary,
+              display: isToolBoxVisible ? 'flex' : 'none',
+            }}
+          >
+            <Button size="small" type="text" onClick={handleEdit}>
+              {t('chat.edit')}
+            </Button>
+
+            <Flex
+              className={'gap-0'}
+              style={{
+                display: branches.length > 1 ? 'flex' : 'none',
+              }}
+            >
+              <Button
+                size="small"
+                type="text"
+                icon={<LeftOutlined />}
+                disabled={branchIndex <= 0}
+                onClick={() => {
+                  const prevBranch = branches[branchIndex - 1]
+                  if (prevBranch) {
+                    handleSwitchBranch(prevBranch.id)
+                  }
+                }}
+              />
+              <Typography.Text>
+                {branchIndex + 1} / {branches.length}
+              </Typography.Text>
+              <Button
+                size="small"
+                type="text"
+                icon={<RightOutlined />}
+                disabled={branchIndex >= branches.length - 1}
+                onClick={() => {
+                  const nextBranch = branches[branchIndex + 1]
+                  if (nextBranch) {
+                    handleSwitchBranch(nextBranch.id)
+                  }
+                }}
+              />
+            </Flex>
+          </div>
+        )}
+      </div>
+    </div>
   )
 })

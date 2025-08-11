@@ -1,15 +1,11 @@
-import {
-  CopyOutlined,
-  DownOutlined,
-  RobotOutlined,
-  UpOutlined,
-} from '@ant-design/icons'
+import { CopyOutlined, RobotOutlined } from '@ant-design/icons'
 import { Button, Card, Flex, Typography } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Drawer } from '../../common/Drawer.tsx'
+import { Drawer } from '../../Common/Drawer.tsx'
 import { Assistant } from '../../../types/api/assistant.ts'
 import { openAssistantDrawer } from '../../../store'
+import { IoIosArrowDown, IoIosArrowUp } from 'react-icons/io'
 
 const { Text } = Typography
 
@@ -57,7 +53,7 @@ function TemplateAssistantCard({ assistant }: TemplateAssistantCardProps) {
           {expanded && (
             <Flex vertical className="gap-3 p-3 rounded">
               <div>
-                <Text strong className="block mb-1">
+                <Text strong className="block mb-1 mt-2">
                   {t('labels.instructions')}
                 </Text>
                 <Card size="small">
@@ -88,15 +84,13 @@ function TemplateAssistantCard({ assistant }: TemplateAssistantCardProps) {
           <Flex align="center" className="gap-2 justify-end">
             <Button
               type="default"
-              size="small"
-              icon={expanded ? <UpOutlined /> : <DownOutlined />}
+              icon={expanded ? <IoIosArrowUp /> : <IoIosArrowDown />}
               onClick={() => setExpanded(!expanded)}
             >
               {expanded ? 'Hide Details' : 'Show Details'}
             </Button>
             <Button
               type="primary"
-              size="small"
               icon={<CopyOutlined />}
               onClick={onSelectTemplate}
             >
@@ -127,11 +121,6 @@ export function TemplateAssistantDrawer({
       title={t('assistants.cloneFromTemplateAssistants')}
       open={open}
       onClose={onClose}
-      footer={[
-        <Button key="close" onClick={onClose}>
-          {t('buttons.close')}
-        </Button>,
-      ]}
       width={500}
       maskClosable={true}
     >
