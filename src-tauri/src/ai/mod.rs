@@ -37,7 +37,7 @@ pub use core::{
 };
 pub use auto_unload::{register_model_access, start_auto_unload_task, AutoUnloadConfig};
 pub use model_manager::{
-  check_and_cleanup_model, is_model_running, verify_model_server_running, start_model, stop_model, ModelStartParams,
+  acquire_global_start_mutex, check_and_cleanup_model, is_model_running, verify_model_server_running, start_model, stop_model, ModelStartParams,
   ModelStartResult,
 };
 pub use providers::*;

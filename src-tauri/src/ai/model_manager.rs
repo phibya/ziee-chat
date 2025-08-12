@@ -19,6 +19,15 @@ struct ModelProcess {
 static MODEL_REGISTRY: std::sync::LazyLock<Arc<RwLock<HashMap<Uuid, ModelProcess>>>> =
     std::sync::LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
 
+// Global mutex for all model starting operations to prevent race conditions
+static GLOBAL_MODEL_START_MUTEX: std::sync::LazyLock<tokio::sync::Mutex<()>> =
+    std::sync::LazyLock::new(|| tokio::sync::Mutex::new(()));
+
+/// Acquire the global model start mutex to prevent race conditions
+pub async fn acquire_global_start_mutex() -> tokio::sync::MutexGuard<'static, ()> {
+    GLOBAL_MODEL_START_MUTEX.lock().await
+}
+
 #[derive(Debug, Clone)]
 pub enum ModelStartResult {
     Started { port: u16, pid: u32 },

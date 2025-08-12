@@ -772,10 +772,10 @@ pub async fn create_ai_provider_with_model_id(
           port
         }
         None => {
-          // Model not running or verification failed, auto-start using common logic
-          println!("Auto-starting model {} for chat request", model_id);
+          // Model not running or verification failed, auto-start using protected logic
+          println!("Auto-starting model {} for chat request (with global mutex protection)", model_id);
           
-          match crate::api::models::start_model_core(model_id, &model, provider).await {
+          match crate::api::models::start_model_core_protected(model_id, &model, provider).await {
             Ok((_pid, port)) => {
               // Register access for auto-unload tracking
               crate::ai::register_model_access(&model_id).await;

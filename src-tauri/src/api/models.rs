@@ -18,19 +18,77 @@ pub fn build_model_start_params_from_model(model: &Model) -> crate::ai::ModelSta
     let settings = model.get_settings();
     let device_ids = settings.device_ids.filter(|ids| !ids.is_empty());
 
-    // Convert device_type from string to DeviceType enum
+    // Convert device_type from string to DeviceType enum, with automatic detection fallback
     let device_type = match settings.device_type.as_deref() {
-        Some("cpu") => DeviceType::Cpu,
-        Some("cuda") => DeviceType::Cuda,
-        Some("metal") => DeviceType::Metal,
-        _ => DeviceType::Cpu, // Default to CPU if not specified or unknown
+        Some("cpu") => {
+            println!("Using CPU device (explicitly configured)");
+            DeviceType::Cpu
+        }
+        Some("cuda") => {
+            println!("Using CUDA device (explicitly configured)");
+            DeviceType::Cuda
+        }
+        Some("metal") => {
+            println!("Using Metal device (explicitly configured)");
+            DeviceType::Metal
+        }
+        _ => {
+            // Auto-detect best available device: CUDA > Metal > CPU
+            let available_devices = crate::ai::device_detection::detect_available_devices();
+            println!("Auto-detecting device type. Available devices: {} (default: {})", 
+                     available_devices.devices.len(), available_devices.default_device_type);
+            
+            match available_devices.default_device_type.as_str() {
+                "cuda" => {
+                    println!("Auto-selected CUDA device for optimal performance");
+                    DeviceType::Cuda
+                }
+                "metal" => {
+                    println!("Auto-selected Metal device for optimal performance");
+                    DeviceType::Metal
+                }
+                _ => {
+                    println!("Auto-selected CPU device (fallback)");
+                    DeviceType::Cpu
+                }
+            }
+        }
+    };
+
+    // Auto-select all available devices of the chosen type if device_ids not specified
+    let final_device_ids: Option<Vec<i32>> = if device_ids.is_none() {
+        // Get all available devices of the selected device type
+        let available_devices = crate::ai::device_detection::detect_available_devices();
+        let device_type_str = match device_type {
+            DeviceType::Cuda => "cuda",
+            DeviceType::Metal => "metal", 
+            DeviceType::Cpu => "cpu",
+        };
+        
+        let matching_devices: Vec<i32> = available_devices
+            .devices
+            .iter()
+            .filter(|device| device.device_type == device_type_str && device.is_available)
+            .map(|device| device.id)
+            .collect();
+            
+        if !matching_devices.is_empty() {
+            println!("Auto-selected all available {} devices: {:?}", device_type_str, matching_devices);
+            Some(matching_devices)
+        } else {
+            println!("No available {} devices found, using default device selection", device_type_str);
+            None
+        }
+    } else {
+        println!("Using explicitly configured device IDs: {:?}", device_ids);
+        device_ids
     };
 
     // Create ModelStartParams from model settings
     let mut params = crate::ai::ModelStartParams::default();
     params.model_path = model.get_model_absolute_path();
     params.device_type = device_type;
-    params.device_ids = device_ids;
+    params.device_ids = final_device_ids;
 
     // Set model type based on architecture or use run (auto-loader) as default
     params.command = "run".to_string();
@@ -66,8 +124,29 @@ pub fn build_model_start_params_from_model(model: &Model) -> crate::ai::ModelSta
     params
 }
 
-/// Start a model and update database - reusable core logic
-pub async fn start_model_core(
+/// Start a model with global mutex protection to prevent race conditions
+pub async fn start_model_core_protected(
+    model_id: Uuid,
+    model: &Model,
+    provider: &crate::database::models::Provider,
+) -> Result<(u32, u16), AppError> {
+    // Acquire global mutex for all model starting operations
+    let _guard = crate::ai::acquire_global_start_mutex().await;
+    
+    println!("Acquired global start mutex for model {}", model_id);
+    
+    // Re-check if model is running (someone else might have started it while we waited)
+    if let Some((pid, port)) = crate::ai::verify_model_server_running(&model_id).await {
+        println!("Model {} already running after acquiring mutex, returning existing", model_id);
+        return Ok((pid, port));
+    }
+    
+    // Proceed with exclusive model starting
+    start_model_core_internal(model_id, model, provider).await
+}
+
+/// Start a model and update database - internal implementation without mutex protection
+async fn start_model_core_internal(
     model_id: Uuid,
     model: &Model,
     provider: &crate::database::models::Provider,
@@ -357,8 +436,8 @@ pub async fn start_model(
         }
     };
 
-    // Use the common start_model_core logic
-    match start_model_core(model_id, &model, &provider).await {
+    // Use the protected start_model_core logic
+    match start_model_core_protected(model_id, &model, &provider).await {
         Ok((_pid, _port)) => {
             println!("Successfully updated model {} runtime info", model_id);
             Ok(StatusCode::OK)

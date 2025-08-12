@@ -61,9 +61,7 @@ export function ModelCard({ model }: ModelCardProps) {
       return
     }
 
-    const localProviders = providers.filter(
-      p => p.type === 'local' && p.enabled,
-    )
+    const localProviders = providers.filter(p => p.type === 'local')
 
     if (localProviders.length === 0) {
       message.error(
