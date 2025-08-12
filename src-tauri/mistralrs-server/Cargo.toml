@@ -37,6 +37,7 @@ tokio = { version = "1.0", features = ["full"] }
 tracing = "0.1"
 rust-mcp-sdk = { version = "0.5", features = ["server"] }
 async-trait = "0.1"
+uuid = { version = "1.0", features = ["v4"] }
 
 [features]
 cuda = ["mistralrs-core/cuda", "mistralrs-server-core/cuda"]

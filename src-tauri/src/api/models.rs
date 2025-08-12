@@ -322,6 +322,31 @@ pub async fn start_model(
                 }
             }
         }
+        Ok(crate::ai::ModelStartResult::Failed { error, stdout_stderr_log_path }) => {
+            eprintln!("Model {} failed to start: {}", model_id, error);
+            eprintln!("Error logs available at: {}", stdout_stderr_log_path);
+            
+            // Read the log file contents to send to client
+            let log_contents = match std::fs::read_to_string(&stdout_stderr_log_path) {
+                Ok(contents) => {
+                    if contents.trim().is_empty() {
+                        "No output captured in log file.".to_string()
+                    } else {
+                        contents
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to read log file {}: {}", stdout_stderr_log_path, e);
+                    format!("Could not read log file: {}", e)
+                }
+            };
+            
+            // Return error with log contents for client to display
+            Err(AppError::new(
+                crate::api::errors::ErrorCode::SystemInternalError,
+                format!("Failed to start model: {}\n\n--- Process Output ---\n{}", error, log_contents),
+            ))
+        }
         Err(e) => {
             eprintln!("Failed to start model {}: {}", model_id, e);
             Err(AppError::new(

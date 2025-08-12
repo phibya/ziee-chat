@@ -25,7 +25,7 @@ import { ProviderHeader } from './common/ProviderHeader'
 
 export function LocalProviderSettings() {
   const { t } = useTranslation()
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const { hasPermission } = usePermissions()
   const { providerId } = useParams<{ providerId?: string }>()
 
@@ -189,7 +189,23 @@ export function LocalProviderSettings() {
       message.success(`${modelName} ${is_active ? 'started' : 'stopped'}`)
     } catch (error) {
       console.error('Failed to start/stop model:', error)
-      // Error is handled by the store
+      if (error instanceof Error) {
+        const modelName = models.find(m => m.id === modelId)?.name || 'Model'
+        const action = is_active ? 'start' : 'stop'
+
+        const errorMessage = error.message
+        modal.error({
+          title: `Failed to ${action} ${modelName}`,
+          width: '100%',
+          closable: true,
+          maskClosable: false,
+          content: (
+            <div className={'w-full h-full overflow-y-auto overflow-x-auto'}>
+              <pre>{errorMessage}</pre>
+            </div>
+          ),
+        })
+      }
     }
   }
 

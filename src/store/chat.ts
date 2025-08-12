@@ -250,11 +250,12 @@ export const createChatStore = (conversation: string | Conversation) => {
                     }))
                   } else if (event === 'error') {
                     set({
-                      error: 'Streaming failed',
+                      error: data.error,
                       sending: false,
                       isStreaming: false,
                       streamingMessage: '',
                     })
+                    console.error('Streaming error:', data)
                   } else {
                     // Log unknown event types for debugging
                     console.log('Unknown SSE event type in chat:', event, data)

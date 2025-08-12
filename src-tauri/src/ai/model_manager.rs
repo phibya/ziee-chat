@@ -1,6 +1,6 @@
 use reqwest;
 use std::collections::HashMap;
-use std::fs::metadata;
+use std::fs::{metadata, OpenOptions};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, RwLock};
@@ -23,6 +23,7 @@ static MODEL_REGISTRY: std::sync::LazyLock<Arc<RwLock<HashMap<Uuid, ModelProcess
 pub enum ModelStartResult {
     Started { port: u16, pid: u32 },
     AlreadyRunning { port: u16, pid: u32 },
+    Failed { error: String, stdout_stderr_log_path: String },
 }
 
 /// Check if port is already in use using system commands
@@ -821,7 +822,24 @@ pub async fn start_model(
             .to_string_lossy()
             .to_string()
     };
-    command.arg("--log").arg(log_path);
+    command.arg("--log").arg(&log_path);
+
+    // Create stdout/stderr log file path
+    let stdout_stderr_log_path = {
+        let log_dir = crate::get_app_data_dir().join("logs/models");
+        if !log_dir.exists() {
+            std::fs::create_dir_all(&log_dir)?;
+        }
+        log_dir
+            .join(format!("{}_stdout_stderr.log", model_id))
+            .to_string_lossy()
+            .to_string()
+    };
+
+    // Clear the stdout/stderr log file before starting
+    if let Err(e) = std::fs::write(&stdout_stderr_log_path, "") {
+        eprintln!("Warning: Failed to clear stdout/stderr log file {}: {}", stdout_stderr_log_path, e);
+    }
 
     // Sequence management
     if params.truncate_sequence {
@@ -1102,9 +1120,23 @@ pub async fn start_model(
     // This helps us identify which process belongs to which model
     command.env("MODEL_UUID", model_id.to_string());
 
-    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    // Create or open the stdout/stderr log file for writing
+    let stdout_stderr_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(true)
+        .open(&stdout_stderr_log_path)?;
+
+    // Clone the file handle for stderr
+    let stderr_file = stdout_stderr_file.try_clone()?;
+
+    // Redirect stdout and stderr to the log file
+    command
+        .stdout(Stdio::from(stdout_stderr_file))
+        .stderr(Stdio::from(stderr_file));
 
     println!("Starting mistralrs-server process: {:?}", command);
+    println!("Process output will be logged to: {}", stdout_stderr_log_path);
 
     // Spawn the process
     let mut child = command.spawn()?;
@@ -1126,7 +1158,11 @@ pub async fn start_model(
                 "mistralrs-server process exited immediately with status: {}",
                 status
             );
-            return Err(format!("mistralrs-server process failed to start: {}", status).into());
+            let error_msg = format!("mistralrs-server process failed to start: {}", status);
+            return Ok(ModelStartResult::Failed { 
+                error: error_msg, 
+                stdout_stderr_log_path 
+            });
         }
         Ok(None) => {
             // Process is still running, we'll store it properly in the registry later
@@ -1134,7 +1170,11 @@ pub async fn start_model(
         }
         Err(e) => {
             eprintln!("Failed to check mistralrs-server process status: {}", e);
-            return Err(format!("Failed to check process status: {}", e).into());
+            let error_msg = format!("Failed to check process status: {}", e);
+            return Ok(ModelStartResult::Failed { 
+                error: error_msg, 
+                stdout_stderr_log_path 
+            });
         }
     }
 
@@ -1155,7 +1195,11 @@ pub async fn start_model(
         eprintln!("Model server health check failed: {}", e);
         // Try to stop the process if health check fails
         let _ = stop_model(model_id, pid, port).await;
-        return Err(format!("Model server failed to become healthy: {}", e).into());
+        let error_msg = format!("Model server failed to become healthy: {}", e);
+        return Ok(ModelStartResult::Failed { 
+            error: error_msg, 
+            stdout_stderr_log_path 
+        });
     }
 
     println!("Model server is healthy and ready on port {}", port);

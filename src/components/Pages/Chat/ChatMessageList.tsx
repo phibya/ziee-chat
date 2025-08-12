@@ -7,7 +7,8 @@ import { useChatStore } from '../../../store'
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
-  const { messages, sending, isStreaming, streamingMessage } = useChatStore()
+  const { messages, sending, isStreaming, streamingMessage, error } =
+    useChatStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,6 +41,21 @@ export const ChatMessageList = memo(function ChatMessageList() {
             updated_at: new Date().toISOString(),
             edit_count: 0,
             originated_from_id: 'streaming-temp',
+            files: [],
+          }}
+        />
+      )}
+      {error && (
+        <ChatMessage
+          message={{
+            id: 'streaming-error',
+            conversation_id: '',
+            content: error,
+            role: 'assistant',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            edit_count: 0,
+            originated_from_id: 'streaming-error',
             files: [],
           }}
         />

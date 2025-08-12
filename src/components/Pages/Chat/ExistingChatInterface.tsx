@@ -20,7 +20,7 @@ export function ExistingChatInterface() {
 
   const { t } = useTranslation()
   // Chat store
-  const { conversation, loading, error } = useChatStore()
+  const { conversation, loading } = useChatStore()
 
   const handleEditClick = () => {
     form.setFieldValue('title', conversation?.title || '')
@@ -54,14 +54,6 @@ export function ExistingChatInterface() {
     return (
       <Flex className="flex-col items-center justify-center h-full">
         <div className="text-lg">{t('chat.loading')}</div>
-      </Flex>
-    )
-  }
-
-  if (error) {
-    return (
-      <Flex className="flex-col items-center justify-center h-full">
-        <div className="text-lg text-red-500">{t('chat.error', { error })}</div>
       </Flex>
     )
   }

@@ -22,6 +22,11 @@ export const darkTheme: AppThemeConfig = {
       ...ComponentOverrides.Button,
       // Override button tokens for dark theme
     },
+    Modal: {
+      contentBg: BaseBackgroundColor,
+      footerBg: BaseBackgroundColor,
+      headerBg: BaseBackgroundColor,
+    },
     // Other component overrides can go here
   },
   app: {
