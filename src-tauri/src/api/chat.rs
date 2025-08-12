@@ -426,6 +426,9 @@ async fn stream_ai_response(
 
       match chat::save_message(assistant_message_req, user_id, Some(active_branch_id)).await {
         Ok(assistant_message) => {
+          // Register model access for auto-unload tracking on successful completion
+          crate::ai::register_model_access(&request.model_id).await;
+          
           // Send completion event
           let _ = tx.send(Ok(Event::default().event("complete").data(
             &serde_json::to_string(&StreamCompleteData {
@@ -746,10 +749,9 @@ pub async fn create_ai_provider_with_model_id(
       Ok(Box::new(custom_provider))
     }
     "local" => {
-      // For Candle providers, we need model information to get the port
-      let model_id = model_id.ok_or("Model ID is required for Candle providers")?;
-
-      // Get the model information from database to get the port
+      let model_id = model_id.ok_or("Model ID is required for local providers")?;
+      
+      // Get model from database
       let model = match crate::database::queries::models::get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
         Ok(None) => return Err("Model not found".into()),
@@ -759,13 +761,35 @@ pub async fn create_ai_provider_with_model_id(
         }
       };
 
-      // Check if the model has a port (meaning it's running)
-      let port = model
-        .port
-        .ok_or("Model is not running. Please start the model first.")?;
+      // Multi-stage verification if model is running correctly
+      let port = match crate::ai::verify_model_server_running(&model_id).await {
+        Some((_pid, port)) => {
+          println!("Model {} verified running on port {}", model_id, port);
+          
+          // Register access for auto-unload tracking
+          crate::ai::register_model_access(&model_id).await;
+          
+          port
+        }
+        None => {
+          // Model not running or verification failed, auto-start using common logic
+          println!("Auto-starting model {} for chat request", model_id);
+          
+          match crate::api::models::start_model_core(model_id, &model, provider).await {
+            Ok((_pid, port)) => {
+              // Register access for auto-unload tracking
+              crate::ai::register_model_access(&model_id).await;
+              port
+            }
+            Err(e) => {
+              return Err(format!("Failed to auto-start model: {}", e).into());
+            }
+          }
+        }
+      };
 
       // Create the Local provider with the model's port and name (no proxy for local connections)
-      let local_provider = LocalProvider::new(port as u16, model.name.clone(), provider.id)?;
+      let local_provider = LocalProvider::new(port, model.name.clone(), provider.id)?;
 
       Ok(Box::new(local_provider))
     }

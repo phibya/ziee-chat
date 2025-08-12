@@ -4,6 +4,7 @@
 //! Groq, Gemini, Mistral, and Custom providers with support for streaming responses and proxy configurations.
 //! It also includes local ML inference capabilities using the Candle framework.
 
+pub mod auto_unload;
 pub mod core;
 pub mod file_helpers;
 pub mod model_manager;
@@ -34,8 +35,9 @@ pub use core::{
   AIProvider, ChatMessage, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent, ProviderFileContent, ProxyConfig,
   StreamingChunk, StreamingResponse, Usage, build_http_client,
 };
+pub use auto_unload::{register_model_access, start_auto_unload_task, AutoUnloadConfig};
 pub use model_manager::{
-  check_and_cleanup_model, is_model_running, start_model, stop_model, ModelStartParams,
+  check_and_cleanup_model, is_model_running, verify_model_server_running, start_model, stop_model, ModelStartParams,
   ModelStartResult,
 };
 pub use providers::*;

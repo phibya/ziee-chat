@@ -105,6 +105,12 @@ async fn initialize_app_common() -> Result<(), String> {
         }
     }
 
+    // Start auto-unload task for local model management
+    let auto_unload_config = ai::AutoUnloadConfig::default();
+    ai::start_auto_unload_task(auto_unload_config);
+    
+    println!("Auto-unload task started for local models");
+
     Ok(())
 }
 

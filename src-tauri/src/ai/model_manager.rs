@@ -545,6 +545,36 @@ fn extract_port_from_command_line(command_line: &str) -> Option<u16> {
     None
 }
 
+/// Verify that the server at the given port is running the expected model
+async fn verify_model_uuid_match(
+    port: u16, 
+    expected_model_id: &Uuid
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let client = reqwest::Client::new();
+    let server_info_url = format!("http://127.0.0.1:{}/server-info", port);
+    
+    // Short timeout for this check
+    let response = tokio::time::timeout(
+        Duration::from_secs(5),
+        client.get(&server_info_url).send(),
+    ).await??;
+
+    if !response.status().is_success() {
+        return Err(format!("Server info request failed with status: {}", response.status()).into());
+    }
+
+    let server_info: serde_json::Value = response.json().await?;
+    
+    // Extract model_uuid from server response
+    let server_model_uuid = server_info
+        .get("model_uuid")
+        .and_then(|v| v.as_str())
+        .ok_or("No model_uuid in server response")?;
+
+    // Compare with expected model ID
+    Ok(server_model_uuid == expected_model_id.to_string())
+}
+
 /// Check if a process is actually a mistral server by examining its command line
 fn is_model_server_process(pid: u32) -> bool {
     #[cfg(unix)]
@@ -591,6 +621,55 @@ fn is_model_server_process(pid: u32) -> bool {
                 // If tasklist fails, assume it's valid (fallback to less strict validation)
                 true
             }
+        }
+    }
+}
+
+/// Robust multi-stage verification that a model server is running correctly
+pub async fn verify_model_server_running(model_id: &Uuid) -> Option<(u32, u16)> {
+    // Stage 1: Get PID and port from database
+    let (pid, port) = match crate::database::queries::models::get_model_runtime_info(model_id).await {
+        Ok(Some((pid, port))) => (pid as u32, port as u16),
+        Ok(None) => {
+            println!("Model {} has no runtime info in database", model_id);
+            return None;
+        }
+        Err(e) => {
+            eprintln!("Failed to get runtime info for model {}: {}", model_id, e);
+            return None;
+        }
+    };
+
+    // Stage 2: Check if PID exists in system
+    if !is_process_running(pid) {
+        println!("Process {} for model {} is not running", pid, model_id);
+        // Clean up stale database entry
+        let _ = crate::database::queries::models::update_model_runtime_info(
+            model_id, None, None, false
+        ).await;
+        return None;
+    }
+
+    // Stage 3: Request /server-info to verify model UUID match
+    match verify_model_uuid_match(port, model_id).await {
+        Ok(true) => {
+            println!("Model {} verified running on PID {} port {} with correct UUID", 
+                     model_id, pid, port);
+            Some((pid, port))
+        }
+        Ok(false) => {
+            println!("Model {} PID {} port {} is running different model UUID", 
+                     model_id, pid, port);
+            // Clean up incorrect database entry
+            let _ = crate::database::queries::models::update_model_runtime_info(
+                model_id, None, None, false
+            ).await;
+            None
+        }
+        Err(e) => {
+            println!("Failed to verify model {} at port {}: {}", model_id, port, e);
+            // Server might be starting up or unhealthy, don't clean database yet
+            None
         }
     }
 }
