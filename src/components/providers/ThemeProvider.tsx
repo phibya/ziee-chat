@@ -45,9 +45,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       root.classList.add('light')
       root.classList.remove('dark')
     }
+    root.style.backgroundColor = currentTheme.token?.colorBgLayout || '#ffffff'
   }, [isDarkMode])
-
-  console.log(currentTheme)
 
   return (
     <ThemeContext.Provider value={currentTheme}>

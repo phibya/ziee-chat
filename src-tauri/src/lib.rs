@@ -281,16 +281,19 @@ pub fn run() {
             .on_window_event(|window, event| {
                 match event {
                     tauri::WindowEvent::CloseRequested { .. } => {
-                        // Clear temp directory and cleanup database before closing
-                        let handle = tauri::async_runtime::spawn(async move {
-                            cleanup_app_common().await;
-                        });
+                        // Only trigger cleanup when the main window is closed, not popup windows
+                        if window.label() == "main" {
+                            // Clear temp directory and cleanup database before closing
+                            let handle = tauri::async_runtime::spawn(async move {
+                                cleanup_app_common().await;
+                            });
 
-                        // Wait for cleanup to complete
-                        std::thread::spawn(move || {
-                            let rt = tokio::runtime::Runtime::new().unwrap();
-                            rt.block_on(handle).unwrap();
-                        });
+                            // Wait for cleanup to complete
+                            std::thread::spawn(move || {
+                                let rt = tokio::runtime::Runtime::new().unwrap();
+                                rt.block_on(handle).unwrap();
+                            });
+                        }
                     }
                     #[cfg(target_os = "macos")]
                     tauri::WindowEvent::Resized(..) => {

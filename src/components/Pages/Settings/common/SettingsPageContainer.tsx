@@ -4,7 +4,7 @@ import { ReactNode } from 'react'
 const { Title, Text } = Typography
 
 interface SettingsPageContainerProps {
-  title: string
+  title: string | ReactNode
   subtitle?: string
   children: ReactNode
 }

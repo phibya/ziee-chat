@@ -9,6 +9,7 @@ import {
   App,
   Button,
 } from 'antd'
+import { MonitorOutlined } from '@ant-design/icons'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,6 +18,7 @@ import {
   subscribeToHardwareUsage,
   Stores,
 } from '../../../store'
+import { isDesktopApp } from '../../../api/core'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 import { formatBytes } from '../../../utils/formatBytes'
 
@@ -522,8 +524,70 @@ export function HardwareSettings() {
     }
   }
 
+  const handleOpenMonitorPopup = async () => {
+    try {
+      if (isDesktopApp) {
+        // Use Tauri window API for desktop app
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+
+        // Check if hardware monitor window already exists using getByLabel
+        const existingMonitorWindow =
+          await WebviewWindow.getByLabel('hardware-monitor')
+
+        if (existingMonitorWindow) {
+          // Window exists, focus it
+          await existingMonitorWindow.setFocus()
+          console.log('Focused existing hardware monitor window')
+        } else {
+          // Create new window
+          const monitorWindow = new WebviewWindow('hardware-monitor', {
+            url: '/hardware-monitor',
+            title: 'Hardware Monitor',
+            width: 800,
+            height: 600,
+            resizable: true,
+            minimizable: true,
+            maximizable: true,
+            closable: true,
+            skipTaskbar: false,
+          })
+
+          await monitorWindow.once('tauri://created', () => {
+            console.log('Hardware monitor window created')
+          })
+
+          await monitorWindow.once('tauri://error', error => {
+            console.error('Error creating hardware monitor window:', error)
+            message.error('Failed to open hardware monitor window')
+          })
+        }
+      } else {
+        // Use browser popup for web app
+        // For browser popups, we can't easily check if the window exists,
+        // but using the same name will focus existing window if it exists
+        const popup = window.open(
+          '/hardware-monitor',
+          'hardware-monitor', // Using same name will focus existing popup
+          'width=800,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no',
+        )
+        if (popup) {
+          popup.focus()
+        } else {
+          message.error('Please allow popups for this website')
+        }
+      }
+    } catch (error) {
+      console.error('Error opening hardware monitor:', error)
+      message.error('Failed to open hardware monitor')
+    }
+  }
+
   const renderConnectionStatus = () => (
-    <Card>
+    <Card
+      style={{
+        display: sseConnected ? 'none' : 'block',
+      }}
+    >
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-3 flex-wrap">
           <Text strong>Real-time Monitoring:</Text>
@@ -532,13 +596,13 @@ export function HardwareSettings() {
           </Tag>
         </div>
         {!sseConnected && !usageLoading && (
-          <Button type="primary" size="small" onClick={handleManualConnect}>
+          <Button type="primary" onClick={handleManualConnect}>
             Connect
           </Button>
         )}
         {usageLoading && (
           <div className="flex items-center gap-2">
-            <Spin size="small" />
+            <Spin />
             <Text type="secondary">Connecting...</Text>
           </div>
         )}
@@ -551,8 +615,17 @@ export function HardwareSettings() {
     </Card>
   )
 
+  const titleWithButton = (
+    <div className="flex items-center justify-between w-full">
+      <span>{t('pages.hardware')}</span>
+      <Button icon={<MonitorOutlined />} onClick={handleOpenMonitorPopup}>
+        Monitor
+      </Button>
+    </div>
+  )
+
   return (
-    <SettingsPageContainer title={t('pages.hardware')}>
+    <SettingsPageContainer title={titleWithButton}>
       <div className="flex flex-col gap-3">
         {renderConnectionStatus()}
 

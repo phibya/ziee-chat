@@ -16,6 +16,7 @@ import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
 import { HubPage } from './components/Pages/Hub/HubPage'
 import { AssistantsPage } from './components/Pages/Assistants'
 import { SettingsPage } from './components/Pages/SettingsPage'
+import { HardwareMonitor } from './components/Pages/HardwareMonitor'
 import {
   GeneralSettings,
   AppearanceSettings,
@@ -54,68 +55,100 @@ function App() {
       <AuthGuard>
         <Router>
           <AntdApp>
-            <AppLayout>
-              <Routes>
-                <Route path="/" element={<NewChatInterface />} />
-                <Route
-                  path="/conversation/:conversationId"
-                  element={<ExistingChatInterface />}
-                />
-                <Route path="/conversations" element={<ChatHistoryPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route
-                  path="/projects/:projectId"
-                  element={<ProjectDetailsPage />}
-                />
-                <Route path="/hub/:activeTab?" element={<HubPage />} />
-                <Route path="/assistants" element={<AssistantsPage />} />
-                <Route path="/settings" element={<SettingsPage />}>
-                  <Route path="" element={<GeneralSettings />} />
-                  <Route path="general" element={<GeneralSettings />} />
-                  <Route path="appearance" element={<AppearanceSettings />} />
-                  <Route path="privacy" element={<PrivacySettings />} />
-                  <Route path="providers" element={<ProvidersSettings />} />
-                  <Route
-                    path="providers/:providerId"
-                    element={<ProvidersSettings />}
-                  />
-                  <Route
-                    path="repositories"
-                    element={<ModelRepositorySettings />}
-                  />
-                  <Route
-                    path="rag-providers"
-                    element={<RAGProvidersSettings />}
-                  />
-                  <Route
-                    path="rag-providers/:providerId"
-                    element={<RAGProvidersSettings />}
-                  />
-                  <Route
-                    path="rag-repositories"
-                    element={<RAGRepositoriesSettings />}
-                  />
-                  <Route path="shortcuts" element={<ShortcutsSettings />} />
-                  <Route path="hardware" element={<HardwareSettings />} />
-                  <Route path="https-proxy" element={<HttpsProxySettings />} />
-                  <Route path="extensions" element={<ExtensionsSettings />} />
-                  <Route
-                    path="admin-general"
-                    element={<AdminGeneralSettings />}
-                  />
-                  <Route
-                    path="admin-appearance"
-                    element={<AdminAppearanceSettings />}
-                  />
-                  <Route
-                    path="admin-assistants"
-                    element={<AdminAssistantsSettings />}
-                  />
-                  <Route path="users" element={<UsersSettings />} />
-                  <Route path="user-groups" element={<UserGroupsSettings />} />
-                </Route>
-              </Routes>
-            </AppLayout>
+            <Routes>
+              {/* Hardware Monitor Route - Outside AppLayout for popup usage */}
+              <Route path="/hardware-monitor" element={<HardwareMonitor />} />
+
+              {/* Main App Routes - Inside AppLayout */}
+              <Route
+                path="/*"
+                element={
+                  <AppLayout>
+                    <Routes>
+                      <Route path="/" element={<NewChatInterface />} />
+                      <Route
+                        path="/conversation/:conversationId"
+                        element={<ExistingChatInterface />}
+                      />
+                      <Route
+                        path="/conversations"
+                        element={<ChatHistoryPage />}
+                      />
+                      <Route path="/projects" element={<ProjectsPage />} />
+                      <Route
+                        path="/projects/:projectId"
+                        element={<ProjectDetailsPage />}
+                      />
+                      <Route path="/hub/:activeTab?" element={<HubPage />} />
+                      <Route path="/assistants" element={<AssistantsPage />} />
+                      <Route path="/settings" element={<SettingsPage />}>
+                        <Route path="" element={<GeneralSettings />} />
+                        <Route path="general" element={<GeneralSettings />} />
+                        <Route
+                          path="appearance"
+                          element={<AppearanceSettings />}
+                        />
+                        <Route path="privacy" element={<PrivacySettings />} />
+                        <Route
+                          path="providers"
+                          element={<ProvidersSettings />}
+                        />
+                        <Route
+                          path="providers/:providerId"
+                          element={<ProvidersSettings />}
+                        />
+                        <Route
+                          path="repositories"
+                          element={<ModelRepositorySettings />}
+                        />
+                        <Route
+                          path="rag-providers"
+                          element={<RAGProvidersSettings />}
+                        />
+                        <Route
+                          path="rag-providers/:providerId"
+                          element={<RAGProvidersSettings />}
+                        />
+                        <Route
+                          path="rag-repositories"
+                          element={<RAGRepositoriesSettings />}
+                        />
+                        <Route
+                          path="shortcuts"
+                          element={<ShortcutsSettings />}
+                        />
+                        <Route path="hardware" element={<HardwareSettings />} />
+                        <Route
+                          path="https-proxy"
+                          element={<HttpsProxySettings />}
+                        />
+                        <Route
+                          path="extensions"
+                          element={<ExtensionsSettings />}
+                        />
+                        <Route
+                          path="admin-general"
+                          element={<AdminGeneralSettings />}
+                        />
+                        <Route
+                          path="admin-appearance"
+                          element={<AdminAppearanceSettings />}
+                        />
+                        <Route
+                          path="admin-assistants"
+                          element={<AdminAssistantsSettings />}
+                        />
+                        <Route path="users" element={<UsersSettings />} />
+                        <Route
+                          path="user-groups"
+                          element={<UserGroupsSettings />}
+                        />
+                      </Route>
+                    </Routes>
+                  </AppLayout>
+                }
+              />
+            </Routes>
           </AntdApp>
         </Router>
       </AuthGuard>

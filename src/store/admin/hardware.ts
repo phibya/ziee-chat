@@ -223,4 +223,3 @@ export const disconnectHardwareUsage = (): void => {
   // Reset flag after disconnection
   isIntentionallyDisconnecting = false
 }
-
