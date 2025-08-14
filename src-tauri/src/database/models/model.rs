@@ -173,9 +173,9 @@ impl ModelParameters {
     }
 }
 
-/// Typed settings for individual model performance and batching configuration
+/// MistralRs-specific settings for individual model performance and batching configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ModelSettings {
+pub struct MistralRsSettings {
     // Device configuration (kept as requested)
     /// Device type (cpu, cuda, metal, etc.)
     pub device_type: Option<String>,
@@ -231,15 +231,32 @@ pub struct ModelSettings {
     pub max_image_length: Option<usize>,
 }
 
-// Default value functions for ModelSettings - removed since all fields are now optional
+// Default value functions for MistralRsSettings - all fields are optional
 
-impl ModelSettings {
-    /// Create a new ModelSettings with all None values (auto-load configuration)
+/// LlamaCpp-specific settings (placeholder for future implementation)
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LlamaCppSettings {
+    /// Device type (cpu, cuda, metal, etc.)
+    pub device_type: Option<String>,
+    /// Number of threads for CPU inference
+    pub threads: Option<i32>,
+    /// Context size for the model
+    pub context_size: Option<i32>,
+}
+
+impl LlamaCppSettings {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl MistralRsSettings {
+    /// Create a new MistralRsSettings with all None values (auto-load configuration)
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create ModelSettings optimized for high throughput
+    /// Create MistralRsSettings optimized for high throughput
     pub fn high_throughput() -> Self {
         Self {
             device_type: Some("cuda".to_string()),
@@ -265,7 +282,7 @@ impl ModelSettings {
         }
     }
 
-    /// Create ModelSettings optimized for low latency
+    /// Create MistralRsSettings optimized for low latency
     pub fn low_latency() -> Self {
         Self {
             device_type: Some("metal".to_string()),
@@ -363,7 +380,9 @@ pub struct Model {
     pub validation_issues: Option<Vec<String>>,
     pub port: Option<i32>, // Port number where the model server is running
     pub pid: Option<i32>,  // Process ID of the running model server
-    pub settings: Option<ModelSettings>, // Model-specific performance settings
+    pub engine_type: String, // Engine type: "mistralrs" | "llamacpp" - REQUIRED
+    pub engine_settings_mistralrs: Option<MistralRsSettings>, // MistralRs-specific settings
+    pub engine_settings_llamacpp: Option<LlamaCppSettings>, // LlamaCpp-specific settings
     pub files: Option<Vec<ModelFileInfo>>,
 }
 
@@ -395,14 +414,27 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             )
         };
 
-        // Parse settings JSON
-        let settings_json: serde_json::Value = row.try_get("settings")?;
-        let settings = if settings_json.is_null() {
+        // Parse MistralRs engine settings
+        let mistralrs_settings_json: serde_json::Value = row.try_get("engine_settings_mistralrs")?;
+        let engine_settings_mistralrs = if mistralrs_settings_json.is_null() {
             None
         } else {
             Some(
-                serde_json::from_value(settings_json).map_err(|e| sqlx::Error::ColumnDecode {
-                    index: "settings".into(),
+                serde_json::from_value(mistralrs_settings_json).map_err(|e| sqlx::Error::ColumnDecode {
+                    index: "engine_settings_mistralrs".into(),
+                    source: Box::new(e),
+                })?,
+            )
+        };
+        
+        // Parse LlamaCpp engine settings
+        let llamacpp_settings_json: serde_json::Value = row.try_get("engine_settings_llamacpp")?;
+        let engine_settings_llamacpp = if llamacpp_settings_json.is_null() {
+            None
+        } else {
+            Some(
+                serde_json::from_value(llamacpp_settings_json).map_err(|e| sqlx::Error::ColumnDecode {
+                    index: "engine_settings_llamacpp".into(),
                     source: Box::new(e),
                 })?,
             )
@@ -431,7 +463,9 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             validation_issues,
             port: row.try_get("port")?,
             pid: row.try_get("pid")?,
-            settings,
+            engine_type: row.try_get("engine_type")?, // Required field now
+            engine_settings_mistralrs,
+            engine_settings_llamacpp,
             files: None, // Files need to be loaded separately
         })
     }
@@ -447,7 +481,9 @@ pub struct CreateModelRequest {
     pub enabled: Option<bool>,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub settings: Option<ModelSettings>,
+    pub engine_type: String, // Required field
+    pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -459,7 +495,9 @@ pub struct UpdateModelRequest {
     pub is_active: Option<bool>,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub settings: Option<ModelSettings>,
+    pub engine_type: Option<String>,
+    pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
 }
 
 // Model file tracking for uploaded files
@@ -563,8 +601,13 @@ impl Model {
         self
     }
 
-    /// Get the model settings, or return default settings if none are set
-    pub fn get_settings(&self) -> ModelSettings {
-        self.settings.clone().unwrap_or_default()
+    /// Get the MistralRs settings, or return default settings if none are set
+    pub fn get_mistralrs_settings(&self) -> MistralRsSettings {
+        self.engine_settings_mistralrs.clone().unwrap_or_default()
+    }
+
+    /// Get the LlamaCpp settings, or return default settings if none are set
+    pub fn get_llamacpp_settings(&self) -> LlamaCppSettings {
+        self.engine_settings_llamacpp.clone().unwrap_or_default()
     }
 }

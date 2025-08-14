@@ -13,9 +13,9 @@ use crate::database::{
     queries::{models, providers, user_group_providers},
 };
 
-/// Build ModelStartParams from a model and its settings
+/// Build ModelStartParams from a model and its settings (assumes MistralRs for now)
 pub fn build_model_start_params_from_model(model: &Model) -> crate::ai::ModelStartParams {
-    let settings = model.get_settings();
+    let settings = model.get_mistralrs_settings();
     let device_ids = settings.device_ids.filter(|ids| !ids.is_empty());
 
     // Convert device_type from string to DeviceType enum, with automatic detection fallback
@@ -575,7 +575,9 @@ pub async fn enable_model(
             enabled: Some(true),
             is_active: None,
             capabilities: None,
-            settings: None,
+            engine_type: None,
+            engine_settings_mistralrs: None,
+            engine_settings_llamacpp: None,
         },
     )
     .await
@@ -604,7 +606,9 @@ pub async fn disable_model(
             enabled: Some(false),
             is_active: None,
             capabilities: None,
-            settings: None,
+            engine_type: None,
+            engine_settings_mistralrs: None,
+            engine_settings_llamacpp: None,
         },
     )
     .await

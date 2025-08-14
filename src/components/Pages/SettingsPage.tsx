@@ -127,6 +127,9 @@ export function SettingsPage() {
         const hasAssistantsManagement = hasPermission(
           Permission.config.assistants.read,
         )
+        const hasEngineManagement = hasPermission(
+          Permission.config.engines.read,
+        )
 
         if (
           hasUserManagement ||
@@ -135,7 +138,8 @@ export function SettingsPage() {
           hasProviderManagement ||
           hasRepositoryManagement ||
           hasProxyManagement ||
-          hasAssistantsManagement
+          hasAssistantsManagement ||
+          hasEngineManagement
         ) {
           items.push({
             type: 'divider' as const,
@@ -208,6 +212,14 @@ export function SettingsPage() {
               key: 'admin-assistants',
               icon: <RobotOutlined />,
               label: t('settings.assistants'),
+            })
+          }
+
+          if (hasEngineManagement) {
+            items.push({
+              key: 'engines',
+              icon: <ToolOutlined />,
+              label: 'Engines',
             })
           }
 

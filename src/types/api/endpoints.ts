@@ -46,7 +46,8 @@ import {
   Model,
   ModelCapabilities,
   ModelParameters,
-  ModelSettings,
+  MistralRsSettings,
+  LlamaCppSettings,
   UpdateModelRequest,
 } from './model'
 import {
@@ -111,6 +112,9 @@ import {
   RAGRepositoryListResponse,
   UpdateRAGRepositoryRequest,
 } from './ragRepository'
+import {
+  EngineListResponse,
+} from './engine'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -291,6 +295,9 @@ export const ApiEndpoints = {
   'Admin.getHardwareInfo': 'GET /api/admin/hardware',
   'Admin.subscribeHardwareUsage': 'GET /api/admin/hardware/usage-stream',
 
+  // Admin - Engine Management
+  'Admin.listEngines': 'GET /api/admin/engines',
+
   // ===========================
   // RAG PROVIDER MANAGEMENT
   // ===========================
@@ -385,6 +392,8 @@ export type ApiEndpointParameters = {
   // Admin hardware management
   'Admin.getHardwareInfo': void
   'Admin.subscribeHardwareUsage': void
+  // Admin engine management
+  'Admin.listEngines': void
 
   'Utils.testProxy': TestProxyConnectionRequest
   // User settings management
@@ -491,7 +500,9 @@ export type ApiEndpointParameters = {
     file_format: string
     capabilities?: ModelCapabilities
     parameters?: ModelParameters
-    settings?: ModelSettings
+    engine_type?: string
+    engine_settings_mistralrs?: MistralRsSettings
+    engine_settings_llamacpp?: LlamaCppSettings
   }
   'Admin.initiateRepositoryDownload': DownloadFromRepositoryRequest
   // Download instance endpoints - Admin (all download operations are admin-only)
@@ -605,6 +616,8 @@ export type ApiEndpointResponses = {
   // Admin hardware management
   'Admin.getHardwareInfo': HardwareInfoResponse
   'Admin.subscribeHardwareUsage': void // SSE endpoint
+  // Admin engine management
+  'Admin.listEngines': EngineListResponse
   // Document extraction configuration
   'Utils.testProxy': TestProxyConnectionResponse
   // User settings management

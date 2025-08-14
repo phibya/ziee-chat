@@ -8,9 +8,11 @@ import {
   updateExistingModel,
 } from '../../../../store'
 import { DeviceSelectionSection } from './common/DeviceSelectionSection'
+import { EngineSelectionSection } from './common/EngineSelectionSection'
+import { LlamaCppModelSettingsSection } from './common/LlamaCppModelSettingsSection'
 import { ModelCapabilitiesSection } from './common/ModelCapabilitiesSection'
 import { ModelParametersSection } from './common/ModelParametersSection'
-import { ModelSettingsSection } from './common/ModelSettingsSection'
+import { MistralRsModelSettingsSection } from './common/MistralRsModelSettingsSection.tsx'
 import {
   BASIC_MODEL_FIELDS,
   MODEL_PARAMETERS,
@@ -26,8 +28,8 @@ export function EditLocalModelDrawer() {
 
   // Find the current model from all providers
   const currentModel = modelId
-    ? providers.flatMap(p => p.models).find(m => m.id === modelId)
-    : null
+      ? providers.flatMap(p => p.models).find(m => m.id === modelId)
+      : null
 
   useEffect(() => {
     if (currentModel && open) {
@@ -37,7 +39,9 @@ export function EditLocalModelDrawer() {
         description: currentModel.description,
         capabilities: currentModel.capabilities || {},
         parameters: currentModel.parameters || {},
-        settings: currentModel.settings || {},
+        engine_type: currentModel.engine_type || 'mistralrs',
+        engine_settings_mistralrs: currentModel.engine_settings_mistralrs || {},
+        engine_settings_llamacpp: currentModel.engine_settings_llamacpp || {},
       })
     }
   }, [currentModel, open, form])
@@ -62,40 +66,44 @@ export function EditLocalModelDrawer() {
     }
   }
 
+  const engine_type = Form.useWatch('engine_type', form) || 'mistralrs'
+  console.log({engine_type})
+
   return (
-    <Drawer
-      title={t('providers.editLocalModel')}
-      open={open}
-      onClose={closeEditLocalModelDrawer}
-      footer={[
-        <Button key="cancel" onClick={closeEditLocalModelDrawer}>
-          {t('buttons.cancel')}
-        </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          loading={loading}
-          onClick={handleSubmit}
-        >
-          {t('buttons.saveChanges')}
-        </Button>,
-      ]}
-      width={600}
-      maskClosable={false}
-    >
-      <Form form={form} layout="vertical">
-        <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
+      <Drawer
+          title={t('providers.editLocalModel')}
+          open={open}
+          onClose={closeEditLocalModelDrawer}
+          footer={[
+            <Button key="cancel" onClick={closeEditLocalModelDrawer}>
+              {t('buttons.cancel')}
+            </Button>,
+            <Button
+                key="submit"
+                type="primary"
+                loading={loading}
+                onClick={handleSubmit}
+            >
+              {t('buttons.saveChanges')}
+            </Button>,
+          ]}
+          width={600}
+          maskClosable={false}
+      >
+        <Form form={form} layout="vertical">
+          <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
 
-        <Flex className={`flex-col gap-3`}>
-          <ModelCapabilitiesSection />
-          <DeviceSelectionSection />
-          <ModelSettingsSection />
-
-          <Card title={t('providers.parameters')} size={'small'}>
-            <ModelParametersSection parameters={MODEL_PARAMETERS} />
-          </Card>
-        </Flex>
-      </Form>
-    </Drawer>
+          <Flex className={`flex-col gap-3`}>
+            <ModelCapabilitiesSection />
+            <DeviceSelectionSection />
+            <EngineSelectionSection />
+            {engine_type === 'mistralrs' && <MistralRsModelSettingsSection />}
+            {engine_type === 'llamacpp' && <LlamaCppModelSettingsSection />}
+            <Card title={t('providers.parameters')}>
+              <ModelParametersSection parameters={MODEL_PARAMETERS} />
+            </Card>
+          </Flex>
+        </Form>
+      </Drawer>
   )
 }

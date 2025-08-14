@@ -15,7 +15,9 @@ pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, 
     let pool = pool.as_ref();
 
     let model_rows: Vec<Model> = sqlx::query_as(
-        "SELECT *
+        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
+                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp
          FROM models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC",
@@ -36,9 +38,9 @@ pub async fn create_model(
     let model_id = Uuid::new_v4();
 
     let model_row: Model = sqlx::query_as(
-    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, settings)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port, pid"
+    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings_mistralrs, engine_settings_llamacpp)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp"
   )
     .bind(model_id)
     .bind(provider_id)
@@ -48,7 +50,9 @@ pub async fn create_model(
     .bind(request.enabled.unwrap_or(true))
     .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
     .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})))
-    .bind(request.settings.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or_else(|| serde_json::json!({})))
+    .bind(&request.engine_type)
+    .bind(request.engine_settings_mistralrs.as_ref().map(|s| serde_json::to_value(s).unwrap()))
+    .bind(request.engine_settings_llamacpp.as_ref().map(|s| serde_json::to_value(s).unwrap()))
       .fetch_one(pool)
     .await?;
 
@@ -71,10 +75,12 @@ pub async fn update_model(
              is_active = COALESCE($6, is_active),
              capabilities = COALESCE($7, capabilities),
              parameters = COALESCE($8, parameters),
-             settings = COALESCE($9, settings),
+             engine_type = COALESCE($9, engine_type),
+             engine_settings_mistralrs = COALESCE($10, engine_settings_mistralrs),
+             engine_settings_llamacpp = COALESCE($11, engine_settings_llamacpp),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, settings, port, pid"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp"
   )
     .bind(model_id)
     .bind(&request.name)
@@ -82,9 +88,11 @@ pub async fn update_model(
     .bind(&request.description)
     .bind(request.enabled)
     .bind(request.is_active)
-    .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
-    .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})))
-    .bind(request.settings.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or_else(|| serde_json::json!({})))
+    .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()))
+    .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
+    .bind(&request.engine_type)
+    .bind(request.engine_settings_mistralrs.as_ref().map(|s| serde_json::to_value(s).unwrap()))
+    .bind(request.engine_settings_llamacpp.as_ref().map(|s| serde_json::to_value(s).unwrap()))
     .fetch_optional(pool)
     .await?;
 
@@ -108,7 +116,9 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let pool = pool.as_ref();
 
     let model_row: Option<Model> = sqlx::query_as(
-        "SELECT *
+        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
+                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp
          FROM models 
          WHERE id = $1",
     )

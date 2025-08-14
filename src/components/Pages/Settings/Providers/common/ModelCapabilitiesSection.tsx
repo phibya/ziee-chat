@@ -11,7 +11,7 @@ export function ModelCapabilitiesSection({
   const { t } = useTranslation()
 
   return (
-    <Card title={t('providers.capabilities')} size={'small'}>
+    <Card title={t('providers.capabilities')}>
       <Flex vertical className="gap-2 w-full">
         {capabilities.includes('vision') && (
           <div

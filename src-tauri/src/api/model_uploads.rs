@@ -113,7 +113,8 @@ pub struct CreateModelWithFilesRequest {
     pub source_dir: PathBuf,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub settings: Option<ModelSettings>,
+    pub engine_type: Option<String>,
+    pub engine_settings_mistralrs: Option<MistralRsSettings>,
 }
 
 /// Shared model creation and file processing logic
@@ -265,7 +266,9 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
             .capabilities
             .or_else(|| Some(ModelCapabilities::new())),
         parameters: request.parameters,
-        settings: request.settings,
+        engine_type: request.engine_type.unwrap_or_else(|| "mistralrs".to_string()),
+        engine_settings_mistralrs: request.engine_settings_mistralrs,
+        engine_settings_llamacpp: None,
     };
 
     // Create the model record with the pre-generated ID
@@ -474,7 +477,8 @@ pub struct CommitUploadRequest {
     pub description: Option<String>,
     pub file_format: String,
     pub capabilities: Option<ModelCapabilities>,
-    pub settings: Option<ModelSettings>,
+    pub engine_type: String, // Required field
+    pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub main_filename: String,
 }
 
@@ -491,7 +495,8 @@ pub struct DownloadFromRepositoryRequest {
     pub main_filename: String,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub settings: Option<ModelSettings>,
+    pub engine_type: Option<String>,
+    pub engine_settings_mistralrs: Option<MistralRsSettings>,
 }
 
 /// Upload multiple model files and auto-commit as a model
@@ -511,7 +516,8 @@ pub async fn upload_multiple_files_and_commit(
     let mut description: Option<String> = None;
     let mut file_format: Option<String> = None;
     let mut capabilities: Option<ModelCapabilities> = None;
-    let mut settings: Option<ModelSettings> = None;
+    let mut engine_type: Option<String> = None;
+    let mut engine_settings_mistralrs: Option<MistralRsSettings> = None;
 
     // Process multipart form data
     while let Some(field) = multipart.next_field().await.map_err(|e| {
@@ -632,12 +638,12 @@ pub async fn upload_multiple_files_and_commit(
                     )
                 })?;
                 if !value.is_empty() {
-                    settings = serde_json::from_str(&value).map_err(|e| {
+                    engine_settings_mistralrs = Some(serde_json::from_str(&value).map_err(|e| {
                         AppError::new(
                             ErrorCode::ValidInvalidInput,
                             format!("Invalid settings JSON: {}", e),
                         )
-                    })?;
+                    })?)
                 }
             }
             _ => {
@@ -749,7 +755,8 @@ pub async fn upload_multiple_files_and_commit(
         source_dir,
         capabilities,
         parameters: None, // No parameters available in upload request
-        settings,
+        engine_type,
+        engine_settings_mistralrs,
     })
     .await
     .map_err(|e| {
@@ -788,7 +795,8 @@ pub async fn initiate_repository_download(
             main_filename: Some(request.main_filename.clone()),
             capabilities: request.capabilities.clone(),
             parameters: request.parameters.clone(),
-            settings: request.settings.clone(),
+            engine_type: request.engine_type.clone(),
+            engine_settings_mistralrs: request.engine_settings_mistralrs.clone(),
         },
     };
 
@@ -1142,7 +1150,8 @@ pub async fn initiate_repository_download(
                     source_dir: cache_path,
                     capabilities: request.capabilities,
                     parameters: request.parameters,
-                    settings: request.settings,
+                    engine_type: Some(request.engine_type.unwrap_or_else(|| "mistralrs".to_string())),
+                    engine_settings_mistralrs: request.engine_settings_mistralrs,
                 })
                 .await
                 {

@@ -33,6 +33,7 @@ import {
   UsersSettings,
   AdminAppearanceSettings,
   AdminAssistantsSettings,
+  EnginesSettings,
   AdminGeneralSettings,
 } from './components/Pages/Settings'
 import './i18n'
@@ -137,6 +138,10 @@ function App() {
                         <Route
                           path="admin-assistants"
                           element={<AdminAssistantsSettings />}
+                        />
+                        <Route
+                          path="engines"
+                          element={<EnginesSettings />}
                         />
                         <Route path="users" element={<UsersSettings />} />
                         <Route

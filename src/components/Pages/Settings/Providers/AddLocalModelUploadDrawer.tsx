@@ -112,7 +112,9 @@ export function AddLocalModelUploadDrawer() {
         main_filename: values.main_filename,
         file_format: values.file_format,
         capabilities: values.capabilities || {},
-        settings: values.settings || {},
+        engine_type: values.engine_type || 'mistralrs',
+        engine_settings_mistralrs: values.engine_settings_mistralrs || {},
+        engine_settings_llamacpp: values.engine_settings_llamacpp || {},
         files: filesToUpload,
       })
 

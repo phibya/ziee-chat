@@ -8,7 +8,7 @@ import {
   Switch,
   Typography,
 } from 'antd'
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
 const { Text } = Typography
 
@@ -56,25 +56,13 @@ const ALL_QUANTIZATION_OPTIONS = [
   ...QUANTIZATION_OPTIONS.OTHER,
 ]
 
-export function ModelSettingsSection() {
-  const [isMobile, setIsMobile] = useState(false)
+export function MistralRsModelSettingsSection() {
   const form = Form.useFormInstance()
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   // Watch for device type changes
   const selectedDeviceType =
-    Form.useWatch(['settings', 'device_type'], form) || 'cpu'
-  const currentQuantization = Form.useWatch(['settings', 'in_situ_quant'], form)
+    Form.useWatch(['engine_settings_mistralrs', 'device_type'], form) || 'cpu'
+  const currentQuantization = Form.useWatch(['engine_settings_mistralrs', 'in_situ_quant'], form)
 
   // Filter quantization options based on device type
   const availableQuantizationOptions = useMemo(() => {
@@ -94,12 +82,12 @@ export function ModelSettingsSection() {
       )?.deviceTypes.includes(selectedDeviceType)
 
       if (!isCurrentQuantizationCompatible) {
-        form.setFieldValue(['settings', 'in_situ_quant'], undefined)
+        form.setFieldValue(['engine_settings_mistralrs', 'in_situ_quant'], undefined)
       }
     }
   }, [selectedDeviceType, currentQuantization, form])
 
-  const getFieldName = (field: string) => ['settings', field]
+  const getFieldName = (field: string) => ['engine_settings_mistralrs', field]
 
   const ResponsiveConfigItem = ({
     title,
@@ -112,11 +100,8 @@ export function ModelSettingsSection() {
   }) => (
     <Flex
       justify="space-between"
-      align={isMobile ? 'flex-start' : 'center'}
-      vertical={isMobile}
-      gap={isMobile ? 'small' : 0}
     >
-      <div style={{ flex: isMobile ? undefined : 1 }}>
+      <div>
         <Text strong>{title}</Text>
         <div>
           <Text type="secondary">{description}</Text>
@@ -137,7 +122,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('max_seqs')}
-              style={{ margin: 0, width: isMobile ? '100%' : 100 }}
             >
               <InputNumber
                 min={1}
@@ -156,7 +140,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('max_seq_len')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={512}
@@ -208,7 +191,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('paged_attn_gpu_mem')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={128}
@@ -227,7 +209,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('paged_attn_gpu_mem_usage')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={0.1}
@@ -247,7 +228,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('paged_ctxt_len')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={512}
@@ -266,7 +246,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('paged_attn_block_size')}
-              style={{ margin: 0, width: isMobile ? '100%' : 100 }}
             >
               <InputNumber
                 min={1}
@@ -318,7 +297,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('prefix_cache_n')}
-              style={{ margin: 0, width: isMobile ? '100%' : 100 }}
             >
               <InputNumber
                 min={1}
@@ -337,7 +315,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('prompt_chunksize')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={1}
@@ -359,7 +336,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('dtype')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <Select
                 placeholder="auto"
@@ -383,7 +359,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('in_situ_quant')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <Select
                 placeholder="None"
@@ -402,7 +377,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('seed')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={0}
@@ -424,7 +398,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('max_edge')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={224}
@@ -443,7 +416,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('max_num_images')}
-              style={{ margin: 0, width: isMobile ? '100%' : 100 }}
             >
               <InputNumber
                 min={1}
@@ -462,7 +434,6 @@ export function ModelSettingsSection() {
           >
             <Form.Item
               name={getFieldName('max_image_length')}
-              style={{ margin: 0, width: isMobile ? '100%' : 120 }}
             >
               <InputNumber
                 min={224}

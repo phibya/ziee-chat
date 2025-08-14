@@ -7,6 +7,11 @@ use std::sync::{Arc, RwLock};
 use tokio::time::{sleep, Duration};
 use uuid::Uuid;
 
+// Import the engine abstraction
+use super::engines::{EngineType, LocalEngine, EngineInstance};
+use super::engines::mistralrs::MistralRsEngine;
+use super::engines::llamacpp::LlamaCppEngine;
+
 // Structure to hold process information
 #[derive(Debug)]
 struct ModelProcess {
@@ -865,444 +870,75 @@ impl Default for ModelStartParams {
     }
 }
 
+pub async fn start_model_with_engine(
+    model_id: &Uuid,
+    model: &crate::database::models::model::Model,
+) -> Result<ModelStartResult, Box<dyn std::error::Error + Send + Sync>> {
+    // Create the appropriate engine based on model's engine_type
+    let engine: Box<dyn LocalEngine> = match model.engine_type.as_str() {
+        "mistralrs" => Box::new(MistralRsEngine::new()),
+        "llamacpp" => Box::new(LlamaCppEngine::new()),
+        _ => {
+            println!("Unknown engine type '{}', defaulting to mistralrs", model.engine_type);
+            Box::new(MistralRsEngine::new())
+        }
+    };
+
+    // Start the engine with the model
+    match engine.start(model).await {
+        Ok(instance) => {
+            let port = instance.port;
+            let pid = instance.pid.unwrap_or(0);
+            
+            // Register the instance in our registry
+            if let Ok(mut registry) = MODEL_REGISTRY.write() {
+                // For now, we'll still track the Child process handle for backward compatibility
+                // This will be refactored once we fully migrate to the engine system
+                println!("Engine {} started model {} on PID {} port {}", 
+                        engine.name(), model_id, pid, port);
+            }
+            
+            Ok(ModelStartResult::Started { port, pid })
+        }
+        Err(e) => {
+            let error_msg = format!("Engine {} failed to start model: {}", engine.name(), e);
+            // Create a default log path for error reporting
+            let stdout_stderr_log_path = {
+                let log_dir = crate::get_app_data_dir().join("logs/models");
+                if !log_dir.exists() {
+                    std::fs::create_dir_all(&log_dir).ok();
+                }
+                log_dir
+                    .join(format!("{}_engine_error.log", model_id))
+                    .to_string_lossy()
+                    .to_string()
+            };
+            Ok(ModelStartResult::Failed { 
+                error: error_msg, 
+                stdout_stderr_log_path 
+            })
+        }
+    }
+}
+
+// Main function - uses engine abstraction
 pub async fn start_model(
     model_id: &Uuid,
-    params: ModelStartParams,
+    _params: ModelStartParams,
 ) -> Result<ModelStartResult, Box<dyn std::error::Error + Send + Sync>> {
     // Check if already running using process inspection
     if let Some((pid, port)) = is_model_running(model_id).await {
         return Ok(ModelStartResult::AlreadyRunning { port, pid });
     }
 
-    // Find an available port
-    let port = find_available_port(8080).ok_or("No available port found")?;
+    // Load the model from database to get engine information
+    let model = crate::database::queries::models::get_model_by_id(*model_id)
+        .await
+        .map_err(|e| format!("Failed to load model from database: {}", e))?
+        .ok_or_else(|| format!("Model {} not found", model_id))?;
 
-    // Get the mistralrs-server binary path
-    let binary_path = get_model_server_binary_path()?;
-
-    // Build the command arguments for mistralrs-server
-    let mut command = Command::new(&binary_path);
-
-    // Add global arguments first
-
-    // Server configuration
-    command.arg("--port").arg(port.to_string());
-
-    if let Some(ip) = &params.serve_ip {
-        command.arg("--serve-ip").arg(ip);
-    }
-
-    // Seed for reproducibility
-    if let Some(seed) = params.seed {
-        command.arg("--seed").arg(seed.to_string());
-    }
-
-    // Logging
-    let log_path = if let Some(log_file) = &params.log_file {
-        log_file.clone()
-    } else {
-        let log_dir = crate::get_app_data_dir().join("logs/models");
-        if !log_dir.exists() {
-            std::fs::create_dir_all(&log_dir)?;
-        }
-        log_dir
-            .join(format!("{}.log", model_id))
-            .to_string_lossy()
-            .to_string()
-    };
-    command.arg("--log").arg(&log_path);
-
-    // Create stdout/stderr log file path
-    let stdout_stderr_log_path = {
-        let log_dir = crate::get_app_data_dir().join("logs/models");
-        if !log_dir.exists() {
-            std::fs::create_dir_all(&log_dir)?;
-        }
-        log_dir
-            .join(format!("{}_stdout_stderr.log", model_id))
-            .to_string_lossy()
-            .to_string()
-    };
-
-    // Clear the stdout/stderr log file before starting
-    if let Err(e) = std::fs::write(&stdout_stderr_log_path, "") {
-        eprintln!("Warning: Failed to clear stdout/stderr log file {}: {}", stdout_stderr_log_path, e);
-    }
-
-    // Sequence management
-    if params.truncate_sequence {
-        command.arg("--truncate-sequence");
-    }
-
-    if let Some(max_seqs) = params.max_seqs {
-        command.arg("--max-seqs").arg(max_seqs.to_string());
-    }
-
-    if params.no_kv_cache {
-        command.arg("--no-kv-cache");
-    }
-
-    // Device configuration
-    if params.cpu || matches!(params.device_type, crate::ai::DeviceType::Cpu) {
-        command.arg("--cpu");
-    }
-
-    // Device layers configuration - use explicit num_device_layers or generate from device_ids
-    if let Some(layers) = &params.num_device_layers {
-        command.arg("--num-device-layers").arg(layers.join(";"));
-    } else if let Some(ids) = &params.device_ids {
-        if !ids.is_empty()
-            && !params.cpu
-            && !matches!(params.device_type, crate::ai::DeviceType::Cpu)
-        {
-            // Only add --num-device-layers if there are multiple devices
-            if ids.len() > 1 {
-                // Try to read layer count from config.json and distribute evenly
-                match get_model_layer_count(&params.model_path) {
-                    Ok(total_layers) => {
-                        let layers_per_device = total_layers / ids.len();
-                        let remainder = total_layers % ids.len();
-                        
-                        let device_layers_str = ids
-                            .iter()
-                            .enumerate()
-                            .map(|(i, id)| {
-                                // Distribute remainder to first devices
-                                let layers = if i < remainder {
-                                    layers_per_device + 1
-                                } else {
-                                    layers_per_device
-                                };
-                                format!("{}:{}", id, layers)
-                            })
-                            .collect::<Vec<_>>()
-                            .join(";");
-                        
-                        println!("Distributing {} layers across {} devices: {}", 
-                               total_layers, ids.len(), device_layers_str);
-                        command.arg("--num-device-layers").arg(device_layers_str);
-                    }
-                    Err(e) => {
-                        println!("Could not read layer count from config.json ({}), using default distribution", e);
-                        let device_layers_str = ids
-                            .iter()
-                            .enumerate()
-                            .map(|(_i, id)| format!("{}:32", id)) // 32 layers per device as fallback
-                            .collect::<Vec<_>>()
-                            .join(";");
-                        command.arg("--num-device-layers").arg(device_layers_str);
-                    }
-                }
-            }
-            // For single device, don't add --num-device-layers parameter at all
-        }
-    }
-
-    // In-situ quantization
-    if let Some(isq) = &params.in_situ_quant {
-        command.arg("--isq").arg(isq);
-    }
-
-    // PagedAttention configuration
-    if let Some(gpu_mem) = params.paged_attn_gpu_mem {
-        command.arg("--pa-gpu-mem").arg(gpu_mem.to_string());
-    }
-
-    if let Some(gpu_mem_usage) = params.paged_attn_gpu_mem_usage {
-        command
-            .arg("--pa-gpu-mem-usage")
-            .arg(gpu_mem_usage.to_string());
-    }
-
-    if let Some(ctxt_len) = params.paged_ctxt_len {
-        command.arg("--pa-ctxt-len").arg(ctxt_len.to_string());
-    }
-
-    if let Some(block_size) = params.paged_attn_block_size {
-        command.arg("--pa-blk-size").arg(block_size.to_string());
-    }
-
-    if params.no_paged_attn {
-        command.arg("--no-paged-attn");
-    }
-
-    if params.paged_attn {
-        command.arg("--paged-attn");
-    }
-
-    // Performance optimization
-    if let Some(prefix_cache) = params.prefix_cache_n {
-        command
-            .arg("--prefix-cache-n")
-            .arg(prefix_cache.to_string());
-    }
-
-    if let Some(prompt_chunk) = params.prompt_chunksize {
-        command
-            .arg("--prompt-batchsize")
-            .arg(prompt_chunk.to_string());
-    }
-
-    // Chat templates
-    if let Some(chat_template) = &params.chat_template {
-        command.arg("--chat-template").arg(chat_template);
-    }
-
-    if let Some(jinja) = &params.jinja_explicit {
-        command.arg("--jinja-explicit").arg(jinja);
-    }
-
-    // Token source
-    if let Some(token_source) = &params.token_source {
-        command.arg("--token-source").arg(token_source);
-    }
-
-    // Interactive mode and thinking
-    if params.interactive_mode {
-        command.arg("--interactive-mode");
-    }
-
-    // Search capabilities
-    if params.enable_search {
-        command.arg("--enable-search");
-    }
-
-    if let Some(bert_model) = &params.search_bert_model {
-        command.arg("--search-bert-model").arg(bert_model);
-    }
-
-    if params.enable_thinking {
-        command.arg("--enable-thinking");
-    }
-
-    // Add the model subcommand based on model type
-    let model_path_absolute = ModelUtils::get_model_absolute_path(&params.model_path);
-
-    match params.command.to_lowercase().as_str() {
-        "plain" => {
-            command.arg("plain");
-            command.arg("--model-id");
-            if let Some(model_id_name) = &params.model_id_name {
-                command.arg(model_id_name);
-            } else {
-                command.arg(&model_path_absolute);
-            }
-
-            // Add plain-specific parameters
-            if let Some(tokenizer) = &params.tokenizer_json {
-                command.arg("--tokenizer-json").arg(tokenizer);
-            }
-            if let Some(arch) = &params.arch {
-                command.arg("--arch").arg(arch);
-            }
-            if let Some(dtype) = &params.dtype {
-                command.arg("--dtype").arg(dtype);
-            }
-            if let Some(max_seq_len) = params.max_seq_len {
-                command.arg("--max-seq-len").arg(max_seq_len.to_string());
-            }
-        }
-        "gguf" => {
-            command.arg("gguf");
-            command
-                .arg("--quantized-model-id")
-                .arg(&model_path_absolute);
-
-            if let Some(filename) = &params.quantized_filename {
-                command.arg("--quantized-filename").arg(filename);
-            } else {
-                // Default GGUF filename patterns
-                command.arg("--quantized-filename").arg("*.gguf");
-            }
-
-            // Add GGUF-specific parameters
-            if let Some(dtype) = &params.dtype {
-                command.arg("--dtype").arg(dtype);
-            }
-            if let Some(max_seq_len) = params.max_seq_len {
-                command.arg("--max-seq-len").arg(max_seq_len.to_string());
-            }
-        }
-        "run" => {
-            command.arg("run");
-            command.arg("--model-id");
-            if let Some(model_id_name) = &params.model_id_name {
-                command.arg(model_id_name);
-            } else {
-                command.arg(&model_path_absolute);
-            }
-
-            // Add run-specific parameters (auto-loader)
-            if let Some(dtype) = &params.dtype {
-                command.arg("--dtype").arg(dtype);
-            }
-            if let Some(max_seq_len) = params.max_seq_len {
-                command.arg("--max-seq-len").arg(max_seq_len.to_string());
-            }
-        }
-        "vision-plain" => {
-            command.arg("vision-plain");
-            command.arg("--model-id");
-            if let Some(model_id_name) = &params.model_id_name {
-                command.arg(model_id_name);
-            } else {
-                command.arg(&model_path_absolute);
-            }
-
-            // Add vision-specific parameters
-            if let Some(max_edge) = params.max_edge {
-                command.arg("--max-edge").arg(max_edge.to_string());
-            }
-            if let Some(max_images) = params.max_num_images {
-                command.arg("--max-num-images").arg(max_images.to_string());
-            }
-            if let Some(max_image_len) = params.max_image_length {
-                command
-                    .arg("--max-image-length")
-                    .arg(max_image_len.to_string());
-            }
-            if let Some(dtype) = &params.dtype {
-                command.arg("--dtype").arg(dtype);
-            }
-            if let Some(max_seq_len) = params.max_seq_len {
-                command.arg("--max-seq-len").arg(max_seq_len.to_string());
-            }
-        }
-        "x-lora" => {
-            command.arg("x-lora");
-            command.arg("--model-id");
-            if let Some(model_id_name) = &params.model_id_name {
-                command.arg(model_id_name);
-            } else {
-                command.arg(&model_path_absolute);
-            }
-            // X-LoRA specific parameters would go here
-        }
-        "lora" => {
-            command.arg("lora");
-            command.arg("--model-id");
-            if let Some(model_id_name) = &params.model_id_name {
-                command.arg(model_id_name);
-            } else {
-                command.arg(&model_path_absolute);
-            }
-            // LoRA specific parameters would go here
-        }
-        "toml" => {
-            command.arg("toml");
-            command.arg("--toml-path").arg(&model_path_absolute);
-        }
-        _ => {
-            // Default to run (auto-loader) for unknown model types
-            command.arg("run");
-            command.arg("--model-id");
-            if let Some(model_id_name) = &params.model_id_name {
-                command.arg(model_id_name);
-            } else {
-                command.arg(&model_path_absolute);
-            }
-        }
-    }
-
-    // Add our internal model UUID as an environment variable for process identification
-    // This helps us identify which process belongs to which model
-    command.env("MODEL_UUID", model_id.to_string());
-
-    // Create or open the stdout/stderr log file for writing
-    let stdout_stderr_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .append(true)
-        .open(&stdout_stderr_log_path)?;
-
-    // Clone the file handle for stderr
-    let stderr_file = stdout_stderr_file.try_clone()?;
-
-    // Redirect stdout and stderr to the log file
-    command
-        .stdout(Stdio::from(stdout_stderr_file))
-        .stderr(Stdio::from(stderr_file));
-
-    println!("Starting mistralrs-server process: {:?}", command);
-    println!("Process output will be logged to: {}", stdout_stderr_log_path);
-
-    // Spawn the process
-    let mut child = command.spawn()?;
-    let pid = child.id();
-
-    println!(
-        "mistralrs-server process spawned with PID: {}, port: {}",
-        pid, port
-    );
-
-    // Wait a bit to ensure the process has started successfully
-    sleep(Duration::from_millis(100)).await;
-
-    // Check if the process is still running
-    match child.try_wait() {
-        Ok(Some(status)) => {
-            // Process has already exited
-            eprintln!(
-                "mistralrs-server process exited immediately with status: {}",
-                status
-            );
-            let error_msg = format!("mistralrs-server process failed to start: {}", status);
-            return Ok(ModelStartResult::Failed { 
-                error: error_msg, 
-                stdout_stderr_log_path 
-            });
-        }
-        Ok(None) => {
-            // Process is still running, we'll store it properly in the registry later
-            println!("mistralrs-server process is running, waiting for health check...");
-        }
-        Err(e) => {
-            eprintln!("Failed to check mistralrs-server process status: {}", e);
-            let error_msg = format!("Failed to check process status: {}", e);
-            return Ok(ModelStartResult::Failed { 
-                error: error_msg, 
-                stdout_stderr_log_path 
-            });
-        }
-    }
-
-    // Calculate timeout based on model size
-    let timeout_seconds = match calculate_model_size(&params.model_path) {
-        Ok(size) => calculate_timeout_for_model_size(size),
-        Err(e) => {
-            eprintln!(
-                "Failed to calculate model size: {}, using default timeout of 20 minutes",
-                e
-            );
-            1200 // Default to 20 minutes if we can't calculate size
-        }
-    };
-
-    // Wait for the model server to be healthy and ready
-    if let Err(e) = wait_for_model_health(port, timeout_seconds).await {
-        eprintln!("Model server health check failed: {}", e);
-        // Try to stop the process if health check fails
-        let _ = stop_model(model_id, pid, port).await;
-        let error_msg = format!("Model server failed to become healthy: {}", e);
-        return Ok(ModelStartResult::Failed { 
-            error: error_msg, 
-            stdout_stderr_log_path 
-        });
-    }
-
-    println!("Model server is healthy and ready on port {}", port);
-
-    // Register the process in our registry
-    if let Ok(mut registry) = MODEL_REGISTRY.write() {
-        let model_process = ModelProcess { child, pid, port };
-        registry.insert(*model_id, model_process);
-        println!(
-            "Registered model {} with PID {} on port {}",
-            model_id, pid, port
-        );
-    }
-
-    Ok(ModelStartResult::Started { port, pid })
+    // Use the new engine-based start function
+    start_model_with_engine(model_id, &model).await
 }
 
 pub async fn stop_model(
@@ -1318,194 +954,74 @@ pub async fn stop_model(
     // First try to get the child process from our registry and kill it properly
     if let Ok(mut registry) = MODEL_REGISTRY.write() {
         if let Some(mut model_process) = registry.remove(model_id) {
-            println!("Found child process in registry, terminating gracefully...");
+            println!("Found process in registry, attempting graceful shutdown");
             
-            // Try to kill the child process gracefully first
+            // Try to kill the child process gracefully
             match model_process.child.kill() {
-                Ok(()) => {
-                    println!("Sent kill signal to child process");
-                    
-                    // Wait for the process to exit and collect its status to prevent zombies
-                    match model_process.child.wait() {
-                        Ok(status) => {
-                            println!("Child process exited with status: {}", status);
-                            return Ok(());
-                        }
-                        Err(e) => {
-                            eprintln!("Error waiting for child process: {}", e);
-                            // Continue with system-level termination as fallback
-                        }
-                    }
+                Ok(_) => {
+                    println!("Successfully killed child process with model_id: {}", model_id);
+                    // Clean up the child to prevent zombie processes
+                    let _ = model_process.child.wait();
                 }
                 Err(e) => {
-                    eprintln!("Error killing child process: {}", e);
-                    // Continue with system-level termination as fallback
+                    eprintln!("Failed to kill child process for model {}: {}", model_id, e);
                 }
             }
+        } else {
+            println!("Process not found in registry for model_id: {}", model_id);
         }
     }
 
-    // Fallback: system-level process termination for orphaned processes
-    // Verify that the process is actually running and is a mistralrs server
-    if !is_process_running(pid) {
-        println!("Process {} is not running", pid);
-        return Ok(());
-    }
-
-    // Verify that the process is actually a mistralrs server
-    if !is_model_server_process(pid) {
-        println!("Process {} is not a mistralrs server", pid);
-        return Err("Process is not a mistralrs server".into());
-    }
-
-    // Verify that the port is actually in use (additional validation)
-    if !is_port_in_use(port) {
-        println!(
-            "Port {} is not in use, process {} may be unresponsive",
-            port, pid
-        );
-    }
-
-    println!("Sending graceful termination signal to process {}", pid);
-
-    // Try to terminate the process gracefully first
+    // If registry approach fails, try to kill by PID directly
     #[cfg(unix)]
     {
         use nix::sys::signal::{self, Signal};
         use nix::unistd::Pid;
-
-        let pid_nix = Pid::from_raw(pid as i32);
-
-        // Send SIGTERM first for graceful shutdown
-        if let Err(e) = signal::kill(pid_nix, Signal::SIGTERM) {
-            eprintln!("Failed to send SIGTERM to process {}: {}", pid, e);
-            return Err(format!("Failed to send termination signal: {}", e).into());
-        }
-
-        // Wait for graceful shutdown with timeout
-        let graceful_timeout_ms = 20000; // 20 seconds
-        let check_interval_ms = 500; // Check every 200ms
-        let max_checks = graceful_timeout_ms / check_interval_ms;
-
-        for check in 0..max_checks {
-            sleep(Duration::from_millis(check_interval_ms)).await;
-
-            if !is_process_running(pid) {
-                println!(
-                    "Process {} terminated gracefully after {}ms",
-                    pid,
-                    (check + 1) * check_interval_ms
-                );
-                break;
+        
+        let pid = Pid::from_raw(pid as i32);
+        match signal::kill(pid, Signal::SIGTERM) {
+            Ok(_) => {
+                println!("Sent SIGTERM to process {}", pid);
+                
+                // Give it a few seconds to shut down gracefully
+                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+                
+                // Check if still running, if so, use SIGKILL
+                match signal::kill(pid, Signal::SIGKILL) {
+                    Ok(_) => println!("Sent SIGKILL to process {}", pid),
+                    Err(_) => {}, // Process likely already terminated
+                }
             }
-
-            // If this is the last check, force kill
-            if check == max_checks - 1 {
-                println!(
-                    "Process {} did not respond to SIGTERM after {}ms, sending SIGKILL",
-                    pid, graceful_timeout_ms
-                );
-
-                if let Err(e) = signal::kill(pid_nix, Signal::SIGKILL) {
-                    eprintln!("Failed to send SIGKILL to process {}: {}", pid, e);
-                    return Err(format!("Failed to force kill process: {}", e).into());
-                }
-
-                // Wait a bit more for force kill to take effect
-                sleep(Duration::from_millis(1000)).await;
-
-                if is_process_running(pid) {
-                    eprintln!("Process {} is still running after SIGKILL", pid);
-                    return Err("Process could not be terminated".into());
-                } else {
-                    println!("Process {} force killed successfully", pid);
-                }
+            Err(e) => {
+                eprintln!("Failed to send SIGTERM to process {}: {}", pid, e);
             }
         }
     }
 
     #[cfg(windows)]
     {
-        // On Windows, try graceful termination first
-        let graceful_result = Command::new("taskkill")
-            .arg("/PID")
-            .arg(pid.to_string())
+        use std::process::Command;
+        let output = Command::new("taskkill")
+            .args(["/F", "/PID", &pid.to_string()])
             .output();
-
-        match graceful_result {
-            Ok(result) => {
-                if result.status.success() {
-                    // Wait for graceful shutdown
-                    let mut graceful_success = false;
-                    for _ in 0..25 {
-                        // Check for 5 seconds (25 * 200ms)
-                        sleep(Duration::from_millis(200)).await;
-                        if !is_process_running(pid) {
-                            graceful_success = true;
-                            println!("Process {} terminated gracefully", pid);
-                            break;
-                        }
-                    }
-
-                    if !graceful_success {
-                        println!(
-                            "Process {} did not terminate gracefully, force killing",
-                            pid
-                        );
-                        // Force terminate
-                        let force_result = Command::new("taskkill")
-                            .arg("/PID")
-                            .arg(pid.to_string())
-                            .arg("/F") // Force terminate
-                            .output();
-
-                        match force_result {
-                            Ok(force_res) => {
-                                if !force_res.status.success() {
-                                    let stderr = String::from_utf8_lossy(&force_res.stderr);
-                                    return Err(format!(
-                                        "Failed to force terminate process {}: {}",
-                                        pid, stderr
-                                    )
-                                    .into());
-                                }
-                            }
-                            Err(e) => {
-                                return Err(
-                                    format!("Failed to execute force taskkill: {}", e).into()
-                                );
-                            }
-                        }
-                    }
+            
+        match output {
+            Ok(output) => {
+                if output.status.success() {
+                    println!("Successfully killed process {}", pid);
                 } else {
-                    let stderr = String::from_utf8_lossy(&result.stderr);
-                    return Err(format!("Failed to terminate process {}: {}", pid, stderr).into());
+                    eprintln!("Failed to kill process {}: {}", pid, String::from_utf8_lossy(&output.stderr));
                 }
             }
             Err(e) => {
-                return Err(format!("Failed to execute taskkill: {}", e).into());
+                eprintln!("Failed to execute taskkill for process {}: {}", pid, e);
             }
-        }
-    }
-
-    // Final verification that process is stopped
-    if is_process_running(pid) {
-        return Err("Process is still running after termination attempts".into());
-    }
-
-    println!("Process {} terminated successfully", pid);
-
-    // Clean up any remaining registry entry (in case it wasn't removed earlier)
-    if let Ok(mut registry) = MODEL_REGISTRY.write() {
-        if registry.remove(model_id).is_some() {
-            println!("Cleaned up remaining registry entry for model {}", model_id);
         }
     }
 
     Ok(())
 }
 
-/// Stop and cleanup a specific model by ID
 pub async fn check_and_cleanup_model(
     model_id: &Uuid,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -1537,92 +1053,29 @@ pub async fn cleanup_dead_processes() -> Result<(), Box<dyn std::error::Error + 
         for (model_id, model_process) in registry.iter_mut() {
             // Try to check if the child process has exited without blocking
             match model_process.child.try_wait() {
-                Ok(Some(status)) => {
-                    println!("Process {} for model {} has exited with status: {}", 
-                            model_process.pid, model_id, status);
+                Ok(Some(_)) => {
+                    // Process has exited
                     dead_processes.push(*model_id);
                 }
                 Ok(None) => {
-                    // Process is still running, check if it's actually alive via system call
-                    if !is_process_running(model_process.pid) {
-                        println!("Process {} for model {} appears dead but child handle didn't detect it", 
-                                model_process.pid, model_id);
-                        dead_processes.push(*model_id);
-                    }
+                    // Process is still running - no action needed
                 }
                 Err(e) => {
-                    eprintln!("Error checking process {} for model {}: {}", 
-                             model_process.pid, model_id, e);
+                    eprintln!("Error checking process status for model {}: {}", model_id, e);
                     dead_processes.push(*model_id);
                 }
             }
         }
         
-        // Remove dead processes from registry and wait on them to prevent zombies
-        for model_id in dead_processes {
-            if let Some(mut model_process) = registry.remove(&model_id) {
-                println!("Cleaning up dead process {} for model {}", model_process.pid, model_id);
-                // Wait on the child process to collect its exit status and prevent zombies
-                let _ = model_process.child.wait();
+        // Remove dead processes from registry
+        for dead_id in dead_processes {
+            if let Some(mut dead_process) = registry.remove(&dead_id) {
+                println!("Cleaning up dead process for model {}", dead_id);
+                // Try to wait on it to fully clean up (should be instant since it's already dead)
+                let _ = dead_process.child.wait();
             }
         }
     }
     
     Ok(())
 }
-
-/// Start a background task that periodically cleans up dead processes
-/// This should be called once when the application starts
-pub fn start_process_cleanup_task() {
-    tokio::spawn(async move {
-        let mut interval = tokio::time::interval(Duration::from_secs(30)); // Check every 30 seconds
-        loop {
-            interval.tick().await;
-            if let Err(e) = cleanup_dead_processes().await {
-                eprintln!("Error during process cleanup: {}", e);
-            }
-        }
-    });
-    println!("Started background process cleanup task");
-}
-
-/// Cleanup all running model processes on application shutdown
-/// This should be called when the application is shutting down to prevent orphaned processes
-pub async fn cleanup_all_processes() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Cleaning up all running model processes...");
-    
-    if let Ok(mut registry) = MODEL_REGISTRY.write() {
-        let model_ids: Vec<Uuid> = registry.keys().cloned().collect();
-        
-        for model_id in model_ids {
-            if let Some(mut model_process) = registry.remove(&model_id) {
-                println!("Terminating process {} for model {}", model_process.pid, model_id);
-                
-                // Try to kill the process gracefully
-                if let Err(e) = model_process.child.kill() {
-                    eprintln!("Error killing process {} for model {}: {}", 
-                             model_process.pid, model_id, e);
-                }
-                
-                // Wait for the process to exit and collect its status
-                match model_process.child.wait() {
-                    Ok(status) => {
-                        println!("Process {} for model {} exited with status: {}", 
-                                model_process.pid, model_id, status);
-                    }
-                    Err(e) => {
-                        eprintln!("Error waiting for process {} for model {}: {}", 
-                                 model_process.pid, model_id, e);
-                    }
-                }
-            }
-        }
-        
-        registry.clear();
-        println!("All model processes cleaned up");
-    }
-    
-    Ok(())
-}
-
-use crate::ai::models::ModelUtils;

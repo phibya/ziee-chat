@@ -151,7 +151,7 @@ export const DeviceSelectionSection: React.FC<DeviceSelectionSectionProps> = ({
   }
 
   return (
-    <Card title={'Device Configuration'} size={'small'}>
+    <Card title={'Device Configuration'}>
       <div className="space-y-4 pb-3">
         <div>
           <Text type="secondary">
@@ -221,15 +221,6 @@ export const DeviceSelectionSection: React.FC<DeviceSelectionSectionProps> = ({
               )}
             />
           </Form.Item>
-        )}
-
-        {selectedDeviceType === 'cpu' && (
-          <Alert
-            message="CPU Selected"
-            description="Model will run on CPU. This may be slower than GPU execution but works on all systems."
-            type="info"
-            showIcon
-          />
         )}
 
         {selectedDeviceType === 'cuda' &&

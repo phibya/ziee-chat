@@ -143,7 +143,9 @@ export function AddLocalModelDownloadDrawer() {
             description: values.description,
             file_format: values.file_format,
             capabilities: values.capabilities || {},
-            settings: values.settings || {},
+            engine_type: values.engine_type || 'mistralrs',
+            engine_settings_mistralrs: values.engine_settings_mistralrs || {},
+            engine_settings_llamacpp: values.engine_settings_llamacpp || {},
           },
           openViewDownloadModal,
         )
@@ -181,7 +183,9 @@ export function AddLocalModelDownloadDrawer() {
           main_filename: requestData.main_filename,
           repository_branch: requestData.revision || 'main', // Use revision instead of repository_branch
           capabilities: requestData.capabilities || {},
-          settings: requestData.settings || {},
+          engine_type: requestData.engine_type || 'mistralrs',
+          engine_settings_mistralrs: requestData.engine_settings_mistralrs || {},
+          engine_settings_llamacpp: requestData.engine_settings_llamacpp || {},
         })
       } else if (!viewMode) {
         // In add mode, set default values

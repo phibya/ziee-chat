@@ -17,6 +17,7 @@ import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
 import { useAdminRAGProvidersStore } from './admin/ragProviders.ts'
 import { useAdminRAGRepositoriesStore } from './admin/ragRepositories.ts'
+import { useEngineStore } from './engine'
 import { useUserSettingsStore } from './settings'
 import {
   useAddLocalModelDownloadDrawerStore,
@@ -264,6 +265,14 @@ export {
   updateRAGRepository,
   useAdminRAGRepositoriesStore,
 } from './admin/ragRepositories.ts'
+// Engine store
+export {
+  initializeEngines,
+  getEngineByType,
+  getAvailableEngines,
+  searchEngines,
+  useEngineStore,
+} from './engine'
 // Settings store
 export {
   deleteUserSetting,
@@ -380,6 +389,7 @@ export const Stores = {
   AdminRepositories: createStoreProxy(useAdminRepositoriesStore),
   AdminRAGProviders: createStoreProxy(useAdminRAGProvidersStore),
   AdminRAGRepositories: createStoreProxy(useAdminRAGRepositoriesStore),
+  AdminEngines: createStoreProxy(useEngineStore),
   Settings: createStoreProxy(useUserSettingsStore),
   UI: {
     Layout: createStoreProxy(useLayoutUIStore),

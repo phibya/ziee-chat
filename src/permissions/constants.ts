@@ -50,6 +50,10 @@ export const PermissionDescription = {
   'config::providers::read': 'Allows viewing model provider settings',
   'config::providers::edit':
     'Allows configuring model providers and their settings',
+  // Engine management permissions
+  'config::engines::*': 'Grants all engine management permissions',
+  'config::engines::read': 'Allows viewing available engines and their status',
+  'config::engines::edit': 'Allows configuring engine settings',
   // Model repository permissions
   'config::repositories::*':
     'Grants all model repository configuration permissions',

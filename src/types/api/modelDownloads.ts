@@ -2,7 +2,7 @@
  * Download instance types for model downloads from repositories
  */
 
-import { ModelCapabilities, ModelParameters, ModelSettings } from './model'
+import { ModelCapabilities, ModelParameters, MistralRsSettings, LlamaCppSettings } from './model'
 
 export interface DownloadProgress {
   phase: string
@@ -30,7 +30,9 @@ export interface DownloadFromRepositoryRequest {
   file_format: string
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  settings?: ModelSettings
+  engine_type?: string
+  engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
 }
 
 export interface DownloadRequestData {
@@ -45,7 +47,9 @@ export interface DownloadRequestData {
   main_filename?: string
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  settings?: ModelSettings
+  engine_type?: string
+  engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
 }
 
 export interface DownloadInstance {

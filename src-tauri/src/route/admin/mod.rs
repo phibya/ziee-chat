@@ -1,6 +1,7 @@
 pub mod assistants;
 pub mod config;
 pub mod downloads;
+pub mod engines;
 pub mod groups;
 pub mod hardware;
 pub mod models;
@@ -25,6 +26,7 @@ pub fn admin_routes() -> Router {
             .merge(rag_repositories::admin_rag_repository_routes())
             .merge(assistants::admin_assistant_routes())
             .merge(downloads::admin_download_routes())
+            .merge(engines::admin_engine_routes())
             .merge(hardware::hardware_routes())
         )
 }

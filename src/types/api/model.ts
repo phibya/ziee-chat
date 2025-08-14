@@ -31,7 +31,7 @@ export interface ModelParameters {
   stop?: string[] // Stop sequences to terminate generation
 }
 
-export interface ModelSettings {
+export interface MistralRsSettings {
   // Device configuration
   device_type?: string // Device type (cpu, cuda, metal, etc.)
   device_ids?: number[] // Array of device IDs for multi-GPU
@@ -67,6 +67,12 @@ export interface ModelSettings {
   max_image_length?: number // Maximum image edge length
 }
 
+export interface LlamaCppSettings {
+  // Placeholder for future LlamaCpp-specific settings
+  context_size?: number
+  threads?: number
+}
+
 export interface ModelFileInfo {
   filename: string
   file_size_bytes: number
@@ -93,7 +99,9 @@ export interface Model {
   validation_issues?: string[]
   port?: number // Port number where the model server is running
   pid?: number // Process ID of the running model server
-  settings?: ModelSettings // Model-specific performance settings
+  engine_type: string // Engine type: "mistralrs" | "llamacpp" - REQUIRED
+  engine_settings_mistralrs?: MistralRsSettings // MistralRs-specific settings
+  engine_settings_llamacpp?: LlamaCppSettings // LlamaCpp-specific settings
   files?: ModelFileInfo[]
 }
 
@@ -104,7 +112,10 @@ export interface CreateModelRequest {
   description?: string
   enabled?: boolean
   capabilities?: ModelCapabilities
-  settings?: ModelSettings
+  parameters?: ModelParameters
+  engine_type: string // Engine type: "mistralrs" | "llamacpp" - REQUIRED
+  engine_settings_mistralrs?: MistralRsSettings // MistralRs-specific settings
+  engine_settings_llamacpp?: LlamaCppSettings // LlamaCpp-specific settings
 }
 
 export interface UpdateModelRequest {
@@ -115,7 +126,9 @@ export interface UpdateModelRequest {
   is_active?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  settings?: ModelSettings
+  engine_type?: string // Engine type: "mistralrs" | "llamacpp"
+  engine_settings_mistralrs?: MistralRsSettings // MistralRs-specific settings
+  engine_settings_llamacpp?: LlamaCppSettings // LlamaCpp-specific settings
 }
 
 export interface ModelFile {
@@ -183,7 +196,9 @@ export interface AddModelToProviderRequest {
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  settings?: ModelSettings
+  engine_type: string // Engine type: "mistralrs" | "llamacpp" - REQUIRED
+  engine_settings_mistralrs?: MistralRsSettings // MistralRs-specific settings
+  engine_settings_llamacpp?: LlamaCppSettings // LlamaCpp-specific settings
 }
 
 export interface RemoveModelFromProviderRequest {

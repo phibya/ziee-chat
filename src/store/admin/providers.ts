@@ -205,6 +205,7 @@ export const addNewModelToProvider = async (
     description?: string
     enabled?: boolean
     capabilities?: ModelCapabilities
+    engine_type?: string
   },
 ): Promise<void> => {
   try {
@@ -215,6 +216,7 @@ export const addNewModelToProvider = async (
 
     const newModel = await ApiClient.Admin.addModelToProvider({
       provider_id: providerId,
+      engine_type: 'mistralrs', // Default engine type
       ...model,
     })
 

@@ -6,6 +6,7 @@
 
 pub mod auto_unload;
 pub mod core;
+pub mod engines;
 pub mod file_helpers;
 pub mod model_manager;
 pub mod models;

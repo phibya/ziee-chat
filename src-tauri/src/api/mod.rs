@@ -5,6 +5,7 @@ pub mod chat;
 pub mod configuration;
 
 pub mod download_instances;
+pub mod engines;
 pub mod errors;
 pub mod files;
 pub mod hardware;

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-use super::model::{ModelCapabilities, ModelParameters, ModelSettings};
+use super::model::{ModelCapabilities, ModelParameters, MistralRsSettings};
 
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -48,7 +48,8 @@ pub struct DownloadRequestData {
     /// Model parameters configuration
     pub parameters: Option<ModelParameters>,
     /// Model settings configuration
-    pub settings: Option<ModelSettings>,
+    pub engine_type: Option<String>,
+    pub engine_settings_mistralrs: Option<MistralRsSettings>,
 }
 
 /// Download instance status enum

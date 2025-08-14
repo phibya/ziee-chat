@@ -4,7 +4,8 @@ import { ApiClient } from '../../api/client.ts'
 import {
   Model,
   ModelCapabilities,
-  ModelSettings,
+  MistralRsSettings,
+  LlamaCppSettings,
 } from '../../types/api/model.ts'
 import { loadModelsForProvider } from './providers.ts'
 
@@ -25,7 +26,9 @@ export interface LocalUploadRequest {
   description?: string
   file_format: string
   capabilities: ModelCapabilities
-  settings?: ModelSettings
+  engine_type?: string
+  engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
 }
 
 interface LocalUploadState {
@@ -94,8 +97,16 @@ export const uploadLocalModel = async (
       formData.append('capabilities', JSON.stringify(request.capabilities))
     }
 
-    if (request.settings) {
-      formData.append('settings', JSON.stringify(request.settings))
+    if (request.engine_type) {
+      formData.append('engine_type', request.engine_type)
+    }
+
+    if (request.engine_settings_mistralrs) {
+      formData.append('engine_settings_mistralrs', JSON.stringify(request.engine_settings_mistralrs))
+    }
+
+    if (request.engine_settings_llamacpp) {
+      formData.append('engine_settings_llamacpp', JSON.stringify(request.engine_settings_llamacpp))
     }
 
     // Call the upload API with file upload progress tracking
