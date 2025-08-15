@@ -7,11 +7,8 @@ use mistralrs_core::{
 use rust_mcp_sdk::schema::LATEST_PROTOCOL_VERSION;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::join;
 use tracing::{error, info};
-use uuid::Uuid;
-use once_cell::sync::Lazy;
 
 use mistralrs_server_core::{
     mistralrs_for_server_builder::{
@@ -25,12 +22,6 @@ mod interactive_mode;
 use interactive_mode::interactive_mode;
 mod mcp_server;
 
-// Global model UUID generated at startup
-static MODEL_UUID: Lazy<String> = Lazy::new(|| Uuid::new_v4().to_string());
-
-// Global storage for server parameters
-static SERVER_PARAMS: Lazy<Arc<std::sync::Mutex<Option<Value>>>> = 
-    Lazy::new(|| Arc::new(std::sync::Mutex::new(None)));
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -344,71 +335,13 @@ fn load_multi_model_config(config_path: &str) -> Result<Vec<ModelConfig>> {
     Ok(configs)
 }
 
-// Health endpoint handler
-async fn server_info() -> Result<Json<Value>, StatusCode> {
-    let model_uuid = MODEL_UUID.clone();
-    
-    let params = if let Ok(guard) = SERVER_PARAMS.lock() {
-        guard.clone().unwrap_or_else(|| json!({}))
-    } else {
-        json!({})
-    };
-    
-    let response = json!({
-        "model_uuid": model_uuid,
-        "params": params
-    });
-    
-    Ok(Json(response))
-}
 
-// Function to store server parameters
-fn store_server_params(args: &Args) {
-    let params = json!({
-        "serve_ip": args.serve_ip,
-        "seed": args.seed,
-        "port": args.port,
-        "log": args.log,
-        "truncate_sequence": args.truncate_sequence,
-        "max_seqs": args.max_seqs,
-        "no_kv_cache": args.no_kv_cache,
-        "chat_template": args.chat_template,
-        "jinja_explicit": args.jinja_explicit,
-        "token_source": format!("{:?}", args.token_source),
-        "interactive_mode": args.interactive_mode,
-        "prefix_cache_n": args.prefix_cache_n,
-        "num_device_layers": args.num_device_layers,
-        "in_situ_quant": args.in_situ_quant,
-        "paged_attn_gpu_mem": args.paged_attn_gpu_mem,
-        "paged_attn_gpu_mem_usage": args.paged_attn_gpu_mem_usage,
-        "paged_ctxt_len": args.paged_ctxt_len,
-        "cache_type": args.cache_type.as_ref().map(|ct| format!("{:?}", ct)),
-        "paged_attn_block_size": args.paged_attn_block_size,
-        "no_paged_attn": args.no_paged_attn,
-        "paged_attn": args.paged_attn,
-        "prompt_chunksize": args.prompt_chunksize,
-        "cpu": args.cpu,
-        "enable_search": args.enable_search,
-        "search_bert_model": args.search_bert_model,
-        "enable_thinking": args.enable_thinking,
-        "mcp_port": args.mcp_port,
-        "mcp_config": args.mcp_config,
-        "model": format!("{:?}", args.model)
-    });
-    
-    if let Ok(mut guard) = SERVER_PARAMS.lock() {
-        *guard = Some(params);
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
 
     initialize_logging();
-    
-    // Store server parameters for health endpoint
-    store_server_params(&args);
 
     // Load MCP configuration if provided
     let mcp_config = load_mcp_config(args.mcp_config.as_deref())?;
@@ -526,16 +459,10 @@ async fn main() -> Result<()> {
         // Create listener early to validate address before model loading
         let listener = tokio::net::TcpListener::bind(format!("{ip}:{port}")).await?;
 
-        let mistralrs_app = MistralRsServerRouterBuilder::new()
+        let app = MistralRsServerRouterBuilder::new()
             .with_mistralrs(mistralrs)
             .build()
             .await?;
-            
-        // Create health router
-        let health_router = Router::new().route("/server-info", get(server_info));
-        
-        // Merge the routers
-        let app = mistralrs_app.merge(health_router);
 
         info!("OpenAI-compatible server listening on http://{ip}:{port}.");
 
