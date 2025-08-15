@@ -1,8 +1,4 @@
-use axum::{
-    routing::get,
-    middleware,
-    Router,
-};
+use axum::{middleware, routing::get, Router};
 
 use crate::api::{engines::list_engines, middleware::auth_middleware};
 

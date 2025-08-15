@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{RwLock, oneshot};
+use tokio::sync::{oneshot, RwLock};
 use uuid::Uuid;
 
 /// Cancellation token for tracking and cancelling operations
@@ -67,10 +67,10 @@ impl CancellationTracker {
     /// Create a new cancellation token for a download
     pub async fn create_token(&self, download_id: Uuid) -> CancellationToken {
         let (sender, receiver) = oneshot::channel();
-        
+
         let mut senders = self.cancellation_senders.write().await;
         senders.insert(download_id, sender);
-        
+
         CancellationToken::new(download_id, receiver)
     }
 
@@ -100,7 +100,7 @@ impl CancellationTracker {
 }
 
 // Global instance
-pub static CANCELLATION_TRACKER: once_cell::sync::Lazy<CancellationTracker> = 
+pub static CANCELLATION_TRACKER: once_cell::sync::Lazy<CancellationTracker> =
     once_cell::sync::Lazy::new(|| CancellationTracker::new());
 
 /// Convenience function to create a cancellation token

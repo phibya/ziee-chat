@@ -12,7 +12,7 @@ pub async fn get_repository_by_id(repository_id: Uuid) -> Result<Option<Reposito
     let repository_row: Option<Repository> = sqlx::query_as(
         "SELECT id, name, url, auth_type, auth_config, enabled, built_in, created_at, updated_at
          FROM repositories 
-         WHERE id = $1"
+         WHERE id = $1",
     )
     .bind(repository_id)
     .fetch_optional(pool)
@@ -28,7 +28,7 @@ pub async fn list_repositories() -> Result<Vec<Repository>, sqlx::Error> {
     let repositories: Vec<Repository> = sqlx::query_as(
         "SELECT id, name, url, auth_type, auth_config, enabled, built_in, created_at, updated_at
          FROM repositories 
-         ORDER BY built_in DESC, name ASC"
+         ORDER BY built_in DESC, name ASC",
     )
     .fetch_all(pool)
     .await?;
@@ -36,7 +36,9 @@ pub async fn list_repositories() -> Result<Vec<Repository>, sqlx::Error> {
     Ok(repositories)
 }
 
-pub async fn create_repository(request: CreateRepositoryRequest) -> Result<Repository, sqlx::Error> {
+pub async fn create_repository(
+    request: CreateRepositoryRequest,
+) -> Result<Repository, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let repository_id = Uuid::new_v4();
@@ -123,7 +125,7 @@ pub async fn create_default_repositories() -> Result<(), sqlx::Error> {
 
     // Check if Hugging Face repository already exists
     let hf_exists: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM repositories WHERE name = 'Hugging Face Hub' AND built_in = true"
+        "SELECT id FROM repositories WHERE name = 'Hugging Face Hub' AND built_in = true",
     )
     .fetch_optional(pool)
     .await?;
@@ -139,7 +141,7 @@ pub async fn create_default_repositories() -> Result<(), sqlx::Error> {
         sqlx::query(
             "INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (name) DO NOTHING"
+             ON CONFLICT (name) DO NOTHING",
         )
         .bind(huggingface_id)
         .bind("Hugging Face Hub")
@@ -153,11 +155,10 @@ pub async fn create_default_repositories() -> Result<(), sqlx::Error> {
     }
 
     // Check if GitHub repository already exists
-    let gh_exists: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM repositories WHERE name = 'GitHub' AND built_in = true"
-    )
-    .fetch_optional(pool)
-    .await?;
+    let gh_exists: Option<(Uuid,)> =
+        sqlx::query_as("SELECT id FROM repositories WHERE name = 'GitHub' AND built_in = true")
+            .fetch_optional(pool)
+            .await?;
 
     if gh_exists.is_none() {
         // Create GitHub built-in repository
@@ -170,7 +171,7 @@ pub async fn create_default_repositories() -> Result<(), sqlx::Error> {
         sqlx::query(
             "INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (name) DO NOTHING"
+             ON CONFLICT (name) DO NOTHING",
         )
         .bind(github_id)
         .bind("GitHub")

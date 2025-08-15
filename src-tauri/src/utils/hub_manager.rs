@@ -66,17 +66,28 @@ impl HubManager {
         self.load_hub_data_with_locale("en").await
     }
 
-    pub async fn load_hub_data_with_locale(&self, locale: &str) -> Result<HubData, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn load_hub_data_with_locale(
+        &self,
+        locale: &str,
+    ) -> Result<HubData, Box<dyn std::error::Error + Send + Sync>> {
         // Load base data from APP_DATA_DIR
         let mut base_data = self.load_hub_from_data_dir().await?;
-        
+
         // If locale is not English and is supported, load i18n overrides
-        if locale != "en" && self.config.i18n_supported_languages.contains(&locale.to_string()) {
-            if let Ok((models_overrides, assistants_overrides)) = self.load_i18n_overrides(locale).await {
-                base_data = self.merge_with_overrides(base_data, models_overrides, assistants_overrides);
+        if locale != "en"
+            && self
+                .config
+                .i18n_supported_languages
+                .contains(&locale.to_string())
+        {
+            if let Ok((models_overrides, assistants_overrides)) =
+                self.load_i18n_overrides(locale).await
+            {
+                base_data =
+                    self.merge_with_overrides(base_data, models_overrides, assistants_overrides);
             }
         }
-        
+
         Ok(base_data)
     }
 
@@ -85,7 +96,6 @@ impl HubManager {
         self.update_hub_files_from_github().await?;
         self.load_hub_from_data_dir().await
     }
-
 
     async fn copy_embedded_hub_files(
         &self,
@@ -405,14 +415,18 @@ impl HubManager {
 
             if embedded_i18n_dir.exists() {
                 fs::create_dir_all(&data_i18n_dir).await?;
-                
+
                 for filename in &self.config.i18n_files {
                     let embedded_file_path = embedded_i18n_dir.join(filename);
                     let data_file_path = data_i18n_dir.join(filename);
 
                     if embedded_file_path.exists() {
                         let should_copy = if data_file_path.exists() {
-                            self.should_copy_based_on_modified_time(&embedded_file_path, &data_file_path).await?
+                            self.should_copy_based_on_modified_time(
+                                &embedded_file_path,
+                                &data_file_path,
+                            )
+                            .await?
                         } else {
                             true
                         };
@@ -420,7 +434,8 @@ impl HubManager {
                         if should_copy {
                             let content = fs::read_to_string(&embedded_file_path).await?;
                             fs::write(&data_file_path, content).await?;
-                            self.copy_file_timestamps(&embedded_file_path, &data_file_path).await?;
+                            self.copy_file_timestamps(&embedded_file_path, &data_file_path)
+                                .await?;
                             println!("Copied i18n file: {} ({})", filename, lang);
                         }
                     }
@@ -431,9 +446,15 @@ impl HubManager {
         Ok(())
     }
 
-    async fn load_i18n_overrides(&self, locale: &str) -> Result<(Option<serde_json::Value>, Option<serde_json::Value>), Box<dyn std::error::Error + Send + Sync>> {
+    async fn load_i18n_overrides(
+        &self,
+        locale: &str,
+    ) -> Result<
+        (Option<serde_json::Value>, Option<serde_json::Value>),
+        Box<dyn std::error::Error + Send + Sync>,
+    > {
         let i18n_dir = self.get_hub_data_dir().join("i18n").join(locale);
-        
+
         if !i18n_dir.exists() {
             return Ok((None, None));
         }
@@ -454,7 +475,9 @@ impl HubManager {
             let assistants_path = i18n_dir.join("assistants.json");
             if assistants_path.exists() {
                 let assistants_content = fs::read_to_string(&assistants_path).await?;
-                Some(serde_json::from_str::<serde_json::Value>(&assistants_content)?)
+                Some(serde_json::from_str::<serde_json::Value>(
+                    &assistants_content,
+                )?)
             } else {
                 None
             }
@@ -463,25 +486,36 @@ impl HubManager {
         Ok((models_overrides, assistants_overrides))
     }
 
-    fn merge_with_overrides(&self, mut base: HubData, models_overrides: Option<serde_json::Value>, assistants_overrides: Option<serde_json::Value>) -> HubData {
+    fn merge_with_overrides(
+        &self,
+        mut base: HubData,
+        models_overrides: Option<serde_json::Value>,
+        assistants_overrides: Option<serde_json::Value>,
+    ) -> HubData {
         // Merge models
         if let Some(models_json) = models_overrides {
             if let Some(models_array) = models_json.get("models").and_then(|v| v.as_array()) {
                 for override_model in models_array {
                     if let Some(model_id) = override_model.get("id").and_then(|v| v.as_str()) {
-                        if let Some(base_model) = base.models.iter_mut().find(|m| m.id == model_id) {
+                        if let Some(base_model) = base.models.iter_mut().find(|m| m.id == model_id)
+                        {
                             // Override translatable fields if they exist
-                            if let Some(name) = override_model.get("name").and_then(|v| v.as_str()) {
+                            if let Some(name) = override_model.get("name").and_then(|v| v.as_str())
+                            {
                                 if !name.is_empty() {
                                     base_model.name = name.to_string();
                                 }
                             }
-                            if let Some(alias) = override_model.get("alias").and_then(|v| v.as_str()) {
+                            if let Some(alias) =
+                                override_model.get("alias").and_then(|v| v.as_str())
+                            {
                                 if !alias.is_empty() {
                                     base_model.alias = alias.to_string();
                                 }
                             }
-                            if let Some(description) = override_model.get("description").and_then(|v| v.as_str()) {
+                            if let Some(description) =
+                                override_model.get("description").and_then(|v| v.as_str())
+                            {
                                 if !description.is_empty() {
                                     base_model.description = Some(description.to_string());
                                 }
@@ -494,27 +528,44 @@ impl HubManager {
 
         // Merge assistants
         if let Some(assistants_json) = assistants_overrides {
-            if let Some(assistants_array) = assistants_json.get("assistants").and_then(|v| v.as_array()) {
+            if let Some(assistants_array) =
+                assistants_json.get("assistants").and_then(|v| v.as_array())
+            {
                 for override_assistant in assistants_array {
-                    if let Some(assistant_id) = override_assistant.get("id").and_then(|v| v.as_str()) {
-                        if let Some(base_assistant) = base.assistants.iter_mut().find(|a| a.id == assistant_id) {
+                    if let Some(assistant_id) =
+                        override_assistant.get("id").and_then(|v| v.as_str())
+                    {
+                        if let Some(base_assistant) =
+                            base.assistants.iter_mut().find(|a| a.id == assistant_id)
+                        {
                             // Override translatable fields if they exist
-                            if let Some(name) = override_assistant.get("name").and_then(|v| v.as_str()) {
+                            if let Some(name) =
+                                override_assistant.get("name").and_then(|v| v.as_str())
+                            {
                                 if !name.is_empty() {
                                     base_assistant.name = name.to_string();
                                 }
                             }
-                            if let Some(description) = override_assistant.get("description").and_then(|v| v.as_str()) {
+                            if let Some(description) = override_assistant
+                                .get("description")
+                                .and_then(|v| v.as_str())
+                            {
                                 if !description.is_empty() {
                                     base_assistant.description = Some(description.to_string());
                                 }
                             }
-                            if let Some(instructions) = override_assistant.get("instructions").and_then(|v| v.as_str()) {
+                            if let Some(instructions) = override_assistant
+                                .get("instructions")
+                                .and_then(|v| v.as_str())
+                            {
                                 if !instructions.is_empty() {
                                     base_assistant.instructions = Some(instructions.to_string());
                                 }
                             }
-                            if let Some(use_cases) = override_assistant.get("use_cases").and_then(|v| v.as_array()) {
+                            if let Some(use_cases) = override_assistant
+                                .get("use_cases")
+                                .and_then(|v| v.as_array())
+                            {
                                 let use_cases_vec: Vec<String> = use_cases
                                     .iter()
                                     .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -523,7 +574,10 @@ impl HubManager {
                                     base_assistant.use_cases = Some(use_cases_vec);
                                 }
                             }
-                            if let Some(example_prompts) = override_assistant.get("example_prompts").and_then(|v| v.as_array()) {
+                            if let Some(example_prompts) = override_assistant
+                                .get("example_prompts")
+                                .and_then(|v| v.as_array())
+                            {
                                 let prompts_vec: Vec<String> = example_prompts
                                     .iter()
                                     .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -541,7 +595,9 @@ impl HubManager {
         base
     }
 
-    async fn update_i18n_files_from_github(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn update_i18n_files_from_github(
+        &self,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let client = reqwest::Client::new();
         let hub_dir = self.get_hub_data_dir();
 
@@ -567,7 +623,7 @@ impl HubManager {
                             let content = response.text().await?;
                             // Validate JSON
                             let _: serde_json::Value = serde_json::from_str(&content)?;
-                            
+
                             let file_path = i18n_dir.join(filename);
                             fs::write(file_path, content).await?;
                             println!("Updated i18n {} ({}) in APP_DATA_DIR", filename, lang);

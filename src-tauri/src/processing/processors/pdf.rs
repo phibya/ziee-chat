@@ -1,8 +1,8 @@
 use async_trait::async_trait;
+use image::{imageops, ImageBuffer, RgbImage};
+use pdfium_render::prelude::*;
 use std::path::Path;
 use std::process::Command;
-use pdfium_render::prelude::*;
-use image::{RgbImage, ImageBuffer, imageops};
 
 use crate::processing::{ContentProcessor, ImageGenerator as ImageGeneratorTrait, MAX_IMAGE_DIM};
 use crate::utils::pandoc::PandocUtils;
@@ -15,7 +15,10 @@ impl PdfProcessor {
         Self
     }
 
-    async fn extract_text_with_pdf_extract(&self, file_path: &Path) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_text_with_pdf_extract(
+        &self,
+        file_path: &Path,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         use pdf_extract;
         use std::fs;
 
@@ -45,7 +48,10 @@ impl PdfProcessor {
         Ok(cleaned_text)
     }
 
-    async fn extract_text_with_pandoc(&self, file_path: &Path) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_text_with_pandoc(
+        &self,
+        file_path: &Path,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         // Get Pandoc path
         let pandoc_path = PandocUtils::get_pandoc_path()
             .ok_or_else(|| "Pandoc not found. PDF text extraction requires Pandoc.")?;
@@ -58,18 +64,22 @@ impl PdfProcessor {
             .output()?;
 
         if !output.status.success() {
-            return Err(format!("Pandoc PDF conversion failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!(
+                "Pandoc PDF conversion failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
 
         let content = String::from_utf8(output.stdout)?;
         Ok(content)
     }
 
-
-    async fn get_pdf_info(&self, file_path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
-        let output = Command::new("pdfinfo")
-            .arg(file_path)
-            .output()?;
+    async fn get_pdf_info(
+        &self,
+        file_path: &Path,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        let output = Command::new("pdfinfo").arg(file_path).output()?;
 
         if !output.status.success() {
             return Ok(serde_json::json!({"type": "pdf", "pages": 0}));
@@ -165,7 +175,10 @@ impl ContentProcessor for PdfProcessor {
         }
     }
 
-    async fn extract_text(&self, file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_text(
+        &self,
+        file_path: &Path,
+    ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
         // Use pdf-extract for PDF text extraction only
         match self.extract_text_with_pdf_extract(file_path).await {
             Ok(text) => {
@@ -182,7 +195,10 @@ impl ContentProcessor for PdfProcessor {
         }
     }
 
-    async fn extract_metadata(&self, file_path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_metadata(
+        &self,
+        file_path: &Path,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
         match self.get_pdf_info(file_path).await {
             Ok(metadata) => Ok(metadata),
             Err(_) => {
@@ -195,7 +211,6 @@ impl ContentProcessor for PdfProcessor {
             }
         }
     }
-
 }
 
 // PDF Image Generator (renamed from PdfThumbnailGenerator)
@@ -213,13 +228,16 @@ impl PdfImageGenerator {
         max_dim: u32,
     ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
         // Initialize PDFium using the centralized utility
-        let pdfium_bindings = initialize_pdfium()
-            .map_err(|e| Box::new(std::io::Error::new(std::io::ErrorKind::Other, e)) as Box<dyn std::error::Error + Send + Sync>)?;
+        let pdfium_bindings = initialize_pdfium().map_err(|e| {
+            Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))
+                as Box<dyn std::error::Error + Send + Sync>
+        })?;
 
         let pdfium = Pdfium::new(pdfium_bindings);
 
         // Load the PDF document
-        let document = pdfium.load_pdf_from_file(file_path, None)
+        let document = pdfium
+            .load_pdf_from_file(file_path, None)
             .map_err(|e| format!("Failed to load PDF: {}", e))?;
 
         let page_count = document.pages().len() as u32;
@@ -227,7 +245,9 @@ impl PdfImageGenerator {
 
         // Generate images for each page
         for page_index in 0..max_pages {
-            let page = document.pages().get(page_index as u16)
+            let page = document
+                .pages()
+                .get(page_index as u16)
                 .map_err(|e| format!("Failed to get page {}: {}", page_index + 1, e))?;
 
             // Render page to bitmap with max_dim parameter, but not exceeding MAX_IMAGE_DIM
@@ -237,23 +257,24 @@ impl PdfImageGenerator {
                 .set_maximum_height(effective_max_dim as i32)
                 .rotate_if_landscape(PdfPageRenderRotation::Degrees90, true);
 
-            let bitmap = page.render_with_config(&render_config)
+            let bitmap = page
+                .render_with_config(&render_config)
                 .map_err(|e| format!("Failed to render page {}: {}", page_index + 1, e))?;
 
             // Convert bitmap to RGB image
             let width = bitmap.width() as u32;
             let height = bitmap.height() as u32;
-            
+
             // Get raw pixel data
             let pixel_data = bitmap.as_raw_bytes();
-            
+
             // Convert BGRA to RGB
             let mut rgb_data = Vec::with_capacity((width * height * 3) as usize);
             for pixel in pixel_data.chunks_exact(4) {
                 rgb_data.push(pixel[2]); // R (from B in BGRA)
                 rgb_data.push(pixel[1]); // G
                 rgb_data.push(pixel[0]); // B (from R in BGRA)
-                // Skip alpha channel
+                                         // Skip alpha channel
             }
 
             // Create RGB image
@@ -267,15 +288,21 @@ impl PdfImageGenerator {
                 // For landscape pages, ensure they are properly oriented
                 // Since PDFium already rotated by 90 degrees, the image should be correct
                 // But if we need additional rotation for consistency, we can apply it here
-                println!("Processing landscape page {} ({}x{})", page_index + 1, width, height);
-                
+                println!(
+                    "Processing landscape page {} ({}x{})",
+                    page_index + 1,
+                    width,
+                    height
+                );
+
                 // Uncomment the following line if additional 90-degree rotation is needed:
                 rgb_image = imageops::rotate270(&rgb_image);
             }
 
             // Save image
             let image_path = output_dir.join(format!("page_{}.jpg", page_index + 1));
-            rgb_image.save(&image_path)
+            rgb_image
+                .save(&image_path)
                 .map_err(|e| format!("Failed to save image: {}", e))?;
         }
 
@@ -300,7 +327,7 @@ impl ImageGeneratorTrait for PdfImageGenerator {
         max_dim: u32,
     ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
         // For PDFs, generate high-quality images at full resolution or max_dim
-        self.generate_pdf_images(file_path, output_dir, max_dim).await
+        self.generate_pdf_images(file_path, output_dir, max_dim)
+            .await
     }
-
 }

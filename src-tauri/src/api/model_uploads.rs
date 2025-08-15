@@ -13,7 +13,7 @@ use crate::database::{
     models::*,
     queries::{models, repositories},
 };
-use crate::utils::git::{GitProgress, GitService, GitPhase, GitError};
+use crate::utils::git::{GitError, GitPhase, GitProgress, GitService};
 
 use crate::utils::model_storage::ModelStorage;
 
@@ -266,9 +266,12 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
             .capabilities
             .or_else(|| Some(ModelCapabilities::new())),
         parameters: request.parameters,
-        engine_type: request.engine_type.unwrap_or_else(|| "mistralrs".to_string()),
+        engine_type: request
+            .engine_type
+            .unwrap_or_else(|| "mistralrs".to_string()),
         engine_settings_mistralrs: request.engine_settings_mistralrs,
         engine_settings_llamacpp: None,
+        file_format: request.file_format.clone(),
     };
 
     // Create the model record with the pre-generated ID
@@ -896,10 +899,7 @@ pub async fn initiate_repository_download(
                 .await;
 
                 // Break on error phase
-                if matches!(
-                    git_progress.phase,
-                    GitPhase::Error
-                ) {
+                if matches!(git_progress.phase, GitPhase::Error) {
                     break;
                 }
             }
@@ -1042,18 +1042,10 @@ pub async fn initiate_repository_download(
 
                         // Use the git_progress phase for better status reporting
                         let phase_string = match git_progress.phase {
-                            GitPhase::Connecting => {
-                                "Connecting to LFS".to_string()
-                            }
-                            GitPhase::CheckingOut => {
-                                "Downloading LFS files".to_string()
-                            }
-                            GitPhase::Complete => {
-                                "LFS download complete".to_string()
-                            }
-                            GitPhase::Error => {
-                                "LFS download error".to_string()
-                            }
+                            GitPhase::Connecting => "Connecting to LFS".to_string(),
+                            GitPhase::CheckingOut => "Downloading LFS files".to_string(),
+                            GitPhase::Complete => "LFS download complete".to_string(),
+                            GitPhase::Error => "LFS download error".to_string(),
                             _ => "Downloading LFS files".to_string(),
                         };
 
@@ -1150,7 +1142,11 @@ pub async fn initiate_repository_download(
                     source_dir: cache_path,
                     capabilities: request.capabilities,
                     parameters: request.parameters,
-                    engine_type: Some(request.engine_type.unwrap_or_else(|| "mistralrs".to_string())),
+                    engine_type: Some(
+                        request
+                            .engine_type
+                            .unwrap_or_else(|| "mistralrs".to_string()),
+                    ),
                     engine_settings_mistralrs: request.engine_settings_mistralrs,
                 })
                 .await

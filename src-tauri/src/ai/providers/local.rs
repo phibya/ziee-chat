@@ -7,7 +7,8 @@ use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent, StreamingChunk, StreamingResponse, Usage,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
+    StreamingChunk, StreamingResponse, Usage,
 };
 use crate::ai::file_helpers::{get_file_content_for_local_provider, LocalProviderFileContent};
 use crate::database::models::model::ModelCapabilities;
@@ -68,7 +69,7 @@ impl LocalProvider {
         provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let base_url = format!("http://127.0.0.1:{}", port);
-        
+
         // Local providers don't use proxy - they connect to localhost
         let client = Client::new();
 
@@ -88,7 +89,7 @@ impl LocalProvider {
     ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
         // Process messages using OpenAI-compatible format
         let mut processed_messages = Vec::new();
-        
+
         for message in &request.messages {
             let openai_message = match &message.content {
                 MessageContent::Text(text) => {
@@ -100,17 +101,19 @@ impl LocalProvider {
                 }
                 MessageContent::Multimodal(parts) => {
                     // Convert multimodal content to OpenAI format
-                    let content_array = self.process_multimodal_to_openai_format(parts, capabilities).await?;
+                    let content_array = self
+                        .process_multimodal_to_openai_format(parts, capabilities)
+                        .await?;
                     json!({
                         "role": message.role,
                         "content": content_array
                     })
                 }
             };
-            
+
             processed_messages.push(openai_message);
         }
-        
+
         let params = request.parameters.as_ref();
         let mut payload = json!({
             "model": "default".to_string(), // Use "default" for local provider
@@ -139,7 +142,7 @@ impl LocalProvider {
     fn get_endpoint_url(&self) -> String {
         format!("{}/v1/chat/completions", self.base_url)
     }
-    
+
     /// Fetch model capabilities from database using model_id
     async fn get_model_capabilities(&self, model_id: Uuid) -> Option<ModelCapabilities> {
         match get_model_by_id(model_id).await {
@@ -154,7 +157,7 @@ impl LocalProvider {
             }
         }
     }
-    
+
     /// Process multimodal content parts into OpenAI-compatible format
     async fn process_multimodal_to_openai_format(
         &self,
@@ -162,12 +165,10 @@ impl LocalProvider {
         capabilities: Option<&ModelCapabilities>,
     ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>> {
         let mut content_array = Vec::new();
-        
+
         // Check if model supports vision for image processing
-        let supports_vision = capabilities
-            .and_then(|caps| caps.vision)
-            .unwrap_or(false);
-        
+        let supports_vision = capabilities.and_then(|caps| caps.vision).unwrap_or(false);
+
         for part in parts {
             match part {
                 ContentPart::Text(text) => {
@@ -178,12 +179,18 @@ impl LocalProvider {
                     }));
                 }
                 ContentPart::FileReference(file_ref) => {
-                    match self.process_file_with_enhanced_support(file_ref, supports_vision).await {
+                    match self
+                        .process_file_with_enhanced_support(file_ref, supports_vision)
+                        .await
+                    {
                         Ok(mut content_blocks) => {
                             content_array.append(&mut content_blocks);
                         }
                         Err(e) => {
-                            eprintln!("Warning: Failed to process file {}: {}", file_ref.filename, e);
+                            eprintln!(
+                                "Warning: Failed to process file {}: {}",
+                                file_ref.filename, e
+                            );
                             // Add a text block indicating the file couldn't be processed
                             content_array.push(json!({
                                 "type": "text",
@@ -194,10 +201,10 @@ impl LocalProvider {
                 }
             }
         }
-        
+
         Ok(content_array)
     }
-    
+
     /// Process a file reference with enhanced support for PDFs/documents with images
     async fn process_file_with_enhanced_support(
         &self,
@@ -223,23 +230,23 @@ impl LocalProvider {
             }
             LocalProviderFileContent::TextAndImages { text, images } => {
                 let mut content_blocks = Vec::new();
-                
+
                 // Always add the text content first
                 content_blocks.push(json!({
                     "type": "text",
                     "text": format!("File: {} - Document Text Content:\n{}", file_ref.filename, text.trim())
                 }));
-                
+
                 // If vision is supported and images exist, add image blocks
                 if supports_vision && !images.is_empty() {
                     for (i, image_base64) in images.iter().enumerate() {
                         content_blocks.push(json!({
-                            "type": "image_url",                            
+                            "type": "image_url",
                             "image_url": {
                                 "url": image_base64
                             }
                         }));
-                        
+
                         // Add a text description for each page image
                         content_blocks.push(json!({
                             "type": "text",
@@ -253,23 +260,26 @@ impl LocalProvider {
                         "text": format!("Document contains {} page image(s) (not processed - requires vision support)", images.len())
                     }));
                 }
-                
+
                 Ok(content_blocks)
             }
-            LocalProviderFileContent::FileInfo { filename, size, mime_type } => {
+            LocalProviderFileContent::FileInfo {
+                filename,
+                size,
+                mime_type,
+            } => {
                 // For unsupported file types, provide basic file information
                 let mime_info = mime_type.as_deref().unwrap_or("unknown");
                 let size_str = crate::ai::file_helpers::format_file_size(size);
-                
+
                 Ok(vec![json!({
                     "type": "text",
-                    "text": format!("File: {} ({}, {}) - File type not supported for content extraction", 
+                    "text": format!("File: {} ({}, {}) - File type not supported for content extraction",
                         filename, size_str, mime_info)
                 })])
             }
         }
     }
-    
 }
 
 #[async_trait]
@@ -279,11 +289,13 @@ impl AIProvider for LocalProvider {
         request: ChatRequest,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        
+
         // Fetch model capabilities from database
         let capabilities = self.get_model_capabilities(request.model_id).await;
-        
-        let payload = self.build_request_with_capabilities(&request, false, capabilities.as_ref()).await?;
+
+        let payload = self
+            .build_request_with_capabilities(&request, false, capabilities.as_ref())
+            .await?;
 
         let response = self
             .client
@@ -320,11 +332,16 @@ impl AIProvider for LocalProvider {
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        
+
         // Fetch model capabilities from database
         let capabilities = self.get_model_capabilities(request.model_id).await;
-        
-        let payload = self.build_request_with_capabilities(&request, true, capabilities.as_ref()).await?;
+
+        let payload = self
+            .build_request_with_capabilities(&request, true, capabilities.as_ref())
+            .await?;
+
+        //print payload as json for debugging
+        // println!("Payload for Local chat stream: {}", serde_json::to_string_pretty(&payload)?);
 
         let response = self
             .client
@@ -408,15 +425,17 @@ impl LocalProvider {
         capabilities: Option<ModelCapabilities>,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        
+
         // Use provided capabilities or fetch from database
         let final_capabilities = if capabilities.is_some() {
             capabilities
         } else {
             self.get_model_capabilities(request.model_id).await
         };
-        
-        let payload = self.build_request_with_capabilities(&request, false, final_capabilities.as_ref()).await?;
+
+        let payload = self
+            .build_request_with_capabilities(&request, false, final_capabilities.as_ref())
+            .await?;
 
         let response = self
             .client
@@ -447,7 +466,7 @@ impl LocalProvider {
             Err("No choices returned from Candle API".into())
         }
     }
-    
+
     /// Create a streaming chat request with model capabilities for advanced file handling
     pub async fn chat_stream_with_capabilities(
         &self,
@@ -455,15 +474,17 @@ impl LocalProvider {
         capabilities: Option<ModelCapabilities>,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        
+
         // Use provided capabilities or fetch from database
         let final_capabilities = if capabilities.is_some() {
             capabilities
         } else {
             self.get_model_capabilities(request.model_id).await
         };
-        
-        let payload = self.build_request_with_capabilities(&request, true, final_capabilities.as_ref()).await?;
+
+        let payload = self
+            .build_request_with_capabilities(&request, true, final_capabilities.as_ref())
+            .await?;
 
         let response = self
             .client

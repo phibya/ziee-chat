@@ -10,11 +10,11 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        CreateRAGRepositoryRequest, RAGRepository, RAGRepositoryListResponse, UpdateRAGRepositoryRequest,
-        RAGRepositoryConnectionTestResponse, DownloadRAGDatabaseFromRepositoryRequest,
-        RAGDatabase,
+        CreateRAGRepositoryRequest, DownloadRAGDatabaseFromRepositoryRequest, RAGDatabase,
+        RAGRepository, RAGRepositoryConnectionTestResponse, RAGRepositoryListResponse,
+        UpdateRAGRepositoryRequest,
     },
-    queries::{rag_repositories, rag_providers},
+    queries::{rag_providers, rag_repositories},
 };
 
 #[derive(Debug, Deserialize)]
@@ -28,7 +28,8 @@ pub async fn list_rag_repositories(
     Extension(_user): Extension<AuthenticatedUser>,
     Query(pagination): Query<PaginationQuery>,
 ) -> ApiResult<Json<RAGRepositoryListResponse>> {
-    let response = rag_repositories::list_rag_repositories(pagination.page, pagination.per_page).await?;
+    let response =
+        rag_repositories::list_rag_repositories(pagination.page, pagination.per_page).await?;
     Ok(Json(response))
 }
 
@@ -39,7 +40,7 @@ pub async fn get_rag_repository(
     let repository = rag_repositories::get_rag_repository_by_id(repository_id)
         .await?
         .ok_or(AppError::not_found("RAG repository"))?;
-    
+
     Ok(Json(repository))
 }
 
@@ -118,8 +119,12 @@ pub async fn download_rag_database_from_repository(
 
     // TODO: Implement actual download logic
     // For now, create a placeholder database
-    let database_name = request.database_name.unwrap_or_else(|| "Downloaded Database".to_string());
-    let database_alias = request.database_alias.unwrap_or_else(|| "downloaded-db".to_string());
+    let database_name = request
+        .database_name
+        .unwrap_or_else(|| "Downloaded Database".to_string());
+    let database_alias = request
+        .database_alias
+        .unwrap_or_else(|| "downloaded-db".to_string());
 
     let create_request = crate::database::models::CreateRAGDatabaseRequest {
         name: database_name,
@@ -134,6 +139,7 @@ pub async fn download_rag_database_from_repository(
         settings: None,
     };
 
-    let database = rag_providers::create_rag_database(request.target_provider_id, create_request).await?;
+    let database =
+        rag_providers::create_rag_database(request.target_provider_id, create_request).await?;
     Ok(Json(database))
 }

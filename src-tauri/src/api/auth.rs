@@ -55,18 +55,11 @@ async fn create_root_user() -> ApiResult<String> {
                     let login_token = AUTH_SERVICE.generate_login_token();
                     let when_created = chrono::Utc::now().timestamp_millis();
 
-                    if let Err(e) = users::add_login_token(
-                        user.id,
-                        login_token,
-                        when_created,
-                        Some(expires_at),
-                    )
-                    .await
+                    if let Err(e) =
+                        users::add_login_token(user.id, login_token, when_created, Some(expires_at))
+                            .await
                     {
-                        return Err(AppError::from_error(
-                            ErrorCode::AuthTokenStorageFailed,
-                            e,
-                        ));
+                        return Err(AppError::from_error(ErrorCode::AuthTokenStorageFailed, e));
                     }
 
                     // Mark app as initialized

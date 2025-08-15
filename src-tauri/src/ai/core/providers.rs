@@ -5,18 +5,13 @@ use uuid::Uuid;
 
 // Re-export chat-related structs from models/chat
 pub use crate::database::models::chat::{
-    AIProviderChatResponse as ChatResponse,
-    ChatMessage, 
-    ChatRequest, 
-    ContentPart, 
-    FileReference, 
-    MessageContent, 
-    StreamingChunk, 
-    Usage,
+    AIProviderChatResponse as ChatResponse, ChatMessage, ChatRequest, ContentPart, FileReference,
+    MessageContent, StreamingChunk, Usage,
 };
 
-pub type StreamingResponse =
-    Pin<Box<dyn Stream<Item = Result<StreamingChunk, Box<dyn std::error::Error + Send + Sync>>> + Send>>;
+pub type StreamingResponse = Pin<
+    Box<dyn Stream<Item = Result<StreamingChunk, Box<dyn std::error::Error + Send + Sync>>> + Send>,
+>;
 
 #[derive(Debug, Clone)]
 pub struct ProxyConfig {
@@ -30,9 +25,9 @@ pub struct ProxyConfig {
 
 #[derive(Debug)]
 pub enum ProviderFileContent {
-    ProviderFileId(String),        // Use provider's uploaded file ID
+    ProviderFileId(String), // Use provider's uploaded file ID
     DirectEmbed { data: String, mime_type: String }, // Base64 embed
-    ProcessedContent(String),      // Pre-processed text (e.g., PDF -> text)
+    ProcessedContent(String), // Pre-processed text (e.g., PDF -> text)
 }
 
 #[async_trait]
@@ -57,23 +52,32 @@ pub trait AIProvider: Send + Sync {
     }
 
     /// File management capabilities
-    fn supports_file_upload(&self) -> bool { 
-        false 
+    fn supports_file_upload(&self) -> bool {
+        false
     }
-    
-    fn max_file_size(&self) -> Option<u64> { 
-        None 
+
+    fn max_file_size(&self) -> Option<u64> {
+        None
     }
-    
-    fn supported_file_types(&self) -> Vec<String> { 
-        vec![] 
+
+    fn supported_file_types(&self) -> Vec<String> {
+        vec![]
     }
-    
-    async fn upload_file(&self, _file_data: &[u8], _filename: &str, _mime_type: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+
+    async fn upload_file(
+        &self,
+        _file_data: &[u8],
+        _filename: &str,
+        _mime_type: &str,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         Err("File upload not supported by this provider".into())
     }
-    
-    async fn resolve_file_content(&self, _file_ref: &mut FileReference, _provider_id: Uuid) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
+
+    async fn resolve_file_content(
+        &self,
+        _file_ref: &mut FileReference,
+        _provider_id: Uuid,
+    ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
         Err("File resolution not supported by this provider".into())
     }
 }

@@ -29,11 +29,10 @@
     "resources": {
       "../hub": "hub",
       "../dist/ui": "ui",
-      "./target/pdfium/target/*": "lib"
-    },
-    "externalBin": [
-      "target/mistralrs-build/mistralrs-server",
-      "target/pandoc/pandoc"
-    ]
+      "./target/pdfium/target/*": "lib",
+      "./target/pandoc/*": "bin",
+      "./target/mistralrs-build/bin/*": "bin",
+      "./target/llamacpp/bin/*": "bin"
+    }
   }
 }

@@ -184,7 +184,8 @@ export function AddLocalModelDownloadDrawer() {
           repository_branch: requestData.revision || 'main', // Use revision instead of repository_branch
           capabilities: requestData.capabilities || {},
           engine_type: requestData.engine_type || 'mistralrs',
-          engine_settings_mistralrs: requestData.engine_settings_mistralrs || {},
+          engine_settings_mistralrs:
+            requestData.engine_settings_mistralrs || {},
           engine_settings_llamacpp: requestData.engine_settings_llamacpp || {},
         })
       } else if (!viewMode) {

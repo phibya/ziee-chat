@@ -102,11 +102,17 @@ export const uploadLocalModel = async (
     }
 
     if (request.engine_settings_mistralrs) {
-      formData.append('engine_settings_mistralrs', JSON.stringify(request.engine_settings_mistralrs))
+      formData.append(
+        'engine_settings_mistralrs',
+        JSON.stringify(request.engine_settings_mistralrs),
+      )
     }
 
     if (request.engine_settings_llamacpp) {
-      formData.append('engine_settings_llamacpp', JSON.stringify(request.engine_settings_llamacpp))
+      formData.append(
+        'engine_settings_llamacpp',
+        JSON.stringify(request.engine_settings_llamacpp),
+      )
     }
 
     // Call the upload API with file upload progress tracking

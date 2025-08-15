@@ -1,7 +1,7 @@
 // Git service (main git operations)
 mod service;
-pub use service::{GitService, GitProgress, GitPhase, GitError};
+pub use service::{GitError, GitPhase, GitProgress, GitService};
 
 // LFS functionality
 pub mod lfs;
-pub use lfs::{LfsError, LfsMetadata, LfsPointer, LfsService, FilePullMode, LfsProgress, LfsPhase};
+pub use lfs::{FilePullMode, LfsError, LfsMetadata, LfsPhase, LfsPointer, LfsProgress, LfsService};

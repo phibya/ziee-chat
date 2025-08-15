@@ -59,4 +59,3 @@ pub struct ProjectDetailResponse {
     pub project: Project,
     pub conversations: Vec<super::chat::Conversation>,
 }
-

@@ -3,11 +3,11 @@ import {
   Button,
   Card,
   Divider,
+  Empty,
   Flex,
   Spin,
   Switch,
   Typography,
-  Empty,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Model } from '../../../../../types/api/model'
@@ -147,13 +147,25 @@ export function ModelsSection({
                     <Text type="secondary" className="text-xs block">
                       Model ID: {model.name}
                     </Text>
+                    {model.is_active && model.port && (
+                      <Text type="secondary" className="text-xs block">
+                        Running on:{' '}
+                        <a
+                          href={`http://127.0.0.1:${model.port}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          http://127.0.0.1:{model.port}
+                        </a>
+                      </Text>
+                    )}
                     {model.description && (
                       <Text type="secondary" className="block">
                         {model.description}
                       </Text>
                     )}
                     {model.capabilities && (
-                      <Flex wrap className="gap-1 pt-1">
+                      <Flex wrap className="gap-3 pt-1 flex-wrap">
                         {model.capabilities.vision && (
                           <Text type="secondary" className="text-xs">
                             👁️ Vision

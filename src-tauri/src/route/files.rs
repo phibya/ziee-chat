@@ -35,7 +35,6 @@ pub fn file_routes() -> Router {
             get(api::files::get_file_preview)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
-        
         // Project file operations
         .route(
             "/projects/{id}/files",
@@ -43,7 +42,6 @@ pub fn file_routes() -> Router {
                 .get(api::files::list_project_files)
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         )
-        
         // Message file operations
         .route(
             "/messages/{id}/files",

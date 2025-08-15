@@ -48,9 +48,13 @@ pub async fn list_users(
     match users::list_users(page, per_page).await {
         Ok(mut response) => {
             // Sanitize users in the response
-            response.users = response.users.into_iter().map(|user| user.sanitized()).collect();
+            response.users = response
+                .users
+                .into_iter()
+                .map(|user| user.sanitized())
+                .collect();
             Ok(Json(response))
-        },
+        }
         Err(e) => {
             eprintln!("Error listing users: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)

@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use std::path::Path;
 
-pub mod processors;
-pub mod manager;
 pub mod common;
+pub mod manager;
+pub mod processors;
 
 pub use manager::ProcessingManager;
 
@@ -32,14 +32,20 @@ impl Default for ProcessingResult {
 #[async_trait]
 pub trait ContentProcessor: Send + Sync {
     fn can_process(&self, mime_type: &Option<String>) -> bool;
-    async fn extract_text(&self, file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>>;
-    async fn extract_metadata(&self, file_path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>>;
+    async fn extract_text(
+        &self,
+        file_path: &Path,
+    ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>>;
+    async fn extract_metadata(
+        &self,
+        file_path: &Path,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>>;
 }
 
 #[async_trait]
 pub trait ImageGenerator: Send + Sync {
     fn can_generate(&self, mime_type: &Option<String>) -> bool;
-    
+
     /// Generate high-quality images from the source file (all pages)
     async fn generate_images(
         &self,

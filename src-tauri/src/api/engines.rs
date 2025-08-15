@@ -1,7 +1,7 @@
+use crate::ai::engines::{LlamaCppEngine, LocalEngine, MistralRsEngine};
+use crate::api::errors::ApiResult;
 use axum::response::Json;
 use serde::{Deserialize, Serialize};
-use crate::api::errors::ApiResult;
-use crate::ai::engines::{MistralRsEngine, LlamaCppEngine, LocalEngine};
 
 #[derive(Debug, Serialize)]
 pub struct EngineInfo {
@@ -24,7 +24,8 @@ pub async fn list_engines() -> ApiResult<Json<Vec<EngineInfo>>> {
             name: mistralrs.name().to_string(),
             version: mistralrs.version(),
             status: "available".to_string(),
-            description: "High-performance Rust inference engine with quantization support".to_string(),
+            description: "High-performance Rust inference engine with quantization support"
+                .to_string(),
             supported_features: vec![
                 "quantization".to_string(),
                 "paged_attention".to_string(),
@@ -45,6 +46,6 @@ pub async fn list_engines() -> ApiResult<Json<Vec<EngineInfo>>> {
             ],
         },
     ];
-    
+
     Ok(Json(engines))
 }

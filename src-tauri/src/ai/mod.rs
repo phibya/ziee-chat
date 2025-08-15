@@ -32,13 +32,14 @@ pub enum ModelSelected {
 // Re-export specific items from local_server to avoid conflicts
 pub use core::device_detection;
 // Re-export commonly used items for convenience
-pub use core::{
-  AIProvider, ChatMessage, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent, ProviderFileContent, ProxyConfig,
-  StreamingChunk, StreamingResponse, Usage, build_http_client,
-};
 pub use auto_unload::{register_model_access, start_auto_unload_task, AutoUnloadConfig};
+pub use core::{
+    build_http_client, AIProvider, ChatMessage, ChatRequest, ChatResponse, ContentPart,
+    FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingChunk,
+    StreamingResponse, Usage,
+};
 pub use model_manager::{
-  acquire_global_start_mutex, check_and_cleanup_model, is_model_running, verify_model_server_running, start_model, stop_model, ModelStartParams,
-  ModelStartResult,
+    acquire_global_start_mutex, check_and_cleanup_model, start_model, stop_model,
+    verify_model_server_running, ModelStartResult,
 };
 pub use providers::*;

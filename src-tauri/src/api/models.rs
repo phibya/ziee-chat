@@ -1,11 +1,6 @@
-use axum::{
-    extract::Path,
-    http::StatusCode,
-    Extension, Json,
-};
+use axum::{extract::Path, http::StatusCode, Extension, Json};
 use uuid::Uuid;
 
-use crate::ai::DeviceType;
 use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
@@ -13,116 +8,6 @@ use crate::database::{
     queries::{models, providers, user_group_providers},
 };
 
-/// Build ModelStartParams from a model and its settings (assumes MistralRs for now)
-pub fn build_model_start_params_from_model(model: &Model) -> crate::ai::ModelStartParams {
-    let settings = model.get_mistralrs_settings();
-    let device_ids = settings.device_ids.filter(|ids| !ids.is_empty());
-
-    // Convert device_type from string to DeviceType enum, with automatic detection fallback
-    let device_type = match settings.device_type.as_deref() {
-        Some("cpu") => {
-            println!("Using CPU device (explicitly configured)");
-            DeviceType::Cpu
-        }
-        Some("cuda") => {
-            println!("Using CUDA device (explicitly configured)");
-            DeviceType::Cuda
-        }
-        Some("metal") => {
-            println!("Using Metal device (explicitly configured)");
-            DeviceType::Metal
-        }
-        _ => {
-            // Auto-detect best available device: CUDA > Metal > CPU
-            let available_devices = crate::ai::device_detection::detect_available_devices();
-            println!("Auto-detecting device type. Available devices: {} (default: {})", 
-                     available_devices.devices.len(), available_devices.default_device_type);
-            
-            match available_devices.default_device_type.as_str() {
-                "cuda" => {
-                    println!("Auto-selected CUDA device for optimal performance");
-                    DeviceType::Cuda
-                }
-                "metal" => {
-                    println!("Auto-selected Metal device for optimal performance");
-                    DeviceType::Metal
-                }
-                _ => {
-                    println!("Auto-selected CPU device (fallback)");
-                    DeviceType::Cpu
-                }
-            }
-        }
-    };
-
-    // Auto-select all available devices of the chosen type if device_ids not specified
-    let final_device_ids: Option<Vec<i32>> = if device_ids.is_none() {
-        // Get all available devices of the selected device type
-        let available_devices = crate::ai::device_detection::detect_available_devices();
-        let device_type_str = match device_type {
-            DeviceType::Cuda => "cuda",
-            DeviceType::Metal => "metal", 
-            DeviceType::Cpu => "cpu",
-        };
-        
-        let matching_devices: Vec<i32> = available_devices
-            .devices
-            .iter()
-            .filter(|device| device.device_type == device_type_str && device.is_available)
-            .map(|device| device.id)
-            .collect();
-            
-        if !matching_devices.is_empty() {
-            println!("Auto-selected all available {} devices: {:?}", device_type_str, matching_devices);
-            Some(matching_devices)
-        } else {
-            println!("No available {} devices found, using default device selection", device_type_str);
-            None
-        }
-    } else {
-        println!("Using explicitly configured device IDs: {:?}", device_ids);
-        device_ids
-    };
-
-    // Create ModelStartParams from model settings
-    let mut params = crate::ai::ModelStartParams::default();
-    params.model_path = model.get_model_absolute_path();
-    params.device_type = device_type;
-    params.device_ids = final_device_ids;
-
-    // Set model type based on architecture or use run (auto-loader) as default
-    params.command = "run".to_string();
-
-    // Apply settings from model configuration (only if specified)
-    params.max_seqs = settings.max_seqs;
-    params.max_seq_len = settings.max_seq_len;
-    params.no_kv_cache = settings.no_kv_cache.unwrap_or(false);
-    params.truncate_sequence = settings.truncate_sequence.unwrap_or(false);
-
-    // PagedAttention settings
-    params.paged_attn_gpu_mem = settings.paged_attn_gpu_mem;
-    params.paged_attn_gpu_mem_usage = settings.paged_attn_gpu_mem_usage;
-    params.paged_ctxt_len = settings.paged_ctxt_len;
-    params.paged_attn_block_size = settings.paged_attn_block_size;
-    params.no_paged_attn = settings.no_paged_attn.unwrap_or(false);
-    params.paged_attn = settings.paged_attn.unwrap_or(false);
-
-    // Performance settings
-    params.prefix_cache_n = settings.prefix_cache_n;
-    params.prompt_chunksize = settings.prompt_chunksize;
-
-    // Model configuration
-    params.dtype = settings.dtype.clone();
-    params.in_situ_quant = settings.in_situ_quant.clone();
-    params.seed = settings.seed;
-
-    // Vision parameters
-    params.max_edge = settings.max_edge;
-    params.max_num_images = settings.max_num_images;
-    params.max_image_length = settings.max_image_length;
-
-    params
-}
 
 /// Start a model with global mutex protection to prevent race conditions
 pub async fn start_model_core_protected(
@@ -132,15 +17,18 @@ pub async fn start_model_core_protected(
 ) -> Result<(u32, u16), AppError> {
     // Acquire global mutex for all model starting operations
     let _guard = crate::ai::acquire_global_start_mutex().await;
-    
+
     println!("Acquired global start mutex for model {}", model_id);
-    
+
     // Re-check if model is running (someone else might have started it while we waited)
     if let Some((pid, port)) = crate::ai::verify_model_server_running(&model_id).await {
-        println!("Model {} already running after acquiring mutex, returning existing", model_id);
+        println!(
+            "Model {} already running after acquiring mutex, returning existing",
+            model_id
+        );
         return Ok((pid, port));
     }
-    
+
     // Proceed with exclusive model starting
     start_model_core_internal(model_id, model, provider).await
 }
@@ -191,11 +79,8 @@ async fn start_model_core_internal(
         ));
     }
 
-    // Build start parameters from model settings
-    let params = build_model_start_params_from_model(model);
-
-    // Start the model server process
-    match crate::ai::start_model(&model_id, params).await {
+    // Start the model server process (using engine settings from database)
+    match crate::ai::start_model(&model_id).await {
         Ok(crate::ai::ModelStartResult::Started { port, pid }) => {
             println!("Model {} started successfully on port {}", model_id, port);
 
@@ -212,7 +97,10 @@ async fn start_model_core_internal(
                 // If database update fails, try to stop the model to avoid orphaned processes
                 let _ = tokio::spawn(async move {
                     if let Err(stop_err) = crate::ai::stop_model(&model_id, pid, port).await {
-                        eprintln!("Also failed to stop orphaned model {}: {}", model_id, stop_err);
+                        eprintln!(
+                            "Also failed to stop orphaned model {}: {}",
+                            model_id, stop_err
+                        );
                     }
                 });
                 AppError::internal_error("Database operation failed")
@@ -241,10 +129,13 @@ async fn start_model_core_internal(
 
             Ok((pid, port))
         }
-        Ok(crate::ai::ModelStartResult::Failed { error, stdout_stderr_log_path }) => {
+        Ok(crate::ai::ModelStartResult::Failed {
+            error,
+            stdout_stderr_log_path,
+        }) => {
             eprintln!("Model {} failed to start: {}", model_id, error);
             eprintln!("Error logs available at: {}", stdout_stderr_log_path);
-            
+
             // Read the log file contents
             let log_contents = match std::fs::read_to_string(&stdout_stderr_log_path) {
                 Ok(contents) => {
@@ -259,10 +150,13 @@ async fn start_model_core_internal(
                     format!("Could not read log file: {}", e)
                 }
             };
-            
+
             Err(AppError::new(
                 ErrorCode::SystemInternalError,
-                format!("Failed to start model: {}\n\n--- Process Output ---\n{}", error, log_contents),
+                format!(
+                    "Failed to start model: {}\n\n--- Process Output ---\n{}",
+                    error, log_contents
+                ),
             ))
         }
         Err(e) => {
@@ -480,20 +374,19 @@ pub async fn stop_model(
     }
 
     // Check if model is running
-    if crate::ai::is_model_running(&model_id).await.is_none() {
+    if crate::ai::verify_model_server_running(&model_id).await.is_none() {
         // Model is not running, but we should still update the database to ensure consistency
         println!(
             "Model {} is not running, updating database status and clearing port",
             model_id
         );
 
-        let clear_port_result =
-            crate::database::queries::models::update_model_runtime_info(
-                &model_id, None, // Clear the port
-                None, // Clear the PID
-                false,
-            )
-            .await;
+        let clear_port_result = crate::database::queries::models::update_model_runtime_info(
+            &model_id, None, // Clear the port
+            None, // Clear the PID
+            false,
+        )
+        .await;
 
         return match clear_port_result {
             Ok(_) => {
@@ -509,9 +402,7 @@ pub async fn stop_model(
 
     // Get the PID and port from the database for this specific model
     let runtime_info =
-        match crate::database::queries::models::get_model_runtime_info(&model_id)
-            .await
-        {
+        match crate::database::queries::models::get_model_runtime_info(&model_id).await {
             Ok(Some((pid, port))) => (pid as u32, port as u16),
             Ok(None) => {
                 println!(
@@ -531,13 +422,12 @@ pub async fn stop_model(
         Ok(()) => {
             println!("Model {} stopped successfully", model_id);
 
-            let clear_port_result =
-                crate::database::queries::models::update_model_runtime_info(
-                    &model_id, None,  // Clear the port
-                    None,  // Clear the PID
-                    false, // Set is_active to false
-                )
-                .await;
+            let clear_port_result = crate::database::queries::models::update_model_runtime_info(
+                &model_id, None,  // Clear the port
+                None,  // Clear the PID
+                false, // Set is_active to false
+            )
+            .await;
 
             match clear_port_result {
                 Ok(_) => {
@@ -578,6 +468,7 @@ pub async fn enable_model(
             engine_type: None,
             engine_settings_mistralrs: None,
             engine_settings_llamacpp: None,
+            file_format: None,
         },
     )
     .await
@@ -609,6 +500,7 @@ pub async fn disable_model(
             engine_type: None,
             engine_settings_mistralrs: None,
             engine_settings_llamacpp: None,
+            file_format: None,
         },
     )
     .await

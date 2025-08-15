@@ -112,10 +112,13 @@ impl GeminiProvider {
                             crate::ai::MessageContent::Text(text) => text.clone(),
                             crate::ai::MessageContent::Multimodal(parts) => {
                                 // For now, just join text parts
-                                parts.iter()
+                                parts
+                                    .iter()
                                     .filter_map(|part| match part {
                                         crate::ai::ContentPart::Text(text) => Some(text.clone()),
-                                        crate::ai::ContentPart::FileReference(file_ref) => Some(format!("File: {}", file_ref.filename)),
+                                        crate::ai::ContentPart::FileReference(file_ref) => {
+                                            Some(format!("File: {}", file_ref.filename))
+                                        }
                                     })
                                     .collect::<Vec<_>>()
                                     .join("\n")
@@ -137,10 +140,13 @@ impl GeminiProvider {
                         crate::ai::MessageContent::Text(text) => text.clone(),
                         crate::ai::MessageContent::Multimodal(parts) => {
                             // For now, just join text parts
-                            parts.iter()
+                            parts
+                                .iter()
                                 .filter_map(|part| match part {
                                     crate::ai::ContentPart::Text(text) => Some(text.clone()),
-                                    crate::ai::ContentPart::FileReference(file_ref) => Some(format!("File: {}", file_ref.filename)),
+                                    crate::ai::ContentPart::FileReference(file_ref) => {
+                                        Some(format!("File: {}", file_ref.filename))
+                                    }
                                 })
                                 .collect::<Vec<_>>()
                                 .join("\n")

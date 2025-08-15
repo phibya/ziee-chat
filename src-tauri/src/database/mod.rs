@@ -1,6 +1,6 @@
 use postgresql_embedded::{PostgreSQL, Settings, VersionReq};
 use sqlx::PgPool;
-use std::net::{TcpListener, SocketAddr};
+use std::net::{SocketAddr, TcpListener};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -21,7 +21,10 @@ fn find_available_port(start_port: u16, end_port: u16) -> Option<u16> {
             return Some(port);
         }
     }
-    println!("No available ports found in range {}..{}", start_port, end_port);
+    println!(
+        "No available ports found in range {}..{}",
+        start_port, end_port
+    );
     None
 }
 
@@ -32,7 +35,7 @@ fn is_port_available(port: u16) -> bool {
         Ok(listener) => {
             // Port is available, close the listener immediately
             drop(listener);
-            
+
             // Double-check with a second attempt to catch race conditions
             match TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], port))) {
                 Ok(listener2) => {
@@ -41,7 +44,10 @@ fn is_port_available(port: u16) -> bool {
                     true
                 }
                 Err(e) => {
-                    println!("Port {} became unavailable during double-check: {}", port, e);
+                    println!(
+                        "Port {} became unavailable during double-check: {}",
+                        port, e
+                    );
                     false
                 }
             }
@@ -121,10 +127,14 @@ async fn try_initialize_database_once(
             std::env::var("POSTGRES_PASSWORD").unwrap_or_else(|_| "postgres".to_string());
     }
     settings.data_dir = settings.installation_dir.clone().join("data");
-    
+
     // Set timezone to UTC
-    settings.configuration.insert("timezone".to_string(), "UTC".to_string());
-    settings.configuration.insert("log_timezone".to_string(), "UTC".to_string());
+    settings
+        .configuration
+        .insert("timezone".to_string(), "UTC".to_string());
+    settings
+        .configuration
+        .insert("log_timezone".to_string(), "UTC".to_string());
 
     //get port from POSTGRES_PORT
     settings.port = std::env::var("POSTGRES_PORT")
@@ -132,11 +142,11 @@ async fn try_initialize_database_once(
         .and_then(|p| p.parse().ok())
         .unwrap_or_else(|| {
             println!("No POSTGRES_PORT specified, searching for available port...");
-            
+
             // Try to find an available port starting from 50000
             find_available_port(50000, 50099).unwrap_or_else(|| {
                 println!("Port range 50000-50099 exhausted, trying random port selection...");
-                
+
                 // Fallback to random port if range is exhausted
                 match portpicker::pick_unused_port() {
                     Some(port) => {

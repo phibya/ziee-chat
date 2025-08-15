@@ -108,7 +108,7 @@ async fn initialize_app_common() -> Result<(), String> {
     // Start auto-unload task for local model management
     let auto_unload_config = ai::AutoUnloadConfig::default();
     ai::start_auto_unload_task(auto_unload_config);
-    
+
     println!("Auto-unload task started for local models");
 
     Ok(())
@@ -263,8 +263,7 @@ pub fn run() {
 
                     #[cfg(target_os = "linux")]
                     {
-                        main_window_builder = main_window_builder
-                            .transparent(true)
+                        main_window_builder = main_window_builder.transparent(true)
                     }
 
                     main_window_builder.build().unwrap();
@@ -307,8 +306,12 @@ pub fn run() {
                         if let Ok(is_fullscreen) = window.is_fullscreen() {
                             if !is_fullscreen {
                                 // Window is no longer fullscreen, reset traffic lights
-                                if let Some(webview_window) = window.app_handle().get_webview_window("main") {
-                                    if let Err(e) = webview_window.set_traffic_lights_inset(12.0, 26.0) {
+                                if let Some(webview_window) =
+                                    window.app_handle().get_webview_window("main")
+                                {
+                                    if let Err(e) =
+                                        webview_window.set_traffic_lights_inset(12.0, 26.0)
+                                    {
                                         eprintln!("Failed to set traffic lights inset: {}", e);
                                     }
                                 }
@@ -337,11 +340,11 @@ async fn start_api_server(port: u16, api_router: Router) {
     } else if std::env::var("HEADLESS").unwrap_or_default() == "true" {
         // Headless mode: Serve UI folder if it exists
         println!("Headless mode: API + Frontend server on port {}", port);
-        use tower_http::services::{ServeDir, ServeFile};
-        use tower_http::set_header::SetResponseHeaderLayer;
         use http::header::CACHE_CONTROL;
         use http::HeaderValue;
         use tower::ServiceBuilder;
+        use tower_http::services::{ServeDir, ServeFile};
+        use tower_http::set_header::SetResponseHeaderLayer;
         let static_dir = std::env::current_exe()
             .unwrap()
             .parent()
@@ -350,34 +353,36 @@ async fn start_api_server(port: u16, api_router: Router) {
 
         if static_dir.exists() {
             println!("Serving UI from: {}", static_dir.display());
-            
+
             // Create assets service with aggressive caching
             let assets_dir = static_dir.join("assets");
             let assets_service = if assets_dir.exists() {
-                Some(ServiceBuilder::new()
-                    .layer(SetResponseHeaderLayer::overriding(
-                        CACHE_CONTROL,
-                        HeaderValue::from_static("public, max-age=31536000, immutable")
-                    ))
-                    .service(ServeDir::new(&assets_dir)))
+                Some(
+                    ServiceBuilder::new()
+                        .layer(SetResponseHeaderLayer::overriding(
+                            CACHE_CONTROL,
+                            HeaderValue::from_static("public, max-age=31536000, immutable"),
+                        ))
+                        .service(ServeDir::new(&assets_dir)),
+                )
             } else {
                 None
             };
-            
+
             // Create main SPA service with fallback to index.html
             let index_path = static_dir.join("index.html");
-            let spa_service = ServeDir::new(&static_dir)
-                .not_found_service(ServeFile::new(&index_path));
-            
+            let spa_service =
+                ServeDir::new(&static_dir).not_found_service(ServeFile::new(&index_path));
+
             let mut router = api_router
                 .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
                 .layer(CorsLayer::permissive());
-            
+
             // Add assets route with caching if assets directory exists
             if let Some(assets_service) = assets_service {
                 router = router.nest_service("/assets", assets_service);
             }
-            
+
             // Add SPA fallback service
             router.fallback_service(spa_service)
         } else {

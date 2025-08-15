@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-use super::model::{ModelCapabilities, ModelParameters, MistralRsSettings};
+use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
 
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -107,24 +107,22 @@ impl FromRow<'_, sqlx::postgres::PgRow> for DownloadInstance {
     fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
         // Parse request_data JSON
         let request_data_json: serde_json::Value = row.try_get("request_data")?;
-        let request_data = serde_json::from_value(request_data_json).map_err(|e| {
-            sqlx::Error::ColumnDecode {
+        let request_data =
+            serde_json::from_value(request_data_json).map_err(|e| sqlx::Error::ColumnDecode {
                 index: "request_data".into(),
                 source: Box::new(e),
-            }
-        })?;
+            })?;
 
         // Parse status string
         let status_str: String = row.try_get("status")?;
-        let status = DownloadStatus::from_str(&status_str).ok_or_else(|| {
-            sqlx::Error::ColumnDecode {
+        let status =
+            DownloadStatus::from_str(&status_str).ok_or_else(|| sqlx::Error::ColumnDecode {
                 index: "status".into(),
                 source: Box::new(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
                     format!("Invalid download status: {}", status_str),
                 )),
-            }
-        })?;
+            })?;
 
         // Parse progress_data JSON
         let progress_data_json: serde_json::Value = row.try_get("progress_data")?;
@@ -233,11 +231,10 @@ impl DownloadInstance {
                 "Downloading...".to_string()
             }
             DownloadStatus::Completed => "Download completed".to_string(),
-            DownloadStatus::Failed => {
-                self.error_message
-                    .clone()
-                    .unwrap_or_else(|| "Download failed".to_string())
-            }
+            DownloadStatus::Failed => self
+                .error_message
+                .clone()
+                .unwrap_or_else(|| "Download failed".to_string()),
             DownloadStatus::Cancelled => "Download cancelled".to_string(),
         }
     }

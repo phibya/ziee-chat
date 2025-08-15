@@ -98,4 +98,3 @@ pub struct ProviderListResponse {
     pub page: i32,
     pub per_page: i32,
 }
-

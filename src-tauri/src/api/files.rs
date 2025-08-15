@@ -4,29 +4,25 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use chrono::{DateTime, Duration, Utc};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
-use chrono::{DateTime, Utc, Duration};
-use jsonwebtoken::{encode, decode, Header, Algorithm, EncodingKey, DecodingKey, Validation};
 
 use crate::{
     api::middleware::AuthenticatedUser,
-    database::{
-        models::file::*,
-        queries::files,
-    },
-    utils::file_storage::{extract_extension, get_mime_type_from_extension},
+    database::{models::file::*, queries::files},
     processing::ProcessingManager,
+    utils::file_storage::{extract_extension, get_mime_type_from_extension},
     FILE_STORAGE,
 };
 
 // Initialize global processing manager
 use once_cell::sync::Lazy;
 
-static PROCESSING_MANAGER: Lazy<Arc<ProcessingManager>> = Lazy::new(|| {
-    Arc::new(ProcessingManager::new(FILE_STORAGE.clone()))
-});
+static PROCESSING_MANAGER: Lazy<Arc<ProcessingManager>> =
+    Lazy::new(|| Arc::new(ProcessingManager::new(FILE_STORAGE.clone())));
 
 #[derive(Debug, Deserialize)]
 pub struct PreviewParams {
@@ -52,7 +48,6 @@ struct DownloadTokenClaims {
     pub iat: usize, // Issued at
 }
 
-
 // Initialize file storage on first use
 pub async fn initialize_file_storage() -> Result<(), StatusCode> {
     FILE_STORAGE.initialize().await.map_err(|e| {
@@ -71,9 +66,13 @@ pub async fn upload_file(
     let mut file_size = 0u64;
 
     // Extract multipart data
-    while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?
+    {
         let field_name = field.name().unwrap_or("");
-        
+
         match field_name {
             "file" => {
                 filename = field.file_name().unwrap_or("unknown").to_string();
@@ -104,9 +103,13 @@ pub async fn upload_project_file(
     let mut file_size = 0u64;
 
     // Extract multipart data
-    while let Some(field) = multipart.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?
+    {
         let field_name = field.name().unwrap_or("");
-        
+
         match field_name {
             "file" => {
                 filename = field.file_name().unwrap_or("unknown").to_string();
@@ -123,7 +126,14 @@ pub async fn upload_project_file(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    process_file_upload(user.user_id, filename, file_data, file_size, Some(project_id)).await
+    process_file_upload(
+        user.user_id,
+        filename,
+        file_data,
+        file_size,
+        Some(project_id),
+    )
+    .await
 }
 
 async fn process_file_upload(
@@ -133,26 +143,36 @@ async fn process_file_upload(
     file_size: u64,
     project_id: Option<Uuid>,
 ) -> Result<Json<UploadFileResponse>, StatusCode> {
-    
     let file_id = Uuid::new_v4();
     let extension = extract_extension(&filename);
     let mime_type = get_mime_type_from_extension(&extension);
 
     // Save original file
     let file_path = FILE_STORAGE.get_original_path(file_id, &extension);
-    FILE_STORAGE.save_file_bytes(&file_path, &file_data).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    FILE_STORAGE
+        .save_file_bytes(&file_path, &file_data)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Calculate checksum
-    let checksum = FILE_STORAGE.calculate_checksum(&file_path).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let checksum = FILE_STORAGE
+        .calculate_checksum(&file_path)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Process file content
-    let processing_result = PROCESSING_MANAGER.process_file(&file_path, &mime_type).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let processing_result = PROCESSING_MANAGER
+        .process_file(&file_path, &mime_type)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Save processed content
     if let Some(ref text_content) = processing_result.text_content {
-        FILE_STORAGE.save_text_content(file_id, text_content).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        FILE_STORAGE
+            .save_text_content(file_id, text_content)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     }
-
 
     // Create file record
     let file_create_data = FileCreateData {
@@ -168,7 +188,9 @@ async fn process_file_upload(
         processing_metadata: processing_result.metadata,
     };
 
-    let file = files::create_file(file_create_data).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let file = files::create_file(file_create_data)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(UploadFileResponse { file }))
 }
@@ -211,14 +233,10 @@ pub async fn generate_download_token(
     let jwt_secret = crate::utils::jwt_secret::get_jwt_secret();
     let header = Header::new(Algorithm::HS256);
     let key = EncodingKey::from_secret(jwt_secret.as_ref());
-    
-    let token = encode(&header, &claims, &key)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(DownloadTokenResponse {
-        token,
-        expires_at,
-    }))
+    let token = encode(&header, &claims, &key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(DownloadTokenResponse { token, expires_at }))
 }
 
 // Download file (with authentication)
@@ -251,16 +269,14 @@ pub async fn download_file_with_token(
         .claims;
 
     // Verify file_id matches
-    let token_file_id = Uuid::parse_str(&claims.file_id)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-    
+    let token_file_id = Uuid::parse_str(&claims.file_id).map_err(|_| StatusCode::UNAUTHORIZED)?;
+
     if token_file_id != file_id {
         return Err(StatusCode::UNAUTHORIZED);
     }
 
     // Parse user_id from token
-    let user_id = Uuid::parse_str(&claims.user_id)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let user_id = Uuid::parse_str(&claims.user_id).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     // Get file info
     let file_db = files::get_file_by_id_and_user(token_file_id, user_id)
@@ -279,7 +295,10 @@ async fn download_file_internal(file_db: File) -> Result<Response, StatusCode> {
         return Err(StatusCode::NOT_FOUND);
     }
 
-    let file_data = FILE_STORAGE.read_file_bytes(&file_path).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let file_data = FILE_STORAGE
+        .read_file_bytes(&file_path)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let headers = [
         (header::CONTENT_TYPE, "application/octet-stream".to_string()),
@@ -310,7 +329,10 @@ pub async fn get_file_preview(
         return Err(StatusCode::NOT_FOUND);
     }
 
-    let thumbnail_data = FILE_STORAGE.read_file_bytes(&thumbnail_path).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let thumbnail_data = FILE_STORAGE
+        .read_file_bytes(&thumbnail_path)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let headers = [
         (header::CONTENT_TYPE, "image/jpeg".to_string()),
@@ -331,7 +353,9 @@ pub async fn delete_file(
         .ok_or(StatusCode::NOT_FOUND)?;
 
     // Delete from database (this will cascade to relationships)
-    let deleted = files::delete_file(file_id, user.user_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let deleted = files::delete_file(file_id, user.user_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     if !deleted {
         return Err(StatusCode::NOT_FOUND);
@@ -339,7 +363,10 @@ pub async fn delete_file(
 
     // Delete from filesystem
     let extension = extract_extension(&file_db.filename);
-    FILE_STORAGE.delete_file(file_id, Some(&extension)).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    FILE_STORAGE
+        .delete_file(file_id, Some(&extension))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(serde_json::json!({ "success": true })))
 }
@@ -417,11 +444,16 @@ pub async fn remove_file_from_message(
 
         if let Some(file_db) = file_db {
             // Delete from database
-            files::delete_file(file_id, user.user_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            files::delete_file(file_id, user.user_id)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
             // Delete from filesystem
             let extension = extract_extension(&file_db.filename);
-            FILE_STORAGE.delete_file(file_id, Some(&extension)).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            FILE_STORAGE
+                .delete_file(file_id, Some(&extension))
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         }
     }
 

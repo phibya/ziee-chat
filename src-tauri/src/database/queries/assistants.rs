@@ -3,8 +3,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        Assistant, AssistantListResponse, CreateAssistantRequest,
-        UpdateAssistantRequest, model::ModelParameters,
+        model::ModelParameters, Assistant, AssistantListResponse, CreateAssistantRequest,
+        UpdateAssistantRequest,
     },
 };
 
@@ -185,10 +185,12 @@ pub async fn update_assistant(
     if let Some(true) = request.is_default {
         if current_assistant.is_template {
             // For template assistants, unset all other default templates
-            sqlx::query("UPDATE assistants SET is_default = false WHERE is_template = true AND id != $1")
-                .bind(assistant_id)
-                .execute(&mut *tx)
-                .await?;
+            sqlx::query(
+                "UPDATE assistants SET is_default = false WHERE is_template = true AND id != $1",
+            )
+            .bind(assistant_id)
+            .execute(&mut *tx)
+            .await?;
         } else if let Some(user_id) = current_assistant.created_by {
             // For user assistants, unset all other default assistants for this user
             sqlx::query("UPDATE assistants SET is_default = false WHERE created_by = $1 AND is_template = false AND id != $2")
@@ -226,7 +228,12 @@ pub async fn update_assistant(
             .bind(&request.name)
             .bind(&request.description)
             .bind(&request.instructions)
-            .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
+            .bind(
+                request
+                    .parameters
+                    .as_ref()
+                    .map(|p| serde_json::to_value(p).unwrap()),
+            )
             .bind(request.is_template)
             .bind(request.is_default)
             .bind(request.is_active)
@@ -238,7 +245,12 @@ pub async fn update_assistant(
             .bind(&request.name)
             .bind(&request.description)
             .bind(&request.instructions)
-            .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
+            .bind(
+                request
+                    .parameters
+                    .as_ref()
+                    .map(|p| serde_json::to_value(p).unwrap()),
+            )
             .bind(request.is_template)
             .bind(request.is_default)
             .bind(request.is_active)

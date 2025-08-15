@@ -1,14 +1,12 @@
 use uuid::Uuid;
 
-use crate::database::queries::{
-  providers::get_provider_by_id, user_groups::get_user_group_by_id,
-};
+use crate::database::queries::{providers::get_provider_by_id, user_groups::get_user_group_by_id};
 use crate::database::{
-  get_database_pool,
-  models::{
-    AssignProviderToGroupRequest, Provider, UserGroup, UserGroupProvider,
-    UserGroupProviderResponse,
-  },
+    get_database_pool,
+    models::{
+        AssignProviderToGroupRequest, Provider, UserGroup, UserGroupProvider,
+        UserGroupProviderResponse,
+    },
 };
 
 /// Assign a provider to a user group
@@ -128,9 +126,7 @@ pub async fn get_providers_for_group(group_id: Uuid) -> Result<Vec<Provider>, sq
 }
 
 /// Get all user groups that have access to a model provider
-pub async fn get_groups_for_provider(
-    provider_id: Uuid,
-) -> Result<Vec<UserGroup>, sqlx::Error> {
+pub async fn get_groups_for_provider(provider_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 

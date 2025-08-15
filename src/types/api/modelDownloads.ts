@@ -2,7 +2,12 @@
  * Download instance types for model downloads from repositories
  */
 
-import { ModelCapabilities, ModelParameters, MistralRsSettings, LlamaCppSettings } from './model'
+import {
+  ModelCapabilities,
+  ModelParameters,
+  MistralRsSettings,
+  LlamaCppSettings,
+} from './model'
 
 export interface DownloadProgress {
   phase: string

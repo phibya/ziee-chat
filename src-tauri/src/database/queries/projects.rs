@@ -2,8 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::database::models::{
-    CreateProjectRequest, Project, 
-    ProjectListResponse, UpdateProjectRequest,
+    CreateProjectRequest, Project, ProjectListResponse, UpdateProjectRequest,
 };
 
 // Project CRUD operations

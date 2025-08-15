@@ -139,10 +139,7 @@ function App() {
                           path="admin-assistants"
                           element={<AdminAssistantsSettings />}
                         />
-                        <Route
-                          path="engines"
-                          element={<EnginesSettings />}
-                        />
+                        <Route path="engines" element={<EnginesSettings />} />
                         <Route path="users" element={<UsersSettings />} />
                         <Route
                           path="user-groups"

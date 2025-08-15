@@ -3,6 +3,7 @@ import {
   Divider,
   Flex,
   Form,
+  Input,
   InputNumber,
   Select,
   Switch,
@@ -41,13 +42,13 @@ export function LlamaCppModelSettingsSection() {
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="Context Size"
-            description="Size of the prompt context (default: 2048)"
+            description="Size of the prompt context (--ctx-size, default: 4096)"
           >
-            <Form.Item name={getFieldName('n_ctx')}>
+            <Form.Item name={getFieldName('ctx_size')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={512}
                 max={131072}
-                placeholder="2048"
+                placeholder="4096"
                 style={{ width: '100%' }}
               />
             </Form.Item>
@@ -57,9 +58,9 @@ export function LlamaCppModelSettingsSection() {
 
           <ResponsiveConfigItem
             title="Batch Size"
-            description="Batch size for prompt processing (default: 2048)"
+            description="Logical batch size for prompt processing (--batch-size, default: 2048)"
           >
-            <Form.Item name={getFieldName('n_batch')}>
+            <Form.Item name={getFieldName('batch_size')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={1}
                 max={8192}
@@ -72,10 +73,10 @@ export function LlamaCppModelSettingsSection() {
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
-            title="Ubatch Size"
-            description="Physical maximum batch size (default: 512)"
+            title="Physical Batch Size"
+            description="Physical maximum batch size (--ubatch-size, default: 512)"
           >
-            <Form.Item name={getFieldName('n_ubatch')}>
+            <Form.Item name={getFieldName('ubatch_size')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={1}
                 max={2048}
@@ -87,11 +88,41 @@ export function LlamaCppModelSettingsSection() {
 
           <Divider style={{ margin: 0 }} />
 
+          <ResponsiveConfigItem
+            title="Parallel Sequences"
+            description="Number of parallel sequences to process (--parallel, default: 1)"
+          >
+            <Form.Item name={getFieldName('parallel')} style={{ margin: 0, width: 120 }}>
+              <InputNumber
+                min={1}
+                max={64}
+                placeholder="1"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          </ResponsiveConfigItem>
+
+          <Divider style={{ margin: 0 }} />
+
+          <ResponsiveConfigItem
+            title="Keep Tokens"
+            description="Tokens to keep from initial prompt (--keep, default: 0)"
+          >
+            <Form.Item name={getFieldName('keep')} style={{ margin: 0, width: 120 }}>
+              <InputNumber
+                min={0}
+                max={4096}
+                placeholder="0"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          </ResponsiveConfigItem>
+
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
             title="Memory Lock"
-            description="Lock the model in memory, preventing it from being swapped out"
+            description="Lock the model in memory, preventing it from being swapped out (--mlock)"
           >
             <Form.Item
               name={getFieldName('mlock')}
@@ -105,11 +136,11 @@ export function LlamaCppModelSettingsSection() {
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
-            title="Memory Map"
-            description="Use memory mapping for faster model loading"
+            title="Disable Memory Mapping"
+            description="Disable memory mapping for model files (--no-mmap)"
           >
             <Form.Item
-              name={getFieldName('mmap')}
+              name={getFieldName('no_mmap')}
               valuePropName="checked"
               style={{ margin: 0 }}
             >
@@ -123,10 +154,26 @@ export function LlamaCppModelSettingsSection() {
       <Card title="Threading & Performance">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
-            title="Threads"
-            description="Number of threads to use for generation (default: auto)"
+            title="Generation Threads"
+            description="Number of threads to use for generation (--threads, default: auto)"
           >
-            <Form.Item name={getFieldName('n_threads')}>
+            <Form.Item name={getFieldName('threads')} style={{ margin: 0, width: 120 }}>
+              <InputNumber
+                min={-1}
+                max={64}
+                placeholder="-1"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          </ResponsiveConfigItem>
+
+          <Divider style={{ margin: 0 }} />
+
+          <ResponsiveConfigItem
+            title="Batch Processing Threads"
+            description="Number of threads for batch processing (--threads-batch, default: same as threads)"
+          >
+            <Form.Item name={getFieldName('threads_batch')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={1}
                 max={64}
@@ -139,16 +186,15 @@ export function LlamaCppModelSettingsSection() {
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
-            title="Batch Threads"
-            description="Number of threads to use for batch processing (default: auto)"
+            title="Continuous Batching"
+            description="Enable continuous batching for better throughput (--cont-batching)"
           >
-            <Form.Item name={getFieldName('n_threads_batch')}>
-              <InputNumber
-                min={1}
-                max={64}
-                placeholder="Auto"
-                style={{ width: '100%' }}
-              />
+            <Form.Item
+              name={getFieldName('cont_batching')}
+              valuePropName="checked"
+              style={{ margin: 0 }}
+            >
+              <Switch />
             </Form.Item>
           </ResponsiveConfigItem>
 
@@ -156,7 +202,7 @@ export function LlamaCppModelSettingsSection() {
 
           <ResponsiveConfigItem
             title="Flash Attention"
-            description="Enable Flash Attention for faster inference"
+            description="Enable Flash Attention for faster inference (--flash-attn)"
           >
             <Form.Item
               name={getFieldName('flash_attn')}
@@ -170,8 +216,8 @@ export function LlamaCppModelSettingsSection() {
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
-            title="No KV Offload"
-            description="Disable KV cache offloading"
+            title="Disable KV Offload"
+            description="Disable KV cache offloading to GPU (--no-kv-offload)"
           >
             <Form.Item
               name={getFieldName('no_kv_offload')}
@@ -189,13 +235,13 @@ export function LlamaCppModelSettingsSection() {
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
             title="GPU Layers"
-            description="Number of layers to offload to GPU (default: auto)"
+            description="Number of layers to offload to GPU (--n-gpu-layers, default: 0)"
           >
-            <Form.Item name={getFieldName('n_gpu_layers')}>
+            <Form.Item name={getFieldName('n_gpu_layers')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={0}
                 max={128}
-                placeholder="Auto"
+                placeholder="0"
                 style={{ width: '100%' }}
               />
             </Form.Item>
@@ -205,9 +251,9 @@ export function LlamaCppModelSettingsSection() {
 
           <ResponsiveConfigItem
             title="Main GPU"
-            description="Main GPU to use for tensor splits (default: 0)"
+            description="Primary GPU index to use (--main-gpu, default: 0)"
           >
-            <Form.Item name={getFieldName('main_gpu')}>
+            <Form.Item name={getFieldName('main_gpu')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={0}
                 max={16}
@@ -221,11 +267,11 @@ export function LlamaCppModelSettingsSection() {
 
           <ResponsiveConfigItem
             title="Split Mode"
-            description="How to split the model across multiple GPUs"
+            description="How to split the model across multiple GPUs (--split-mode)"
           >
-            <Form.Item name={getFieldName('split_mode')}>
+            <Form.Item name={getFieldName('split_mode')} style={{ margin: 0, width: 120 }}>
               <Select
-                placeholder="None"
+                placeholder="none"
                 style={{ width: '100%' }}
                 allowClear
                 options={[
@@ -236,6 +282,20 @@ export function LlamaCppModelSettingsSection() {
               />
             </Form.Item>
           </ResponsiveConfigItem>
+
+          <Divider style={{ margin: 0 }} />
+
+          <ResponsiveConfigItem
+            title="Tensor Split"
+            description="GPU memory distribution ratios (--tensor-split, e.g., '3,1')"
+          >
+            <Form.Item name={getFieldName('tensor_split')} style={{ margin: 0, width: 120 }}>
+              <Input
+                placeholder="3,1"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          </ResponsiveConfigItem>
         </Flex>
       </Card>
 
@@ -243,10 +303,10 @@ export function LlamaCppModelSettingsSection() {
       <Card title="Model Configuration">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
-            title="Rope Frequency Base"
-            description="RoPE base frequency (default: auto)"
+            title="RoPE Base Frequency"
+            description="RoPE base frequency (--rope-freq-base, default: auto)"
           >
-            <Form.Item name={getFieldName('rope_freq_base')}>
+            <Form.Item name={getFieldName('rope_freq_base')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={1000}
                 max={1000000}
@@ -259,10 +319,10 @@ export function LlamaCppModelSettingsSection() {
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
-            title="Rope Frequency Scale"
-            description="RoPE frequency scaling factor (default: auto)"
+            title="RoPE Frequency Scale"
+            description="RoPE frequency scaling factor (--rope-freq-scale, default: auto)"
           >
-            <Form.Item name={getFieldName('rope_freq_scale')}>
+            <Form.Item name={getFieldName('rope_freq_scale')} style={{ margin: 0, width: 120 }}>
               <InputNumber
                 min={0.1}
                 max={10.0}
@@ -276,15 +336,61 @@ export function LlamaCppModelSettingsSection() {
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
-            title="Random Seed"
-            description="Seed for random number generation (-1 for random)"
+            title="RoPE Scaling"
+            description="RoPE scaling method (--rope-scaling)"
           >
-            <Form.Item name={getFieldName('seed')}>
-              <InputNumber
-                min={-1}
-                max={4294967295}
-                placeholder="-1"
+            <Form.Item name={getFieldName('rope_scaling')} style={{ margin: 0, width: 120 }}>
+              <Select
+                placeholder="none"
                 style={{ width: '100%' }}
+                allowClear
+                options={[
+                  { value: 'none', label: 'None' },
+                  { value: 'linear', label: 'Linear' },
+                  { value: 'yarn', label: 'YaRN' },
+                ]}
+              />
+            </Form.Item>
+          </ResponsiveConfigItem>
+
+          <Divider style={{ margin: 0 }} />
+
+          <ResponsiveConfigItem
+            title="KV Cache Type (K)"
+            description="KV cache data type for K (--cache-type-k, e.g., f16, f32, q8_0)"
+          >
+            <Form.Item name={getFieldName('cache_type_k')} style={{ margin: 0, width: 120 }}>
+              <Select
+                placeholder="f16"
+                style={{ width: '100%' }}
+                allowClear
+                options={[
+                  { value: 'f16', label: 'f16' },
+                  { value: 'f32', label: 'f32' },
+                  { value: 'q8_0', label: 'q8_0' },
+                  { value: 'q4_0', label: 'q4_0' },
+                ]}
+              />
+            </Form.Item>
+          </ResponsiveConfigItem>
+
+          <Divider style={{ margin: 0 }} />
+
+          <ResponsiveConfigItem
+            title="KV Cache Type (V)"
+            description="KV cache data type for V (--cache-type-v, e.g., f16, f32, q8_0)"
+          >
+            <Form.Item name={getFieldName('cache_type_v')} style={{ margin: 0, width: 120 }}>
+              <Select
+                placeholder="f16"
+                style={{ width: '100%' }}
+                allowClear
+                options={[
+                  { value: 'f16', label: 'f16' },
+                  { value: 'f32', label: 'f32' },
+                  { value: 'q8_0', label: 'q8_0' },
+                  { value: 'q4_0', label: 'q4_0' },
+                ]}
               />
             </Form.Item>
           </ResponsiveConfigItem>
@@ -295,45 +401,36 @@ export function LlamaCppModelSettingsSection() {
       <Card title="Advanced Options">
         <Flex vertical className="gap-2 w-full">
           <ResponsiveConfigItem
-            title="Use Tensor Cores"
-            description="Use Tensor Cores for matrix multiplication (if available)"
+            title="Random Seed"
+            description="Seed for random number generation (--seed, -1 for random)"
           >
-            <Form.Item
-              name={getFieldName('mul_mat_q')}
-              valuePropName="checked"
-              style={{ margin: 0 }}
-            >
-              <Switch />
+            <Form.Item name={getFieldName('seed')} style={{ margin: 0, width: 120 }}>
+              <InputNumber
+                min={-1}
+                max={4294967295}
+                placeholder="-1"
+                style={{ width: '100%' }}
+              />
             </Form.Item>
           </ResponsiveConfigItem>
 
           <Divider style={{ margin: 0 }} />
 
           <ResponsiveConfigItem
-            title="Continuous Batching"
-            description="Enable continuous batching for better throughput"
+            title="NUMA Optimization"
+            description="NUMA optimizations (--numa)"
           >
-            <Form.Item
-              name={getFieldName('cont_batching')}
-              valuePropName="checked"
-              style={{ margin: 0 }}
-            >
-              <Switch />
-            </Form.Item>
-          </ResponsiveConfigItem>
-
-          <Divider style={{ margin: 0 }} />
-
-          <ResponsiveConfigItem
-            title="Log Disable"
-            description="Disable logging output"
-          >
-            <Form.Item
-              name={getFieldName('log_disable')}
-              valuePropName="checked"
-              style={{ margin: 0 }}
-            >
-              <Switch />
+            <Form.Item name={getFieldName('numa')} style={{ margin: 0, width: 120 }}>
+              <Select
+                placeholder="None"
+                style={{ width: '100%' }}
+                allowClear
+                options={[
+                  { value: 'distribute', label: 'Distribute' },
+                  { value: 'isolate', label: 'Isolate' },
+                  { value: 'numactl', label: 'Numactl' },
+                ]}
+              />
             </Form.Item>
           </ResponsiveConfigItem>
         </Flex>

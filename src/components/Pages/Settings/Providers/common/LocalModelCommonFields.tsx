@@ -8,13 +8,13 @@ const ENGINE_OPTIONS = [
   {
     value: 'mistralrs',
     label: 'MistralRs',
-    description: 'High-performance inference engine with advanced features'
+    description: 'High-performance inference engine with advanced features',
   },
   {
     value: 'llamacpp',
     label: 'LlamaCpp',
-    description: 'Coming soon - GGML-based inference engine'
-  }
+    description: 'Coming soon - GGML-based inference engine',
+  },
 ]
 
 interface LocalModelCommonFieldsProps {

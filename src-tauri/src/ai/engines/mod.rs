@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use uuid::Uuid;
 
-pub mod mistralrs;
 pub mod llamacpp;
+pub mod mistralrs;
 
-pub use mistralrs::MistralRsEngine;
 pub use llamacpp::LlamaCppEngine;
+pub use mistralrs::MistralRsEngine;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum EngineType {
@@ -45,9 +45,17 @@ pub struct EngineInstance {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ServerInfo {
-    pub model_uuid: String,
-    pub params: serde_json::Value,
+pub struct ModelsResponse {
+    pub object: String,
+    pub data: Vec<ModelInfo>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ModelInfo {
+    pub id: String,
+    pub object: String,
+    pub created: i64,
+    pub owned_by: String,
 }
 
 #[derive(Debug)]
@@ -78,9 +86,12 @@ pub trait LocalEngine: Send + Sync {
     fn engine_type(&self) -> EngineType;
     fn name(&self) -> &'static str;
     fn version(&self) -> String;
-    
-    async fn start(&self, model: &crate::database::models::model::Model) -> Result<EngineInstance, EngineError>;
+
+    async fn start(
+        &self,
+        model: &crate::database::models::model::Model,
+    ) -> Result<EngineInstance, EngineError>;
     async fn stop(&self, instance: &EngineInstance) -> Result<(), EngineError>;
     async fn health_check(&self, instance: &EngineInstance) -> Result<bool, EngineError>;
-    async fn get_server_info(&self, instance: &EngineInstance) -> Result<ServerInfo, EngineError>;
+    async fn get_server_models(&self, instance: &EngineInstance) -> Result<Vec<ModelInfo>, EngineError>;
 }

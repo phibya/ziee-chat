@@ -1,9 +1,9 @@
 use axum::{
-  extract::{Path, Query},
-  http::StatusCode,
-  response::sse::{Event, KeepAlive},
-  response::Sse,
-  Extension, Json,
+    extract::{Path, Query},
+    http::StatusCode,
+    response::sse::{Event, KeepAlive},
+    response::Sse,
+    Extension, Json,
 };
 use futures_util::stream::Stream;
 use serde::{Deserialize, Serialize};
@@ -18,10 +18,10 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::api::permissions::{check_permission, permissions};
 use crate::database::{
-  models::{
-    DownloadInstance, DownloadInstanceListResponse, DownloadStatus, UpdateDownloadStatusRequest,
-  },
-  queries::download_instances,
+    models::{
+        DownloadInstance, DownloadInstanceListResponse, DownloadStatus, UpdateDownloadStatusRequest,
+    },
+    queries::download_instances,
 };
 
 #[derive(Debug, Deserialize)]
@@ -142,21 +142,30 @@ pub async fn cancel_download(
     match download_instances::update_download_status(download_id, cancel_request).await {
         Ok(Some(_)) => {
             println!("Download {} marked as cancelled", download_id);
-            
+
             // Spawn a background task to delete the cancelled download after 60 seconds
             tokio::spawn(async move {
-                println!("Scheduling deletion of cancelled download {} in 60 seconds", download_id);
+                println!(
+                    "Scheduling deletion of cancelled download {} in 60 seconds",
+                    download_id
+                );
                 tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-                
+
                 match download_instances::delete_download_instance(download_id).await {
                     Ok(true) => {
-                        println!("Successfully deleted cancelled download {} after 60 seconds", download_id);
+                        println!(
+                            "Successfully deleted cancelled download {} after 60 seconds",
+                            download_id
+                        );
                     }
                     Ok(false) => {
                         println!("Cancelled download {} was already deleted", download_id);
                     }
                     Err(e) => {
-                        eprintln!("Failed to delete cancelled download {} after 60 seconds: {}", download_id, e);
+                        eprintln!(
+                            "Failed to delete cancelled download {} after 60 seconds: {}",
+                            download_id, e
+                        );
                     }
                 }
             });

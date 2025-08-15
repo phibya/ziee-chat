@@ -38,8 +38,7 @@ pub async fn create_user_group(
                         provider_id,
                     };
                     if let Err(e) =
-                        user_group_providers::assign_provider_to_group(assign_request)
-                            .await
+                        user_group_providers::assign_provider_to_group(assign_request).await
                     {
                         eprintln!("Error assigning model provider to group: {}", e);
                         // Continue with other providers even if one fails
@@ -105,19 +104,16 @@ pub async fn update_user_group(
     // Handle model provider assignments if provided
     if let Some(provider_ids) = &request.provider_ids {
         // First, get current assignments
-        let current_providers =
-            user_group_providers::get_provider_ids_for_group(group_id)
-                .await
-                .unwrap_or_default();
+        let current_providers = user_group_providers::get_provider_ids_for_group(group_id)
+            .await
+            .unwrap_or_default();
 
         // Remove providers that are no longer in the list
         for current_provider in &current_providers {
             if !provider_ids.contains(current_provider) {
-                if let Err(e) = user_group_providers::remove_provider_from_group(
-                    group_id,
-                    *current_provider,
-                )
-                .await
+                if let Err(e) =
+                    user_group_providers::remove_provider_from_group(group_id, *current_provider)
+                        .await
                 {
                     eprintln!("Error removing model provider from group: {}", e);
                 }
@@ -131,8 +127,7 @@ pub async fn update_user_group(
                     group_id,
                     provider_id: *provider_id,
                 };
-                if let Err(e) =
-                    user_group_providers::assign_provider_to_group(assign_request).await
+                if let Err(e) = user_group_providers::assign_provider_to_group(assign_request).await
                 {
                     eprintln!("Error assigning model provider to group: {}", e);
                 }
@@ -265,8 +260,7 @@ pub async fn remove_provider_from_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path((group_id, provider_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, StatusCode> {
-    match user_group_providers::remove_provider_from_group(group_id, provider_id).await
-    {
+    match user_group_providers::remove_provider_from_group(group_id, provider_id).await {
         Ok(true) => Ok(StatusCode::NO_CONTENT),
         Ok(false) => Err(StatusCode::NOT_FOUND),
         Err(e) => {

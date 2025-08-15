@@ -1,8 +1,8 @@
 use async_trait::async_trait;
+use encoding_rs::*;
+use image::{ImageBuffer, Rgb, RgbImage};
 use std::path::Path;
 use tokio::fs;
-use encoding_rs::*;
-use image::{RgbImage, ImageBuffer, Rgb};
 
 use crate::processing::{ContentProcessor, ImageGenerator as ImageGeneratorTrait, MAX_IMAGE_DIM};
 
@@ -13,9 +13,12 @@ impl TextProcessor {
         Self
     }
 
-    async fn detect_encoding_and_read(&self, file_path: &Path) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    async fn detect_encoding_and_read(
+        &self,
+        file_path: &Path,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         let bytes = fs::read(file_path).await?;
-        
+
         // Try UTF-8 first
         if let Ok(content) = String::from_utf8(bytes.clone()) {
             return Ok(content);
@@ -23,7 +26,7 @@ impl TextProcessor {
 
         // Try common encodings
         let encodings = [UTF_8, UTF_16LE, UTF_16BE, WINDOWS_1252];
-        
+
         for encoding in encodings {
             let (content, _, had_errors) = encoding.decode(&bytes);
             if !had_errors {
@@ -41,33 +44,43 @@ impl TextProcessor {
 impl ContentProcessor for TextProcessor {
     fn can_process(&self, mime_type: &Option<String>) -> bool {
         if let Some(mime) = mime_type {
-            matches!(mime.as_str(),
-                "text/plain" |
-                "text/markdown" |
-                "text/html" |
-                "text/css" |
-                "text/javascript" |
-                "application/javascript" |
-                "application/json" |
-                "application/xml" |
-                "text/xml"
+            matches!(
+                mime.as_str(),
+                "text/plain"
+                    | "text/markdown"
+                    | "text/html"
+                    | "text/css"
+                    | "text/javascript"
+                    | "application/javascript"
+                    | "application/json"
+                    | "application/xml"
+                    | "text/xml"
             )
         } else {
             false
         }
     }
 
-    async fn extract_text(&self, file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_text(
+        &self,
+        file_path: &Path,
+    ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
         match self.detect_encoding_and_read(file_path).await {
             Ok(content) => Ok(Some(content)),
             Err(_) => Ok(None),
         }
     }
 
-    async fn extract_metadata(&self, file_path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_metadata(
+        &self,
+        file_path: &Path,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
         let metadata = fs::metadata(file_path).await?;
-        let content = self.detect_encoding_and_read(file_path).await.unwrap_or_default();
-        
+        let content = self
+            .detect_encoding_and_read(file_path)
+            .await
+            .unwrap_or_default();
+
         let line_count = content.lines().count();
         let char_count = content.chars().count();
         let word_count = content.split_whitespace().count();
@@ -81,7 +94,6 @@ impl ContentProcessor for TextProcessor {
             "encoding": "utf-8" // Simplified for now
         }))
     }
-
 }
 
 // Text Image Generator (renamed from TextThumbnailGenerator)
@@ -132,13 +144,13 @@ impl TextImageGenerator {
             let line_chars: Vec<char> = line.chars().take(chars_per_line as usize).collect();
             for (i, _char) in line_chars.iter().enumerate() {
                 let x_pos = 20 + (i as u32 * char_width);
-                
+
                 // Simple pixel-based character rendering (just rectangles for now)
                 if x_pos + char_width <= width - 20 {
                     self.draw_simple_char(&mut img, x_pos, y_pos, char_width, line_height);
                 }
             }
-            
+
             y_pos += line_height + 2; // Line spacing
         }
 
@@ -150,7 +162,7 @@ impl TextImageGenerator {
     fn draw_simple_char(&self, img: &mut RgbImage, x: u32, y: u32, width: u32, height: u32) {
         // Simple character representation - just a small rectangle
         let char_color = Rgb([50, 50, 50]); // Dark gray
-        
+
         // Draw a simple rectangle to represent character
         for dy in 0..height.min(12) {
             for dx in 0..width.min(6) {
@@ -166,16 +178,17 @@ impl TextImageGenerator {
 impl ImageGeneratorTrait for TextImageGenerator {
     fn can_generate(&self, mime_type: &Option<String>) -> bool {
         if let Some(mime) = mime_type {
-            matches!(mime.as_str(),
-                "text/plain" |
-                "text/markdown" |
-                "text/html" |
-                "text/css" |
-                "text/javascript" |
-                "application/javascript" |
-                "application/json" |
-                "application/xml" |
-                "text/xml"
+            matches!(
+                mime.as_str(),
+                "text/plain"
+                    | "text/markdown"
+                    | "text/html"
+                    | "text/css"
+                    | "text/javascript"
+                    | "application/javascript"
+                    | "application/json"
+                    | "application/xml"
+                    | "text/xml"
             )
         } else {
             false
@@ -199,11 +212,14 @@ impl ImageGeneratorTrait for TextImageGenerator {
 
         // Truncate to maximum 3000 characters
         let max_chars = 3000;
-        
+
         // Create the output image
         let image_path = output_dir.join("page_1.jpg");
-        
-        match self.create_text_image(&text_content, &image_path, max_chars, max_dim).await {
+
+        match self
+            .create_text_image(&text_content, &image_path, max_chars, max_dim)
+            .await
+        {
             Ok(_) => {
                 println!("Generated text image: {:?}", image_path);
                 Ok(1) // Generated 1 image
@@ -214,5 +230,4 @@ impl ImageGeneratorTrait for TextImageGenerator {
             }
         }
     }
-
 }

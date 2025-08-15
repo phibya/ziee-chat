@@ -221,7 +221,6 @@ pub async fn update_proxy_settings(
     }))
 }
 
-
 // Public endpoint to test proxy connection (no authentication required)
 pub async fn test_proxy_connection_public(
     Json(request): Json<TestProxyConnectionRequest>,
@@ -252,7 +251,7 @@ pub async fn test_proxy_connection_public(
 async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> Result<(), String> {
     // Always test the proxy configuration regardless of enabled status
     // This allows users to test settings before enabling them
-    
+
     // Use the common proxy testing utility
     let common_config = crate::database::models::ProxySettings::from(proxy_config);
     crate::utils::proxy::test_proxy_connectivity(&common_config).await

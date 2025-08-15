@@ -49,7 +49,7 @@ pub struct ModelParameters {
     // Context and generation parameters
     /// Context size for the model
     pub max_tokens: Option<u32>,
-    
+
     // Sampling parameters
     /// Temperature for randomness (0.0-2.0)
     pub temperature: Option<f32>,
@@ -59,7 +59,7 @@ pub struct ModelParameters {
     pub top_p: Option<f32>,
     /// Min-P sampling parameter (0.0-1.0)
     pub min_p: Option<f32>,
-    
+
     // Repetition control
     /// Number of last tokens to consider for repetition penalty
     pub repeat_last_n: Option<u32>,
@@ -69,7 +69,7 @@ pub struct ModelParameters {
     pub presence_penalty: Option<f32>,
     /// Frequency penalty for repeated tokens
     pub frequency_penalty: Option<f32>,
-    
+
     // Generation control
     /// Random seed for reproducible outputs
     pub seed: Option<i32>,
@@ -176,11 +176,31 @@ impl ModelParameters {
 /// MistralRs-specific settings for individual model performance and batching configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MistralRsSettings {
-    // Device configuration (kept as requested)
+    // Core model configuration
+    /// Model command type: "plain", "gguf", "run", "vision-plain", etc.
+    pub command: Option<String>,
+    /// Model ID name for --model-id in subcommands
+    pub model_id_name: Option<String>,
+    /// Path to tokenizer.json file
+    pub tokenizer_json: Option<String>,
+    /// Model architecture (for plain models)
+    pub arch: Option<String>,
+
+    // Quantization and weights
+    /// GGUF filename pattern (for GGUF models)
+    pub quantized_filename: Option<String>,
+    /// Specific weight file
+    pub weight_file: Option<String>,
+
+    // Device configuration
     /// Device type (cpu, cuda, metal, etc.)
     pub device_type: Option<String>,
     /// Array of device IDs for multi-GPU
     pub device_ids: Option<Vec<i32>>,
+    /// Per-device layer distribution
+    pub num_device_layers: Option<Vec<String>>,
+    /// Force CPU mode
+    pub cpu: Option<bool>,
 
     // Sequence and memory management
     /// Maximum running sequences at any time (--max-seqs)
@@ -206,6 +226,12 @@ pub struct MistralRsSettings {
     /// Enable PagedAttention on Metal (--paged-attn)
     pub paged_attn: Option<bool>,
 
+    // Chat and templates
+    /// Chat template string
+    pub chat_template: Option<String>,
+    /// Jinja template explicit definition
+    pub jinja_explicit: Option<String>,
+
     // Performance optimization
     /// Number of prefix caches to hold (--prefix-cache-n)
     pub prefix_cache_n: Option<usize>,
@@ -229,24 +255,224 @@ pub struct MistralRsSettings {
     pub max_num_images: Option<usize>,
     /// Maximum image edge length (--max-image-length)
     pub max_image_length: Option<usize>,
+
+    // Server configuration
+    /// Server IP address to serve on
+    pub serve_ip: Option<String>,
+    /// Log file path
+    pub log_file: Option<String>,
+
+    // Search capabilities
+    /// Enable search functionality
+    pub enable_search: Option<bool>,
+    /// BERT model for search
+    pub search_bert_model: Option<String>,
+
+    // Interactive and thinking
+    /// Enable interactive mode
+    pub interactive_mode: Option<bool>,
+    /// Enable thinking capabilities
+    pub enable_thinking: Option<bool>,
+
+    // Token source for authentication
+    pub token_source: Option<String>,
 }
 
 // Default value functions for MistralRsSettings - all fields are optional
 
-/// LlamaCpp-specific settings (placeholder for future implementation)
+/// LlamaCpp-specific settings for llama-server configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LlamaCppSettings {
     /// Device type (cpu, cuda, metal, etc.)
     pub device_type: Option<String>,
-    /// Number of threads for CPU inference
+    /// Array of device IDs for multi-GPU
+    pub device_ids: Option<Vec<i32>>,
+
+    // Context & Memory Management (equivalent to MistralRs Sequence Management)
+    /// Context size (--ctx-size, default: 4096)
+    pub ctx_size: Option<i32>,
+    /// Logical batch size (--batch-size, default: 2048)
+    pub batch_size: Option<i32>,
+    /// Physical batch size (--ubatch-size, default: 512)
+    pub ubatch_size: Option<i32>,
+    /// Number of parallel sequences (--parallel, default: 1)
+    pub parallel: Option<i32>,
+    /// Tokens to keep from initial prompt (--keep, default: 0)
+    pub keep: Option<i32>,
+    /// Force model to stay in RAM (--mlock, default: false)
+    pub mlock: Option<bool>,
+    /// Disable memory mapping (--no-mmap, default: false)
+    pub no_mmap: Option<bool>,
+    
+    // Threading & Performance (equivalent to MistralRs Performance)
+    /// Generation threads (--threads, default: -1)
     pub threads: Option<i32>,
-    /// Context size for the model
-    pub context_size: Option<i32>,
+    /// Batch processing threads (--threads-batch, default: same as threads)
+    pub threads_batch: Option<i32>,
+    /// Enable continuous batching (--cont-batching, default: true)
+    pub cont_batching: Option<bool>,
+    /// Enable Flash Attention (--flash-attn, default: false)
+    pub flash_attn: Option<bool>,
+    /// Disable KV cache offloading (--no-kv-offload, default: false)
+    pub no_kv_offload: Option<bool>,
+    
+    // GPU Configuration (equivalent to MistralRs Device Config)
+    /// Number of layers on GPU (--n-gpu-layers, default: 0)
+    pub n_gpu_layers: Option<i32>,
+    /// Primary GPU index (--main-gpu, default: 0)
+    pub main_gpu: Option<i32>,
+    /// How to split across GPUs: none/layer/row (--split-mode)
+    pub split_mode: Option<String>,
+    /// GPU memory distribution ratios (--tensor-split)
+    pub tensor_split: Option<String>,
+    
+    // Model Configuration (equivalent to MistralRs Model Config)
+    /// RoPE base frequency (--rope-freq-base)
+    pub rope_freq_base: Option<f64>,
+    /// RoPE frequency scaling (--rope-freq-scale)
+    pub rope_freq_scale: Option<f64>,
+    /// RoPE scaling method: none/linear/yarn (--rope-scaling)
+    pub rope_scaling: Option<String>,
+    /// KV cache data type for K (--cache-type-k)
+    pub cache_type_k: Option<String>,
+    /// KV cache data type for V (--cache-type-v)
+    pub cache_type_v: Option<String>,
+    
+    // Advanced Options
+    /// Random seed (--seed, default: -1)
+    pub seed: Option<i64>,
+    /// NUMA optimizations: distribute/isolate/numactl (--numa)
+    pub numa: Option<String>,
 }
 
 impl LlamaCppSettings {
+    /// Create a new LlamaCppSettings with all None values (auto-configuration)
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Create LlamaCppSettings optimized for high performance
+    pub fn high_performance() -> Self {
+        Self {
+            device_type: None,
+            device_ids: None,
+            ctx_size: Some(8192),
+            batch_size: Some(2048),
+            ubatch_size: Some(512),
+            parallel: Some(4),
+            keep: Some(0),
+            mlock: Some(true),
+            no_mmap: Some(false),
+            threads: Some(-1), // Auto-detect
+            threads_batch: None, // Use same as threads
+            cont_batching: Some(true),
+            flash_attn: Some(true),
+            no_kv_offload: Some(false),
+            n_gpu_layers: Some(99), // Offload all layers
+            main_gpu: Some(0),
+            split_mode: Some("layer".to_string()),
+            tensor_split: None,
+            rope_freq_base: None,
+            rope_freq_scale: None,
+            rope_scaling: None,
+            cache_type_k: Some("f16".to_string()),
+            cache_type_v: Some("f16".to_string()),
+            seed: Some(-1),
+            numa: Some("distribute".to_string()),
+        }
+    }
+
+    /// Create LlamaCppSettings optimized for low memory usage
+    pub fn low_memory() -> Self {
+        Self {
+            device_type: None,
+            device_ids: None,
+            ctx_size: Some(2048),
+            batch_size: Some(512),
+            ubatch_size: Some(256),
+            parallel: Some(1),
+            keep: Some(0),
+            mlock: Some(false),
+            no_mmap: Some(false),
+            threads: Some(4),
+            threads_batch: Some(2),
+            cont_batching: Some(false),
+            flash_attn: Some(false),
+            no_kv_offload: Some(true),
+            n_gpu_layers: Some(0), // CPU only
+            main_gpu: Some(0),
+            split_mode: Some("none".to_string()),
+            tensor_split: None,
+            rope_freq_base: None,
+            rope_freq_scale: None,
+            rope_scaling: None,
+            cache_type_k: Some("q8_0".to_string()),
+            cache_type_v: Some("q8_0".to_string()),
+            seed: Some(-1),
+            numa: None,
+        }
+    }
+
+    /// Validate the settings and return errors if any
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(ctx_size) = self.ctx_size {
+            if ctx_size <= 0 {
+                return Err("ctx_size must be greater than 0".to_string());
+            }
+            if ctx_size > 131072 {
+                return Err("ctx_size should not exceed 131072 tokens".to_string());
+            }
+        }
+
+        if let Some(batch_size) = self.batch_size {
+            if batch_size <= 0 {
+                return Err("batch_size must be greater than 0".to_string());
+            }
+        }
+
+        if let Some(parallel) = self.parallel {
+            if parallel <= 0 {
+                return Err("parallel must be greater than 0".to_string());
+            }
+            if parallel > 64 {
+                return Err("parallel should not exceed 64".to_string());
+            }
+        }
+
+        if let Some(n_gpu_layers) = self.n_gpu_layers {
+            if n_gpu_layers < 0 {
+                return Err("n_gpu_layers must be non-negative".to_string());
+            }
+        }
+
+        if let Some(main_gpu) = self.main_gpu {
+            if main_gpu < 0 {
+                return Err("main_gpu must be non-negative".to_string());
+            }
+        }
+
+        if let Some(split_mode) = &self.split_mode {
+            match split_mode.as_str() {
+                "none" | "layer" | "row" => {}
+                _ => return Err("split_mode must be 'none', 'layer', or 'row'".to_string()),
+            }
+        }
+
+        if let Some(rope_scaling) = &self.rope_scaling {
+            match rope_scaling.as_str() {
+                "none" | "linear" | "yarn" => {}
+                _ => return Err("rope_scaling must be 'none', 'linear', or 'yarn'".to_string()),
+            }
+        }
+
+        if let Some(numa) = &self.numa {
+            match numa.as_str() {
+                "distribute" | "isolate" | "numactl" => {}
+                _ => return Err("numa must be 'distribute', 'isolate', or 'numactl'".to_string()),
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -259,8 +485,16 @@ impl MistralRsSettings {
     /// Create MistralRsSettings optimized for high throughput
     pub fn high_throughput() -> Self {
         Self {
-            device_type: Some("cuda".to_string()),
+            command: Some("run".to_string()),
+            model_id_name: None,
+            tokenizer_json: None,
+            arch: None,
+            quantized_filename: None,
+            weight_file: None,
+            device_type: None,
             device_ids: None,
+            num_device_layers: None,
+            cpu: Some(false),
             max_seqs: Some(64),
             max_seq_len: Some(8192),
             no_kv_cache: Some(false),
@@ -271,6 +505,8 @@ impl MistralRsSettings {
             paged_attn_block_size: Some(64),
             no_paged_attn: Some(false),
             paged_attn: Some(true),
+            chat_template: None,
+            jinja_explicit: None,
             prefix_cache_n: Some(32),
             prompt_chunksize: Some(1024),
             dtype: Some("f16".to_string()),
@@ -279,14 +515,29 @@ impl MistralRsSettings {
             max_edge: None,
             max_num_images: None,
             max_image_length: None,
+            serve_ip: None,
+            log_file: None,
+            enable_search: Some(false),
+            search_bert_model: None,
+            interactive_mode: Some(false),
+            enable_thinking: Some(false),
+            token_source: None,
         }
     }
 
     /// Create MistralRsSettings optimized for low latency
     pub fn low_latency() -> Self {
         Self {
+            command: Some("run".to_string()),
+            model_id_name: None,
+            tokenizer_json: None,
+            arch: None,
+            quantized_filename: None,
+            weight_file: None,
             device_type: Some("metal".to_string()),
             device_ids: None,
+            num_device_layers: None,
+            cpu: Some(false),
             max_seqs: Some(16),
             max_seq_len: Some(2048),
             no_kv_cache: Some(false),
@@ -297,6 +548,8 @@ impl MistralRsSettings {
             paged_attn_block_size: Some(16),
             no_paged_attn: Some(false),
             paged_attn: Some(true),
+            chat_template: None,
+            jinja_explicit: None,
             prefix_cache_n: Some(8),
             prompt_chunksize: Some(512),
             dtype: Some("f16".to_string()),
@@ -305,6 +558,13 @@ impl MistralRsSettings {
             max_edge: None,
             max_num_images: None,
             max_image_length: None,
+            serve_ip: None,
+            log_file: None,
+            enable_search: Some(false),
+            search_bert_model: None,
+            interactive_mode: Some(false),
+            enable_thinking: Some(false),
+            token_source: None,
         }
     }
 
@@ -378,11 +638,12 @@ pub struct Model {
     pub file_size_bytes: Option<i64>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<Vec<String>>,
-    pub port: Option<i32>, // Port number where the model server is running
-    pub pid: Option<i32>,  // Process ID of the running model server
+    pub port: Option<i32>,   // Port number where the model server is running
+    pub pid: Option<i32>,    // Process ID of the running model server
     pub engine_type: String, // Engine type: "mistralrs" | "llamacpp" - REQUIRED
     pub engine_settings_mistralrs: Option<MistralRsSettings>, // MistralRs-specific settings
     pub engine_settings_llamacpp: Option<LlamaCppSettings>, // LlamaCpp-specific settings
+    pub file_format: String, // Model file format: "safetensors", "gguf", "bin", etc. - REQUIRED
     pub files: Option<Vec<ModelFileInfo>>,
 }
 
@@ -393,12 +654,12 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
         let capabilities = if capabilities_json.is_null() {
             None
         } else {
-            Some(
-                serde_json::from_value(capabilities_json).map_err(|e| sqlx::Error::ColumnDecode {
+            Some(serde_json::from_value(capabilities_json).map_err(|e| {
+                sqlx::Error::ColumnDecode {
                     index: "capabilities".into(),
                     source: Box::new(e),
-                })?,
-            )
+                }
+            })?)
         };
 
         // Parse parameters JSON
@@ -406,38 +667,41 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
         let parameters = if parameters_json.is_null() {
             None
         } else {
-            Some(
-                serde_json::from_value(parameters_json).map_err(|e| sqlx::Error::ColumnDecode {
+            Some(serde_json::from_value(parameters_json).map_err(|e| {
+                sqlx::Error::ColumnDecode {
                     index: "parameters".into(),
                     source: Box::new(e),
-                })?,
-            )
+                }
+            })?)
         };
 
         // Parse MistralRs engine settings
-        let mistralrs_settings_json: serde_json::Value = row.try_get("engine_settings_mistralrs")?;
+        let mistralrs_settings_json: serde_json::Value =
+            row.try_get("engine_settings_mistralrs")?;
         let engine_settings_mistralrs = if mistralrs_settings_json.is_null() {
             None
         } else {
             Some(
-                serde_json::from_value(mistralrs_settings_json).map_err(|e| sqlx::Error::ColumnDecode {
-                    index: "engine_settings_mistralrs".into(),
-                    source: Box::new(e),
+                serde_json::from_value(mistralrs_settings_json).map_err(|e| {
+                    sqlx::Error::ColumnDecode {
+                        index: "engine_settings_mistralrs".into(),
+                        source: Box::new(e),
+                    }
                 })?,
             )
         };
-        
+
         // Parse LlamaCpp engine settings
         let llamacpp_settings_json: serde_json::Value = row.try_get("engine_settings_llamacpp")?;
         let engine_settings_llamacpp = if llamacpp_settings_json.is_null() {
             None
         } else {
-            Some(
-                serde_json::from_value(llamacpp_settings_json).map_err(|e| sqlx::Error::ColumnDecode {
+            Some(serde_json::from_value(llamacpp_settings_json).map_err(|e| {
+                sqlx::Error::ColumnDecode {
                     index: "engine_settings_llamacpp".into(),
                     source: Box::new(e),
-                })?,
-            )
+                }
+            })?)
         };
 
         // Parse validation_issues JSON
@@ -466,6 +730,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             engine_type: row.try_get("engine_type")?, // Required field now
             engine_settings_mistralrs,
             engine_settings_llamacpp,
+            file_format: row.try_get("file_format")?, // Required field now
             files: None, // Files need to be loaded separately
         })
     }
@@ -484,6 +749,7 @@ pub struct CreateModelRequest {
     pub engine_type: String, // Required field
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
+    pub file_format: String, // Required field
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -498,6 +764,7 @@ pub struct UpdateModelRequest {
     pub engine_type: Option<String>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
+    pub file_format: Option<String>,
 }
 
 // Model file tracking for uploaded files

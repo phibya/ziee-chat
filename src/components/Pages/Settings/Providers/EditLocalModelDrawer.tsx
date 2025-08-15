@@ -28,8 +28,8 @@ export function EditLocalModelDrawer() {
 
   // Find the current model from all providers
   const currentModel = modelId
-      ? providers.flatMap(p => p.models).find(m => m.id === modelId)
-      : null
+    ? providers.flatMap(p => p.models).find(m => m.id === modelId)
+    : null
 
   useEffect(() => {
     if (currentModel && open) {
@@ -67,43 +67,42 @@ export function EditLocalModelDrawer() {
   }
 
   const engine_type = Form.useWatch('engine_type', form) || 'mistralrs'
-  console.log({engine_type})
 
   return (
-      <Drawer
-          title={t('providers.editLocalModel')}
-          open={open}
-          onClose={closeEditLocalModelDrawer}
-          footer={[
-            <Button key="cancel" onClick={closeEditLocalModelDrawer}>
-              {t('buttons.cancel')}
-            </Button>,
-            <Button
-                key="submit"
-                type="primary"
-                loading={loading}
-                onClick={handleSubmit}
-            >
-              {t('buttons.saveChanges')}
-            </Button>,
-          ]}
-          width={600}
-          maskClosable={false}
-      >
-        <Form form={form} layout="vertical">
-          <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
+    <Drawer
+      title={t('providers.editLocalModel')}
+      open={open}
+      onClose={closeEditLocalModelDrawer}
+      footer={[
+        <Button key="cancel" onClick={closeEditLocalModelDrawer}>
+          {t('buttons.cancel')}
+        </Button>,
+        <Button
+          key="submit"
+          type="primary"
+          loading={loading}
+          onClick={handleSubmit}
+        >
+          {t('buttons.saveChanges')}
+        </Button>,
+      ]}
+      width={600}
+      maskClosable={false}
+    >
+      <Form form={form} layout="vertical">
+        <ModelParametersSection parameters={BASIC_MODEL_FIELDS} />
 
-          <Flex className={`flex-col gap-3`}>
-            <ModelCapabilitiesSection />
-            <DeviceSelectionSection />
-            <EngineSelectionSection />
-            {engine_type === 'mistralrs' && <MistralRsModelSettingsSection />}
-            {engine_type === 'llamacpp' && <LlamaCppModelSettingsSection />}
-            <Card title={t('providers.parameters')}>
-              <ModelParametersSection parameters={MODEL_PARAMETERS} />
-            </Card>
-          </Flex>
-        </Form>
-      </Drawer>
+        <Flex className={`flex-col gap-3`}>
+          <ModelCapabilitiesSection />
+          <EngineSelectionSection />
+          <DeviceSelectionSection />
+          {engine_type === 'mistralrs' && <MistralRsModelSettingsSection />}
+          {engine_type === 'llamacpp' && <LlamaCppModelSettingsSection />}
+          <Card title={t('providers.parameters')}>
+            <ModelParametersSection parameters={MODEL_PARAMETERS} />
+          </Card>
+        </Flex>
+      </Form>
+    </Drawer>
   )
 }

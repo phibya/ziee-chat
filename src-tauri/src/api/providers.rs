@@ -80,7 +80,7 @@ pub async fn list_providers(
 ) -> ApiResult<Json<ProviderListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
-    
+
     let result = list_providers_base(&auth_user, page, per_page, false).await?;
     Ok(Json(result))
 }
@@ -92,7 +92,7 @@ pub async fn list_enabled_providers(
 ) -> ApiResult<Json<ProviderListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
-    
+
     let result = list_providers_base(&auth_user, page, per_page, true).await?;
     Ok(Json(result))
 }

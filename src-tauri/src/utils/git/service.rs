@@ -1,4 +1,4 @@
-use super::lfs::{LfsService, LfsProgress, LfsPhase, LfsError};
+use super::lfs::{LfsError, LfsPhase, LfsProgress, LfsService};
 use crate::utils::cancellation::CancellationToken;
 use git2::{build::RepoBuilder, Cred, FetchOptions, RemoteCallbacks};
 use serde::Serialize;
@@ -47,15 +47,16 @@ pub struct GitService {
     lfs_service: LfsService,
 }
 
-
 impl GitService {
     pub fn new() -> Self {
         let cache_dir = crate::get_app_data_dir().join("caches/models/git");
         let lfs_cache_dir = cache_dir.join("lfs_cache");
         let lfs_service = LfsService::new(lfs_cache_dir);
-        Self { cache_dir, lfs_service }
+        Self {
+            cache_dir,
+            lfs_service,
+        }
     }
-
 
     /// Generate a unique cache key based on repository_id, URL, and branch
     fn generate_cache_key(
@@ -196,7 +197,7 @@ impl GitService {
                         // Fallback: estimate bytes from objects (roughly 10KB per object)
                         progress.received_objects() as u64 * 10240
                     };
-                    
+
                     // Git2 doesn't provide total_bytes, so estimate from objects
                     let total_bytes = if progress.total_objects() > 0 {
                         progress.total_objects() as u64 * 10240
@@ -381,7 +382,7 @@ impl GitService {
                         // Fallback: estimate bytes from objects (roughly 10KB per object)
                         progress.received_objects() as u64 * 10240
                     };
-                    
+
                     // Git2 doesn't provide total_bytes, so estimate from objects
                     let total_bytes = if progress.total_objects() > 0 {
                         progress.total_objects() as u64 * 10240
@@ -499,7 +500,7 @@ impl GitService {
 
                 let _ = progress_tx.send(GitProgress {
                     phase: GitPhase::Complete,
-                    current: 1, // Completion - we don't know exact bytes, so use 1:1 ratio  
+                    current: 1, // Completion - we don't know exact bytes, so use 1:1 ratio
                     total: 1,
                     message: message.to_string(),
                 });
@@ -541,7 +542,6 @@ impl GitService {
         }
     }
 
-
     /// Pull specific LFS files based on file paths with cancellation support
     /// Now uses the native LFS implementation instead of git-lfs binary
     pub async fn pull_lfs_files_with_cancellation(
@@ -554,7 +554,7 @@ impl GitService {
     ) -> Result<(), GitError> {
         // Create a channel to receive LFS progress updates
         let (lfs_progress_tx, mut lfs_progress_rx) = mpsc::unbounded_channel::<LfsProgress>();
-        
+
         println!(
             "Pulling LFS files from repository: {} with paths: {:?}",
             repo_path.display(),
@@ -577,7 +577,7 @@ impl GitService {
                     total: lfs_progress.total,
                     message: lfs_progress.message,
                 };
-                
+
                 if git_progress_tx.send(git_progress).is_err() {
                     break; // Channel closed
                 }
@@ -585,7 +585,8 @@ impl GitService {
         });
 
         // Use the new LFS service
-        let result = self.lfs_service
+        let result = self
+            .lfs_service
             .pull_lfs_files_with_cancellation(
                 repo_path,
                 file_paths,

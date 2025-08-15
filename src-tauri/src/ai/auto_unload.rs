@@ -1,13 +1,13 @@
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use chrono::{DateTime, Utc, Duration as ChronoDuration};
 use tokio::time::Duration;
 use uuid::Uuid;
 
 pub struct AutoUnloadConfig {
-    pub idle_timeout_minutes: u64,    // Default: 30 minutes
-    pub check_interval_seconds: u64,   // Default: 60 seconds
-    pub enabled: bool,                 // Default: true
+    pub idle_timeout_minutes: u64,   // Default: 30 minutes
+    pub check_interval_seconds: u64, // Default: 60 seconds
+    pub enabled: bool,               // Default: true
 }
 
 impl Default for AutoUnloadConfig {
@@ -27,7 +27,7 @@ struct ModelAccessInfo {
     access_count: u64,
 }
 
-static MODEL_ACCESS_TRACKER: std::sync::LazyLock<Arc<RwLock<HashMap<Uuid, ModelAccessInfo>>>> = 
+static MODEL_ACCESS_TRACKER: std::sync::LazyLock<Arc<RwLock<HashMap<Uuid, ModelAccessInfo>>>> =
     std::sync::LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 /// Register model access for auto-unload tracking
@@ -37,11 +37,14 @@ pub async fn register_model_access(model_id: &Uuid) {
             last_access: Utc::now(),
             access_count: 0,
         });
-        
+
         access_info.last_access = Utc::now();
         access_info.access_count += 1;
-        
-        println!("Registered access for model {} (total: {})", model_id, access_info.access_count);
+
+        println!(
+            "Registered access for model {} (total: {})",
+            model_id, access_info.access_count
+        );
     }
 }
 
@@ -51,15 +54,16 @@ pub fn start_auto_unload_task(config: AutoUnloadConfig) {
         println!("Auto-unload is disabled");
         return;
     }
-    
-    println!("Starting auto-unload task (idle timeout: {} minutes, check interval: {} seconds)", 
-             config.idle_timeout_minutes, config.check_interval_seconds);
-    
+
+    println!(
+        "Starting auto-unload task (idle timeout: {} minutes, check interval: {} seconds)",
+        config.idle_timeout_minutes, config.check_interval_seconds
+    );
+
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(
-            Duration::from_secs(config.check_interval_seconds)
-        );
-        
+        let mut interval =
+            tokio::time::interval(Duration::from_secs(config.check_interval_seconds));
+
         loop {
             interval.tick().await;
             if let Err(e) = check_and_unload_idle_models(&config).await {
@@ -70,11 +74,11 @@ pub fn start_auto_unload_task(config: AutoUnloadConfig) {
 }
 
 async fn check_and_unload_idle_models(
-    config: &AutoUnloadConfig
+    config: &AutoUnloadConfig,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let now = Utc::now();
     let idle_threshold = ChronoDuration::minutes(config.idle_timeout_minutes as i64);
-    
+
     // Get models to check for auto-unload
     let models_to_check = {
         if let Ok(tracker) = MODEL_ACCESS_TRACKER.read() {
@@ -83,29 +87,34 @@ async fn check_and_unload_idle_models(
             return Ok(());
         }
     };
-    
+
     for (model_id, access_info) in models_to_check {
         let idle_duration = now.signed_duration_since(access_info.last_access);
-        
+
         if idle_duration > idle_threshold {
             // Verify model is still running using our robust verification
             if let Some((pid, port)) = crate::ai::verify_model_server_running(&model_id).await {
-                println!("Auto-unloading idle model {} (idle for {} minutes, {} total accesses)", 
-                         model_id, idle_duration.num_minutes(), access_info.access_count);
-                
+                println!(
+                    "Auto-unloading idle model {} (idle for {} minutes, {} total accesses)",
+                    model_id,
+                    idle_duration.num_minutes(),
+                    access_info.access_count
+                );
+
                 // Stop the model
                 match crate::ai::stop_model(&model_id, pid, port).await {
                     Ok(()) => {
                         // Update database
                         let _ = crate::database::queries::models::update_model_runtime_info(
-                            &model_id, None, None, false
-                        ).await;
-                        
+                            &model_id, None, None, false,
+                        )
+                        .await;
+
                         // Remove from access tracker
                         if let Ok(mut tracker) = MODEL_ACCESS_TRACKER.write() {
                             tracker.remove(&model_id);
                         }
-                        
+
                         println!("Successfully auto-unloaded model {}", model_id);
                     }
                     Err(e) => {
@@ -116,11 +125,14 @@ async fn check_and_unload_idle_models(
                 // Model not running or verification failed, remove from tracker
                 if let Ok(mut tracker) = MODEL_ACCESS_TRACKER.write() {
                     tracker.remove(&model_id);
-                    println!("Removed non-running model {} from auto-unload tracker", model_id);
+                    println!(
+                        "Removed non-running model {} from auto-unload tracker",
+                        model_id
+                    );
                 }
             }
         }
     }
-    
+
     Ok(())
 }

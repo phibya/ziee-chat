@@ -3,8 +3,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGProviderRequest, RAGProvider, UpdateRAGProviderRequest, RAGProviderListResponse,
-        CreateRAGDatabaseRequest, RAGDatabase, UpdateRAGDatabaseRequest,
+        CreateRAGDatabaseRequest, CreateRAGProviderRequest, RAGDatabase, RAGProvider,
+        RAGProviderListResponse, UpdateRAGDatabaseRequest, UpdateRAGProviderRequest,
     },
 };
 
@@ -61,7 +61,9 @@ pub async fn list_rag_providers(
     })
 }
 
-pub async fn create_rag_provider(request: CreateRAGProviderRequest) -> Result<RAGProvider, sqlx::Error> {
+pub async fn create_rag_provider(
+    request: CreateRAGProviderRequest,
+) -> Result<RAGProvider, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let provider_id = Uuid::new_v4();
@@ -132,7 +134,8 @@ pub async fn clone_rag_provider(provider_id: Uuid) -> Result<RAGProvider, sqlx::
     let pool = pool.as_ref();
 
     // Get the original provider
-    let original = get_rag_provider_by_id(provider_id).await?
+    let original = get_rag_provider_by_id(provider_id)
+        .await?
         .ok_or(sqlx::Error::RowNotFound)?;
 
     let new_provider_id = Uuid::new_v4();
@@ -175,7 +178,9 @@ pub async fn get_rag_database_by_id(database_id: Uuid) -> Result<Option<RAGDatab
     Ok(database_row)
 }
 
-pub async fn list_rag_databases_by_provider(provider_id: Uuid) -> Result<Vec<RAGDatabase>, sqlx::Error> {
+pub async fn list_rag_databases_by_provider(
+    provider_id: Uuid,
+) -> Result<Vec<RAGDatabase>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -281,7 +286,10 @@ pub async fn delete_rag_database(database_id: Uuid) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn set_rag_database_active(database_id: Uuid, is_active: bool) -> Result<RAGDatabase, sqlx::Error> {
+pub async fn set_rag_database_active(
+    database_id: Uuid,
+    is_active: bool,
+) -> Result<RAGDatabase, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -300,7 +308,10 @@ pub async fn set_rag_database_active(database_id: Uuid, is_active: bool) -> Resu
     Ok(database_row)
 }
 
-pub async fn set_rag_database_enabled(database_id: Uuid, enabled: bool) -> Result<RAGDatabase, sqlx::Error> {
+pub async fn set_rag_database_enabled(
+    database_id: Uuid,
+    enabled: bool,
+) -> Result<RAGDatabase, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 

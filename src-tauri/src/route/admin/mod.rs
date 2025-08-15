@@ -14,8 +14,9 @@ pub mod users;
 use axum::Router;
 
 pub fn admin_routes() -> Router {
-    Router::new()
-        .nest("/admin", Router::new()
+    Router::new().nest(
+        "/admin",
+        Router::new()
             .merge(users::admin_user_routes())
             .merge(groups::admin_group_routes())
             .merge(config::admin_config_routes())
@@ -27,6 +28,6 @@ pub fn admin_routes() -> Router {
             .merge(assistants::admin_assistant_routes())
             .merge(downloads::admin_download_routes())
             .merge(engines::admin_engine_routes())
-            .merge(hardware::hardware_routes())
-        )
+            .merge(hardware::hardware_routes()),
+    )
 }

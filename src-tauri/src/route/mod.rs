@@ -29,7 +29,7 @@ pub fn create_rest_router() -> Router {
                 .merge(user::user_routes())
                 .merge(chat::chat_routes())
                 .merge(projects::project_routes())
-                .layer(middleware::from_fn(api::middleware::auth_middleware))
+                .layer(middleware::from_fn(api::middleware::auth_middleware)),
         );
 
     // File routes (already have auth middleware applied individually)

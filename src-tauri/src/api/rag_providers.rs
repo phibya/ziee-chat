@@ -10,9 +10,10 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse, UpdateRAGProviderRequest,
-        CreateRAGDatabaseRequest, RAGDatabase, UpdateRAGDatabaseRequest,
-        RAGRepositoryConnectionTestResponse, DownloadRAGDatabaseFromRepositoryRequest,
+        CreateRAGDatabaseRequest, CreateRAGProviderRequest,
+        DownloadRAGDatabaseFromRepositoryRequest, RAGDatabase, RAGProvider,
+        RAGProviderListResponse, RAGRepositoryConnectionTestResponse, UpdateRAGDatabaseRequest,
+        UpdateRAGProviderRequest,
     },
     queries::{rag_providers, rag_repositories},
 };
@@ -39,7 +40,7 @@ pub async fn get_rag_provider(
     let provider = rag_providers::get_rag_provider_by_id(provider_id)
         .await?
         .ok_or(AppError::not_found("RAG provider"))?;
-    
+
     Ok(Json(provider))
 }
 
@@ -101,7 +102,7 @@ pub async fn get_rag_database(
     let database = rag_providers::get_rag_database_by_id(database_id)
         .await?
         .ok_or(AppError::not_found("RAG database"))?;
-    
+
     Ok(Json(database))
 }
 
@@ -136,8 +137,9 @@ pub async fn start_rag_database(
         .ok_or(AppError::not_found("RAG provider"))?;
 
     if provider.provider_type != "local" {
-        return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Only local RAG providers support start/stop operations"
+        return Err(AppError::new(
+            crate::api::errors::ErrorCode::ValidInvalidInput,
+            "Only local RAG providers support start/stop operations",
         ));
     }
 
@@ -159,8 +161,9 @@ pub async fn stop_rag_database(
         .ok_or(AppError::not_found("RAG provider"))?;
 
     if provider.provider_type != "local" {
-        return Err(AppError::new(crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Only local RAG providers support start/stop operations"
+        return Err(AppError::new(
+            crate::api::errors::ErrorCode::ValidInvalidInput,
+            "Only local RAG providers support start/stop operations",
         ));
     }
 

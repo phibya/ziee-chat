@@ -1,7 +1,7 @@
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
-use rand::Rng;
 use hex;
+use once_cell::sync::Lazy;
+use rand::Rng;
+use std::sync::Mutex;
 
 // Global JWT secret that persists for the app's lifetime
 static JWT_SECRET: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
@@ -15,7 +15,7 @@ pub fn get_jwt_secret() -> String {
 
     // If not in environment, get or create a persistent one for this app session
     let mut secret_guard = JWT_SECRET.lock().unwrap();
-    
+
     if let Some(ref secret) = *secret_guard {
         secret.clone()
     } else {

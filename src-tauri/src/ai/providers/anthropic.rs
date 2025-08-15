@@ -170,16 +170,25 @@ impl AnthropicProvider {
                             match self.process_file_reference_content(file_ref).await {
                                 Ok(file_content) => content_array.push(file_content),
                                 Err(e) => {
-                                    eprintln!("Error processing supported file {}: {}", file_ref.filename, e);
+                                    eprintln!(
+                                        "Error processing supported file {}: {}",
+                                        file_ref.filename, e
+                                    );
                                     // Continue processing other parts instead of failing the entire request
                                 }
                             }
                         } else {
-                            println!("Skipping unsupported file type '{}' for file: {}", mime_type, file_ref.filename);
+                            println!(
+                                "Skipping unsupported file type '{}' for file: {}",
+                                mime_type, file_ref.filename
+                            );
                             // File is not supported - skip it completely (don't add to content_array)
                         }
                     } else {
-                        println!("Skipping file with unknown MIME type: {}", file_ref.filename);
+                        println!(
+                            "Skipping file with unknown MIME type: {}",
+                            file_ref.filename
+                        );
                         // No MIME type - skip it completely
                     }
                 }
@@ -188,7 +197,6 @@ impl AnthropicProvider {
 
         Ok(content_array)
     }
-
 
     /// Process a file reference and convert it to appropriate Anthropic content format
     /// This handles unresolved file references by creating placeholder content
@@ -228,9 +236,7 @@ impl AnthropicProvider {
                 // No mapping exists, upload the file and create mapping
                 self.upload_and_update_mapping(file_ref).await
             }
-            Err(e) => {
-                Err(format!("Error checking provider file mapping: {}", e).into())
-            }
+            Err(e) => Err(format!("Error checking provider file mapping: {}", e).into()),
         }
     }
 
@@ -305,13 +311,9 @@ impl AnthropicProvider {
                     }
                 }
             }
-            Err(e) => {
-                Err(format!("Error uploading file to Anthropic: {}", e).into())
-            }
+            Err(e) => Err(format!("Error uploading file to Anthropic: {}", e).into()),
         }
     }
-
-
 
     /// Upload a file to Anthropic and return the file_id
     async fn upload_file_to_anthropic(

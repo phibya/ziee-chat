@@ -1,5 +1,5 @@
-use super::{LfsError, LfsMetadata, LfsPointer, FilePullMode, LfsProgress, LfsPhase};
 use super::metadata::{is_lfs_pointer_file, parse_lfs_pointer_content};
+use super::{FilePullMode, LfsError, LfsMetadata, LfsPhase, LfsPointer, LfsProgress};
 use crate::utils::cancellation::CancellationToken;
 use futures_util::stream::StreamExt;
 use http::StatusCode;
@@ -69,7 +69,7 @@ impl LfsService {
             "Searching git repo root from path {}",
             file_or_path.as_ref().display()
         );
-        
+
         let repo_dir = fs::canonicalize(file_or_path.as_ref()).await.map_err(|e| {
             LfsError::DirectoryTraversalError(format!(
                 "Problem getting the absolute path of {}: {}",
@@ -77,7 +77,7 @@ impl LfsService {
                 e
             ))
         })?;
-        
+
         let components: Vec<_> = repo_dir.components().collect();
         for i in (0..components.len()).rev() {
             let path = components
@@ -128,22 +128,25 @@ impl LfsService {
             let worktree_path = worktree_file_contents
                 .split(':')
                 .find(|c| c.contains(".git"))
-                .ok_or_else(|| LfsError::DirectoryTraversalError(
-                    "Could not resolve original repo .git/config file from worktree .git file".to_string()
-                ))?
+                .ok_or_else(|| {
+                    LfsError::DirectoryTraversalError(
+                        "Could not resolve original repo .git/config file from worktree .git file"
+                            .to_string(),
+                    )
+                })?
                 .trim();
-            Self::get_repo_root(worktree_path)
-                .await
-                .map_err(|_| LfsError::DirectoryTraversalError(
-                    "Found worktree, but couldn't resolve root-repo".to_string()
-                ))?
+            Self::get_repo_root(worktree_path).await.map_err(|_| {
+                LfsError::DirectoryTraversalError(
+                    "Found worktree, but couldn't resolve root-repo".to_string(),
+                )
+            })?
         } else if git_path.is_dir() {
             // git main copy
             git_path
                 .parent()
-                .ok_or_else(|| LfsError::DirectoryTraversalError(
-                    "Git path has no parent".to_string()
-                ))?
+                .ok_or_else(|| {
+                    LfsError::DirectoryTraversalError("Git path has no parent".to_string())
+                })?
                 .to_owned()
         } else {
             // no .git in repo_root - bad
@@ -188,12 +191,10 @@ impl LfsService {
     fn url_with_auth(url: &str, access_token: Option<&str>) -> Result<Url, LfsError> {
         let mut url = Url::parse(url)?;
         let username = if access_token.is_some() { "oauth2" } else { "" };
-        url.set_username(username).map_err(|_| {
-            LfsError::InvalidFormat("Could not set username")
-        })?;
-        url.set_password(access_token).map_err(|_| {
-            LfsError::InvalidFormat("Could not set password")
-        })?;
+        url.set_username(username)
+            .map_err(|_| LfsError::InvalidFormat("Could not set username"))?;
+        url.set_password(access_token)
+            .map_err(|_| LfsError::InvalidFormat("Could not set password"))?;
         Ok(url)
     }
 
@@ -208,7 +209,7 @@ impl LfsService {
     ) -> Result<NamedTempFile, LfsError> {
         const MEDIA_TYPE: &str = "application/vnd.git-lfs+json";
         let client = Client::builder().build()?;
-        
+
         if meta_data.hash != Some(super::metadata::Hash::SHA256) {
             return Err(LfsError::InvalidFormat("Only SHA256 hash is supported"));
         }
@@ -238,12 +239,15 @@ impl LfsService {
             .json(&request)
             .send()
             .await?;
-            
+
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            error!("Failed to request git lfs actions with status code {} and body {}", status, body);
-            
+            error!(
+                "Failed to request git lfs actions with status code {} and body {}",
+                status, body
+            );
+
             return if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
                 Err(LfsError::AccessDenied)
             } else if status == StatusCode::NOT_FOUND && body.contains("Cannot POST") {
@@ -256,13 +260,14 @@ impl LfsService {
                 Err(LfsError::ResponseNotOkay(format!("{}", status)))
             };
         }
-        
+
         // Get response text for debugging before parsing
         let response_text = response.text().await?;
         debug!("LFS batch API response: {}", response_text);
-        
-        let parsed_result: ApiResult = serde_json::from_str(&response_text)
-            .map_err(|e| LfsError::InvalidResponse(format!("Failed to parse LFS response: {}", e)))?;
+
+        let parsed_result: ApiResult = serde_json::from_str(&response_text).map_err(|e| {
+            LfsError::InvalidResponse(format!("Failed to parse LFS response: {}", e))
+        })?;
 
         // Download the file
         let object = parsed_result
@@ -281,7 +286,7 @@ impl LfsService {
         let download_request_builder = client.get(url).headers(headers);
         let response = download_request_builder.send().await?;
         let download_status = response.status();
-        
+
         if !download_status.is_success() {
             let message = format!(
                 "Download failed: {} - body {}",
@@ -296,12 +301,12 @@ impl LfsService {
         const TEMP_SUFFIX: &str = ".lfstmp";
         const TEMP_FOLDER: &str = "./";
         let tmp_path = PathBuf::from(TEMP_FOLDER).join(format!("{}{TEMP_SUFFIX}", &meta_data.oid));
-        
+
         if randomizer_bytes.is_none() && tmp_path.exists() {
             debug!("temp file exists. Deleting");
             fs::remove_file(&tmp_path).await?;
         }
-        
+
         let temp_file = tempfile::Builder::new()
             .prefix(&meta_data.oid)
             .suffix(TEMP_SUFFIX)
@@ -316,7 +321,7 @@ impl LfsService {
         let mut downloaded_bytes = 0u64;
         // Don't overwrite total_size parameter - it contains the sum of all files
         // meta_data.size is only the size of the current file
-        
+
         while let Some(chunk_result) = stream.next().await {
             let chunk = chunk_result?;
             temp_file.as_file().write_all(&chunk).map_err(|e| {
@@ -324,7 +329,7 @@ impl LfsService {
                 LfsError::Io(e)
             })?;
             hasher.update(&chunk);
-            
+
             // Update progress
             downloaded_bytes += chunk.len() as u64;
             if let Some(tx) = progress_tx {
@@ -333,11 +338,14 @@ impl LfsService {
                     phase: LfsPhase::Downloading,
                     current: current_total_progress,
                     total: total_size_all_files,
-                    message: format!("Downloading... {:.1}%", (current_total_progress as f64 / total_size_all_files as f64) * 100.0),
+                    message: format!(
+                        "Downloading... {:.1}%",
+                        (current_total_progress as f64 / total_size_all_files as f64) * 100.0
+                    ),
                 });
             }
         }
-        
+
         temp_file.as_file().flush().map_err(|e| {
             error!("Could not flush tempfile");
             LfsError::Io(e)
@@ -347,7 +355,7 @@ impl LfsService {
 
         let result = hasher.finalize();
         let hex_data = hex::decode(object.oid.as_bytes())?;
-        
+
         if result[..] == hex_data {
             Ok(temp_file)
         } else {
@@ -379,15 +387,34 @@ impl LfsService {
                 )
             })?;
 
-            let temp_file = Self::download_file(metadata, &repo_url, access_token, randomizer_bytes, progress_tx, base_progress, total_size_all_files).await?;
-            
+            let temp_file = Self::download_file(
+                metadata,
+                &repo_url,
+                access_token,
+                randomizer_bytes,
+                progress_tx,
+                base_progress,
+                total_size_all_files,
+            )
+            .await?;
+
             if cache_file.exists() {
-                info!("cache file {:?} is already written from other process", &cache_file);
+                info!(
+                    "cache file {:?} is already written from other process",
+                    &cache_file
+                );
             } else {
-                fs::rename(&temp_file.path(), cache_file.as_path()).await.map_err(|e| {
-                    error!("Could not rename {:?} to {:?}: {:?}", temp_file.path(), cache_file.as_path(), &e);
-                    LfsError::Io(e)
-                })?;
+                fs::rename(&temp_file.path(), cache_file.as_path())
+                    .await
+                    .map_err(|e| {
+                        error!(
+                            "Could not rename {:?} to {:?}: {:?}",
+                            temp_file.path(),
+                            cache_file.as_path(),
+                            &e
+                        );
+                        LfsError::Io(e)
+                    })?;
             }
 
             Ok((cache_file, FilePullMode::DownloadedFromRemote))
@@ -404,11 +431,15 @@ impl LfsService {
         total_size_all_files: Option<u64>,
     ) -> Result<FilePullMode, LfsError> {
         info!("Pulling file {}", lfs_file.as_ref().display());
-        
+
         if !is_lfs_pointer_file(&lfs_file).await? {
             info!(
                 "File ({}) not an lfs-node file - pulled already.",
-                lfs_file.as_ref().file_name().unwrap_or_default().to_string_lossy()
+                lfs_file
+                    .as_ref()
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
             );
             return Ok(FilePullMode::WasAlreadyPresent);
         }
@@ -416,21 +447,31 @@ impl LfsService {
         debug!("parsing metadata");
         let metadata = LfsMetadata::parse_from_file(&lfs_file).await?;
         debug!("Downloading file");
-        
+
         let repo_root = Self::get_repo_root(&lfs_file).await?;
-        
-        let (file_name_cached, origin) =
-            Self::get_file_cached(&repo_root, &metadata, access_token, randomizer_bytes, progress_tx, base_progress.unwrap_or(0), total_size_all_files.unwrap_or(metadata.size)).await?;
-            
+
+        let (file_name_cached, origin) = Self::get_file_cached(
+            &repo_root,
+            &metadata,
+            access_token,
+            randomizer_bytes,
+            progress_tx,
+            base_progress.unwrap_or(0),
+            total_size_all_files.unwrap_or(metadata.size),
+        )
+        .await?;
+
         info!(
             "Found file (Origin: {:?}), linking to {}",
             origin,
             lfs_file.as_ref().display()
         );
-        
+
         fs::remove_file(&lfs_file).await?;
-        fs::hard_link(&file_name_cached, lfs_file).await.map_err(|e| LfsError::Io(e))?;
-        
+        fs::hard_link(&file_name_cached, lfs_file)
+            .await
+            .map_err(|e| LfsError::Io(e))?;
+
         Ok(origin)
     }
 
@@ -484,7 +525,7 @@ impl LfsService {
             }
 
             let full_path = repo_path.join(file_path);
-            
+
             // Use the existing is_lfs_pointer_file function to check if file is an LFS pointer
             if let Ok(is_lfs) = is_lfs_pointer_file(&full_path).await {
                 if is_lfs {
@@ -503,7 +544,11 @@ impl LfsService {
             }
         }
 
-        info!("Found {} LFS files with total size {} bytes", lfs_files.len(), total_size);
+        info!(
+            "Found {} LFS files with total size {} bytes",
+            lfs_files.len(),
+            total_size
+        );
 
         if lfs_files.is_empty() {
             let _ = progress_tx.send(LfsProgress {
@@ -538,24 +583,47 @@ impl LfsService {
                 phase: LfsPhase::Downloading,
                 current: downloaded_size,
                 total: total_size,
-                message: format!("Downloading {} ({} of {})", file_name, index + 1, total_files),
+                message: format!(
+                    "Downloading {} ({} of {})",
+                    file_name,
+                    index + 1,
+                    total_files
+                ),
             });
 
             // Download the file
             let full_file_path = repo_path.join(&lfs_pointer.path);
-            match Self::pull_file(&full_file_path, auth_token, None, Some(&progress_tx), Some(downloaded_size), Some(total_size)).await {
+            match Self::pull_file(
+                &full_file_path,
+                auth_token,
+                None,
+                Some(&progress_tx),
+                Some(downloaded_size),
+                Some(total_size),
+            )
+            .await
+            {
                 Ok(_) => {
                     downloaded_size += lfs_pointer.size;
-                    
+
                     let _ = progress_tx.send(LfsProgress {
                         phase: LfsPhase::Downloading,
                         current: downloaded_size,
                         total: total_size,
-                        message: format!("Completed {} ({} of {})", file_name, index + 1, total_files),
+                        message: format!(
+                            "Completed {} ({} of {})",
+                            file_name,
+                            index + 1,
+                            total_files
+                        ),
                     });
                 }
                 Err(e) => {
-                    let error_msg = format!("Failed to download LFS file {}: {}", lfs_pointer.path.display(), e);
+                    let error_msg = format!(
+                        "Failed to download LFS file {}: {}",
+                        lfs_pointer.path.display(),
+                        e
+                    );
                     let _ = progress_tx.send(LfsProgress {
                         phase: LfsPhase::Error,
                         current: 0,
@@ -582,7 +650,10 @@ impl LfsService {
             message: format!("Successfully downloaded all {} LFS files", total_files),
         });
 
-        info!("LFS download completed: {} files, {} total bytes", total_files, total_size);
+        info!(
+            "LFS download completed: {} files, {} total bytes",
+            total_files, total_size
+        );
         Ok(())
     }
 }
@@ -595,14 +666,16 @@ mod tests {
     fn test_ssh_to_https_transform() {
         let repo_remote = "ssh://git@github.com/user/repo.git";
         let repo_remote_https = "https://github.com/user/repo.git";
-        let result = LfsService::remote_url_ssh_to_https(repo_remote.to_string()).expect("Could not parse url");
+        let result = LfsService::remote_url_ssh_to_https(repo_remote.to_string())
+            .expect("Could not parse url");
         assert_eq!(result, repo_remote_https);
     }
 
     #[test]
     fn test_https_identity() {
         let repo_remote_https = "https://github.com/user/repo.git";
-        let result = LfsService::remote_url_ssh_to_https(repo_remote_https.to_string()).expect("Could not parse url");
+        let result = LfsService::remote_url_ssh_to_https(repo_remote_https.to_string())
+            .expect("Could not parse url");
         assert_eq!(result, repo_remote_https);
     }
 }

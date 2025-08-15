@@ -5,8 +5,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateModelRequest, Model, ModelFile, ModelStatusCounts, ModelStorageInfo,
-        UpdateModelRequest, Provider,
+        CreateModelRequest, Model, ModelFile, ModelStatusCounts, ModelStorageInfo, Provider,
+        UpdateModelRequest,
     },
 };
 
@@ -17,7 +17,8 @@ pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, 
     let model_rows: Vec<Model> = sqlx::query_as(
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp
+                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+                file_format
          FROM models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC",
@@ -80,7 +81,7 @@ pub async fn update_model(
              engine_settings_llamacpp = COALESCE($11, engine_settings_llamacpp),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format"
   )
     .bind(model_id)
     .bind(&request.name)
@@ -118,7 +119,8 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let model_row: Option<Model> = sqlx::query_as(
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp
+                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+                file_format
          FROM models 
          WHERE id = $1",
     )
@@ -146,7 +148,10 @@ pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>,
 }
 
 /// Create a Candle model with required architecture and default settings
-pub async fn create_local_model(model_id: &Uuid, request: &CreateModelRequest) -> Result<Model, sqlx::Error> {
+pub async fn create_local_model(
+    model_id: &Uuid,
+    request: &CreateModelRequest,
+) -> Result<Model, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let now = Utc::now();
@@ -157,13 +162,17 @@ pub async fn create_local_model(model_id: &Uuid, request: &CreateModelRequest) -
             id, provider_id, name, alias, description, 
             file_size_bytes, enabled, 
             is_deprecated, is_active, capabilities, parameters, 
-            validation_status, settings, created_at, updated_at
+            validation_status,
+            engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+            file_format, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
         ) RETURNING id, provider_id, name, alias, description, 
                    file_size_bytes, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
-                   validation_status, validation_issues, settings, port, pid, created_at, updated_at
+                   validation_status, validation_issues, 
+                   engine_type, engine_settings_mistralrs, engine_settings_llamacpp, 
+                   file_format, port, pid, created_at, updated_at
         "#,
     )
     .bind(*model_id)
@@ -184,7 +193,10 @@ pub async fn create_local_model(model_id: &Uuid, request: &CreateModelRequest) -
     )
     .bind(serde_json::json!({}))
     .bind("pending")
-    .bind(serde_json::json!({})) // Model settings with architecture
+    .bind(&request.engine_type)
+    .bind(serde_json::json!({}))
+    .bind(serde_json::json!({}))
+    .bind(&request.file_format)
     .bind(now)
     .bind(now)
     .fetch_one(pool)
@@ -416,7 +428,7 @@ pub async fn get_model_runtime_info(model_id: &Uuid) -> Result<Option<(i32, i32)
 pub async fn get_provider_by_model_id(model_id: Uuid) -> Result<Option<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    
+
     let provider: Option<Provider> = sqlx::query_as(
         r#"
         SELECT p.id, p.name, p.provider_type, p.enabled, p.api_key, p.base_url, 

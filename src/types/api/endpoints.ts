@@ -112,9 +112,7 @@ import {
   RAGRepositoryListResponse,
   UpdateRAGRepositoryRequest,
 } from './ragRepository'
-import {
-  EngineListResponse,
-} from './engine'
+import { EngineListResponse } from './engine'
 
 // API endpoint definitions
 export const ApiEndpoints = {

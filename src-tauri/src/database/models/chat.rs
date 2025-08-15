@@ -1,8 +1,8 @@
+use crate::database::models::File;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
-use crate::database::models::File;
 
 // Main unified structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,7 +45,7 @@ pub struct Message {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub metadata: Option<Vec<MessageMetadata>>,
-    pub files: Vec<File>
+    pub files: Vec<File>,
 }
 
 impl FromRow<'_, sqlx::postgres::PgRow> for Message {
@@ -60,7 +60,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Message {
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
             metadata: None, // This is loaded separately via joins when needed
-            files: vec![], // This is loaded separately via joins when needed
+            files: vec![],  // This is loaded separately via joins when needed
         })
     }
 }
@@ -249,33 +249,33 @@ impl FileReference {
             .map(|mt| mt.starts_with("image/"))
             .unwrap_or(false)
     }
-    
+
     pub fn is_pdf(&self) -> bool {
         self.mime_type
             .as_ref()
             .map(|mt| mt == "application/pdf")
             .unwrap_or(false)
     }
-    
+
     pub fn is_text(&self) -> bool {
         self.mime_type
             .as_ref()
             .map(|mt| mt.starts_with("text/"))
             .unwrap_or(false)
     }
-    
+
     pub fn is_spreadsheet(&self) -> bool {
         self.mime_type
             .as_ref()
             .map(|mt| {
-                mt == "application/vnd.ms-excel" 
-                || mt == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                || mt == "application/vnd.oasis.opendocument.spreadsheet"
-                || mt == "text/csv"
+                mt == "application/vnd.ms-excel"
+                    || mt == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    || mt == "application/vnd.oasis.opendocument.spreadsheet"
+                    || mt == "text/csv"
             })
             .unwrap_or(false)
     }
-    
+
     pub fn is_document(&self) -> bool {
         self.mime_type
             .as_ref()

@@ -28,7 +28,7 @@ pub async fn create_user_group(
     let provider_ids = get_provider_ids_for_group(group.id)
         .await
         .unwrap_or_default();
-    
+
     group.provider_ids = provider_ids;
 
     Ok(group)
@@ -66,11 +66,13 @@ pub async fn list_user_groups(
     let total: i64 = total_row.get("count");
 
     // Get groups
-    let mut groups = sqlx::query_as::<_, UserGroup>("SELECT * FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2")
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(&*pool)
-        .await?;
+    let mut groups = sqlx::query_as::<_, UserGroup>(
+        "SELECT * FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+    )
+    .bind(per_page)
+    .bind(offset)
+    .fetch_all(&*pool)
+    .await?;
 
     // Load provider_ids for each group
     for group in &mut groups {

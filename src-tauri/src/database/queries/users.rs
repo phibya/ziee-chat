@@ -3,7 +3,6 @@ use crate::database::models::*;
 use sqlx::Row;
 use uuid::Uuid;
 
-
 /// Clone default assistants for a new user
 async fn clone_default_assistants_for_user(user_id: Uuid) -> Result<(), sqlx::Error> {
     // Get all default assistants
@@ -38,19 +37,20 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
     };
 
     let emails = sqlx::query_as::<_, UserEmail>(
-        "SELECT * FROM user_emails WHERE user_id = $1 ORDER BY created_at"
+        "SELECT * FROM user_emails WHERE user_id = $1 ORDER BY created_at",
     )
     .bind(user_id)
     .fetch_all(&*pool)
     .await?;
 
-    let services = sqlx::query_as::<_, UserService>("SELECT * FROM user_services WHERE user_id = $1")
-        .bind(user_id)
-        .fetch_all(&*pool)
-        .await?;
+    let services =
+        sqlx::query_as::<_, UserService>("SELECT * FROM user_services WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_all(&*pool)
+            .await?;
 
     let login_tokens = sqlx::query_as::<_, UserLoginToken>(
-        "SELECT * FROM user_login_tokens WHERE user_id = $1 ORDER BY when_created DESC"
+        "SELECT * FROM user_login_tokens WHERE user_id = $1 ORDER BY when_created DESC",
     )
     .bind(user_id)
     .fetch_all(&*pool)

@@ -4,10 +4,24 @@ import { initializeEngines, Stores } from '../../../../../store'
 
 const { Text } = Typography
 
+const ENGINE_DESCRIPTIONS = {
+  mistralrs: 'High-performance inference engine optimized for Mistral and Llama models',
+  llamacpp: 'GPU-optimized inference engine with broad model format support',
+  default: 'Local model execution engine'
+} as const
+
 export const EngineSelectionSection: React.FC = () => {
   const { engines, loading, error, initialized } = Stores.AdminEngines
   const form = Form.useFormInstance()
   const selectedEngineType = form.getFieldValue('engine_type') || 'mistralrs'
+
+  const { modelId } = Stores.UI.EditLocalModelDrawer
+  const { providers } = Stores.AdminProviders
+
+  // Find the current model from all providers
+  const currentModel = modelId
+      ? providers.flatMap(p => p.models).find(m => m.id === modelId)
+      : null
 
   // Initialize engines on mount
   useEffect(() => {
@@ -15,17 +29,6 @@ export const EngineSelectionSection: React.FC = () => {
       initializeEngines().catch(console.error)
     }
   }, [initialized])
-
-  const getEngineDescription = (engineType: string) => {
-    switch (engineType) {
-      case 'mistralrs':
-        return 'High-performance inference engine optimized for Mistral and Llama models'
-      case 'llamacpp':
-        return 'GPU-optimized inference engine with broad model format support'
-      default:
-        return 'Local model execution engine'
-    }
-  }
 
   const getEngineDisplayName = (engine: any) => {
     return engine.name || engine.engine_type
@@ -76,21 +79,35 @@ export const EngineSelectionSection: React.FC = () => {
         >
           <Select
             placeholder="Select inference engine"
-            options={engines?.map(engine => ({
-              value: engine.engine_type,
-              label: getEngineDisplayName(engine),
-              engine: engine,
-            }))}
+            options={engines?.map(engine => {
+              // Disable LlamaCpp if model file format is not "gguf"
+              const isLlamaCppDisabled = engine.engine_type === 'llamacpp' && 
+                                        currentModel && 
+                                        currentModel.file_format !== 'gguf'
+              
+              return {
+                value: engine.engine_type,
+                label: getEngineDisplayName(engine),
+                disabled: Boolean(isLlamaCppDisabled),
+                engine: engine,
+              }
+            })}
             optionRender={option => (
               <div className={'flex flex-col gap-1 py-1'}>
-                <Text strong>{option.label}</Text>
+                <Text strong>
+                  {option.label}
+                  {option.data.disabled && ' (Not compatible)'}
+                </Text>
                 {option.data.engine.version && (
-                  <Text className="!text-xs">
+                  <Text className={`!text-xs`}>
                     Version: {option.data.engine.version}
                   </Text>
                 )}
-                <Text className="!text-xs">
-                  {getEngineDescription(option.data.engine.engine_type)}
+                <Text className={`!text-xs`}>
+                  {option.data.disabled && option.data.engine.engine_type === 'llamacpp' 
+                    ? `Requires GGUF format (current: ${currentModel?.file_format || 'unknown'})`
+                    : ENGINE_DESCRIPTIONS[option.data.engine.engine_type as keyof typeof ENGINE_DESCRIPTIONS] || ENGINE_DESCRIPTIONS.default
+                  }
                 </Text>
               </div>
             )}

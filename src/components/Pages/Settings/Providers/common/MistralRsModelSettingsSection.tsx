@@ -62,7 +62,10 @@ export function MistralRsModelSettingsSection() {
   // Watch for device type changes
   const selectedDeviceType =
     Form.useWatch(['engine_settings_mistralrs', 'device_type'], form) || 'cpu'
-  const currentQuantization = Form.useWatch(['engine_settings_mistralrs', 'in_situ_quant'], form)
+  const currentQuantization = Form.useWatch(
+    ['engine_settings_mistralrs', 'in_situ_quant'],
+    form,
+  )
 
   // Filter quantization options based on device type
   const availableQuantizationOptions = useMemo(() => {
@@ -82,7 +85,10 @@ export function MistralRsModelSettingsSection() {
       )?.deviceTypes.includes(selectedDeviceType)
 
       if (!isCurrentQuantizationCompatible) {
-        form.setFieldValue(['engine_settings_mistralrs', 'in_situ_quant'], undefined)
+        form.setFieldValue(
+          ['engine_settings_mistralrs', 'in_situ_quant'],
+          undefined,
+        )
       }
     }
   }, [selectedDeviceType, currentQuantization, form])
@@ -98,9 +104,7 @@ export function MistralRsModelSettingsSection() {
     description: string
     children: React.ReactNode
   }) => (
-    <Flex
-      justify="space-between"
-    >
+    <Flex justify="space-between">
       <div>
         <Text strong>{title}</Text>
         <div>
@@ -120,9 +124,7 @@ export function MistralRsModelSettingsSection() {
             title="Max Sequences"
             description="Maximum running sequences at any time (default: 16)"
           >
-            <Form.Item
-              name={getFieldName('max_seqs')}
-            >
+            <Form.Item name={getFieldName('max_seqs')}>
               <InputNumber
                 min={1}
                 max={1024}
@@ -138,9 +140,7 @@ export function MistralRsModelSettingsSection() {
             title="Max Sequence Length"
             description="Maximum prompt sequence length to expect for this model (default: 4096)"
           >
-            <Form.Item
-              name={getFieldName('max_seq_len')}
-            >
+            <Form.Item name={getFieldName('max_seq_len')}>
               <InputNumber
                 min={512}
                 max={131072}
@@ -189,9 +189,7 @@ export function MistralRsModelSettingsSection() {
             title="PagedAttention GPU Memory (MB)"
             description="GPU memory to allocate for KV cache with PagedAttention in MBs"
           >
-            <Form.Item
-              name={getFieldName('paged_attn_gpu_mem')}
-            >
+            <Form.Item name={getFieldName('paged_attn_gpu_mem')}>
               <InputNumber
                 min={128}
                 max={65536}
@@ -207,9 +205,7 @@ export function MistralRsModelSettingsSection() {
             title="PagedAttention GPU Memory Usage"
             description="Percentage of GPU memory to utilize after allocation of KV cache with PagedAttention, from 0 to 1 (default: 0.9 on CUDA)"
           >
-            <Form.Item
-              name={getFieldName('paged_attn_gpu_mem_usage')}
-            >
+            <Form.Item name={getFieldName('paged_attn_gpu_mem_usage')}>
               <InputNumber
                 min={0.1}
                 max={1.0}
@@ -226,9 +222,7 @@ export function MistralRsModelSettingsSection() {
             title="PagedAttention Context Length"
             description="Total context length to allocate the KV cache for (total number of tokens which the KV cache can hold)"
           >
-            <Form.Item
-              name={getFieldName('paged_ctxt_len')}
-            >
+            <Form.Item name={getFieldName('paged_ctxt_len')}>
               <InputNumber
                 min={512}
                 max={131072}
@@ -244,9 +238,7 @@ export function MistralRsModelSettingsSection() {
             title="PagedAttention Block Size"
             description="Block size (number of tokens per block) for PagedAttention (default: 32 on CUDA)"
           >
-            <Form.Item
-              name={getFieldName('paged_attn_block_size')}
-            >
+            <Form.Item name={getFieldName('paged_attn_block_size')}>
               <InputNumber
                 min={1}
                 max={512}
@@ -295,9 +287,7 @@ export function MistralRsModelSettingsSection() {
             title="Prefix Cache Count"
             description="Number of prefix caches to hold on the device. Other caches are evicted to the CPU based on a LRU strategy (default: 16)"
           >
-            <Form.Item
-              name={getFieldName('prefix_cache_n')}
-            >
+            <Form.Item name={getFieldName('prefix_cache_n')}>
               <InputNumber
                 min={1}
                 max={128}
@@ -313,9 +303,7 @@ export function MistralRsModelSettingsSection() {
             title="Prompt Chunk Size"
             description="Number of tokens to batch the prompt step into. This can help with OOM errors when in the prompt step, but reduces performance"
           >
-            <Form.Item
-              name={getFieldName('prompt_chunksize')}
-            >
+            <Form.Item name={getFieldName('prompt_chunksize')}>
               <InputNumber
                 min={1}
                 max={8192}
@@ -334,9 +322,7 @@ export function MistralRsModelSettingsSection() {
             title="Data Type"
             description="Model data type (default: auto)"
           >
-            <Form.Item
-              name={getFieldName('dtype')}
-            >
+            <Form.Item name={getFieldName('dtype')}>
               <Select
                 placeholder="auto"
                 style={{ width: '100%' }}
@@ -357,9 +343,7 @@ export function MistralRsModelSettingsSection() {
             title="In-Situ Quantization"
             description={`In-situ quantization to apply (${selectedDeviceType.toUpperCase()})`}
           >
-            <Form.Item
-              name={getFieldName('in_situ_quant')}
-            >
+            <Form.Item name={getFieldName('in_situ_quant')}>
               <Select
                 placeholder="None"
                 style={{ width: '100%' }}
@@ -375,9 +359,7 @@ export function MistralRsModelSettingsSection() {
             title="Random Seed"
             description="Integer seed to ensure reproducible random number generation"
           >
-            <Form.Item
-              name={getFieldName('seed')}
-            >
+            <Form.Item name={getFieldName('seed')}>
               <InputNumber
                 min={0}
                 max={4294967295}
@@ -396,9 +378,7 @@ export function MistralRsModelSettingsSection() {
             title="Max Edge Length (Vision)"
             description="Automatically resize and pad images to this maximum edge length. Aspect ratio is preserved (vision models only)"
           >
-            <Form.Item
-              name={getFieldName('max_edge')}
-            >
+            <Form.Item name={getFieldName('max_edge')}>
               <InputNumber
                 min={224}
                 max={2048}
@@ -414,9 +394,7 @@ export function MistralRsModelSettingsSection() {
             title="Max Number of Images (Vision)"
             description="Maximum prompt number of images to expect for this model (vision models only)"
           >
-            <Form.Item
-              name={getFieldName('max_num_images')}
-            >
+            <Form.Item name={getFieldName('max_num_images')}>
               <InputNumber
                 min={1}
                 max={32}
@@ -432,9 +410,7 @@ export function MistralRsModelSettingsSection() {
             title="Max Image Length (Vision)"
             description="Maximum expected image size will have this edge length on both edges (vision models only)"
           >
-            <Form.Item
-              name={getFieldName('max_image_length')}
-            >
+            <Form.Item name={getFieldName('max_image_length')}>
               <InputNumber
                 min={224}
                 max={2048}

@@ -17,11 +17,8 @@ use crate::ai::{
 };
 use crate::api::chat::ChatMessageRequest;
 use crate::database::{
-    models::{Message, Assistant},
-    queries::{
-        assistants::get_assistant_by_id,
-        chat::get_conversation_messages,
-    },
+    models::{Assistant, Message},
+    queries::{assistants::get_assistant_by_id, chat::get_conversation_messages},
 };
 
 /// Build messages array for a chat request with conversation history and file attachments
@@ -60,7 +57,8 @@ pub async fn build_chat_messages(
     }
 
     // Add the current user's message with potential file references
-    let user_message_content = build_user_message_content(request.content.clone(), request.file_ids.clone()).await?;
+    let user_message_content =
+        build_user_message_content(request.content.clone(), request.file_ids.clone()).await?;
     messages.push(ChatMessage {
         role: "user".to_string(),
         content: user_message_content,

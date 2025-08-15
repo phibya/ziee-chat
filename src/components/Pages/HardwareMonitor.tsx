@@ -146,7 +146,6 @@ export function HardwareMonitor() {
     )
   }
 
-
   if (hardwareLoading) {
     return (
       <div className="p-3">
@@ -191,7 +190,8 @@ export function HardwareMonitor() {
 
             {/* GPU Usage Cards - Arranged with wrapping support */}
             <div className="flex gap-3 flex-wrap">
-              {!currentUsage?.gpu_devices || currentUsage.gpu_devices.length === 0 ? (
+              {!currentUsage?.gpu_devices ||
+              currentUsage.gpu_devices.length === 0 ? (
                 <div className="flex-1 min-w-80">
                   <Card title="GPU Usage">
                     <Text type="secondary">No GPU usage data available</Text>
@@ -237,7 +237,8 @@ export function HardwareMonitor() {
                                   ? 'System Memory Usage'
                                   : 'GPU Memory'}
                               </Text>
-                              {gpuUsage.memory_usage_percentage !== undefined ? (
+                              {gpuUsage.memory_usage_percentage !==
+                              undefined ? (
                                 <Progress
                                   percent={gpuUsage.memory_usage_percentage}
                                   status={
@@ -254,10 +255,14 @@ export function HardwareMonitor() {
                                 gpuUsage.memory_total !== undefined && (
                                   <Progress
                                     percent={
-                                      (gpuUsage.memory_used / gpuUsage.memory_total) * 100
+                                      (gpuUsage.memory_used /
+                                        gpuUsage.memory_total) *
+                                      100
                                     }
                                     status={
-                                      (gpuUsage.memory_used / gpuUsage.memory_total) * 100 >
+                                      (gpuUsage.memory_used /
+                                        gpuUsage.memory_total) *
+                                        100 >
                                       90
                                         ? 'exception'
                                         : 'active'
@@ -272,7 +277,10 @@ export function HardwareMonitor() {
                               {gpuUsage.memory_used !== undefined &&
                                 gpuUsage.memory_total !== undefined && (
                                   <div className="mt-1">
-                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    <Text
+                                      type="secondary"
+                                      style={{ fontSize: '12px' }}
+                                    >
                                       {gpuInfo?.vendor?.includes('Apple')
                                         ? 'GPU Memory Used: '
                                         : 'Used: '}
@@ -288,12 +296,18 @@ export function HardwareMonitor() {
 
                           <div className="flex gap-3">
                             {gpuUsage.temperature !== undefined && (
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                              <Text
+                                type="secondary"
+                                style={{ fontSize: '12px' }}
+                              >
                                 Temperature: {gpuUsage.temperature}°C
                               </Text>
                             )}
                             {gpuUsage.power_usage !== undefined && (
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                              <Text
+                                type="secondary"
+                                style={{ fontSize: '12px' }}
+                              >
                                 Power: {gpuUsage.power_usage}W
                               </Text>
                             )}

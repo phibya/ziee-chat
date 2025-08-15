@@ -80,13 +80,13 @@ pub async fn is_lfs_pointer_file<P: AsRef<Path>>(path: P) -> Result<bool, LfsErr
     if path.as_ref().is_dir() {
         return Ok(false);
     }
-    
+
     let mut reader = fs::File::open(&path).await?;
     let mut buf: Vec<u8> = vec![0; FILE_HEADER.len()];
-    
+
     use tokio::io::AsyncReadExt;
     let read_result = reader.read_exact(buf.as_mut_slice()).await;
-    
+
     if let Err(e) = read_result {
         match e.kind() {
             std::io::ErrorKind::UnexpectedEof => Ok(false),
@@ -128,7 +128,8 @@ size 226848"#;
 
     #[test]
     fn test_parsing_of_string() {
-        let parsed = LfsMetadata::parse_from_string(LFS_TEST_DATA).expect("Could not parse demo-string!");
+        let parsed =
+            LfsMetadata::parse_from_string(LFS_TEST_DATA).expect("Could not parse demo-string!");
         assert_eq!(parsed.size, 226848);
         assert_eq!(parsed.version, "https://git-lfs.github.com/spec/v1");
         assert_eq!(
@@ -140,8 +141,12 @@ size 226848"#;
 
     #[test]
     fn test_parse_lfs_pointer_content() {
-        let (oid, size) = parse_lfs_pointer_content(LFS_TEST_DATA).expect("Could not parse pointer content");
-        assert_eq!(oid, "0fae26606afd128d4d2f730462c8451b90931d25813e06e55239a2ca00e74c74");
+        let (oid, size) =
+            parse_lfs_pointer_content(LFS_TEST_DATA).expect("Could not parse pointer content");
+        assert_eq!(
+            oid,
+            "0fae26606afd128d4d2f730462c8451b90931d25813e06e55239a2ca00e74c74"
+        );
         assert_eq!(size, 226848);
     }
 }

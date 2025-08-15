@@ -3,13 +3,15 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGRepositoryRequest, RAGRepository, UpdateRAGRepositoryRequest, RAGRepositoryListResponse,
-        DownloadRAGDatabaseFromRepositoryRequest, RAGDatabase,
+        CreateRAGRepositoryRequest, DownloadRAGDatabaseFromRepositoryRequest, RAGDatabase,
+        RAGRepository, RAGRepositoryListResponse, UpdateRAGRepositoryRequest,
     },
 };
 
 // RAG Repository queries
-pub async fn get_rag_repository_by_id(repository_id: Uuid) -> Result<Option<RAGRepository>, sqlx::Error> {
+pub async fn get_rag_repository_by_id(
+    repository_id: Uuid,
+) -> Result<Option<RAGRepository>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -61,7 +63,9 @@ pub async fn list_rag_repositories(
     })
 }
 
-pub async fn create_rag_repository(request: CreateRAGRepositoryRequest) -> Result<RAGRepository, sqlx::Error> {
+pub async fn create_rag_repository(
+    request: CreateRAGRepositoryRequest,
+) -> Result<RAGRepository, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
     let repository_id = Uuid::new_v4();

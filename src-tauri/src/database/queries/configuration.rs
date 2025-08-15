@@ -1,5 +1,5 @@
-use crate::database::models::Configuration;
 use crate::database::models::proxy::ProxySettings;
+use crate::database::models::Configuration;
 use serde_json::Value;
 
 pub async fn get_configuration(key: &str) -> Result<Option<Configuration>, sqlx::Error> {
@@ -61,13 +61,19 @@ where
 {
     let json_value = match serde_json::to_value(value) {
         Ok(val) => val,
-        Err(_) => return Err(sqlx::Error::Protocol("Failed to serialize value".to_string())),
+        Err(_) => {
+            return Err(sqlx::Error::Protocol(
+                "Failed to serialize value".to_string(),
+            ))
+        }
     };
     set_configuration(key, &json_value, description).await
 }
 
 pub async fn is_app_initialized() -> Result<bool, sqlx::Error> {
-    Ok(get_config_value::<bool>("is_initialized").await?.unwrap_or(false))
+    Ok(get_config_value::<bool>("is_initialized")
+        .await?
+        .unwrap_or(false))
 }
 
 pub async fn mark_app_initialized() -> Result<(), sqlx::Error> {
@@ -81,7 +87,9 @@ pub async fn mark_app_initialized() -> Result<(), sqlx::Error> {
 }
 
 pub async fn is_user_registration_enabled() -> Result<bool, sqlx::Error> {
-    Ok(get_config_value::<bool>("enable_user_registration").await?.unwrap_or(true))
+    Ok(get_config_value::<bool>("enable_user_registration")
+        .await?
+        .unwrap_or(true))
 }
 
 pub async fn set_user_registration_enabled(enabled: bool) -> Result<(), sqlx::Error> {
@@ -95,7 +103,9 @@ pub async fn set_user_registration_enabled(enabled: bool) -> Result<(), sqlx::Er
 }
 
 pub async fn get_default_language() -> Result<String, sqlx::Error> {
-    Ok(get_config_value::<String>("appearance.defaultLanguage").await?.unwrap_or("en".to_string()))
+    Ok(get_config_value::<String>("appearance.defaultLanguage")
+        .await?
+        .unwrap_or("en".to_string()))
 }
 
 pub async fn set_default_language(language: &str) -> Result<(), sqlx::Error> {
@@ -110,16 +120,13 @@ pub async fn set_default_language(language: &str) -> Result<(), sqlx::Error> {
 
 // HTTP Proxy configuration functions - using single JSON object
 pub async fn get_proxy_settings() -> Result<ProxySettings, sqlx::Error> {
-    Ok(get_config_value::<ProxySettings>("proxy").await?.unwrap_or_default())
+    Ok(get_config_value::<ProxySettings>("proxy")
+        .await?
+        .unwrap_or_default())
 }
 
 pub async fn set_proxy_settings(settings: &ProxySettings) -> Result<(), sqlx::Error> {
-    set_config_value(
-        "proxy",
-        settings,
-        Some("Global HTTP proxy configuration"),
-    )
-    .await?;
+    set_config_value("proxy", settings, Some("Global HTTP proxy configuration")).await?;
     Ok(())
 }
 

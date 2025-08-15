@@ -12,36 +12,47 @@ impl OfficeProcessor {
         Self
     }
 
-
-    async fn extract_text_with_pandoc(&self, file_path: &Path, format_name: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_text_with_pandoc(
+        &self,
+        file_path: &Path,
+        format_name: &str,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         // Get Pandoc path
-        let pandoc_path = PandocUtils::get_pandoc_path()
-            .ok_or_else(|| format!("Pandoc not found. {} markdown extraction requires Pandoc.", format_name))?;
+        let pandoc_path = PandocUtils::get_pandoc_path().ok_or_else(|| {
+            format!(
+                "Pandoc not found. {} markdown extraction requires Pandoc.",
+                format_name
+            )
+        })?;
 
         // Use Pandoc to convert document to markdown with enhanced formatting
         let output = Command::new(&pandoc_path)
             .arg(file_path)
             .arg("-t")
             .arg("markdown")
-            .arg("--wrap=none")  // Don't wrap lines
-            .arg("--extract-media=.")  // Extract embedded media
+            .arg("--wrap=none") // Don't wrap lines
+            .arg("--extract-media=.") // Extract embedded media
             .output()?;
 
         if !output.status.success() {
-            return Err(format!("Pandoc markdown conversion failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!(
+                "Pandoc markdown conversion failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
 
         let content = String::from_utf8(output.stdout)?;
         Ok(content)
     }
-
 }
 
 #[async_trait]
 impl ContentProcessor for OfficeProcessor {
     fn can_process(&self, mime_type: &Option<String>) -> bool {
         if let Some(mime) = mime_type {
-            matches!(mime.as_str(),
+            matches!(
+                mime.as_str(),
                 // Microsoft Word formats (Pandoc-compatible)
                 "application/msword" |
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document" |
@@ -56,7 +67,10 @@ impl ContentProcessor for OfficeProcessor {
         }
     }
 
-    async fn extract_text(&self, file_path: &Path) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_text(
+        &self,
+        file_path: &Path,
+    ) -> Result<Option<String>, Box<dyn std::error::Error + Send + Sync>> {
         let file_extension = file_path
             .extension()
             .and_then(|ext| ext.to_str())
@@ -65,49 +79,44 @@ impl ContentProcessor for OfficeProcessor {
 
         match file_extension.as_str() {
             // Microsoft Word formats
-            "docx" => {
-                match self.extract_text_with_pandoc(file_path, "DOCX").await {
-                    Ok(markdown) => Ok(Some(markdown)),
-                    Err(e) => {
-                        eprintln!("Failed to extract markdown from DOCX: {}", e);
-                        Ok(None)
-                    }
+            "docx" => match self.extract_text_with_pandoc(file_path, "DOCX").await {
+                Ok(markdown) => Ok(Some(markdown)),
+                Err(e) => {
+                    eprintln!("Failed to extract markdown from DOCX: {}", e);
+                    Ok(None)
                 }
-            }
-            "doc" => {
-                match self.extract_text_with_pandoc(file_path, "DOC").await {
-                    Ok(markdown) => Ok(Some(markdown)),
-                    Err(e) => {
-                        eprintln!("Failed to extract markdown from DOC: {}", e);
-                        Ok(None)
-                    }
+            },
+            "doc" => match self.extract_text_with_pandoc(file_path, "DOC").await {
+                Ok(markdown) => Ok(Some(markdown)),
+                Err(e) => {
+                    eprintln!("Failed to extract markdown from DOC: {}", e);
+                    Ok(None)
                 }
-            }
+            },
             // Rich Text Format
-            "rtf" => {
-                match self.extract_text_with_pandoc(file_path, "RTF").await {
-                    Ok(markdown) => Ok(Some(markdown)),
-                    Err(e) => {
-                        eprintln!("Failed to extract markdown from RTF: {}", e);
-                        Ok(None)
-                    }
+            "rtf" => match self.extract_text_with_pandoc(file_path, "RTF").await {
+                Ok(markdown) => Ok(Some(markdown)),
+                Err(e) => {
+                    eprintln!("Failed to extract markdown from RTF: {}", e);
+                    Ok(None)
                 }
-            }
+            },
             // OpenDocument Text
-            "odt" => {
-                match self.extract_text_with_pandoc(file_path, "ODT").await {
-                    Ok(markdown) => Ok(Some(markdown)),
-                    Err(e) => {
-                        eprintln!("Failed to extract markdown from ODT: {}", e);
-                        Ok(None)
-                    }
+            "odt" => match self.extract_text_with_pandoc(file_path, "ODT").await {
+                Ok(markdown) => Ok(Some(markdown)),
+                Err(e) => {
+                    eprintln!("Failed to extract markdown from ODT: {}", e);
+                    Ok(None)
                 }
-            }
+            },
             _ => Ok(None),
         }
     }
 
-    async fn extract_metadata(&self, file_path: &Path) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+    async fn extract_metadata(
+        &self,
+        file_path: &Path,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
         let metadata = std::fs::metadata(file_path)?;
         let file_extension = file_path
             .extension()
@@ -125,7 +134,6 @@ impl ContentProcessor for OfficeProcessor {
             "format": file_extension
         }))
     }
-
 }
 
 // Office Image Generator (renamed from OfficeThumbnailGenerator)
@@ -151,7 +159,10 @@ impl OfficeImageGenerator {
         let pandoc_path = match PandocUtils::get_pandoc_path() {
             Some(path) => path,
             None => {
-                eprintln!("Pandoc not found. {} document images will not be generated.", format_name);
+                eprintln!(
+                    "Pandoc not found. {} document images will not be generated.",
+                    format_name
+                );
                 return Ok(0); // Return 0 images generated
             }
         };
@@ -172,17 +183,17 @@ impl OfficeImageGenerator {
             .arg(&temp_pdf)
             // Preserve original page layout and margins to maintain page numbering
             .arg("-V")
-            .arg("geometry:margin=0.75in")  // Reasonable margins to preserve content flow
+            .arg("geometry:margin=0.75in") // Reasonable margins to preserve content flow
             .arg("-V")
             .arg("geometry:top=0.75in")
-            .arg("-V") 
+            .arg("-V")
             .arg("geometry:bottom=0.75in")
             .arg("-V")
-            .arg("papersize=letter")  // Standard paper size
+            .arg("papersize=letter") // Standard paper size
             .arg("-V")
-            .arg("fontsize=11pt")  // Standard font size close to typical document fonts
-            .arg("--variable=block-headings")  // Keep headings with following content
-            .arg("--preserve-tabs")  // Preserve tab formatting
+            .arg("fontsize=11pt") // Standard font size close to typical document fonts
+            .arg("--variable=block-headings") // Keep headings with following content
+            .arg("--preserve-tabs") // Preserve tab formatting
             .output();
 
         // If the command fails, try with simpler options as fallback
@@ -195,18 +206,26 @@ impl OfficeImageGenerator {
                     .arg("-o")
                     .arg(&temp_pdf)
                     .arg("-V")
-                    .arg("geometry:margin=1in")  // Standard margins
+                    .arg("geometry:margin=1in") // Standard margins
                     .output()?
             }
         };
 
         if !output.status.success() {
             std::fs::remove_dir_all(&temp_dir).ok();
-            return Err(format!("Pandoc PDF conversion failed: {}", String::from_utf8_lossy(&output.stderr)).into());
+            return Err(format!(
+                "Pandoc PDF conversion failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into());
         }
 
         // Use the PDF image generator to create images from the temporary PDF
-        let image_count = match self.pdf_generator.generate_images(&temp_pdf, output_dir, max_dim).await {
+        let image_count = match self
+            .pdf_generator
+            .generate_images(&temp_pdf, output_dir, max_dim)
+            .await
+        {
             Ok(count) => count,
             Err(e) => {
                 eprintln!("Failed to generate PDF images: {}", e);
@@ -219,14 +238,14 @@ impl OfficeImageGenerator {
 
         Ok(image_count)
     }
-
 }
 
 #[async_trait]
 impl ImageGeneratorTrait for OfficeImageGenerator {
     fn can_generate(&self, mime_type: &Option<String>) -> bool {
         if let Some(mime) = mime_type {
-            matches!(mime.as_str(),
+            matches!(
+                mime.as_str(),
                 // Microsoft Word formats (Pandoc-compatible)
                 "application/msword" |
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document" |
@@ -257,24 +276,30 @@ impl ImageGeneratorTrait for OfficeImageGenerator {
         match file_extension.as_str() {
             // Microsoft Word formats
             "docx" => {
-                self.generate_office_images_with_pandoc(file_path, output_dir, "DOCX", max_dim).await
+                self.generate_office_images_with_pandoc(file_path, output_dir, "DOCX", max_dim)
+                    .await
             }
             "doc" => {
-                self.generate_office_images_with_pandoc(file_path, output_dir, "DOC", max_dim).await
+                self.generate_office_images_with_pandoc(file_path, output_dir, "DOC", max_dim)
+                    .await
             }
             // Rich Text Format
             "rtf" => {
-                self.generate_office_images_with_pandoc(file_path, output_dir, "RTF", max_dim).await
+                self.generate_office_images_with_pandoc(file_path, output_dir, "RTF", max_dim)
+                    .await
             }
             // OpenDocument Text
             "odt" => {
-                self.generate_office_images_with_pandoc(file_path, output_dir, "ODT", max_dim).await
+                self.generate_office_images_with_pandoc(file_path, output_dir, "ODT", max_dim)
+                    .await
             }
             _ => {
-                eprintln!("Unsupported office file type for image generation: {}", file_extension);
+                eprintln!(
+                    "Unsupported office file type for image generation: {}",
+                    file_extension
+                );
                 Ok(0)
             }
         }
     }
-
 }

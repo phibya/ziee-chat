@@ -4,3 +4,6 @@
 [submodule "tessdata"]
 	path = tessdata
 	url = https://github.com/tesseract-ocr/tessdata
+[submodule "src-engines/llama.cpp"]
+	path = src-engines/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp

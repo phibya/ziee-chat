@@ -1,11 +1,11 @@
-pub mod text;
 pub mod image;
-pub mod pdf;
 pub mod office;
+pub mod pdf;
 pub mod spreadsheet;
+pub mod text;
 
-pub use text::{TextProcessor, TextImageGenerator};
-pub use image::{ImageProcessor, ImageGenerator};
-pub use pdf::{PdfProcessor, PdfImageGenerator};
-pub use office::{OfficeProcessor, OfficeImageGenerator};
-pub use spreadsheet::{SpreadsheetProcessor, SpreadsheetImageGenerator};
+pub use image::{ImageGenerator, ImageProcessor};
+pub use office::{OfficeImageGenerator, OfficeProcessor};
+pub use pdf::{PdfImageGenerator, PdfProcessor};
+pub use spreadsheet::{SpreadsheetImageGenerator, SpreadsheetProcessor};
+pub use text::{TextImageGenerator, TextProcessor};

@@ -400,14 +400,20 @@ impl ModelStorage {
             "safe_filename": safe_filename,
             "size_bytes": data.len()
         });
-        
+
         let metadata_path = session_dir.join(format!("{}.meta", temp_file_id));
-        tokio::fs::write(&metadata_path, metadata.to_string()).await.map_err(|e| {
-            ModelStorageError::Io(std::io::Error::new(
-                e.kind(),
-                format!("Failed to write metadata file {}: {}", metadata_path.display(), e),
-            ))
-        })?;
+        tokio::fs::write(&metadata_path, metadata.to_string())
+            .await
+            .map_err(|e| {
+                ModelStorageError::Io(std::io::Error::new(
+                    e.kind(),
+                    format!(
+                        "Failed to write metadata file {}: {}",
+                        metadata_path.display(),
+                        e
+                    ),
+                ))
+            })?;
 
         println!(
             "Successfully saved temp file: {} ({} bytes)",
@@ -432,12 +438,14 @@ impl ModelStorage {
         provider_id: &Uuid,
         model_id: &Uuid,
     ) -> Result<CommittedFile, ModelStorageError> {
-        let session_temp_path = crate::get_app_data_dir().join("temp").join(session_id.to_string());
+        let session_temp_path = crate::get_app_data_dir()
+            .join("temp")
+            .join(session_id.to_string());
 
         // Find the temp file in the session directory
         if !session_temp_path.exists() {
             return Err(ModelStorageError::ModelNotFound(format!(
-                "Session temp directory {} not found", 
+                "Session temp directory {} not found",
                 session_id
             )));
         }
@@ -447,12 +455,12 @@ impl ModelStorage {
             .replace('/', "_")
             .replace('\\', "_")
             .replace("..", "_");
-        
+
         let temp_file_path = session_temp_path.join(&safe_filename);
-        
+
         if !temp_file_path.exists() {
             return Err(ModelStorageError::ModelNotFound(format!(
-                "Temp file '{}' not found in session {}", 
+                "Temp file '{}' not found in session {}",
                 safe_filename, session_id
             )));
         }
@@ -480,8 +488,13 @@ impl ModelStorage {
     }
 
     /// List all files in a session directory
-    pub async fn list_session_files(&self, session_id: &Uuid) -> Result<Vec<String>, ModelStorageError> {
-        let session_temp_path = crate::get_app_data_dir().join("temp").join(session_id.to_string());
+    pub async fn list_session_files(
+        &self,
+        session_id: &Uuid,
+    ) -> Result<Vec<String>, ModelStorageError> {
+        let session_temp_path = crate::get_app_data_dir()
+            .join("temp")
+            .join(session_id.to_string());
 
         if !session_temp_path.exists() {
             return Ok(Vec::new());
@@ -489,7 +502,7 @@ impl ModelStorage {
 
         let mut files = Vec::new();
         let mut read_dir = tokio::fs::read_dir(&session_temp_path).await?;
-        
+
         while let Some(entry) = read_dir.next_entry().await? {
             let entry_type = entry.file_type().await?;
             if entry_type.is_file() {
@@ -506,7 +519,10 @@ impl ModelStorage {
     }
 
     /// List all files in a cache directory (for repository downloads)
-    pub async fn list_cache_files(&self, cache_path: &str) -> Result<Vec<String>, ModelStorageError> {
+    pub async fn list_cache_files(
+        &self,
+        cache_path: &str,
+    ) -> Result<Vec<String>, ModelStorageError> {
         let cache_dir = crate::get_app_data_dir().join("caches").join(cache_path);
 
         if !cache_dir.exists() {
@@ -518,7 +534,7 @@ impl ModelStorage {
 
         let mut files = Vec::new();
         let mut read_dir = tokio::fs::read_dir(&cache_dir).await?;
-        
+
         while let Some(entry) = read_dir.next_entry().await? {
             let entry_type = entry.file_type().await?;
             if entry_type.is_file() {
@@ -542,11 +558,12 @@ impl ModelStorage {
     ) -> Result<CommittedFile, ModelStorageError> {
         let cache_dir = crate::get_app_data_dir().join("caches").join(cache_path);
         let source_file_path = cache_dir.join(filename);
-        
+
         if !source_file_path.exists() {
             return Err(ModelStorageError::ModelNotFound(format!(
-                "Cache file '{}' not found in {}", 
-                filename, cache_dir.display()
+                "Cache file '{}' not found in {}",
+                filename,
+                cache_dir.display()
             )));
         }
 
@@ -574,14 +591,19 @@ impl ModelStorage {
 
     /// Clean up temporary files for a session
     pub async fn cleanup_temp_session(&self, session_id: &Uuid) -> Result<(), ModelStorageError> {
-        let session_temp_path = crate::get_app_data_dir().join("temp").join(session_id.to_string());
+        let session_temp_path = crate::get_app_data_dir()
+            .join("temp")
+            .join(session_id.to_string());
 
         if !session_temp_path.exists() {
             return Ok(()); // Nothing to clean up
         }
 
         // Remove the entire session directory
-        println!("Cleaning up session temp directory: {}", session_temp_path.display());
+        println!(
+            "Cleaning up session temp directory: {}",
+            session_temp_path.display()
+        );
         match tokio::fs::remove_dir_all(&session_temp_path).await {
             Ok(()) => {
                 println!("Successfully cleaned up session {}", session_id);
@@ -624,7 +646,11 @@ impl ModelStorage {
                     }
                     Err(e) => {
                         error_count += 1;
-                        eprintln!("Failed to remove temp session directory {}: {}", entry_path.display(), e);
+                        eprintln!(
+                            "Failed to remove temp session directory {}: {}",
+                            entry_path.display(),
+                            e
+                        );
                     }
                 }
             } else {
@@ -666,8 +692,11 @@ impl ModelStorage {
 
         let max_age = std::time::Duration::from_secs(max_age_hours * 3600);
         let now = std::time::SystemTime::now();
-        
-        println!("Cleaning up temp sessions older than {} hours", max_age_hours);
+
+        println!(
+            "Cleaning up temp sessions older than {} hours",
+            max_age_hours
+        );
 
         let mut read_dir = tokio::fs::read_dir(&temp_path).await?;
         let mut removed_sessions = 0;
@@ -684,20 +713,28 @@ impl ModelStorage {
                         // Get directory creation/modification time
                         match tokio::fs::metadata(&entry_path).await {
                             Ok(metadata) => {
-                                if let Ok(created) = metadata.created().or_else(|_| metadata.modified()) {
+                                if let Ok(created) =
+                                    metadata.created().or_else(|_| metadata.modified())
+                                {
                                     if let Ok(age) = now.duration_since(created) {
                                         if age > max_age {
                                             // Session is too old, remove it
                                             match tokio::fs::remove_dir_all(&entry_path).await {
                                                 Ok(()) => {
                                                     removed_sessions += 1;
-                                                    println!("Removed old temp session ({}h old): {}", 
-                                                        age.as_secs() / 3600, entry_path.display());
+                                                    println!(
+                                                        "Removed old temp session ({}h old): {}",
+                                                        age.as_secs() / 3600,
+                                                        entry_path.display()
+                                                    );
                                                 }
                                                 Err(e) => {
                                                     error_count += 1;
-                                                    eprintln!("Failed to remove old temp session {}: {}", 
-                                                        entry_path.display(), e);
+                                                    eprintln!(
+                                                        "Failed to remove old temp session {}: {}",
+                                                        entry_path.display(),
+                                                        e
+                                                    );
                                                 }
                                             }
                                         }
@@ -705,7 +742,11 @@ impl ModelStorage {
                                 }
                             }
                             Err(e) => {
-                                eprintln!("Failed to get metadata for {}: {}", entry_path.display(), e);
+                                eprintln!(
+                                    "Failed to get metadata for {}: {}",
+                                    entry_path.display(),
+                                    e
+                                );
                             }
                         }
                     }
@@ -714,7 +755,10 @@ impl ModelStorage {
         }
 
         if removed_sessions > 0 {
-            println!("Cleanup of old temp sessions complete: {} sessions removed", removed_sessions);
+            println!(
+                "Cleanup of old temp sessions complete: {} sessions removed",
+                removed_sessions
+            );
         }
         if error_count > 0 {
             println!("Cleanup of old temp sessions had {} errors", error_count);

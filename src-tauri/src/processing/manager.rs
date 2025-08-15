@@ -1,12 +1,19 @@
+use image::{imageops::FilterType, GenericImageView, ImageReader};
 use std::path::Path;
 use std::sync::Arc;
 use uuid::Uuid;
-use image::{ImageReader, imageops::FilterType, GenericImageView};
 
+use super::processors::{
+    ImageGenerator, OfficeImageGenerator, PdfImageGenerator, SpreadsheetImageGenerator,
+    TextImageGenerator,
+};
+use super::processors::{
+    ImageProcessor, OfficeProcessor, PdfProcessor, SpreadsheetProcessor, TextProcessor,
+};
+use super::{
+    ContentProcessor, ImageGenerator as ImageGeneratorTrait, ProcessingResult, MAX_IMAGE_DIM,
+};
 use crate::utils::file_storage::FileStorage;
-use super::{ContentProcessor, ImageGenerator as ImageGeneratorTrait, ProcessingResult, MAX_IMAGE_DIM};
-use super::processors::{TextProcessor, ImageProcessor, PdfProcessor, OfficeProcessor, SpreadsheetProcessor};
-use super::processors::{ImageGenerator, TextImageGenerator, PdfImageGenerator, OfficeImageGenerator, SpreadsheetImageGenerator};
 
 pub struct ProcessingManager {
     storage: Arc<FileStorage>,
@@ -67,7 +74,6 @@ impl ProcessingManager {
                     result.metadata = metadata;
                 }
 
-
                 break; // Use first matching processor
             }
         }
@@ -77,10 +83,13 @@ impl ProcessingManager {
             if generator.can_generate(mime_type) {
                 // Extract file ID from path for directories
                 let file_id = self.extract_file_id_from_path(file_path)?;
-                
+
                 // Generate high-quality images
                 let image_dir = self.storage.create_image_directory(file_id).await?;
-                match generator.generate_images(file_path, &image_dir, MAX_IMAGE_DIM).await {
+                match generator
+                    .generate_images(file_path, &image_dir, MAX_IMAGE_DIM)
+                    .await
+                {
                     Ok(image_count) => {
                         result.page_count = image_count as i32;
                         if image_count > 0 {
@@ -88,8 +97,15 @@ impl ProcessingManager {
                         }
 
                         // Generate thumbnails from the high-quality images (max 5)
-                        let thumbnail_dir = self.storage.create_thumbnail_directory(file_id).await?;
-                        let thumbnail_count = self.generate_thumbnails_from_images(&image_dir, &thumbnail_dir, image_count).await?;
+                        let thumbnail_dir =
+                            self.storage.create_thumbnail_directory(file_id).await?;
+                        let thumbnail_count = self
+                            .generate_thumbnails_from_images(
+                                &image_dir,
+                                &thumbnail_dir,
+                                image_count,
+                            )
+                            .await?;
                         result.thumbnail_count = thumbnail_count as i32;
 
                         if thumbnail_count > 0 {
@@ -109,7 +125,10 @@ impl ProcessingManager {
         Ok(result)
     }
 
-    fn extract_file_id_from_path(&self, file_path: &Path) -> Result<Uuid, Box<dyn std::error::Error + Send + Sync>> {
+    fn extract_file_id_from_path(
+        &self,
+        file_path: &Path,
+    ) -> Result<Uuid, Box<dyn std::error::Error + Send + Sync>> {
         let filename = file_path
             .file_stem()
             .and_then(|s| s.to_str())
@@ -135,7 +154,7 @@ impl ProcessingManager {
 
         for page_index in 1..=limit {
             let image_path = image_dir.join(format!("page_{}.jpg", page_index));
-            
+
             if !image_path.exists() {
                 continue;
             }
@@ -171,7 +190,11 @@ impl ProcessingManager {
             match thumbnail.to_rgb8().save(&thumbnail_path) {
                 Ok(_) => thumbnail_count += 1,
                 Err(e) => {
-                    eprintln!("Failed to save thumbnail {}: {}", thumbnail_path.display(), e);
+                    eprintln!(
+                        "Failed to save thumbnail {}: {}",
+                        thumbnail_path.display(),
+                        e
+                    );
                     continue;
                 }
             }

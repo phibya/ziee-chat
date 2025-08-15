@@ -49,7 +49,10 @@ async fn load_files_for_messages(
     for row in message_file_rows {
         let message_id: Uuid = row.get("message_id");
         let file_id: Uuid = row.get("file_id");
-        message_file_map.entry(message_id).or_insert_with(Vec::new).push(file_id);
+        message_file_map
+            .entry(message_id)
+            .or_insert_with(Vec::new)
+            .push(file_id);
     }
 
     // Build a map of file_id -> File
@@ -183,11 +186,17 @@ pub async fn list_conversations(
 
     // Get total count
     let (total_query, total_bind_params) = if let Some(proj_id) = project_id {
-        ("SELECT COUNT(*) as count FROM conversations WHERE user_id = $1 AND project_id = $2", Some(proj_id))
+        (
+            "SELECT COUNT(*) as count FROM conversations WHERE user_id = $1 AND project_id = $2",
+            Some(proj_id),
+        )
     } else {
-        ("SELECT COUNT(*) as count FROM conversations WHERE user_id = $1 AND project_id IS NULL", None)
+        (
+            "SELECT COUNT(*) as count FROM conversations WHERE user_id = $1 AND project_id IS NULL",
+            None,
+        )
     };
-    
+
     let mut total_query_builder = sqlx::query(total_query).bind(user_id);
     if let Some(proj_id) = total_bind_params {
         total_query_builder = total_query_builder.bind(proj_id);
@@ -202,7 +211,8 @@ pub async fn list_conversations(
 
     // Get conversations with last message info
     let (conversations_query, conversations_bind_params) = if let Some(proj_id) = project_id {
-        (r#"
+        (
+            r#"
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
@@ -219,9 +229,12 @@ pub async fn list_conversations(
         WHERE c.user_id = $1 AND c.project_id = $2
         ORDER BY c.updated_at DESC
         LIMIT $3 OFFSET $4
-        "#, Some(proj_id))
+        "#,
+            Some(proj_id),
+        )
     } else {
-        (r#"
+        (
+            r#"
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
@@ -238,12 +251,18 @@ pub async fn list_conversations(
         WHERE c.user_id = $1 AND c.project_id IS NULL
         ORDER BY c.updated_at DESC
         LIMIT $2 OFFSET $3
-        "#, None)
+        "#,
+            None,
+        )
     };
-    
-    let mut conversations_query_builder = sqlx::query_as::<_, ConversationSummary>(conversations_query).bind(user_id);
+
+    let mut conversations_query_builder =
+        sqlx::query_as::<_, ConversationSummary>(conversations_query).bind(user_id);
     if let Some(proj_id) = conversations_bind_params {
-        conversations_query_builder = conversations_query_builder.bind(proj_id).bind(per_page).bind(offset);
+        conversations_query_builder = conversations_query_builder
+            .bind(proj_id)
+            .bind(per_page)
+            .bind(offset);
     } else {
         conversations_query_builder = conversations_query_builder.bind(per_page).bind(offset);
     }
@@ -386,10 +405,11 @@ pub async fn save_message(
         }
         None => {
             // Get the conversation to find the active branch
-            let conversation = match get_conversation_by_id(request.conversation_id, user_id).await? {
-                Some(conv) => conv,
-                None => return Err(Error::RowNotFound),
-            };
+            let conversation =
+                match get_conversation_by_id(request.conversation_id, user_id).await? {
+                    Some(conv) => conv,
+                    None => return Err(Error::RowNotFound),
+                };
 
             // Ensure we have an active branch
             match conversation.active_branch_id {
@@ -832,25 +852,31 @@ pub async fn search_conversations(
 
     // Get total count for search results
     let (total_query, total_bind_params) = if let Some(proj_id) = project_id {
-        (r#"
+        (
+            r#"
         SELECT COUNT(DISTINCT c.id) as count
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
         WHERE c.user_id = $1
         AND c.project_id = $2
         AND (c.title ILIKE $3 OR m.content ILIKE $3)
-        "#, Some(proj_id))
+        "#,
+            Some(proj_id),
+        )
     } else {
-        (r#"
+        (
+            r#"
         SELECT COUNT(DISTINCT c.id) as count
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
         WHERE c.user_id = $1
         AND c.project_id IS NULL
         AND (c.title ILIKE $2 OR m.content ILIKE $2)
-        "#, None)
+        "#,
+            None,
+        )
     };
-    
+
     let mut total_query_builder = sqlx::query(total_query).bind(user_id);
     if let Some(proj_id) = total_bind_params {
         total_query_builder = total_query_builder.bind(proj_id).bind(&search_pattern);
@@ -862,7 +888,8 @@ pub async fn search_conversations(
 
     // Get conversations that match search with last message info
     let (conversations_query, conversations_bind_params) = if let Some(proj_id) = project_id {
-        (r#"
+        (
+            r#"
         SELECT DISTINCT ON (c.id)
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
@@ -882,9 +909,12 @@ pub async fn search_conversations(
         AND (c.title ILIKE $3 OR m.content ILIKE $3)
         ORDER BY c.id, c.updated_at DESC
         LIMIT $4 OFFSET $5
-        "#, Some(proj_id))
+        "#,
+            Some(proj_id),
+        )
     } else {
-        (r#"
+        (
+            r#"
         SELECT DISTINCT ON (c.id)
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
@@ -904,14 +934,24 @@ pub async fn search_conversations(
         AND (c.title ILIKE $2 OR m.content ILIKE $2)
         ORDER BY c.id, c.updated_at DESC
         LIMIT $3 OFFSET $4
-        "#, None)
+        "#,
+            None,
+        )
     };
-    
-    let mut conversations_query_builder = sqlx::query_as::<_, ConversationSummary>(conversations_query).bind(user_id);
+
+    let mut conversations_query_builder =
+        sqlx::query_as::<_, ConversationSummary>(conversations_query).bind(user_id);
     if let Some(proj_id) = conversations_bind_params {
-        conversations_query_builder = conversations_query_builder.bind(proj_id).bind(&search_pattern).bind(per_page).bind(offset);
+        conversations_query_builder = conversations_query_builder
+            .bind(proj_id)
+            .bind(&search_pattern)
+            .bind(per_page)
+            .bind(offset);
     } else {
-        conversations_query_builder = conversations_query_builder.bind(&search_pattern).bind(per_page).bind(offset);
+        conversations_query_builder = conversations_query_builder
+            .bind(&search_pattern)
+            .bind(per_page)
+            .bind(offset);
     }
     let conversations = conversations_query_builder.fetch_all(pool).await?;
 

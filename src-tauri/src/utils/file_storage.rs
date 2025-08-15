@@ -1,8 +1,8 @@
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tokio::fs as tokio_fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use uuid::Uuid;
-use sha2::{Sha256, Digest};
 
 pub struct FileStorage {
     base_path: PathBuf,
@@ -41,16 +41,11 @@ impl FileStorage {
     }
 
     pub fn get_text_path(&self, file_id: Uuid) -> PathBuf {
-        self.base_path
-            .join("text")
-            .join(format!("{}.txt", file_id))
+        self.base_path.join("text").join(format!("{}.txt", file_id))
     }
 
-
     pub fn get_image_dir(&self, file_id: Uuid) -> PathBuf {
-        self.base_path
-            .join("images")
-            .join(file_id.to_string())
+        self.base_path.join("images").join(file_id.to_string())
     }
 
     pub fn get_image_path(&self, file_id: Uuid, page: u32) -> PathBuf {
@@ -59,9 +54,7 @@ impl FileStorage {
     }
 
     pub fn get_thumbnail_dir(&self, file_id: Uuid) -> PathBuf {
-        self.base_path
-            .join("thumbnails")
-            .join(file_id.to_string())
+        self.base_path.join("thumbnails").join(file_id.to_string())
     }
 
     pub fn get_thumbnail_path(&self, file_id: Uuid, page: u32) -> PathBuf {
@@ -131,7 +124,6 @@ impl FileStorage {
         self.save_file_bytes(&text_path, content.as_bytes()).await
     }
 
-
     pub async fn read_text_content(
         &self,
         file_id: Uuid,
@@ -140,13 +132,12 @@ impl FileStorage {
         if !text_path.exists() {
             return Ok(None);
         }
-        
+
         match self.read_file_string(&text_path).await {
             Ok(content) => Ok(Some(content)),
             Err(_) => Ok(None),
         }
     }
-
 
     pub async fn calculate_checksum(
         &self,
@@ -177,7 +168,6 @@ impl FileStorage {
         if text_path.exists() {
             tokio_fs::remove_file(text_path).await?;
         }
-
 
         // Delete images directory
         let image_dir = self.get_image_dir(file_id);
@@ -246,11 +236,17 @@ pub fn get_mime_type_from_extension(extension: &str) -> Option<String> {
         "wav" => Some("audio/wav".to_string()),
         // Microsoft Office formats
         "doc" => Some("application/msword".to_string()),
-        "docx" => Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document".to_string()),
+        "docx" => Some(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document".to_string(),
+        ),
         "xls" => Some("application/vnd.ms-excel".to_string()),
-        "xlsx" => Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".to_string()),
+        "xlsx" => {
+            Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".to_string())
+        }
         "ppt" => Some("application/vnd.ms-powerpoint".to_string()),
-        "pptx" => Some("application/vnd.openxmlformats-officedocument.presentationml.presentation".to_string()),
+        "pptx" => Some(
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation".to_string(),
+        ),
         // Rich Text Format
         "rtf" => Some("application/rtf".to_string()),
         // OpenDocument formats
