@@ -519,7 +519,7 @@ export function HardwareSettings() {
     try {
       await subscribeToHardwareUsage()
       message.success('Connecting to hardware monitoring...')
-    } catch (error) {
+    } catch (_error) {
       message.error('Failed to connect to hardware monitoring')
     }
   }

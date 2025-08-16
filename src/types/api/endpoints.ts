@@ -21,9 +21,13 @@ import {
   UpdateConversationRequest,
 } from './chat'
 import {
+  NgrokSettingsResponse,
+  NgrokStatusResponse,
   ProxySettingsResponse,
   TestProxyConnectionRequest,
   TestProxyConnectionResponse,
+  UpdateAccountPasswordRequest,
+  UpdateNgrokSettingsRequest,
   UpdateProxySettingsRequest,
   UpdateUserRegistrationRequest,
   UserRegistrationStatusResponse,
@@ -288,6 +292,12 @@ export const ApiEndpoints = {
   'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
+  'Admin.getNgrokSettings': 'GET /api/admin/config/ngrok',
+  'Admin.updateNgrokSettings': 'PUT /api/admin/config/ngrok', 
+  'Admin.startNgrokTunnel': 'POST /api/admin/config/ngrok/start',
+  'Admin.stopNgrokTunnel': 'POST /api/admin/config/ngrok/stop',
+  'Admin.getNgrokStatus': 'GET /api/admin/config/ngrok/status',
+  'User.updateAccountPassword': 'PUT /api/admin/config/user/password',
 
   // Admin - Hardware Management
   'Admin.getHardwareInfo': 'GET /api/admin/hardware',
@@ -387,6 +397,12 @@ export type ApiEndpointParameters = {
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
   'Admin.getProxySettings': void
   'Admin.updateProxySettings': UpdateProxySettingsRequest
+  'Admin.getNgrokSettings': void
+  'Admin.updateNgrokSettings': UpdateNgrokSettingsRequest
+  'Admin.startNgrokTunnel': void
+  'Admin.stopNgrokTunnel': void
+  'Admin.getNgrokStatus': void
+  'User.updateAccountPassword': UpdateAccountPasswordRequest
   // Admin hardware management
   'Admin.getHardwareInfo': void
   'Admin.subscribeHardwareUsage': void
@@ -611,6 +627,12 @@ export type ApiEndpointResponses = {
   'Admin.updateDefaultLanguage': DefaultLanguageResponse
   'Admin.getProxySettings': ProxySettingsResponse
   'Admin.updateProxySettings': ProxySettingsResponse
+  'Admin.getNgrokSettings': NgrokSettingsResponse
+  'Admin.updateNgrokSettings': NgrokSettingsResponse
+  'Admin.startNgrokTunnel': NgrokStatusResponse
+  'Admin.stopNgrokTunnel': NgrokStatusResponse 
+  'Admin.getNgrokStatus': NgrokStatusResponse
+  'User.updateAccountPassword': void
   // Admin hardware management
   'Admin.getHardwareInfo': HardwareInfoResponse
   'Admin.subscribeHardwareUsage': void // SSE endpoint

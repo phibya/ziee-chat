@@ -397,14 +397,24 @@ export const callAsync = async <U extends ApiEndpointUrl>(
           errorMessage = 'Permission denied'
         }
       } else {
+        let textResponse: string | undefined
+        try {
+          textResponse = await response.text()
+        } catch {
+          textResponse = ''
+        }
         try {
           // Try to extract error message from response body for other errors
-          const errorResponse = await response.json()
+          const errorResponse = JSON.parse(textResponse)
           if (errorResponse.error) {
             errorMessage = errorResponse.error
           }
         } catch {
           // If we can't parse the error response, use the default message
+          // get the reponse text instead
+          if (textResponse) {
+            errorMessage = `HTTP error! status: ${response.status} - ${textResponse}`
+          }
         }
       }
 

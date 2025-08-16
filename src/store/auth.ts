@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist, subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client.ts'
+import { invoke } from '@tauri-apps/api/core'
+import { isDesktopApp } from '../api/core'
 import type { CreateUserRequest, LoginRequest, User } from '../types'
 
 interface AuthState {
@@ -139,7 +141,25 @@ export const clearAuthenticationError = (): void => {
 
 export const auth = async () => {
   useAuthStore.setState({ isLoading: true, error: null })
+  
   try {
+    // For desktop apps, get token via Tauri command
+    if (isDesktopApp) {
+      const token = await invoke<string>('get_desktop_auth_token')
+      useAuthStore.setState({ token, isDesktop: true })
+      
+      // Fetch user profile
+      const user = await ApiClient.Auth.me()
+      useAuthStore.setState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        needsSetup: false,
+      })
+      return
+    }
+    
+    // For web apps, keep existing flow unchanged
     const response = await ApiClient.Auth.init()
 
     if (response.needs_setup) {

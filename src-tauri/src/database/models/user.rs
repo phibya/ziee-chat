@@ -52,6 +52,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserService {
     }
 }
 
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserLoginToken {
     pub id: Uuid,

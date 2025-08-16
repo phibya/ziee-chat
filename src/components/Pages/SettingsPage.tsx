@@ -2,6 +2,7 @@ import {
   CloudDownloadOutlined,
   ExperimentOutlined,
   EyeOutlined,
+  GlobalOutlined,
   LockOutlined,
   RobotOutlined,
   SettingOutlined,
@@ -95,6 +96,11 @@ export function SettingsPage() {
             key: 'https-proxy',
             icon: <ToolOutlined />,
             label: t('settings.httpsProxy'),
+          },
+          {
+            key: 'web-app',
+            icon: <GlobalOutlined />,
+            label: t('settings.ngrok'),
           },
         ]
       : []),

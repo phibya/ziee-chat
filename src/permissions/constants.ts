@@ -45,6 +45,9 @@ export const PermissionDescription = {
   'config::proxy::*': 'Grants all proxy configuration permissions',
   'config::proxy::read': 'Allows viewing proxy settings',
   'config::proxy::edit': 'Allows configuring proxy settings',
+  'config::ngrok::*': 'Grants all ngrok tunnel configuration permissions',
+  'config::ngrok::read': 'Allows viewing ngrok tunnel settings',
+  'config::ngrok::edit': 'Allows configuring ngrok tunnels and starting/stopping them',
   // Model provider permissions
   'config::providers::*': 'Grants all model provider configuration permissions',
   'config::providers::read': 'Allows viewing model provider settings',

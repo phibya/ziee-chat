@@ -8,6 +8,7 @@ export { RAGRepositoriesSettings } from './RAGRepositories/RAGRepositoriesSettin
 export { ShortcutsSettings } from './ShortcutsSettings'
 export { HardwareSettings } from './HardwareSettings'
 export { HttpsProxySettings } from './HttpsProxySettings'
+export { NgrokSettings } from './NgrokSettings'
 export { ExtensionsSettings } from './ExtensionsSettings'
 export { UserGroupsSettings } from './Admin/UserGroupsSettings'
 export { UsersSettings } from './Admin/UsersSettings'

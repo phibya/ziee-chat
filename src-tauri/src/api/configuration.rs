@@ -1,4 +1,6 @@
 use crate::api::middleware::AuthenticatedUser;
+use crate::api::app::is_desktop_app;
+use crate::auth::AuthService;
 use crate::database::queries::configuration::{
     get_default_language, get_proxy_no_proxy, get_proxy_password, get_proxy_url,
     get_proxy_username, is_host_ssl, is_peer_ssl, is_proxy_enabled, is_proxy_host_ssl,
@@ -6,9 +8,18 @@ use crate::database::queries::configuration::{
     set_default_language, set_host_ssl, set_peer_ssl, set_proxy_enabled, set_proxy_host_ssl,
     set_proxy_ignore_ssl_certificates, set_proxy_no_proxy, set_proxy_password, set_proxy_ssl,
     set_proxy_url, set_proxy_username, set_user_registration_enabled,
+    get_ngrok_settings, set_ngrok_settings, NgrokSettings,
 };
+use crate::utils::ngrok::{NgrokService, NgrokError};
 use axum::{http::StatusCode, response::Json, Extension};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use tokio::sync::Mutex;
+use std::sync::Arc;
+use once_cell::sync::Lazy;
+
+// Global ngrok service instance
+static NGROK_SERVICE: Lazy<Arc<Mutex<Option<NgrokService>>>> = Lazy::new(|| Arc::new(Mutex::new(None)));
 
 #[derive(Serialize)]
 pub struct UserRegistrationStatusResponse {
@@ -76,6 +87,37 @@ pub struct TestProxyConnectionRequest {
 pub struct TestProxyConnectionResponse {
     pub success: bool,
     pub message: String,
+}
+
+// Ngrok API types
+#[derive(Serialize)]
+pub struct NgrokSettingsResponse {
+    pub api_key: String, // Will be empty in response for security
+    pub tunnel_enabled: bool,
+    pub tunnel_url: Option<String>,
+    pub tunnel_status: String,
+    pub auto_start: bool,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateNgrokSettingsRequest {
+    pub api_key: Option<String>,
+    pub tunnel_enabled: Option<bool>,
+    pub auto_start: Option<bool>,
+}
+
+#[derive(Serialize)]
+pub struct NgrokStatusResponse {
+    pub tunnel_active: bool,
+    pub tunnel_url: Option<String>,
+    pub tunnel_status: String,
+    pub last_error: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateUserPasswordRequest {
+    pub current_password: Option<String>,  // Optional for desktop apps
+    pub new_password: String,
 }
 
 // Public endpoint to check registration status (no auth required)
@@ -255,4 +297,204 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
     // Use the common proxy testing utility
     let common_config = crate::database::models::ProxySettings::from(proxy_config);
     crate::utils::proxy::test_proxy_connectivity(&common_config).await
+}
+
+// Ngrok API handlers
+
+pub async fn get_ngrok_settings_handler(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+) -> Result<Json<NgrokSettingsResponse>, StatusCode> {
+    match get_ngrok_settings().await {
+        Ok(settings) => Ok(Json(NgrokSettingsResponse {
+            api_key: settings.api_key,
+            tunnel_enabled: settings.tunnel_enabled,
+            tunnel_url: settings.tunnel_url,
+            tunnel_status: settings.tunnel_status,
+            auto_start: settings.auto_start,
+        })),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+pub async fn update_ngrok_settings(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Json(payload): Json<UpdateNgrokSettingsRequest>,
+) -> Result<Json<NgrokSettingsResponse>, StatusCode> {
+    // Get current settings
+    let mut settings = match get_ngrok_settings().await {
+        Ok(settings) => settings,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    // Update fields if provided
+    if let Some(api_key) = payload.api_key {
+        if !api_key.is_empty() {
+            settings.api_key = api_key;
+        }
+    }
+    
+    if let Some(tunnel_enabled) = payload.tunnel_enabled {
+        settings.tunnel_enabled = tunnel_enabled;
+    }
+    
+    if let Some(auto_start) = payload.auto_start {
+        settings.auto_start = auto_start;
+    }
+
+    // Save updated settings
+    match set_ngrok_settings(&settings).await {
+        Ok(_) => Ok(Json(NgrokSettingsResponse {
+            api_key: settings.api_key,
+            tunnel_enabled: settings.tunnel_enabled,
+            tunnel_url: settings.tunnel_url,
+            tunnel_status: settings.tunnel_status,
+            auto_start: settings.auto_start,
+        })),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+pub async fn start_ngrok_tunnel(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+) -> Result<Json<NgrokStatusResponse>, (StatusCode, String)> {
+    // Get current settings
+    let settings = match get_ngrok_settings().await {
+        Ok(settings) => settings,
+        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get ngrok settings: {}", e))),
+    };
+
+    if settings.api_key.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "API key not configured".to_string()));
+    }
+
+    // Get the HTTP port from the global config
+    let local_port = *crate::HTTP_PORT;
+
+    // Create and start ngrok service
+    let mut ngrok_service = NgrokService::new(settings.api_key.clone());
+    
+    match ngrok_service.start_tunnel(local_port).await {
+        Ok(tunnel_url) => {
+            // Update settings with tunnel info
+            let mut updated_settings = settings;
+            updated_settings.tunnel_url = Some(tunnel_url.clone());
+            updated_settings.tunnel_status = "active".to_string();
+            
+            if let Err(e) = set_ngrok_settings(&updated_settings).await {
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save tunnel settings: {}", e)));
+            }
+
+            // Store the service globally for later management
+            {
+                let mut global_service = NGROK_SERVICE.lock().await;
+                *global_service = Some(ngrok_service);
+            }
+
+            Ok(Json(NgrokStatusResponse {
+                tunnel_active: true,
+                tunnel_url: Some(tunnel_url),
+                tunnel_status: "active".to_string(),
+                last_error: None,
+            }))
+        }
+        Err(e) => {
+            // Update settings with error info
+            let mut updated_settings = settings;
+            updated_settings.tunnel_status = "error".to_string();
+            
+            let _ = set_ngrok_settings(&updated_settings).await;
+
+            // Return error status code with detailed message
+            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to start ngrok tunnel: {}", e)))
+        }
+    }
+}
+
+pub async fn stop_ngrok_tunnel(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+) -> Result<Json<NgrokStatusResponse>, StatusCode> {
+    // Stop the global ngrok service
+    {
+        let mut global_service = NGROK_SERVICE.lock().await;
+        if let Some(mut service) = global_service.take() {
+            if let Err(e) = service.stop_tunnel().await {
+                return Ok(Json(NgrokStatusResponse {
+                    tunnel_active: false,
+                    tunnel_url: None,
+                    tunnel_status: "error".to_string(),
+                    last_error: Some(format!("Failed to stop tunnel: {}", e)),
+                }));
+            }
+        }
+    }
+
+    // Update settings
+    let mut settings = match get_ngrok_settings().await {
+        Ok(settings) => settings,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    settings.tunnel_url = None;
+    settings.tunnel_status = "inactive".to_string();
+
+    if let Err(_) = set_ngrok_settings(&settings).await {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    Ok(Json(NgrokStatusResponse {
+        tunnel_active: false,
+        tunnel_url: None,
+        tunnel_status: "inactive".to_string(),
+        last_error: None,
+    }))
+}
+
+pub async fn get_ngrok_status(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+) -> Result<Json<NgrokStatusResponse>, StatusCode> {
+    // Check if service is running
+    let tunnel_active = {
+        let global_service = NGROK_SERVICE.lock().await;
+        global_service.as_ref().map_or(false, |service| service.is_tunnel_active())
+    };
+
+    // Get current settings
+    let settings = match get_ngrok_settings().await {
+        Ok(settings) => settings,
+        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+    };
+
+    Ok(Json(NgrokStatusResponse {
+        tunnel_active,
+        tunnel_url: settings.tunnel_url,
+        tunnel_status: if tunnel_active { "active".to_string() } else { "inactive".to_string() },
+        last_error: None,
+    }))
+}
+
+pub async fn update_user_password(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Json(payload): Json<UpdateUserPasswordRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let auth_service = AuthService::default();
+
+    // For desktop apps, skip current password verification
+    if !is_desktop_app() {
+        // Web apps: verify current password
+        if let Some(current_password) = &payload.current_password {
+            match auth_service.verify_user_password(&auth_user.user, current_password).await {
+                Ok(false) => return Err(StatusCode::UNAUTHORIZED),
+                Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+                _ => {}
+            }
+        } else {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    }
+    
+    // Update to new password
+    match auth_service.update_user_password(&auth_user.user.id, &payload.new_password).await {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }

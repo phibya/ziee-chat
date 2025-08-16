@@ -31,21 +31,7 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Result<Response, S
 
     let auth_service = AuthService::default();
 
-    // For desktop app, get or create default admin user
-    if is_desktop_app() {
-        match auth_service.get_default_admin_user().await {
-            Ok(user) => {
-                req.extensions_mut().insert(AuthenticatedUser {
-                    user_id: user.id,
-                    user,
-                });
-                return Ok(next.run(req).await);
-            }
-            Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
-        }
-    }
-
-    // For web app, validate JWT token
+    // UNIFIED: Always validate JWT token for both desktop and web
     match auth_service.get_user_by_token(token).await {
         Ok(Some(user)) => {
             req.extensions_mut().insert(AuthenticatedUser {
@@ -361,5 +347,40 @@ pub async fn repositories_delete_middleware(
     if !check_permission(user, permissions::REPOSITORIES_DELETE) {
         return Err(StatusCode::FORBIDDEN);
     }
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::ngrok::read permission
+pub async fn config_ngrok_read_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_NGROK_READ) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Middleware that checks for config::ngrok::edit permission
+pub async fn config_ngrok_edit_middleware(
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = get_authenticated_user(&req)?;
+
+    if !check_permission(user, permissions::CONFIG_NGROK_EDIT) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(req).await)
+}
+
+/// Basic authenticated middleware that only checks for valid authentication
+pub async fn authenticated_middleware(req: Request, next: Next) -> Result<Response, StatusCode> {
+    // Just ensure user is authenticated - no specific permission required
+    let _ = get_authenticated_user(&req)?;
     Ok(next.run(req).await)
 }

@@ -28,6 +28,7 @@ import {
   ShortcutsSettings,
   HardwareSettings,
   HttpsProxySettings,
+  NgrokSettings,
   ExtensionsSettings,
   UserGroupsSettings,
   UsersSettings,
@@ -123,6 +124,7 @@ function App() {
                           path="https-proxy"
                           element={<HttpsProxySettings />}
                         />
+                        <Route path="web-app" element={<NgrokSettings />} />
                         <Route
                           path="extensions"
                           element={<ExtensionsSettings />}

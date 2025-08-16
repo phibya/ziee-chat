@@ -412,3 +412,4 @@ pub async fn reset_user_password_with_service(
 
     Ok(result.rows_affected() > 0)
 }
+

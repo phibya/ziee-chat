@@ -1,5 +1,5 @@
 use crate::api;
-use axum::routing::{get, put};
+use axum::routing::{get, post, put};
 use axum::{middleware, Router};
 
 pub fn admin_config_routes() -> Router {
@@ -39,6 +39,42 @@ pub fn admin_config_routes() -> Router {
             "/config/proxy",
             put(api::configuration::update_proxy_settings).layer(middleware::from_fn(
                 api::middleware::config_proxy_edit_middleware,
+            )),
+        )
+        .route(
+            "/config/ngrok",
+            get(api::configuration::get_ngrok_settings_handler).layer(middleware::from_fn(
+                api::middleware::config_ngrok_read_middleware,
+            )),
+        )
+        .route(
+            "/config/ngrok",
+            put(api::configuration::update_ngrok_settings).layer(middleware::from_fn(
+                api::middleware::config_ngrok_edit_middleware,
+            )),
+        )
+        .route(
+            "/config/ngrok/start",
+            post(api::configuration::start_ngrok_tunnel).layer(middleware::from_fn(
+                api::middleware::config_ngrok_edit_middleware,
+            )),
+        )
+        .route(
+            "/config/ngrok/stop",
+            post(api::configuration::stop_ngrok_tunnel).layer(middleware::from_fn(
+                api::middleware::config_ngrok_edit_middleware,
+            )),
+        )
+        .route(
+            "/config/ngrok/status",
+            get(api::configuration::get_ngrok_status).layer(middleware::from_fn(
+                api::middleware::config_ngrok_read_middleware,
+            )),
+        )
+        .route(
+            "/config/user/password",
+            put(api::configuration::update_user_password).layer(middleware::from_fn(
+                api::middleware::authenticated_middleware,
             )),
         )
 }

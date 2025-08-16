@@ -4,6 +4,7 @@ import { useAdminAssistantsStore } from './admin/assistants'
 import { useAdminUsersStore } from './admin/users'
 import { useAdminUserGroupsStore } from './admin/userGroups'
 import { useAdminProxySettingsStore } from './admin/proxySettings'
+import { useAdminNgrokSettingsStore } from './admin/ngrokSettings'
 import { useHardwareStore } from './admin/hardware'
 import { useAuthStore } from './auth'
 import { useConversationsStore } from './conversations'
@@ -60,6 +61,16 @@ export {
   updateSystemProxySettings,
   useAdminProxySettingsStore,
 } from './admin/proxySettings'
+// Admin Ngrok Settings store
+export {
+  loadNgrokSettings,
+  updateNgrokSettings,
+  updateAccountPassword,
+  startNgrokTunnel,
+  stopNgrokTunnel,
+  refreshNgrokStatus,
+  useAdminNgrokSettingsStore,
+} from './admin/ngrokSettings'
 // Admin Hardware store
 export {
   clearHardwareError,
@@ -375,6 +386,7 @@ export const Stores = {
   AdminUsers: createStoreProxy(useAdminUsersStore),
   AdminUserGroups: createStoreProxy(useAdminUserGroupsStore),
   AdminProxySettings: createStoreProxy(useAdminProxySettingsStore),
+  AdminNgrokSettings: createStoreProxy(useAdminNgrokSettingsStore),
   AdminHardware: createStoreProxy(useHardwareStore),
   Assistants: createStoreProxy(useUserAssistantsStore),
   AdminAssistants: createStoreProxy(useAdminAssistantsStore),

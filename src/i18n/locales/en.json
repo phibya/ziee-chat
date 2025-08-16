@@ -117,6 +117,7 @@
     "localApiServer": "Local API Server",
     "httpsProxy": "HTTPS Proxy",
     "extensions": "Extensions",
+    "ngrok": "Web App Tunnel",
     "admin": "Admin",
     "assistants": "Assistants",
     "users": "Users",
@@ -701,5 +702,55 @@
     "support": "Support",
     "reportAnIssue": "Report an Issue",
     "reportAnIssueDescription": "Found a bug? Help us out by filing an issue on GitHub."
+  },
+  "ngrok": {
+    "title": "Web App Tunnel",
+    "desktopOnly": "This feature is only available in desktop mode",
+    "configuration": "Ngrok Configuration", 
+    "apiKey": "Ngrok API Key",
+    "apiKeyTooltip": "Get your API key from ngrok.com dashboard",
+    "apiKeyPlaceholder": "Enter your ngrok API key",
+    "apiKeyRequired": "Ngrok API key is required",
+    "accountSecurity": "Account Security",
+    "currentPassword": "Current Password",
+    "currentPasswordTooltip": "Your current account password",
+    "currentPasswordPlaceholder": "Enter current password",
+    "currentPasswordRequired": "Current password is required",
+    "newPassword": "New Password", 
+    "newPasswordTooltip": "Set a strong password for remote access",
+    "newPasswordPlaceholder": "Enter new password",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "autoStart": "Auto-start tunnel on app startup",
+    "manual": "Manual start only",
+    "tunnelControl": "Tunnel Control",
+    "status": "Status",
+    "inactive": "Inactive",
+    "tunnelUrl": "Tunnel URL",
+    "startTunnel": "Start Tunnel",
+    "stopTunnel": "Stop Tunnel", 
+    "refreshStatus": "Refresh Status",
+    "settingsSaved": "Ngrok settings saved successfully",
+    "passwordUpdated": "Account password updated successfully",
+    "settingsError": "Failed to save settings",
+    "tunnelStarted": "Tunnel started successfully",
+    "tunnelStartError": "Failed to start tunnel",
+    "tunnelStopped": "Tunnel stopped successfully",
+    "tunnelStopError": "Failed to stop tunnel",
+    "urlCopied": "URL copied to clipboard",
+    "updatePassword": "Update Password",
+    "security": {
+      "title": "Security Warning",
+      "description": "Enabling the web tunnel exposes your app to the internet. External users will login with your account credentials."
+    },
+    "instructions": {
+      "title": "How to Use",
+      "step1": "Sign up for a free ngrok account at ngrok.com and get your API key",
+      "step2": "Enter your API key and optionally update your account password",
+      "step3": "Click 'Start Tunnel' to expose your app to the internet",
+      "step4": "Share the tunnel URL with others - they'll login with your account credentials"
+    }
+  },
+  "permissions": {
+    "insufficient": "You do not have permission to access this feature"
   }
 }

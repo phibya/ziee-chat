@@ -21,6 +21,8 @@ pub mod permissions {
     pub const CONFIG_APPEARANCE_EDIT: &str = "config::appearance::edit";
     pub const CONFIG_PROXY_READ: &str = "config::proxy::read";
     pub const CONFIG_PROXY_EDIT: &str = "config::proxy::edit";
+    pub const CONFIG_NGROK_READ: &str = "config::ngrok::read";
+    pub const CONFIG_NGROK_EDIT: &str = "config::ngrok::edit";
 
     // User settings permissions
     pub const SETTINGS_READ: &str = "settings::read";

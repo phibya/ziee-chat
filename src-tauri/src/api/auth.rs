@@ -102,19 +102,11 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
                 Err(e) => return Err(e),
             }
         } else {
-            // Desktop app doesn't need setup, generate token for auto-login
-            match AUTH_SERVICE.auto_login_desktop().await {
-                Ok(login_response) => {
-                    return Ok(Json(InitResponse {
-                        needs_setup: false,
-                        is_desktop: true,
-                        token: Some(login_response.token),
-                    }));
-                }
-                Err(e) => {
-                    return Err(AppError::from_string(ErrorCode::AuthenticationFailed, e));
-                }
-            }
+            return Ok(Json(InitResponse {
+                needs_setup: false,
+                is_desktop: true,
+                token: None,
+            }));
         }
     }
 

@@ -249,4 +249,25 @@ impl AuthService {
             expires_at,
         })
     }
+
+    /// Verify user password
+    pub async fn verify_user_password(&self, user: &User, password: &str) -> Result<bool, String> {
+        // Check if user has password service
+        if let Some(password_service) = &user.services.password {
+            password::verify_password(password, password_service)
+                .map_err(|e| e.to_string())
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// Update user password
+    pub async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<(), String> {
+        let password_service = password::hash_password(new_password)
+            .map_err(|e| e.to_string())?;
+        users::reset_user_password_with_service(*user_id, password_service)
+            .await
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
 }

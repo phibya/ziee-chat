@@ -48,6 +48,7 @@ axum = { version = "0.8.4", features = ["macros", "multipart"] }
 tower-http = { version = "0.6.6", features = ["cors", "fs", "set-header"] }
 tower = "0.5"
 async-trait = "0.1"
+ngrok = "0.14"
 async-stream = "0.3"
 reqwest = { version = "0.12", features = ["json", "multipart"] }
 portpicker = "0.1"
