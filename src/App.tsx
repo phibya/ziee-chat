@@ -26,12 +26,10 @@ import {
   ModelRepositorySettings,
   RAGProvidersSettings,
   RAGRepositoriesSettings,
-  ShortcutsSettings,
   HardwareSettings,
   HttpsProxySettings,
   NgrokSettings,
   ApiProxyServerSettings,
-  ExtensionsSettings,
   UserGroupsSettings,
   UsersSettings,
   AdminAppearanceSettings,
@@ -123,10 +121,6 @@ function App() {
                           path="rag-repositories"
                           element={<RAGRepositoriesSettings />}
                         />
-                        <Route
-                          path="shortcuts"
-                          element={<ShortcutsSettings />}
-                        />
                         <Route path="hardware" element={<HardwareSettings />} />
                         <Route
                           path="https-proxy"
@@ -136,10 +130,6 @@ function App() {
                         <Route
                           path="api-proxy-server"
                           element={<ApiProxyServerSettings />}
-                        />
-                        <Route
-                          path="extensions"
-                          element={<ExtensionsSettings />}
                         />
                         <Route
                           path="admin-general"

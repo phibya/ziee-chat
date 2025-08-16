@@ -1,12 +1,10 @@
 import {
   CloudDownloadOutlined,
-  ExperimentOutlined,
   EyeOutlined,
   GlobalOutlined,
   LockOutlined,
   RobotOutlined,
   SettingOutlined,
-  SlidersOutlined,
   TeamOutlined,
   ToolOutlined,
   UserOutlined,
@@ -80,12 +78,6 @@ export function SettingsPage() {
           },
         ]
       : []),
-
-    {
-      key: 'shortcuts',
-      icon: <SlidersOutlined />,
-      label: t('settings.shortcuts'),
-    },
     {
       key: 'hardware',
       icon: <ToolOutlined />,
@@ -116,11 +108,6 @@ export function SettingsPage() {
           },
         ]
       : []),
-    {
-      key: 'extensions',
-      icon: <ExperimentOutlined />,
-      label: t('settings.extensions'),
-    },
   ]
 
   // Build admin menu items based on permissions

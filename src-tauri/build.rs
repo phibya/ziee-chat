@@ -46,7 +46,7 @@ fn main() {
     let mistralrs_source = Path::new("../src-engines/mistralrs-server")
         .canonicalize()
         .ok();
-    let _mistralrs_path = match build_helpers::mistralrs::build_mistralrs_server(
+    let _mistralrs_path = match build_helpers::mistralrs::build(
         &target_dir,
         &target,
         mistralrs_source.as_deref(),
@@ -62,23 +62,12 @@ fn main() {
     // === Build llama.cpp server ===
     println!("cargo:rerun-if-changed=src-engines/llama.cpp");
     let llamacpp_source = Path::new("../src-engines/llama.cpp").canonicalize().ok();
-    let _llamacpp_path = if target.contains("windows") || target.contains("linux") {
-        // Use multi-backend configuration for Windows/Linux with CUDA + Vulkan + OpenCL
-        build_helpers::llamacpp::build_llamacpp_multi_backend(
-            &target_dir,
-            &target,
-            llamacpp_source.as_deref(),
-        )
-        .expect("Failed to build llama.cpp with multi-backend support - build cannot continue")
-    } else {
-        // Use regular build for macOS (with Metal support)
-        build_helpers::llamacpp::build_llamacpp(
-            &target_dir,
-            &target,
-            llamacpp_source.as_deref(),
-        )
-        .expect("Failed to build llama.cpp - build cannot continue")
-    };
+    let _llamacpp_path = build_helpers::llamacpp::build(
+        &target_dir,
+        &target,
+        llamacpp_source.as_deref(),
+    )
+    .expect("Failed to build llama.cpp with comprehensive features - build cannot continue");
 
     // === Set PDFium environment variables ===
     if let Some(ref path) = pdfium_target_path {

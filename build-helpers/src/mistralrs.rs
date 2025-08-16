@@ -3,7 +3,28 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-pub fn build_mistralrs_server(
+/// Get comprehensive feature set for the target platform
+fn get_comprehensive_features(target: &str) -> String {
+    if target.contains("darwin") && (target.contains("aarch64") || target.contains("arm64")) {
+        // macOS Apple Silicon: Metal + Accelerate
+        "metal,accelerate".to_string()
+    } else if target.contains("darwin") && target.contains("x86_64") {
+        // macOS Intel: Accelerate + MKL (if available)
+        "accelerate,mkl".to_string()
+    } else if target.contains("linux") {
+        // Linux: All GPU backends + CPU optimizations
+        "cuda,vulkan,mkl,flash-attn,cudnn".to_string()
+    } else if target.contains("windows") {
+        // Windows: CUDA + CPU optimizations
+        "cuda,mkl,flash-attn,cudnn".to_string()
+    } else {
+        // Fallback for other platforms
+        String::new()
+    }
+}
+
+/// Build mistralrs-server with comprehensive features for the platform
+pub fn build(
     target_dir: &Path,
     target: &str,
     source_path: Option<&Path>
@@ -60,18 +81,10 @@ pub fn build_mistralrs_server(
         .arg(&mistralrs_build_dir)
         .arg("--release"); // Always build in release mode
 
-    // Add platform-specific features
-    if target.contains("darwin") {
-        // macOS: use metal acceleration
-        cmd.arg("--features").arg("metal,accelerate");
-    } else if target.contains("linux") && env::var("CUDA_PATH").is_ok() {
-        // Linux with CUDA if available
-        cmd.arg("--features").arg("cuda,cudnn,flash-attn");
-    } else if target.contains("windows") && env::var("CUDA_PATH").is_ok() {
-        // Windows: use DirectML
-        cmd.arg("--features").arg("cuda,cudnn,flash-attn");
-    } else {
-        //do nothing for unsupported platforms
+    // Add comprehensive platform-specific features
+    let features = get_comprehensive_features(target);
+    if !features.is_empty() {
+        cmd.arg("--features").arg(features);
     }
 
     println!("Running: {:?}", cmd);

@@ -56,7 +56,7 @@ pub fn get_backend_config(backend: BackendType, target: &str) -> Result<BackendC
     }
 }
 
-/// Get multi-backend configuration for Windows/Linux with CUDA, Vulkan, and OpenCL
+/// Get comprehensive multi-backend configuration for Windows/Linux with all features
 pub fn get_multi_backend_config(target: &str) -> Result<BackendConfig, Box<dyn std::error::Error>> {
     // Only enable multi-backend on Windows and Linux
     if target.contains("darwin") || target.contains("apple") {
@@ -66,27 +66,32 @@ pub fn get_multi_backend_config(target: &str) -> Result<BackendConfig, Box<dyn s
     let mut cmake_flags = HashMap::new();
     let mut dependencies = vec![];
     
-    // Enable CPU backend as base
+    // Enable CPU backend with all optimizations
     cmake_flags.insert("GGML_CPU".to_string(), "ON".to_string());
     cmake_flags.insert("GGML_CPU_ALL_VARIANTS".to_string(), "ON".to_string());
     cmake_flags.insert("GGML_NATIVE".to_string(), "OFF".to_string());
     
+    // Enable all SIMD optimizations for maximum compatibility
+    cmake_flags.insert("GGML_AVX2".to_string(), "ON".to_string());
+    cmake_flags.insert("GGML_AVX".to_string(), "ON".to_string());
+    cmake_flags.insert("GGML_SSE3".to_string(), "ON".to_string());
+    
     // Enable dynamic backend loading
     cmake_flags.insert("GGML_BACKEND_DL".to_string(), "ON".to_string());
     
-    // Always enable CUDA support on Windows/Linux
+    // Enable CUDA support with comprehensive architecture coverage
     cmake_flags.insert("GGML_CUDA".to_string(), "ON".to_string());
-    cmake_flags.insert("CMAKE_CUDA_ARCHITECTURES".to_string(), "70;75;80;86;89".to_string());
+    cmake_flags.insert("CMAKE_CUDA_ARCHITECTURES".to_string(), "52;61;70;75;80;86;89;90".to_string());
     dependencies.push("nvidia-cuda-toolkit".to_string());
     
-    // Always enable Vulkan support on Windows/Linux
+    // Enable Vulkan support
     cmake_flags.insert("GGML_VULKAN".to_string(), "ON".to_string());
     dependencies.push("vulkan-sdk".to_string());
     if target.contains("linux") {
         dependencies.push("mesa-vulkan-drivers".to_string());
     }
     
-    // Always enable OpenCL support on Windows/Linux
+    // Enable OpenCL support
     cmake_flags.insert("GGML_OPENCL".to_string(), "ON".to_string());
     dependencies.push("opencl-headers".to_string());
     if target.contains("linux") {
@@ -97,7 +102,7 @@ pub fn get_multi_backend_config(target: &str) -> Result<BackendConfig, Box<dyn s
     cmake_flags.insert("GGML_METAL".to_string(), "OFF".to_string());
     
     Ok(BackendConfig {
-        name: "Multi-Backend (CUDA+Vulkan+OpenCL)".to_string(),
+        name: "Comprehensive (CUDA+Vulkan+OpenCL+CPU)".to_string(),
         backend_type: BackendType::CUDA, // Use CUDA as primary type
         cmake_flags,
         env_vars: HashMap::new(),

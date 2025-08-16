@@ -322,6 +322,19 @@ export function NgrokSettings() {
 
               {/* Error Display */}
               {error && <Alert message={error} type="error" showIcon />}
+              {ngrokStatus?.tunnel_active && (
+                <Alert
+                  type="warning"
+                  closable
+                  message={`
+                  Note: The app does not automatically synchronize messages 
+                  and settings when accessing the web app via ngrok. 
+                  Please reload the app to ensure you have the latest data
+                  when you come back from the web app.
+                  You can do this by right-clicking anywhere in the app and selecting "Reload"
+                  `}
+                />
+              )}
             </div>
           </Card>
         )}

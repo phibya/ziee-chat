@@ -8,34 +8,96 @@ use std::fs;
 
 use crate::llamacpp::config::BuildConfig;
 use crate::llamacpp::platform::get_platform_config;
-use crate::llamacpp::backend::{get_backend_config, get_multi_backend_config, BackendType};
+use crate::llamacpp::backend::{get_backend_config, get_multi_backend_config, BackendType, BackendConfig};
 
-/// Get platform-specific backend selection
-fn get_platform_backends(target: &str) -> Result<Vec<BackendType>, Box<dyn std::error::Error>> {
-    if target.contains("darwin") || target.contains("apple") {
-        // macOS: CPU + Metal + BLAS  
-        Ok(vec![BackendType::CPU, BackendType::Metal, BackendType::BLAS])
+/// Get comprehensive backend selection for unified build
+fn get_comprehensive_backends(target: &str) -> Result<Vec<BackendType>, Box<dyn std::error::Error>> {
+    if target.contains("darwin") && (target.contains("aarch64") || target.contains("arm64")) {
+        // macOS Apple Silicon: Metal + Accelerate + CPU with all optimizations
+        Ok(vec![BackendType::Metal, BackendType::BLAS])
+    } else if target.contains("darwin") && target.contains("x86_64") {
+        // macOS Intel: Accelerate + CPU with all SIMD optimizations  
+        Ok(vec![BackendType::BLAS])
     } else if target.contains("linux") || target.contains("windows") {
-        // Linux/Windows: Always include CUDA, Vulkan, and OpenCL
-        Ok(vec![BackendType::CUDA, BackendType::Vulkan, BackendType::OpenCL, BackendType::BLAS])
+        // Linux/Windows: All GPU backends + CPU with all optimizations
+        Ok(vec![BackendType::CUDA, BackendType::Vulkan, BackendType::OpenCL])
     } else {
         Err(format!("Unsupported target platform: {}", target).into())
     }
 }
 
-/// Build llama.cpp with auto-selected backends based on platform
-pub fn build_llamacpp(
+/// Get comprehensive backend configuration for the target platform
+fn get_comprehensive_backend_config(target: &str) -> Result<BackendConfig, Box<dyn std::error::Error>> {
+    if target.contains("darwin") || target.contains("apple") {
+        // macOS: Use comprehensive single backend config with Metal/Accelerate
+        get_comprehensive_macos_config(target)
+    } else {
+        // Linux/Windows: Use multi-backend config with all GPU support
+        get_multi_backend_config(target)
+    }
+}
+
+/// Get comprehensive macOS configuration with all available features
+fn get_comprehensive_macos_config(target: &str) -> Result<BackendConfig, Box<dyn std::error::Error>> {
+    use std::collections::HashMap;
+    
+    let mut cmake_flags = HashMap::new();
+    let mut dependencies = vec![];
+    
+    // Enable CPU with all optimizations
+    cmake_flags.insert("GGML_CPU".to_string(), "ON".to_string());
+    cmake_flags.insert("GGML_CPU_ALL_VARIANTS".to_string(), "ON".to_string());
+    cmake_flags.insert("GGML_NATIVE".to_string(), "OFF".to_string());
+    
+    // Enable backend dynamic loading
+    cmake_flags.insert("GGML_BACKEND_DL".to_string(), "ON".to_string());
+    
+    if target.contains("aarch64") || target.contains("arm64") {
+        // Apple Silicon: Metal + Accelerate
+        cmake_flags.insert("GGML_METAL".to_string(), "ON".to_string());
+        cmake_flags.insert("GGML_METAL_USE_BF16".to_string(), "ON".to_string());
+        cmake_flags.insert("GGML_METAL_EMBED_LIBRARY".to_string(), "ON".to_string());
+        cmake_flags.insert("GGML_METAL_SHADER_DEBUG".to_string(), "OFF".to_string());
+        cmake_flags.insert("GGML_ACCELERATE".to_string(), "ON".to_string());
+        cmake_flags.insert("CMAKE_OSX_ARCHITECTURES".to_string(), "arm64".to_string());
+    } else {
+        // Intel Mac: Accelerate + SIMD optimizations
+        cmake_flags.insert("GGML_ACCELERATE".to_string(), "ON".to_string());
+        cmake_flags.insert("GGML_AVX2".to_string(), "ON".to_string());
+        cmake_flags.insert("GGML_AVX".to_string(), "ON".to_string());
+        cmake_flags.insert("GGML_SSE3".to_string(), "ON".to_string());
+        cmake_flags.insert("CMAKE_OSX_ARCHITECTURES".to_string(), "x86_64".to_string());
+        cmake_flags.insert("GGML_METAL".to_string(), "OFF".to_string());
+    }
+    
+    // Disable other GPU backends on macOS
+    cmake_flags.insert("GGML_CUDA".to_string(), "OFF".to_string());
+    cmake_flags.insert("GGML_VULKAN".to_string(), "OFF".to_string());
+    cmake_flags.insert("GGML_OPENCL".to_string(), "OFF".to_string());
+    
+    Ok(BackendConfig {
+        name: "macOS Comprehensive".to_string(),
+        backend_type: if target.contains("aarch64") || target.contains("arm64") {
+            BackendType::Metal
+        } else {
+            BackendType::BLAS
+        },
+        cmake_flags,
+        env_vars: HashMap::new(),
+        dependencies,
+    })
+}
+
+/// Build llama.cpp with comprehensive features for the platform
+pub fn build(
     target_dir: &Path,
     target: &str,
     source_path: Option<&Path>
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let platform_config = get_platform_config(target)?;
     
-    // Auto-select backends based on platform
-    let selected_backends = get_platform_backends(target)?;
-    let backend_configs: Vec<_> = selected_backends.into_iter()
-        .map(|b| get_backend_config(b, target))
-        .collect::<Result<Vec<_>, _>>()?;
+    // Use comprehensive backend configuration that includes all platform features
+    let comprehensive_config = get_comprehensive_backend_config(target)?;
     
     // Default source path if not provided
     let default_path;
@@ -57,54 +119,12 @@ pub fn build_llamacpp(
         target_dir: target_dir.to_path_buf(),
         target: target.to_string(),
         platform: platform_config,
-        backends: backend_configs,
+        backends: vec![comprehensive_config],
     };
     
     build_with_config(&build_config)
 }
 
-/// Build llama.cpp with multi-backend support (CUDA + Vulkan + OpenCL) for Windows/Linux
-pub fn build_llamacpp_multi_backend(
-    target_dir: &Path,
-    target: &str,
-    source_path: Option<&Path>
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let platform_config = get_platform_config(target)?;
-    
-    // Use the optimized multi-backend configuration for Windows/Linux
-    let backend_config = if target.contains("darwin") || target.contains("apple") {
-        // macOS: fallback to regular Metal configuration
-        get_backend_config(BackendType::Metal, target)?
-    } else {
-        // Windows/Linux: use multi-backend configuration
-        get_multi_backend_config(target)?
-    };
-    
-    // Default source path if not provided
-    let default_path;
-    let source_dir = if let Some(path) = source_path {
-        path
-    } else {
-        default_path = std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join("../src-engines/llama.cpp");
-        &default_path
-    };
-    
-    if !source_dir.exists() {
-        return Err(format!("llama.cpp source directory not found at: {}", source_dir.display()).into());
-    }
-    
-    let build_config = BuildConfig {
-        source_dir: source_dir.to_path_buf(),
-        target_dir: target_dir.to_path_buf(),
-        target: target.to_string(),
-        platform: platform_config,
-        backends: vec![backend_config],
-    };
-    
-    build_with_config(&build_config)
-}
 
 /// Build llama.cpp with the given configuration
 fn build_with_config(config: &BuildConfig) -> Result<PathBuf, Box<dyn std::error::Error>> {
