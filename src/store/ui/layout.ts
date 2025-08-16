@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { isDesktopApp } from '../../api/core'
+import { isTauriView } from '../../api/core'
 
 interface LayoutUIState {
   // Mobile/responsive state
@@ -57,7 +57,7 @@ export const setIsFullscreen = (isFullscreen: boolean) => {
 let isListenerInitialized = false
 
 export const initializeFullscreenListener = async () => {
-  if (!isDesktopApp || isListenerInitialized) return
+  if (!isTauriView || isListenerInitialized) return
 
   isListenerInitialized = true
 

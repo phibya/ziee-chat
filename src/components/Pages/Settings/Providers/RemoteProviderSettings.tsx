@@ -7,7 +7,7 @@ import { App, Button, Card, Flex, Form, Input, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearProvidersError,
@@ -48,7 +48,7 @@ export function RemoteProviderSettings() {
 
   // Check permissions for web app
   const canEditProviders =
-    isDesktopApp || hasPermission(Permission.config.providers.edit)
+    isTauriView || hasPermission(Permission.config.providers.edit)
 
   // Helper functions for provider validation
   const canEnableProvider = (provider: any): boolean => {

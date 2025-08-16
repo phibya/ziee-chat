@@ -13,7 +13,7 @@ import {
 } from '@ant-design/icons'
 import { logoutUser, setSidebarCollapsed, Stores } from '../../../store'
 import { DownloadIndicator } from './DownloadIndicator.tsx'
-import { isDesktopApp } from '../../../api/core.ts'
+import { isTauriView } from '../../../api/core.ts'
 import { RecentConversations } from './RecentConversations'
 import { TauriDragRegion } from '../../Common/TauriDragRegion'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
@@ -96,7 +96,7 @@ export function LeftSidebar() {
   const { token } = theme.useToken()
   const windowMinSize = useWindowMinSize()
 
-  const { user } = Stores.Auth
+  const { user, isDesktop } = Stores.Auth
   const { previousSettingPagePath } = Stores.UI.PathHistory
 
   const isActive = (path: string) => {
@@ -119,7 +119,7 @@ export function LeftSidebar() {
         borderRight: windowMinSize.xs
           ? 'none'
           : '1px solid ' + token.colorBorderSecondary,
-        backgroundColor: isDesktopApp ? 'transparent' : token.colorBgContainer,
+        backgroundColor: isTauriView ? 'transparent' : token.colorBgContainer,
       }}
     >
       <TauriDragRegion className={'h-[50px]'} />
@@ -190,36 +190,39 @@ export function LeftSidebar() {
         </div>
 
         {/* User Profile Section */}
-        {user && !isDesktopApp && (
-          <div className="px-2">
+        {user && !isTauriView && (
+          <div>
             <Divider className={'!m-0'} />
-            <Dropdown
-              menu={{
-                items: [
-                  {
-                    key: 'profile',
-                    icon: <UserOutlined />,
-                    label: t('navigation.profile'),
-                    onClick: () => console.log('Profile clicked'),
-                  },
-                  {
-                    key: 'logout',
-                    icon: <LogoutOutlined />,
-                    label: t('navigation.logout'),
-                    onClick: async () => await logoutUser(),
-                  },
-                ],
-              }}
-              placement="topLeft"
-              trigger={['click']}
-            >
-              <div className="flex items-center px-3 py-2 rounded-md cursor-pointer hover:bg-gray-200 transition-colors duration-150">
-                <UserOutlined className="mr-3" />
-                <Text ellipsis style={{ color: 'inherit' }}>
-                  {user.username}
-                </Text>
+            {isDesktop ? (
+              <div onClick={logoutUser}>
+                <SidebarItem icon={<LogoutOutlined />} label={'Logout'} />
               </div>
-            </Dropdown>
+            ) : (
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: 'profile',
+                      icon: <UserOutlined />,
+                      label: t('navigation.profile'),
+                      onClick: () => console.log('Profile clicked'),
+                    },
+                    {
+                      key: 'logout',
+                      icon: <LogoutOutlined />,
+                      label: t('navigation.logout'),
+                      onClick: async () => await logoutUser(),
+                    },
+                  ].filter(Boolean),
+                }}
+                placement="topLeft"
+                trigger={['click']}
+              >
+                <div>
+                  <SidebarItem icon={<UserOutlined />} label={user.username} />
+                </div>
+              </Dropdown>
+            )}
           </div>
         )}
       </div>

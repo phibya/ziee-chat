@@ -27,7 +27,7 @@ import { Drawer } from '../../../Common/Drawer'
 import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isDesktopApp } from '../../../../api/core.ts'
+import { isTauriView } from '../../../../api/core.ts'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   assignUserToUserGroup,
@@ -80,7 +80,7 @@ export function UsersSettings() {
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
-    if (isDesktopApp) {
+    if (isTauriView) {
       message.warning('User management is not available in desktop mode')
       return
     }
@@ -326,7 +326,7 @@ export function UsersSettings() {
     },
   ]
 
-  if (isDesktopApp) {
+  if (isTauriView) {
     return (
       <Card>
         <div className="text-center">

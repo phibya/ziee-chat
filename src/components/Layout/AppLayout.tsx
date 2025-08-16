@@ -3,7 +3,7 @@ import { LeftSidebar } from './LeftSidebar'
 import { Stores, setSidebarCollapsed, setMainContentWidth } from '../../store'
 import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
-import { isDesktopApp } from '../../api/core.ts'
+import { isTauriView } from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
 
 interface AppLayoutProps {
@@ -133,7 +133,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => {
     //set root document background color based on theme
     const root = document.documentElement
-    if (isDesktopApp) {
+    if (isTauriView) {
       root.style.backgroundColor = 'transparent'
     } else {
       root.style.backgroundColor = token.colorBgLayout
@@ -194,7 +194,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div
       className="h-full w-screen flex overflow-hidden"
       style={{
-        backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
+        backgroundColor: isTauriView ? 'transparent' : token.colorBgLayout,
       }}
     >
       {/* Sidebar - Always visible, width controlled by container */}
@@ -222,7 +222,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div
         className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
         style={{
-          left: isDesktopApp && !isFullscreen ? 78 : 12,
+          left: isTauriView && !isFullscreen ? 78 : 12,
           top: 0,
         }}
       >

@@ -16,7 +16,7 @@ import {
 } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   deleteAdminModelRepository,
@@ -41,9 +41,9 @@ export function ModelRepositorySettings() {
 
   // Check permissions
   const canViewRepositories =
-    isDesktopApp || hasPermission(Permission.config.repositories.read)
+    isTauriView || hasPermission(Permission.config.repositories.read)
   const canEditRepositories =
-    isDesktopApp || hasPermission(Permission.config.repositories.edit)
+    isTauriView || hasPermission(Permission.config.repositories.edit)
 
   // If user doesn't have view permissions, don't render the component
   if (!canViewRepositories) {

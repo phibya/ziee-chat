@@ -18,7 +18,7 @@ import {
   subscribeToHardwareUsage,
   Stores,
 } from '../../../store'
-import { isDesktopApp } from '../../../api/core'
+import { isTauriView } from '../../../api/core'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 import { formatBytes } from '../../../utils/formatBytes'
 
@@ -526,7 +526,7 @@ export function HardwareSettings() {
 
   const handleOpenMonitorPopup = async () => {
     try {
-      if (isDesktopApp) {
+      if (isTauriView) {
         // Use Tauri window API for desktop app
         const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
 
@@ -566,7 +566,7 @@ export function HardwareSettings() {
         // For browser popups, we can't easily check if the window exists,
         // but using the same name will focus existing window if it exists
         const popup = window.open(
-          '/hardware-monitor',
+          window.location.origin + '/hardware-monitor',
           'hardware-monitor', // Using same name will focus existing popup
           'width=800,height=600,scrollbars=yes,resizable=yes,menubar=no,toolbar=no',
         )

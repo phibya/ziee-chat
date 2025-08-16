@@ -3,7 +3,7 @@ import { App, Button, Card, Divider, Dropdown, Flex, Form } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearProvidersError,
@@ -44,7 +44,7 @@ export function LocalProviderSettings() {
 
   // Check permissions for web app
   const canEditProviders =
-    isDesktopApp || hasPermission(Permission.config.providers.edit)
+    isTauriView || hasPermission(Permission.config.providers.edit)
 
   // Get active downloads for this provider
   const providerDownloads = downloads.filter(

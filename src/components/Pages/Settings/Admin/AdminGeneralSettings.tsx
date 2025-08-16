@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
@@ -66,7 +66,7 @@ export function AdminGeneralSettings() {
   }
 
   // Only show these settings for web app (not desktop)
-  if (isDesktopApp) {
+  if (isTauriView) {
     return (
       <SettingsPageContainer title={t('admin.title')}>
         <Card>

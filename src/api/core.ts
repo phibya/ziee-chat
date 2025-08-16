@@ -13,7 +13,7 @@ export const getAuthToken = () => {
 }
 
 //@ts-ignore
-export const isDesktopApp = !!window.__TAURI_INTERNALS__
+export const isTauriView = !!window.__TAURI_INTERNALS__
 
 export const getBaseUrl = (function () {
   let baseUrl: Promise<string>
@@ -24,7 +24,7 @@ export const getBaseUrl = (function () {
     }
 
     baseUrl = new Promise<string>(resolve => {
-      if (isDesktopApp) {
+      if (isTauriView) {
         invoke('get_http_port')
           .then(port => {
             resolve(`http://localhost:${port as number}`)

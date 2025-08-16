@@ -17,7 +17,7 @@ import {
   setRepositoryDrawerLoading,
   useRepositoryDrawerStore,
 } from '../../../../store/ui'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   CreateRepositoryRequest,
@@ -35,7 +35,7 @@ export function RepositoryDrawer() {
 
   // Check permissions
   const canEditRepositories =
-    isDesktopApp || hasPermission(Permission.config.repositories.edit)
+    isTauriView || hasPermission(Permission.config.repositories.edit)
 
   // Update repository form when editing
   useEffect(() => {

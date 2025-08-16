@@ -17,7 +17,7 @@ import {
   Typography,
 } from 'antd'
 import { useEffect } from 'react'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   Stores,
@@ -41,9 +41,9 @@ export function RAGRepositoriesSettings() {
 
   // Check permissions
   const canEditRepositories =
-    isDesktopApp || hasPermission(Permission.config.providers.edit)
+    isTauriView || hasPermission(Permission.config.providers.edit)
   const canViewRepositories =
-    isDesktopApp || hasPermission(Permission.config.providers.read)
+    isTauriView || hasPermission(Permission.config.providers.read)
 
   // If user doesn't have view permissions, don't render the component
   if (!canViewRepositories) {

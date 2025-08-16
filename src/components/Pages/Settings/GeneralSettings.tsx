@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../permissions'
-import { isDesktopApp } from '../../../api/core'
+import { isTauriView } from '../../../api/core'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
@@ -95,7 +95,7 @@ export function GeneralSettings() {
               </div>
               <Text type="secondary">v0.6.4</Text>
             </Flex>
-            {isDesktopApp && hasPermission(Permission.config.updates.read) && (
+            {isTauriView && hasPermission(Permission.config.updates.read) && (
               <>
                 <Divider style={{ margin: 0 }} />
                 <Flex
@@ -124,7 +124,7 @@ export function GeneralSettings() {
           </Flex>
         </Card>
 
-        {isDesktopApp && hasPermission(Permission.config.experimental.read) && (
+        {isTauriView && hasPermission(Permission.config.experimental.read) && (
           <Card title={t('general.advanced')}>
             <Form
               form={form}
@@ -159,7 +159,7 @@ export function GeneralSettings() {
           </Card>
         )}
 
-        {isDesktopApp && hasPermission(Permission.config.dataFolder.read) && (
+        {isTauriView && hasPermission(Permission.config.dataFolder.read) && (
           <Card title={t('general.dataFolder')}>
             <Flex className="flex-col gap-3">
               <Flex

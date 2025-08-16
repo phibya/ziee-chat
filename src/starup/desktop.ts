@@ -1,6 +1,6 @@
-import { isDesktopApp } from '../api/core.ts'
+import { isTauriView } from '../api/core.ts'
 
-if (isDesktopApp) {
+if (isTauriView) {
   // find div with data-tauri-decorum-tb and remove it
   setTimeout(() => {
     const decorumDiv = document.querySelector('div[data-tauri-decorum-tb]')

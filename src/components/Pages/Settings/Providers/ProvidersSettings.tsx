@@ -13,7 +13,7 @@ import {
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearProvidersError,
@@ -60,9 +60,9 @@ export function ProvidersSettings() {
 
   // Check permissions for web app
   const canEditProviders =
-    isDesktopApp || hasPermission(Permission.config.providers.edit)
+    isTauriView || hasPermission(Permission.config.providers.edit)
   const canViewProviders =
-    isDesktopApp || hasPermission(Permission.config.providers.read)
+    isTauriView || hasPermission(Permission.config.providers.read)
 
   // If user doesn't have view permissions, don't render the component
   if (!canViewProviders) {

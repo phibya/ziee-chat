@@ -15,7 +15,7 @@ import {
 } from '../../../store'
 import { Assistant } from '../../../types/api/assistant'
 import { AssistantFormDrawer } from '../../Common/AssistantFormDrawer.tsx'
-import { isDesktopApp } from '../../../api/core.ts'
+import { isTauriView } from '../../../api/core.ts'
 import { AssistantCard } from './AssistantCard.tsx'
 import { TemplateAssistantDrawer } from './TemplateAssistantDrawer.tsx'
 import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
@@ -170,7 +170,7 @@ export const AssistantsPage: React.FC = () => {
                   }}
                 />
               </Dropdown>
-              {!isDesktopApp && (
+              {!isTauriView && (
                 <Button
                   type="text"
                   icon={<CopyOutlined />}

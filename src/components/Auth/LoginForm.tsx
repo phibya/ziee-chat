@@ -1,11 +1,11 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { Stores, authenticateUser, clearAuthenticationError } from '../../store'
 import type { LoginRequest } from '../../types'
 
-const { Title, Text } = Typography
+const { Text } = Typography
 
 interface LoginFormProps {
   onSwitchToRegister?: () => void
@@ -26,22 +26,27 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     }
   }
 
+  useEffect(() => {
+    if (isDesktop) {
+      form.setFieldsValue({
+        username_or_email: 'root',
+        password: '',
+      })
+    }
+  }, [isDesktop])
+
   return (
     <Card className="w-full max-w-md mx-auto">
-      <div className="text-center mb-6">
-        <Title level={3}>{t('auth.signIn')}</Title>
-        {isDesktop && <Text type="secondary">{t('auth.desktopAutoAuth')}</Text>}
-      </div>
-
       {error && (
-        <Alert
-          message={error}
-          type="error"
-          showIcon
-          closable
-          onClose={clearAuthenticationError}
-          className="mb-4"
-        />
+        <div className={'py-4'}>
+          <Alert
+            message={error}
+            type="error"
+            showIcon
+            closable
+            onClose={clearAuthenticationError}
+          />
+        </div>
       )}
 
       <Form
@@ -58,6 +63,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
           rules={[
             { required: true, message: t('auth.usernameOrEmailRequired') },
           ]}
+          hidden={isDesktop}
         >
           <Input
             prefix={<UserOutlined />}

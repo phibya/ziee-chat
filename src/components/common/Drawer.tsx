@@ -8,7 +8,7 @@ import {
 import React, { useRef, useEffect } from 'react'
 import { ResizeHandle } from './ResizeHandle.tsx'
 import tinycolor from 'tinycolor2'
-import { isDesktopApp } from '../../api/core.ts'
+import { isTauriView } from '../../api/core.ts'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { IoIosArrowBack } from 'react-icons/io'
 import { TauriDragRegion } from './TauriDragRegion.tsx'
@@ -26,7 +26,7 @@ export const Drawer: React.FC<DrawerProps> = props => {
 
   // Monitor the left position of the drawer div and adjust title padding
   useEffect(() => {
-    if (!isDesktopApp) return
+    if (!isTauriView) return
     if (!props.open) return
 
     console.log('Setting up ResizeObserver for drawer position monitoring')
@@ -139,12 +139,11 @@ export const Drawer: React.FC<DrawerProps> = props => {
         },
         wrapper: {
           border:
-            windowMinSize.xs && !isDesktopApp
+            windowMinSize.xs && !isTauriView
               ? 'none'
               : `1px solid ${token.colorBorderSecondary}`,
-          borderRadius: isDesktopApp ? 8 : windowMinSize.xs ? 0 : 8,
-          // maxWidth: `calc(100vw - ${isDesktopApp ? 90 : windowMinSize.xs ? 0 : 24}px)`,
-          maxWidth: `calc(100vw - ${isDesktopApp && windowMinSize.xs ? 0 : isDesktopApp ? 90 : windowMinSize.xs ? 0 : 24}px)`,
+          borderRadius: isTauriView ? 8 : windowMinSize.xs ? 0 : 8,
+          maxWidth: `calc(100vw - ${isTauriView && windowMinSize.xs ? 0 : isTauriView ? 90 : windowMinSize.xs ? 0 : 24}px)`,
           boxShadow: 'none',
           margin: windowMinSize.xs ? 0 : 12,
           ...(restProps.styles?.wrapper || {}),

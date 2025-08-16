@@ -1,7 +1,7 @@
 import { App, Card, Flex, Form, Select, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isDesktopApp } from '../../../../api/core'
+import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   loadGlobalDefaultLanguage,
@@ -66,7 +66,7 @@ export function AdminAppearanceSettings() {
     }
   }
 
-  if (isDesktopApp) {
+  if (isTauriView) {
     return (
       <SettingsPageContainer title="Admin Appearance Settings">
         <Card>

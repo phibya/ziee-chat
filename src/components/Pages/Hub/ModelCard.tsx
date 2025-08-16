@@ -10,7 +10,7 @@ import {
 import { App, Button, Card, Flex, Select, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { isDesktopApp } from '../../../api/core.ts'
+import { isTauriView } from '../../../api/core.ts'
 import type { HubModel } from '../../../types/api/hub'
 import { Stores } from '../../../store'
 import { adminRepositoryHasCredentials } from '../../../store/admin/repositories.ts'
@@ -185,7 +185,7 @@ export function ModelCard({ model }: ModelCardProps) {
     }
 
     const readmeUrl = constructReadmeUrl(model)
-    if (isDesktopApp) {
+    if (isTauriView) {
       openUrl(readmeUrl).catch(err => {
         console.error(`Failed to open ${readmeUrl}:`, err)
         message.error(`Failed to open ${readmeUrl}`)

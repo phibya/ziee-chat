@@ -18,7 +18,7 @@ import {
   StopOutlined,
 } from '@ant-design/icons'
 import { SettingsPageContainer } from './common/SettingsPageContainer'
-import { isDesktopApp } from '../../../api/core'
+import { isTauriView } from '../../../api/core'
 import { Permission, usePermissions } from '../../../permissions'
 import { Stores } from '../../../store'
 import {
@@ -40,7 +40,7 @@ export function NgrokSettings() {
   const { hasPermission } = usePermissions()
 
   // Desktop-only feature check
-  if (!isDesktopApp) {
+  if (!isTauriView) {
     return (
       <SettingsPageContainer title={t('ngrok.title')}>
         <Card>
@@ -194,7 +194,7 @@ export function NgrokSettings() {
             onFinish={handlePasswordSave}
             disabled={!canEdit}
           >
-            {!isDesktopApp && (
+            {!isTauriView && (
               <Form.Item
                 name="current_password"
                 label={t('ngrok.currentPassword')}

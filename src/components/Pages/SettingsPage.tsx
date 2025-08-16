@@ -14,7 +14,7 @@ import {
 import { Button, Dropdown, Flex, Menu, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { isDesktopApp } from '../../api/core'
+import { isTauriView } from '../../api/core'
 import { Permission, usePermissions } from '../../permissions'
 import { useMainContentMinSize } from '../hooks/useWindowMinSize'
 import { TitleBarWrapper } from '../Common/TitleBarWrapper'
@@ -22,6 +22,7 @@ import { TauriDragRegion } from '../Common/TauriDragRegion'
 import { IoIosArrowDown, IoIosArrowForward } from 'react-icons/io'
 import { useEffect } from 'react'
 import { setPreviousSettingPagePath } from '../../store/ui/navigate.ts'
+import { Stores } from '../../store'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -30,6 +31,7 @@ export function SettingsPage() {
   const { hasPermission } = usePermissions()
   const mainContentMinSize = useMainContentMinSize()
   const { token } = theme.useToken()
+  const { isDesktop } = Stores.Auth
 
   const baseMenuItems = [
     {
@@ -48,7 +50,7 @@ export function SettingsPage() {
       label: t('settings.privacy'),
     },
     // Providers only shows in main menu for desktop apps
-    ...(isDesktopApp
+    ...(isDesktop
       ? [
           {
             key: 'providers',
@@ -64,7 +66,7 @@ export function SettingsPage() {
       : []),
 
     // RAG Providers for desktop apps
-    ...(isDesktopApp
+    ...(isDesktop
       ? [
           {
             key: 'rag-providers',
@@ -90,13 +92,18 @@ export function SettingsPage() {
       label: t('settings.hardware'),
     },
     // HTTPS Proxy only shows in main menu for desktop apps
-    ...(isDesktopApp
+    ...(isDesktop
       ? [
           {
             key: 'https-proxy',
             icon: <ToolOutlined />,
             label: t('settings.httpsProxy'),
           },
+        ]
+      : []),
+    ...(isDesktop && isTauriView
+      ? [
+          // Ngrok only shows in main menu for desktop apps
           {
             key: 'web-app',
             icon: <GlobalOutlined />,
@@ -112,7 +119,7 @@ export function SettingsPage() {
   ]
 
   // Build admin menu items based on permissions
-  const adminMenuItems = !isDesktopApp
+  const adminMenuItems = !isDesktop
     ? (() => {
         const items = []
 

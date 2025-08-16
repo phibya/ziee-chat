@@ -3,7 +3,7 @@ import React, { useEffect } from 'react'
 import { Stores } from '../../store'
 import { auth } from '../../store/auth.ts'
 import { AuthPage } from './AuthPage'
-import { isDesktopApp } from '../../api/core.ts'
+import { isTauriView } from '../../api/core.ts'
 
 const { Content } = Layout
 
@@ -30,7 +30,7 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   }
 
   // Show authentication page if not authenticated
-  if (!isAuthenticated && !isDesktopApp) {
+  if (!isAuthenticated && !isTauriView) {
     return <AuthPage />
   }
 

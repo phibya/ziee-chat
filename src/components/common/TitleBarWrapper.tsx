@@ -1,5 +1,5 @@
 import { Stores } from '../../store'
-import { isDesktopApp } from '../../api/core.ts'
+import { isTauriView } from '../../api/core.ts'
 import { theme } from 'antd'
 
 interface TitleBarWrapperProps {
@@ -20,7 +20,7 @@ export const TitleBarWrapper = ({
       className={`h-[50px] w-full flex relative border-b  px-3 transition-all duration-200 ease-in-out box-border py-0 ${className}`}
       style={{
         paddingLeft:
-          isSidebarCollapsed && isDesktopApp && !isFullscreen
+          isSidebarCollapsed && isTauriView && !isFullscreen
             ? 110
             : isSidebarCollapsed
               ? 48

@@ -179,22 +179,6 @@ pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<
 /// Login endpoint
 #[debug_handler]
 pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult<Json<AuthResponse>> {
-    // For desktop app, always auto-login with default admin
-    if is_desktop_app() {
-        match AUTH_SERVICE.auto_login_desktop().await {
-            Ok(login_response) => {
-                return Ok(Json(AuthResponse {
-                    token: login_response.token,
-                    user: login_response.user.sanitized(),
-                    expires_at: login_response.expires_at,
-                }));
-            }
-            Err(e) => {
-                return Err(AppError::from_string(ErrorCode::AuthenticationFailed, e));
-            }
-        }
-    }
-
     // For web app, authenticate with credentials
     match AUTH_SERVICE
         .authenticate_user(&payload.username_or_email, &payload.password)
@@ -223,11 +207,6 @@ pub async fn logout(req: Request) -> ApiResult<StatusCode> {
     let Some(token) = auth_header else {
         return Err(AppError::missing_auth_header());
     };
-
-    // For desktop app, don't actually logout (just return success)
-    if is_desktop_app() {
-        return Ok(StatusCode::OK);
-    }
 
     // For web app, remove the login token
     if let Err(e) = AUTH_SERVICE.logout_user(token).await {
