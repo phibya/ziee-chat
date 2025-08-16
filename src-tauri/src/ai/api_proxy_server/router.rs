@@ -3,7 +3,8 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 use serde_json;
 
-use super::{ModelRegistry, ProxyError, log_request};
+use super::{ModelRegistry, ProxyError, log_request, HttpForwardingProvider};
+use crate::database::queries::models;
 
 #[derive(Debug)]
 pub struct RequestRouter {
@@ -17,57 +18,6 @@ impl RequestRouter {
             registry,
             client: reqwest::Client::new(),
         }
-    }
-    
-    pub async fn route_chat_request(&self, mut request: serde_json::Value) -> Result<serde_json::Value, ProxyError> {
-        // 1. Extract model identifier from request or use default
-        let (model_id, original_identifier) = self.extract_or_default_model_id(&mut request).await?;
-        
-        // 2. Log the request
-        let registry = self.registry.read().await;
-        let display_name = registry.get_model_display_name(&model_id).await;
-        log_request("POST", "/chat/completions", "proxy", Some(&display_name));
-        
-        // 3. Get base URL for the model (handles both local and remote)
-        let base_url = registry.get_model_base_url(&original_identifier).await?;
-        drop(registry); // Release the lock
-        
-        // 4. Forward request to model server/provider
-        let url = format!("{}/v1/chat/completions", base_url);
-        let response = self.client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
-            
-        // 5. Return response as-is
-        let response_json = response.json().await
-            .map_err(|e| ProxyError::InvalidResponse(e.to_string()))?;
-            
-        Ok(response_json)
-    }
-    
-    pub async fn route_streaming_request(&self, mut request: serde_json::Value) -> Result<reqwest::Response, ProxyError> {
-        // Similar to route_chat_request but return raw response for streaming
-        let (model_id, original_identifier) = self.extract_or_default_model_id(&mut request).await?;
-        
-        let registry = self.registry.read().await;
-        let display_name = registry.get_model_display_name(&model_id).await;
-        log_request("POST", "/chat/completions", "proxy", Some(&display_name));
-        
-        let base_url = registry.get_model_base_url(&original_identifier).await?;
-        drop(registry);
-        
-        let url = format!("{}/v1/chat/completions", base_url);
-        let response = self.client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
-            
-        Ok(response)
     }
     
     pub async fn handle_models_request(&self) -> Result<serde_json::Value, ProxyError> {
@@ -108,8 +58,13 @@ impl RequestRouter {
             let registry = self.registry.read().await;
             let model_id = registry.resolve_model_identifier(&model_str).await?;
             
-            // Update request with actual UUID for backend compatibility
-            request["model"] = serde_json::json!(model_id.to_string());
+            // Get the actual model name from database for provider compatibility
+            let model = models::get_model_by_id(model_id).await
+                .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+                .ok_or(ProxyError::ModelNotFound(model_id.to_string()))?;
+            
+            // Update request with actual model name for provider compatibility
+            request["model"] = serde_json::json!(model.name);
             Ok((model_id, model_str))
         } else {
             // No model specified, use default
@@ -117,32 +72,35 @@ impl RequestRouter {
             let default_model = registry.get_default_model().await
                 .ok_or(ProxyError::NoDefaultModel)?;
             
-            // Add default model to request
-            request["model"] = serde_json::json!(default_model.to_string());
+            // Get the actual model name from database for provider compatibility
+            let model = models::get_model_by_id(default_model).await
+                .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+                .ok_or(ProxyError::ModelNotFound(default_model.to_string()))?;
+            
+            // Add default model name to request
+            request["model"] = serde_json::json!(model.name);
             Ok((default_model, default_model.to_string()))
         }
     }
     
-    async fn get_models_from_server(&self, base_url: &str) -> Result<Vec<serde_json::Value>, ProxyError> {
-        let url = format!("{}/v1/models", base_url);
-        let response = self.client
-            .get(&url)
-            .send()
-            .await
+    /// Forward chat completion request to appropriate provider
+    pub async fn forward_chat_request(&self, mut request: serde_json::Value) -> Result<reqwest::Response, ProxyError> {
+        // 1. Extract model identifier and resolve to UUID
+        let (model_id, _) = self.extract_or_default_model_id(&mut request).await?;
+        
+        // 2. Log the request
+        let registry = self.registry.read().await;
+        let display_name = registry.get_model_display_name(&model_id).await;
+        log_request("POST", "/chat/completions", "proxy", Some(&display_name));
+        
+        // 3. Get forwarding provider for the model
+        let provider = registry.get_forwarding_provider(&model_id).await?;
+        drop(registry); // Release the lock early
+        
+        // 4. Forward request using provider's implementation
+        let response = provider.forward_request(request).await
             .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
-        
-        if !response.status().is_success() {
-            return Err(ProxyError::ServerUnreachable(format!("Status: {}", response.status())));
-        }
-        
-        let models_response: serde_json::Value = response.json().await
-            .map_err(|e| ProxyError::InvalidResponse(e.to_string()))?;
-        
-        let models_data = models_response
-            .get("data")
-            .and_then(|v| v.as_array())
-            .ok_or(ProxyError::InvalidResponse("No data array in models response".to_string()))?;
-        
-        Ok(models_data.clone())
+            
+        Ok(response)
     }
 }

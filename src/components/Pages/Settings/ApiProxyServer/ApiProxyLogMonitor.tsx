@@ -9,14 +9,15 @@ import {
   FileTextOutlined,
   ArrowDownOutlined,
 } from '@ant-design/icons'
-import { Stores } from '../../store'
+import { Stores } from '../../../../store'
 import {
   connectToApiProxyLogs,
   disconnectFromApiProxyLogs,
   clearLogBuffer,
   downloadLogs,
   setAutoScroll,
-} from '../../store/admin/apiProxyLogMonitor'
+} from '../../../../store/admin/apiProxyLogMonitor.ts'
+import { isTauriView } from '../../../../api/core.ts'
 
 const { Text, Title } = Typography
 
@@ -154,12 +155,14 @@ export function ApiProxyLogMonitor() {
   }
 
   return (
-    <div className="p-4 h-screen flex flex-col">
-      <div className="mb-4">
-        <Title level={3} className="mb-2">
-          <FileTextOutlined className="mr-2" />
-          {t('apiProxyServer.logMonitor')}
-        </Title>
+    <div className="p-3 h-screen flex flex-col">
+      <div className="flex flex-col gap-3">
+        {!isTauriView && (
+          <Title level={4} className="!m-0">
+            <FileTextOutlined className="mr-2" />
+            {t('apiProxyServer.logMonitor')}
+          </Title>
+        )}
 
         {/* Status Bar */}
         <Card size="small" className="mb-4">

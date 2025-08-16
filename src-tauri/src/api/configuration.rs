@@ -472,6 +472,100 @@ pub async fn get_ngrok_status(
     }))
 }
 
+/// Try to autostart ngrok tunnel if configured
+pub async fn try_autostart_ngrok_tunnel() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Get ngrok settings from database
+    let settings = get_ngrok_settings().await
+        .map_err(|e| format!("Failed to get ngrok settings: {}", e))?;
+    
+    // Check if autostart is enabled
+    if !settings.auto_start {
+        tracing::info!("Ngrok tunnel autostart is disabled");
+        return Ok(());
+    }
+    
+    // Validate settings before attempting to start
+    if let Err(e) = validate_ngrok_config(&settings).await {
+        tracing::warn!("Ngrok autostart validation failed: {}", e);
+        // Don't fail startup, just log the warning
+        return Ok(());
+    }
+    
+    // Check if tunnel is already running
+    let tunnel_active = {
+        let global_service = NGROK_SERVICE.lock().await;
+        global_service.as_ref().map_or(false, |service| service.is_tunnel_active())
+    };
+    
+    if tunnel_active {
+        tracing::info!("Ngrok tunnel is already running, skipping autostart");
+        return Ok(());
+    }
+    
+    // Get HTTP port for tunneling
+    let http_port = crate::get_http_port();
+    
+    tracing::info!("Starting ngrok tunnel autostart on port {}", http_port);
+    
+    // Start the tunnel
+    match start_ngrok_tunnel_internal(&settings.api_key, http_port).await {
+        Ok(tunnel_url) => {
+            tracing::info!("Ngrok tunnel autostart successful: {}", tunnel_url);
+            
+            // Update the settings with the tunnel URL
+            let mut updated_settings = settings;
+            updated_settings.tunnel_url = Some(tunnel_url);
+            updated_settings.tunnel_status = "active".to_string();
+            updated_settings.tunnel_enabled = true;
+            
+            if let Err(e) = set_ngrok_settings(&updated_settings).await {
+                tracing::error!("Failed to save ngrok tunnel URL: {}", e);
+            }
+        }
+        Err(e) => {
+            tracing::error!("Ngrok tunnel autostart failed: {}", e);
+            // Don't fail startup, just log the error
+        }
+    }
+    
+    Ok(())
+}
+
+/// Validate ngrok configuration
+async fn validate_ngrok_config(settings: &NgrokSettings) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Check if API key is provided
+    if settings.api_key.trim().is_empty() {
+        return Err("Ngrok API key is required".into());
+    }
+    
+    // Check if API key looks valid (basic format check)
+    if settings.api_key.len() < 10 {
+        return Err("Ngrok API key appears to be invalid".into());
+    }
+    
+    Ok(())
+}
+
+/// Internal function to start ngrok tunnel
+async fn start_ngrok_tunnel_internal(api_key: &str, local_port: u16) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use crate::utils::ngrok::NgrokService;
+    
+    // Create new ngrok service
+    let mut service = NgrokService::new(api_key.to_string());
+    
+    // Start tunnel
+    let tunnel_url = service.start_tunnel(local_port).await
+        .map_err(|e| format!("Failed to start ngrok tunnel: {}", e))?;
+    
+    // Store service in global state
+    {
+        let mut global_service = NGROK_SERVICE.lock().await;
+        *global_service = Some(service);
+    }
+    
+    Ok(tunnel_url)
+}
+
 pub async fn update_user_password(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(payload): Json<UpdateUserPasswordRequest>,

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
+import { ApiClient } from '../../api/client'
 
 interface ApiProxyLogMonitorState {
   logs: string[]
@@ -23,89 +24,159 @@ export const useApiProxyLogMonitorStore = create<ApiProxyLogMonitorState>()(
   })),
 )
 
-let eventSource: EventSource | null = null
+// SSE Subscription Management for log monitoring
+let sseAbortController: AbortController | null = null
+let isIntentionallyDisconnecting = false
 const MAX_LOG_LINES = 1000 // Keep last 1000 lines in memory
 
-export const connectToApiProxyLogs = async () => {
-  if (eventSource) {
-    eventSource.close()
+// Subscribe to API proxy log updates via SSE
+export const connectToApiProxyLogs = async (): Promise<void> => {
+  const state = useApiProxyLogMonitorStore.getState()
+
+  // If already connected, don't create another connection
+  if (state.connected) {
+    return
   }
 
-  useApiProxyLogMonitorStore.setState({
-    connecting: true,
-    error: null,
-  })
+  // Clean up any existing AbortController
+  if (sseAbortController) {
+    sseAbortController.abort()
+    sseAbortController = null
+    // Small delay to ensure cleanup is complete
+    await new Promise(resolve => setTimeout(resolve, 100))
+  }
 
   try {
-    const token = localStorage.getItem('authToken') // Adjust based on your auth implementation
-    const url = `/api/admin/api-proxy-server/logs/stream${token ? `?token=${token}` : ''}`
+    console.log('Establishing SSE connection for API proxy log monitoring')
 
-    eventSource = new EventSource(url)
+    // Reset disconnection flag
+    isIntentionallyDisconnecting = false
 
-    eventSource.onopen = () => {
-      useApiProxyLogMonitorStore.setState({
-        connected: true,
-        connecting: false,
-        error: null,
-      })
-    }
-
-    eventSource.addEventListener('connected', event => {
-      console.log('API proxy log monitor connected:', event.data)
+    useApiProxyLogMonitorStore.setState({
+      error: null,
+      connecting: true,
     })
 
-    eventSource.addEventListener('log_update', event => {
-      try {
-        const data = JSON.parse(event.data)
-        if (data.lines && Array.isArray(data.lines)) {
-          const currentState = useApiProxyLogMonitorStore.getState()
-          const newLogs = [...currentState.logs, ...data.lines]
+    await ApiClient.Admin.subscribeApiProxyServerLogs(undefined, {
+      SSE: (event: string, data: any) => {
+        try {
+          switch (event) {
+            case '__init':
+              // Store the AbortController for later use
+              if (data?.abortController) {
+                sseAbortController = data.abortController
+                console.log('API Proxy Logs SSE AbortController initialized')
+                // Set connected status once AbortController is ready
+                useApiProxyLogMonitorStore.setState({
+                  connected: true,
+                })
+              }
+              break
 
-          // Keep only the last MAX_LOG_LINES
-          if (newLogs.length > MAX_LOG_LINES) {
-            newLogs.splice(0, newLogs.length - MAX_LOG_LINES)
+            case 'log_update':
+              if (data?.lines && Array.isArray(data.lines)) {
+                const currentState = useApiProxyLogMonitorStore.getState()
+                const newLogs = [...currentState.logs, ...data.lines]
+
+                // Keep only the last MAX_LOG_LINES
+                if (newLogs.length > MAX_LOG_LINES) {
+                  newLogs.splice(0, newLogs.length - MAX_LOG_LINES)
+                }
+
+                useApiProxyLogMonitorStore.setState({
+                  logs: newLogs,
+                  logCount: newLogs.length,
+                  lastUpdate: data.timestamp || new Date().toISOString(),
+                  connecting: false,
+                  error: null,
+                })
+              }
+              break
+
+            case 'connected':
+              console.log(
+                'API proxy log monitoring connected:',
+                data?.message || 'Connected',
+              )
+              useApiProxyLogMonitorStore.setState({
+                connecting: false,
+                error: null,
+              })
+              break
+
+            case 'error':
+              console.error('API proxy log subscription error:', data?.error)
+              useApiProxyLogMonitorStore.setState({
+                error: data?.error || 'API proxy log monitoring error',
+                connected: false,
+                connecting: false,
+              })
+              break
+
+            default:
+              console.log('Unknown API proxy log SSE event:', event, data)
           }
-
+        } catch (error) {
+          console.error('Failed to handle API proxy log SSE event:', error)
           useApiProxyLogMonitorStore.setState({
-            logs: newLogs,
-            logCount: newLogs.length,
-            lastUpdate: data.timestamp || new Date().toISOString(),
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Failed to handle SSE event',
+            connected: false,
+            connecting: false,
           })
         }
-      } catch (error) {
-        console.error('Failed to parse log message:', error)
-      }
+      },
     })
-
-    eventSource.onerror = error => {
-      console.error('EventSource error:', error)
+  } catch (error) {
+    // Ignore AbortErrors as they are expected during cleanup/disconnection
+    if (error instanceof Error && error.name === 'AbortError') {
+      if (isIntentionallyDisconnecting) {
+        console.log(
+          'API proxy log SSE connection was intentionally aborted during cleanup',
+        )
+      } else {
+        console.log('API proxy log SSE connection was aborted (unexpected)')
+      }
       useApiProxyLogMonitorStore.setState({
         connected: false,
         connecting: false,
-        error: 'Connection to log stream failed',
       })
+      return
     }
-  } catch (error) {
-    console.error('Failed to connect to logs:', error)
+
+    console.error('Failed to establish API proxy log SSE connection:', error)
     useApiProxyLogMonitorStore.setState({
+      connected: false,
+      error: error instanceof Error ? error.message : 'Failed to connect',
       connecting: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
     })
-    throw error
   }
 }
 
-export const disconnectFromApiProxyLogs = () => {
-  if (eventSource) {
-    eventSource.close()
-    eventSource = null
+// Disconnect API proxy log SSE connection
+export const disconnectFromApiProxyLogs = (): void => {
+  console.log('Disconnecting API proxy log monitoring')
+
+  // Set flag to indicate intentional disconnection
+  isIntentionallyDisconnecting = true
+
+  // Abort the SSE connection if AbortController is available
+  if (sseAbortController) {
+    sseAbortController.abort()
+    sseAbortController = null
+    console.log('API proxy log SSE connection aborted')
   }
 
   useApiProxyLogMonitorStore.setState({
     connected: false,
-    connecting: false,
     error: null,
+    connecting: false,
   })
+
+  // Reset flag after disconnection
+  isIntentionallyDisconnecting = false
 }
 
 export const clearLogBuffer = () => {

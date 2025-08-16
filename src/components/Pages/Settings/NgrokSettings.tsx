@@ -4,7 +4,7 @@ import {
   Card,
   Form,
   Input,
-  Checkbox,
+  Switch,
   Button,
   Typography,
   Alert,
@@ -82,6 +82,16 @@ export function NgrokSettings() {
 
     return () => clearInterval(interval)
   }, [ngrokStatus?.tunnel_active])
+
+  // Update form when ngrokSettings changes
+  useEffect(() => {
+    if (ngrokSettings) {
+      configForm.setFieldsValue({
+        api_key: ngrokSettings.api_key,
+        auto_start: ngrokSettings.auto_start,
+      })
+    }
+  }, [ngrokSettings, configForm])
 
   // Form handlers
   const handleConfigSave = async (values: any) => {
@@ -168,9 +178,21 @@ export function NgrokSettings() {
               />
             </Form.Item>
 
-            <Form.Item name="auto_start" valuePropName="checked">
-              <Checkbox>{t('ngrok.autoStart')}</Checkbox>
-            </Form.Item>
+            {/* Auto-start Toggle */}
+            <div className="flex justify-between items-center mb-4">
+              <div style={{ flex: 1, marginRight: 16 }}>
+                <Text strong>{t('ngrok.autoStart')}</Text>
+                <br />
+                <Text type="secondary">{t('ngrok.autoStartDesc')}</Text>
+              </div>
+              <Form.Item
+                name="auto_start"
+                valuePropName="checked"
+                style={{ margin: 0 }}
+              >
+                <Switch disabled={!canEdit} />
+              </Form.Item>
+            </div>
 
             {canEdit && (
               <Form.Item>

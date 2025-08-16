@@ -368,6 +368,8 @@ export const ApiEndpoints = {
   'Admin.getApiProxyServerStatus': 'GET /api/admin/api-proxy-server/status',
   'Admin.startApiProxyServer': 'POST /api/admin/api-proxy-server/start',
   'Admin.stopApiProxyServer': 'POST /api/admin/api-proxy-server/stop',
+  'Admin.reloadApiProxyServerModels': 'POST /api/admin/api-proxy-server/reload/models',
+  'Admin.reloadApiProxyServerTrustedHosts': 'POST /api/admin/api-proxy-server/reload/trusted-hosts',
 
   // Admin - API Proxy Server Model Management
   'Admin.listApiProxyServerModels': 'GET /api/admin/api-proxy-server/models',
@@ -620,6 +622,8 @@ export type ApiEndpointParameters = {
   'Admin.getApiProxyServerStatus': void
   'Admin.startApiProxyServer': void
   'Admin.stopApiProxyServer': void
+  'Admin.reloadApiProxyServerModels': void
+  'Admin.reloadApiProxyServerTrustedHosts': void
   'Admin.listApiProxyServerModels': void
   'Admin.addModelToApiProxyServer': CreateApiProxyServerModelRequest
   'Admin.updateApiProxyServerModel': {
@@ -829,6 +833,8 @@ export type ApiEndpointResponses = {
   'Admin.getApiProxyServerStatus': ApiProxyServerStatus
   'Admin.startApiProxyServer': void
   'Admin.stopApiProxyServer': void
+  'Admin.reloadApiProxyServerModels': void
+  'Admin.reloadApiProxyServerTrustedHosts': void
   'Admin.listApiProxyServerModels': ApiProxyServerModel[]
   'Admin.addModelToApiProxyServer': ApiProxyServerModel
   'Admin.updateApiProxyServerModel': ApiProxyServerModel

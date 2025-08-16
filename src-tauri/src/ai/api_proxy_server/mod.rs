@@ -5,6 +5,7 @@ pub mod router;
 pub mod security;
 pub mod server;
 
+use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -17,6 +18,16 @@ pub use security::*;
 pub use server::*;
 
 use crate::database::models::api_proxy_server_model::*;
+
+/// HTTP forwarding provider trait for AI providers
+#[async_trait]
+pub trait HttpForwardingProvider: Send + Sync {
+    /// Forward request to provider's API and return raw response
+    async fn forward_request(
+        &self, 
+        request: serde_json::Value
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>>;
+}
 
 // Global instance for the API proxy server
 static PROXY_SERVER_INSTANCE: tokio::sync::OnceCell<Arc<RwLock<Option<ApiProxyServer>>>> =
@@ -50,6 +61,7 @@ pub async fn get_proxy_config() -> Result<ApiProxyServerConfig, Box<dyn std::err
     let api_key = get_config_value("api_proxy_server_api_key", "".to_string()).await?;
     let allow_cors = get_config_value("api_proxy_server_allow_cors", true).await?;
     let log_level = get_config_value("api_proxy_server_log_level", "info".to_string()).await?;
+    let autostart_on_startup = get_config_value("api_proxy_server_autostart_on_startup", false).await?;
     
     Ok(ApiProxyServerConfig {
         port,
@@ -58,6 +70,7 @@ pub async fn get_proxy_config() -> Result<ApiProxyServerConfig, Box<dyn std::err
         api_key,
         allow_cors,
         log_level,
+        autostart_on_startup,
     })
 }
 
@@ -68,6 +81,7 @@ pub async fn update_proxy_config(config: &ApiProxyServerConfig) -> Result<(), Bo
     set_config_value("api_proxy_server_api_key", &config.api_key).await?;
     set_config_value("api_proxy_server_allow_cors", &config.allow_cors).await?;
     set_config_value("api_proxy_server_log_level", &config.log_level).await?;
+    set_config_value("api_proxy_server_autostart_on_startup", &config.autostart_on_startup).await?;
     Ok(())
 }
 
@@ -150,6 +164,95 @@ pub async fn get_proxy_server_status() -> Result<ApiProxyServerStatus, Box<dyn s
         active_models,
         server_url,
     })
+}
+
+/// Check if autostart is enabled and start the proxy server if valid
+pub async fn try_autostart_proxy_server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let config = get_proxy_config().await?;
+    
+    // Only autostart if enabled
+    if !config.autostart_on_startup {
+        tracing::info!("API Proxy Server autostart is disabled");
+        return Ok(());
+    }
+    
+    // Check if already running
+    let instance = get_proxy_server_instance().await;
+    if instance.read().await.is_some() {
+        tracing::info!("API Proxy Server is already running, skipping autostart");
+        return Ok(());
+    }
+    
+    // Validate configuration before starting
+    if let Err(e) = validate_proxy_config(&config).await {
+        tracing::warn!("API Proxy Server autostart skipped due to invalid config: {}", e);
+        return Ok(()); // Don't fail startup, just skip autostart
+    }
+    
+    // Try to start the server
+    match start_proxy_server().await {
+        Ok(()) => {
+            tracing::info!("API Proxy Server auto-started successfully on {}:{}{}", 
+                config.address, config.port, config.prefix);
+        }
+        Err(e) => {
+            tracing::warn!("API Proxy Server autostart failed: {}", e);
+            // Don't fail startup, just log the warning
+        }
+    }
+    
+    Ok(())
+}
+
+/// Reload proxy server models registry
+pub async fn reload_proxy_models() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let instance = get_proxy_server_instance().await;
+    let server_guard = instance.read().await;
+    
+    if let Some(server) = server_guard.as_ref() {
+        server.reload_models_only().await?;
+        tracing::info!("API proxy server models registry reloaded");
+    } else {
+        return Err("API proxy server is not running".into());
+    }
+    
+    Ok(())
+}
+
+/// Reload proxy server trusted hosts
+pub async fn reload_proxy_trusted_hosts() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let instance = get_proxy_server_instance().await;
+    let server_guard = instance.read().await;
+    
+    if let Some(server) = server_guard.as_ref() {
+        server.reload_trusted_hosts_only().await?;
+        tracing::info!("API proxy server trusted hosts reloaded");
+    } else {
+        return Err("API proxy server is not running".into());
+    }
+    
+    Ok(())
+}
+
+/// Validate proxy server configuration
+async fn validate_proxy_config(config: &ApiProxyServerConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Check if port is valid and available
+    if config.port == 0 {
+        return Err("Invalid port: 0".into());
+    }
+    
+    // Check if address is valid
+    if config.address.trim().is_empty() {
+        return Err("Invalid address: empty".into());
+    }
+    
+    // Check if there are any enabled models
+    let enabled_models = crate::database::queries::api_proxy_server_models::get_enabled_proxy_models().await?;
+    if enabled_models.is_empty() {
+        return Err("No enabled models configured for proxy".into());
+    }
+    
+    Ok(())
 }
 
 

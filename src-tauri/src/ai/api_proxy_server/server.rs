@@ -3,14 +3,16 @@ use std::sync::Arc;
 use std::thread;
 use tokio::sync::{RwLock, oneshot};
 use axum::{
+    body::Body,
     extract::{ConnectInfo, Extension},
     http::StatusCode,
     middleware,
-    response::Json,
+    response::{IntoResponse, Json, Response},
     routing::{get, post},
     Router,
 };
 use tower_http::cors::CorsLayer;
+use futures_util::TryStreamExt;
 use serde_json;
 
 use crate::database::models::api_proxy_server_model::*;
@@ -175,6 +177,17 @@ impl ApiProxyServer {
         Ok(())
     }
     
+    pub async fn reload_models_only(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let mut registry = self.registry.write().await;
+        registry.reload_enabled_models().await?;
+        Ok(())
+    }
+    
+    pub async fn reload_trusted_hosts_only(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.security.reload_trusted_hosts().await?;
+        Ok(())
+    }
+    
     pub async fn get_active_models_count(&self) -> usize {
         let registry = self.registry.read().await;
         registry.get_active_models_count()
@@ -193,55 +206,79 @@ async fn handle_chat_completions(
     ConnectInfo(remote_addr): ConnectInfo<SocketAddr>,
     Extension(router): Extension<Arc<RequestRouter>>,
     Json(request): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> impl IntoResponse {
     let start_time = std::time::Instant::now();
     let client_ip = remote_addr.ip().to_string();
     
-    // Check if request is streaming
-    let is_streaming = request.get("stream")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-    
-    let result = if is_streaming {
-        // For streaming, we need to handle the response differently
-        // This is a simplified implementation - full streaming would require more work
-        match router.route_streaming_request(request).await {
-            Ok(response) => {
-                // Convert streaming response to JSON (simplified)
-                match response.text().await {
-                    Ok(text) => {
-                        match serde_json::from_str(&text) {
-                            Ok(json) => Ok(Json(json)),
-                            Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-                        }
-                    }
-                    Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    let result = match router.forward_chat_request(request).await {
+        Ok(response) => {
+            // Extract response components
+            let status = response.status();
+            let headers = response.headers().clone();
+            
+            // Convert reqwest response body to Axum body stream
+            let stream = response.bytes_stream().map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::Other, e)
+            });
+            
+            // Build Axum response with original headers and status
+            let mut response_builder = Response::builder().status(status);
+            
+            // Copy all headers from provider response
+            for (key, value) in headers.iter() {
+                response_builder = response_builder.header(key, value);
+            }
+            
+            // Return response with streaming body
+            match response_builder.body(Body::from_stream(stream)) {
+                Ok(response) => {
+                    let duration = start_time.elapsed();
+                    log_response("POST", "/chat/completions", status.as_u16(), duration.as_millis() as u64);
+                    response
                 }
-            }
-            Err(e) => {
-                tracing::error!("Streaming request failed: {}", e);
-                map_proxy_error_to_status(e)
+                Err(_) => create_error_response("Failed to build response")
             }
         }
-    } else {
-        match router.route_chat_request(request).await {
-            Ok(response) => Ok(Json(response)),
-            Err(e) => {
-                tracing::error!("Chat request failed: {}", e);
-                map_proxy_error_to_status(e)
-            }
+        Err(e) => {
+            tracing::error!("Chat request failed: {}", e);
+            let duration = start_time.elapsed();
+            let status_code = match e {
+                ProxyError::ModelNotInProxy(_) |
+                ProxyError::ModelNotFound(_) |
+                ProxyError::NoDefaultModel => StatusCode::NOT_FOUND,
+                ProxyError::Unauthorized => StatusCode::UNAUTHORIZED,
+                ProxyError::HostNotTrusted(_) => StatusCode::FORBIDDEN,
+                ProxyError::InvalidRequest(_) |
+                ProxyError::InvalidClientIP(_) |
+                ProxyError::InvalidCIDR(_) => StatusCode::BAD_REQUEST,
+                ProxyError::LocalModelNotRunning(_) |
+                ProxyError::ServerUnreachable(_) |
+                ProxyError::RemoteProviderMissingBaseUrl(_) |
+                ProxyError::ProxyDisabled => StatusCode::SERVICE_UNAVAILABLE,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            log_response("POST", "/chat/completions", status_code.as_u16(), duration.as_millis() as u64);
+            create_error_response(&e.to_string())
         }
     };
-    
-    let duration = start_time.elapsed();
-    let status = match &result {
-        Ok(_) => 200,
-        Err(status) => status.as_u16(),
-    };
-    
-    log_response("POST", "/chat/completions", status, duration.as_millis() as u64);
     
     result
+}
+
+fn create_error_response(message: &str) -> Response<Body> {
+    let error_response = serde_json::json!({
+        "error": {
+            "message": message,
+            "type": "proxy_error",
+            "code": "forwarding_failed"
+        }
+    });
+    
+    Response::builder()
+        .status(StatusCode::BAD_GATEWAY)
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_string(&error_response).unwrap_or_default()))
+        .unwrap()
 }
 
 async fn handle_models(

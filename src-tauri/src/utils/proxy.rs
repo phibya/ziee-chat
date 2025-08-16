@@ -1,6 +1,6 @@
 use crate::ai::core::provider_base::{build_http_client_with_config, HttpClientConfig};
 use crate::ai::core::providers::ProxyConfig;
-use crate::database::models::ProxySettings;
+use crate::database::models::proxy::ProxySettings;
 
 /// Test proxy connectivity using a common HTTP test endpoint
 pub async fn test_proxy_connectivity(proxy_config: &ProxySettings) -> Result<(), String> {
@@ -86,5 +86,34 @@ pub async fn test_proxy_connectivity(proxy_config: &ProxySettings) -> Result<(),
                 Err(format!("Network request failed: {}", e))
             }
         }
+    }
+}
+
+/// Creates a ProxyConfig from ProxySettings, returning None if proxy is disabled
+pub fn create_proxy_config(proxy_settings: &ProxySettings) -> Option<ProxyConfig> {
+    if proxy_settings.enabled {
+        Some(ProxyConfig {
+            enabled: proxy_settings.enabled,
+            url: proxy_settings.url.clone(),
+            username: if proxy_settings.username.is_empty() {
+                None
+            } else {
+                Some(proxy_settings.username.clone())
+            },
+            password: if proxy_settings.password.is_empty() {
+                None
+            } else {
+                Some(proxy_settings.password.clone())
+            },
+            no_proxy: proxy_settings
+                .no_proxy
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
+            ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
+        })
+    } else {
+        None
     }
 }

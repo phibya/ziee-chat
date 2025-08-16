@@ -12,13 +12,14 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::ai::{
-    core::{AIProvider, ChatRequest, ProxyConfig},
+    core::{AIProvider, ChatRequest},
     providers::{
         anthropic::AnthropicProvider, custom::CustomProvider, deepseek::DeepSeekProvider,
         gemini::GeminiProvider, groq::GroqProvider, local::LocalProvider, mistral::MistralProvider,
         openai::OpenAIProvider,
     },
 };
+use crate::utils::proxy::create_proxy_config;
 use crate::api::errors::ErrorCode;
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::models::EditMessageRequest;
@@ -649,35 +650,6 @@ pub async fn search_conversations(
     }
 }
 
-/// Helper function to create proxy configuration from model provider settings
-fn create_proxy_config(
-    proxy_settings: &crate::database::models::ProviderProxySettings,
-) -> Option<ProxyConfig> {
-    if proxy_settings.enabled {
-        Some(ProxyConfig {
-            enabled: proxy_settings.enabled,
-            url: proxy_settings.url.clone(),
-            username: if proxy_settings.username.is_empty() {
-                None
-            } else {
-                Some(proxy_settings.username.clone())
-            },
-            password: if proxy_settings.password.is_empty() {
-                None
-            } else {
-                Some(proxy_settings.password.clone())
-            },
-            no_proxy: proxy_settings
-                .no_proxy
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect(),
-            ignore_ssl_certificates: proxy_settings.ignore_ssl_certificates,
-        })
-    } else {
-        None
-    }
-}
 
 /// Helper function to create AI provider instances with optional model ID for Candle providers
 pub async fn create_ai_provider_with_model_id(

@@ -140,7 +140,6 @@ export const stopApiProxyServer = async () => {
   }
 }
 
-
 // Model management
 export const loadApiProxyServerModels = async () => {
   useApiProxyServerStore.setState({ loadingModels: true, error: null })

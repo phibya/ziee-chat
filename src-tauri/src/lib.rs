@@ -111,6 +111,18 @@ async fn initialize_app_common() -> Result<(), String> {
 
     println!("Auto-unload task started for local models");
 
+    // Try to autostart the API proxy server if configured
+    if let Err(e) = ai::api_proxy_server::try_autostart_proxy_server().await {
+        eprintln!("Failed to autostart API proxy server: {}", e);
+        // Don't fail startup, just log the error
+    }
+
+    // Try to autostart ngrok tunnel if configured
+    if let Err(e) = api::configuration::try_autostart_ngrok_tunnel().await {
+        eprintln!("Failed to autostart ngrok tunnel: {}", e);
+        // Don't fail startup, just log the error
+    }
+
     Ok(())
 }
 

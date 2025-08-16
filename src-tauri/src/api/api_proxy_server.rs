@@ -244,6 +244,32 @@ pub async fn stop_proxy_server(
     }
 }
 
+// Reload proxy server models
+pub async fn reload_proxy_models(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+) -> ApiResult<StatusCode> {
+    match api_proxy_server::reload_proxy_models().await {
+        Ok(()) => Ok(StatusCode::OK),
+        Err(e) => {
+            eprintln!("Failed to reload proxy models: {}", e);
+            Err(AppError::internal_error("Failed to reload proxy models"))
+        }
+    }
+}
+
+// Reload proxy server trusted hosts
+pub async fn reload_proxy_trusted_hosts(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+) -> ApiResult<StatusCode> {
+    match api_proxy_server::reload_proxy_trusted_hosts().await {
+        Ok(()) => Ok(StatusCode::OK),
+        Err(e) => {
+            eprintln!("Failed to reload proxy trusted hosts: {}", e);
+            Err(AppError::internal_error("Failed to reload proxy trusted hosts"))
+        }
+    }
+}
+
 
 // SSE endpoint for real-time log streaming
 pub async fn subscribe_proxy_logs(

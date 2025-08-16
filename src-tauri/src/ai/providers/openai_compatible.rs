@@ -10,6 +10,7 @@ use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 
 #[derive(Debug, Clone)]
 pub struct OpenAICompatibleProvider {
@@ -246,5 +247,30 @@ impl AIProvider for OpenAICompatibleProvider {
 
     fn provider_name(&self) -> &'static str {
         self.provider_name
+    }
+}
+
+#[async_trait]
+impl HttpForwardingProvider for OpenAICompatibleProvider {
+    async fn forward_request(
+        &self, 
+        request: serde_json::Value
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
+        // base_url already contains /v1, just append /chat/completions
+        let url = format!("{}/chat/completions", self.base_url);
+        
+        let mut req_builder = self.client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&request);
+            
+        // Add authentication if needed
+        if self.should_include_auth() {
+            req_builder = req_builder.header("Authorization", format!("Bearer {}", self.api_key));
+        }
+        
+        // Send request and return raw response
+        let response = req_builder.send().await?;
+        Ok(response)
     }
 }

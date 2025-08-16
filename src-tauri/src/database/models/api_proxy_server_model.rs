@@ -95,6 +95,7 @@ pub struct ApiProxyServerConfig {
     pub api_key: String,
     pub allow_cors: bool,
     pub log_level: String,
+    pub autostart_on_startup: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

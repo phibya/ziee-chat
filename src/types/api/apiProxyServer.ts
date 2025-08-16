@@ -10,6 +10,7 @@ export interface ApiProxyServerConfig {
   api_key?: string
   allow_cors: boolean
   log_level: string
+  autostart_on_startup: boolean
 }
 
 // Status

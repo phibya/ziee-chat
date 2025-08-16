@@ -15,5 +15,7 @@ pub fn admin_api_proxy_server_routes() -> Router {
         .route("/api-proxy-server/status", get(get_proxy_status))
         .route("/api-proxy-server/start", post(start_proxy_server))
         .route("/api-proxy-server/stop", post(stop_proxy_server))
+        .route("/api-proxy-server/reload/models", post(reload_proxy_models))
+        .route("/api-proxy-server/reload/trusted-hosts", post(reload_proxy_trusted_hosts))
         .route("/api-proxy-server/logs/stream", get(subscribe_proxy_logs))
 }

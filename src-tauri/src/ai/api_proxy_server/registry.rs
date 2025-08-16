@@ -5,7 +5,9 @@ use uuid::Uuid;
 
 use crate::database::models::api_proxy_server_model::{ApiProxyServerModel, ModelServerEntry};
 use crate::database::queries::{api_proxy_server_models, models, providers};
-use super::ProxyError;
+use super::{ProxyError, HttpForwardingProvider};
+use crate::ai::providers::{AnthropicProvider, OpenAICompatibleProvider};
+use crate::utils::proxy::create_proxy_config;
 
 #[derive(Debug)]
 pub struct ModelRegistry {
@@ -58,42 +60,6 @@ impl ModelRegistry {
         Ok(())
     }
     
-    pub async fn get_model_base_url(&self, model_identifier: &str) -> Result<String, ProxyError> {
-        // 1. Resolve model_identifier to model_id (supports both UUID and alias)
-        let model_id = self.resolve_model_identifier(model_identifier).await?;
-        
-        // 2. Check if model is enabled in proxy
-        if !self.is_model_enabled(&model_id) {
-            return Err(ProxyError::ModelNotInProxy(model_id));
-        }
-        
-        // 3. Load model and provider from database
-        let model = models::get_model_by_id(model_id).await
-            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
-            .ok_or(ProxyError::ModelNotFound(model_id.to_string()))?;
-        
-        let provider = providers::get_provider_by_id(model.provider_id).await
-            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
-            .ok_or(ProxyError::ProviderNotFound(model.provider_id))?;
-        
-        // 4. Return appropriate base URL based on provider type
-        match provider.provider_type.as_str() {
-            "local" => {
-                // For local models, check if they're running and get port
-                if let Some((_, port)) = crate::ai::verify_model_server_running(&model_id).await {
-                    Ok(format!("http://127.0.0.1:{}", port))
-                } else {
-                    Err(ProxyError::LocalModelNotRunning(model_id))
-                }
-            }
-            _ => {
-                // For remote providers, use their base_url
-                provider.base_url
-                    .ok_or(ProxyError::RemoteProviderMissingBaseUrl(provider.id))
-            }
-        }
-    }
-    
     pub async fn resolve_model_identifier(&self, identifier: &str) -> Result<Uuid, ProxyError> {
         // Try to parse as UUID first
         if let Ok(uuid) = Uuid::parse_str(identifier) {
@@ -132,5 +98,59 @@ impl ModelRegistry {
     
     pub fn get_active_models_count(&self) -> usize {
         self.enabled_models.len()
+    }
+    
+    /// Get HTTP forwarding provider for a model
+    pub async fn get_forwarding_provider(&self, model_id: &Uuid) -> Result<Arc<dyn HttpForwardingProvider>, ProxyError> {
+        // Check if model is enabled in proxy
+        if !self.is_model_enabled(model_id) {
+            return Err(ProxyError::ModelNotInProxy(*model_id));
+        }
+        
+        // Load model and provider from database
+        let model = models::get_model_by_id(*model_id).await
+            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+            .ok_or(ProxyError::ModelNotFound(model_id.to_string()))?;
+        
+        let provider = providers::get_provider_by_id(model.provider_id).await
+            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+            .ok_or(ProxyError::ProviderNotFound(model.provider_id))?;
+        
+        // Create forwarding provider based on type
+        let forwarding_provider: Arc<dyn HttpForwardingProvider> = match provider.provider_type.as_str() {
+            "openai" | "groq" | "deepseek" | "mistral" | "custom" => {
+                let base_url = provider.base_url
+                    .ok_or(ProxyError::RemoteProviderMissingBaseUrl(provider.id))?;
+                    
+                Arc::new(OpenAICompatibleProvider::new(
+                    provider.api_key.unwrap_or_default(),
+                    base_url,
+                    match provider.provider_type.as_str() {
+                        "openai" => "openai",
+                        "groq" => "groq", 
+                        "deepseek" => "deepseek",
+                        "mistral" => "mistral",
+                        "custom" => "custom",
+                        _ => "openai",
+                    },
+                    provider.proxy_settings.as_ref().and_then(create_proxy_config),
+                    provider.id
+                ).map_err(|e| ProxyError::DatabaseError(e.to_string()))?)
+            },
+            "anthropic" => {
+                let base_url = provider.base_url
+                    .ok_or(ProxyError::RemoteProviderMissingBaseUrl(provider.id))?;
+                    
+                Arc::new(AnthropicProvider::new(
+                    provider.api_key.unwrap_or_default(),
+                    Some(base_url),
+                    provider.proxy_settings.as_ref().and_then(create_proxy_config),
+                    provider.id
+                ).map_err(|e| ProxyError::DatabaseError(e.to_string()))?)
+            },
+            _ => return Err(ProxyError::ProviderNotFound(provider.id))
+        };
+        
+        Ok(forwarding_provider)
     }
 }

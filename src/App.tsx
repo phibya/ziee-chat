@@ -17,7 +17,7 @@ import { HubPage } from './components/Pages/Hub/HubPage'
 import { AssistantsPage } from './components/Pages/Assistants'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { HardwareMonitor } from './components/Pages/HardwareMonitor'
-import { ApiProxyLogMonitor } from './components/Pages/ApiProxyLogMonitor'
+import { ApiProxyLogMonitor } from './components/Pages/Settings/ApiProxyServer/ApiProxyLogMonitor.tsx'
 import {
   GeneralSettings,
   AppearanceSettings,
