@@ -99,6 +99,11 @@ export function SettingsPage() {
             icon: <ToolOutlined />,
             label: t('settings.httpsProxy'),
           },
+          {
+            key: 'api-proxy-server',
+            icon: <GlobalOutlined />,
+            label: t('settings.apiProxyServer'),
+          },
         ]
       : []),
     ...(isDesktop && isTauriView
@@ -137,6 +142,9 @@ export function SettingsPage() {
           Permission.config.repositories.read,
         )
         const hasProxyManagement = hasPermission(Permission.config.proxy.read)
+        const hasApiProxyManagement = hasPermission(
+          Permission.config.apiProxyServer.read,
+        )
         const hasAssistantsManagement = hasPermission(
           Permission.config.assistants.read,
         )
@@ -151,6 +159,7 @@ export function SettingsPage() {
           hasProviderManagement ||
           hasRepositoryManagement ||
           hasProxyManagement ||
+          hasApiProxyManagement ||
           hasAssistantsManagement ||
           hasEngineManagement
         ) {
@@ -217,6 +226,14 @@ export function SettingsPage() {
               key: 'https-proxy',
               icon: <ToolOutlined />,
               label: t('settings.httpsProxy'),
+            })
+          }
+
+          if (hasApiProxyManagement) {
+            items.push({
+              key: 'api-proxy-server',
+              icon: <GlobalOutlined />,
+              label: t('settings.apiProxyServer'),
             })
           }
 

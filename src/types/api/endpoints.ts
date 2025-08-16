@@ -117,6 +117,16 @@ import {
   UpdateRAGRepositoryRequest,
 } from './ragRepository'
 import { EngineListResponse } from './engine'
+import {
+  ApiProxyServerConfig,
+  ApiProxyServerStatus,
+  ApiProxyServerModel,
+  ApiProxyServerTrustedHost,
+  CreateApiProxyServerModelRequest,
+  UpdateApiProxyServerModelRequest,
+  CreateTrustedHostRequest,
+  UpdateTrustedHostRequest,
+} from './apiProxyServer'
 
 // API endpoint definitions
 export const ApiEndpoints = {
@@ -293,7 +303,7 @@ export const ApiEndpoints = {
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
   'Admin.getNgrokSettings': 'GET /api/admin/config/ngrok',
-  'Admin.updateNgrokSettings': 'PUT /api/admin/config/ngrok', 
+  'Admin.updateNgrokSettings': 'PUT /api/admin/config/ngrok',
   'Admin.startNgrokTunnel': 'POST /api/admin/config/ngrok/start',
   'Admin.stopNgrokTunnel': 'POST /api/admin/config/ngrok/stop',
   'Admin.getNgrokStatus': 'GET /api/admin/config/ngrok/status',
@@ -347,6 +357,39 @@ export const ApiEndpoints = {
     'GET /api/admin/rag-repositories/{repository_id}/databases',
   'Admin.downloadRAGDatabaseFromRepository':
     'POST /api/admin/rag-repositories/download-database',
+
+  // ===========================
+  // API PROXY SERVER MANAGEMENT
+  // ===========================
+
+  // Admin - API Proxy Server Configuration
+  'Admin.getApiProxyServerConfig': 'GET /api/admin/api-proxy-server/config',
+  'Admin.updateApiProxyServerConfig': 'PUT /api/admin/api-proxy-server/config',
+  'Admin.getApiProxyServerStatus': 'GET /api/admin/api-proxy-server/status',
+  'Admin.startApiProxyServer': 'POST /api/admin/api-proxy-server/start',
+  'Admin.stopApiProxyServer': 'POST /api/admin/api-proxy-server/stop',
+
+  // Admin - API Proxy Server Model Management
+  'Admin.listApiProxyServerModels': 'GET /api/admin/api-proxy-server/models',
+  'Admin.addModelToApiProxyServer': 'POST /api/admin/api-proxy-server/models',
+  'Admin.updateApiProxyServerModel':
+    'PUT /api/admin/api-proxy-server/models/{model_id}',
+  'Admin.removeModelFromApiProxyServer':
+    'DELETE /api/admin/api-proxy-server/models/{model_id}',
+
+  // Admin - API Proxy Server Trusted Hosts Management
+  'Admin.listApiProxyServerTrustedHosts':
+    'GET /api/admin/api-proxy-server/trusted-hosts',
+  'Admin.addApiProxyServerTrustedHost':
+    'POST /api/admin/api-proxy-server/trusted-hosts',
+  'Admin.updateApiProxyServerTrustedHost':
+    'PUT /api/admin/api-proxy-server/trusted-hosts/{host_id}',
+  'Admin.removeApiProxyServerTrustedHost':
+    'DELETE /api/admin/api-proxy-server/trusted-hosts/{host_id}',
+
+  // Admin - API Proxy Server Log Streaming
+  'Admin.subscribeApiProxyServerLogs':
+    'GET /api/admin/api-proxy-server/logs/stream',
 } as const
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
@@ -570,6 +613,26 @@ export type ApiEndpointParameters = {
   'Admin.testRAGRepositoryConnection': { repository_id: string }
   'Admin.listRAGRepositoryDatabases': { repository_id: string }
   'Admin.downloadRAGDatabaseFromRepository': DownloadRAGDatabaseFromRepositoryRequest
+
+  // API Proxy Server Management - Parameters
+  'Admin.getApiProxyServerConfig': void
+  'Admin.updateApiProxyServerConfig': Partial<ApiProxyServerConfig>
+  'Admin.getApiProxyServerStatus': void
+  'Admin.startApiProxyServer': void
+  'Admin.stopApiProxyServer': void
+  'Admin.listApiProxyServerModels': void
+  'Admin.addModelToApiProxyServer': CreateApiProxyServerModelRequest
+  'Admin.updateApiProxyServerModel': {
+    model_id: string
+  } & UpdateApiProxyServerModelRequest
+  'Admin.removeModelFromApiProxyServer': { model_id: string }
+  'Admin.listApiProxyServerTrustedHosts': void
+  'Admin.addApiProxyServerTrustedHost': CreateTrustedHostRequest
+  'Admin.updateApiProxyServerTrustedHost': {
+    host_id: string
+  } & UpdateTrustedHostRequest
+  'Admin.removeApiProxyServerTrustedHost': { host_id: string }
+  'Admin.subscribeApiProxyServerLogs': void
 }
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
@@ -630,7 +693,7 @@ export type ApiEndpointResponses = {
   'Admin.getNgrokSettings': NgrokSettingsResponse
   'Admin.updateNgrokSettings': NgrokSettingsResponse
   'Admin.startNgrokTunnel': NgrokStatusResponse
-  'Admin.stopNgrokTunnel': NgrokStatusResponse 
+  'Admin.stopNgrokTunnel': NgrokStatusResponse
   'Admin.getNgrokStatus': NgrokStatusResponse
   'User.updateAccountPassword': void
   // Admin hardware management
@@ -759,6 +822,22 @@ export type ApiEndpointResponses = {
   'Admin.testRAGRepositoryConnection': RAGRepositoryConnectionTestResponse
   'Admin.listRAGRepositoryDatabases': RAGDatabase[]
   'Admin.downloadRAGDatabaseFromRepository': RAGDatabase
+
+  // API Proxy Server Management - Responses
+  'Admin.getApiProxyServerConfig': ApiProxyServerConfig
+  'Admin.updateApiProxyServerConfig': ApiProxyServerConfig
+  'Admin.getApiProxyServerStatus': ApiProxyServerStatus
+  'Admin.startApiProxyServer': void
+  'Admin.stopApiProxyServer': void
+  'Admin.listApiProxyServerModels': ApiProxyServerModel[]
+  'Admin.addModelToApiProxyServer': ApiProxyServerModel
+  'Admin.updateApiProxyServerModel': ApiProxyServerModel
+  'Admin.removeModelFromApiProxyServer': void
+  'Admin.listApiProxyServerTrustedHosts': ApiProxyServerTrustedHost[]
+  'Admin.addApiProxyServerTrustedHost': ApiProxyServerTrustedHost
+  'Admin.updateApiProxyServerTrustedHost': ApiProxyServerTrustedHost
+  'Admin.removeApiProxyServerTrustedHost': void
+  'Admin.subscribeApiProxyServerLogs': any // SSE stream
 }
 
 // Type helpers

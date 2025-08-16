@@ -1,3 +1,4 @@
+pub mod api_proxy_server_models;
 pub mod assistants;
 pub mod branches;
 pub mod chat;

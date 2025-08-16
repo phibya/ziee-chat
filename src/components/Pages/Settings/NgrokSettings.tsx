@@ -148,7 +148,7 @@ export function NgrokSettings() {
     <SettingsPageContainer title={t('ngrok.title')}>
       <div className="flex flex-col gap-3 flex-wrap w-full">
         {/* Configuration Card */}
-        <Card title={t('ngrok.configuration')} loading={loadingSettings}>
+        <Card title={t('ngrok.configuration')}>
           <Form
             form={configForm}
             layout="vertical"

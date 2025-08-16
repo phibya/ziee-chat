@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
-import type { NgrokSettingsResponse, UpdateNgrokSettingsRequest, NgrokStatusResponse, UpdateAccountPasswordRequest } from '../../types/api/config'
+import type {
+  NgrokSettingsResponse,
+  UpdateNgrokSettingsRequest,
+  NgrokStatusResponse,
+  UpdateAccountPasswordRequest,
+} from '../../types/api/config'
 
 interface AdminNgrokSettingsState {
   ngrokSettings: NgrokSettingsResponse | null
@@ -44,7 +49,9 @@ export const loadNgrokSettings = async (): Promise<void> => {
   }
 }
 
-export const updateNgrokSettings = async (settings: UpdateNgrokSettingsRequest): Promise<void> => {
+export const updateNgrokSettings = async (
+  settings: UpdateNgrokSettingsRequest,
+): Promise<void> => {
   useAdminNgrokSettingsStore.setState({ loadingSettings: true, error: null })
 
   try {
@@ -64,7 +71,9 @@ export const updateNgrokSettings = async (settings: UpdateNgrokSettingsRequest):
   }
 }
 
-export const updateAccountPassword = async (passwordData: UpdateAccountPasswordRequest): Promise<void> => {
+export const updateAccountPassword = async (
+  passwordData: UpdateAccountPasswordRequest,
+): Promise<void> => {
   try {
     await ApiClient.User.updateAccountPassword(passwordData)
   } catch (error) {

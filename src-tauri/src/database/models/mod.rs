@@ -1,3 +1,4 @@
+pub mod api_proxy_server_model;
 pub mod assistant;
 pub mod chat;
 pub mod config;
@@ -14,6 +15,7 @@ pub mod repository;
 pub mod user;
 
 // Re-export all structures for convenience
+pub use api_proxy_server_model::*;
 pub use assistant::*;
 pub use chat::*;
 pub use config::*;

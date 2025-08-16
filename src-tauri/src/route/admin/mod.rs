@@ -1,3 +1,4 @@
+pub mod api_proxy_server;
 pub mod assistants;
 pub mod config;
 pub mod downloads;
@@ -28,6 +29,7 @@ pub fn admin_routes() -> Router {
             .merge(assistants::admin_assistant_routes())
             .merge(downloads::admin_download_routes())
             .merge(engines::admin_engine_routes())
-            .merge(hardware::hardware_routes()),
+            .merge(hardware::hardware_routes())
+            .merge(api_proxy_server::admin_api_proxy_server_routes()),
     )
 }

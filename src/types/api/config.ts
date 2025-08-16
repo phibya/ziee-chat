@@ -67,7 +67,7 @@ export interface UpdateNgrokSettingsRequest {
 }
 
 export interface UpdateAccountPasswordRequest {
-  current_password?: string  // Optional for desktop apps
+  current_password?: string // Optional for desktop apps
   new_password: string
 }
 

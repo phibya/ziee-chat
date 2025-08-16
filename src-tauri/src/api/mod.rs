@@ -1,3 +1,4 @@
+pub mod api_proxy_server;
 pub(crate) mod app;
 pub mod assistants;
 pub mod auth;

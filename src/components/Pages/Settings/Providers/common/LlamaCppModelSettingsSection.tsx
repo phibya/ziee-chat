@@ -44,7 +44,10 @@ export function LlamaCppModelSettingsSection() {
             title="Context Size"
             description="Size of the prompt context (--ctx-size, default: 4096)"
           >
-            <Form.Item name={getFieldName('ctx_size')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('ctx_size')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={512}
                 max={131072}
@@ -60,7 +63,10 @@ export function LlamaCppModelSettingsSection() {
             title="Batch Size"
             description="Logical batch size for prompt processing (--batch-size, default: 2048)"
           >
-            <Form.Item name={getFieldName('batch_size')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('batch_size')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={1}
                 max={8192}
@@ -76,7 +82,10 @@ export function LlamaCppModelSettingsSection() {
             title="Physical Batch Size"
             description="Physical maximum batch size (--ubatch-size, default: 512)"
           >
-            <Form.Item name={getFieldName('ubatch_size')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('ubatch_size')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={1}
                 max={2048}
@@ -92,7 +101,10 @@ export function LlamaCppModelSettingsSection() {
             title="Parallel Sequences"
             description="Number of parallel sequences to process (--parallel, default: 1)"
           >
-            <Form.Item name={getFieldName('parallel')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('parallel')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={1}
                 max={64}
@@ -108,7 +120,10 @@ export function LlamaCppModelSettingsSection() {
             title="Keep Tokens"
             description="Tokens to keep from initial prompt (--keep, default: 0)"
           >
-            <Form.Item name={getFieldName('keep')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('keep')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={0}
                 max={4096}
@@ -157,7 +172,10 @@ export function LlamaCppModelSettingsSection() {
             title="Generation Threads"
             description="Number of threads to use for generation (--threads, default: auto)"
           >
-            <Form.Item name={getFieldName('threads')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('threads')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={-1}
                 max={64}
@@ -173,7 +191,10 @@ export function LlamaCppModelSettingsSection() {
             title="Batch Processing Threads"
             description="Number of threads for batch processing (--threads-batch, default: same as threads)"
           >
-            <Form.Item name={getFieldName('threads_batch')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('threads_batch')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={1}
                 max={64}
@@ -237,7 +258,10 @@ export function LlamaCppModelSettingsSection() {
             title="GPU Layers"
             description="Number of layers to offload to GPU (--n-gpu-layers, default: 0)"
           >
-            <Form.Item name={getFieldName('n_gpu_layers')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('n_gpu_layers')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={0}
                 max={128}
@@ -253,7 +277,10 @@ export function LlamaCppModelSettingsSection() {
             title="Main GPU"
             description="Primary GPU index to use (--main-gpu, default: 0)"
           >
-            <Form.Item name={getFieldName('main_gpu')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('main_gpu')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={0}
                 max={16}
@@ -269,7 +296,10 @@ export function LlamaCppModelSettingsSection() {
             title="Split Mode"
             description="How to split the model across multiple GPUs (--split-mode)"
           >
-            <Form.Item name={getFieldName('split_mode')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('split_mode')}
+              style={{ margin: 0, width: 120 }}
+            >
               <Select
                 placeholder="none"
                 style={{ width: '100%' }}
@@ -289,11 +319,11 @@ export function LlamaCppModelSettingsSection() {
             title="Tensor Split"
             description="GPU memory distribution ratios (--tensor-split, e.g., '3,1')"
           >
-            <Form.Item name={getFieldName('tensor_split')} style={{ margin: 0, width: 120 }}>
-              <Input
-                placeholder="3,1"
-                style={{ width: '100%' }}
-              />
+            <Form.Item
+              name={getFieldName('tensor_split')}
+              style={{ margin: 0, width: 120 }}
+            >
+              <Input placeholder="3,1" style={{ width: '100%' }} />
             </Form.Item>
           </ResponsiveConfigItem>
         </Flex>
@@ -306,7 +336,10 @@ export function LlamaCppModelSettingsSection() {
             title="RoPE Base Frequency"
             description="RoPE base frequency (--rope-freq-base, default: auto)"
           >
-            <Form.Item name={getFieldName('rope_freq_base')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('rope_freq_base')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={1000}
                 max={1000000}
@@ -322,7 +355,10 @@ export function LlamaCppModelSettingsSection() {
             title="RoPE Frequency Scale"
             description="RoPE frequency scaling factor (--rope-freq-scale, default: auto)"
           >
-            <Form.Item name={getFieldName('rope_freq_scale')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('rope_freq_scale')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={0.1}
                 max={10.0}
@@ -339,7 +375,10 @@ export function LlamaCppModelSettingsSection() {
             title="RoPE Scaling"
             description="RoPE scaling method (--rope-scaling)"
           >
-            <Form.Item name={getFieldName('rope_scaling')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('rope_scaling')}
+              style={{ margin: 0, width: 120 }}
+            >
               <Select
                 placeholder="none"
                 style={{ width: '100%' }}
@@ -359,7 +398,10 @@ export function LlamaCppModelSettingsSection() {
             title="KV Cache Type (K)"
             description="KV cache data type for K (--cache-type-k, e.g., f16, f32, q8_0)"
           >
-            <Form.Item name={getFieldName('cache_type_k')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('cache_type_k')}
+              style={{ margin: 0, width: 120 }}
+            >
               <Select
                 placeholder="f16"
                 style={{ width: '100%' }}
@@ -380,7 +422,10 @@ export function LlamaCppModelSettingsSection() {
             title="KV Cache Type (V)"
             description="KV cache data type for V (--cache-type-v, e.g., f16, f32, q8_0)"
           >
-            <Form.Item name={getFieldName('cache_type_v')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('cache_type_v')}
+              style={{ margin: 0, width: 120 }}
+            >
               <Select
                 placeholder="f16"
                 style={{ width: '100%' }}
@@ -404,7 +449,10 @@ export function LlamaCppModelSettingsSection() {
             title="Random Seed"
             description="Seed for random number generation (--seed, -1 for random)"
           >
-            <Form.Item name={getFieldName('seed')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('seed')}
+              style={{ margin: 0, width: 120 }}
+            >
               <InputNumber
                 min={-1}
                 max={4294967295}
@@ -420,7 +468,10 @@ export function LlamaCppModelSettingsSection() {
             title="NUMA Optimization"
             description="NUMA optimizations (--numa)"
           >
-            <Form.Item name={getFieldName('numa')} style={{ margin: 0, width: 120 }}>
+            <Form.Item
+              name={getFieldName('numa')}
+              style={{ margin: 0, width: 120 }}
+            >
               <Select
                 placeholder="None"
                 style={{ width: '100%' }}

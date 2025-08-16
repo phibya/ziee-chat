@@ -17,6 +17,7 @@ import { HubPage } from './components/Pages/Hub/HubPage'
 import { AssistantsPage } from './components/Pages/Assistants'
 import { SettingsPage } from './components/Pages/SettingsPage'
 import { HardwareMonitor } from './components/Pages/HardwareMonitor'
+import { ApiProxyLogMonitor } from './components/Pages/ApiProxyLogMonitor'
 import {
   GeneralSettings,
   AppearanceSettings,
@@ -29,6 +30,7 @@ import {
   HardwareSettings,
   HttpsProxySettings,
   NgrokSettings,
+  ApiProxyServerSettings,
   ExtensionsSettings,
   UserGroupsSettings,
   UsersSettings,
@@ -60,6 +62,12 @@ function App() {
             <Routes>
               {/* Hardware Monitor Route - Outside AppLayout for popup usage */}
               <Route path="/hardware-monitor" element={<HardwareMonitor />} />
+
+              {/* API Proxy Log Monitor Route - Outside AppLayout for popup usage */}
+              <Route
+                path="/api-proxy-log-monitor"
+                element={<ApiProxyLogMonitor />}
+              />
 
               {/* Main App Routes - Inside AppLayout */}
               <Route
@@ -125,6 +133,10 @@ function App() {
                           element={<HttpsProxySettings />}
                         />
                         <Route path="web-app" element={<NgrokSettings />} />
+                        <Route
+                          path="api-proxy-server"
+                          element={<ApiProxyServerSettings />}
+                        />
                         <Route
                           path="extensions"
                           element={<ExtensionsSettings />}

@@ -73,37 +73,37 @@ export interface LlamaCppSettings {
   device_ids?: number[] // Array of device IDs for multi-GPU
 
   // Context & Memory Management (equivalent to MistralRs Sequence Management)
-  ctx_size?: number            // Context size (--ctx-size, default: 4096)
-  batch_size?: number          // Logical batch size (--batch-size, default: 2048)
-  ubatch_size?: number         // Physical batch size (--ubatch-size, default: 512)
-  parallel?: number            // Number of parallel sequences (--parallel, default: 1)
-  keep?: number                // Tokens to keep from initial prompt (--keep, default: 0)
-  mlock?: boolean              // Force model to stay in RAM (--mlock, default: false)
-  no_mmap?: boolean            // Disable memory mapping (--no-mmap, default: false)
-  
+  ctx_size?: number // Context size (--ctx-size, default: 4096)
+  batch_size?: number // Logical batch size (--batch-size, default: 2048)
+  ubatch_size?: number // Physical batch size (--ubatch-size, default: 512)
+  parallel?: number // Number of parallel sequences (--parallel, default: 1)
+  keep?: number // Tokens to keep from initial prompt (--keep, default: 0)
+  mlock?: boolean // Force model to stay in RAM (--mlock, default: false)
+  no_mmap?: boolean // Disable memory mapping (--no-mmap, default: false)
+
   // Threading & Performance (equivalent to MistralRs Performance)
-  threads?: number             // Generation threads (--threads, default: -1)
-  threads_batch?: number       // Batch processing threads (--threads-batch, default: same as threads)
-  cont_batching?: boolean      // Enable continuous batching (--cont-batching, default: true)
-  flash_attn?: boolean         // Enable Flash Attention (--flash-attn, default: false)
-  no_kv_offload?: boolean      // Disable KV cache offloading (--no-kv-offload, default: false)
-  
+  threads?: number // Generation threads (--threads, default: -1)
+  threads_batch?: number // Batch processing threads (--threads-batch, default: same as threads)
+  cont_batching?: boolean // Enable continuous batching (--cont-batching, default: true)
+  flash_attn?: boolean // Enable Flash Attention (--flash-attn, default: false)
+  no_kv_offload?: boolean // Disable KV cache offloading (--no-kv-offload, default: false)
+
   // GPU Configuration (equivalent to MistralRs Device Config)
-  n_gpu_layers?: number        // Number of layers on GPU (--n-gpu-layers, default: 0)
-  main_gpu?: number            // Primary GPU index (--main-gpu, default: 0)
-  split_mode?: 'none' | 'layer' | 'row'  // How to split across GPUs (--split-mode)
-  tensor_split?: string        // GPU memory distribution ratios (--tensor-split)
-  
+  n_gpu_layers?: number // Number of layers on GPU (--n-gpu-layers, default: 0)
+  main_gpu?: number // Primary GPU index (--main-gpu, default: 0)
+  split_mode?: 'none' | 'layer' | 'row' // How to split across GPUs (--split-mode)
+  tensor_split?: string // GPU memory distribution ratios (--tensor-split)
+
   // Model Configuration (equivalent to MistralRs Model Config)
-  rope_freq_base?: number      // RoPE base frequency (--rope-freq-base)
-  rope_freq_scale?: number     // RoPE frequency scaling (--rope-freq-scale)
-  rope_scaling?: 'none' | 'linear' | 'yarn'  // RoPE scaling method (--rope-scaling)
-  cache_type_k?: string        // KV cache data type for K (--cache-type-k)
-  cache_type_v?: string        // KV cache data type for V (--cache-type-v)
-  
+  rope_freq_base?: number // RoPE base frequency (--rope-freq-base)
+  rope_freq_scale?: number // RoPE frequency scaling (--rope-freq-scale)
+  rope_scaling?: 'none' | 'linear' | 'yarn' // RoPE scaling method (--rope-scaling)
+  cache_type_k?: string // KV cache data type for K (--cache-type-k)
+  cache_type_v?: string // KV cache data type for V (--cache-type-v)
+
   // Advanced Options
-  seed?: number                // Random seed (--seed, default: -1)
-  numa?: 'distribute' | 'isolate' | 'numactl'  // NUMA optimizations (--numa)
+  seed?: number // Random seed (--seed, default: -1)
+  numa?: 'distribute' | 'isolate' | 'numactl' // NUMA optimizations (--numa)
 }
 
 export interface ModelFileInfo {

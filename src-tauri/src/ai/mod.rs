@@ -4,6 +4,7 @@
 //! Groq, Gemini, Mistral, and Custom providers with support for streaming responses and proxy configurations.
 //! It also includes local ML inference capabilities using the Candle framework.
 
+pub mod api_proxy_server;
 pub mod auto_unload;
 pub mod core;
 pub mod engines;

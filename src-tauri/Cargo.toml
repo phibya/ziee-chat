@@ -98,6 +98,7 @@ clap = { version = "4.5", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"
+logroller = "0.1"
 tauri-plugin-decorum = "1.1.1"
 
 

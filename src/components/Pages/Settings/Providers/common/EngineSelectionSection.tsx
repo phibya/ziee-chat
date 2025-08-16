@@ -5,9 +5,10 @@ import { initializeEngines, Stores } from '../../../../../store'
 const { Text } = Typography
 
 const ENGINE_DESCRIPTIONS = {
-  mistralrs: 'High-performance inference engine optimized for Mistral and Llama models',
+  mistralrs:
+    'High-performance inference engine optimized for Mistral and Llama models',
   llamacpp: 'GPU-optimized inference engine with broad model format support',
-  default: 'Local model execution engine'
+  default: 'Local model execution engine',
 } as const
 
 export const EngineSelectionSection: React.FC = () => {
@@ -20,8 +21,8 @@ export const EngineSelectionSection: React.FC = () => {
 
   // Find the current model from all providers
   const currentModel = modelId
-      ? providers.flatMap(p => p.models).find(m => m.id === modelId)
-      : null
+    ? providers.flatMap(p => p.models).find(m => m.id === modelId)
+    : null
 
   // Initialize engines on mount
   useEffect(() => {
@@ -81,10 +82,11 @@ export const EngineSelectionSection: React.FC = () => {
             placeholder="Select inference engine"
             options={engines?.map(engine => {
               // Disable LlamaCpp if model file format is not "gguf"
-              const isLlamaCppDisabled = engine.engine_type === 'llamacpp' && 
-                                        currentModel && 
-                                        currentModel.file_format !== 'gguf'
-              
+              const isLlamaCppDisabled =
+                engine.engine_type === 'llamacpp' &&
+                currentModel &&
+                currentModel.file_format !== 'gguf'
+
               return {
                 value: engine.engine_type,
                 label: getEngineDisplayName(engine),
@@ -104,10 +106,13 @@ export const EngineSelectionSection: React.FC = () => {
                   </Text>
                 )}
                 <Text className={`!text-xs`}>
-                  {option.data.disabled && option.data.engine.engine_type === 'llamacpp' 
+                  {option.data.disabled &&
+                  option.data.engine.engine_type === 'llamacpp'
                     ? `Requires GGUF format (current: ${currentModel?.file_format || 'unknown'})`
-                    : ENGINE_DESCRIPTIONS[option.data.engine.engine_type as keyof typeof ENGINE_DESCRIPTIONS] || ENGINE_DESCRIPTIONS.default
-                  }
+                    : ENGINE_DESCRIPTIONS[
+                        option.data.engine
+                          .engine_type as keyof typeof ENGINE_DESCRIPTIONS
+                      ] || ENGINE_DESCRIPTIONS.default}
                 </Text>
               </div>
             )}

@@ -18,6 +18,8 @@ import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
 import { useAdminRAGProvidersStore } from './admin/ragProviders.ts'
 import { useAdminRAGRepositoriesStore } from './admin/ragRepositories.ts'
+import { useApiProxyServerStore } from './admin/apiProxyServer.ts'
+import { useApiProxyLogMonitorStore } from './admin/apiProxyLogMonitor.ts'
 import { useEngineStore } from './engine'
 import { useUserSettingsStore } from './settings'
 import {
@@ -276,6 +278,34 @@ export {
   updateRAGRepository,
   useAdminRAGRepositoriesStore,
 } from './admin/ragRepositories.ts'
+// Admin API Proxy Server store
+export {
+  loadApiProxyServerConfig,
+  updateApiProxyServerConfig,
+  loadApiProxyServerStatus,
+  startApiProxyServer,
+  stopApiProxyServer,
+  loadApiProxyServerModels,
+  addModelToApiProxyServer,
+  updateApiProxyServerModel,
+  removeModelFromApiProxyServer,
+  loadApiProxyServerTrustedHosts,
+  addTrustedHostToApiProxyServer,
+  updateApiProxyServerTrustedHost,
+  removeTrustedHostFromApiProxyServer,
+  initializeApiProxyServerData,
+  refreshApiProxyServerData,
+  useApiProxyServerStore,
+} from './admin/apiProxyServer.ts'
+// Admin API Proxy Log Monitor store
+export {
+  connectToApiProxyLogs,
+  disconnectFromApiProxyLogs,
+  clearLogBuffer,
+  setAutoScroll,
+  downloadLogs,
+  useApiProxyLogMonitorStore,
+} from './admin/apiProxyLogMonitor.ts'
 // Engine store
 export {
   initializeEngines,
@@ -401,6 +431,8 @@ export const Stores = {
   AdminRepositories: createStoreProxy(useAdminRepositoriesStore),
   AdminRAGProviders: createStoreProxy(useAdminRAGProvidersStore),
   AdminRAGRepositories: createStoreProxy(useAdminRAGRepositoriesStore),
+  AdminApiProxyServer: createStoreProxy(useApiProxyServerStore),
+  AdminApiProxyLogMonitor: createStoreProxy(useApiProxyLogMonitorStore),
   AdminEngines: createStoreProxy(useEngineStore),
   Settings: createStoreProxy(useUserSettingsStore),
   UI: {
