@@ -44,6 +44,8 @@ tokio = { version = "1.46.1", features = ["full"] }
 tokio-stream = "0.1"
 futures-util = "0.3"
 uuid = { version = "1.0", features = ["v4"] }
+aide = { version = "0.15", features = ["axum", "axum-json", "axum-extra-json-deserializer", "macros", "redoc"] }
+schemars = { version = "0.9", features = ["chrono04", "uuid1"] }
 axum = { version = "0.8.4", features = ["macros", "multipart"] }
 tower-http = { version = "0.6.6", features = ["cors", "fs", "set-header"] }
 tower = "0.5"

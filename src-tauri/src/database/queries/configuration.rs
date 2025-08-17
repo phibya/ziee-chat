@@ -215,45 +215,45 @@ pub async fn set_proxy_ignore_ssl_certificates(enabled: bool) -> Result<(), sqlx
     set_proxy_settings(&settings).await
 }
 
-pub async fn is_proxy_ssl() -> Result<bool, sqlx::Error> {
-    Ok(get_proxy_settings().await?.proxy_ssl)
-}
+// pub async fn is_proxy_ssl() -> Result<bool, sqlx::Error> {
+//     Ok(get_proxy_settings().await?.proxy_ssl)
+// }
+//
+// pub async fn set_proxy_ssl(enabled: bool) -> Result<(), sqlx::Error> {
+//     let mut settings = get_proxy_settings().await?;
+//     settings.proxy_ssl = enabled;
+//     set_proxy_settings(&settings).await
+// }
+//
+// pub async fn is_proxy_host_ssl() -> Result<bool, sqlx::Error> {
+//     Ok(get_proxy_settings().await?.proxy_host_ssl)
+// }
+//
+// pub async fn set_proxy_host_ssl(enabled: bool) -> Result<(), sqlx::Error> {
+//     let mut settings = get_proxy_settings().await?;
+//     settings.proxy_host_ssl = enabled;
+//     set_proxy_settings(&settings).await
+// }
 
-pub async fn set_proxy_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    let mut settings = get_proxy_settings().await?;
-    settings.proxy_ssl = enabled;
-    set_proxy_settings(&settings).await
-}
-
-pub async fn is_proxy_host_ssl() -> Result<bool, sqlx::Error> {
-    Ok(get_proxy_settings().await?.proxy_host_ssl)
-}
-
-pub async fn set_proxy_host_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    let mut settings = get_proxy_settings().await?;
-    settings.proxy_host_ssl = enabled;
-    set_proxy_settings(&settings).await
-}
-
-pub async fn is_peer_ssl() -> Result<bool, sqlx::Error> {
-    Ok(get_proxy_settings().await?.peer_ssl)
-}
-
-pub async fn set_peer_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    let mut settings = get_proxy_settings().await?;
-    settings.peer_ssl = enabled;
-    set_proxy_settings(&settings).await
-}
-
-pub async fn is_host_ssl() -> Result<bool, sqlx::Error> {
-    Ok(get_proxy_settings().await?.host_ssl)
-}
-
-pub async fn set_host_ssl(enabled: bool) -> Result<(), sqlx::Error> {
-    let mut settings = get_proxy_settings().await?;
-    settings.host_ssl = enabled;
-    set_proxy_settings(&settings).await
-}
+// pub async fn is_peer_ssl() -> Result<bool, sqlx::Error> {
+//     Ok(get_proxy_settings().await?.peer_ssl)
+// }
+//
+// pub async fn set_peer_ssl(enabled: bool) -> Result<(), sqlx::Error> {
+//     let mut settings = get_proxy_settings().await?;
+//     settings.peer_ssl = enabled;
+//     set_proxy_settings(&settings).await
+// }
+//
+// pub async fn is_host_ssl() -> Result<bool, sqlx::Error> {
+//     Ok(get_proxy_settings().await?.host_ssl)
+// }
+//
+// pub async fn set_host_ssl(enabled: bool) -> Result<(), sqlx::Error> {
+//     let mut settings = get_proxy_settings().await?;
+//     settings.host_ssl = enabled;
+//     set_proxy_settings(&settings).await
+// }
 
 pub async fn get_proxy_no_proxy() -> Result<String, sqlx::Error> {
     Ok(get_proxy_settings().await?.no_proxy)

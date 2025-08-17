@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
@@ -118,7 +119,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserGroupProvider {
 }
 
 // Meteor-like User structure (for API responses)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -134,7 +135,7 @@ pub struct User {
 }
 
 // User group structure for API responses
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserGroup {
     pub id: Uuid,
     pub name: String,
@@ -164,7 +165,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
 }
 
 // Email structure for the emails array
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserEmail {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -185,13 +186,13 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserEmail {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PasswordService {
     pub bcrypt: String, // bcrypt hash of the password
     pub salt: String,   // random salt used for hashing
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct UserServices {
     pub password: Option<PasswordService>,
 }
@@ -221,7 +222,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserSetting {
 }
 
 // Helper structures for API requests
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateUserRequest {
     pub username: String,
     pub email: String,
@@ -229,7 +230,7 @@ pub struct CreateUserRequest {
     pub profile: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct LoginRequest {
     pub username_or_email: String,
     pub password: String,

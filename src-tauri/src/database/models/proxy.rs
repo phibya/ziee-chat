@@ -15,14 +15,14 @@ pub struct ProxySettings {
     pub no_proxy: String,
     #[serde(default)]
     pub ignore_ssl_certificates: bool,
-    #[serde(default)]
-    pub proxy_ssl: bool,
-    #[serde(default)]
-    pub proxy_host_ssl: bool,
-    #[serde(default)]
-    pub peer_ssl: bool,
-    #[serde(default)]
-    pub host_ssl: bool,
+    // #[serde(default)]
+    // pub proxy_ssl: bool,
+    // #[serde(default)]
+    // pub proxy_host_ssl: bool,
+    // #[serde(default)]
+    // pub peer_ssl: bool,
+    // #[serde(default)]
+    // pub host_ssl: bool,
 }
 
 /// Convert from API configuration TestProxyConnectionRequest
@@ -35,10 +35,10 @@ impl From<&crate::api::configuration::TestProxyConnectionRequest> for ProxySetti
             password: request.password.clone(),
             no_proxy: request.no_proxy.clone(),
             ignore_ssl_certificates: request.ignore_ssl_certificates,
-            proxy_ssl: request.proxy_ssl,
-            proxy_host_ssl: request.proxy_host_ssl,
-            peer_ssl: request.peer_ssl,
-            host_ssl: request.host_ssl,
+            // proxy_ssl: request.proxy_ssl,
+            // proxy_host_ssl: request.proxy_host_ssl,
+            // peer_ssl: request.peer_ssl,
+            // host_ssl: request.host_ssl,
         }
     }
 }

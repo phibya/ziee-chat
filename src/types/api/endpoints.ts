@@ -135,9 +135,6 @@ export const ApiEndpoints = {
   // CORE APPLICATION ENDPOINTS
   // ===========================
 
-  // App system
-  'App.getHttpPort': 'GET /get_http_port',
-
   // Authentication
   'Auth.init': 'GET /api/auth/init',
   'Auth.setup': 'POST /api/auth/setup',
@@ -399,7 +396,6 @@ export const ApiEndpoints = {
 
 // Define parameters for each endpoint - TypeScript will ensure all endpoints are covered
 export type ApiEndpointParameters = {
-  'App.getHttpPort': void
   'Auth.init': void
   'Auth.setup': CreateUserRequest
   'Auth.login': LoginRequest
@@ -645,7 +641,6 @@ export type ApiEndpointParameters = {
 
 // Define responses for each endpoint - TypeScript will ensure all endpoints are covered
 export type ApiEndpointResponses = {
-  'App.getHttpPort': number
   'Auth.init': InitResponse
   'Auth.setup': AuthResponse
   'Auth.login': AuthResponse
