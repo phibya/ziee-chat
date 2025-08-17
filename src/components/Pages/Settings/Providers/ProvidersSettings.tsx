@@ -22,7 +22,8 @@ import {
   openAddProviderDrawer,
   Stores,
 } from '../../../../store'
-import { Provider, ProviderType } from '../../../../types/api/provider'
+import { Provider } from '../../../../types/api/provider'
+import { PROVIDER_ICONS } from '../../../../constants/providers'
 import { AddLocalModelDownloadDrawer } from './AddLocalModelDownloadDrawer.tsx'
 import { AddLocalModelUploadDrawer } from './AddLocalModelUploadDrawer.tsx'
 import { AddProviderDrawer } from './AddProviderDrawer.tsx'
@@ -36,16 +37,6 @@ import { useMainContentMinSize } from '../../../hooks/useWindowMinSize.ts'
 import { IoIosArrowDown } from 'react-icons/io'
 
 const { Title, Text } = Typography
-
-const PROVIDER_ICONS: Record<ProviderType, string> = {
-  local: '🕯',
-  openai: '🤖',
-  anthropic: '🤖',
-  groq: '⚡',
-  gemini: '💎',
-  mistral: '🌊',
-  custom: '🔧',
-}
 
 export function ProvidersSettings() {
   const { t } = useTranslation()
@@ -175,14 +166,16 @@ export function ProvidersSettings() {
     return actions
   }
 
-  const menuItems = providers.map(provider => ({
-    key: provider.id,
-    label: (
-      <Flex className={'flex-row gap-2 items-center'}>
-        <span className={'text-lg'}>{PROVIDER_ICONS[provider.type]}</span>
-        <div className={'flex-1'}>
-          <Typography.Text>{provider.name}</Typography.Text>
-        </div>
+  const menuItems = providers.map(provider => {
+    const IconComponent = PROVIDER_ICONS[provider.type]
+    return {
+      key: provider.id,
+      label: (
+        <Flex className={'flex-row gap-2 items-center'}>
+          <IconComponent className={'text-lg'} />
+          <div className={'flex-1'}>
+            <Typography.Text>{provider.name}</Typography.Text>
+          </div>
         {canEditProviders && (
           <Dropdown
             menu={{ items: getProviderActions(provider) }}
@@ -195,9 +188,10 @@ export function ProvidersSettings() {
             />
           </Dropdown>
         )}
-      </Flex>
-    ),
-  }))
+        </Flex>
+      ),
+    }
+  })
 
   if (canEditProviders) {
     menuItems.push({
@@ -306,9 +300,10 @@ export function ProvidersSettings() {
                     <Button className="w-fit" size={'large'}>
                       {currentProvider ? (
                         <Flex className="gap-2 items-center">
-                          <span className="text-lg">
-                            {PROVIDER_ICONS[currentProvider.type]}
-                          </span>
+                          {(() => {
+                            const IconComponent = PROVIDER_ICONS[currentProvider.type]
+                            return <IconComponent className="text-lg" />
+                          })()}
                           {currentProvider.name}
                         </Flex>
                       ) : (

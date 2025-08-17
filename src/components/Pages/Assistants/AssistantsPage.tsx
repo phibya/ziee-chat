@@ -127,7 +127,7 @@ export const AssistantsPage: React.FC = () => {
           </Typography.Title>
           <div className="h-full flex items-center justify-between">
             {!pageMinSize.xs ? (
-              searchInputComponent
+              <div className={'pr-1'}>{searchInputComponent}</div>
             ) : (
               <Button
                 type={isSearchBoxVisible ? 'primary' : 'text'}

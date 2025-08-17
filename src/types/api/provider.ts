@@ -37,6 +37,8 @@ export type ProviderType =
   | 'groq'
   | 'gemini'
   | 'mistral'
+  | 'deepseek'
+  | 'huggingface'
   | 'custom'
 
 export interface CreateProviderRequest {

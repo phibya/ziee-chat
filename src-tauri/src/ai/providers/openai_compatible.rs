@@ -1,16 +1,19 @@
 use async_trait::async_trait;
+use base64::Engine;
 use futures_util::StreamExt;
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
+    ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
 use crate::ai::api_proxy_server::HttpForwardingProvider;
+use crate::ai::file_helpers::load_file_content;
 
 #[derive(Debug, Clone)]
 pub struct OpenAICompatibleProvider {
@@ -33,9 +36,33 @@ struct OpenAICompatibleChoice {
     finish_reason: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct OpenAICompatibleMessage {
-    content: String,
+    role: String,
+    content: OpenAICompatibleContent,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum OpenAICompatibleContent {
+    Text(String),
+    Array(Vec<OpenAICompatibleContentPart>),
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
+enum OpenAICompatibleContentPart {
+    #[serde(rename = "text")]
+    Text { text: String },
+    #[serde(rename = "image_url")]
+    ImageUrl { image_url: OpenAICompatibleImageUrl },
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct OpenAICompatibleImageUrl {
+    url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    detail: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,11 +108,167 @@ impl OpenAICompatibleProvider {
         })
     }
 
+    /// Check if provider supports vision based on name
+    fn supports_vision(&self) -> bool {
+        // Most OpenAI-compatible providers support vision
+        // Custom providers are assumed to potentially support vision
+        matches!(self.provider_name, "openai" | "custom" | "groq")
+    }
+
+    /// Process multimodal content for OpenAI format
+    async fn process_multimodal_content(
+        &self,
+        parts: &[ContentPart],
+    ) -> Result<Vec<OpenAICompatibleContentPart>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut content_array = Vec::new();
+        let mut image_count = 0;
+        let max_images = if self.provider_name == "groq" { 5 } else { 10 }; // Groq has 5 image limit
+
+        for part in parts {
+            match part {
+                ContentPart::Text(text) => {
+                    content_array.push(OpenAICompatibleContentPart::Text {
+                        text: text.clone(),
+                    });
+                }
+                ContentPart::FileReference(file_ref) => {
+                    if let Some(mime_type) = &file_ref.mime_type {
+                        if self.is_supported_image_type(mime_type) {
+                            if image_count >= max_images {
+                                println!(
+                                    "Warning: Exceeding maximum images ({}) for {}. Skipping file: {}",
+                                    max_images, self.provider_name, file_ref.filename
+                                );
+                                continue;
+                            }
+
+                            match self.process_image_reference(file_ref).await {
+                                Ok(image_content) => {
+                                    content_array.push(image_content);
+                                    image_count += 1;
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "Error processing image {}: {}",
+                                        file_ref.filename, e
+                                    );
+                                    // Add as text description fallback
+                                    content_array.push(OpenAICompatibleContentPart::Text {
+                                        text: format!("[Image: {}]", file_ref.filename),
+                                    });
+                                }
+                            }
+                        } else {
+                            println!(
+                                "Skipping unsupported file type '{}' for file: {}",
+                                mime_type, file_ref.filename
+                            );
+                            // Add as text description
+                            content_array.push(OpenAICompatibleContentPart::Text {
+                                text: format!("[File: {} ({})]", file_ref.filename, mime_type),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(content_array)
+    }
+
+    /// Process image reference for OpenAI-compatible format
+    async fn process_image_reference(
+        &self,
+        file_ref: &FileReference,
+    ) -> Result<OpenAICompatibleContentPart, Box<dyn std::error::Error + Send + Sync>> {
+        // Load file content
+        let file_data = load_file_content(file_ref.file_id).await?;
+        
+        // Check size limits based on provider
+        let max_size = match self.provider_name {
+            "groq" => 4 * 1024 * 1024,  // 4MB for Groq
+            "openai" => 20 * 1024 * 1024, // 20MB for OpenAI
+            _ => 20 * 1024 * 1024,       // Default 20MB for others
+        };
+
+        if file_data.len() > max_size {
+            return Err(format!(
+                "Image size ({} bytes) exceeds {} limit ({} bytes)",
+                file_data.len(),
+                self.provider_name,
+                max_size
+            ).into());
+        }
+
+        // Encode to base64
+        let base64_data = base64::engine::general_purpose::STANDARD.encode(&file_data);
+        let mime_type = file_ref.mime_type.as_deref().unwrap_or("image/jpeg");
+
+        Ok(OpenAICompatibleContentPart::ImageUrl {
+            image_url: OpenAICompatibleImageUrl {
+                url: format!("data:{};base64,{}", mime_type, base64_data),
+                detail: if self.provider_name == "openai" { Some("high".to_string()) } else { None },
+            },
+        })
+    }
+
+    fn is_supported_image_type(&self, mime_type: &str) -> bool {
+        matches!(mime_type, 
+            "image/jpeg" | "image/jpg" | "image/png" | 
+            "image/webp" | "image/gif"
+        )
+    }
+
+    /// Convert messages to OpenAI-compatible format
+    async fn convert_messages_to_openai(
+        &self,
+        messages: &[crate::ai::core::providers::ChatMessage],
+    ) -> Result<Vec<OpenAICompatibleMessage>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut openai_messages = Vec::new();
+
+        for message in messages {
+            let openai_message = match &message.content {
+                MessageContent::Text(text) => OpenAICompatibleMessage {
+                    role: message.role.clone(),
+                    content: OpenAICompatibleContent::Text(text.clone()),
+                },
+                MessageContent::Multimodal(parts) => {
+                    if self.supports_vision() {
+                        let content_parts = self.process_multimodal_content(parts).await?;
+                        OpenAICompatibleMessage {
+                            role: message.role.clone(),
+                            content: OpenAICompatibleContent::Array(content_parts),
+                        }
+                    } else {
+                        // Convert to text for non-vision providers
+                        let text_parts: Vec<String> = parts
+                            .iter()
+                            .map(|part| match part {
+                                ContentPart::Text(text) => text.clone(),
+                                ContentPart::FileReference(file_ref) => {
+                                    format!("[File: {}]", file_ref.filename)
+                                }
+                            })
+                            .collect();
+                        
+                        OpenAICompatibleMessage {
+                            role: message.role.clone(),
+                            content: OpenAICompatibleContent::Text(text_parts.join("\n")),
+                        }
+                    }
+                }
+            };
+
+            openai_messages.push(openai_message);
+        }
+
+        Ok(openai_messages)
+    }
+
     fn build_request(&self, request: &ChatRequest, stream: bool) -> serde_json::Value {
         let params = request.parameters.as_ref();
         let mut payload = json!({
             "model": request.model_name,
-            "messages": request.messages,
             "temperature": params.and_then(|p| p.temperature).unwrap_or(0.7),
             "max_tokens": params.and_then(|p| p.max_tokens).unwrap_or(4096),
             "top_p": params.and_then(|p| p.top_p).unwrap_or(0.95),
@@ -107,6 +290,17 @@ impl OpenAICompatibleProvider {
         payload
     }
 
+    async fn prepare_request(
+        &self,
+        request: &ChatRequest,
+        stream: bool,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        let messages = self.convert_messages_to_openai(&request.messages).await?;
+        let mut payload = self.build_request(request, stream);
+        payload["messages"] = json!(messages);
+        Ok(payload)
+    }
+
     fn get_endpoint_url(&self) -> String {
         // Handle different endpoint patterns
         if self.base_url.contains("/v1") || self.base_url.contains("/openai") {
@@ -120,6 +314,15 @@ impl OpenAICompatibleProvider {
         // Custom providers might not need auth if running locally
         self.provider_name != "custom" || !self.api_key.is_empty()
     }
+
+    /// Get max file size based on provider
+    fn get_max_file_size(&self) -> u64 {
+        match self.provider_name {
+            "groq" => 4 * 1024 * 1024,   // 4MB
+            "openai" => 20 * 1024 * 1024, // 20MB
+            _ => 20 * 1024 * 1024,        // Default 20MB
+        }
+    }
 }
 
 #[async_trait]
@@ -129,7 +332,7 @@ impl AIProvider for OpenAICompatibleProvider {
         request: ChatRequest,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        let payload = self.build_request(&request, false);
+        let payload = self.prepare_request(&request, false).await?;
 
         let mut req_builder = self
             .client
@@ -151,8 +354,23 @@ impl AIProvider for OpenAICompatibleProvider {
         let api_response: OpenAICompatibleResponse = response.json().await?;
 
         if let Some(choice) = api_response.choices.into_iter().next() {
+            let content = match choice.message.content {
+                OpenAICompatibleContent::Text(text) => text,
+                OpenAICompatibleContent::Array(parts) => {
+                    // Extract text from content parts
+                    parts
+                        .into_iter()
+                        .filter_map(|part| match part {
+                            OpenAICompatibleContentPart::Text { text } => Some(text),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join("")
+                }
+            };
+
             Ok(ChatResponse {
-                content: choice.message.content,
+                content,
                 finish_reason: choice.finish_reason,
                 usage: api_response.usage.map(|u| Usage {
                     prompt_tokens: u.prompt_tokens,
@@ -170,7 +388,7 @@ impl AIProvider for OpenAICompatibleProvider {
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        let payload = self.build_request(&request, true);
+        let payload = self.prepare_request(&request, true).await?;
 
         let mut req_builder = self
             .client
@@ -247,6 +465,94 @@ impl AIProvider for OpenAICompatibleProvider {
 
     fn provider_name(&self) -> &'static str {
         self.provider_name
+    }
+
+    fn supports_file_upload(&self) -> bool {
+        self.supports_vision()
+    }
+
+    fn max_file_size(&self) -> Option<u64> {
+        if self.supports_vision() {
+            Some(self.get_max_file_size())
+        } else {
+            None
+        }
+    }
+
+    fn supported_file_types(&self) -> Vec<String> {
+        if self.supports_vision() {
+            vec![
+                "image/jpeg".to_string(),
+                "image/jpg".to_string(),
+                "image/png".to_string(),
+                "image/webp".to_string(),
+                "image/gif".to_string(),
+            ]
+        } else {
+            vec![]
+        }
+    }
+
+    async fn upload_file(
+        &self,
+        file_data: &[u8],
+        _filename: &str,
+        mime_type: &str,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        if !self.supports_vision() {
+            return Err(format!("{} does not support file uploads", self.provider_name).into());
+        }
+
+        if !self.is_supported_image_type(mime_type) {
+            return Err(format!("Unsupported file type: {}", mime_type).into());
+        }
+
+        let max_size = self.get_max_file_size();
+        if file_data.len() as u64 > max_size {
+            return Err(format!(
+                "File size exceeds {} limit ({} bytes)",
+                self.provider_name,
+                max_size
+            ).into());
+        }
+
+        let base64_data = base64::engine::general_purpose::STANDARD.encode(file_data);
+        Ok(format!("data:{};base64,{}", mime_type, base64_data))
+    }
+
+    async fn resolve_file_content(
+        &self,
+        file_ref: &mut FileReference,
+        _provider_id: Uuid,
+    ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
+        if !self.supports_vision() {
+            return Err(format!("{} does not support file content resolution", self.provider_name).into());
+        }
+
+        if let Some(mime_type) = &file_ref.mime_type {
+            if !self.is_supported_image_type(mime_type) {
+                return Err(format!("Unsupported file type: {}", mime_type).into());
+            }
+        }
+
+        let file_data = load_file_content(file_ref.file_id).await?;
+        
+        let max_size = self.get_max_file_size();
+        if file_data.len() as u64 > max_size {
+            return Err(format!(
+                "File size exceeds {} limit ({} bytes)",
+                self.provider_name,
+                max_size
+            ).into());
+        }
+
+        let base64_data = base64::engine::general_purpose::STANDARD.encode(&file_data);
+        let mime_type = file_ref.mime_type.as_deref().unwrap_or("image/jpeg");
+
+        Ok(ProviderFileContent::DirectEmbed {
+            data: format!("data:{};base64,{}", mime_type, base64_data),
+            mime_type: mime_type.to_string(),
+        })
     }
 }
 

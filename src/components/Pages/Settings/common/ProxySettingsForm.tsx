@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { testProxyDetailed } from '../../../../api/proxy'
 import { isProxyValid, type ProxySettings } from './'
 
-const { Text, Title } = Typography
+const { Text } = Typography
 
 export interface ProxySettingsFormProps {
   initialSettings: ProxySettings | null
@@ -195,136 +195,157 @@ export function ProxySettingsForm({
                 />
               </Form.Item>
             </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ flex: 1, marginRight: 16 }}>
+                <Text strong>{t('proxy.ignoreSslCerts')}</Text>
+                <br />
+                <Text type="secondary">{t('proxy.ignoreSslCertsDesc')}</Text>
+              </div>
+              <Form.Item
+                name="ignore_ssl_certificates"
+                valuePropName="checked"
+                style={{ margin: 0 }}
+              >
+                <Switch disabled={disabled} />
+              </Form.Item>
+            </div>
           </Flex>
 
-          <Divider />
-
+          {/*<Divider />*/}
+          {/**/}
           {/* SSL Configuration */}
-          <div className={'pt-2'}>
-            <Title level={4} className={'pb-2'}>
-              {t('proxy.sslVerification')}
-            </Title>
+          {/*<div className={'pt-2'}>*/}
+          {/*  <Title level={4} className={'pb-2'}>*/}
+          {/*    {t('proxy.sslVerification')}*/}
+          {/*  </Title>*/}
 
-            {/* Ignore SSL Certificates */}
-            <div style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ flex: 1, marginRight: 16 }}>
-                  <Text strong>{t('proxy.ignoreSslCerts')}</Text>
-                  <br />
-                  <Text type="secondary">{t('proxy.ignoreSslCertsDesc')}</Text>
-                </div>
-                <Form.Item
-                  name="ignore_ssl_certificates"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch disabled={disabled} />
-                </Form.Item>
-              </div>
-            </div>
+          {/*  /!* Ignore SSL Certificates *!/*/}
+          {/*  <div style={{ marginBottom: 24 }}>*/}
+          {/*    <div*/}
+          {/*      style={{*/}
+          {/*        display: 'flex',*/}
+          {/*        justifyContent: 'space-between',*/}
+          {/*        alignItems: 'center',*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      <div style={{ flex: 1, marginRight: 16 }}>*/}
+          {/*        <Text strong>{t('proxy.ignoreSslCerts')}</Text>*/}
+          {/*        <br />*/}
+          {/*        <Text type="secondary">{t('proxy.ignoreSslCertsDesc')}</Text>*/}
+          {/*      </div>*/}
+          {/*      <Form.Item*/}
+          {/*        name="ignore_ssl_certificates"*/}
+          {/*        valuePropName="checked"*/}
+          {/*        style={{ margin: 0 }}*/}
+          {/*      >*/}
+          {/*        <Switch disabled={disabled} />*/}
+          {/*      </Form.Item>*/}
+          {/*    </div>*/}
+          {/*  </div>*/}
 
-            {/* Proxy SSL */}
-            <div style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ flex: 1, marginRight: 16 }}>
-                  <Text strong>{t('proxy.proxySsl')}</Text>
-                  <br />
-                  <Text type="secondary">{t('proxy.proxySslDesc')}</Text>
-                </div>
-                <Form.Item
-                  name="proxy_ssl"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch disabled={disabled} />
-                </Form.Item>
-              </div>
-            </div>
+          {/*  /!* Proxy SSL *!/*/}
+          {/*  <div style={{ marginBottom: 24 }}>*/}
+          {/*    <div*/}
+          {/*      style={{*/}
+          {/*        display: 'flex',*/}
+          {/*        justifyContent: 'space-between',*/}
+          {/*        alignItems: 'center',*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      <div style={{ flex: 1, marginRight: 16 }}>*/}
+          {/*        <Text strong>{t('proxy.proxySsl')}</Text>*/}
+          {/*        <br />*/}
+          {/*        <Text type="secondary">{t('proxy.proxySslDesc')}</Text>*/}
+          {/*      </div>*/}
+          {/*      <Form.Item*/}
+          {/*        name="proxy_ssl"*/}
+          {/*        valuePropName="checked"*/}
+          {/*        style={{ margin: 0 }}*/}
+          {/*      >*/}
+          {/*        <Switch disabled={disabled} />*/}
+          {/*      </Form.Item>*/}
+          {/*    </div>*/}
+          {/*  </div>*/}
 
-            {/* Proxy Host SSL */}
-            <div style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ flex: 1, marginRight: 16 }}>
-                  <Text strong>{t('proxy.proxyHostSsl')}</Text>
-                  <br />
-                  <Text type="secondary">{t('proxy.proxyHostSslDesc')}</Text>
-                </div>
-                <Form.Item
-                  name="proxy_host_ssl"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch disabled={disabled} />
-                </Form.Item>
-              </div>
-            </div>
+          {/*  /!* Proxy Host SSL *!/*/}
+          {/*  <div style={{ marginBottom: 24 }}>*/}
+          {/*    <div*/}
+          {/*      style={{*/}
+          {/*        display: 'flex',*/}
+          {/*        justifyContent: 'space-between',*/}
+          {/*        alignItems: 'center',*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      <div style={{ flex: 1, marginRight: 16 }}>*/}
+          {/*        <Text strong>{t('proxy.proxyHostSsl')}</Text>*/}
+          {/*        <br />*/}
+          {/*        <Text type="secondary">{t('proxy.proxyHostSslDesc')}</Text>*/}
+          {/*      </div>*/}
+          {/*      <Form.Item*/}
+          {/*        name="proxy_host_ssl"*/}
+          {/*        valuePropName="checked"*/}
+          {/*        style={{ margin: 0 }}*/}
+          {/*      >*/}
+          {/*        <Switch disabled={disabled} />*/}
+          {/*      </Form.Item>*/}
+          {/*    </div>*/}
+          {/*  </div>*/}
 
-            {/* Peer SSL */}
-            <div style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ flex: 1, marginRight: 16 }}>
-                  <Text strong>{t('proxy.peerSsl')}</Text>
-                  <br />
-                  <Text type="secondary">{t('proxy.peerSslDesc')}</Text>
-                </div>
-                <Form.Item
-                  name="peer_ssl"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch disabled={disabled} />
-                </Form.Item>
-              </div>
-            </div>
+          {/*  /!* Peer SSL *!/*/}
+          {/*  <div style={{ marginBottom: 24 }}>*/}
+          {/*    <div*/}
+          {/*      style={{*/}
+          {/*        display: 'flex',*/}
+          {/*        justifyContent: 'space-between',*/}
+          {/*        alignItems: 'center',*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      <div style={{ flex: 1, marginRight: 16 }}>*/}
+          {/*        <Text strong>{t('proxy.peerSsl')}</Text>*/}
+          {/*        <br />*/}
+          {/*        <Text type="secondary">{t('proxy.peerSslDesc')}</Text>*/}
+          {/*      </div>*/}
+          {/*      <Form.Item*/}
+          {/*        name="peer_ssl"*/}
+          {/*        valuePropName="checked"*/}
+          {/*        style={{ margin: 0 }}*/}
+          {/*      >*/}
+          {/*        <Switch disabled={disabled} />*/}
+          {/*      </Form.Item>*/}
+          {/*    </div>*/}
+          {/*  </div>*/}
 
-            {/* Host SSL */}
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ flex: 1, marginRight: 16 }}>
-                  <Text strong>{t('proxy.hostSsl')}</Text>
-                  <br />
-                  <Text type="secondary">{t('proxy.hostSslDesc')}</Text>
-                </div>
-                <Form.Item
-                  name="host_ssl"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch disabled={disabled} />
-                </Form.Item>
-              </div>
-            </div>
-          </div>
+          {/*  /!* Host SSL *!/*/}
+          {/*  <div>*/}
+          {/*    <div*/}
+          {/*      style={{*/}
+          {/*        display: 'flex',*/}
+          {/*        justifyContent: 'space-between',*/}
+          {/*        alignItems: 'center',*/}
+          {/*      }}*/}
+          {/*    >*/}
+          {/*      <div style={{ flex: 1, marginRight: 16 }}>*/}
+          {/*        <Text strong>{t('proxy.hostSsl')}</Text>*/}
+          {/*        <br />*/}
+          {/*        <Text type="secondary">{t('proxy.hostSslDesc')}</Text>*/}
+          {/*      </div>*/}
+          {/*      <Form.Item*/}
+          {/*        name="host_ssl"*/}
+          {/*        valuePropName="checked"*/}
+          {/*        style={{ margin: 0 }}*/}
+          {/*      >*/}
+          {/*        <Switch disabled={disabled} />*/}
+          {/*      </Form.Item>*/}
+          {/*    </div>*/}
+          {/*  </div>*/}
+          {/*</div>*/}
         </Flex>
 
         <Divider />

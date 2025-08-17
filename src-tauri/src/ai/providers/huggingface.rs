@@ -5,6 +5,7 @@ use futures_util::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
@@ -17,7 +18,7 @@ use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_conten
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
 
 #[derive(Debug, Clone)]
-pub struct MistralProvider {
+pub struct HuggingFaceProvider {
     client: Client,
     api_key: String,
     base_url: String,
@@ -25,84 +26,94 @@ pub struct MistralProvider {
 }
 
 #[derive(Debug, Deserialize)]
-struct MistralResponse {
-    choices: Vec<MistralChoice>,
-    usage: Option<MistralUsage>,
+struct HuggingFaceResponse {
+    choices: Vec<HuggingFaceChoice>,
+    usage: Option<HuggingFaceUsage>,
 }
 
 #[derive(Debug, Deserialize)]
-struct MistralChoice {
-    message: MistralMessage,
+struct HuggingFaceChoice {
+    message: HuggingFaceMessage,
     finish_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct MistralMessage {
+struct HuggingFaceMessage {
     role: String,
-    content: MistralContent,
+    content: HuggingFaceContent,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
-enum MistralContent {
+enum HuggingFaceContent {
     Text(String),
-    Array(Vec<MistralContentPart>),
+    Array(Vec<HuggingFaceContentPart>),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
-enum MistralContentPart {
+enum HuggingFaceContentPart {
     #[serde(rename = "text")]
     Text { text: String },
     #[serde(rename = "image_url")]
-    ImageUrl { image_url: MistralImageUrl },
+    ImageUrl { image_url: HuggingFaceImageUrl },
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct MistralImageUrl {
+struct HuggingFaceImageUrl {
     url: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct MistralUsage {
+struct HuggingFaceUsage {
     prompt_tokens: Option<u32>,
     completion_tokens: Option<u32>,
     total_tokens: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
-struct MistralStreamResponse {
-    choices: Vec<MistralStreamChoice>,
+struct HuggingFaceStreamResponse {
+    choices: Vec<HuggingFaceStreamChoice>,
 }
 
 #[derive(Debug, Deserialize)]
-struct MistralStreamChoice {
-    delta: MistralStreamDelta,
+struct HuggingFaceStreamChoice {
+    delta: HuggingFaceStreamDelta,
     finish_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct MistralStreamDelta {
+struct HuggingFaceStreamDelta {
     content: Option<String>,
 }
 
 #[derive(Debug)]
 struct ModelConfig {
     supports_vision: bool,
+    supports_tools: bool,
+    supports_streaming: bool,
     max_images: u32,
-    max_file_size: usize,
-    max_resolution: (u32, u32),
+    max_tokens: u32,
     context_window: u32,
+    max_file_size: usize,
+    model_type: HuggingFaceModelType,
 }
 
-impl MistralProvider {
+#[derive(Debug)]
+enum HuggingFaceModelType {
+    TextOnly,
+    VisionLanguage,
+    Multimodal,
+}
+
+impl HuggingFaceProvider {
     pub fn new(
         api_key: String,
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
         provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let base_url = base_url.unwrap_or_else(|| "https://api.mistral.ai/v1".to_string());
+        let base_url = base_url.unwrap_or_else(|| "https://api-inference.huggingface.co/v1".to_string());
         let client = build_http_client(&base_url, proxy_config.as_ref())?;
 
         Ok(Self {
@@ -115,65 +126,108 @@ impl MistralProvider {
 
     /// Check if the model supports vision capabilities
     fn is_vision_model(&self, model_name: &str) -> bool {
+        model_name.contains("qwen2.5-vl") ||
+        model_name.contains("qwen2-vl") ||
+        model_name.contains("llama-3.2") && model_name.contains("vision") ||
+        model_name.contains("idefics") ||
+        model_name.contains("gemma") && model_name.contains("4b-it") ||
+        model_name.contains("command") && model_name.contains("vision") ||
         model_name.contains("pixtral") ||
-        model_name.contains("mistral-medium-2505") ||
-        model_name.contains("mistral-small-2503")
+        model_name.contains("blip") ||
+        model_name.contains("flamingo")
     }
 
     /// Get model-specific configuration
     fn get_model_config(&self, model_name: &str) -> ModelConfig {
-        match model_name {
-            name if name.contains("pixtral-large") => ModelConfig {
+        let lower_name = model_name.to_lowercase();
+        
+        match () {
+            _ if lower_name.contains("qwen2.5-vl-7b") => ModelConfig {
                 supports_vision: true,
-                max_images: 30,
-                max_file_size: 10 * 1024 * 1024,
-                max_resolution: (1540, 1540),
+                supports_tools: true,
+                supports_streaming: true,
+                max_images: 8,
+                max_tokens: 2048,
+                context_window: 32000,
+                max_file_size: 20 * 1024 * 1024,
+                model_type: HuggingFaceModelType::VisionLanguage,
+            },
+            _ if lower_name.contains("llama-3.2") && lower_name.contains("vision") => ModelConfig {
+                supports_vision: true,
+                supports_tools: true,
+                supports_streaming: true,
+                max_images: 5,
+                max_tokens: 2048,
                 context_window: 128000,
+                max_file_size: 20 * 1024 * 1024,
+                model_type: HuggingFaceModelType::VisionLanguage,
             },
-            name if name.contains("pixtral-12b") => ModelConfig {
+            _ if lower_name.contains("gemma") && lower_name.contains("4b-it") => ModelConfig {
                 supports_vision: true,
-                max_images: 8,
-                max_file_size: 10 * 1024 * 1024,
-                max_resolution: (1024, 1024),
-                context_window: 32000,
+                supports_tools: false,
+                supports_streaming: true,
+                max_images: 4,
+                max_tokens: 2048,
+                context_window: 128000,
+                max_file_size: 15 * 1024 * 1024,
+                model_type: HuggingFaceModelType::Multimodal,
             },
-            name if name.contains("mistral-medium-2505") => ModelConfig {
+            _ if lower_name.contains("idefics") => ModelConfig {
                 supports_vision: true,
-                max_images: 8,
-                max_file_size: 10 * 1024 * 1024,
-                max_resolution: (1024, 1024),
+                supports_tools: false,
+                supports_streaming: true,
+                max_images: 6,
+                max_tokens: 1024,
                 context_window: 32000,
+                max_file_size: 10 * 1024 * 1024,
+                model_type: HuggingFaceModelType::VisionLanguage,
             },
-            name if name.contains("mistral-small-2503") => ModelConfig {
+            _ if lower_name.contains("command") && lower_name.contains("vision") => ModelConfig {
                 supports_vision: true,
-                max_images: 8,
-                max_file_size: 10 * 1024 * 1024,
-                max_resolution: (1024, 1024),
-                context_window: 32000,
+                supports_tools: true,
+                supports_streaming: true,
+                max_images: 10,
+                max_tokens: 4096,
+                context_window: 128000,
+                max_file_size: 20 * 1024 * 1024,
+                model_type: HuggingFaceModelType::VisionLanguage,
+            },
+            _ if lower_name.contains("llama-3.1") || lower_name.contains("gemma-2") => ModelConfig {
+                supports_vision: false,
+                supports_tools: true,
+                supports_streaming: true,
+                max_images: 0,
+                max_tokens: 4096,
+                context_window: 128000,
+                max_file_size: 0,
+                model_type: HuggingFaceModelType::TextOnly,
             },
             _ => ModelConfig {
                 supports_vision: false,
+                supports_tools: false,
+                supports_streaming: true,
                 max_images: 0,
+                max_tokens: 2048,
+                context_window: 4096,
                 max_file_size: 0,
-                max_resolution: (0, 0),
-                context_window: 32000,
+                model_type: HuggingFaceModelType::TextOnly,
             }
         }
     }
 
-    /// Process multimodal content for Mistral format
+    /// Process multimodal content for Hugging Face format
     async fn process_multimodal_content(
         &self,
         parts: &[ContentPart],
         model_config: &ModelConfig,
-    ) -> Result<Vec<MistralContentPart>, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<Vec<HuggingFaceContentPart>, Box<dyn std::error::Error + Send + Sync>> {
         let mut content_array = Vec::new();
         let mut image_count = 0;
 
         for part in parts {
             match part {
                 ContentPart::Text(text) => {
-                    content_array.push(MistralContentPart::Text {
+                    content_array.push(HuggingFaceContentPart::Text {
                         text: text.clone(),
                     });
                 }
@@ -182,7 +236,7 @@ impl MistralProvider {
                         if self.is_supported_image_type(mime_type) {
                             if image_count >= model_config.max_images {
                                 println!(
-                                    "Warning: Exceeding maximum images ({}) for model. Skipping file: {}",
+                                    "Warning: Exceeding maximum images ({}) for Hugging Face model. Skipping file: {}",
                                     model_config.max_images, file_ref.filename
                                 );
                                 continue;
@@ -199,7 +253,7 @@ impl MistralProvider {
                                         file_ref.filename, e
                                     );
                                     // Add as text description fallback
-                                    content_array.push(MistralContentPart::Text {
+                                    content_array.push(HuggingFaceContentPart::Text {
                                         text: format!("[Image: {}]", file_ref.filename),
                                     });
                                 }
@@ -210,7 +264,7 @@ impl MistralProvider {
                                 mime_type, file_ref.filename
                             );
                             // Add as text description
-                            content_array.push(MistralContentPart::Text {
+                            content_array.push(HuggingFaceContentPart::Text {
                                 text: format!("[File: {} ({})]", file_ref.filename, mime_type),
                             });
                         }
@@ -222,18 +276,18 @@ impl MistralProvider {
         Ok(content_array)
     }
 
-    /// Process image reference for Mistral vision models
+    /// Process image reference for Hugging Face vision models
     async fn process_image_reference(
         &self,
         file_ref: &FileReference,
         model_config: &ModelConfig,
-    ) -> Result<MistralContentPart, Box<dyn std::error::Error + Send + Sync>> {
+    ) -> Result<HuggingFaceContentPart, Box<dyn std::error::Error + Send + Sync>> {
         // Check if there's already a provider file mapping
         match get_provider_file_mapping(file_ref.file_id, self.provider_id).await {
             Ok(Some(provider_file)) => {
                 if let Some(cached_url) = provider_file.provider_file_id {
-                    return Ok(MistralContentPart::ImageUrl {
-                        image_url: MistralImageUrl { url: cached_url },
+                    return Ok(HuggingFaceContentPart::ImageUrl {
+                        image_url: HuggingFaceImageUrl { url: cached_url },
                     });
                 }
             }
@@ -249,7 +303,7 @@ impl MistralProvider {
         // Check size limits
         if file_data.len() > model_config.max_file_size {
             return Err(format!(
-                "Image size ({} bytes) exceeds limit ({} bytes)",
+                "Image size ({} bytes) exceeds Hugging Face limit ({} bytes)",
                 file_data.len(),
                 model_config.max_file_size
             ).into());
@@ -278,8 +332,8 @@ impl MistralProvider {
             // Continue without caching
         }
 
-        Ok(MistralContentPart::ImageUrl {
-            image_url: MistralImageUrl { url: data_url },
+        Ok(HuggingFaceContentPart::ImageUrl {
+            image_url: HuggingFaceImageUrl { url: data_url },
         })
     }
 
@@ -290,26 +344,26 @@ impl MistralProvider {
         )
     }
 
-    /// Convert messages to Mistral format
-    async fn convert_messages_to_mistral(
+    /// Convert messages to Hugging Face format
+    async fn convert_messages_to_huggingface(
         &self,
         messages: &[crate::ai::core::providers::ChatMessage],
         model_config: &ModelConfig,
-    ) -> Result<Vec<MistralMessage>, Box<dyn std::error::Error + Send + Sync>> {
-        let mut mistral_messages = Vec::new();
+    ) -> Result<Vec<HuggingFaceMessage>, Box<dyn std::error::Error + Send + Sync>> {
+        let mut hf_messages = Vec::new();
 
         for message in messages {
-            let mistral_message = match &message.content {
-                MessageContent::Text(text) => MistralMessage {
+            let hf_message = match &message.content {
+                MessageContent::Text(text) => HuggingFaceMessage {
                     role: message.role.clone(),
-                    content: MistralContent::Text(text.clone()),
+                    content: HuggingFaceContent::Text(text.clone()),
                 },
                 MessageContent::Multimodal(parts) => {
                     if model_config.supports_vision {
                         let content_parts = self.process_multimodal_content(parts, model_config).await?;
-                        MistralMessage {
+                        HuggingFaceMessage {
                             role: message.role.clone(),
-                            content: MistralContent::Array(content_parts),
+                            content: HuggingFaceContent::Array(content_parts),
                         }
                     } else {
                         // Convert to text for non-vision models
@@ -323,32 +377,33 @@ impl MistralProvider {
                             })
                             .collect();
                         
-                        MistralMessage {
+                        HuggingFaceMessage {
                             role: message.role.clone(),
-                            content: MistralContent::Text(text_parts.join("\n")),
+                            content: HuggingFaceContent::Text(text_parts.join("\n")),
                         }
                     }
                 }
             };
 
-            mistral_messages.push(mistral_message);
+            hf_messages.push(hf_message);
         }
 
-        Ok(mistral_messages)
+        Ok(hf_messages)
     }
 
     async fn prepare_request(
         &self,
         request: &ChatRequest,
+        stream: bool,
     ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         let model_config = self.get_model_config(&request.model_name);
-        let messages = self.convert_messages_to_mistral(&request.messages, &model_config).await?;
+        let messages = self.convert_messages_to_huggingface(&request.messages, &model_config).await?;
 
         let params = request.parameters.as_ref();
         let mut payload = json!({
             "model": request.model_name,
             "messages": messages,
-            "stream": request.stream
+            "stream": stream
         });
 
         // Add optional parameters
@@ -357,43 +412,60 @@ impl MistralProvider {
                 payload["temperature"] = json!(temperature);
             }
             if let Some(max_tokens) = params.max_tokens {
-                payload["max_tokens"] = json!(max_tokens);
+                payload["max_tokens"] = json!(max_tokens.min(model_config.max_tokens));
             }
             if let Some(top_p) = params.top_p {
                 payload["top_p"] = json!(top_p);
+            }
+            if let Some(frequency_penalty) = params.frequency_penalty {
+                payload["frequency_penalty"] = json!(frequency_penalty);
+            }
+            if let Some(presence_penalty) = params.presence_penalty {
+                payload["presence_penalty"] = json!(presence_penalty);
             }
             if let Some(stop) = &params.stop {
                 payload["stop"] = json!(stop);
             }
         }
 
+        // Set defaults if not provided
+        if !payload.as_object().unwrap().contains_key("temperature") {
+            payload["temperature"] = json!(0.7);
+        }
+        if !payload.as_object().unwrap().contains_key("max_tokens") {
+            payload["max_tokens"] = json!(model_config.max_tokens);
+        }
+
         Ok(payload)
     }
 
-    /// Check if model supports fine-tuning
-    fn supports_fine_tuning(&self, model_name: &str) -> bool {
-        model_name.contains("pixtral-12b")
-    }
-
-    /// Validate structured output request
-    fn validate_structured_output(&self, model_name: &str) -> bool {
-        // Check if model supports structured output
-        model_name.contains("pixtral") || 
-        model_name.contains("mistral-medium") ||
-        model_name.contains("mistral-small")
+    /// Enhanced error handling for Hugging Face API
+    fn handle_huggingface_errors(&self, error: &str) -> Box<dyn std::error::Error + Send + Sync> {
+        if error.contains("rate limit") || error.contains("429") {
+            "Hugging Face rate limit exceeded. Please wait before retrying or upgrade your plan.".into()
+        } else if error.contains("unauthorized") || error.contains("401") {
+            "Hugging Face authentication failed. Please check your API token and permissions.".into()
+        } else if error.contains("model not found") || error.contains("404") {
+            "Hugging Face model not found. Please check the model name and availability.".into()
+        } else if error.contains("token") && error.contains("limit") {
+            "Hugging Face token limit exceeded. Please reduce the input length or upgrade your plan.".into()
+        } else if error.contains("image") && (error.contains("size") || error.contains("format")) {
+            "Hugging Face image processing error. Please check image format and size limits.".into()
+        } else if error.contains("service unavailable") || error.contains("503") {
+            "Hugging Face service temporarily unavailable. Please try again later.".into()
+        } else {
+            format!("Hugging Face API error: {}", error).into()
+        }
     }
 }
 
 #[async_trait]
-impl AIProvider for MistralProvider {
+impl AIProvider for HuggingFaceProvider {
     async fn chat(
         &self,
         request: ChatRequest,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let mut request = request;
-        request.stream = false;
-
-        let payload = self.prepare_request(&request).await?;
+        let payload = self.prepare_request(&request, false).await?;
 
         let response = self
             .client
@@ -406,20 +478,20 @@ impl AIProvider for MistralProvider {
 
         if !response.status().is_success() {
             let error_text = response.text().await?;
-            return Err(format!("Mistral API error: {}", error_text).into());
+            return Err(self.handle_huggingface_errors(&error_text));
         }
 
-        let mistral_response: MistralResponse = response.json().await?;
+        let hf_response: HuggingFaceResponse = response.json().await?;
 
-        if let Some(choice) = mistral_response.choices.into_iter().next() {
+        if let Some(choice) = hf_response.choices.into_iter().next() {
             let content = match choice.message.content {
-                MistralContent::Text(text) => text,
-                MistralContent::Array(parts) => {
+                HuggingFaceContent::Text(text) => text,
+                HuggingFaceContent::Array(parts) => {
                     // Extract text from content parts
                     parts
                         .into_iter()
                         .filter_map(|part| match part {
-                            MistralContentPart::Text { text } => Some(text),
+                            HuggingFaceContentPart::Text { text } => Some(text),
                             _ => None,
                         })
                         .collect::<Vec<_>>()
@@ -430,14 +502,14 @@ impl AIProvider for MistralProvider {
             Ok(ChatResponse {
                 content,
                 finish_reason: choice.finish_reason,
-                usage: mistral_response.usage.map(|u| Usage {
+                usage: hf_response.usage.map(|u| Usage {
                     prompt_tokens: u.prompt_tokens,
                     completion_tokens: u.completion_tokens,
                     total_tokens: u.total_tokens,
                 }),
             })
         } else {
-            Err("No choices returned from Mistral API".into())
+            Err("No choices returned from Hugging Face API".into())
         }
     }
 
@@ -445,10 +517,7 @@ impl AIProvider for MistralProvider {
         &self,
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let mut request = request;
-        request.stream = true;
-
-        let payload = self.prepare_request(&request).await?;
+        let payload = self.prepare_request(&request, true).await?;
 
         let response = self
             .client
@@ -461,10 +530,8 @@ impl AIProvider for MistralProvider {
 
         if !response.status().is_success() {
             let error_text = response.text().await?;
-            return Err(format!("Mistral API error: {}", error_text).into());
+            return Err(self.handle_huggingface_errors(&error_text));
         }
-
-        use std::sync::{Arc, Mutex};
 
         let buffer = Arc::new(Mutex::new(String::new()));
 
@@ -486,7 +553,7 @@ impl AIProvider for MistralProvider {
                         }
 
                         if let Some(data) = line.strip_prefix("data: ") {
-                            match serde_json::from_str::<MistralStreamResponse>(data) {
+                            match serde_json::from_str::<HuggingFaceStreamResponse>(data) {
                                 Ok(stream_response) => {
                                     if let Some(choice) = stream_response.choices.into_iter().next() {
                                         result = Some(Ok(StreamingChunk {
@@ -498,7 +565,7 @@ impl AIProvider for MistralProvider {
                                 }
                                 Err(e) => {
                                     eprintln!(
-                                        "Failed to parse Mistral streaming response: {} for data: {}",
+                                        "Failed to parse Hugging Face streaming response: {} for data: {}",
                                         e, data
                                     );
                                 }
@@ -519,7 +586,7 @@ impl AIProvider for MistralProvider {
     }
 
     fn provider_name(&self) -> &'static str {
-        "mistral"
+        "huggingface"
     }
 
     fn supports_file_upload(&self) -> bool {
@@ -527,7 +594,7 @@ impl AIProvider for MistralProvider {
     }
 
     fn max_file_size(&self) -> Option<u64> {
-        Some(10 * 1024 * 1024) // 10MB
+        Some(20 * 1024 * 1024) // 20MB default, model-specific limits applied during processing
     }
 
     fn supported_file_types(&self) -> Vec<String> {
@@ -550,8 +617,8 @@ impl AIProvider for MistralProvider {
             return Err(format!("Unsupported file type: {}", mime_type).into());
         }
 
-        if file_data.len() > 10 * 1024 * 1024 {
-            return Err("File size exceeds 10MB limit".into());
+        if file_data.len() > 20 * 1024 * 1024 {
+            return Err("File size exceeds 20MB limit for Hugging Face".into());
         }
 
         let base64_data = base64::engine::general_purpose::STANDARD.encode(file_data);
@@ -588,8 +655,8 @@ impl AIProvider for MistralProvider {
 
         let file_data = load_file_content(file_ref.file_id).await?;
         
-        if file_data.len() > 10 * 1024 * 1024 {
-            return Err("File size exceeds 10MB limit for Mistral".into());
+        if file_data.len() > 20 * 1024 * 1024 {
+            return Err("File size exceeds 20MB limit for Hugging Face".into());
         }
 
         let base64_data = base64::engine::general_purpose::STANDARD.encode(&file_data);
@@ -607,7 +674,7 @@ impl AIProvider for MistralProvider {
 }
 
 #[async_trait]
-impl HttpForwardingProvider for MistralProvider {
+impl HttpForwardingProvider for HuggingFaceProvider {
     async fn forward_request(
         &self, 
         request: serde_json::Value

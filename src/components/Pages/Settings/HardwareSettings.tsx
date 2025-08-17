@@ -21,6 +21,7 @@ import {
 import { isTauriView } from '../../../api/core'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 import { formatBytes } from '../../../utils/formatBytes'
+import { MdOutlineMonitorHeart } from 'react-icons/md'
 
 const { Text } = Typography
 
@@ -618,7 +619,7 @@ export function HardwareSettings() {
   const titleWithButton = (
     <div className="flex items-center justify-between w-full">
       <span>{t('pages.hardware')}</span>
-      <Button icon={<MonitorOutlined />} onClick={handleOpenMonitorPopup}>
+      <Button icon={<MdOutlineMonitorHeart />} onClick={handleOpenMonitorPopup}>
         Monitor
       </Button>
     </div>

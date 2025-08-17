@@ -1,18 +1,9 @@
 import { Button, Flex, Form, Input, Switch, Tooltip, Typography } from 'antd'
-import { Provider, ProviderType } from '../../../../../types/api/provider'
+import { Provider } from '../../../../../types/api/provider'
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import { updateModelProvider } from '../../../../../store'
-
-const PROVIDER_ICONS: Record<ProviderType, string> = {
-  local: '🕯',
-  openai: '🤖',
-  anthropic: '🤖',
-  groq: '⚡',
-  gemini: '💎',
-  mistral: '🌊',
-  custom: '🔧',
-}
+import { PROVIDER_ICONS } from '../../../../../constants/providers'
 
 interface ProviderHeaderProps {
   currentProvider: Provider
@@ -34,9 +25,10 @@ export function ProviderHeader({
   return (
     <Flex justify="space-between" align="center">
       <Flex align="center" gap="middle">
-        <span style={{ fontSize: '24px' }}>
-          {PROVIDER_ICONS[currentProvider.type]}
-        </span>
+        {(() => {
+          const IconComponent = PROVIDER_ICONS[currentProvider.type]
+          return <IconComponent className="text-2xl" />
+        })()}
         <Form
           style={{
             display: isEditingName ? 'block' : 'none',

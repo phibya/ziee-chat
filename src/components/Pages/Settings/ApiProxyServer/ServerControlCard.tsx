@@ -14,6 +14,7 @@ import {
   stopApiProxyServer,
 } from '../../../../store/admin/apiProxyServer.ts'
 import { ApiClient } from '../../../../api/client'
+import { MdOutlineMonitorHeart } from 'react-icons/md'
 
 const { Text } = Typography
 
@@ -109,7 +110,7 @@ export function ServerControlCard() {
   const titleWithButton = (
     <div className="flex items-center justify-between w-full">
       <span>{t('apiProxyServer.serverControl')}</span>
-      <Button icon={<FileTextOutlined />} onClick={handleOpenLogMonitor}>
+      <Button icon={<MdOutlineMonitorHeart />} onClick={handleOpenLogMonitor}>
         {t('apiProxyServer.logMonitor')}
       </Button>
     </div>

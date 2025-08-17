@@ -22,6 +22,7 @@ import {
 import { ProviderProxySettingsForm } from './ProviderProxySettings'
 import { ModelsSection } from './common/ModelsSection'
 import { ProviderHeader } from './common/ProviderHeader'
+import { ProviderProxySettings } from '../../../../types'
 
 const { Title, Text } = Typography
 
@@ -376,13 +377,13 @@ export function RemoteProviderSettings() {
       />
 
       {/* Proxy Settings - For non-Local providers */}
-      {currentProvider.proxy_settings && (
-        <ProviderProxySettingsForm
-          initialSettings={currentProvider.proxy_settings}
-          onSave={handleProxySettingsSave}
-          disabled={!canEditProviders}
-        />
-      )}
+      <ProviderProxySettingsForm
+        initialSettings={
+          currentProvider.proxy_settings || ({} as ProviderProxySettings)
+        }
+        onSave={handleProxySettingsSave}
+        disabled={!canEditProviders}
+      />
     </Flex>
   )
 }

@@ -1,14 +1,3 @@
-import {
-  CloudDownloadOutlined,
-  EyeOutlined,
-  GlobalOutlined,
-  LockOutlined,
-  RobotOutlined,
-  SettingOutlined,
-  TeamOutlined,
-  ToolOutlined,
-  UserOutlined,
-} from '@ant-design/icons'
 import { Button, Dropdown, Flex, Menu, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -17,7 +6,26 @@ import { Permission, usePermissions } from '../../permissions'
 import { useMainContentMinSize } from '../hooks/useWindowMinSize'
 import { TitleBarWrapper } from '../Common/TitleBarWrapper'
 import { TauriDragRegion } from '../Common/TauriDragRegion'
-import { IoIosArrowDown, IoIosArrowForward } from 'react-icons/io'
+import { 
+  IoIosArrowDown, 
+  IoIosArrowForward,
+  IoMdSettings,
+  IoMdPerson,
+  IoMdEye,
+  IoMdLock,
+  IoMdGlobe,
+  IoMdPeople
+} from 'react-icons/io'
+import { 
+  FaRobot,
+  FaServer,
+  FaNetworkWired,
+  FaDatabase,
+  FaCogs,
+  FaShieldAlt,
+  FaMicrochip
+} from 'react-icons/fa'
+import { MdStorage } from 'react-icons/md'
 import { useEffect } from 'react'
 import { setPreviousSettingPagePath } from '../../store/ui/navigate.ts'
 import { Stores } from '../../store'
@@ -34,17 +42,17 @@ export function SettingsPage() {
   const baseMenuItems = [
     {
       key: 'general',
-      icon: <UserOutlined />,
+      icon: <IoMdPerson />,
       label: t('settings.general'),
     },
     {
       key: 'appearance',
-      icon: <EyeOutlined />,
+      icon: <IoMdEye />,
       label: t('settings.appearance'),
     },
     {
       key: 'privacy',
-      icon: <LockOutlined />,
+      icon: <IoMdLock />,
       label: t('settings.privacy'),
     },
     // Providers only shows in main menu for desktop apps
@@ -52,12 +60,12 @@ export function SettingsPage() {
       ? [
           {
             key: 'providers',
-            icon: <ToolOutlined />,
+            icon: <FaServer />,
             label: t('settings.providers'),
           },
           {
             key: 'repositories',
-            icon: <CloudDownloadOutlined />,
+            icon: <MdStorage />,
             label: t('settings.modelRepository.title'),
           },
         ]
@@ -68,17 +76,17 @@ export function SettingsPage() {
       ? [
           {
             key: 'rag-providers',
-            icon: <RobotOutlined />,
+            icon: <FaRobot />,
             label: 'RAG Providers',
           },
           {
             key: 'rag-repositories',
-            icon: <CloudDownloadOutlined />,
+            icon: <FaDatabase />,
             label: 'RAG Repositories',
           },
           {
             key: 'engines',
-            icon: <ToolOutlined />,
+            icon: <FaCogs />,
             label: 'Engines',
           },
         ]
@@ -88,12 +96,12 @@ export function SettingsPage() {
       ? [
           {
             key: 'https-proxy',
-            icon: <ToolOutlined />,
+            icon: <FaShieldAlt />,
             label: t('settings.httpsProxy'),
           },
           {
             key: 'api-proxy-server',
-            icon: <GlobalOutlined />,
+            icon: <IoMdGlobe />,
             label: t('settings.apiProxyServer'),
           },
         ]
@@ -103,7 +111,7 @@ export function SettingsPage() {
           // Ngrok only shows in main menu for desktop apps
           {
             key: 'web-app',
-            icon: <GlobalOutlined />,
+            icon: <FaNetworkWired />,
             label: t('settings.ngrok'),
           },
         ]
@@ -112,7 +120,7 @@ export function SettingsPage() {
       ? [
           {
             key: 'hardware',
-            icon: <ToolOutlined />,
+            icon: <FaMicrochip />,
             label: t('settings.hardware'),
           },
         ]
@@ -164,7 +172,7 @@ export function SettingsPage() {
           })
           items.push({
             key: 'admin',
-            icon: <SettingOutlined />,
+            icon: <IoMdSettings />,
             label: t('settings.admin'),
             type: 'group' as const,
           })
@@ -172,7 +180,7 @@ export function SettingsPage() {
           if (hasAppearanceManagement) {
             items.push({
               key: 'admin-general',
-              icon: <UserOutlined />,
+              icon: <IoMdPerson />,
               label: t('settings.general'),
             })
           }
@@ -180,7 +188,7 @@ export function SettingsPage() {
           if (hasAppearanceManagement) {
             items.push({
               key: 'admin-appearance',
-              icon: <EyeOutlined />,
+              icon: <IoMdEye />,
               label: t('settings.appearance'),
             })
           }
@@ -188,7 +196,7 @@ export function SettingsPage() {
           if (hasProviderManagement) {
             items.push({
               key: 'providers',
-              icon: <ToolOutlined />,
+              icon: <FaServer />,
               label: t('settings.providers'),
             })
           }
@@ -196,7 +204,7 @@ export function SettingsPage() {
           if (hasRepositoryManagement) {
             items.push({
               key: 'repositories',
-              icon: <CloudDownloadOutlined />,
+              icon: <MdStorage />,
               label: t('settings.modelRepository.title'),
             })
           }
@@ -204,7 +212,7 @@ export function SettingsPage() {
           if (hasProviderManagement) {
             items.push({
               key: 'rag-providers',
-              icon: <RobotOutlined />,
+              icon: <FaRobot />,
               label: 'RAG Providers',
             })
           }
@@ -212,7 +220,7 @@ export function SettingsPage() {
           if (hasRepositoryManagement) {
             items.push({
               key: 'rag-repositories',
-              icon: <CloudDownloadOutlined />,
+              icon: <FaDatabase />,
               label: 'RAG Repositories',
             })
           }
@@ -220,7 +228,7 @@ export function SettingsPage() {
           if (hasProxyManagement) {
             items.push({
               key: 'https-proxy',
-              icon: <ToolOutlined />,
+              icon: <FaShieldAlt />,
               label: t('settings.httpsProxy'),
             })
           }
@@ -228,7 +236,7 @@ export function SettingsPage() {
           if (hasApiProxyManagement) {
             items.push({
               key: 'api-proxy-server',
-              icon: <GlobalOutlined />,
+              icon: <IoMdGlobe />,
               label: t('settings.apiProxyServer'),
             })
           }
@@ -236,7 +244,7 @@ export function SettingsPage() {
           if (hasAssistantsManagement) {
             items.push({
               key: 'admin-assistants',
-              icon: <RobotOutlined />,
+              icon: <FaRobot />,
               label: t('settings.assistants'),
             })
           }
@@ -244,7 +252,7 @@ export function SettingsPage() {
           if (hasEngineManagement) {
             items.push({
               key: 'engines',
-              icon: <ToolOutlined />,
+              icon: <FaCogs />,
               label: 'Engines',
             })
           }
@@ -252,7 +260,7 @@ export function SettingsPage() {
           if (hasUserManagement) {
             items.push({
               key: 'users',
-              icon: <UserOutlined />,
+              icon: <IoMdPerson />,
               label: t('settings.users'),
             })
           }
@@ -260,14 +268,14 @@ export function SettingsPage() {
           if (hasGroupManagement) {
             items.push({
               key: 'user-groups',
-              icon: <TeamOutlined />,
+              icon: <IoMdPeople />,
               label: t('settings.userGroups'),
             })
           }
 
           items.push({
             key: 'hardware',
-            icon: <ToolOutlined />,
+            icon: <FaMicrochip />,
             label: t('settings.hardware'),
           })
         }
@@ -302,7 +310,7 @@ export function SettingsPage() {
       item => 'key' in item && item.key === currentSection,
     )
     return (
-      currentItem || { icon: <SettingOutlined />, label: t('settings.title') }
+      currentItem || { icon: <IoMdSettings />, label: t('settings.title') }
     )
   }
 

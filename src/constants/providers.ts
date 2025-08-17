@@ -1,4 +1,17 @@
 import { ProviderType } from '../types/api/provider'
+import { 
+  RiAnthropicFill, 
+  RiOpenaiFill, 
+  RiGeminiFill 
+} from 'react-icons/ri'
+import { SiHuggingface } from 'react-icons/si'
+import { 
+  FaServer, 
+  FaWrench 
+} from 'react-icons/fa'
+import { BsFillLightningChargeFill } from 'react-icons/bs'
+import { DeepSeek, Mistral } from '@lobehub/icons'
+import type { IconType } from 'react-icons'
 
 export interface ProviderOption {
   value: ProviderType
@@ -32,6 +45,8 @@ export const SUPPORTED_PROVIDERS: ProviderOption[] = [
   { value: 'groq', label: 'Groq' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'mistral', label: 'Mistral' },
+  { value: 'deepseek', label: 'DeepSeek' },
+  { value: 'huggingface', label: 'Hugging Face' },
   { value: 'custom', label: 'Custom' },
 ]
 
@@ -51,6 +66,12 @@ export const PROVIDER_DEFAULTS: Record<ProviderType, ProviderDefaults> = {
   mistral: {
     base_url: 'https://api.mistral.ai',
   },
+  deepseek: {
+    base_url: 'https://api.deepseek.com/v1',
+  },
+  huggingface: {
+    base_url: 'https://api-inference.huggingface.co/v1',
+  },
   local: {
     settings: {
       device: 'cpu',
@@ -68,6 +89,18 @@ export const PROVIDER_DEFAULTS: Record<ProviderType, ProviderDefaults> = {
     },
   },
   custom: {},
+}
+
+export const PROVIDER_ICONS: Record<ProviderType, IconType> = {
+  local: FaServer,
+  openai: RiOpenaiFill,
+  anthropic: RiAnthropicFill,
+  groq: BsFillLightningChargeFill,
+  gemini: RiGeminiFill,
+  mistral: Mistral,
+  deepseek: DeepSeek,
+  huggingface: SiHuggingface,
+  custom: FaWrench,
 }
 
 export const KV_CACHE_TYPE_OPTIONS = [
