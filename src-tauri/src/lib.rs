@@ -3,7 +3,7 @@ mod api;
 mod auth;
 mod database;
 mod processing;
-mod route;
+pub mod route;
 mod utils;
 
 use crate::api::app::get_http_port;

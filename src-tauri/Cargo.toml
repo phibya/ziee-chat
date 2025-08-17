@@ -28,6 +28,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "ziee"
 path = "src/main.rs"
 
+[[bin]]
+name = "generate-openapi"
+path = "bin/generate-openapi.rs"
+
 
 
 [build-dependencies]

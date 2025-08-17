@@ -24,20 +24,10 @@ use aide::{
 use std::sync::Arc;
 
 fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
-  api.title("Ziee API")
+  api.title("")
 }
 
-async fn serve_openapi(Extension(api): Extension<Arc<OpenApi>>) -> axum::response::Response {
-  Json(serde_json::to_value(api.as_ref()).unwrap()).into_response()
-}
-
-fn serve_openapi_docs(op: TransformOperation) -> TransformOperation {
-  op.summary("OpenAPI JSON")
-    .description("Returns the OpenAPI specification in JSON format")
-    .tag("documentation")
-}
-
-pub fn create_rest_router() -> Router {
+pub fn create_rest_router_internal() -> (OpenApi, Router) {
   let mut api = OpenApi::default();
 
   // API routes with /api prefix
@@ -62,15 +52,15 @@ pub fn create_rest_router() -> Router {
   let file_routes = files::file_routes();
 
   // Combine all routes
-  ApiRouter::new()
+  let router = ApiRouter::new()
     .nest("/api", api_routes.merge(file_routes))
-    .route("/health", get(|| async { "Tauri + Localhost Plugin OK" }))
-    .api_route(
-      "/docs/openapi.json",
-      get_with(serve_openapi, serve_openapi_docs)
-    )
-    .route("/docs", Redoc::new("/docs/openapi.json").axum_route())
     .finish_api_with(&mut api, api_docs)
-    .layer(CorsLayer::permissive())
-    .layer(Extension(Arc::new(api)))
+    .layer(CorsLayer::permissive());
+  
+  (api, router)
+}
+
+pub fn create_rest_router() -> Router {
+  let (_api, router) = create_rest_router_internal();
+  router
 }
