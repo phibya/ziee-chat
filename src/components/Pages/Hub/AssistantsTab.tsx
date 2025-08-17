@@ -120,7 +120,7 @@ export function AssistantsTab() {
   return (
     <div className="flex flex-col gap-3 h-full overflow-hidden">
       {/* Search and Filters */}
-      <div>
+      <div className={'px-3'}>
         {toolbar}
         {(searchTerm || selectedTags.length > 0) && (
           <Flex align="center" gap={8}>
@@ -145,9 +145,9 @@ export function AssistantsTab() {
         )}
       </div>
 
-      {/* Assistants Grid */}
-      <div className="flex-1 overflow-auto">
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+      {/* Assistants List */}
+      <div className="flex-1 overflow-auto px-3 pb-3">
+        <div className="flex flex-col gap-3">
           {filteredAssistants.map(assistant => (
             <AssistantCard key={assistant.id} assistant={assistant} />
           ))}

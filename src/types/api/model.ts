@@ -3,6 +3,8 @@
  * Types for managing models in the application
  */
 
+import type { SourceInfo } from './modelDownloads'
+
 export interface ModelCapabilities {
   vision?: boolean
   audio?: boolean
@@ -136,6 +138,7 @@ export interface Model {
   engine_settings_mistralrs?: MistralRsSettings // MistralRs-specific settings
   engine_settings_llamacpp?: LlamaCppSettings // LlamaCpp-specific settings
   file_format: string // Model file format: "safetensors", "gguf", "bin", etc. - REQUIRED
+  source?: SourceInfo // Source information for tracking download origin
   files?: ModelFileInfo[]
 }
 

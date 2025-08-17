@@ -52,7 +52,10 @@ export const useAdminUserGroupsStore = create<AdminUserGroupsState>()(
 )
 
 // User Group actions
-export const loadUserGroups = async (page?: number, pageSize?: number): Promise<void> => {
+export const loadUserGroups = async (
+  page?: number,
+  pageSize?: number,
+): Promise<void> => {
   try {
     const currentState = useAdminUserGroupsStore.getState()
     const requestPage = page || currentState.currentPage

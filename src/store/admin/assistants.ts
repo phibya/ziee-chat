@@ -38,7 +38,10 @@ export const useAdminAssistantsStore = create<AdminAssistantsState>()(
 )
 
 // Admin assistants actions
-export const loadAdministratorAssistants = async (page?: number, pageSize?: number): Promise<void> => {
+export const loadAdministratorAssistants = async (
+  page?: number,
+  pageSize?: number,
+): Promise<void> => {
   try {
     const currentState = useAdminAssistantsStore.getState()
     const requestPage = page || currentState.currentPage

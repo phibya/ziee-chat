@@ -44,7 +44,10 @@ export const useAdminUsersStore = create<AdminUsersState>()(
 )
 
 // User actions
-export const loadSystemUsers = async (page?: number, pageSize?: number): Promise<void> => {
+export const loadSystemUsers = async (
+  page?: number,
+  pageSize?: number,
+): Promise<void> => {
   try {
     const currentState = useAdminUsersStore.getState()
     const requestPage = page || currentState.currentPage

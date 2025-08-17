@@ -18,7 +18,7 @@ pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, 
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
                 validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
-                file_format
+                file_format, source
          FROM models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC",
@@ -39,9 +39,9 @@ pub async fn create_model(
     let model_id = Uuid::new_v4();
 
     let model_row: Model = sqlx::query_as(
-    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings_mistralrs, engine_settings_llamacpp)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp"
+    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source"
   )
     .bind(model_id)
     .bind(provider_id)
@@ -54,6 +54,8 @@ pub async fn create_model(
     .bind(&request.engine_type)
     .bind(request.engine_settings_mistralrs.as_ref().map(|s| serde_json::to_value(s).unwrap()))
     .bind(request.engine_settings_llamacpp.as_ref().map(|s| serde_json::to_value(s).unwrap()))
+    .bind(&request.file_format)
+    .bind(request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null))
       .fetch_one(pool)
     .await?;
 
@@ -81,7 +83,7 @@ pub async fn update_model(
              engine_settings_llamacpp = COALESCE($11, engine_settings_llamacpp),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source"
   )
     .bind(model_id)
     .bind(&request.name)
@@ -120,7 +122,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
                 validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
-                file_format
+                file_format, source
          FROM models 
          WHERE id = $1",
     )
@@ -164,15 +166,15 @@ pub async fn create_local_model(
             is_deprecated, is_active, capabilities, parameters, 
             validation_status,
             engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
-            file_format, created_at, updated_at
+            file_format, source, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
         ) RETURNING id, provider_id, name, alias, description, 
                    file_size_bytes, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
                    validation_status, validation_issues, 
                    engine_type, engine_settings_mistralrs, engine_settings_llamacpp, 
-                   file_format, port, pid, created_at, updated_at
+                   file_format, source, port, pid, created_at, updated_at
         "#,
     )
     .bind(*model_id)
@@ -197,6 +199,7 @@ pub async fn create_local_model(
     .bind(serde_json::json!({}))
     .bind(serde_json::json!({}))
     .bind(&request.file_format)
+    .bind(request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null))
     .bind(now)
     .bind(now)
     .fetch_one(pool)
@@ -454,7 +457,7 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
                 validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
-                file_format
+                file_format, source
          FROM models 
          WHERE is_active = true 
          AND provider_id IN (
@@ -477,7 +480,7 @@ pub async fn get_all_active_models_debug() -> Result<Vec<Model>, sqlx::Error> {
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
                 validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
-                file_format
+                file_format, source
          FROM models 
          WHERE is_active = true
          ORDER BY created_at ASC",

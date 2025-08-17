@@ -187,7 +187,7 @@ export function ModelsTab() {
   return (
     <div className="flex flex-col gap-3 h-full overflow-hidden">
       {/* Search and Filters */}
-      <div>
+      <div className="px-3">
         {toolbar}
         {(searchTerm ||
           selectedTags.length > 0 ||
@@ -216,9 +216,9 @@ export function ModelsTab() {
         )}
       </div>
 
-      {/* Models Grid */}
-      <div className="flex-1 overflow-auto">
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+      {/* Models List */}
+      <div className="flex-1 overflow-auto px-3 pb-3">
+        <div className="flex flex-col gap-3">
           {filteredModels.map(model => (
             <ModelCard key={model.id} model={model} />
           ))}

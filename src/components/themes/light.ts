@@ -14,7 +14,7 @@ const baseTheme = {
     colorBorder: tinycolor(BaseBackgroundColor).darken(15).toString(),
     colorBorderSecondary: tinycolor(BaseBackgroundColor).darken(7).toString(),
     colorHighlight: tinycolor(BaseBackgroundColor).darken(20).toString(),
-    colorBgMask: tinycolor('#f0f2f5').darken(5).toString(),
+    colorBgMask: tinycolor('#f0f2f5').darken(10).setAlpha(0.6).toString(),
   },
   components: {
     ...ComponentOverrides,

@@ -5,6 +5,15 @@ use uuid::Uuid;
 
 use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
 
+/// Source information for download tracking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceInfo {
+    /// Type of download source: "manual" or "hub"
+    pub r#type: String,
+    /// Model ID from hub (for hub downloads) or null for manual downloads
+    pub id: Option<String>,
+}
+
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DownloadProgressData {
@@ -50,6 +59,8 @@ pub struct DownloadRequestData {
     /// Model settings configuration
     pub engine_type: Option<String>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    /// Source information for tracking download origin
+    pub source: Option<SourceInfo>,
 }
 
 /// Download instance status enum

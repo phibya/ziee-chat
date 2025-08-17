@@ -108,13 +108,7 @@ export function HubPage() {
     }
 
     const TabWrapper = ({ children }: { children: React.ReactNode }) => (
-      <div
-        className={`flex-1 h-full w-full overflow-y-auto`}
-        style={{
-          paddingLeft: mainContentMinSize.xs ? 12 : 0,
-          paddingRight: mainContentMinSize.xs ? 12 : 0,
-        }}
-      >
+      <div className={`flex-1 h-full w-full overflow-y-auto`}>
         <div className={'flex flex-col py-3'}>{children}</div>
       </div>
     )
@@ -135,7 +129,7 @@ export function HubPage() {
     // Desktop: Content only, tabs are in title bar
     return (
       <div className="flex flex-1 w-full overflow-y-auto flex-col">
-        <div className="max-w-6xl w-full flex flex-col self-center px-3">
+        <div className="max-w-6xl w-full flex flex-col self-center">
           <TabWrapper>
             {activeTab === 'models' ? <ModelsTab /> : <AssistantsTab />}
           </TabWrapper>

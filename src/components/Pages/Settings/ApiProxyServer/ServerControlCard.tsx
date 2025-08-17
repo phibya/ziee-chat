@@ -3,7 +3,6 @@ import { Card, Button, Typography, Alert, Flex, App } from 'antd'
 import {
   PlayCircleOutlined,
   StopOutlined,
-  FileTextOutlined,
   ReloadOutlined,
 } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'

@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
+use super::download_instance::SourceInfo;
+
 /// Model capabilities configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ModelCapabilities {
@@ -644,6 +646,7 @@ pub struct Model {
     pub engine_settings_mistralrs: Option<MistralRsSettings>, // MistralRs-specific settings
     pub engine_settings_llamacpp: Option<LlamaCppSettings>, // LlamaCpp-specific settings
     pub file_format: String, // Model file format: "safetensors", "gguf", "bin", etc. - REQUIRED
+    pub source: Option<SourceInfo>, // Source information for tracking download origin
     pub files: Option<Vec<ModelFileInfo>>,
 }
 
@@ -709,6 +712,23 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
         let validation_issues =
             validation_issues_json.and_then(|v| serde_json::from_value::<Vec<String>>(v).ok());
 
+        // Parse source JSON
+        let source_json: Option<serde_json::Value> = row.try_get("source")?;
+        let source = if let Some(source_val) = source_json {
+            if source_val.is_null() {
+                None
+            } else {
+                Some(serde_json::from_value(source_val).map_err(|e| {
+                    sqlx::Error::ColumnDecode {
+                        index: "source".into(),
+                        source: Box::new(e),
+                    }
+                })?)
+            }
+        } else {
+            None
+        };
+
         Ok(Model {
             id: row.try_get("id")?,
             provider_id: row.try_get("provider_id")?,
@@ -731,6 +751,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             engine_settings_mistralrs,
             engine_settings_llamacpp,
             file_format: row.try_get("file_format")?, // Required field now
+            source,
             files: None, // Files need to be loaded separately
         })
     }
@@ -750,6 +771,7 @@ pub struct CreateModelRequest {
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
     pub file_format: String, // Required field
+    pub source: Option<SourceInfo>, // Source information for tracking download origin
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

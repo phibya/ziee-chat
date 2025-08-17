@@ -176,18 +176,18 @@ export function ProvidersSettings() {
           <div className={'flex-1'}>
             <Typography.Text>{provider.name}</Typography.Text>
           </div>
-        {canEditProviders && (
-          <Dropdown
-            menu={{ items: getProviderActions(provider) }}
-            trigger={['click']}
-          >
-            <Button
-              type="text"
-              icon={<CgMenuRightAlt />}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            />
-          </Dropdown>
-        )}
+          {canEditProviders && (
+            <Dropdown
+              menu={{ items: getProviderActions(provider) }}
+              trigger={['click']}
+            >
+              <Button
+                type="text"
+                icon={<CgMenuRightAlt />}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              />
+            </Dropdown>
+          )}
         </Flex>
       ),
     }
@@ -301,7 +301,8 @@ export function ProvidersSettings() {
                       {currentProvider ? (
                         <Flex className="gap-2 items-center">
                           {(() => {
-                            const IconComponent = PROVIDER_ICONS[currentProvider.type]
+                            const IconComponent =
+                              PROVIDER_ICONS[currentProvider.type]
                             return <IconComponent className="text-lg" />
                           })()}
                           {currentProvider.name}

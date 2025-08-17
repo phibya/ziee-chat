@@ -1,14 +1,7 @@
 import { ProviderType } from '../types/api/provider'
-import { 
-  RiAnthropicFill, 
-  RiOpenaiFill, 
-  RiGeminiFill 
-} from 'react-icons/ri'
+import { RiAnthropicFill, RiOpenaiFill, RiGeminiFill } from 'react-icons/ri'
 import { SiHuggingface } from 'react-icons/si'
-import { 
-  FaServer, 
-  FaWrench 
-} from 'react-icons/fa'
+import { FaServer, FaWrench } from 'react-icons/fa'
 import { BsFillLightningChargeFill } from 'react-icons/bs'
 import { DeepSeek, Mistral } from '@lobehub/icons'
 import type { IconType } from 'react-icons'

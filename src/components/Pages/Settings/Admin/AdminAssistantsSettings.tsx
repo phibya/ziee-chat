@@ -39,15 +39,14 @@ export const AdminAssistantsSettings: React.FC = () => {
   const { message } = App.useApp()
 
   // Admin assistants store
-  const { 
-    assistants, 
+  const {
+    assistants,
     total: totalAssistants,
     currentPage: storePage,
     pageSize: storePageSize,
-    loading, 
-    error 
+    loading,
+    error,
   } = Stores.AdminAssistants
-
 
   useEffect(() => {
     loadSystemAdminAssistants(1, 10)

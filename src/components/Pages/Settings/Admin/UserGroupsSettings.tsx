@@ -74,7 +74,6 @@ export function UserGroupsSettings() {
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
 
-
   // Check permissions
   const canReadGroups = hasPermission(Permission.groups.read)
   const canEditGroups = hasPermission(Permission.groups.edit)
@@ -401,9 +400,7 @@ export function UserGroupsSettings() {
                       </Descriptions>
                     </div>
                   </div>
-                  {index < groups.length - 1 && (
-                    <Divider className="my-0" />
-                  )}
+                  {index < groups.length - 1 && <Divider className="my-0" />}
                 </div>
               ))}
             </div>

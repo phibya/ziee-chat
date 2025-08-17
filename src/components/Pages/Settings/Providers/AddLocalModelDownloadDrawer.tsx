@@ -146,6 +146,10 @@ export function AddLocalModelDownloadDrawer() {
             engine_type: values.engine_type || 'mistralrs',
             engine_settings_mistralrs: values.engine_settings_mistralrs || {},
             engine_settings_llamacpp: values.engine_settings_llamacpp || {},
+            source: {
+              type: 'manual' as const,
+              id: null,
+            },
           },
           openViewDownloadModal,
         )

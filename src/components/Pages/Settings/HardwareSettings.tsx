@@ -9,7 +9,6 @@ import {
   App,
   Button,
 } from 'antd'
-import { MonitorOutlined } from '@ant-design/icons'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {

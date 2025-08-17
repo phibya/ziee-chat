@@ -9,6 +9,11 @@ import {
   LlamaCppSettings,
 } from './model'
 
+export interface SourceInfo {
+  type: 'manual' | 'hub'
+  id: string | null
+}
+
 export interface DownloadProgress {
   phase: string
   current: number
@@ -38,6 +43,7 @@ export interface DownloadFromRepositoryRequest {
   engine_type?: string
   engine_settings_mistralrs?: MistralRsSettings
   engine_settings_llamacpp?: LlamaCppSettings
+  source: SourceInfo
 }
 
 export interface DownloadRequestData {
@@ -55,6 +61,7 @@ export interface DownloadRequestData {
   engine_type?: string
   engine_settings_mistralrs?: MistralRsSettings
   engine_settings_llamacpp?: LlamaCppSettings
+  source?: SourceInfo
 }
 
 export interface DownloadInstance {

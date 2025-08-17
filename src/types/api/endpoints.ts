@@ -58,6 +58,7 @@ import {
   DownloadFromRepositoryRequest,
   DownloadInstance,
   DownloadInstanceListResponse,
+  SourceInfo,
 } from './modelDownloads.ts'
 import {
   CreateProjectRequest,
@@ -564,6 +565,7 @@ export type ApiEndpointParameters = {
     engine_type?: string
     engine_settings_mistralrs?: MistralRsSettings
     engine_settings_llamacpp?: LlamaCppSettings
+    source: SourceInfo
   }
   'Admin.initiateRepositoryDownload': DownloadFromRepositoryRequest
   // Download instance endpoints - Admin (all download operations are admin-only)

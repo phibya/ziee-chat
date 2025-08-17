@@ -115,6 +115,7 @@ pub struct CreateModelWithFilesRequest {
     pub parameters: Option<ModelParameters>,
     pub engine_type: Option<String>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    pub source: Option<SourceInfo>,
 }
 
 /// Shared model creation and file processing logic
@@ -272,6 +273,7 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
         engine_settings_mistralrs: request.engine_settings_mistralrs,
         engine_settings_llamacpp: None,
         file_format: request.file_format.clone(),
+        source: request.source,
     };
 
     // Create the model record with the pre-generated ID
@@ -500,6 +502,7 @@ pub struct DownloadFromRepositoryRequest {
     pub parameters: Option<ModelParameters>,
     pub engine_type: Option<String>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    pub source: SourceInfo,
 }
 
 /// Upload multiple model files and auto-commit as a model
@@ -760,6 +763,7 @@ pub async fn upload_multiple_files_and_commit(
         parameters: None, // No parameters available in upload request
         engine_type,
         engine_settings_mistralrs,
+        source: None, // No source for direct uploads
     })
     .await
     .map_err(|e| {
@@ -800,6 +804,7 @@ pub async fn initiate_repository_download(
             parameters: request.parameters.clone(),
             engine_type: request.engine_type.clone(),
             engine_settings_mistralrs: request.engine_settings_mistralrs.clone(),
+            source: Some(request.source.clone()),
         },
     };
 
@@ -1148,6 +1153,7 @@ pub async fn initiate_repository_download(
                             .unwrap_or_else(|| "mistralrs".to_string()),
                     ),
                     engine_settings_mistralrs: request.engine_settings_mistralrs,
+                    source: Some(request.source.clone()),
                 })
                 .await
                 {

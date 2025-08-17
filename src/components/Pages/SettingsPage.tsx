@@ -6,24 +6,24 @@ import { Permission, usePermissions } from '../../permissions'
 import { useMainContentMinSize } from '../hooks/useWindowMinSize'
 import { TitleBarWrapper } from '../Common/TitleBarWrapper'
 import { TauriDragRegion } from '../Common/TauriDragRegion'
-import { 
-  IoIosArrowDown, 
+import {
+  IoIosArrowDown,
   IoIosArrowForward,
   IoMdSettings,
   IoMdPerson,
   IoMdEye,
   IoMdLock,
   IoMdGlobe,
-  IoMdPeople
+  IoMdPeople,
 } from 'react-icons/io'
-import { 
+import {
   FaRobot,
   FaServer,
   FaNetworkWired,
   FaDatabase,
   FaCogs,
   FaShieldAlt,
-  FaMicrochip
+  FaMicrochip,
 } from 'react-icons/fa'
 import { MdStorage } from 'react-icons/md'
 import { useEffect } from 'react'
@@ -309,9 +309,7 @@ export function SettingsPage() {
     const currentItem = menuItems.find(
       item => 'key' in item && item.key === currentSection,
     )
-    return (
-      currentItem || { icon: <IoMdSettings />, label: t('settings.title') }
-    )
+    return currentItem || { icon: <IoMdSettings />, label: t('settings.title') }
   }
 
   const SettingsMenu = () => (
