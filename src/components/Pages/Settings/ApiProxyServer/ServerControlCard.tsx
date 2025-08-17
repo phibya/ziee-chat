@@ -26,7 +26,8 @@ export function ServerControlCard() {
   const canEdit = hasPermission(Permission.config.apiProxyServer?.edit)
 
   // Store data
-  const { config, status, loadingStatus, loadingModels, loadingHosts, models } = Stores.AdminApiProxyServer
+  const { config, status, loadingStatus, loadingModels, loadingHosts, models } =
+    Stores.AdminApiProxyServer
   console.log({ config })
 
   // Check if server is properly configured
@@ -171,7 +172,7 @@ export function ServerControlCard() {
                 {t('apiProxyServer.stopServer')}
               </Button>
             )}
-            
+
             {/* Reload Buttons - Only show when server is running */}
             {status?.running && (
               <>

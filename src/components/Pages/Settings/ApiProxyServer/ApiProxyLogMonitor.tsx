@@ -70,7 +70,7 @@ export function ApiProxyLogMonitor() {
         await connectToApiProxyLogs()
         message.success('Connected to API proxy logs')
       }
-    } catch (error) {
+    } catch (_error) {
       message.error('Failed to toggle log connection')
     }
   }
@@ -84,7 +84,7 @@ export function ApiProxyLogMonitor() {
     try {
       await downloadLogs()
       message.success('Logs downloaded successfully')
-    } catch (error) {
+    } catch (_error) {
       message.error('Failed to download logs')
     }
   }

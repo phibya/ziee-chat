@@ -42,5 +42,7 @@ pub use core::{
 pub use model_manager::{
     acquire_global_start_mutex, check_and_cleanup_model, start_model, stop_model,
     verify_model_server_running, ModelStartResult,
+    // NEW EXPORTS for lifecycle management:
+    reconcile_model_states, shutdown_all_models,
 };
 pub use providers::*;

@@ -89,6 +89,7 @@ export function NgrokSettings() {
       configForm.setFieldsValue({
         api_key: ngrokSettings.api_key,
         auto_start: ngrokSettings.auto_start,
+        domain: ngrokSettings.domain,
       })
     }
   }, [ngrokSettings, configForm])
@@ -176,6 +177,14 @@ export function NgrokSettings() {
                 placeholder={t('ngrok.apiKeyPlaceholder')}
                 prefix={<LockOutlined />}
               />
+            </Form.Item>
+
+            <Form.Item
+              name="domain"
+              label="Custom Domain"
+              tooltip="Optional custom domain for your ngrok tunnel (e.g., myapp.ngrok.io)"
+            >
+              <Input placeholder="myapp.ngrok.io" prefix={<GlobalOutlined />} />
             </Form.Item>
 
             {/* Auto-start Toggle */}

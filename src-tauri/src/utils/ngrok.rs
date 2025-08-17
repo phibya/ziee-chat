@@ -47,7 +47,7 @@ impl NgrokService {
         }
     }
 
-    pub async fn start_tunnel(&mut self, local_port: u16) -> Result<String, NgrokError> {
+    pub async fn start_tunnel(&mut self, local_port: u16, domain: Option<String>) -> Result<String, NgrokError> {
         // Close existing tunnel if any
         if self.tunnel_task.is_some() {
             self.stop_tunnel().await?;
@@ -62,9 +62,15 @@ impl NgrokService {
 
         // Create HTTP tunnel forwarding to local port
         let local_addr = format!("http://127.0.0.1:{}", local_port);
-        let listener = session
-            .http_endpoint()
-            .pooling_enabled(true)
+        let mut endpoint_builder = session.http_endpoint();
+        endpoint_builder.pooling_enabled(true);
+        
+        // Add domain if provided
+        if let Some(domain) = domain {
+            endpoint_builder.domain(&domain);
+        }
+        
+        let listener = endpoint_builder
             .listen_and_forward(Url::parse(&local_addr).unwrap())
             .await
             .map_err(|e| NgrokError::TunnelError(e.to_string()))?;

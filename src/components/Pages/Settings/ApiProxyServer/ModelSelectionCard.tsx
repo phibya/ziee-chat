@@ -49,7 +49,6 @@ export function ModelSelectionCard() {
     setEditModelDrawerOpen(true)
   }
 
-
   const handleUpdateModelSubmit = async (
     modelId: string,
     updates: UpdateApiProxyServerModelRequest,

@@ -58,12 +58,14 @@ export interface NgrokSettingsResponse {
   tunnel_url: string | null
   tunnel_status: string
   auto_start: boolean
+  domain: string | null
 }
 
 export interface UpdateNgrokSettingsRequest {
   api_key?: string
   tunnel_enabled?: boolean
   auto_start?: boolean
+  domain?: string
 }
 
 export interface UpdateAccountPasswordRequest {

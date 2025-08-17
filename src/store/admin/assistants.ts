@@ -6,6 +6,9 @@ import { Assistant, CreateAssistantRequest } from '../../types/api/assistant'
 interface AdminAssistantsState {
   // Data
   assistants: Assistant[]
+  total: number
+  currentPage: number
+  pageSize: number
 
   // Loading states
   loading: boolean
@@ -22,6 +25,9 @@ export const useAdminAssistantsStore = create<AdminAssistantsState>()(
     (): AdminAssistantsState => ({
       // Initial state
       assistants: [],
+      total: 0,
+      currentPage: 1,
+      pageSize: 10,
       loading: false,
       creating: false,
       updating: false,
@@ -32,17 +38,24 @@ export const useAdminAssistantsStore = create<AdminAssistantsState>()(
 )
 
 // Admin assistants actions
-export const loadAdministratorAssistants = async (): Promise<void> => {
+export const loadAdministratorAssistants = async (page?: number, pageSize?: number): Promise<void> => {
   try {
+    const currentState = useAdminAssistantsStore.getState()
+    const requestPage = page || currentState.currentPage
+    const requestPageSize = pageSize || currentState.pageSize
+
     useAdminAssistantsStore.setState({ loading: true, error: null })
 
     const response = await ApiClient.Admin.listAssistants({
-      page: 1,
-      per_page: 50,
+      page: requestPage,
+      per_page: requestPageSize,
     })
 
     useAdminAssistantsStore.setState({
       assistants: response.assistants,
+      total: response.total,
+      currentPage: response.page,
+      pageSize: response.per_page,
       loading: false,
     })
   } catch (error) {

@@ -111,6 +111,12 @@ async fn initialize_app_common() -> Result<(), String> {
 
     println!("Auto-unload task started for local models");
 
+    // Reconcile model states on startup - check database vs actual processes
+    if let Err(e) = ai::reconcile_model_states().await {
+        eprintln!("Failed to reconcile model states: {}", e);
+        // Don't fail startup, just log the error
+    }
+
     // Try to autostart the API proxy server if configured
     if let Err(e) = ai::api_proxy_server::try_autostart_proxy_server().await {
         eprintln!("Failed to autostart API proxy server: {}", e);
@@ -127,6 +133,12 @@ async fn initialize_app_common() -> Result<(), String> {
 }
 
 async fn cleanup_app_common() {
+    // Stop all running models first
+    if let Err(e) = ai::shutdown_all_models().await {
+        eprintln!("Failed to shutdown models: {}", e);
+        // Continue with other cleanup even if model shutdown fails
+    }
+
     // Clear temp directory on shutdown
     if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
         eprintln!("Failed to clear temp directory on shutdown: {}", e);

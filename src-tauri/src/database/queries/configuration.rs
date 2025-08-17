@@ -11,6 +11,7 @@ pub struct NgrokSettings {
     pub tunnel_url: Option<String>,
     pub tunnel_status: String,
     pub auto_start: bool,
+    pub domain: Option<String>,    // Custom domain for tunnel
 }
 
 pub async fn get_configuration(key: &str) -> Result<Option<Configuration>, sqlx::Error> {

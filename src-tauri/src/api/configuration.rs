@@ -97,6 +97,7 @@ pub struct NgrokSettingsResponse {
     pub tunnel_url: Option<String>,
     pub tunnel_status: String,
     pub auto_start: bool,
+    pub domain: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -104,6 +105,7 @@ pub struct UpdateNgrokSettingsRequest {
     pub api_key: Option<String>,
     pub tunnel_enabled: Option<bool>,
     pub auto_start: Option<bool>,
+    pub domain: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -311,6 +313,7 @@ pub async fn get_ngrok_settings_handler(
             tunnel_url: settings.tunnel_url,
             tunnel_status: settings.tunnel_status,
             auto_start: settings.auto_start,
+            domain: settings.domain,
         })),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
@@ -340,6 +343,10 @@ pub async fn update_ngrok_settings(
     if let Some(auto_start) = payload.auto_start {
         settings.auto_start = auto_start;
     }
+    
+    if let Some(domain) = payload.domain {
+        settings.domain = if domain.is_empty() { None } else { Some(domain) };
+    }
 
     // Save updated settings
     match set_ngrok_settings(&settings).await {
@@ -349,6 +356,7 @@ pub async fn update_ngrok_settings(
             tunnel_url: settings.tunnel_url,
             tunnel_status: settings.tunnel_status,
             auto_start: settings.auto_start,
+            domain: settings.domain,
         })),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
@@ -373,7 +381,7 @@ pub async fn start_ngrok_tunnel(
     // Create and start ngrok service
     let mut ngrok_service = NgrokService::new(settings.api_key.clone());
     
-    match ngrok_service.start_tunnel(local_port).await {
+    match ngrok_service.start_tunnel(local_port, settings.domain.clone()).await {
         Ok(tunnel_url) => {
             // Update settings with tunnel info
             let mut updated_settings = settings;
@@ -508,7 +516,7 @@ pub async fn try_autostart_ngrok_tunnel() -> Result<(), Box<dyn std::error::Erro
     tracing::info!("Starting ngrok tunnel autostart on port {}", http_port);
     
     // Start the tunnel
-    match start_ngrok_tunnel_internal(&settings.api_key, http_port).await {
+    match start_ngrok_tunnel_internal(&settings.api_key, http_port, settings.domain.clone()).await {
         Ok(tunnel_url) => {
             tracing::info!("Ngrok tunnel autostart successful: {}", tunnel_url);
             
@@ -547,14 +555,14 @@ async fn validate_ngrok_config(settings: &NgrokSettings) -> Result<(), Box<dyn s
 }
 
 /// Internal function to start ngrok tunnel
-async fn start_ngrok_tunnel_internal(api_key: &str, local_port: u16) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+async fn start_ngrok_tunnel_internal(api_key: &str, local_port: u16, domain: Option<String>) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     use crate::utils::ngrok::NgrokService;
     
     // Create new ngrok service
     let mut service = NgrokService::new(api_key.to_string());
     
     // Start tunnel
-    let tunnel_url = service.start_tunnel(local_port).await
+    let tunnel_url = service.start_tunnel(local_port, domain).await
         .map_err(|e| format!("Failed to start ngrok tunnel: {}", e))?;
     
     // Store service in global state

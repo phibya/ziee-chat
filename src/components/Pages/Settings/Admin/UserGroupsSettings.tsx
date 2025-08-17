@@ -11,20 +11,23 @@ import {
   Badge,
   Button,
   Card,
+  Descriptions,
+  Divider,
+  Empty,
   Flex,
   Form,
   Input,
   List,
+  Pagination,
   Popconfirm,
   Result,
   Select,
+  Spin,
   Switch,
-  Table,
   Tag,
   Typography,
 } from 'antd'
 import { Drawer } from '../../../Common/Drawer'
-import type { ColumnsType } from 'antd/es/table'
 import { useEffect, useState } from 'react'
 import { isTauriView } from '../../../../api/core.ts'
 import { Permission, usePermissions } from '../../../../permissions'
@@ -33,7 +36,7 @@ import {
   createNewUserGroup,
   deleteUserGroup,
   loadAllModelProviders,
-  loadAllUserGroups,
+  loadUserGroups,
   loadUserGroupMembers,
   Stores,
   updateUserGroup,
@@ -55,6 +58,9 @@ export function UserGroupsSettings() {
   const {
     groups,
     currentGroupMembers,
+    total: totalGroups,
+    currentPage: storePage,
+    pageSize: storePageSize,
     loadingGroups,
     loadingGroupMembers,
     error,
@@ -67,6 +73,7 @@ export function UserGroupsSettings() {
   const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null)
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
+
 
   // Check permissions
   const canReadGroups = hasPermission(Permission.groups.read)
@@ -85,7 +92,7 @@ export function UserGroupsSettings() {
       message.warning('You do not have permission to view user groups')
       return
     }
-    loadAllUserGroups()
+    loadUserGroups(1, 10)
     loadAllModelProviders()
   }, [canReadGroups])
 
@@ -215,116 +222,58 @@ export function UserGroupsSettings() {
     setEditModalVisible(true)
   }
 
-  const columns: ColumnsType<UserGroup> = [
-    {
-      title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
-      render: (name: string, record: UserGroup) => (
-        <Flex className="gap-2">
-          <TeamOutlined />
-          <span>{name}</span>
-          {record.is_protected && <Tag color="orange">Protected</Tag>}
-          {!record.is_active && <Tag color="red">Inactive</Tag>}
-        </Flex>
-      ),
-    },
-    {
-      title: 'Description',
-      dataIndex: 'description',
-      key: 'description',
-      render: (desc: string) =>
-        desc || <Text type="secondary">No description</Text>,
-    },
-    {
-      title: 'Permissions',
-      dataIndex: 'permissions',
-      key: 'permissions',
-      render: (permissions: any) => (
-        <Text code>{Object.keys(permissions || {}).length} permissions</Text>
-      ),
-    },
-    ...(canManageProviders
-      ? [
-          {
-            title: 'Providers',
-            dataIndex: 'provider_ids',
-            key: 'provider_ids',
-            render: (providerIds: string[], record: UserGroup) => {
-              const ids = providerIds || record.provider_ids || []
-              if (ids.length === 0) {
-                return <Text type="secondary">No providers assigned</Text>
-              }
-              return (
-                <Flex wrap className="gap-1">
-                  {ids.map(providerId => {
-                    const provider = providers.find(p => p.id === providerId)
-                    return (
-                      <Tag key={providerId} color="blue">
-                        {provider?.name || providerId}
-                      </Tag>
-                    )
-                  })}
-                </Flex>
-              )
-            },
-          },
-        ]
-      : []),
-    {
-      title: 'Status',
-      dataIndex: 'is_active',
-      key: 'is_active',
-      render: (active: boolean) => (
-        <Badge
-          status={active ? 'success' : 'error'}
-          text={active ? 'Active' : 'Inactive'}
-        />
-      ),
-    },
-    {
-      title: 'Created',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      render: (_, record: UserGroup) => (
-        <Flex className="gap-2">
-          <Button
-            type="link"
-            icon={<UserOutlined />}
-            onClick={() => handleViewMembers(record)}
-          >
-            Members
+  const getGroupActions = (group: UserGroup) => {
+    const actions: React.ReactNode[] = []
+
+    actions.push(
+      <Button
+        key="members"
+        type="text"
+        icon={<UserOutlined />}
+        onClick={() => handleViewMembers(group)}
+      >
+        Members
+      </Button>,
+    )
+
+    if (canEditGroups) {
+      actions.push(
+        <Button
+          key="edit"
+          type="text"
+          icon={<EditOutlined />}
+          onClick={() => openEditModal(group)}
+        >
+          Edit
+        </Button>,
+      )
+    }
+
+    if (canDeleteGroups && !group.is_protected) {
+      actions.push(
+        <Popconfirm
+          key="delete"
+          title="Are you sure you want to delete this group?"
+          onConfirm={() => handleDeleteGroup(group.id)}
+          okText="Yes"
+          cancelText="No"
+        >
+          <Button type="text" danger icon={<DeleteOutlined />}>
+            Delete
           </Button>
-          {canEditGroups && (
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => openEditModal(record)}
-            >
-              Edit
-            </Button>
-          )}
-          {canDeleteGroups && !record.is_protected && (
-            <Popconfirm
-              title="Are you sure you want to delete this group?"
-              onConfirm={() => handleDeleteGroup(record.id)}
-              okText="Yes"
-              cancelText="No"
-            >
-              <Button type="link" danger icon={<DeleteOutlined />}>
-                Delete
-              </Button>
-            </Popconfirm>
-          )}
-        </Flex>
-      ),
-    },
-  ]
+        </Popconfirm>,
+      )
+    }
+
+    return actions.filter(Boolean)
+  }
+
+  const handlePageChange = (page: number, size?: number) => {
+    const newPageSize = size || storePageSize
+    const newPage = size && size !== storePageSize ? 1 : page // Reset to page 1 if page size changes
+
+    loadUserGroups(newPage, newPageSize)
+  }
 
   if (isTauriView) {
     return (
@@ -357,30 +306,129 @@ export function UserGroupsSettings() {
   return (
     <SettingsPageContainer title="User Groups">
       <div>
-        <div className="flex justify-end items-center mb-6">
-          {canCreateGroups && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setCreateModalVisible(true)}
-            >
-              Create Group
-            </Button>
-          )}
-        </div>
+        <Card
+          title="User Groups"
+          extra={
+            canCreateGroups && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setCreateModalVisible(true)}
+              >
+                Create Group
+              </Button>
+            )
+          }
+        >
+          {loadingGroups ? (
+            <div className="flex justify-center py-8">
+              <Spin size="large" />
+            </div>
+          ) : groups.length === 0 ? (
+            <div>
+              <Empty description="No user groups found" />
+            </div>
+          ) : (
+            <div>
+              {groups.map((group, index) => (
+                <div key={group.id}>
+                  <div className="flex items-start gap-3 flex-wrap">
+                    {/* Group Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <div className={'flex-1 min-w-48'}>
+                          <Flex className="gap-2 items-center">
+                            <TeamOutlined />
+                            <Text className="font-medium">{group.name}</Text>
+                            {group.is_protected && (
+                              <Tag color="orange">Protected</Tag>
+                            )}
+                            <Badge
+                              status={group.is_active ? 'success' : 'error'}
+                              text={group.is_active ? 'Active' : 'Inactive'}
+                            />
+                          </Flex>
+                        </div>
+                        <div className={'flex gap-1 items-center justify-end'}>
+                          {getGroupActions(group)}
+                        </div>
+                      </div>
 
-        <Card>
-          <Table
-            columns={columns}
-            dataSource={groups}
-            rowKey="id"
-            loading={loadingGroups}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: total => `Total ${total} groups`,
-            }}
-          />
+                      <Descriptions
+                        size="small"
+                        column={{ xs: 1, sm: 2, md: 3 }}
+                        colon={false}
+                        labelStyle={{ fontSize: '12px', color: '#8c8c8c' }}
+                        contentStyle={{ fontSize: '12px' }}
+                      >
+                        <Descriptions.Item label="Description">
+                          {group.description || 'No description'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Permissions">
+                          <Text code>
+                            {Object.keys(group.permissions || {}).length}{' '}
+                            permissions
+                          </Text>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Created">
+                          {new Date(group.created_at).toLocaleDateString()}
+                        </Descriptions.Item>
+                        {canManageProviders &&
+                          group.provider_ids &&
+                          group.provider_ids.length > 0 && (
+                            <Descriptions.Item
+                              label="Providers"
+                              span={{ xs: 1, sm: 2, md: 3 }}
+                            >
+                              <Flex wrap className="gap-1">
+                                {group.provider_ids.map(providerId => {
+                                  const provider = providers.find(
+                                    p => p.id === providerId,
+                                  )
+                                  return (
+                                    <Tag
+                                      key={providerId}
+                                      color="blue"
+                                      className="text-xs"
+                                    >
+                                      {provider?.name || providerId}
+                                    </Tag>
+                                  )
+                                })}
+                              </Flex>
+                            </Descriptions.Item>
+                          )}
+                      </Descriptions>
+                    </div>
+                  </div>
+                  {index < groups.length - 1 && (
+                    <Divider className="my-0" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {groups.length > 0 && (
+            <>
+              <Divider className="mb-4" />
+              <div className="flex justify-end">
+                <Pagination
+                  current={storePage}
+                  total={totalGroups}
+                  pageSize={storePageSize}
+                  showSizeChanger
+                  showQuickJumper
+                  showTotal={(total, range) =>
+                    `${range[0]}-${range[1]} of ${total} groups`
+                  }
+                  onChange={handlePageChange}
+                  onShowSizeChange={handlePageChange}
+                  pageSizeOptions={['5', '10', '20', '50']}
+                />
+              </div>
+            </>
+          )}
         </Card>
 
         {/* Create Group Modal */}

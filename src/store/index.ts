@@ -50,7 +50,7 @@ export {
   clearAdminUserGroupsStoreError,
   createNewUserGroup,
   deleteUserGroup,
-  loadAllUserGroups,
+  loadUserGroups,
   loadUserGroupMembers,
   removeUserFromUserGroup,
   updateUserGroup,
@@ -84,7 +84,7 @@ export {
 // Admin Users store
 export {
   clearAdminUsersStoreError,
-  loadAllSystemUsers,
+  loadSystemUsers,
   loadSystemUserRegistrationSettings,
   resetSystemUserPassword,
   toggleSystemUserActiveStatus,

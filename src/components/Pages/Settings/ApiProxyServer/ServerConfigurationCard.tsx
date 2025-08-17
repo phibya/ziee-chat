@@ -160,7 +160,9 @@ export function ServerConfigurationCard() {
           <div style={{ flex: 1, marginRight: 16 }}>
             <Text strong>{t('apiProxyServer.autostartOnStartup')}</Text>
             <br />
-            <Text type="secondary">{t('apiProxyServer.autostartOnStartupDesc')}</Text>
+            <Text type="secondary">
+              {t('apiProxyServer.autostartOnStartupDesc')}
+            </Text>
           </div>
           <Form.Item
             name="autostart_on_startup"

@@ -55,60 +55,40 @@ pub async fn clear_proxy_server_instance() {
 
 // Configuration helper functions
 pub async fn get_proxy_config() -> Result<ApiProxyServerConfig, Box<dyn std::error::Error + Send + Sync>> {
-    let port = get_config_value("api_proxy_server_port", 8080).await?;
-    let address = get_config_value("api_proxy_server_address", "127.0.0.1".to_string()).await?;
-    let prefix = get_config_value("api_proxy_server_prefix", "/v1".to_string()).await?;
-    let api_key = get_config_value("api_proxy_server_api_key", "".to_string()).await?;
-    let allow_cors = get_config_value("api_proxy_server_allow_cors", true).await?;
-    let log_level = get_config_value("api_proxy_server_log_level", "info".to_string()).await?;
-    let autostart_on_startup = get_config_value("api_proxy_server_autostart_on_startup", false).await?;
+    use crate::database::queries::configuration::get_config_value;
     
-    Ok(ApiProxyServerConfig {
-        port,
-        address,
-        prefix,
-        api_key,
-        allow_cors,
-        log_level,
-        autostart_on_startup,
-    })
-}
-
-pub async fn update_proxy_config(config: &ApiProxyServerConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    set_config_value("api_proxy_server_port", &config.port).await?;
-    set_config_value("api_proxy_server_address", &config.address).await?;
-    set_config_value("api_proxy_server_prefix", &config.prefix).await?;
-    set_config_value("api_proxy_server_api_key", &config.api_key).await?;
-    set_config_value("api_proxy_server_allow_cors", &config.allow_cors).await?;
-    set_config_value("api_proxy_server_log_level", &config.log_level).await?;
-    set_config_value("api_proxy_server_autostart_on_startup", &config.autostart_on_startup).await?;
-    Ok(())
-}
-
-async fn get_config_value<T>(key: &str, default: T) -> Result<T, Box<dyn std::error::Error + Send + Sync>> 
-where
-    T: for<'de> serde::Deserialize<'de> + serde::Serialize,
-{
-    match crate::database::queries::configuration::get_configuration(key).await? {
-        Some(config) => Ok(serde_json::from_value(config.value)?),
+    match get_config_value::<ApiProxyServerConfig>("api_proxy_server").await? {
+        Some(config) => Ok(config),
         None => {
-            set_config_value(key, &default).await?;
-            Ok(default)
+            // Return default configuration
+            let default_config = ApiProxyServerConfig {
+                port: 8080,
+                address: "127.0.0.1".to_string(),
+                prefix: "/v1".to_string(),
+                api_key: "".to_string(),
+                allow_cors: true,
+                log_level: "info".to_string(),
+                autostart_on_startup: false,
+            };
+            
+            // Save default configuration
+            update_proxy_config(&default_config).await?;
+            Ok(default_config)
         }
     }
 }
 
-async fn set_config_value<T>(key: &str, value: &T) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
-where
-    T: serde::Serialize,
-{
-    crate::database::queries::configuration::set_configuration(
-        key,
-        &serde_json::to_value(value)?,
-        None,
+pub async fn update_proxy_config(config: &ApiProxyServerConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use crate::database::queries::configuration::set_config_value;
+    
+    set_config_value(
+        "api_proxy_server", 
+        config, 
+        Some("API Proxy Server Configuration")
     ).await?;
     Ok(())
 }
+
 
 // Public API functions
 pub async fn start_proxy_server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

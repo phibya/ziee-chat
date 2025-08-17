@@ -411,3 +411,190 @@ pub async fn cleanup_dead_processes() -> Result<(), Box<dyn std::error::Error + 
 
     Ok(())
 }
+
+/// Reconcile database model states with actual running processes on startup
+pub async fn reconcile_model_states() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!("Starting model state reconciliation...");
+
+    // Get all models marked as active in database
+    let active_models = match crate::database::queries::models::get_all_active_models().await {
+        Ok(models) => models,
+        Err(e) => {
+            eprintln!("Failed to query active models: {}", e);
+            return Err(e.into());
+        }
+    };
+
+    if active_models.is_empty() {
+        println!("No active models found in database");
+        return Ok(());
+    }
+
+    println!("Found {} models marked as active in database", active_models.len());
+
+    let mut reconciled_count = 0;
+    let mut errors = Vec::new();
+
+    for model in active_models {
+        println!("Checking model {} ({})", model.name, model.id);
+
+        // Verify if the model is actually running
+        match verify_model_server_running(&model.id).await {
+            Some((pid, port)) => {
+                // Model is running and verified
+                println!(
+                    "Model {} is correctly running on PID {} port {}",
+                    model.id, pid, port
+                );
+
+                // Ensure database has correct runtime info
+                if model.pid != Some(pid as i32) || model.port != Some(port as i32) {
+                    println!("Updating database runtime info for model {}", model.id);
+                    if let Err(e) = crate::database::queries::models::update_model_runtime_info(
+                        &model.id,
+                        Some(pid as i32),
+                        Some(port as i32),
+                        true,
+                    )
+                    .await
+                    {
+                        eprintln!("Failed to update runtime info for model {}: {}", model.id, e);
+                        errors.push(format!("Update runtime info for {}: {}", model.id, e));
+                    } else {
+                        reconciled_count += 1;
+                    }
+                }
+            }
+            None => {
+                // Model is not running or verification failed
+                println!(
+                    "Model {} is marked active but not running, cleaning database state",
+                    model.id
+                );
+
+                // Clear database state
+                if let Err(e) = crate::database::queries::models::update_model_runtime_info(
+                    &model.id, None, None, false,
+                )
+                .await
+                {
+                    eprintln!("Failed to clear model {} state: {}", model.id, e);
+                    errors.push(format!("Clear state for {}: {}", model.id, e));
+                } else {
+                    println!("Successfully cleared state for model {}", model.id);
+                    reconciled_count += 1;
+                }
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        println!(
+            "Model state reconciliation completed successfully. Reconciled {} models.",
+            reconciled_count
+        );
+        Ok(())
+    } else {
+        let error_msg = format!(
+            "Model reconciliation completed with {} errors: {}",
+            errors.len(),
+            errors.join("; ")
+        );
+        eprintln!("{}", error_msg);
+        Err(error_msg.into())
+    }
+}
+
+/// Shutdown all running models gracefully
+pub async fn shutdown_all_models() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!("Starting graceful shutdown of all models...");
+
+    let mut models_to_stop = Vec::new();
+    let mut shutdown_errors = Vec::new();
+
+    // 1. Collect models from MODEL_REGISTRY
+    if let Ok(registry) = MODEL_REGISTRY.read() {
+        for (model_id, model_process) in registry.iter() {
+            models_to_stop.push((*model_id, model_process.pid, model_process.port));
+        }
+        println!("Found {} models in registry", models_to_stop.len());
+    }
+
+    // 2. Get additional active models from database (in case registry is out of sync)
+    match crate::database::queries::models::get_all_active_models().await {
+        Ok(db_models) => {
+            for model in db_models {
+                if let (Some(pid), Some(port)) = (model.pid, model.port) {
+                    let model_info = (model.id, pid as u32, port as u16);
+                    // Only add if not already in registry
+                    if !models_to_stop.iter().any(|(id, _, _)| *id == model.id) {
+                        models_to_stop.push(model_info);
+                        println!("Added model {} from database", model.id);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Failed to query database for active models: {}", e);
+            shutdown_errors.push(format!("Database query failed: {}", e));
+        }
+    }
+
+    if models_to_stop.is_empty() {
+        println!("No models to shutdown");
+        return Ok(());
+    }
+
+    println!("Stopping {} models...", models_to_stop.len());
+
+    // 3. Stop each model
+    for (model_id, pid, port) in models_to_stop {
+        println!("Stopping model {} (PID: {}, Port: {})", model_id, pid, port);
+
+        match stop_model(&model_id, pid, port).await {
+            Ok(()) => {
+                // Update database state
+                if let Err(e) = crate::database::queries::models::update_model_runtime_info(
+                    &model_id, None, None, false,
+                )
+                .await
+                {
+                    eprintln!("Failed to update database for stopped model {}: {}", model_id, e);
+                    shutdown_errors.push(format!("Database update for {}: {}", model_id, e));
+                } else {
+                    println!("Successfully stopped model {}", model_id);
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to stop model {}: {}", model_id, e);
+                shutdown_errors.push(format!("Stop model {}: {}", model_id, e));
+            }
+        }
+    }
+
+    // 4. Clear MODEL_REGISTRY
+    if let Ok(mut registry) = MODEL_REGISTRY.write() {
+        registry.clear();
+        println!("Cleared model registry");
+    }
+
+    // 5. Final cleanup - ensure no zombie processes
+    if let Err(e) = cleanup_dead_processes().await {
+        eprintln!("Failed to cleanup dead processes: {}", e);
+        shutdown_errors.push(format!("Cleanup dead processes: {}", e));
+    }
+
+    if shutdown_errors.is_empty() {
+        println!("All models shutdown successfully");
+        Ok(())
+    } else {
+        let error_msg = format!(
+            "Model shutdown completed with {} errors: {}",
+            shutdown_errors.len(),
+            shutdown_errors.join("; ")
+        );
+        eprintln!("{}", error_msg);
+        // Return Ok to allow app shutdown to continue
+        Ok(())
+    }
+}

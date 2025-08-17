@@ -76,13 +76,13 @@ export function SettingsPage() {
             icon: <CloudDownloadOutlined />,
             label: 'RAG Repositories',
           },
+          {
+            key: 'engines',
+            icon: <ToolOutlined />,
+            label: 'Engines',
+          },
         ]
       : []),
-    {
-      key: 'hardware',
-      icon: <ToolOutlined />,
-      label: t('settings.hardware'),
-    },
     // HTTPS Proxy only shows in main menu for desktop apps
     ...(isDesktop
       ? [
@@ -105,6 +105,15 @@ export function SettingsPage() {
             key: 'web-app',
             icon: <GlobalOutlined />,
             label: t('settings.ngrok'),
+          },
+        ]
+      : []),
+    ...(isDesktop
+      ? [
+          {
+            key: 'hardware',
+            icon: <ToolOutlined />,
+            label: t('settings.hardware'),
           },
         ]
       : []),
@@ -255,6 +264,12 @@ export function SettingsPage() {
               label: t('settings.userGroups'),
             })
           }
+
+          items.push({
+            key: 'hardware',
+            icon: <ToolOutlined />,
+            label: t('settings.hardware'),
+          })
         }
 
         return items

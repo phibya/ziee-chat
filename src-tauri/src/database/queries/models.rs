@@ -444,3 +444,46 @@ pub async fn get_provider_by_model_id(model_id: Uuid) -> Result<Option<Provider>
 
     Ok(provider)
 }
+
+/// Get all models that are marked as active in the database (local models only)
+pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let models: Vec<Model> = sqlx::query_as(
+        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
+                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+                file_format
+         FROM models 
+         WHERE is_active = true 
+         AND provider_id IN (
+             SELECT id FROM providers WHERE provider_type = 'local'
+         )
+         ORDER BY created_at ASC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(models)
+}
+
+/// Get all models marked as active (regardless of provider type - for debugging)
+pub async fn get_all_active_models_debug() -> Result<Vec<Model>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let models: Vec<Model> = sqlx::query_as(
+        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
+                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+                file_format
+         FROM models 
+         WHERE is_active = true
+         ORDER BY created_at ASC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(models)
+}

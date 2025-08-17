@@ -6,6 +6,9 @@ import { User } from '../../types/api/user'
 interface AdminUsersState {
   // Data
   users: User[]
+  total: number
+  currentPage: number
+  pageSize: number
 
   // User registration settings
   userRegistrationEnabled: boolean
@@ -26,6 +29,9 @@ export const useAdminUsersStore = create<AdminUsersState>()(
     (): AdminUsersState => ({
       // Initial state
       users: [],
+      total: 0,
+      currentPage: 1,
+      pageSize: 10,
       userRegistrationEnabled: true,
       loadingRegistrationSettings: false,
       loading: false,
@@ -38,17 +44,24 @@ export const useAdminUsersStore = create<AdminUsersState>()(
 )
 
 // User actions
-export const loadAllSystemUsers = async (): Promise<void> => {
+export const loadSystemUsers = async (page?: number, pageSize?: number): Promise<void> => {
   try {
+    const currentState = useAdminUsersStore.getState()
+    const requestPage = page || currentState.currentPage
+    const requestPageSize = pageSize || currentState.pageSize
+
     useAdminUsersStore.setState({ loading: true, error: null })
 
     const response = await ApiClient.Admin.listUsers({
-      page: 1,
-      per_page: 50,
+      page: requestPage,
+      per_page: requestPageSize,
     })
 
     useAdminUsersStore.setState({
       users: response.users,
+      total: response.total,
+      currentPage: response.page,
+      pageSize: response.per_page,
       loading: false,
     })
   } catch (error) {

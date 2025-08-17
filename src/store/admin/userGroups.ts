@@ -15,6 +15,9 @@ interface AdminUserGroupsState {
   // Data
   groups: UserGroup[]
   currentGroupMembers: GroupMember[]
+  total: number
+  currentPage: number
+  pageSize: number
 
   // Loading states
   loading: boolean
@@ -34,6 +37,9 @@ export const useAdminUserGroupsStore = create<AdminUserGroupsState>()(
       // Initial state
       groups: [],
       currentGroupMembers: [],
+      total: 0,
+      currentPage: 1,
+      pageSize: 10,
       loading: false,
       loadingGroups: false,
       loadingGroupMembers: false,
@@ -46,17 +52,24 @@ export const useAdminUserGroupsStore = create<AdminUserGroupsState>()(
 )
 
 // User Group actions
-export const loadAllUserGroups = async (): Promise<void> => {
+export const loadUserGroups = async (page?: number, pageSize?: number): Promise<void> => {
   try {
+    const currentState = useAdminUserGroupsStore.getState()
+    const requestPage = page || currentState.currentPage
+    const requestPageSize = pageSize || currentState.pageSize
+
     useAdminUserGroupsStore.setState({ loadingGroups: true, error: null })
 
     const response = await ApiClient.Admin.listGroups({
-      page: 1,
-      per_page: 50,
+      page: requestPage,
+      per_page: requestPageSize,
     })
 
     useAdminUserGroupsStore.setState({
       groups: response.groups,
+      total: response.total,
+      currentPage: response.page,
+      pageSize: response.per_page,
       loadingGroups: false,
     })
   } catch (error) {

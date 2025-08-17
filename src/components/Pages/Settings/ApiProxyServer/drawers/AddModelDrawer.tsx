@@ -43,10 +43,13 @@ export function AddModelDrawer({ open, onClose }: AddModelDrawerProps) {
   // Create a flat lookup for model data by ID
   const modelLookup = allProviders
     .flatMap(provider => provider.models || [])
-    .reduce((lookup, model) => {
-      lookup[model.id] = model
-      return lookup
-    }, {} as Record<string, any>)
+    .reduce(
+      (lookup, model) => {
+        lookup[model.id] = model
+        return lookup
+      },
+      {} as Record<string, any>,
+    )
 
   const handleSubmit = async () => {
     try {
@@ -94,7 +97,7 @@ export function AddModelDrawer({ open, onClose }: AddModelDrawerProps) {
               return optionLabel.toLowerCase().includes(searchTerm)
             }}
             options={selectOptions}
-            onChange={(modelId) => {
+            onChange={modelId => {
               const selectedModel = modelLookup[modelId]
               if (selectedModel) {
                 form.setFieldValue('alias_id', selectedModel.name)
