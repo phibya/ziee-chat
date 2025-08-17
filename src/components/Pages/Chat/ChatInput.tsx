@@ -483,9 +483,12 @@ export const ChatInput = function ChatInput({
                           value: assistant.id,
                         }),
                       )}
-                      style={{ width: isBreaking ? 40 : 140 }}
+                      style={{
+                        width: isBreaking ? 40 : 140,
+                        paddingLeft: isBreaking ? 0 : 6,
+                      }}
                       labelRender={isBreaking ? () => '' : undefined}
-                      variant={'borderless'}
+                      variant={isBreaking ? 'borderless' : undefined}
                       prefix={
                         isBreaking && (
                           <Button>
@@ -503,11 +506,10 @@ export const ChatInput = function ChatInput({
                       popupMatchSelectWidth={false}
                       placeholder="Model"
                       disabled={isDisabled}
-                      size="small"
                       options={availableModels}
                       style={{ width: isBreaking ? 40 : 140 }}
+                      variant={isBreaking ? 'borderless' : undefined}
                       labelRender={isBreaking ? () => '' : undefined}
-                      variant={'borderless'}
                       prefix={
                         isBreaking && (
                           <Button>

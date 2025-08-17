@@ -177,7 +177,7 @@ export function GeneralSettings() {
                   </div>
                   <div>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
-                      /Users/royal/Library/Application Support/Jan/data
+                      /Users/user/Library/Application Support/Ziee/data
                     </Text>
                   </div>
                 </div>
