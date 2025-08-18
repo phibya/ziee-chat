@@ -5,7 +5,7 @@ import type {
   NgrokSettingsResponse,
   UpdateNgrokSettingsRequest,
   NgrokStatusResponse,
-  UpdateAccountPasswordRequest,
+  UpdateUserPasswordRequest,
 } from '../../types'
 
 interface AdminNgrokSettingsState {
@@ -72,7 +72,7 @@ export const updateNgrokSettings = async (
 }
 
 export const updateAccountPassword = async (
-  passwordData: UpdateAccountPasswordRequest,
+  passwordData: UpdateUserPasswordRequest,
 ): Promise<void> => {
   try {
     await ApiClient.User.updateAccountPassword(passwordData)

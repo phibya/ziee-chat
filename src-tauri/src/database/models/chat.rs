@@ -14,7 +14,7 @@ pub struct Conversation {
     pub project_id: Option<Uuid>,
     pub assistant_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
-    pub active_branch_id: Option<Uuid>,
+    pub active_branch_id: Uuid,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -35,14 +35,14 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Conversation {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Message {
     pub id: Uuid,
     pub conversation_id: Uuid,
     pub role: String,
     pub content: String,
-    pub originated_from_id: Option<Uuid>, // ID of the original message this was edited from
-    pub edit_count: Option<i32>,          // Number of times this message lineage has been edited
+    pub originated_from_id: Uuid, // ID of the original message this was edited from
+    pub edit_count: i32,          // Number of times this message lineage has been edited
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub metadata: Option<Vec<MessageMetadata>>,
@@ -85,7 +85,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Branch {
 }
 
 // MessageBranch model that includes is_clone information from branch_messages
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct MessageBranch {
     pub id: Uuid,
     pub conversation_id: Uuid,
@@ -104,7 +104,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for MessageBranch {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct MessageMetadata {
     pub id: Uuid,
     pub message_id: Uuid,

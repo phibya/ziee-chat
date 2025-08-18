@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { MessageBranch } from '../types'
 import { ApiClient } from '../api/client'
 import { createStoreProxy } from '../utils/createStoreProxy'
 import { StoreApi, UseBoundStore } from 'zustand/index'
 import { useMemo, useRef, useEffect } from 'react'
 import { debounce } from '../utils/debounce'
+import { MessageBranch } from '../types'
 
 export interface MessageBranchState {
   // Store branches for this specific message ID

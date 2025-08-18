@@ -4,7 +4,7 @@ import { ApiClient } from '../../api/client.ts'
 import type {
   DownloadFromRepositoryRequest,
   DownloadInstance,
-  DownloadProgressUpdate,
+  DownloadProgressData,
 } from '../../types'
 
 interface ModelDownloadState {
@@ -152,7 +152,7 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
                 const updatedDownloads = [...currentDownloads]
 
                 data.downloads.forEach(
-                  (progressUpdate: DownloadProgressUpdate) => {
+                  (progressUpdate: DownloadProgressData) => {
                     const existingIndex = updatedDownloads.findIndex(
                       download => download.id === progressUpdate.id,
                     )

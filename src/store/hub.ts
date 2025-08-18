@@ -35,7 +35,7 @@ export const initializeHub = async (locale?: string) => {
   useHubStore.setState({ loading: true, error: null, currentLocale })
 
   try {
-    const hubData = await ApiClient.Hub.getData({ lang: currentLocale })
+    const hubData = await ApiClient.Hub.getHubData({ lang: currentLocale })
 
     useHubStore.setState({
       models: hubData.models,
@@ -67,7 +67,7 @@ export const refreshHub = async (locale?: string) => {
   useHubStore.setState({ loading: true, error: null })
 
   try {
-    const hubData = await ApiClient.Hub.refresh({ lang: currentLocale })
+    const hubData = await ApiClient.Hub.refreshHubData({ lang: currentLocale })
     useHubStore.setState({
       models: hubData.models,
       assistants: hubData.assistants,
@@ -93,7 +93,7 @@ export const refreshHub = async (locale?: string) => {
 
 export const getHubVersion = async (): Promise<string> => {
   try {
-    const response = await ApiClient.Hub.getVersion()
+    const response = await ApiClient.Hub.getHubVersion()
     return response.hub_version
   } catch (error) {
     console.error('Failed to get hub version:', error)

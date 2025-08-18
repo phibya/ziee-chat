@@ -2,14 +2,13 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { useShallow } from 'zustand/react/shallow'
 import { ApiClient } from '../api/client'
+import { SupportedLanguage, UserSetting } from '../types'
 import {
   DEFAULT_USER_SETTINGS,
   getDefaultUserSettingValue,
   isValidUserSettingKey,
-  SupportedLanguage,
-  UserSetting,
   UserSettingKeys,
-} from '../types'
+} from '../types/client/userSettings.ts'
 
 interface UserSettingsState {
   // Current user settings
@@ -40,7 +39,7 @@ export const loadUserSettings = async (): Promise<void> => {
   useUserSettingsStore.setState({ initializing: true })
 
   try {
-    const response = await ApiClient.UserSettings.getAll()
+    const response = await ApiClient.UserSettings.getUserSettings()
     const settingsMap: Partial<UserSettingKeys> = {}
 
     response.settings.forEach((setting: UserSetting) => {
@@ -80,13 +79,13 @@ export const getUserSetting = <K extends keyof UserSettingKeys>(
 }
 
 export const saveUserSetting = async <K extends keyof UserSettingKeys>(
-  key: K,
+  key: string,
   value: UserSettingKeys[K],
 ): Promise<void> => {
   useUserSettingsStore.setState({ loading: true })
 
   try {
-    await ApiClient.UserSettings.set({
+    await ApiClient.UserSettings.setUserSetting({
       key,
       value,
     })
@@ -118,17 +117,16 @@ export const updateUserSetting = <K extends keyof UserSettingKeys>(
   }))
 }
 
-export const deleteUserSetting = async (
-  key: keyof UserSettingKeys,
-): Promise<void> => {
+export const deleteUserSetting = async (key: string): Promise<void> => {
   useUserSettingsStore.setState({ loading: true })
 
   try {
-    await ApiClient.UserSettings.delete({ key })
+    await ApiClient.UserSettings.deleteUserSetting({ key })
 
     // Remove from local state
     useUserSettingsStore.setState(state => {
       const newSettings = { ...state.settings }
+      // @ts-ignore
       delete newSettings[key]
       return { settings: newSettings }
     })
@@ -144,7 +142,7 @@ export const resetAllUserSettings = async (): Promise<void> => {
   useUserSettingsStore.setState({ loading: true })
 
   try {
-    await ApiClient.UserSettings.deleteAll()
+    await ApiClient.UserSettings.deleteAllUserSettings()
     useUserSettingsStore.setState({ settings: {} })
   } catch (error) {
     console.error('Failed to reset settings:', error)
@@ -180,24 +178,6 @@ export const setUserAppearanceLanguage = async (
   language: SupportedLanguage,
 ): Promise<void> => {
   await saveUserSetting('appearance.language', language)
-}
-
-export const useUILeftPanelCollapsed = (): boolean => {
-  return useUserSettings('ui.leftPanelCollapsed')
-}
-
-export const setUILeftPanelCollapsed = async (
-  collapsed: boolean,
-): Promise<void> => {
-  await saveUserSetting('ui.leftPanelCollapsed', collapsed)
-}
-
-export const useUILeftPanelWidth = (): number => {
-  return useUserSettings('ui.leftPanelWidth')
-}
-
-export const setUILeftPanelWidth = async (width: number): Promise<void> => {
-  await saveUserSetting('ui.leftPanelWidth', width)
 }
 
 export const useUserAppearanceTheme = (): 'light' | 'dark' | 'system' => {

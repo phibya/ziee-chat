@@ -2,13 +2,14 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { Project } from '../types'
-import { File, FileUploadProgress } from '../types'
+import { File } from '../types'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'
 import { StoreApi, UseBoundStore } from 'zustand/index'
 import { useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { debounce } from '../utils/debounce'
 import { useProjectsStore } from './projects.ts'
+import { FileUploadProgress } from '../types/client/file.ts'
 
 export interface ProjectState {
   // Data
@@ -96,7 +97,7 @@ export const createProjectStore = (project: string | Project) => {
           try {
             set({ loading: true, error: null })
 
-            const response = await ApiClient.Projects.get({
+            const response = await ApiClient.Projects.getProject({
               project_id: projectId,
             })
 
@@ -125,7 +126,7 @@ export const createProjectStore = (project: string | Project) => {
           try {
             set({ updating: true, error: null })
 
-            const project = await ApiClient.Projects.update({
+            const project = await ApiClient.Projects.updateProject({
               project_id: projectId,
               ...data,
             })
@@ -158,7 +159,7 @@ export const createProjectStore = (project: string | Project) => {
           try {
             set({ filesLoading: true, filesError: null })
 
-            const response = await ApiClient.Projects.listFiles({
+            const response = await ApiClient.Files.listProjectFiles({
               project_id: projectId,
               page: 1,
               per_page: 100,
@@ -222,46 +223,51 @@ export const createProjectStore = (project: string | Project) => {
 
               try {
                 // Call the upload API with progress tracking using ApiClient.Files.upload
-                const response = await ApiClient.Projects.uploadFile(formData, {
-                  fileUploadProgress: {
-                    onProgress: (progress: number) => {
-                      // Update file-specific progress
-                      set(state => ({
-                        uploadProgress: state.uploadProgress.map(
-                          (fp: FileUploadProgress) =>
-                            fp.id === fileProgressId
-                              ? { ...fp, progress: progress * 100 }
-                              : fp,
-                        ),
-                        overallUploadProgress:
-                          (i * 100 + progress * 100) / files.length,
-                      }))
-                    },
-                    onComplete: () => {
-                      // Remove completed file from upload progress
-                      set(state => ({
-                        uploadProgress: state.uploadProgress.filter(
-                          (fp: FileUploadProgress) => fp.id !== fileProgressId,
-                        ),
-                      }))
-                    },
-                    onError: (error: string) => {
-                      // Mark this file as failed
-                      set(state => ({
-                        uploadProgress: state.uploadProgress.map(
-                          (fp: FileUploadProgress) =>
-                            fp.id === fileProgressId
-                              ? {
-                                  ...fp,
-                                  status: 'error' as const,
-                                  error: error,
-                                }
-                              : fp,
-                        ),
-                      }))
+                const response = await ApiClient.Files.uploadProjectFile(
+                  // @ts-ignore
+                  formData,
+                  {
+                    fileUploadProgress: {
+                      onProgress: (progress: number) => {
+                        // Update file-specific progress
+                        set(state => ({
+                          uploadProgress: state.uploadProgress.map(
+                            (fp: FileUploadProgress) =>
+                              fp.id === fileProgressId
+                                ? { ...fp, progress: progress * 100 }
+                                : fp,
+                          ),
+                          overallUploadProgress:
+                            (i * 100 + progress * 100) / files.length,
+                        }))
+                      },
+                      onComplete: () => {
+                        // Remove completed file from upload progress
+                        set(state => ({
+                          uploadProgress: state.uploadProgress.filter(
+                            (fp: FileUploadProgress) =>
+                              fp.id !== fileProgressId,
+                          ),
+                        }))
+                      },
+                      onError: (error: string) => {
+                        // Mark this file as failed
+                        set(state => ({
+                          uploadProgress: state.uploadProgress.map(
+                            (fp: FileUploadProgress) =>
+                              fp.id === fileProgressId
+                                ? {
+                                    ...fp,
+                                    status: 'error' as const,
+                                    error: error,
+                                  }
+                                : fp,
+                          ),
+                        }))
+                      },
                     },
                   },
-                })
+                )
 
                 uploadedFiles.push(response.file)
               } catch (fileError) {

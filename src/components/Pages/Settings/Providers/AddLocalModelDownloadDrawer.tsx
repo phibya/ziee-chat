@@ -148,7 +148,6 @@ export function AddLocalModelDownloadDrawer() {
             engine_settings_llamacpp: values.engine_settings_llamacpp || {},
             source: {
               type: 'manual' as const,
-              id: null,
             },
           },
           openViewDownloadModal,

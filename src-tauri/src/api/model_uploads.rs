@@ -503,6 +503,7 @@ pub struct DownloadFromRepositoryRequest {
     pub parameters: Option<ModelParameters>,
     pub engine_type: Option<String>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
     pub source: SourceInfo,
 }
 
@@ -807,6 +808,7 @@ pub async fn initiate_repository_download(
             parameters: request.parameters.clone(),
             engine_type: request.engine_type.clone(),
             engine_settings_mistralrs: request.engine_settings_mistralrs.clone(),
+            engine_settings_llamacpp: request.engine_settings_llamacpp.clone(),
             source: Some(request.source.clone()),
         },
     };

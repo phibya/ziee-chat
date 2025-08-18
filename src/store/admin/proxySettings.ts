@@ -49,10 +49,6 @@ export const loadSystemProxySettings = async (): Promise<void> => {
         password: settings.password,
         no_proxy: settings.no_proxy,
         ignore_ssl_certificates: settings.ignore_ssl_certificates,
-        proxy_ssl: settings.proxy_ssl,
-        proxy_host_ssl: settings.proxy_host_ssl,
-        peer_ssl: settings.peer_ssl,
-        host_ssl: settings.host_ssl,
       },
       loadingProxySettings: false,
     })

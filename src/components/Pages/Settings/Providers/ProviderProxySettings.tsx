@@ -1,9 +1,9 @@
-import { ProviderProxySettings } from '../../../../types'
+import { ProxySettings } from '../../../../types'
 import { ProxySettingsForm } from '../common'
 
 interface ProviderProxySettingsProps {
-  initialSettings: ProviderProxySettings
-  onSave: (settings: ProviderProxySettings) => void
+  initialSettings: ProxySettings
+  onSave: (settings: ProxySettings) => void
   disabled?: boolean
 }
 

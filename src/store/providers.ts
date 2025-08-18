@@ -35,7 +35,7 @@ export const loadUserProviders = async (): Promise<void> => {
   try {
     useUserProvidersStore.setState({ loading: true, error: null })
 
-    const response = await ApiClient.Providers.list({
+    const response = await ApiClient.Providers.listEnabledProviders({
       page: 1,
       per_page: 50,
     })
@@ -64,7 +64,7 @@ export const loadUserModelsForProvider = async (
       error: null,
     }))
 
-    const models = await ApiClient.Providers.listProviderModels({
+    const models = await ApiClient.Models.listEnabledProviderModels({
       provider_id: providerId,
     })
 
@@ -90,7 +90,7 @@ export const loadUserProvidersWithAllModels = async (): Promise<void> => {
     useUserProvidersStore.setState({ loading: true, error: null })
 
     // First load all active providers (user endpoints now return active-only data)
-    const response = await ApiClient.Providers.list({
+    const response = await ApiClient.Providers.listEnabledProviders({
       page: 1,
       per_page: 50,
     })
@@ -122,7 +122,7 @@ export const loadUserProvidersWithAllModels = async (): Promise<void> => {
     // Load models for all providers concurrently (now returns active models only)
     const modelPromises = providers.map(async provider => {
       try {
-        const models = await ApiClient.Providers.listProviderModels({
+        const models = await ApiClient.Models.listEnabledProviderModels({
           provider_id: provider.id,
         })
         return { providerId: provider.id, models }

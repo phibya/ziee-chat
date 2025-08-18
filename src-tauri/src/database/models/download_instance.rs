@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
-
+use crate::database::models::LlamaCppSettings;
 use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
 
 /// Source information for download tracking
@@ -73,6 +73,7 @@ pub struct DownloadRequestData {
     /// Model settings configuration
     pub engine_type: Option<String>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
     /// Source information for tracking download origin
     pub source: Option<SourceInfo>,
 }

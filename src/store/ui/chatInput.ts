@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { enableMapSet } from 'immer'
-import type { File, FileUploadProgress } from '../../types'
+import type { File, Message } from '../../types'
 import { ApiClient } from '../../api/client.ts'
-import { Message } from '../../types'
 import { createStoreProxy } from '../../utils/createStoreProxy.ts'
 import { StoreApi, UseBoundStore } from 'zustand/index'
 import { useEffect, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
+import { FileUploadProgress } from '../../types/client/file.ts'
 
 // Enable Map and Set support in Immer
 enableMapSet()
@@ -21,7 +21,7 @@ interface ChatInputUIState {
   files: Map<string, File>
   newFiles: Map<string, File>
   // Editing state
-  editingMessage: Message | undefined
+  editingMessage?: Message
   destroy: () => void
   // methods
   reset: () => void
@@ -89,7 +89,7 @@ export const createChatInputUIStore = (
           formData.append('file', file, file.name)
 
           try {
-            const response = await ApiClient.Files.upload(formData, {
+            const response = await ApiClient.Files.uploadFile(formData, {
               fileUploadProgress: {
                 onProgress: (progress: number) => {
                   set(draft => {

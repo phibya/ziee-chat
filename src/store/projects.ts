@@ -34,7 +34,7 @@ export const loadAllUserProjects = async (): Promise<void> => {
   try {
     useProjectsStore.setState({ loading: true, error: null })
 
-    const response = await ApiClient.Projects.list({
+    const response = await ApiClient.Projects.listProjects({
       page: 1,
       per_page: 50,
     })
@@ -60,7 +60,7 @@ export const createNewProject = async (data: {
   try {
     useProjectsStore.setState({ creating: true, error: null })
 
-    const project = await ApiClient.Projects.create(data)
+    const project = await ApiClient.Projects.createProject(data)
 
     useProjectsStore.setState(state => ({
       projects: [...state.projects, project],
@@ -83,7 +83,7 @@ export const updateProjectInList = async (
   data: { name?: string; description?: string; instruction?: string },
 ): Promise<Project> => {
   try {
-    const project = await ApiClient.Projects.update({
+    const project = await ApiClient.Projects.updateProject({
       project_id: id,
       ...data,
     })
@@ -106,7 +106,7 @@ export const deleteExistingProject = async (id: string): Promise<void> => {
   try {
     useProjectsStore.setState({ deleting: true, error: null })
 
-    await ApiClient.Projects.delete({ project_id: id })
+    await ApiClient.Projects.deleteProject({ project_id: id })
 
     useProjectsStore.setState(state => ({
       projects: state.projects.filter(p => p.id !== id),

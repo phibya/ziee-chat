@@ -160,7 +160,7 @@ export function UserGroupsSettings() {
     }
 
     try {
-      const updateData: UpdateUserGroupRequest = {
+      const updateData: { group_id: string } & UpdateUserGroupRequest = {
         group_id: selectedGroup.id,
         name: selectedGroup.is_protected ? undefined : values.name,
         description: values.description,

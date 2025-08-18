@@ -5,7 +5,7 @@ import { File } from '../types'
 
 export const getFile = async (fileId: string): Promise<File> => {
   try {
-    return await ApiClient.Files.get({ id: fileId })
+    return await ApiClient.Files.getFile({ file_id: fileId })
   } catch (error) {
     console.error('Failed to fetch file:', error)
     throw error
@@ -16,7 +16,10 @@ export const getFileThumbnail = async (
   fileId: string,
 ): Promise<string | null> => {
   try {
-    const response = await ApiClient.Files.preview({ id: fileId, page: 1 })
+    const response = await ApiClient.Files.getFilePreview({
+      file_id: fileId,
+      page: 1,
+    })
     return window.URL.createObjectURL(response)
   } catch (_error) {
     console.debug('Thumbnail not available for file:', fileId)
@@ -34,7 +37,10 @@ export const getFileThumbnails = async (
 
   for (let page = 1; page <= maxThumbnails; page++) {
     try {
-      const response = await ApiClient.Files.preview({ id: fileId, page })
+      const response = await ApiClient.Files.getFilePreview({
+        file_id: fileId,
+        page,
+      })
       const url = window.URL.createObjectURL(response)
       thumbnails.push(url)
     } catch (_error) {
@@ -49,7 +55,7 @@ export const getFileThumbnails = async (
 // Get file content for text files
 export const getFileContent = async (fileId: string): Promise<string> => {
   try {
-    const blob = await ApiClient.Files.download({ id: fileId })
+    const blob = await ApiClient.Files.downloadFile({ file_id: fileId })
     // Convert blob to text
     return await blob.text()
   } catch (error) {
@@ -63,7 +69,9 @@ export const generateFileDownloadToken = async (
   fileId: string,
 ): Promise<{ token: string; expires_at: string }> => {
   try {
-    const response = await ApiClient.Files.generateDownloadToken({ id: fileId })
+    const response = await ApiClient.Files.generateDownloadToken({
+      file_id: fileId,
+    })
     return response
   } catch (error) {
     console.error('Failed to generate download token:', error)
@@ -78,7 +86,7 @@ export const uploadFile = async (
   const formData = new FormData()
   formData.append('file', file, file.name)
 
-  const response = await ApiClient.Files.upload(formData, {
+  const response = await ApiClient.Files.uploadFile(formData, {
     fileUploadProgress: {
       onProgress: progressCallback,
     },
@@ -92,7 +100,7 @@ export const deleteFile = async (
   projectId?: string,
 ): Promise<void> => {
   try {
-    await ApiClient.Files.delete({ id: fileId })
+    await ApiClient.Files.deleteFile({ file_id: fileId })
 
     // Remove from local state if projectId provided
     if (projectId) {

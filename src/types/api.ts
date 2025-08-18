@@ -97,6 +97,12 @@ export interface CPUInfo {
   max_frequency?: number
 }
 
+export interface CPUUsage {
+  usage_percentage: number
+  temperature?: number
+  frequency?: number
+}
+
 export interface ChatMessageRequest {
   conversation_id: string
   content: string
@@ -112,7 +118,7 @@ export interface Conversation {
   project_id?: string
   assistant_id?: string
   model_id?: string
-  active_branch_id?: string
+  active_branch_id: string
   created_at: string
   updated_at: string
 }
@@ -282,6 +288,7 @@ export interface DownloadFromRepositoryRequest {
   parameters?: ModelParameters
   engine_type?: string
   engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
   source: SourceInfo
 }
 
@@ -298,6 +305,13 @@ export interface DownloadInstance {
   model_id?: string
   created_at: string
   updated_at: string
+}
+
+export interface DownloadInstanceListResponse {
+  downloads: DownloadInstance[]
+  total: number
+  page: number
+  per_page: number
 }
 
 export interface DownloadPaginationQuery {
@@ -337,6 +351,7 @@ export interface DownloadRequestData {
   parameters?: ModelParameters
   engine_type?: string
   engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
   source?: SourceInfo
 }
 
@@ -410,6 +425,17 @@ export interface GPUDevice {
   compute_capabilities: GPUComputeCapabilities
 }
 
+export interface GPUUsage {
+  device_id: string
+  device_name: string
+  utilization_percentage?: number
+  memory_used?: number
+  memory_total?: number
+  memory_usage_percentage?: number
+  temperature?: number
+  power_usage?: number
+}
+
 export interface HardwareInfo {
   operating_system: OperatingSystemInfo
   cpu: CPUInfo
@@ -419,6 +445,13 @@ export interface HardwareInfo {
 
 export interface HardwareInfoResponse {
   hardware: HardwareInfo
+}
+
+export interface HardwareUsageUpdate {
+  timestamp: string
+  cpu: CPUUsage
+  memory: MemoryUsage
+  gpu_devices: GPUUsage[]
 }
 
 export interface HubAssistant {
@@ -515,6 +548,42 @@ export interface LoginRequest {
 export interface MemoryInfo {
   total_ram: number
   total_swap?: number
+}
+
+export interface MemoryUsage {
+  used_ram: number
+  available_ram: number
+  used_swap?: number
+  available_swap?: number
+  usage_percentage: number
+}
+
+export interface Message {
+  id: string
+  conversation_id: string
+  role: string
+  content: string
+  originated_from_id: string
+  edit_count: number
+  created_at: string
+  updated_at: string
+  metadata?: MessageMetadata[]
+  files: File[]
+}
+
+export interface MessageBranch {
+  id: string
+  conversation_id: string
+  created_at: string
+  is_clone: boolean
+}
+
+export interface MessageMetadata {
+  id: string
+  message_id: string
+  key: string
+  value: any
+  created_at: string
 }
 
 export interface MistralRsSettings {
@@ -1239,17 +1308,17 @@ export const ApiEndpoints = {
   'Chat.updateConversation': 'PUT /api/chat/conversations/{conversation_id}',
   'Config.getDefaultLanguage': 'GET /api/config/default-language',
   'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
-  'Files.deleteFile': 'DELETE /api/files/{id}',
-  'Files.downloadFile': 'GET /api/files/{id}/download',
-  'Files.downloadFileWithToken': 'GET /api/files/{id}/download-with-token',
-  'Files.generateDownloadToken': 'POST /api/files/{id}/download-token',
-  'Files.getFile': 'GET /api/files/{id}',
-  'Files.getFilePreview': 'GET /api/files/{id}/preview',
-  'Files.listMessageFiles': 'GET /api/messages/{id}/files',
-  'Files.listProjectFiles': 'GET /api/projects/{id}/files',
+  'Files.deleteFile': 'DELETE /api/files/{file_id}',
+  'Files.downloadFile': 'GET /api/files/{file_id}/download',
+  'Files.downloadFileWithToken': 'GET /api/files/{file_id}/download-with-token',
+  'Files.generateDownloadToken': 'POST /api/files/{file_id}/download-token',
+  'Files.getFile': 'GET /api/files/{file_id}',
+  'Files.getFilePreview': 'GET /api/files/{file_id}/preview',
+  'Files.listMessageFiles': 'GET /api/messages/{message_id}/files',
+  'Files.listProjectFiles': 'GET /api/projects/{project_id}/files',
   'Files.removeFileFromMessage': 'DELETE /api/files/{file_id}/messages/{message_id}',
   'Files.uploadFile': 'POST /api/files/upload',
-  'Files.uploadProjectFile': 'POST /api/projects/{id}/files',
+  'Files.uploadProjectFile': 'POST /api/projects/{project_id}/files',
   'Hub.getHubData': 'GET /api/hub/data',
   'Hub.getHubVersion': 'GET /api/hub/version',
   'Hub.refreshHubData': 'POST /api/hub/refresh',
@@ -1379,7 +1448,7 @@ export type ApiEndpointParameters = {
   'Admin.updateRepository': { repository_id: string } & UpdateRepositoryRequest
   'Admin.updateUser': { user_id: string } & UpdateUserRequest
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
-  'Admin.uploadAndCommitModel': void
+  'Admin.uploadAndCommitModel': FormData
   'Assistants.createAssistant': CreateAssistantRequest
   'Assistants.deleteAssistant': { assistant_id: string }
   'Assistants.getAssistant': { assistant_id: string }
@@ -1405,17 +1474,17 @@ export type ApiEndpointParameters = {
   'Chat.updateConversation': { conversation_id: string } & UpdateConversationRequest
   'Config.getDefaultLanguage': void
   'Config.getUserRegistrationStatus': void
-  'Files.deleteFile': { id: string }
-  'Files.downloadFile': { id: string }
-  'Files.downloadFileWithToken': { id: string; token?: string }
-  'Files.generateDownloadToken': { id: string }
-  'Files.getFile': { id: string }
-  'Files.getFilePreview': { id: string; page?: number }
-  'Files.listMessageFiles': { id: string }
-  'Files.listProjectFiles': { id: string } & ProjectListQuery
+  'Files.deleteFile': { file_id: string }
+  'Files.downloadFile': { file_id: string }
+  'Files.downloadFileWithToken': { file_id: string; token?: string }
+  'Files.generateDownloadToken': { file_id: string }
+  'Files.getFile': { file_id: string }
+  'Files.getFilePreview': { file_id: string; page?: number }
+  'Files.listMessageFiles': { message_id: string }
+  'Files.listProjectFiles': { project_id: string } & ProjectListQuery
   'Files.removeFileFromMessage': { file_id: string; message_id: string }
-  'Files.uploadFile': void
-  'Files.uploadProjectFile': { id: string }
+  'Files.uploadFile': FormData
+  'Files.uploadProjectFile': { project_id: string } & FormData
   'Hub.getHubData': HubQueryParams
   'Hub.getHubVersion': void
   'Hub.refreshHubData': HubQueryParams
@@ -1445,8 +1514,8 @@ export type ApiEndpointResponses = {
   'Admin.addModelToApiProxyServer': ApiProxyServerModel
   'Admin.addModelToProvider': Model
   'Admin.assignProviderToGroup': UserGroupProviderResponse
-  'Admin.assignUserToGroup': void
-  'Admin.cancelDownload': void
+  'Admin.assignUserToGroup': any
+  'Admin.cancelDownload': any
   'Admin.cloneRAGProvider': RAGProvider
   'Admin.createAssistant': Assistant
   'Admin.createGroup': UserGroup
@@ -1465,18 +1534,18 @@ export type ApiEndpointResponses = {
   'Admin.deleteRAGRepository': void
   'Admin.deleteRepository': void
   'Admin.deleteUser': void
-  'Admin.disableModel': void
-  'Admin.disableRAGDatabase': void
+  'Admin.disableModel': any
+  'Admin.disableRAGDatabase': any
   'Admin.downloadFromRepository': DownloadInstance
   'Admin.downloadRAGDatabaseFromRepository': RAGDatabase
-  'Admin.enableModel': void
-  'Admin.enableRAGDatabase': void
+  'Admin.enableModel': any
+  'Admin.enableRAGDatabase': any
   'Admin.getApiProxyServerConfig': ApiProxyServerConfig
   'Admin.getApiProxyServerStatus': ApiProxyServerStatus
   'Admin.getAssistant': Assistant
   'Admin.getAvailableDevices': AvailableDevicesResponse
   'Admin.getDefaultLanguage': DefaultLanguageResponse
-  'Admin.getDownload': void
+  'Admin.getDownload': DownloadInstance
   'Admin.getGroup': UserGroup
   'Admin.getGroupMembers': UserListResponse
   'Admin.getGroupProviders': Provider[]
@@ -1493,7 +1562,7 @@ export type ApiEndpointResponses = {
   'Admin.getRepository': Repository
   'Admin.getUser': User
   'Admin.getUserRegistrationStatus': UserRegistrationStatusResponse
-  'Admin.listAllDownloads': void
+  'Admin.listAllDownloads': DownloadInstanceListResponse
   'Admin.listApiProxyServerModels': ApiProxyServerModel[]
   'Admin.listApiProxyServerTrustedHosts': ApiProxyServerTrustedHost[]
   'Admin.listAssistants': AssistantListResponse
@@ -1508,21 +1577,21 @@ export type ApiEndpointResponses = {
   'Admin.listRepositories': RepositoryListResponse
   'Admin.listUserGroupProviderRelationships': UserGroupProviderResponse[]
   'Admin.listUsers': UserListResponse
-  'Admin.reloadApiProxyServerModels': void
-  'Admin.reloadApiProxyServerTrustedHosts': void
+  'Admin.reloadApiProxyServerModels': any
+  'Admin.reloadApiProxyServerTrustedHosts': any
   'Admin.removeApiProxyServerTrustedHost': void
   'Admin.removeModelFromApiProxyServer': void
   'Admin.removeProviderFromGroup': void
   'Admin.removeUserFromGroup': void
   'Admin.resetUserPassword': void
-  'Admin.startApiProxyServer': void
-  'Admin.startModel': void
+  'Admin.startApiProxyServer': any
+  'Admin.startModel': any
   'Admin.startNgrokTunnel': NgrokStatusResponse
-  'Admin.startRAGDatabase': void
-  'Admin.stopApiProxyServer': void
-  'Admin.stopModel': void
+  'Admin.startRAGDatabase': any
+  'Admin.stopApiProxyServer': any
+  'Admin.stopModel': any
   'Admin.stopNgrokTunnel': NgrokStatusResponse
-  'Admin.stopRAGDatabase': void
+  'Admin.stopRAGDatabase': any
   'Admin.subscribeApiProxyServerLogs': void
   'Admin.subscribeDownloadProgress': void
   'Admin.subscribeHardwareUsage': void
@@ -1554,7 +1623,7 @@ export type ApiEndpointResponses = {
   'Assistants.updateAssistant': Assistant
   'Auth.init': InitResponse
   'Auth.login': AuthResponse
-  'Auth.logout': void
+  'Auth.logout': any
   'Auth.me': User
   'Auth.register': AuthResponse
   'Auth.setup': AuthResponse
@@ -1562,21 +1631,21 @@ export type ApiEndpointResponses = {
   'Chat.deleteConversation': void
   'Chat.editMessageStream': void
   'Chat.getConversation': Conversation
-  'Chat.getConversationMessagesByBranch': void
-  'Chat.getMessageBranches': void
+  'Chat.getConversationMessagesByBranch': Message[]
+  'Chat.getMessageBranches': MessageBranch[]
   'Chat.listConversations': ConversationListResponse
-  'Chat.searchConversations': void
+  'Chat.searchConversations': ConversationListResponse
   'Chat.sendMessageStream': void
   'Chat.switchConversationBranch': OperationSuccessResponse
   'Chat.updateConversation': Conversation
   'Config.getDefaultLanguage': DefaultLanguageResponse
   'Config.getUserRegistrationStatus': UserRegistrationStatusResponse
   'Files.deleteFile': FileOperationSuccessResponse
-  'Files.downloadFile': void
-  'Files.downloadFileWithToken': void
+  'Files.downloadFile': Blob
+  'Files.downloadFileWithToken': Blob
   'Files.generateDownloadToken': DownloadTokenResponse
   'Files.getFile': File
-  'Files.getFilePreview': void
+  'Files.getFilePreview': Blob
   'Files.listMessageFiles': File[]
   'Files.listProjectFiles': FileListResponse
   'Files.removeFileFromMessage': FileOperationSuccessResponse

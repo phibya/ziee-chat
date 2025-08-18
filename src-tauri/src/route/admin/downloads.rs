@@ -1,6 +1,8 @@
 use crate::api;
-use aide::{
-    axum::{ApiRouter, routing::{delete_with, get_with, post_with}},
+use crate::database::models::{DownloadInstance, DownloadInstanceListResponse};
+use aide::axum::{
+    routing::{delete_with, get_with, post_with},
+    ApiRouter,
 };
 use axum::{middleware, Json};
 
@@ -13,7 +15,9 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("List all download instances (admin)")
                     .id("Admin.listAllDownloads")
                     .tag("admin")
-            }).layer(middleware::from_fn(
+                    .response::<200, Json<DownloadInstanceListResponse>>()
+            })
+            .layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
         )
@@ -23,7 +27,9 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Get a specific download instance")
                     .id("Admin.getDownload")
                     .tag("admin")
-            }).layer(middleware::from_fn(
+                    .response::<200, Json<DownloadInstance>>()
+            })
+            .layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
         )
@@ -33,7 +39,9 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Cancel a download")
                     .id("Admin.cancelDownload")
                     .tag("admin")
-            }).layer(middleware::from_fn(
+                    .response::<200, ()>()
+            })
+            .layer(middleware::from_fn(
                 api::middleware::providers_edit_middleware,
             )),
         )
@@ -43,7 +51,9 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Delete a download instance")
                     .id("Admin.deleteDownload")
                     .tag("admin")
-            }).layer(middleware::from_fn(
+                    .response::<200, ()>()
+            })
+            .layer(middleware::from_fn(
                 api::middleware::providers_edit_middleware,
             )),
         )
@@ -53,7 +63,8 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Subscribe to download progress updates via SSE")
                     .id("Admin.subscribeDownloadProgress")
                     .tag("admin")
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
         )

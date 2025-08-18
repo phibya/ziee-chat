@@ -117,7 +117,7 @@ export function UsersSettings() {
     if (!selectedUser) return
 
     try {
-      const updateData: UpdateUserRequest = {
+      const updateData: { user_id: string } & UpdateUserRequest = {
         user_id: selectedUser.id,
         username: values.username,
         email: values.email,

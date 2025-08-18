@@ -140,10 +140,11 @@ export const createChatStore = (conversation: string | Conversation) => {
             set({ loading: !get().messages.length, error: null })
 
             const targetBranchId = branchId || conversation.active_branch_id
-            const messages = await ApiClient.Chat.getConversationMessages({
-              conversation_id: conversationId,
-              branch_id: targetBranchId,
-            })
+            const messages =
+              await ApiClient.Chat.getConversationMessagesByBranch({
+                conversation_id: conversationId,
+                branch_id: targetBranchId,
+              })
 
             set({
               messages: messages,

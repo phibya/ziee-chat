@@ -1,0 +1,10 @@
+export type ProviderType =
+  | 'local'
+  | 'openai'
+  | 'anthropic'
+  | 'groq'
+  | 'gemini'
+  | 'mistral'
+  | 'deepseek'
+  | 'huggingface'
+  | 'custom'

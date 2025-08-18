@@ -141,7 +141,7 @@ pub async fn create_conversation(
         project_id: request.project_id,
         assistant_id: Some(request.assistant_id),
         model_id: Some(request.model_id),
-        active_branch_id: Some(main_branch.id),
+        active_branch_id: main_branch.id,
         created_at: now,
         updated_at: now,
     })
@@ -411,15 +411,8 @@ pub async fn save_message(
                     None => return Err(Error::RowNotFound),
                 };
 
-            // Ensure we have an active branch
-            match conversation.active_branch_id {
-                Some(branch_id) => branch_id,
-                None => {
-                    return Err(Error::Configuration(
-                        "Conversation has no active branch".into(),
-                    ))
-                }
-            }
+            // Use the active branch
+            conversation.active_branch_id
         }
     };
 
@@ -509,8 +502,8 @@ pub async fn save_message(
         conversation_id: request.conversation_id,
         role: request.role.to_string(),
         content: request.content.to_string(),
-        originated_from_id: Some(message_id),
-        edit_count: Some(0),
+        originated_from_id: message_id,
+        edit_count: 0,
         created_at: now,
         updated_at: now,
         metadata: None,
@@ -534,10 +527,7 @@ pub async fn get_conversation_messages(
     };
 
     // Get the active branch ID
-    let active_branch_id = match conversation.active_branch_id {
-        Some(branch_id) => branch_id,
-        None => return Ok(vec![]), // No active branch means no messages
-    };
+    let active_branch_id = conversation.active_branch_id;
 
     // Get messages for the active branch
     let mut messages = sqlx::query_as::<_, Message>(
@@ -822,8 +812,8 @@ pub async fn edit_message(
         conversation_id,
         role,
         content: request.content,
-        originated_from_id: Some(originated_from_id),
-        edit_count: Some(edit_count + 1), // Incremented count
+        originated_from_id: originated_from_id,
+        edit_count: edit_count + 1, // Incremented count
         created_at: original_created_at,
         updated_at: now,
         metadata: None,

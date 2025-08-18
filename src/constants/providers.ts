@@ -1,10 +1,10 @@
-import { ProviderType } from '../types'
 import { RiAnthropicFill, RiOpenaiFill, RiGeminiFill } from 'react-icons/ri'
 import { SiHuggingface } from 'react-icons/si'
 import { FaServer, FaWrench } from 'react-icons/fa'
 import { BsFillLightningChargeFill } from 'react-icons/bs'
 import { DeepSeek, Mistral } from '@lobehub/icons'
 import type { IconType } from 'react-icons'
+import { ProviderType } from '../types/client/provider.ts'
 
 export interface ProviderOption {
   value: ProviderType

@@ -85,8 +85,8 @@ pub struct StreamCompleteData {
     pub message_id: String,
     pub conversation_id: String,
     pub role: String,
-    pub originated_from_id: Option<String>,
-    pub edit_count: Option<i32>,
+    pub originated_from_id: String,
+    pub edit_count: i32,
     pub created_at: String,
     pub updated_at: String,
     pub total_tokens: Option<i32>,
@@ -195,19 +195,7 @@ async fn stream_ai_response(
     // race conditions if the user switches branches during streaming
     let active_branch_id =
         match chat::get_conversation_by_id(request.conversation_id, user_id).await {
-            Ok(Some(conversation)) => match conversation.active_branch_id {
-                Some(branch_id) => branch_id,
-                None => {
-                    let _ = tx.send(Ok(Event::default().event("error").data(
-                        &serde_json::to_string(&StreamErrorData {
-                            error: "Conversation has no active branch".to_string(),
-                            code: ErrorCode::SystemInternalError.as_str().to_string(),
-                        })
-                        .unwrap_or_default(),
-                    )));
-                    return;
-                }
-            },
+            Ok(Some(conversation)) => conversation.active_branch_id,
             Ok(None) => {
                 let _ = tx.send(Ok(Event::default().event("error").data(
                     &serde_json::to_string(&StreamErrorData {
@@ -448,9 +436,7 @@ async fn stream_ai_response(
                             message_id: assistant_message.id.to_string(),
                             conversation_id: request.conversation_id.to_string(),
                             role: assistant_message.role.clone(),
-                            originated_from_id: assistant_message
-                                .originated_from_id
-                                .map(|id| id.to_string()),
+                            originated_from_id: assistant_message.originated_from_id.to_string(),
                             edit_count: assistant_message.edit_count,
                             created_at: assistant_message.created_at.to_rfc3339(),
                             updated_at: assistant_message.updated_at.to_rfc3339(),

@@ -7,12 +7,12 @@ import {
   RightOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Message } from '../../../types'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ChatInput } from './ChatInput'
 import { FileCard } from '../../Common/FileCard'
 import { useChatStore } from '../../../store'
 import { useMessageBranchStore } from '../../../store/messageBranches.ts'
+import { Message } from '../../../types'
 
 export const ChatMessage = memo(function ChatMessage({
   message,
