@@ -252,17 +252,14 @@ export function ApiProxyLogMonitor() {
       {/* Log Display */}
       <Card
         className="flex-1 overflow-hidden"
-        bodyStyle={{ height: '100%', padding: 0 }}
+        classNames={{
+          body: '!p-0',
+        }}
       >
         <div
           ref={logContainerRef}
           className="h-full p-4 overflow-y-auto font-mono text-sm"
           onScroll={handleScroll}
-          style={{
-            backgroundColor: '#1e1e1e',
-            color: '#d4d4d4',
-            lineHeight: '1.4',
-          }}
         >
           {logs.length === 0 ? (
             <div className="text-center text-gray-500 mt-8">

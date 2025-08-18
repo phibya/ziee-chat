@@ -1,16 +1,17 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ModelServerEntry {
     pub model_id: Uuid,
     pub alias_id: Option<String>,
     pub enabled: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ApiProxyServerModel {
     pub id: Uuid,
     pub model_id: Uuid,
@@ -35,7 +36,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for ApiProxyServerModel {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ApiProxyServerTrustedHost {
     pub id: Uuid,
     pub host: String,
@@ -58,7 +59,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for ApiProxyServerTrustedHost {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateApiProxyServerModelRequest {
     pub model_id: Uuid,
     pub alias_id: Option<String>,
@@ -66,28 +67,28 @@ pub struct CreateApiProxyServerModelRequest {
     pub is_default: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateApiProxyServerModelRequest {
     pub alias_id: Option<String>,
     pub enabled: Option<bool>,
     pub is_default: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateTrustedHostRequest {
     pub host: String,
     pub description: Option<String>,
     pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateTrustedHostRequest {
     pub host: Option<String>,
     pub description: Option<String>,
     pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ApiProxyServerConfig {
     pub port: u16,
     pub address: String,
@@ -98,7 +99,7 @@ pub struct ApiProxyServerConfig {
     pub autostart_on_startup: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ApiProxyServerStatus {
     pub running: bool,
     pub active_models: usize,

@@ -1,4 +1,5 @@
 use axum::{
+    debug_handler,
     extract::Path, 
     http::StatusCode, 
     Extension, 
@@ -12,7 +13,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 use lazy_static::lazy_static;
 
-use crate::api::errors::{ApiResult, AppError};
+use crate::api::errors::{ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::models::api_proxy_server_model::*;
 use crate::database::queries::api_proxy_server_models;
@@ -27,60 +28,76 @@ lazy_static! {
     static ref LOG_MONITORING_ACTIVE: Mutex<bool> = Mutex::new(false);
 }
 
-// Get proxy configuration
+/// Get API proxy server configuration
+#[debug_handler]
 pub async fn get_proxy_config(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Json<ApiProxyServerConfig>> {
+) -> ApiResult2<Json<ApiProxyServerConfig>> {
     match api_proxy_server::get_proxy_config().await {
-        Ok(config) => Ok(Json(config)),
+        Ok(config) => Ok((StatusCode::OK, Json(config))),
         Err(e) => {
             eprintln!("Failed to get proxy config: {}", e);
-            Err(AppError::internal_error("Failed to get proxy configuration"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get proxy configuration")
+            ))
         }
     }
 }
 
-// Update proxy configuration
+/// Update API proxy server configuration
+#[debug_handler]
 pub async fn update_proxy_config(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(config): Json<ApiProxyServerConfig>,
-) -> ApiResult<Json<ApiProxyServerConfig>> {
+) -> ApiResult2<Json<ApiProxyServerConfig>> {
     match api_proxy_server::update_proxy_config(&config).await {
         Ok(()) => {
             // Return the updated configuration by fetching it from the database
             match api_proxy_server::get_proxy_config().await {
-                Ok(updated_config) => Ok(Json(updated_config)),
+                Ok(updated_config) => Ok((StatusCode::OK, Json(updated_config))),
                 Err(e) => {
                     eprintln!("Failed to fetch updated proxy config: {}", e);
-                    Err(AppError::internal_error("Failed to fetch updated proxy configuration"))
+                    Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::internal_error("Failed to fetch updated proxy configuration")
+                    ))
                 }
             }
         },
         Err(e) => {
             eprintln!("Failed to update proxy config: {}", e);
-            Err(AppError::internal_error("Failed to update proxy configuration"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to update proxy configuration")
+            ))
         }
     }
 }
 
-// List models in proxy
+/// List API proxy server models
+#[debug_handler]
 pub async fn list_proxy_models(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Json<Vec<ApiProxyServerModel>>> {
+) -> ApiResult2<Json<Vec<ApiProxyServerModel>>> {
     match api_proxy_server_models::list_proxy_models().await {
-        Ok(models) => Ok(Json(models)),
+        Ok(models) => Ok((StatusCode::OK, Json(models))),
         Err(e) => {
             eprintln!("Failed to list proxy models: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// Add model to proxy
+/// Add model to API proxy server
+#[debug_handler]
 pub async fn add_model_to_proxy(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateApiProxyServerModelRequest>,
-) -> ApiResult<Json<ApiProxyServerModel>> {
+) -> ApiResult2<Json<ApiProxyServerModel>> {
     let enabled = request.enabled.unwrap_or(true);
     let is_default = request.is_default.unwrap_or(false);
     
@@ -90,20 +107,24 @@ pub async fn add_model_to_proxy(
         enabled, 
         is_default
     ).await {
-        Ok(model) => Ok(Json(model)),
+        Ok(model) => Ok((StatusCode::OK, Json(model))),
         Err(e) => {
             eprintln!("Failed to add model to proxy: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// Update model proxy settings
+/// Update API proxy server model
+#[debug_handler]
 pub async fn update_proxy_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateApiProxyServerModelRequest>,
-) -> ApiResult<Json<ApiProxyServerModel>> {
+) -> ApiResult2<Json<ApiProxyServerModel>> {
     match api_proxy_server_models::update_proxy_model_status(
         model_id, 
         request.enabled, 
@@ -111,49 +132,67 @@ pub async fn update_proxy_model(
         request.alias_id,
     ).await {
         Ok(Some(model)) => {
-            Ok(Json(model))
+            Ok((StatusCode::OK, Json(model)))
         }
-        Ok(None) => Err(AppError::not_found("Proxy model")),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Proxy model")
+        )),
         Err(e) => {
             eprintln!("Failed to update proxy model: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// Remove model from proxy
+/// Remove model from API proxy server
+#[debug_handler]
 pub async fn remove_model_from_proxy(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     match api_proxy_server_models::remove_model_from_proxy(model_id).await {
-        Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(AppError::not_found("Proxy model")),
+        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Proxy model")
+        )),
         Err(e) => {
             eprintln!("Failed to remove model from proxy: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// List trusted hosts
+/// List API proxy server trusted hosts
+#[debug_handler]
 pub async fn list_trusted_hosts(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Json<Vec<ApiProxyServerTrustedHost>>> {
+) -> ApiResult2<Json<Vec<ApiProxyServerTrustedHost>>> {
     match api_proxy_server_models::get_trusted_hosts().await {
-        Ok(hosts) => Ok(Json(hosts)),
+        Ok(hosts) => Ok((StatusCode::OK, Json(hosts))),
         Err(e) => {
             eprintln!("Failed to list trusted hosts: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// Add trusted host
+/// Add trusted host to API proxy server
+#[debug_handler]
 pub async fn add_trusted_host(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateTrustedHostRequest>,
-) -> ApiResult<Json<ApiProxyServerTrustedHost>> {
+) -> ApiResult2<Json<ApiProxyServerTrustedHost>> {
     let enabled = request.enabled.unwrap_or(true);
     
     match api_proxy_server_models::add_trusted_host(
@@ -161,120 +200,157 @@ pub async fn add_trusted_host(
         request.description,
         enabled,
     ).await {
-        Ok(host) => Ok(Json(host)),
+        Ok(host) => Ok((StatusCode::OK, Json(host))),
         Err(e) => {
             eprintln!("Failed to add trusted host: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// Update trusted host
+/// Update API proxy server trusted host
+#[debug_handler]
 pub async fn update_trusted_host(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(host_id): Path<Uuid>,
     Json(request): Json<UpdateTrustedHostRequest>,
-) -> ApiResult<Json<ApiProxyServerTrustedHost>> {
+) -> ApiResult2<Json<ApiProxyServerTrustedHost>> {
     match api_proxy_server_models::update_trusted_host(
         host_id,
         request.host,
         request.description,
         request.enabled,
     ).await {
-        Ok(Some(host)) => Ok(Json(host)),
-        Ok(None) => Err(AppError::not_found("Trusted host")),
+        Ok(Some(host)) => Ok((StatusCode::OK, Json(host))),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Trusted host")
+        )),
         Err(e) => {
             eprintln!("Failed to update trusted host: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// Remove trusted host
+/// Remove trusted host from API proxy server
+#[debug_handler]
 pub async fn remove_trusted_host(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(host_id): Path<Uuid>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     match api_proxy_server_models::remove_trusted_host(host_id).await {
-        Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(AppError::not_found("Trusted host")),
+        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Trusted host")
+        )),
         Err(e) => {
             eprintln!("Failed to remove trusted host: {}", e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
-// Get proxy server status
+/// Get API proxy server status
+#[debug_handler]
 pub async fn get_proxy_status(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Json<ApiProxyServerStatus>> {
+) -> ApiResult2<Json<ApiProxyServerStatus>> {
     match api_proxy_server::get_proxy_server_status().await {
-        Ok(status) => Ok(Json(status)),
+        Ok(status) => Ok((StatusCode::OK, Json(status))),
         Err(e) => {
             eprintln!("Failed to get proxy status: {}", e);
-            Err(AppError::internal_error("Failed to get proxy status"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get proxy status")
+            ))
         }
     }
 }
 
-// Start proxy server
+/// Start API proxy server
+#[debug_handler]
 pub async fn start_proxy_server(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     match api_proxy_server::start_proxy_server().await {
-        Ok(()) => Ok(StatusCode::OK),
+        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
         Err(e) => {
             eprintln!("Failed to start proxy server: {}", e);
-            Err(AppError::internal_error("Failed to start proxy server"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to start proxy server")
+            ))
         }
     }
 }
 
-// Stop proxy server
+/// Stop API proxy server
+#[debug_handler]
 pub async fn stop_proxy_server(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     match api_proxy_server::stop_proxy_server().await {
-        Ok(()) => Ok(StatusCode::OK),
+        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
         Err(e) => {
             eprintln!("Failed to stop proxy server: {}", e);
-            Err(AppError::internal_error("Failed to stop proxy server"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to stop proxy server")
+            ))
         }
     }
 }
 
-// Reload proxy server models
+/// Reload API proxy server models
+#[debug_handler]
 pub async fn reload_proxy_models(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     match api_proxy_server::reload_proxy_models().await {
-        Ok(()) => Ok(StatusCode::OK),
+        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
         Err(e) => {
             eprintln!("Failed to reload proxy models: {}", e);
-            Err(AppError::internal_error("Failed to reload proxy models"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to reload proxy models")
+            ))
         }
     }
 }
 
-// Reload proxy server trusted hosts
+/// Reload API proxy server trusted hosts
+#[debug_handler]
 pub async fn reload_proxy_trusted_hosts(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     match api_proxy_server::reload_proxy_trusted_hosts().await {
-        Ok(()) => Ok(StatusCode::OK),
+        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
         Err(e) => {
             eprintln!("Failed to reload proxy trusted hosts: {}", e);
-            Err(AppError::internal_error("Failed to reload proxy trusted hosts"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to reload proxy trusted hosts")
+            ))
         }
     }
 }
 
-
-// SSE endpoint for real-time log streaming
+/// Subscribe to API proxy server logs stream
+#[debug_handler]
 pub async fn subscribe_proxy_logs(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
+) -> ApiResult2<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
     
     let client_id = Uuid::new_v4();
     let (tx, mut rx) = mpsc::unbounded_channel();
@@ -304,7 +380,7 @@ pub async fn subscribe_proxy_logs(
         remove_log_client(client_id);
     };
     
-    Ok(Sse::new(stream))
+    Ok((StatusCode::OK, Sse::new(stream)))
 }
 
 // Start log monitoring service
