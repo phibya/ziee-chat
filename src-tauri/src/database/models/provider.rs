@@ -10,11 +10,56 @@ use super::proxy::ProxySettings;
 pub type ProviderProxySettings = ProxySettings;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderType {
+    Local,
+    OpenAI,
+    Anthropic,
+    Groq,
+    Gemini,
+    Mistral,
+    DeepSeek,
+    Huggingface,
+    Custom,
+}
+
+impl ProviderType {
+    pub fn from_str(s: &str) -> ProviderType {
+        match s {
+            "local" => ProviderType::Local,
+            "openai" => ProviderType::OpenAI,
+            "anthropic" => ProviderType::Anthropic,
+            "groq" => ProviderType::Groq,
+            "gemini" => ProviderType::Gemini,
+            "mistral" => ProviderType::Mistral,
+            "deepseek" => ProviderType::DeepSeek,
+            "huggingface" => ProviderType::Huggingface,
+            "custom" => ProviderType::Custom,
+            _ => ProviderType::Custom, // fallback to custom for unknown types
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ProviderType::Local => "local",
+            ProviderType::OpenAI => "openai",
+            ProviderType::Anthropic => "anthropic",
+            ProviderType::Groq => "groq",
+            ProviderType::Gemini => "gemini",
+            ProviderType::Mistral => "mistral",
+            ProviderType::DeepSeek => "deepseek",
+            ProviderType::Huggingface => "huggingface",
+            ProviderType::Custom => "custom",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Provider {
     pub id: Uuid,
     pub name: String,
     #[serde(rename = "type")]
-    pub provider_type: String,
+    pub provider_type: ProviderType,
     pub enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
@@ -38,10 +83,13 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Provider {
             })?)
         };
 
+        let provider_type_str: String = row.try_get("provider_type")?;
+        let provider_type = ProviderType::from_str(&provider_type_str);
+
         Ok(Provider {
             id: row.try_get("id")?,
             name: row.try_get("name")?,
-            provider_type: row.try_get("provider_type")?,
+            provider_type,
             enabled: row.try_get("enabled")?,
             api_key: row.try_get("api_key")?,
             base_url: row.try_get("base_url")?,

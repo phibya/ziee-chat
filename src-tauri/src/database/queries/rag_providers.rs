@@ -148,7 +148,7 @@ pub async fn clone_rag_provider(provider_id: Uuid) -> Result<RAGProvider, sqlx::
     )
     .bind(new_provider_id)
     .bind(new_name)
-    .bind(&original.provider_type)
+    .bind(original.provider_type.as_str())
     .bind(false) // Cloned providers start disabled
     .bind(&original.api_key)
     .bind(&original.base_url)

@@ -2408,7 +2408,19 @@
             },
             "style": "form"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Response for download instance list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadInstanceListResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/admin/downloads/{download_id}": {
@@ -2417,14 +2429,31 @@
           "admin"
         ],
         "description": "Get a specific download instance",
-        "operationId": "Admin.getDownload"
+        "operationId": "Admin.getDownload",
+        "responses": {
+          "200": {
+            "description": "Main download instance struct",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadInstance"
+                }
+              }
+            }
+          }
+        }
       },
       "delete": {
         "tags": [
           "admin"
         ],
         "description": "Delete a download instance",
-        "operationId": "Admin.deleteDownload"
+        "operationId": "Admin.deleteDownload",
+        "responses": {
+          "200": {
+            "description": "no content"
+          }
+        }
       }
     },
     "/api/admin/downloads/{download_id}/cancel": {
@@ -2433,7 +2462,12 @@
           "admin"
         ],
         "description": "Cancel a download",
-        "operationId": "Admin.cancelDownload"
+        "operationId": "Admin.cancelDownload",
+        "responses": {
+          "200": {
+            "description": "no content"
+          }
+        }
       }
     },
     "/api/admin/downloads/subscribe": {
@@ -2443,6 +2477,23 @@
         ],
         "description": "Subscribe to download progress updates via SSE",
         "operationId": "Admin.subscribeDownloadProgress"
+      }
+    },
+    "/api/admin/downloads/types": {
+      "get": {
+        "description": "Types for open api generation",
+        "responses": {
+          "600": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadProgressUpdate"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/admin/engines": {
@@ -2497,6 +2548,23 @@
         ],
         "description": "Subscribe to hardware usage stream via SSE",
         "operationId": "Admin.subscribeHardwareUsage"
+      }
+    },
+    "/api/admin/hardware/types": {
+      "get": {
+        "description": "Types for open api generation",
+        "responses": {
+          "600": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HardwareUsageUpdate"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/admin/api-proxy-server/config": {
@@ -3385,7 +3453,22 @@
           "chat"
         ],
         "description": "Get message branches",
-        "operationId": "Chat.getMessageBranches"
+        "operationId": "Chat.getMessageBranches",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageBranch"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/chat/conversations/{conversation_id}/branch/switch": {
@@ -3425,7 +3508,22 @@
           "chat"
         ],
         "description": "Get conversation messages by branch",
-        "operationId": "Chat.getConversationMessagesByBranch"
+        "operationId": "Chat.getConversationMessagesByBranch",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Message"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/chat/conversations/search": {
@@ -3480,7 +3578,19 @@
             },
             "style": "form"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationListResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/projects": {
@@ -3697,7 +3807,7 @@
         }
       }
     },
-    "/api/files/{id}": {
+    "/api/files/{file_id}": {
       "get": {
         "tags": [
           "files"
@@ -3737,16 +3847,28 @@
         }
       }
     },
-    "/api/files/{id}/download": {
+    "/api/files/{file_id}/download": {
       "get": {
         "tags": [
           "files"
         ],
         "description": "Download file by ID",
-        "operationId": "Files.downloadFile"
+        "operationId": "Files.downloadFile",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlobType"
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/api/files/{id}/download-token": {
+    "/api/files/{file_id}/download-token": {
       "post": {
         "tags": [
           "files"
@@ -3767,7 +3889,7 @@
         }
       }
     },
-    "/api/files/{id}/download-with-token": {
+    "/api/files/{file_id}/download-with-token": {
       "get": {
         "tags": [
           "files"
@@ -3786,10 +3908,22 @@
             },
             "style": "form"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlobType"
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/api/files/{id}/preview": {
+    "/api/files/{file_id}/preview": {
       "get": {
         "tags": [
           "files"
@@ -3810,10 +3944,22 @@
             },
             "style": "form"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BlobType"
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/api/projects/{id}/files": {
+    "/api/projects/{project_id}/files": {
       "get": {
         "tags": [
           "files"
@@ -3901,7 +4047,7 @@
         }
       }
     },
-    "/api/messages/{id}/files": {
+    "/api/messages/{message_id}/files": {
       "get": {
         "tags": [
           "files"
@@ -4146,7 +4292,12 @@
           "name": {
             "type": "string"
           },
-          "permissions": true,
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "provider_ids": {
             "type": "array",
             "items": {
@@ -4540,6 +4691,7 @@
         ]
       },
       "PaginationQuery": {
+        "description": "Standard pagination query parameters for basic list endpoints",
         "type": "object",
         "properties": {
           "page": {
@@ -4638,25 +4790,6 @@
           "new_password"
         ]
       },
-      "PaginationQuery2": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "per_page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "UserGroupListResponse": {
         "type": "object",
         "properties": {
@@ -4698,7 +4831,12 @@
           "name": {
             "type": "string"
           },
-          "permissions": true,
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "provider_ids": {
             "type": [
               "array",
@@ -4730,7 +4868,15 @@
               "null"
             ]
           },
-          "permissions": true,
+          "permissions": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
           "provider_ids": {
             "type": [
               "array",
@@ -4770,7 +4916,7 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string"
+            "$ref": "#/components/schemas/ProviderType"
           },
           "id": {
             "type": "string",
@@ -4824,6 +4970,20 @@
           "built_in",
           "created_at",
           "updated_at"
+        ]
+      },
+      "ProviderType": {
+        "type": "string",
+        "enum": [
+          "local",
+          "openai",
+          "anthropic",
+          "groq",
+          "gemini",
+          "mistral",
+          "deepseek",
+          "huggingface",
+          "custom"
         ]
       },
       "ProxySettings": {
@@ -5099,25 +5259,6 @@
         "required": [
           "new_password"
         ]
-      },
-      "PaginationQuery3": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "per_page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          }
-        }
       },
       "ProviderListResponse": {
         "type": "object",
@@ -6335,6 +6476,16 @@
               }
             ]
           },
+          "engine_settings_llamacpp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LlamaCppSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "source": {
             "$ref": "#/components/schemas/SourceInfo"
           }
@@ -6532,6 +6683,16 @@
               }
             ]
           },
+          "engine_settings_llamacpp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LlamaCppSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "source": {
             "description": "Source information for tracking download origin",
             "anyOf": [
@@ -6565,70 +6726,41 @@
         "properties": {
           "phase": {
             "description": "Current download phase (e.g., \"connecting\", \"downloading\", \"extracting\")",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "current": {
             "description": "Current bytes/items processed",
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "int64"
           },
           "total": {
             "description": "Total bytes/items to process",
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "int64"
           },
           "message": {
             "description": "Progress message to display",
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "speed_bps": {
             "description": "Download speed in bytes per second",
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "int64"
           },
           "eta_seconds": {
             "description": "Estimated time remaining in seconds",
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "int64"
           }
-        }
-      },
-      "PaginationQuery4": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "per_page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          }
-        }
+        },
+        "required": [
+          "phase",
+          "current",
+          "total",
+          "message",
+          "speed_bps",
+          "eta_seconds"
+        ]
       },
       "RepositoryListResponse": {
         "type": "object",
@@ -6865,25 +6997,6 @@
           "message"
         ]
       },
-      "PaginationQuery5": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "per_page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "RAGProviderListResponse": {
         "type": "object",
         "properties": {
@@ -6917,7 +7030,7 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string"
+            "$ref": "#/components/schemas/RAGProviderType"
           },
           "id": {
             "type": "string",
@@ -6971,6 +7084,18 @@
           "built_in",
           "created_at",
           "updated_at"
+        ]
+      },
+      "RAGProviderType": {
+        "type": "string",
+        "enum": [
+          "local",
+          "lightrag",
+          "ragstack",
+          "chroma",
+          "weaviate",
+          "pinecone",
+          "custom"
         ]
       },
       "CreateRAGProviderRequest": {
@@ -7286,25 +7411,6 @@
           "settings": true
         }
       },
-      "PaginationQuery6": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "per_page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "RAGRepositoryListResponse": {
         "type": "object",
         "properties": {
@@ -7538,25 +7644,6 @@
           "target_provider_id"
         ]
       },
-      "PaginationQuery7": {
-        "type": "object",
-        "properties": {
-          "page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "per_page": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          }
-        }
-      },
       "AssistantListResponse": {
         "type": "object",
         "properties": {
@@ -7773,6 +7860,97 @@
             ]
           }
         }
+      },
+      "DownloadInstanceListResponse": {
+        "description": "Response for download instance list",
+        "type": "object",
+        "properties": {
+          "downloads": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DownloadInstance"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "per_page": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "downloads",
+          "total",
+          "page",
+          "per_page"
+        ]
+      },
+      "DownloadProgressUpdate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "phase": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "speed_bps": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "eta_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
       },
       "EngineInfo": {
         "type": "object",
@@ -8015,6 +8193,158 @@
           "cuda_support",
           "metal_support",
           "opencl_support"
+        ]
+      },
+      "HardwareUsageUpdate": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "cpu": {
+            "$ref": "#/components/schemas/CPUUsage"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/MemoryUsage"
+          },
+          "gpu_devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GPUUsage"
+            }
+          }
+        },
+        "required": [
+          "timestamp",
+          "cpu",
+          "memory",
+          "gpu_devices"
+        ]
+      },
+      "CPUUsage": {
+        "type": "object",
+        "properties": {
+          "usage_percentage": {
+            "type": "number",
+            "format": "float"
+          },
+          "temperature": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "frequency": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "usage_percentage"
+        ]
+      },
+      "MemoryUsage": {
+        "type": "object",
+        "properties": {
+          "used_ram": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "available_ram": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "used_swap": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0
+          },
+          "available_swap": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0
+          },
+          "usage_percentage": {
+            "type": "number",
+            "format": "float"
+          }
+        },
+        "required": [
+          "used_ram",
+          "available_ram",
+          "usage_percentage"
+        ]
+      },
+      "GPUUsage": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "device_name": {
+            "type": "string"
+          },
+          "utilization_percentage": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "memory_used": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0
+          },
+          "memory_total": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0
+          },
+          "memory_usage_percentage": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "temperature": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "power_usage": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          }
+        },
+        "required": [
+          "device_id",
+          "device_name"
         ]
       },
       "ApiProxyServerConfig": {
@@ -8338,7 +8668,8 @@
           "deleted"
         ]
       },
-      "PaginationQuery8": {
+      "ConversationPaginationQuery": {
+        "description": "Extended pagination query for conversation-related endpoints",
         "type": "object",
         "properties": {
           "page": {
@@ -8519,10 +8850,7 @@
             "format": "uuid"
           },
           "active_branch_id": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "format": "uuid"
           },
           "created_at": {
@@ -8538,6 +8866,7 @@
           "id",
           "user_id",
           "title",
+          "active_branch_id",
           "created_at",
           "updated_at"
         ]
@@ -8603,6 +8932,32 @@
           "assistant_id"
         ]
       },
+      "MessageBranch": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "is_clone": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "conversation_id",
+          "created_at",
+          "is_clone"
+        ]
+      },
       "SwitchBranchRequest": {
         "type": "object",
         "properties": {
@@ -8628,6 +8983,162 @@
         "required": [
           "success",
           "message"
+        ]
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "originated_from_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "edit_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "metadata": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/MessageMetadata"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/File"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "conversation_id",
+          "role",
+          "content",
+          "originated_from_id",
+          "edit_count",
+          "created_at",
+          "updated_at",
+          "files"
+        ]
+      },
+      "MessageMetadata": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "message_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "value": true,
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "message_id",
+          "key",
+          "value",
+          "created_at"
+        ]
+      },
+      "File": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "file_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mime_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "checksum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "project_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "thumbnail_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "processing_metadata": true,
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "filename",
+          "file_size",
+          "thumbnail_count",
+          "page_count",
+          "processing_metadata",
+          "created_at",
+          "updated_at"
         ]
       },
       "SearchQuery": {
@@ -8833,73 +9344,6 @@
           "file"
         ]
       },
-      "File": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "user_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "filename": {
-            "type": "string"
-          },
-          "file_size": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "mime_type": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "checksum": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "project_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid"
-          },
-          "thumbnail_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "page_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "processing_metadata": true,
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "user_id",
-          "filename",
-          "file_size",
-          "thumbnail_count",
-          "page_count",
-          "processing_metadata",
-          "created_at",
-          "updated_at"
-        ]
-      },
       "FileOperationSuccessResponse": {
         "type": "object",
         "properties": {
@@ -8910,6 +9354,9 @@
         "required": [
           "success"
         ]
+      },
+      "BlobType": {
+        "type": "object"
       },
       "DownloadTokenResponse": {
         "type": "object",

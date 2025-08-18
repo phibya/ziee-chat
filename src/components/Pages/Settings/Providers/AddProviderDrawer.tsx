@@ -12,9 +12,8 @@ import {
   setAddProviderDrawerLoading,
   Stores,
 } from '../../../../store'
-import { CreateProviderRequest } from '../../../../types'
+import { CreateProviderRequest, ProviderType } from '../../../../types'
 import { ApiConfigurationSection } from './common'
-import { ProviderType } from '../../../../types/client/provider'
 
 export function AddProviderDrawer() {
   const { t } = useTranslation()

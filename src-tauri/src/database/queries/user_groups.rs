@@ -8,9 +8,13 @@ use uuid::Uuid;
 pub async fn create_user_group(
     name: String,
     description: Option<String>,
-    permissions: serde_json::Value,
+    permissions: Vec<String>,
 ) -> Result<UserGroup, sqlx::Error> {
     let pool = get_database_pool()?;
+
+    let permissions_json = serde_json::to_value(&permissions).map_err(|e| {
+        sqlx::Error::Encode(Box::new(e))
+    })?;
 
     let mut group = sqlx::query_as::<_, UserGroup>(
         r#"
@@ -21,7 +25,7 @@ pub async fn create_user_group(
     )
     .bind(&name)
     .bind(&description)
-    .bind(&permissions)
+    .bind(&permissions_json)
     .fetch_one(&*pool)
     .await?;
 
@@ -94,7 +98,7 @@ pub async fn update_user_group(
     group_id: Uuid,
     name: Option<String>,
     description: Option<String>,
-    permissions: Option<serde_json::Value>,
+    permissions: Option<Vec<String>>,
     is_active: Option<bool>,
 ) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -155,7 +159,10 @@ pub async fn update_user_group(
         sql_query = sql_query.bind(description);
     }
     if let Some(permissions) = permissions {
-        sql_query = sql_query.bind(permissions);
+        let permissions_json = serde_json::to_value(&permissions).map_err(|e| {
+            sqlx::Error::Encode(Box::new(e))
+        })?;
+        sql_query = sql_query.bind(permissions_json);
     }
     if let Some(is_active) = is_active {
         sql_query = sql_query.bind(is_active);

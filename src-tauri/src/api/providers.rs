@@ -194,7 +194,7 @@ pub async fn update_provider(
         match providers::get_provider_by_id(provider_id).await {
             Ok(Some(current_provider)) => {
                 // Check if provider type requires API key and base URL
-                if current_provider.provider_type != "local" {
+                if current_provider.provider_type.as_str() != "local" {
                     // Check API key
                     let api_key = request
                         .api_key

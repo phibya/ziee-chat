@@ -159,7 +159,7 @@ pub async fn start_rag_database(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG provider")))?;
 
-    if provider.provider_type != "local" {
+    if provider.provider_type.as_str() != "local" {
         return Err((StatusCode::BAD_REQUEST, AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only local RAG providers support start/stop operations",
@@ -187,7 +187,7 @@ pub async fn stop_rag_database(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG provider")))?;
 
-    if provider.provider_type != "local" {
+    if provider.provider_type.as_str() != "local" {
         return Err((StatusCode::BAD_REQUEST, AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only local RAG providers support start/stop operations",

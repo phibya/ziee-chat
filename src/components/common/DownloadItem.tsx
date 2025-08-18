@@ -36,7 +36,7 @@ export function DownloadItem({
       )
     : 0
 
-  const speed = formatSpeed(download.progress_data?.download_speed)
+  const speed = formatSpeed(download.progress_data?.speed_bps)
   const eta = formatETA(download.progress_data?.eta_seconds)
 
   const handleCloseDownload = async (downloadId: string) => {

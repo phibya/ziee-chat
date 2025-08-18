@@ -14,7 +14,8 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { testProxyDetailed } from '../../../../api/proxy'
-import { isProxyValid, type ProxySettings } from './'
+import { isProxyValid } from './'
+import { ProxySettings } from '../../../../types'
 
 const { Text } = Typography
 

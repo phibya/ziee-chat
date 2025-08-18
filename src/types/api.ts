@@ -250,7 +250,7 @@ export interface CreateTrustedHostRequest {
 export interface CreateUserGroupRequest {
   description?: string
   name: string
-  permissions: any
+  permissions: string[]
   provider_ids?: string[]
 }
 
@@ -329,6 +329,18 @@ export interface DownloadProgressData {
   eta_seconds: number
 }
 
+export interface DownloadProgressUpdate {
+  id: string
+  status: string
+  phase?: string
+  current?: number
+  total?: number
+  message?: string
+  speed_bps?: number
+  eta_seconds?: number
+  error_message?: string
+}
+
 export interface DownloadRAGDatabaseFromRepositoryRequest {
   repository_id: string
   database_id: string
@@ -355,7 +367,7 @@ export interface DownloadRequestData {
   source?: SourceInfo
 }
 
-export type DownloadStatus = string
+export type DownloadStatus = 'pending' | 'downloading' | 'completed' | 'failed' | 'cancelled'
 
 export interface DownloadTokenParams {
   token?: string
@@ -751,7 +763,7 @@ export interface ProjectListResponse {
 }
 
 export interface Provider {
-  type: string
+  type: ProviderType
   id: string
   name: string
   enabled: boolean
@@ -769,6 +781,8 @@ export interface ProviderListResponse {
   page: number
   per_page: number
 }
+
+export type ProviderType = 'local' | 'openai' | 'anthropic' | 'groq' | 'gemini' | 'mistral' | 'deepseek' | 'huggingface' | 'custom'
 
 export interface ProxySettings {
   enabled?: boolean
@@ -814,7 +828,7 @@ export interface RAGDatabaseCapabilities {
 }
 
 export interface RAGProvider {
-  type: string
+  type: RAGProviderType
   id: string
   name: string
   enabled: boolean
@@ -832,6 +846,8 @@ export interface RAGProviderListResponse {
   page: number
   per_page: number
 }
+
+export type RAGProviderType = 'local' | 'lightrag' | 'ragstack' | 'chroma' | 'weaviate' | 'pinecone' | 'custom'
 
 export interface RAGRepository {
   description?: string
@@ -1051,7 +1067,7 @@ export interface UpdateTrustedHostRequest {
 export interface UpdateUserGroupRequest {
   description?: string
   name?: string
-  permissions?: any
+  permissions?: string[]
   provider_ids?: string[]
   is_active?: boolean
 }
@@ -1106,7 +1122,7 @@ export interface UserGroup {
   description?: string
   id: string
   name: string
-  permissions: any
+  permissions: string[]
   provider_ids: string[]
   is_protected: boolean
   is_active: boolean

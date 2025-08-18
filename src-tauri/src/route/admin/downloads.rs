@@ -1,10 +1,13 @@
 use crate::api;
+use crate::api::hardware::HardwareUsageUpdate;
 use crate::database::models::{DownloadInstance, DownloadInstanceListResponse};
+use crate::route::helper::types;
 use aide::axum::{
     routing::{delete_with, get_with, post_with},
     ApiRouter,
 };
 use axum::{middleware, Json};
+use crate::api::download_instances::DownloadProgressUpdate;
 
 pub fn admin_download_routes() -> ApiRouter {
     ApiRouter::new()
@@ -67,5 +70,12 @@ pub fn admin_download_routes() -> ApiRouter {
             .layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
+        )
+        .api_route(
+            "/downloads/types",
+            get_with(types, |op| {
+                op.description("Types for open api generation")
+                    .response::<600, Json<(DownloadProgressUpdate)>>()
+            }),
         )
 }

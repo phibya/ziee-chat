@@ -38,7 +38,7 @@ import {
   useEditRAGDatabaseDrawerStore,
   Stores,
 } from '../../../../store'
-import { RAGProvider } from '../../../../types'
+import { RAGProvider, RAGProviderType } from '../../../../types'
 import { LocalRAGProviderSettings } from './LocalRAGProviderSettings'
 import { RemoteRAGProviderSettings } from './RemoteRAGProviderSettings'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
@@ -46,7 +46,6 @@ import { AddRAGProviderDrawer } from './AddRAGProviderDrawer'
 import { AddRAGDatabaseDrawer } from './AddRAGDatabaseDrawer'
 import { AddRAGDatabaseDownloadDrawer } from './AddRAGDatabaseDownloadDrawer'
 import { EditRAGDatabaseDrawer } from './EditRAGDatabaseDrawer'
-import { RAGProviderType } from '../../../../types/client/ragProvider.ts'
 
 const { Title, Text } = Typography
 const { Sider, Content } = Layout

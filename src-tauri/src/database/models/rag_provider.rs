@@ -10,11 +10,50 @@ use super::proxy::ProxySettings;
 pub type RAGProviderProxySettings = ProxySettings;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum RAGProviderType {
+    Local,
+    LightRAG,
+    RAGStack,
+    Chroma,
+    Weaviate,
+    Pinecone,
+    Custom,
+}
+
+impl RAGProviderType {
+    pub fn from_str(s: &str) -> RAGProviderType {
+        match s {
+            "local" => RAGProviderType::Local,
+            "lightrag" => RAGProviderType::LightRAG,
+            "ragstack" => RAGProviderType::RAGStack,
+            "chroma" => RAGProviderType::Chroma,
+            "weaviate" => RAGProviderType::Weaviate,
+            "pinecone" => RAGProviderType::Pinecone,
+            "custom" => RAGProviderType::Custom,
+            _ => RAGProviderType::Custom, // fallback to custom for unknown types
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RAGProviderType::Local => "local",
+            RAGProviderType::LightRAG => "lightrag",
+            RAGProviderType::RAGStack => "ragstack",
+            RAGProviderType::Chroma => "chroma",
+            RAGProviderType::Weaviate => "weaviate",
+            RAGProviderType::Pinecone => "pinecone",
+            RAGProviderType::Custom => "custom",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGProvider {
     pub id: Uuid,
     pub name: String,
     #[serde(rename = "type")]
-    pub provider_type: String,
+    pub provider_type: RAGProviderType,
     pub enabled: bool,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
@@ -38,10 +77,13 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGProvider {
             })?)
         };
 
+        let provider_type_str: String = row.try_get("provider_type")?;
+        let provider_type = RAGProviderType::from_str(&provider_type_str);
+
         Ok(RAGProvider {
             id: row.try_get("id")?,
             name: row.try_get("name")?,
-            provider_type: row.try_get("provider_type")?,
+            provider_type,
             enabled: row.try_get("enabled")?,
             api_key: row.try_get("api_key")?,
             base_url: row.try_get("base_url")?,

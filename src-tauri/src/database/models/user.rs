@@ -140,7 +140,7 @@ pub struct UserGroup {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
-    pub permissions: serde_json::Value,
+    pub permissions: Vec<String>,
     pub provider_ids: Vec<Uuid>,
     pub is_protected: bool,
     pub is_active: bool,
@@ -150,11 +150,23 @@ pub struct UserGroup {
 
 impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
     fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        let permissions_json: serde_json::Value = row.try_get("permissions")?;
+        let permissions = if permissions_json.is_null() {
+            Vec::new()
+        } else {
+            serde_json::from_value(permissions_json).map_err(|e| {
+                sqlx::Error::ColumnDecode {
+                    index: "permissions".into(),
+                    source: Box::new(e),
+                }
+            })?
+        };
+
         Ok(UserGroup {
             id: row.try_get("id")?,
             name: row.try_get("name")?,
             description: row.try_get("description")?,
-            permissions: row.try_get("permissions")?,
+            permissions,
             provider_ids: Vec::new(), // Loaded separately via joins
             is_protected: row.try_get("is_protected")?,
             is_active: row.try_get("is_active")?,
@@ -275,7 +287,7 @@ pub struct UserGroupProviderResponse {
 pub struct CreateUserGroupRequest {
     pub name: String,
     pub description: Option<String>,
-    pub permissions: serde_json::Value,
+    pub permissions: Vec<String>,
     pub provider_ids: Option<Vec<Uuid>>,
 }
 
@@ -283,7 +295,7 @@ pub struct CreateUserGroupRequest {
 pub struct UpdateUserGroupRequest {
     pub name: Option<String>,
     pub description: Option<String>,
-    pub permissions: Option<serde_json::Value>,
+    pub permissions: Option<Vec<String>>,
     pub provider_ids: Option<Vec<Uuid>>,
     pub is_active: Option<bool>,
 }

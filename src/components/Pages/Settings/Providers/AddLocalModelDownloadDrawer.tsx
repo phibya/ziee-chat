@@ -296,14 +296,12 @@ export function AddLocalModelDownloadDrawer() {
                     {viewDownload.progress_data.message || ''}
                   </Text>
                 )}
-                {viewDownload.progress_data?.download_speed && (
+                {viewDownload.progress_data?.speed_bps && (
                   <div style={{ marginTop: 8 }}>
                     <Text type="secondary" style={{ fontSize: '12px' }}>
                       Speed:{' '}
                       {Math.round(
-                        (viewDownload.progress_data.download_speed /
-                          1024 /
-                          1024) *
+                        (viewDownload.progress_data.speed_bps / 1024 / 1024) *
                           10,
                       ) / 10}{' '}
                       MB/s

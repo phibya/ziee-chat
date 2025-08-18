@@ -774,7 +774,7 @@ pub async fn create_ai_provider_with_model_id(
 
             Ok(Box::new(local_provider))
         }
-        _ => Err(format!("Unsupported provider type: {}", provider.provider_type).into()),
+        _ => Err(format!("Unsupported provider type: {}", provider.provider_type.as_str()).into()),
     }
 }
 

@@ -4,7 +4,7 @@ import { FaServer, FaWrench } from 'react-icons/fa'
 import { BsFillLightningChargeFill } from 'react-icons/bs'
 import { DeepSeek, Mistral } from '@lobehub/icons'
 import type { IconType } from 'react-icons'
-import { ProviderType } from '../types/client/provider.ts'
+import { ProviderType } from '../types'
 
 export interface ProviderOption {
   value: ProviderType

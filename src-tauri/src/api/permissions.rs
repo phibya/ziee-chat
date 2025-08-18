@@ -53,15 +53,8 @@ pub fn check_permission(user: &User, permission: &str) -> bool {
             continue;
         }
 
-        // Convert permissions from JSON array to Vec<String>
-        let group_permissions: Vec<String> = match group.permissions.as_array() {
-            Some(perms) => perms
-                .iter()
-                .filter_map(|p| p.as_str())
-                .map(|s| s.to_string())
-                .collect(),
-            None => continue,
-        };
+        // permissions is already Vec<String>, no conversion needed
+        let group_permissions = &group.permissions;
 
         // Check for exact permission match
         if group_permissions.contains(&permission.to_string()) {

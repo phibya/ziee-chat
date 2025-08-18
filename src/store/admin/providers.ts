@@ -217,6 +217,7 @@ export const addNewModelToProvider = async (
     const newModel = await ApiClient.Admin.addModelToProvider({
       provider_id: providerId,
       engine_type: 'mistralrs', // Default engine type
+      file_format: 'safetensors', // Default file format
       ...model,
     })
 

@@ -131,7 +131,7 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::new(ErrorCode::ValidInvalidInput, "Provider not found"))?;
 
-    if provider.provider_type != "local" {
+    if provider.provider_type.as_str() != "local" {
         return Err(AppError::new(
             ErrorCode::ValidInvalidInput,
             "Only Local providers support model uploads",

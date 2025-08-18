@@ -1,15 +1,4 @@
-export interface ProxySettings {
-  enabled: boolean
-  url: string
-  username: string
-  password: string
-  no_proxy: string
-  ignore_ssl_certificates: boolean
-  proxy_ssl: boolean
-  proxy_host_ssl: boolean
-  peer_ssl: boolean
-  host_ssl: boolean
-}
+import { ProxySettings } from '../../../../types'
 
 /**
  * Validates if a proxy configuration has a valid URL
@@ -45,10 +34,6 @@ export function createProxyConfigHash(values: ProxySettings): string {
     password: values.password,
     no_proxy: values.no_proxy,
     ignore_ssl_certificates: values.ignore_ssl_certificates,
-    proxy_ssl: values.proxy_ssl,
-    proxy_host_ssl: values.proxy_host_ssl,
-    peer_ssl: values.peer_ssl,
-    host_ssl: values.host_ssl,
   })
 }
 
@@ -109,12 +94,7 @@ export function createProxyShouldUpdate() {
     prevValues.username !== currentValues.username ||
     prevValues.password !== currentValues.password ||
     prevValues.no_proxy !== currentValues.no_proxy ||
-    prevValues.ignore_ssl_certificates !==
-      currentValues.ignore_ssl_certificates ||
-    prevValues.proxy_ssl !== currentValues.proxy_ssl ||
-    prevValues.proxy_host_ssl !== currentValues.proxy_host_ssl ||
-    prevValues.peer_ssl !== currentValues.peer_ssl ||
-    prevValues.host_ssl !== currentValues.host_ssl
+    prevValues.ignore_ssl_certificates !== currentValues.ignore_ssl_certificates
 }
 
 /**

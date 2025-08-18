@@ -122,10 +122,12 @@ export function getUserEffectivePermissions(
 
     group.permissions.forEach(permission => {
       // Add the permission itself
-      effectivePermissions.add(permission)
+      effectivePermissions.add(permission as PermissionKey)
 
       // If it's a wildcard, add all permissions it grants
-      const expandedPermissions = expandWildcardPermission(permission)
+      const expandedPermissions = expandWildcardPermission(
+        permission as PermissionKey,
+      )
       expandedPermissions.forEach(expanded => {
         effectivePermissions.add(expanded)
       })

@@ -13,5 +13,4 @@ export {
   hasProxyConfigChanged,
   isProxyValid,
   PROXY_FORM_DEPENDENCIES,
-  type ProxySettings,
 } from './proxyUtils'

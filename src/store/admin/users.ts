@@ -107,7 +107,7 @@ export const resetSystemUserPassword = async (
   try {
     useAdminUsersStore.setState({ updating: true, error: null })
 
-    await ApiClient.Admin.resetPassword({
+    await ApiClient.Admin.resetUserPassword({
       user_id: id,
       new_password: newPassword,
     })

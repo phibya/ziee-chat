@@ -62,7 +62,7 @@ export const loadApiProxyServerConfig = async () => {
 }
 
 export const updateApiProxyServerConfig = async (
-  configUpdate: Partial<ApiProxyServerConfig>,
+  configUpdate: ApiProxyServerConfig,
 ) => {
   useApiProxyServerStore.setState({ loadingConfig: true, error: null })
 

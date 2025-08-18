@@ -4,7 +4,7 @@ import { ApiClient } from '../../api/client.ts'
 import type {
   DownloadFromRepositoryRequest,
   DownloadInstance,
-  DownloadProgressData,
+  DownloadProgressUpdate,
 } from '../../types'
 
 interface ModelDownloadState {
@@ -37,7 +37,7 @@ export const downloadModelFromRepository = async (
   try {
     // Call the new initiate download endpoint that returns immediately
     const downloadInstance =
-      await ApiClient.Admin.initiateRepositoryDownload(request)
+      await ApiClient.Admin.downloadFromRepository(request)
 
     // Add to downloads array
     useModelDownloadStore.setState(state => ({
@@ -152,7 +152,7 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
                 const updatedDownloads = [...currentDownloads]
 
                 data.downloads.forEach(
-                  (progressUpdate: DownloadProgressData) => {
+                  (progressUpdate: DownloadProgressUpdate) => {
                     const existingIndex = updatedDownloads.findIndex(
                       download => download.id === progressUpdate.id,
                     )
@@ -166,10 +166,10 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
                           current: progressUpdate.current || 0,
                           total: progressUpdate.total || 0,
                           message: progressUpdate.message || '',
-                          download_speed: progressUpdate.speed_bps || 0,
+                          speed_bps: progressUpdate.speed_bps || 0,
                           eta_seconds: progressUpdate.eta_seconds || 0,
                         },
-                        error_message: progressUpdate.error_message || null,
+                        error_message: progressUpdate.error_message,
                         updated_at: new Date().toISOString(),
                       }
                     }

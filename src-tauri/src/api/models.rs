@@ -40,7 +40,7 @@ async fn start_model_core_internal(
     provider: &crate::database::models::Provider,
 ) -> Result<(u32, u16), AppError> {
     // Validate provider type
-    if provider.provider_type != "local" {
+    if provider.provider_type.as_str() != "local" {
         return Err(AppError::new(
             ErrorCode::ValidInvalidInput,
             "Only local models can be started",
@@ -234,7 +234,7 @@ pub async fn delete_model(
     };
 
     // If it's a Candle provider, handle model shutdown and file deletion
-    if provider.provider_type == "local" {
+    if provider.provider_type.as_str() == "local" {
         // First, stop the model if it's running
         println!(
             "Checking and cleaning up model {} before deletion",
@@ -368,7 +368,7 @@ pub async fn stop_model(
         }
     };
 
-    if provider.provider_type != "local" {
+    if provider.provider_type.as_str() != "local" {
         return Err((StatusCode::BAD_REQUEST, AppError::new(
             crate::api::errors::ErrorCode::ValidInvalidInput,
             "Only Candle models can be stopped",
