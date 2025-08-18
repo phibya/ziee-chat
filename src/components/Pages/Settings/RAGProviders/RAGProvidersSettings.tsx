@@ -38,7 +38,7 @@ import {
   useEditRAGDatabaseDrawerStore,
   Stores,
 } from '../../../../store'
-import { RAGProvider, RAGProviderType } from '../../../../types/api/ragProvider'
+import { RAGProvider, RAGProviderType } from '../../../../types'
 import { LocalRAGProviderSettings } from './LocalRAGProviderSettings'
 import { RemoteRAGProviderSettings } from './RemoteRAGProviderSettings'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'

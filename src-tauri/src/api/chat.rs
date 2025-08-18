@@ -37,13 +37,8 @@ use crate::database::{
     },
 };
 use crate::utils::chat::{build_chat_messages, build_single_user_message};
+use crate::types::ConversationPaginationQuery;
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct PaginationQuery {
-    page: Option<i32>,
-    per_page: Option<i32>,
-    project_id: Option<String>,
-}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchQuery {
@@ -138,7 +133,7 @@ pub async fn get_conversation(
 #[debug_handler]
 pub async fn list_conversations(
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Query(params): Query<PaginationQuery>,
+    Query(params): Query<ConversationPaginationQuery>,
 ) -> ApiResult2<Json<ConversationListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);

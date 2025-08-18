@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Assistant } from '../../types/api/assistant'
+import { Assistant } from '../../types'
 
 interface AssistantDrawerState {
   open: boolean

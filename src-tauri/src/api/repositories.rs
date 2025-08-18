@@ -17,12 +17,8 @@ use crate::database::{
     },
     queries::repositories,
 };
+use crate::types::PaginationQuery;
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct PaginationQuery {
-    page: Option<i32>,
-    per_page: Option<i32>,
-}
 
 // Repository endpoints
 #[debug_handler]

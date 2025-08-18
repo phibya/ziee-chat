@@ -1,5 +1,5 @@
 import { Button, Flex, Form, Input, Switch, Tooltip, Typography } from 'antd'
-import { Provider } from '../../../../../types/api/provider'
+import { Provider } from '../../../../../types'
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import { updateModelProvider } from '../../../../../store'

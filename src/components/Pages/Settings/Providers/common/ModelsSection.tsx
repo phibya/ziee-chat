@@ -10,8 +10,8 @@ import {
   Typography,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { Model } from '../../../../../types/api/model'
-import { Provider } from '../../../../../types/api/provider'
+import { Model } from '../../../../../types'
+import { Provider } from '../../../../../types'
 
 const { Text } = Typography
 

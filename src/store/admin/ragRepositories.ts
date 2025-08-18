@@ -6,8 +6,8 @@ import {
   CreateRAGRepositoryRequest,
   UpdateRAGRepositoryRequest,
   DownloadRAGDatabaseFromRepositoryRequest,
-} from '../../types/api/ragRepository.ts'
-import { RAGDatabase } from '../../types/api/ragProvider.ts'
+} from '../../types'
+import { RAGDatabase } from '../../types'
 
 interface AdminRAGRepositoriesState {
   // Data

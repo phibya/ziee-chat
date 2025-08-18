@@ -5,7 +5,7 @@ import {
   CreateProviderRequest,
   Provider,
   UpdateProviderRequest,
-} from '../../types/api/provider.ts'
+} from '../../types'
 import { Model, ModelCapabilities } from '../../types'
 
 // Type definitions are now imported from the API types

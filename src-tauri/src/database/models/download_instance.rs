@@ -16,20 +16,33 @@ pub struct SourceInfo {
 }
 
 /// Progress data for download tracking
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DownloadProgressData {
     /// Current download phase (e.g., "connecting", "downloading", "extracting")
-    pub phase: Option<String>,
+    pub phase: String,
     /// Current bytes/items processed
-    pub current: Option<i64>,
+    pub current: i64,
     /// Total bytes/items to process
-    pub total: Option<i64>,
+    pub total: i64,
     /// Progress message to display
-    pub message: Option<String>,
+    pub message: String,
     /// Download speed in bytes per second
-    pub speed_bps: Option<i64>,
+    pub speed_bps: i64,
     /// Estimated time remaining in seconds
-    pub eta_seconds: Option<i64>,
+    pub eta_seconds: i64,
+}
+
+impl Default for DownloadProgressData {
+    fn default() -> Self {
+        Self {
+            phase: String::new(),
+            current: 0,
+            total: 0,
+            message: String::new(),
+            speed_bps: 0,
+            eta_seconds: 0,
+        }
+    }
 }
 
 /// Request data for initiating a download
@@ -232,11 +245,11 @@ impl DownloadInstance {
             DownloadStatus::Pending => "Waiting to start".to_string(),
             DownloadStatus::Downloading => {
                 if let Some(progress) = &self.progress_data {
-                    if let Some(msg) = &progress.message {
-                        return msg.clone();
+                    if !progress.message.is_empty() {
+                        return progress.message.clone();
                     }
-                    if let (Some(current), Some(total)) = (progress.current, progress.total) {
-                        let percent = (current as f64 / total as f64 * 100.0) as i32;
+                    if progress.total > 0 {
+                        let percent = (progress.current as f64 / progress.total as f64 * 100.0) as i32;
                         return format!("Downloading... {}%", percent);
                     }
                 }
@@ -254,10 +267,8 @@ impl DownloadInstance {
     /// Calculate download progress percentage
     pub fn get_progress_percentage(&self) -> Option<f64> {
         if let Some(progress) = &self.progress_data {
-            if let (Some(current), Some(total)) = (progress.current, progress.total) {
-                if total > 0 {
-                    return Some((current as f64 / total as f64) * 100.0);
-                }
+            if progress.total > 0 {
+                return Some((progress.current as f64 / progress.total as f64) * 100.0);
             }
         }
         None

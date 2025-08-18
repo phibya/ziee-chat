@@ -6,7 +6,7 @@ import type {
   UpdateNgrokSettingsRequest,
   NgrokStatusResponse,
   UpdateAccountPasswordRequest,
-} from '../../types/api/config'
+} from '../../types'
 
 interface AdminNgrokSettingsState {
   ngrokSettings: NgrokSettingsResponse | null

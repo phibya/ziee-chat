@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import { ConversationSummary } from '../types/api/chat'
+import { ConversationSummary } from '../types'
 import { createStoreProxy } from '../utils/createStoreProxy'
 import { StoreApi, UseBoundStore } from 'zustand/index'
 import { useMemo, useRef, useEffect } from 'react'

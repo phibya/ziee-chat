@@ -22,7 +22,7 @@ import {
   openAddProviderDrawer,
   Stores,
 } from '../../../../store'
-import { Provider } from '../../../../types/api/provider'
+import { Provider } from '../../../../types'
 import { PROVIDER_ICONS } from '../../../../constants/providers'
 import { AddLocalModelDownloadDrawer } from './AddLocalModelDownloadDrawer.tsx'
 import { AddLocalModelUploadDrawer } from './AddLocalModelUploadDrawer.tsx'

@@ -7,7 +7,7 @@ import {
   RightOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Message } from '../../../types/api/chat'
+import { Message } from '../../../types'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ChatInput } from './ChatInput'
 import { FileCard } from '../../Common/FileCard'

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { MessageBranch } from '../types/api/chat'
+import { MessageBranch } from '../types'
 import { ApiClient } from '../api/client'
 import { createStoreProxy } from '../utils/createStoreProxy'
 import { StoreApi, UseBoundStore } from 'zustand/index'

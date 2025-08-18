@@ -28,7 +28,7 @@ import {
   openAssistantDrawer,
   Stores,
 } from '../../../../store'
-import { Assistant } from '../../../../types/api/assistant'
+import { Assistant } from '../../../../types'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { AssistantFormDrawer } from '../../../Common/AssistantFormDrawer'
 

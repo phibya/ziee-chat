@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Repository } from '../../types/api/repository'
+import { Repository } from '../../types'
 
 interface RepositoryDrawerState {
   open: boolean

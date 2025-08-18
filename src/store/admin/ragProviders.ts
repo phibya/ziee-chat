@@ -8,7 +8,7 @@ import {
   UpdateRAGProviderRequest,
   CreateRAGDatabaseRequest,
   UpdateRAGDatabaseRequest,
-} from '../../types/api/ragProvider.ts'
+} from '../../types'
 
 interface AdminRAGProvidersState {
   // Data

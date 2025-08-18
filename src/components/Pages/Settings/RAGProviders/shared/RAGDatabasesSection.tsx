@@ -21,7 +21,7 @@ import {
   App,
 } from 'antd'
 import { useEffect } from 'react'
-import { RAGProvider } from '../../../../../types/api/ragProvider'
+import { RAGProvider } from '../../../../../types'
 import {
   Stores,
   loadDatabasesForRAGProvider,

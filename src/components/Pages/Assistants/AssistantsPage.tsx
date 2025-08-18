@@ -13,7 +13,7 @@ import {
   openAssistantDrawer,
   Stores,
 } from '../../../store'
-import { Assistant } from '../../../types/api/assistant'
+import { Assistant } from '../../../types'
 import { AssistantFormDrawer } from '../../Common/AssistantFormDrawer.tsx'
 import { isTauriView } from '../../../api/core.ts'
 import { AssistantCard } from './AssistantCard.tsx'

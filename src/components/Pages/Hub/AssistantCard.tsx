@@ -2,7 +2,7 @@ import { InfoCircleOutlined, RobotOutlined } from '@ant-design/icons'
 import { App, Button, Card, Flex, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { HubAssistant } from '../../../types/api/hub'
+import type { HubAssistant } from '../../../types'
 import { createUserAssistant } from '../../../store/assistants'
 import { AssistantDetailsDrawer } from './AssistantDetailsDrawer'
 

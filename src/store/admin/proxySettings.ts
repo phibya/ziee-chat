@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
-import { UpdateProxySettingsRequest } from '../../types/api/config'
+import { UpdateProxySettingsRequest } from '../../types'
 
 type ProxySettings = UpdateProxySettingsRequest
 

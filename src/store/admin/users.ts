@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
-import { User } from '../../types/api/user'
+import { User } from '../../types'
 
 interface AdminUsersState {
   // Data

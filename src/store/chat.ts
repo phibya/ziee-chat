@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import { Conversation, Message, MessageBranch } from '../types/api/chat'
+import { Conversation, Message, MessageBranch } from '../types'
 import { useConversationsStore } from './conversations.ts'
 import { getFile } from './files.ts'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'

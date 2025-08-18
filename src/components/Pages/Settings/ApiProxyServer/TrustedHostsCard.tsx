@@ -13,7 +13,7 @@ import type {
   CreateTrustedHostRequest,
   UpdateTrustedHostRequest,
   ApiProxyServerTrustedHost,
-} from '../../../../types/api'
+} from '../../../../types'
 import { AddHostDrawer, EditHostDrawer } from './drawers'
 
 const { Text } = Typography

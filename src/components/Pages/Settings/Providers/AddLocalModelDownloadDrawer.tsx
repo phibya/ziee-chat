@@ -21,7 +21,7 @@ import {
   openViewDownloadModal,
   Stores,
 } from '../../../../store'
-import { Repository } from '../../../../types/api/repository'
+import { Repository } from '../../../../types'
 import { LocalModelCommonFields } from './common/LocalModelCommonFields'
 
 const { Text } = Typography

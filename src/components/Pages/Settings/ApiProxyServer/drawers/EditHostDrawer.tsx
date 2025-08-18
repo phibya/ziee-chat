@@ -5,7 +5,7 @@ import { Drawer } from '../../../../Common/Drawer.tsx'
 import type {
   ApiProxyServerTrustedHost,
   UpdateTrustedHostRequest,
-} from '../../../../../types/api'
+} from '../../../../../types'
 
 interface EditHostDrawerProps {
   open: boolean

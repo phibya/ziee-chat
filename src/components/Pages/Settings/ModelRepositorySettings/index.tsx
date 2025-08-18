@@ -25,7 +25,7 @@ import {
   updateAdminModelRepository,
 } from '../../../../store'
 import { openRepositoryDrawer } from '../../../../store/ui'
-import { Repository } from '../../../../types/api/repository'
+import { Repository } from '../../../../types'
 import { RepositoryDrawer } from './RepositoryDrawer'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 

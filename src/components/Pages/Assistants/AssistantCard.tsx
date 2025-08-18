@@ -6,7 +6,7 @@ import {
 import { App, Button, Card, Dropdown, Flex, Tag, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { deleteUserAssistant, openAssistantDrawer } from '../../../store'
-import { Assistant } from '../../../types/api/assistant'
+import { Assistant } from '../../../types'
 import { CgMenuRightAlt } from 'react-icons/cg'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'

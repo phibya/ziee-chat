@@ -6,7 +6,7 @@ import {
   Repository,
   TestRepositoryConnectionRequest,
   UpdateRepositoryRequest,
-} from '../../types/api/repository.ts'
+} from '../../types'
 
 interface AdminRepositoriesState {
   // Data

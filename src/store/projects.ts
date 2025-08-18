@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import { Project } from '../types/api/projects'
+import { Project } from '../types'
 
 interface ProjectsState {
   // Data

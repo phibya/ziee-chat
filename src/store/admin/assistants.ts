@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
-import { Assistant, CreateAssistantRequest } from '../../types/api/assistant'
+import { Assistant, CreateAssistantRequest } from '../../types'
 
 interface AdminAssistantsState {
   // Data

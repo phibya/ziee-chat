@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import type { EngineInfo } from '../types/api/engine'
+import type { EngineInfo } from '../types'
 
 interface EngineState {
   engines: EngineInfo[]

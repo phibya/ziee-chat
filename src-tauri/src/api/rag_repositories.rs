@@ -18,12 +18,8 @@ use crate::database::{
     },
     queries::{rag_providers, rag_repositories},
 };
+use crate::types::PaginationQuery;
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct PaginationQuery {
-    page: Option<i32>,
-    per_page: Option<i32>,
-}
 
 // RAG Repository endpoints
 #[debug_handler]

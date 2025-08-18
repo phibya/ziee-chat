@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Divider, Form, Input, Switch, Typography } from 'antd'
 import { Drawer } from './Drawer.tsx'
-import { Assistant } from '../../types/api/assistant.ts'
+import { Assistant } from '../../types'
 import {
   closeAssistantDrawer,
   createSystemAdminAssistant,

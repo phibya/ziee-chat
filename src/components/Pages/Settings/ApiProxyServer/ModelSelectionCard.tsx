@@ -21,7 +21,7 @@ import {
 import type {
   UpdateApiProxyServerModelRequest,
   ApiProxyServerModel,
-} from '../../../../types/api'
+} from '../../../../types'
 import { AddModelDrawer, EditModelDrawer } from './drawers'
 
 const { Text } = Typography

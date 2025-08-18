@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
-import { CreateUserGroupRequest, UserGroup } from '../../types/api/user'
+import { CreateUserGroupRequest, UserGroup } from '../../types'
 
 interface GroupMember {
   id: string

@@ -5,7 +5,7 @@ import type {
   DownloadFromRepositoryRequest,
   DownloadInstance,
   DownloadProgressUpdate,
-} from '../../types/api/modelDownloads.ts'
+} from '../../types'
 
 interface ModelDownloadState {
   // Download instances array

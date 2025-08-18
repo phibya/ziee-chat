@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { Card, Table, Tag, Typography, Flex, Alert } from 'antd'
 import type { TableColumnsType } from 'antd'
 import { initializeEngines, Stores } from '../../../store'
-import type { EngineInfo } from '../../../types/api'
+import type { EngineInfo } from '../../../types'
 
 const { Title, Text } = Typography
 

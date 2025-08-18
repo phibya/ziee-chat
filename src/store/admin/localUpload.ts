@@ -6,7 +6,7 @@ import {
   ModelCapabilities,
   MistralRsSettings,
   LlamaCppSettings,
-} from '../../types/api/model.ts'
+} from '../../types'
 import { loadModelsForProvider } from './providers.ts'
 
 export interface FileUploadProgress {

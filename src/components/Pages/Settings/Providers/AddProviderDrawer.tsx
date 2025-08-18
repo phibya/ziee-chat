@@ -12,10 +12,7 @@ import {
   setAddProviderDrawerLoading,
   Stores,
 } from '../../../../store'
-import {
-  CreateProviderRequest,
-  ProviderType,
-} from '../../../../types/api/provider'
+import { CreateProviderRequest, ProviderType } from '../../../../types'
 import { ApiConfigurationSection } from './common'
 
 export function AddProviderDrawer() {

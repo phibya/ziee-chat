@@ -151,8 +151,8 @@ export function DownloadItem({
         {download.status !== 'failed' && (
           <Flex justify="space-between" align="center">
             <Text type="secondary" className="text-xs">
-              {download.progress_data && download.progress_data.total > 1000
-                ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
+              {download.progress_data && download.progress_data?.total > 1000
+                ? `${formatBytes(download.progress_data?.current)} / ${formatBytes(download.progress_data?.total)}`
                 : '0 B / 0 B'}
             </Text>
             <Flex className="gap-2">
@@ -233,8 +233,8 @@ export function DownloadItem({
       {download.status !== 'failed' && (
         <Flex justify="space-between" align="center">
           <Text type="secondary" className="text-xs">
-            {download.progress_data && download.progress_data.total > 1000
-              ? `${formatBytes(download.progress_data.current)} / ${formatBytes(download.progress_data.total)}`
+            {download.progress_data && download.progress_data?.total > 1000
+              ? `${formatBytes(download.progress_data?.current)} / ${formatBytes(download.progress_data?.total)}`
               : '0 B / 0 B'}
           </Text>
           <Flex className={'gap-2'}>

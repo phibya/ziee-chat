@@ -16,6 +16,7 @@ use crate::database::{
     models::{ResetPasswordRequest, UpdateUserRequest},
     queries::users,
 };
+use crate::types::PaginationQuery;
 use crate::utils::password;
 
 #[derive(Deserialize, JsonSchema)]
@@ -23,11 +24,6 @@ pub struct UserHello {
     name: String,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct PaginationQuery {
-    page: Option<i32>,
-    per_page: Option<i32>,
-}
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct UserActiveStatusResponse {

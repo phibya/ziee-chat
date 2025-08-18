@@ -10,7 +10,7 @@ import type {
   UpdateApiProxyServerModelRequest,
   CreateTrustedHostRequest,
   UpdateTrustedHostRequest,
-} from '../../types/api'
+} from '../../types'
 
 interface ApiProxyServerState {
   config: ApiProxyServerConfig | null

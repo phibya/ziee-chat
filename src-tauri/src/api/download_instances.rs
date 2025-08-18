@@ -300,15 +300,15 @@ impl From<&DownloadInstance> for DownloadProgressUpdate {
             phase: download
                 .progress_data
                 .as_ref()
-                .and_then(|p| p.phase.clone()),
-            current: download.progress_data.as_ref().and_then(|p| p.current),
-            total: download.progress_data.as_ref().and_then(|p| p.total),
+                .map(|p| p.phase.clone()),
+            current: download.progress_data.as_ref().map(|p| p.current),
+            total: download.progress_data.as_ref().map(|p| p.total),
             message: download
                 .progress_data
                 .as_ref()
-                .and_then(|p| p.message.clone()),
-            speed_bps: download.progress_data.as_ref().and_then(|p| p.speed_bps),
-            eta_seconds: download.progress_data.as_ref().and_then(|p| p.eta_seconds),
+                .map(|p| p.message.clone()),
+            speed_bps: download.progress_data.as_ref().map(|p| p.speed_bps),
+            eta_seconds: download.progress_data.as_ref().map(|p| p.eta_seconds),
             error_message: download.error_message.clone(),
         }
     }

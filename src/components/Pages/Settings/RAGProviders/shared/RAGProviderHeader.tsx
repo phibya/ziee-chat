@@ -1,8 +1,5 @@
 import { Badge, Card, Flex, Switch, Typography } from 'antd'
-import {
-  RAGProvider,
-  RAGProviderType,
-} from '../../../../../types/api/ragProvider'
+import { RAGProvider, RAGProviderType } from '../../../../../types'
 import { updateRAGProvider } from '../../../../../store'
 
 const { Title, Text } = Typography

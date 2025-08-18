@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { ConversationSummary } from '../../types/api/chat'
+import { ConversationSummary } from '../../types'
 
 // Configure dayjs
 dayjs.extend(relativeTime)

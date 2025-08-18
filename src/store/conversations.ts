@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { ConversationSummary } from '../types/api/chat'
+import { ConversationSummary } from '../types'
 import { ApiClient } from '../api/client'
 import { ChatState, ChatStoreMap } from './chat.ts'
 

@@ -1,4 +1,4 @@
-import { User } from '../types/api/user.ts'
+import { User } from '../types'
 import { PermissionKey } from './constants.ts'
 
 /**

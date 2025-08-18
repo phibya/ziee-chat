@@ -1,6 +1,6 @@
 import { Button, Card, Form, Input, Typography } from 'antd'
 import { useState } from 'react'
-import { RAGProvider } from '../../../../../types/api/ragProvider'
+import { RAGProvider } from '../../../../../types'
 import { updateRAGProvider } from '../../../../../store'
 
 const { Title } = Typography

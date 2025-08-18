@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { RAGDatabase } from '../../types/api/ragProvider'
+import { RAGDatabase } from '../../types'
 
 interface EditRAGDatabaseDrawerState {
   open: boolean

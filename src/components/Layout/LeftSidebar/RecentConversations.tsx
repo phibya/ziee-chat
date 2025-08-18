@@ -13,7 +13,7 @@ import {
   setSidebarCollapsed,
   Stores,
 } from '../../../store'
-import { ConversationSummary } from '../../../types/api/chat'
+import { ConversationSummary } from '../../../types'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 
 const { confirm } = Modal

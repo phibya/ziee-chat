@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Alert, Card, Form, Select, Spin, Typography } from 'antd'
 import { ApiClient } from '../../../../../api/client'
-import {
-  AvailableDevicesResponse,
-  DeviceInfo,
-} from '../../../../../types/api/provider'
+import { AvailableDevicesResponse, DeviceInfo } from '../../../../../types'
 import { formatBytes } from '../../../../../utils/downloadUtils'
 import { useUpdate } from 'react-use'
 

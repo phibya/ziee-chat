@@ -884,12 +884,12 @@ pub async fn initiate_repository_download(
                     .map(|eta| eta as i64);
 
                 let progress_data = DownloadProgressData {
-                    phase: Some(format!("{:?}", git_progress.phase)),
-                    current: Some(git_progress.current as i64),
-                    total: Some(git_progress.total as i64),
-                    message: Some(git_progress.message.clone()),
-                    speed_bps,
-                    eta_seconds,
+                    phase: format!("{:?}", git_progress.phase),
+                    current: git_progress.current as i64,
+                    total: git_progress.total as i64,
+                    message: git_progress.message.clone(),
+                    speed_bps: speed_bps.unwrap_or(0),
+                    eta_seconds: eta_seconds.unwrap_or(0),
                 };
 
                 let status = match git_progress.phase {
@@ -945,12 +945,12 @@ pub async fn initiate_repository_download(
                     download_id,
                     UpdateDownloadProgressRequest {
                         progress_data: DownloadProgressData {
-                            phase: Some("Analyzing".to_string()),
-                            current: Some(10),
-                            total: Some(100),
-                            message: Some("Analyzing repository files...".to_string()),
-                            speed_bps: None,
-                            eta_seconds: None,
+                            phase: "Analyzing".to_string(),
+                            current: 10,
+                            total: 100,
+                            message: "Analyzing repository files...".to_string(),
+                            speed_bps: 0,
+                            eta_seconds: 0,
                         },
                         status: None,
                     },
@@ -1018,12 +1018,12 @@ pub async fn initiate_repository_download(
                     download_id,
                     UpdateDownloadProgressRequest {
                         progress_data: DownloadProgressData {
-                            phase: Some("Downloading".to_string()),
-                            current: Some(20),
-                            total: Some(100),
-                            message: Some("Checking for LFS files...".to_string()),
-                            speed_bps: None,
-                            eta_seconds: None,
+                            phase: "Downloading".to_string(),
+                            current: 20,
+                            total: 100,
+                            message: "Checking for LFS files...".to_string(),
+                            speed_bps: 0,
+                            eta_seconds: 0,
                         },
                         status: None,
                     },
@@ -1062,12 +1062,12 @@ pub async fn initiate_repository_download(
                                 download_id_lfs,
                                 UpdateDownloadProgressRequest {
                                     progress_data: DownloadProgressData {
-                                        phase: Some(phase_string),
-                                        current: Some(git_progress.current as i64),
-                                        total: Some(git_progress.total as i64),
-                                        message: Some(git_progress.message),
-                                        speed_bps,
-                                        eta_seconds,
+                                        phase: phase_string,
+                                        current: git_progress.current as i64,
+                                        total: git_progress.total as i64,
+                                        message: git_progress.message,
+                                        speed_bps: speed_bps.unwrap_or(0),
+                                        eta_seconds: eta_seconds.unwrap_or(0),
                                     },
                                     status: None,
                                 },
@@ -1127,12 +1127,12 @@ pub async fn initiate_repository_download(
                     download_id,
                     UpdateDownloadProgressRequest {
                         progress_data: DownloadProgressData {
-                            phase: Some("Committing".to_string()),
-                            current: Some(90),
-                            total: Some(100),
-                            message: Some("Creating model from downloaded files...".to_string()),
-                            speed_bps: None,
-                            eta_seconds: None,
+                            phase: "Committing".to_string(),
+                            current: 90,
+                            total: 100,
+                            message: "Creating model from downloaded files...".to_string(),
+                            speed_bps: 0,
+                            eta_seconds: 0,
                         },
                         status: None,
                     },

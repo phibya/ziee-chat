@@ -9,7 +9,7 @@ import {
   Stores,
   updateModelProvider,
 } from '../../../../store'
-import { UpdateProviderRequest } from '../../../../types/api/provider'
+import { UpdateProviderRequest } from '../../../../types'
 
 export function EditProviderDrawer() {
   const { t } = useTranslation()

@@ -22,7 +22,7 @@ import { Permission, usePermissions } from '../../../../permissions'
 import {
   CreateRepositoryRequest,
   UpdateRepositoryRequest,
-} from '../../../../types/api/repository'
+} from '../../../../types'
 
 const { Text } = Typography
 

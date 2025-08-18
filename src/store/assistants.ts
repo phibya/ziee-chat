@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { enableMapSet } from 'immer'
 import { ApiClient } from '../api/client'
-import { Assistant } from '../types/api/assistant'
+import { Assistant } from '../types'
 
 // Enable Map and Set support in Immer
 enableMapSet()

@@ -14,12 +14,8 @@ use crate::database::{
     models::{Assistant, AssistantListResponse, CreateAssistantRequest, UpdateAssistantRequest},
     queries::assistants,
 };
+use crate::types::PaginationQuery;
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct PaginationQuery {
-    page: Option<i32>,
-    per_page: Option<i32>,
-}
 
 /// Create a new assistant
 pub async fn create_assistant(

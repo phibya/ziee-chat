@@ -13,8 +13,9 @@ import {
 } from '../../store'
 import { Drawer } from './Drawer.tsx'
 import { formatFileSize, isTextFile } from '../../utils/fileUtils.ts'
-import type { File, FileUploadProgress } from '../../types'
+import type { File } from '../../types'
 import { generateFileDownloadToken } from '../../store/files.ts'
+import { FileUploadProgress } from '../../types/client/file.ts'
 
 const { Text } = Typography
 

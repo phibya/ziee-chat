@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Project } from '../../types/api/projects'
+import { Project } from '../../types'
 
 interface ProjectDrawerState {
   open: boolean

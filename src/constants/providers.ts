@@ -1,4 +1,4 @@
-import { ProviderType } from '../types/api/provider'
+import { ProviderType } from '../types'
 import { RiAnthropicFill, RiOpenaiFill, RiGeminiFill } from 'react-icons/ri'
 import { SiHuggingface } from 'react-icons/si'
 import { FaServer, FaWrench } from 'react-icons/fa'

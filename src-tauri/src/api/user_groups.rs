@@ -17,12 +17,8 @@ use crate::database::{
     },
     queries::{user_group_providers, user_groups},
 };
+use crate::types::PaginationQuery;
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct PaginationQuery {
-    page: Option<i32>,
-    per_page: Option<i32>,
-}
 
 // Create user group
 #[debug_handler]

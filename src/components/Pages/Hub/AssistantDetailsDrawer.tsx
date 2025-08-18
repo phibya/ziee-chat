@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { App } from 'antd'
 import { Drawer } from '../../Common/Drawer'
-import type { HubAssistant } from '../../../types/api/hub'
+import type { HubAssistant } from '../../../types'
 import { createUserAssistant } from '../../../store/assistants'
 
 const { Title, Text } = Typography

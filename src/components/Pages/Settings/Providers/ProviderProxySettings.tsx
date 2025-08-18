@@ -1,4 +1,4 @@
-import { ProviderProxySettings } from '../../../../types/api/provider'
+import { ProviderProxySettings } from '../../../../types'
 import { ProxySettingsForm } from '../common'
 
 interface ProviderProxySettingsProps {

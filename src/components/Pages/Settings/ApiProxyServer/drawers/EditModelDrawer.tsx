@@ -5,7 +5,7 @@ import { Drawer } from '../../../../Common/Drawer.tsx'
 import type {
   ApiProxyServerModel,
   UpdateApiProxyServerModelRequest,
-} from '../../../../../types/api'
+} from '../../../../../types'
 
 interface EditModelDrawerProps {
   open: boolean

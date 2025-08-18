@@ -11,7 +11,7 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Stores, toggleSidebar } from '../../../store'
-import type { DownloadInstance } from '../../../types/api/modelDownloads'
+import type { DownloadInstance } from '../../../types'
 import { DownloadItem } from '../../Common/DownloadItem'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 import { useState } from 'react'

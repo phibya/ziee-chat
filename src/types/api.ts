@@ -23,7 +23,7 @@ export interface ApiProxyServerConfig {
 export interface ApiProxyServerModel {
   id: string
   model_id: string
-  alias_id?: string | null
+  alias_id?: string
   enabled: boolean
   is_default: boolean
   created_at: string
@@ -33,11 +33,11 @@ export interface ApiProxyServerModel {
 export interface ApiProxyServerStatus {
   running: boolean
   active_models: number
-  server_url?: string | null
+  server_url?: string
 }
 
 export interface ApiProxyServerTrustedHost {
-  description?: string | null
+  description?: string
   id: string
   host: string
   enabled: boolean
@@ -56,12 +56,12 @@ export interface AssignUserToGroupRequest {
 }
 
 export interface Assistant {
-  description?: string | null
+  description?: string
   id: string
   name: string
-  instructions?: string | null
-  parameters?: any
-  created_by?: string | null
+  instructions?: string
+  parameters?: ModelParameters
+  created_by?: string
   is_template: boolean
   is_default: boolean
   is_active: boolean
@@ -92,9 +92,9 @@ export interface CPUInfo {
   model: string
   architecture: string
   cores: number
-  threads?: number | null
-  base_frequency?: number | null
-  max_frequency?: number | null
+  threads?: number
+  base_frequency?: number
+  max_frequency?: number
 }
 
 export interface ChatMessageRequest {
@@ -102,17 +102,17 @@ export interface ChatMessageRequest {
   content: string
   model_id: string
   assistant_id: string
-  file_ids?: any | null
+  file_ids?: string[]
 }
 
 export interface Conversation {
   title: string
   id: string
   user_id: string
-  project_id?: string | null
-  assistant_id?: string | null
-  model_id?: string | null
-  active_branch_id?: string | null
+  project_id?: string
+  assistant_id?: string
+  model_id?: string
+  active_branch_id?: string
   created_at: string
   updated_at: string
 }
@@ -124,122 +124,128 @@ export interface ConversationListResponse {
   per_page: number
 }
 
+export interface ConversationPaginationQuery {
+  page?: number
+  per_page?: number
+  project_id?: string
+}
+
 export interface ConversationSummary {
   title: string
   id: string
   user_id: string
-  project_id?: string | null
-  assistant_id?: string | null
-  model_id?: string | null
+  project_id?: string
+  assistant_id?: string
+  model_id?: string
   created_at: string
   updated_at: string
-  last_message?: string | null
+  last_message?: string
   message_count: number
 }
 
 export interface CreateApiProxyServerModelRequest {
   model_id: string
-  alias_id?: string | null
-  enabled?: boolean | null
-  is_default?: boolean | null
+  alias_id?: string
+  enabled?: boolean
+  is_default?: boolean
 }
 
 export interface CreateAssistantRequest {
-  description?: string | null
+  description?: string
   name: string
-  instructions?: string | null
-  parameters?: any
-  is_template?: boolean | null
-  is_default?: boolean | null
+  instructions?: string
+  parameters?: ModelParameters
+  is_template?: boolean
+  is_default?: boolean
 }
 
 export interface CreateConversationRequest {
   title: string
-  project_id?: string | null
+  project_id?: string
   assistant_id: string
   model_id: string
 }
 
 export interface CreateModelRequest {
-  description?: string | null
+  description?: string
   provider_id: string
   name: string
   alias: string
-  enabled?: boolean | null
-  capabilities?: any
-  parameters?: any
+  enabled?: boolean
+  capabilities?: ModelCapabilities
+  parameters?: ModelParameters
   engine_type: string
-  engine_settings_mistralrs?: any
-  engine_settings_llamacpp?: any
+  engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
   file_format: string
-  source?: any
+  source?: SourceInfo
 }
 
 export interface CreateProjectRequest {
-  description?: string | null
+  description?: string
   name: string
-  instruction?: string | null
+  instruction?: string
 }
 
 export interface CreateProviderRequest {
   type: string
   name: string
-  enabled?: boolean | null
-  api_key?: string | null
-  base_url?: string | null
-  proxy_settings?: any
+  enabled?: boolean
+  api_key?: string
+  base_url?: string
+  proxy_settings?: ProxySettings
 }
 
 export interface CreateRAGDatabaseRequest {
-  description?: string | null
+  description?: string
   name: string
   alias: string
-  enabled?: boolean | null
-  collection_name?: string | null
-  embedding_model?: string | null
-  chunk_size?: number | null
-  chunk_overlap?: number | null
-  capabilities?: any
+  enabled?: boolean
+  collection_name?: string
+  embedding_model?: string
+  chunk_size?: number
+  chunk_overlap?: number
+  capabilities?: RAGDatabaseCapabilities
   settings?: any
 }
 
 export interface CreateRAGProviderRequest {
   type: string
   name: string
-  enabled?: boolean | null
-  api_key?: string | null
-  base_url?: string | null
+  enabled?: boolean
+  api_key?: string
+  base_url?: string
 }
 
 export interface CreateRAGRepositoryRequest {
-  description?: string | null
+  description?: string
   name: string
   url: string
-  enabled?: boolean | null
-  requires_auth?: boolean | null
-  auth_token?: string | null
-  priority?: number | null
+  enabled?: boolean
+  requires_auth?: boolean
+  auth_token?: string
+  priority?: number
 }
 
 export interface CreateRepositoryRequest {
   name: string
   url: string
   auth_type: string
-  auth_config?: any
-  enabled?: boolean | null
+  auth_config?: RepositoryAuthConfig
+  enabled?: boolean
 }
 
 export interface CreateTrustedHostRequest {
-  description?: string | null
+  description?: string
   host: string
-  enabled?: boolean | null
+  enabled?: boolean
 }
 
 export interface CreateUserGroupRequest {
-  description?: string | null
+  description?: string
   name: string
   permissions: any
-  provider_ids?: any | null
+  provider_ids?: string[]
 }
 
 export interface CreateUserRequest {
@@ -257,25 +263,25 @@ export interface DeviceInfo {
   id: number
   name: string
   device_type: string
-  memory_total?: number | null
-  memory_free?: number | null
+  memory_total?: number
+  memory_free?: number
   is_available: boolean
 }
 
 export interface DownloadFromRepositoryRequest {
-  description?: string | null
+  description?: string
   provider_id: string
   repository_id: string
   repository_path: string
-  repository_branch?: string | null
+  repository_branch?: string
   name: string
   alias: string
   file_format: string
   main_filename: string
-  capabilities?: any
-  parameters?: any
-  engine_type?: string | null
-  engine_settings_mistralrs?: any
+  capabilities?: ModelCapabilities
+  parameters?: ModelParameters
+  engine_type?: string
+  engine_settings_mistralrs?: MistralRsSettings
   source: SourceInfo
 }
 
@@ -285,59 +291,59 @@ export interface DownloadInstance {
   repository_id: string
   request_data: DownloadRequestData
   status: DownloadStatus
-  progress_data?: any
-  error_message?: string | null
+  progress_data?: DownloadProgressData
+  error_message?: string
   started_at: string
-  completed_at?: string | null
-  model_id?: string | null
+  completed_at?: string
+  model_id?: string
   created_at: string
   updated_at: string
 }
 
 export interface DownloadPaginationQuery {
-  page?: number | null
-  per_page?: number | null
-  status?: string | null
+  page?: number
+  per_page?: number
+  status?: string
 }
 
 export interface DownloadProgressData {
-  phase?: string | null
-  current?: number | null
-  total?: number | null
-  message?: string | null
-  speed_bps?: number | null
-  eta_seconds?: number | null
+  phase: string
+  current: number
+  total: number
+  message: string
+  speed_bps: number
+  eta_seconds: number
 }
 
 export interface DownloadRAGDatabaseFromRepositoryRequest {
   repository_id: string
   database_id: string
   target_provider_id: string
-  database_name?: string | null
-  database_alias?: string | null
+  database_name?: string
+  database_alias?: string
 }
 
 export interface DownloadRequestData {
-  description?: string | null
+  description?: string
   model_name: string
-  revision?: string | null
-  files?: any | null
-  quantization?: string | null
-  repository_path?: string | null
-  alias?: string | null
-  file_format?: string | null
-  main_filename?: string | null
-  capabilities?: any
-  parameters?: any
-  engine_type?: string | null
-  engine_settings_mistralrs?: any
-  source?: any
+  revision?: string
+  files?: string[]
+  quantization?: string
+  repository_path?: string
+  alias?: string
+  file_format?: string
+  main_filename?: string
+  capabilities?: ModelCapabilities
+  parameters?: ModelParameters
+  engine_type?: string
+  engine_settings_mistralrs?: MistralRsSettings
+  source?: SourceInfo
 }
 
 export type DownloadStatus = string
 
 export interface DownloadTokenParams {
-  token?: string | null
+  token?: string
 }
 
 export interface DownloadTokenResponse {
@@ -346,13 +352,13 @@ export interface DownloadTokenResponse {
 }
 
 export interface EngineInfo {
-  description?: string | null
+  description?: string
   engine_type: string
   name: string
   version: string
   status: string
-  supported_architectures?: any | null
-  required_dependencies?: any | null
+  supported_architectures?: string[]
+  required_dependencies?: string[]
 }
 
 export interface File {
@@ -360,9 +366,9 @@ export interface File {
   user_id: string
   filename: string
   file_size: number
-  mime_type?: string | null
-  checksum?: string | null
-  project_id?: string | null
+  mime_type?: string
+  checksum?: string
+  project_id?: string
   thumbnail_count: number
   page_count: number
   processing_metadata: any
@@ -371,9 +377,9 @@ export interface File {
 }
 
 export interface FileListParams {
-  page?: number | null
-  per_page?: number | null
-  search?: string | null
+  page?: number
+  per_page?: number
+  search?: string
 }
 
 export interface FileListResponse {
@@ -389,18 +395,18 @@ export interface FileOperationSuccessResponse {
 
 export interface GPUComputeCapabilities {
   cuda_support: boolean
-  cuda_version?: string | null
+  cuda_version?: string
   metal_support: boolean
   opencl_support: boolean
-  vulkan_support?: boolean | null
+  vulkan_support?: boolean
 }
 
 export interface GPUDevice {
   device_id: string
   name: string
   vendor: string
-  memory?: number | null
-  driver_version?: string | null
+  memory?: number
+  driver_version?: string
   compute_capabilities: GPUComputeCapabilities
 }
 
@@ -416,19 +422,19 @@ export interface HardwareInfoResponse {
 }
 
 export interface HubAssistant {
-  description?: string | null
+  description?: string
   id: string
   name: string
-  instructions?: string | null
+  instructions?: string
   parameters?: any
   category: string
   tags: string[]
   recommended_models: string[]
   capabilities_required: string[]
-  popularity_score?: number | null
-  author?: string | null
-  use_cases?: any | null
-  example_prompts?: any | null
+  popularity_score?: number
+  author?: string
+  use_cases?: string[]
+  example_prompts?: string[]
 }
 
 export interface HubData {
@@ -439,7 +445,7 @@ export interface HubData {
 }
 
 export interface HubModel {
-  description?: string | null
+  description?: string
   id: string
   name: string
   alias: string
@@ -447,20 +453,20 @@ export interface HubModel {
   repository_path: string
   main_filename: string
   file_format: string
-  capabilities?: any
+  capabilities?: ModelCapabilities
   size_gb: number
   tags: string[]
   recommended_parameters?: any
   public: boolean
-  popularity_score?: number | null
-  license?: string | null
-  quantization_options?: any | null
-  context_length?: number | null
-  language_support?: any | null
+  popularity_score?: number
+  license?: string
+  quantization_options?: string[]
+  context_length?: number
+  language_support?: string[]
 }
 
 export interface HubQueryParams {
-  lang?: string | null
+  lang?: string
 }
 
 export interface HubVersionResponse {
@@ -470,35 +476,35 @@ export interface HubVersionResponse {
 export interface InitResponse {
   needs_setup: boolean
   is_desktop: boolean
-  token?: string | null
+  token?: string
 }
 
 export interface LlamaCppSettings {
-  device_type?: string | null
-  device_ids?: any | null
-  ctx_size?: number | null
-  batch_size?: number | null
-  ubatch_size?: number | null
-  parallel?: number | null
-  keep?: number | null
-  mlock?: boolean | null
-  no_mmap?: boolean | null
-  threads?: number | null
-  threads_batch?: number | null
-  cont_batching?: boolean | null
-  flash_attn?: boolean | null
-  no_kv_offload?: boolean | null
-  n_gpu_layers?: number | null
-  main_gpu?: number | null
-  split_mode?: string | null
-  tensor_split?: string | null
-  rope_freq_base?: number | null
-  rope_freq_scale?: number | null
-  rope_scaling?: string | null
-  cache_type_k?: string | null
-  cache_type_v?: string | null
-  seed?: number | null
-  numa?: string | null
+  device_type?: string
+  device_ids?: number[]
+  ctx_size?: number
+  batch_size?: number
+  ubatch_size?: number
+  parallel?: number
+  keep?: number
+  mlock?: boolean
+  no_mmap?: boolean
+  threads?: number
+  threads_batch?: number
+  cont_batching?: boolean
+  flash_attn?: boolean
+  no_kv_offload?: boolean
+  n_gpu_layers?: number
+  main_gpu?: number
+  split_mode?: string
+  tensor_split?: string
+  rope_freq_base?: number
+  rope_freq_scale?: number
+  rope_scaling?: string
+  cache_type_k?: string
+  cache_type_v?: string
+  seed?: number
+  numa?: string
 }
 
 export interface LoginRequest {
@@ -508,51 +514,51 @@ export interface LoginRequest {
 
 export interface MemoryInfo {
   total_ram: number
-  total_swap?: number | null
+  total_swap?: number
 }
 
 export interface MistralRsSettings {
-  command?: string | null
-  model_id_name?: string | null
-  tokenizer_json?: string | null
-  arch?: string | null
-  quantized_filename?: string | null
-  weight_file?: string | null
-  device_type?: string | null
-  device_ids?: any | null
-  num_device_layers?: any | null
-  cpu?: boolean | null
-  max_seqs?: number | null
-  max_seq_len?: number | null
-  no_kv_cache?: boolean | null
-  truncate_sequence?: boolean | null
-  paged_attn_gpu_mem?: number | null
-  paged_attn_gpu_mem_usage?: number | null
-  paged_ctxt_len?: number | null
-  paged_attn_block_size?: number | null
-  no_paged_attn?: boolean | null
-  paged_attn?: boolean | null
-  chat_template?: string | null
-  jinja_explicit?: string | null
-  prefix_cache_n?: number | null
-  prompt_chunksize?: number | null
-  dtype?: string | null
-  in_situ_quant?: string | null
-  seed?: number | null
-  max_edge?: number | null
-  max_num_images?: number | null
-  max_image_length?: number | null
-  serve_ip?: string | null
-  log_file?: string | null
-  enable_search?: boolean | null
-  search_bert_model?: string | null
-  interactive_mode?: boolean | null
-  enable_thinking?: boolean | null
-  token_source?: string | null
+  command?: string
+  model_id_name?: string
+  tokenizer_json?: string
+  arch?: string
+  quantized_filename?: string
+  weight_file?: string
+  device_type?: string
+  device_ids?: number[]
+  num_device_layers?: string[]
+  cpu?: boolean
+  max_seqs?: number
+  max_seq_len?: number
+  no_kv_cache?: boolean
+  truncate_sequence?: boolean
+  paged_attn_gpu_mem?: number
+  paged_attn_gpu_mem_usage?: number
+  paged_ctxt_len?: number
+  paged_attn_block_size?: number
+  no_paged_attn?: boolean
+  paged_attn?: boolean
+  chat_template?: string
+  jinja_explicit?: string
+  prefix_cache_n?: number
+  prompt_chunksize?: number
+  dtype?: string
+  in_situ_quant?: string
+  seed?: number
+  max_edge?: number
+  max_num_images?: number
+  max_image_length?: number
+  serve_ip?: string
+  log_file?: string
+  enable_search?: boolean
+  search_bert_model?: string
+  interactive_mode?: boolean
+  enable_thinking?: boolean
+  token_source?: string
 }
 
 export interface Model {
-  description?: string | null
+  description?: string
   id: string
   provider_id: string
   name: string
@@ -560,28 +566,28 @@ export interface Model {
   enabled: boolean
   is_deprecated: boolean
   is_active: boolean
-  capabilities?: any
-  parameters?: any
+  capabilities?: ModelCapabilities
+  parameters?: ModelParameters
   created_at: string
   updated_at: string
-  file_size_bytes?: number | null
-  validation_status?: string | null
-  validation_issues?: any | null
-  port?: number | null
-  pid?: number | null
+  file_size_bytes?: number
+  validation_status?: string
+  validation_issues?: string[]
+  port?: number
+  pid?: number
   engine_type: string
-  engine_settings_mistralrs?: any
-  engine_settings_llamacpp?: any
+  engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
   file_format: string
-  source?: any
-  files?: any | null
+  source?: SourceInfo
+  files?: ModelFileInfo[]
 }
 
 export interface ModelCapabilities {
-  vision?: boolean | null
-  audio?: boolean | null
-  tools?: boolean | null
-  code_interpreter?: boolean | null
+  vision?: boolean
+  audio?: boolean
+  tools?: boolean
+  code_interpreter?: boolean
 }
 
 export interface ModelFileInfo {
@@ -592,39 +598,39 @@ export interface ModelFileInfo {
 }
 
 export interface ModelParameters {
-  max_tokens?: number | null
-  temperature?: number | null
-  top_k?: number | null
-  top_p?: number | null
-  min_p?: number | null
-  repeat_last_n?: number | null
-  repeat_penalty?: number | null
-  presence_penalty?: number | null
-  frequency_penalty?: number | null
-  seed?: number | null
-  stop?: any | null
+  max_tokens?: number
+  temperature?: number
+  top_k?: number
+  top_p?: number
+  min_p?: number
+  repeat_last_n?: number
+  repeat_penalty?: number
+  presence_penalty?: number
+  frequency_penalty?: number
+  seed?: number
+  stop?: string[]
 }
 
 export interface NgrokSettingsResponse {
   api_key: string
   tunnel_enabled: boolean
-  tunnel_url?: string | null
+  tunnel_url?: string
   tunnel_status: string
   auto_start: boolean
-  domain?: string | null
+  domain?: string
 }
 
 export interface NgrokStatusResponse {
   tunnel_active: boolean
-  tunnel_url?: string | null
+  tunnel_url?: string
   tunnel_status: string
-  last_error?: string | null
+  last_error?: string
 }
 
 export interface OperatingSystemInfo {
   name: string
   version: string
-  kernel_version?: string | null
+  kernel_version?: string
   architecture: string
 }
 
@@ -634,44 +640,8 @@ export interface OperationSuccessResponse {
 }
 
 export interface PaginationQuery {
-  page?: number | null
-  per_page?: number | null
-}
-
-export interface PaginationQuery2 {
-  page?: number | null
-  per_page?: number | null
-}
-
-export interface PaginationQuery3 {
-  page?: number | null
-  per_page?: number | null
-}
-
-export interface PaginationQuery4 {
-  page?: number | null
-  per_page?: number | null
-}
-
-export interface PaginationQuery5 {
-  page?: number | null
-  per_page?: number | null
-}
-
-export interface PaginationQuery6 {
-  page?: number | null
-  per_page?: number | null
-}
-
-export interface PaginationQuery7 {
-  page?: number | null
-  per_page?: number | null
-}
-
-export interface PaginationQuery8 {
-  page?: number | null
-  per_page?: number | null
-  project_id?: string | null
+  page?: number
+  per_page?: number
 }
 
 export interface PasswordService {
@@ -680,15 +650,15 @@ export interface PasswordService {
 }
 
 export interface PreviewParams {
-  page?: number | null
+  page?: number
 }
 
 export interface Project {
-  description?: string | null
+  description?: string
   id: string
   user_id: string
   name: string
-  instruction?: string | null
+  instruction?: string
   created_at: string
   updated_at: string
 }
@@ -699,9 +669,9 @@ export interface ProjectDetailResponse {
 }
 
 export interface ProjectListQuery {
-  page?: number | null
-  per_page?: number | null
-  search?: string | null
+  page?: number
+  per_page?: number
+  search?: string
 }
 
 export interface ProjectListResponse {
@@ -716,10 +686,10 @@ export interface Provider {
   id: string
   name: string
   enabled: boolean
-  api_key?: string | null
-  base_url?: string | null
+  api_key?: string
+  base_url?: string
   built_in: boolean
-  proxy_settings?: any
+  proxy_settings?: ProxySettings
   created_at: string
   updated_at: string
 }
@@ -750,28 +720,28 @@ export interface ProxySettingsResponse {
 }
 
 export interface RAGDatabase {
-  description?: string | null
+  description?: string
   id: string
   provider_id: string
   name: string
   alias: string
   enabled: boolean
   is_active: boolean
-  collection_name?: string | null
-  embedding_model?: string | null
+  collection_name?: string
+  embedding_model?: string
   chunk_size: number
   chunk_overlap: number
-  capabilities?: any
+  capabilities?: RAGDatabaseCapabilities
   settings?: any
   created_at: string
   updated_at: string
 }
 
 export interface RAGDatabaseCapabilities {
-  semantic_search?: boolean | null
-  hybrid_search?: boolean | null
-  metadata_filtering?: boolean | null
-  similarity_threshold?: boolean | null
+  semantic_search?: boolean
+  hybrid_search?: boolean
+  metadata_filtering?: boolean
+  similarity_threshold?: boolean
 }
 
 export interface RAGProvider {
@@ -779,10 +749,10 @@ export interface RAGProvider {
   id: string
   name: string
   enabled: boolean
-  api_key?: string | null
-  base_url?: string | null
+  api_key?: string
+  base_url?: string
   built_in: boolean
-  proxy_settings?: any
+  proxy_settings?: ProxySettings
   created_at: string
   updated_at: string
 }
@@ -795,13 +765,13 @@ export interface RAGProviderListResponse {
 }
 
 export interface RAGRepository {
-  description?: string | null
+  description?: string
   id: string
   name: string
   url: string
   enabled: boolean
   requires_auth: boolean
-  auth_token?: string | null
+  auth_token?: string
   priority: number
   created_at: string
   updated_at: string
@@ -810,7 +780,7 @@ export interface RAGRepository {
 export interface RAGRepositoryConnectionTestResponse {
   success: boolean
   message: string
-  available_databases_count?: number | null
+  available_databases_count?: number
 }
 
 export interface RAGRepositoryListResponse {
@@ -825,7 +795,7 @@ export interface Repository {
   name: string
   url: string
   auth_type: string
-  auth_config?: any
+  auth_config?: RepositoryAuthConfig
   enabled: boolean
   built_in: boolean
   created_at: string
@@ -833,11 +803,11 @@ export interface Repository {
 }
 
 export interface RepositoryAuthConfig {
-  api_key?: string | null
-  username?: string | null
-  password?: string | null
-  token?: string | null
-  auth_test_api_endpoint?: string | null
+  api_key?: string
+  username?: string
+  password?: string
+  token?: string
+  auth_test_api_endpoint?: string
 }
 
 export interface RepositoryListResponse {
@@ -854,14 +824,14 @@ export interface ResetPasswordRequest {
 
 export interface SearchQuery {
   q: string
-  page?: number | null
-  per_page?: number | null
-  project_id?: string | null
+  page?: number
+  per_page?: number
+  project_id?: string
 }
 
 export interface SourceInfo {
   type: string
-  id?: string | null
+  id?: string
 }
 
 export interface SwitchBranchRequest {
@@ -886,7 +856,7 @@ export interface TestRepositoryConnectionRequest {
   name: string
   url: string
   auth_type: string
-  auth_config?: any
+  auth_config?: RepositoryAuthConfig
 }
 
 export interface TestRepositoryConnectionResponse {
@@ -895,25 +865,25 @@ export interface TestRepositoryConnectionResponse {
 }
 
 export interface UpdateApiProxyServerModelRequest {
-  alias_id?: string | null
-  enabled?: boolean | null
-  is_default?: boolean | null
+  alias_id?: string
+  enabled?: boolean
+  is_default?: boolean
 }
 
 export interface UpdateAssistantRequest {
-  description?: string | null
-  name?: string | null
-  instructions?: string | null
-  parameters?: any
-  is_template?: boolean | null
-  is_default?: boolean | null
-  is_active?: boolean | null
+  description?: string
+  name?: string
+  instructions?: string
+  parameters?: ModelParameters
+  is_template?: boolean
+  is_default?: boolean
+  is_active?: boolean
 }
 
 export interface UpdateConversationRequest {
-  title?: string | null
-  assistant_id?: string | null
-  model_id?: string | null
+  title?: string
+  assistant_id?: string
+  model_id?: string
 }
 
 export interface UpdateDefaultLanguageRequest {
@@ -921,38 +891,38 @@ export interface UpdateDefaultLanguageRequest {
 }
 
 export interface UpdateModelRequest {
-  description?: string | null
-  name?: string | null
-  alias?: string | null
-  enabled?: boolean | null
-  is_active?: boolean | null
-  capabilities?: any
-  parameters?: any
-  engine_type?: string | null
-  engine_settings_mistralrs?: any
-  engine_settings_llamacpp?: any
-  file_format?: string | null
+  description?: string
+  name?: string
+  alias?: string
+  enabled?: boolean
+  is_active?: boolean
+  capabilities?: ModelCapabilities
+  parameters?: ModelParameters
+  engine_type?: string
+  engine_settings_mistralrs?: MistralRsSettings
+  engine_settings_llamacpp?: LlamaCppSettings
+  file_format?: string
 }
 
 export interface UpdateNgrokSettingsRequest {
-  api_key?: string | null
-  tunnel_enabled?: boolean | null
-  auto_start?: boolean | null
-  domain?: string | null
+  api_key?: string
+  tunnel_enabled?: boolean
+  auto_start?: boolean
+  domain?: string
 }
 
 export interface UpdateProjectRequest {
-  description?: string | null
-  name?: string | null
-  instruction?: string | null
+  description?: string
+  name?: string
+  instruction?: string
 }
 
 export interface UpdateProviderRequest {
-  name?: string | null
-  enabled?: boolean | null
-  api_key?: string | null
-  base_url?: string | null
-  proxy_settings?: any
+  name?: string
+  enabled?: boolean
+  api_key?: string
+  base_url?: string
+  proxy_settings?: ProxySettings
 }
 
 export interface UpdateProxySettingsRequest {
@@ -965,60 +935,60 @@ export interface UpdateProxySettingsRequest {
 }
 
 export interface UpdateRAGDatabaseRequest {
-  description?: string | null
-  name?: string | null
-  alias?: string | null
-  enabled?: boolean | null
-  collection_name?: string | null
-  embedding_model?: string | null
-  chunk_size?: number | null
-  chunk_overlap?: number | null
-  capabilities?: any
+  description?: string
+  name?: string
+  alias?: string
+  enabled?: boolean
+  collection_name?: string
+  embedding_model?: string
+  chunk_size?: number
+  chunk_overlap?: number
+  capabilities?: RAGDatabaseCapabilities
   settings?: any
 }
 
 export interface UpdateRAGProviderRequest {
-  name?: string | null
-  enabled?: boolean | null
-  api_key?: string | null
-  base_url?: string | null
-  proxy_settings?: any
+  name?: string
+  enabled?: boolean
+  api_key?: string
+  base_url?: string
+  proxy_settings?: ProxySettings
 }
 
 export interface UpdateRAGRepositoryRequest {
-  description?: string | null
-  name?: string | null
-  url?: string | null
-  enabled?: boolean | null
-  requires_auth?: boolean | null
-  auth_token?: string | null
-  priority?: number | null
+  description?: string
+  name?: string
+  url?: string
+  enabled?: boolean
+  requires_auth?: boolean
+  auth_token?: string
+  priority?: number
 }
 
 export interface UpdateRepositoryRequest {
-  name?: string | null
-  url?: string | null
-  auth_type?: string | null
-  auth_config?: any
-  enabled?: boolean | null
+  name?: string
+  url?: string
+  auth_type?: string
+  auth_config?: RepositoryAuthConfig
+  enabled?: boolean
 }
 
 export interface UpdateTrustedHostRequest {
-  description?: string | null
-  host?: string | null
-  enabled?: boolean | null
+  description?: string
+  host?: string
+  enabled?: boolean
 }
 
 export interface UpdateUserGroupRequest {
-  description?: string | null
-  name?: string | null
+  description?: string
+  name?: string
   permissions?: any
-  provider_ids?: any | null
-  is_active?: boolean | null
+  provider_ids?: string[]
+  is_active?: boolean
 }
 
 export interface UpdateUserPasswordRequest {
-  current_password?: string | null
+  current_password?: string
   new_password: string
 }
 
@@ -1027,9 +997,9 @@ export interface UpdateUserRegistrationRequest {
 }
 
 export interface UpdateUserRequest {
-  username?: string | null
-  email?: string | null
-  is_active?: boolean | null
+  username?: string
+  email?: string
+  is_active?: boolean
   profile?: any
 }
 
@@ -1046,7 +1016,7 @@ export interface User {
   services: UserServices
   is_active: boolean
   is_protected: boolean
-  last_login_at?: string | null
+  last_login_at?: string
   updated_at: string
   groups: UserGroup[]
 }
@@ -1064,7 +1034,7 @@ export interface UserEmail {
 }
 
 export interface UserGroup {
-  description?: string | null
+  description?: string
   id: string
   name: string
   permissions: any
@@ -1107,7 +1077,7 @@ export interface UserRegistrationStatusResponse {
 }
 
 export interface UserServices {
-  password?: any
+  password?: PasswordService
 }
 
 export interface UserSetting {
@@ -1305,9 +1275,9 @@ export const ApiEndpoints = {
 // API endpoint parameters
 export type ApiEndpointParameters = {
   'Admin.addApiProxyServerTrustedHost': CreateTrustedHostRequest
-  'Admin.addDatabaseToRAGProvider': CreateRAGDatabaseRequest
+  'Admin.addDatabaseToRAGProvider': { provider_id: string } & CreateRAGDatabaseRequest
   'Admin.addModelToApiProxyServer': CreateApiProxyServerModelRequest
-  'Admin.addModelToProvider': CreateModelRequest
+  'Admin.addModelToProvider': { provider_id: string } & CreateModelRequest
   'Admin.assignProviderToGroup': AssignProviderToGroupRequest
   'Admin.assignUserToGroup': AssignUserToGroupRequest
   'Admin.cancelDownload': { download_id: string }
@@ -1342,7 +1312,7 @@ export type ApiEndpointParameters = {
   'Admin.getDefaultLanguage': void
   'Admin.getDownload': { download_id: string }
   'Admin.getGroup': { group_id: string }
-  'Admin.getGroupMembers': { group_id: string; page?: number | null; per_page?: number | null }
+  'Admin.getGroupMembers': { group_id: string } & PaginationQuery
   'Admin.getGroupProviders': { group_id: string }
   'Admin.getHardwareInfo': void
   'Admin.getModel': { model_id: string }
@@ -1357,21 +1327,21 @@ export type ApiEndpointParameters = {
   'Admin.getRepository': { repository_id: string }
   'Admin.getUser': { user_id: string }
   'Admin.getUserRegistrationStatus': void
-  'Admin.listAllDownloads': { page?: number | null; per_page?: number | null; status?: string | null }
+  'Admin.listAllDownloads': DownloadPaginationQuery
   'Admin.listApiProxyServerModels': void
   'Admin.listApiProxyServerTrustedHosts': void
-  'Admin.listAssistants': { page?: number | null; per_page?: number | null }
+  'Admin.listAssistants': PaginationQuery
   'Admin.listEngines': void
-  'Admin.listGroups': { page?: number | null; per_page?: number | null }
+  'Admin.listGroups': PaginationQuery
   'Admin.listProviderModels': { provider_id: string }
-  'Admin.listProviders': { page?: number | null; per_page?: number | null }
+  'Admin.listProviders': PaginationQuery
   'Admin.listRAGProviderDatabases': { provider_id: string }
-  'Admin.listRAGProviders': { page?: number | null; per_page?: number | null }
-  'Admin.listRAGRepositories': { page?: number | null; per_page?: number | null }
+  'Admin.listRAGProviders': PaginationQuery
+  'Admin.listRAGRepositories': PaginationQuery
   'Admin.listRAGRepositoryDatabases': { repository_id: string }
-  'Admin.listRepositories': { page?: number | null; per_page?: number | null }
+  'Admin.listRepositories': PaginationQuery
   'Admin.listUserGroupProviderRelationships': void
-  'Admin.listUsers': { page?: number | null; per_page?: number | null }
+  'Admin.listUsers': PaginationQuery
   'Admin.reloadApiProxyServerModels': void
   'Admin.reloadApiProxyServerTrustedHosts': void
   'Admin.removeApiProxyServerTrustedHost': { host_id: string }
@@ -1394,28 +1364,28 @@ export type ApiEndpointParameters = {
   'Admin.testRepositoryConnection': TestRepositoryConnectionRequest
   'Admin.toggleUserActive': { user_id: string }
   'Admin.updateApiProxyServerConfig': ApiProxyServerConfig
-  'Admin.updateApiProxyServerModel': UpdateApiProxyServerModelRequest
-  'Admin.updateApiProxyServerTrustedHost': UpdateTrustedHostRequest
-  'Admin.updateAssistant': UpdateAssistantRequest
+  'Admin.updateApiProxyServerModel': { model_id: string } & UpdateApiProxyServerModelRequest
+  'Admin.updateApiProxyServerTrustedHost': { host_id: string } & UpdateTrustedHostRequest
+  'Admin.updateAssistant': { assistant_id: string } & UpdateAssistantRequest
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
-  'Admin.updateGroup': UpdateUserGroupRequest
-  'Admin.updateModel': UpdateModelRequest
+  'Admin.updateGroup': { group_id: string } & UpdateUserGroupRequest
+  'Admin.updateModel': { model_id: string } & UpdateModelRequest
   'Admin.updateNgrokSettings': UpdateNgrokSettingsRequest
-  'Admin.updateProvider': UpdateProviderRequest
+  'Admin.updateProvider': { provider_id: string } & UpdateProviderRequest
   'Admin.updateProxySettings': UpdateProxySettingsRequest
-  'Admin.updateRAGDatabase': UpdateRAGDatabaseRequest
-  'Admin.updateRAGProvider': UpdateRAGProviderRequest
-  'Admin.updateRAGRepository': UpdateRAGRepositoryRequest
-  'Admin.updateRepository': UpdateRepositoryRequest
-  'Admin.updateUser': UpdateUserRequest
+  'Admin.updateRAGDatabase': { database_id: string } & UpdateRAGDatabaseRequest
+  'Admin.updateRAGProvider': { provider_id: string } & UpdateRAGProviderRequest
+  'Admin.updateRAGRepository': { repository_id: string } & UpdateRAGRepositoryRequest
+  'Admin.updateRepository': { repository_id: string } & UpdateRepositoryRequest
+  'Admin.updateUser': { user_id: string } & UpdateUserRequest
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
   'Admin.uploadAndCommitModel': void
   'Assistants.createAssistant': CreateAssistantRequest
   'Assistants.deleteAssistant': { assistant_id: string }
   'Assistants.getAssistant': { assistant_id: string }
   'Assistants.getDefaultAssistant': void
-  'Assistants.listAssistants': { page?: number | null; per_page?: number | null }
-  'Assistants.updateAssistant': UpdateAssistantRequest
+  'Assistants.listAssistants': PaginationQuery
+  'Assistants.updateAssistant': { assistant_id: string } & UpdateAssistantRequest
   'Auth.init': void
   'Auth.login': LoginRequest
   'Auth.logout': void
@@ -1424,40 +1394,40 @@ export type ApiEndpointParameters = {
   'Auth.setup': CreateUserRequest
   'Chat.createConversation': CreateConversationRequest
   'Chat.deleteConversation': { conversation_id: string }
-  'Chat.editMessageStream': ChatMessageRequest
+  'Chat.editMessageStream': { message_id: string } & ChatMessageRequest
   'Chat.getConversation': { conversation_id: string }
   'Chat.getConversationMessagesByBranch': { conversation_id: string; branch_id: string }
   'Chat.getMessageBranches': { message_id: string }
-  'Chat.listConversations': { page?: number | null; per_page?: number | null; project_id?: string | null }
-  'Chat.searchConversations': { q: string; page?: number | null; per_page?: number | null; project_id?: string | null }
+  'Chat.listConversations': ConversationPaginationQuery
+  'Chat.searchConversations': SearchQuery
   'Chat.sendMessageStream': ChatMessageRequest
-  'Chat.switchConversationBranch': SwitchBranchRequest
-  'Chat.updateConversation': UpdateConversationRequest
+  'Chat.switchConversationBranch': { conversation_id: string } & SwitchBranchRequest
+  'Chat.updateConversation': { conversation_id: string } & UpdateConversationRequest
   'Config.getDefaultLanguage': void
   'Config.getUserRegistrationStatus': void
   'Files.deleteFile': { id: string }
   'Files.downloadFile': { id: string }
-  'Files.downloadFileWithToken': { id: string; token?: string | null }
+  'Files.downloadFileWithToken': { id: string; token?: string }
   'Files.generateDownloadToken': { id: string }
   'Files.getFile': { id: string }
-  'Files.getFilePreview': { id: string; page?: number | null }
+  'Files.getFilePreview': { id: string; page?: number }
   'Files.listMessageFiles': { id: string }
-  'Files.listProjectFiles': { id: string; page?: number | null; per_page?: number | null; search?: string | null }
+  'Files.listProjectFiles': { id: string } & ProjectListQuery
   'Files.removeFileFromMessage': { file_id: string; message_id: string }
   'Files.uploadFile': void
   'Files.uploadProjectFile': { id: string }
-  'Hub.getHubData': { lang?: string | null }
+  'Hub.getHubData': HubQueryParams
   'Hub.getHubVersion': void
-  'Hub.refreshHubData': { lang?: string | null }
+  'Hub.refreshHubData': HubQueryParams
   'Models.listEnabledProviderModels': { provider_id: string }
   'Projects.createProject': CreateProjectRequest
   'Projects.deleteProject': { project_id: string }
   'Projects.getProject': { project_id: string }
   'Projects.linkConversation': { project_id: string; conversation_id: string }
-  'Projects.listProjects': { page?: number | null; per_page?: number | null; search?: string | null }
+  'Projects.listProjects': ProjectListQuery
   'Projects.unlinkConversation': { project_id: string; conversation_id: string }
-  'Projects.updateProject': UpdateProjectRequest
-  'Providers.listEnabledProviders': { page?: number | null; per_page?: number | null }
+  'Projects.updateProject': { project_id: string } & UpdateProjectRequest
+  'Providers.listEnabledProviders': PaginationQuery
   'User.greet': UserHello
   'User.updateAccountPassword': UpdateUserPasswordRequest
   'UserSettings.deleteAllUserSettings': void

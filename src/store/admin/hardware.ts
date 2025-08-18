@@ -5,7 +5,7 @@ import type {
   HardwareInfo,
   HardwareUsageUpdate,
   HardwareInfoResponse,
-} from '../../types/api/hardware'
+} from '../../types'
 
 interface HardwareState {
   // Static hardware information

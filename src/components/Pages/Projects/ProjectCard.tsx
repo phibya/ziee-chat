@@ -6,7 +6,7 @@ import {
 import { App, Button, Card, Dropdown, Flex, Typography } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { Project } from '../../../types/api/projects'
+import type { Project } from '../../../types'
 import { deleteExistingProject, openProjectDrawer } from '../../../store'
 import { CgMenuRightAlt } from 'react-icons/cg'
 import dayjs from 'dayjs'

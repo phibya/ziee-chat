@@ -3,7 +3,7 @@ import { Button, Card, Flex, Typography } from 'antd'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Drawer } from '../../Common/Drawer.tsx'
-import { Assistant } from '../../../types/api/assistant.ts'
+import { Assistant } from '../../../types'
 import { openAssistantDrawer } from '../../../store'
 import { IoIosArrowDown, IoIosArrowUp } from 'react-icons/io'
 

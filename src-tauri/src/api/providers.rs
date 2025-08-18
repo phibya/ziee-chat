@@ -17,12 +17,8 @@ use crate::database::{
     },
     queries::{models, providers, user_group_providers},
 };
+use crate::types::PaginationQuery;
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct PaginationQuery {
-    page: Option<i32>,
-    per_page: Option<i32>,
-}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ProviderFilters {
