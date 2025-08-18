@@ -73,6 +73,12 @@ pub struct StreamResponse {
     pub data: serde_json::Value,
 }
 
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct OperationSuccessResponse {
+    pub success: bool,
+    pub message: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct StreamChunkData {
     pub delta: String,
@@ -607,14 +613,14 @@ pub async fn switch_conversation_branch(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
     Json(request): Json<SwitchBranchRequest>,
-) -> ApiResult2<Json<serde_json::Value>> {
+) -> ApiResult2<Json<OperationSuccessResponse>> {
     match chat::switch_conversation_branch(conversation_id, request.branch_id, auth_user.user.id)
         .await
     {
-        Ok(true) => Ok((StatusCode::OK, Json(serde_json::json!({
-            "success": true,
-            "message": "Branch switched successfully"
-        })))),
+        Ok(true) => Ok((StatusCode::OK, Json(OperationSuccessResponse {
+            success: true,
+            message: "Branch switched successfully".to_string(),
+        }))),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation branch"))),
         Err(e) => {
             eprintln!("Error switching conversation branch: {}", e);

@@ -34,6 +34,31 @@ fn generate_openapi_spec(target_dir: &Path) {
     }
 }
 
+fn generate_typescript_endpoints() {
+    println!("Generating TypeScript endpoint definitions...");
+    
+    // Change to the openapi directory to run the TypeScript generation script
+    let openapi_dir = Path::new("../openapi");
+    
+    let exec_result = Command::new("npx")
+        .arg("tsx")
+        .arg("generate-endpoints.ts")
+        .current_dir(openapi_dir)
+        .status();
+    
+    match exec_result {
+        Ok(status) if status.success() => {
+            println!("TypeScript endpoints generated successfully");
+        }
+        Ok(status) => {
+            eprintln!("Warning: TypeScript endpoint generation failed (exit code: {})", status);
+        }
+        Err(e) => {
+            eprintln!("Warning: Failed to execute TypeScript endpoint generation: {}", e);
+        }
+    }
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
@@ -115,4 +140,8 @@ fn main() {
     println!("cargo:rerun-if-changed=src/route");
     println!("cargo:rerun-if-changed=src/api");
     generate_openapi_spec(&target_dir);
+    
+    // === Generate TypeScript endpoint definitions ===
+    println!("cargo:rerun-if-changed=../openapi/generate-endpoints.ts");
+    generate_typescript_endpoints();
 }

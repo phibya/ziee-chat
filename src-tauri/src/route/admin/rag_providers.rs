@@ -1,6 +1,8 @@
 use aide::{
     axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
 };
+use axum::Json;
+use crate::database::models::{RAGProvider, RAGProviderListResponse, RAGDatabase};
 
 use crate::api::rag_providers::{
     add_database_to_rag_provider,
@@ -31,6 +33,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("List all RAG providers")
                     .id("Admin.listRAGProviders")
                     .tag("admin")
+                    .response::<200, Json<RAGProviderListResponse>>()
             })
         )
         .api_route(
@@ -39,6 +42,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Create a new RAG provider")
                     .id("Admin.createRAGProvider")
                     .tag("admin")
+                    .response::<200, Json<RAGProvider>>()
             })
         )
         .api_route(
@@ -47,6 +51,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Get a specific RAG provider")
                     .id("Admin.getRAGProvider")
                     .tag("admin")
+                    .response::<200, Json<RAGProvider>>()
             })
         )
         .api_route(
@@ -55,6 +60,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Update a RAG provider")
                     .id("Admin.updateRAGProvider")
                     .tag("admin")
+                    .response::<200, Json<RAGProvider>>()
             })
         )
         .api_route(
@@ -63,6 +69,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Delete a RAG provider")
                     .id("Admin.deleteRAGProvider")
                     .tag("admin")
+                    .response::<204, ()>()
             })
         )
         .api_route(
@@ -71,6 +78,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Clone a RAG provider")
                     .id("Admin.cloneRAGProvider")
                     .tag("admin")
+                    .response::<200, Json<RAGProvider>>()
             })
         )
         // RAG Database routes
@@ -80,6 +88,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("List databases for a RAG provider")
                     .id("Admin.listRAGProviderDatabases")
                     .tag("admin")
+                    .response::<200, Json<Vec<RAGDatabase>>>()
             })
         )
         .api_route(
@@ -88,6 +97,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Add a database to a RAG provider")
                     .id("Admin.addDatabaseToRAGProvider")
                     .tag("admin")
+                    .response::<200, Json<RAGDatabase>>()
             })
         )
         .api_route(
@@ -96,6 +106,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Get a specific RAG database")
                     .id("Admin.getRAGDatabase")
                     .tag("admin")
+                    .response::<200, Json<RAGDatabase>>()
             })
         )
         .api_route(
@@ -104,6 +115,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Update a RAG database")
                     .id("Admin.updateRAGDatabase")
                     .tag("admin")
+                    .response::<200, Json<RAGDatabase>>()
             })
         )
         .api_route(
@@ -112,6 +124,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Delete a RAG database")
                     .id("Admin.deleteRAGDatabase")
                     .tag("admin")
+                    .response::<204, ()>()
             })
         )
         .api_route(
@@ -120,6 +133,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Start a RAG database")
                     .id("Admin.startRAGDatabase")
                     .tag("admin")
+                    .response::<200, ()>()
             })
         )
         .api_route(
@@ -128,6 +142,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Stop a RAG database")
                     .id("Admin.stopRAGDatabase")
                     .tag("admin")
+                    .response::<200, ()>()
             })
         )
         .api_route(
@@ -136,6 +151,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Enable a RAG database")
                     .id("Admin.enableRAGDatabase")
                     .tag("admin")
+                    .response::<200, ()>()
             })
         )
         .api_route(
@@ -144,6 +160,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                 op.description("Disable a RAG database")
                     .id("Admin.disableRAGDatabase")
                     .tag("admin")
+                    .response::<200, ()>()
             })
         )
 }

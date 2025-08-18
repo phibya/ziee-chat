@@ -1,10 +1,17 @@
 use axum::{debug_handler, extract::Path, http::StatusCode, Extension, Json};
+use serde::Serialize;
+use schemars::JsonSchema;
 
 use crate::api::{middleware::AuthenticatedUser, errors::{ApiResult2, AppError}};
 use crate::database::{
     models::{UserSetting, UserSettingRequest, UserSettingsResponse},
     queries::user_settings,
 };
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct UserSettingsDeletionResponse {
+    pub deleted: u64,
+}
 
 // Get all user settings
 #[debug_handler]
@@ -104,9 +111,9 @@ pub async fn delete_user_setting(
 #[debug_handler]
 pub async fn delete_all_user_settings(
     Extension(auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<serde_json::Value>> {
+) -> ApiResult2<Json<UserSettingsDeletionResponse>> {
     match user_settings::delete_all_user_settings(&auth_user.user_id).await {
-        Ok(deleted_count) => Ok((StatusCode::OK, Json(serde_json::json!({ "deleted": deleted_count })))),
+        Ok(deleted_count) => Ok((StatusCode::OK, Json(UserSettingsDeletionResponse { deleted: deleted_count }))),
         Err(e) => {
             eprintln!("Error deleting all user settings: {}", e);
             Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete all user settings")))

@@ -12,7 +12,7 @@ pub struct RAGDatabaseCapabilities {
     pub similarity_threshold: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGDatabase {
     pub id: Uuid,
     pub provider_id: Uuid,
@@ -100,7 +100,7 @@ pub struct UpdateRAGDatabaseRequest {
     pub settings: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RAGDatabaseListResponse {
     pub databases: Vec<RAGDatabase>,
     pub total: i64,

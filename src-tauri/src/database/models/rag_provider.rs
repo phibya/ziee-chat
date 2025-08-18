@@ -9,7 +9,7 @@ use super::proxy::ProxySettings;
 // Re-export ProxySettings as RAGProviderProxySettings for compatibility
 pub type RAGProviderProxySettings = ProxySettings;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGProvider {
     pub id: Uuid,
     pub name: String,
@@ -72,7 +72,7 @@ pub struct UpdateRAGProviderRequest {
     pub proxy_settings: Option<ProxySettings>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RAGProviderListResponse {
     pub providers: Vec<RAGProvider>,
     pub total: i64,

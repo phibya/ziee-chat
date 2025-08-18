@@ -5,7 +5,7 @@ use uuid::Uuid;
 use schemars::JsonSchema;
 
 // Main Project structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Project {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -47,7 +47,7 @@ pub struct UpdateProjectRequest {
     pub instruction: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ProjectListResponse {
     pub projects: Vec<Project>,
     pub total: i64,
@@ -55,7 +55,7 @@ pub struct ProjectListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ProjectDetailResponse {
     pub project: Project,
     pub conversations: Vec<super::chat::Conversation>,

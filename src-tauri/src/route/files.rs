@@ -1,8 +1,11 @@
 use crate::api;
+use crate::api::files::{DownloadTokenResponse, FileOperationSuccessResponse};
+use crate::database::models::file::UploadFileResponse;
+use crate::database::models::file::{File, FileListResponse};
 use aide::{
     axum::{ApiRouter, routing::{get_with, post_with, delete_with}},
 };
-use axum::middleware;
+use axum::{middleware, Json};
 
 pub fn file_routes() -> ApiRouter {
     ApiRouter::new()
@@ -11,18 +14,21 @@ pub fn file_routes() -> ApiRouter {
             op.description("Upload a new file")
                 .id("Files.uploadFile")
                 .tag("files")
+                .response::<200, Json<UploadFileResponse>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
         
         .api_route("/files/{id}", get_with(api::files::get_file, |op| {
             op.description("Get file metadata by ID")
                 .id("Files.getFile")
                 .tag("files")
+                .response::<200, Json<File>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
         
         .api_route("/files/{id}", delete_with(api::files::delete_file, |op| {
             op.description("Delete file by ID")
                 .id("Files.deleteFile")
                 .tag("files")
+                .response::<200, Json<FileOperationSuccessResponse>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
         
         .api_route("/files/{id}/download", get_with(api::files::download_file, |op| {
@@ -35,6 +41,7 @@ pub fn file_routes() -> ApiRouter {
             op.description("Generate download token for file")
                 .id("Files.generateDownloadToken")
                 .tag("files")
+                .response::<200, Json<DownloadTokenResponse>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
         
         .api_route("/files/{id}/download-with-token", get_with(api::files::download_file_with_token, |op| {
@@ -54,12 +61,14 @@ pub fn file_routes() -> ApiRouter {
             op.description("Upload file to project")
                 .id("Files.uploadProjectFile")
                 .tag("files")
+                .response::<200, Json<UploadFileResponse>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
         
         .api_route("/projects/{id}/files", get_with(api::files::list_project_files, |op| {
             op.description("List files in project")
                 .id("Files.listProjectFiles")
                 .tag("files")
+                .response::<200, Json<FileListResponse>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
         
         // Message file operations
@@ -67,11 +76,13 @@ pub fn file_routes() -> ApiRouter {
             op.description("List files attached to message")
                 .id("Files.listMessageFiles")
                 .tag("files")
+                .response::<200, Json<Vec<File>>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
         
         .api_route("/files/{file_id}/messages/{message_id}", delete_with(api::files::remove_file_from_message, |op| {
             op.description("Remove file from message")
                 .id("Files.removeFileFromMessage")
                 .tag("files")
+                .response::<200, Json<FileOperationSuccessResponse>>()
         }).layer(middleware::from_fn(api::middleware::auth_middleware)))
 }

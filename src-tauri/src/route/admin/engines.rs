@@ -1,6 +1,6 @@
-use crate::api::{engines::list_engines, middleware::auth_middleware};
+use crate::api::{engines::{list_engines, EngineInfo}, middleware::auth_middleware};
 use aide::axum::{routing::get_with, ApiRouter};
-use axum::middleware;
+use axum::{middleware, Json};
 
 pub fn admin_engine_routes() -> ApiRouter {
     ApiRouter::new().api_route(
@@ -9,6 +9,7 @@ pub fn admin_engine_routes() -> ApiRouter {
             op.description("List all available ML inference engines")
                 .id("Admin.listEngines")
                 .tag("admin")
+                .response::<200, Json<Vec<EngineInfo>>>()
         })
         .layer(middleware::from_fn(auth_middleware)),
     )

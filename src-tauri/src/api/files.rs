@@ -37,6 +37,11 @@ pub struct DownloadTokenResponse {
     pub expires_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct FileOperationSuccessResponse {
+    pub success: bool,
+}
+
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct DownloadTokenParams {
     pub token: Option<String>,
@@ -362,7 +367,7 @@ pub async fn get_file_preview(
 pub async fn delete_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
-) -> ApiResult2<Json<serde_json::Value>> {
+) -> ApiResult2<Json<FileOperationSuccessResponse>> {
     let file_db = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get file")))?
@@ -384,7 +389,7 @@ pub async fn delete_file(
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete file from storage")))?;
 
-    Ok((StatusCode::OK, Json(serde_json::json!({ "success": true }))))
+    Ok((StatusCode::OK, Json(FileOperationSuccessResponse { success: true })))
 }
 
 // List files by project
@@ -426,7 +431,7 @@ pub async fn list_message_files(
 pub async fn remove_file_from_message(
     Extension(user): Extension<AuthenticatedUser>,
     Path((file_id, message_id)): Path<(Uuid, Uuid)>,
-) -> ApiResult2<Json<serde_json::Value>> {
+) -> ApiResult2<Json<FileOperationSuccessResponse>> {
     // Verify file belongs to user
     let file_exists = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
@@ -476,5 +481,5 @@ pub async fn remove_file_from_message(
         }
     }
 
-    Ok((StatusCode::OK, Json(serde_json::json!({ "success": true }))))
+    Ok((StatusCode::OK, Json(FileOperationSuccessResponse { success: true })))
 }

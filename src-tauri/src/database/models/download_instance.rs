@@ -16,7 +16,7 @@ pub struct SourceInfo {
 }
 
 /// Progress data for download tracking
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct DownloadProgressData {
     /// Current download phase (e.g., "connecting", "downloading", "extracting")
     pub phase: Option<String>,
@@ -33,7 +33,7 @@ pub struct DownloadProgressData {
 }
 
 /// Request data for initiating a download
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DownloadRequestData {
     /// Model name or ID from the repository
     pub model_name: String,
@@ -65,7 +65,7 @@ pub struct DownloadRequestData {
 }
 
 /// Download instance status enum
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadStatus {
     Pending,
@@ -99,7 +99,7 @@ impl DownloadStatus {
 }
 
 /// Main download instance struct
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DownloadInstance {
     pub id: Uuid,
     pub provider_id: Uuid,
@@ -191,7 +191,7 @@ pub struct UpdateDownloadStatusRequest {
 }
 
 /// Response for download instance list
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DownloadInstanceListResponse {
     pub downloads: Vec<DownloadInstance>,
     pub total: i64,

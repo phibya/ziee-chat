@@ -13,7 +13,7 @@ pub struct RepositoryAuthConfig {
     pub auth_test_api_endpoint: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Repository {
     pub id: Uuid,
     pub name: String,
@@ -73,7 +73,7 @@ pub struct UpdateRepositoryRequest {
     pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RepositoryListResponse {
     pub repositories: Vec<Repository>,
     pub total: i64,
@@ -89,7 +89,7 @@ pub struct TestRepositoryConnectionRequest {
     pub auth_config: Option<RepositoryAuthConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TestRepositoryConnectionResponse {
     pub success: bool,
     pub message: String,

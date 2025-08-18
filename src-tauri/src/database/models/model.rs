@@ -623,7 +623,7 @@ impl MistralRsSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Model {
     pub id: Uuid,
     pub provider_id: Uuid,
@@ -791,7 +791,7 @@ pub struct UpdateModelRequest {
 }
 
 // Model file tracking for uploaded files
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, FromRow)]
 pub struct ModelFile {
     pub id: Uuid,
     pub model_id: Uuid,
@@ -803,7 +803,7 @@ pub struct ModelFile {
     pub uploaded_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ModelFileInfo {
     pub filename: String,
     pub file_size_bytes: i64,
@@ -811,7 +811,7 @@ pub struct ModelFileInfo {
     pub uploaded_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct ModelUploadResponse {
     pub model_id: Uuid,
     pub upload_url: Option<String>,
@@ -820,7 +820,7 @@ pub struct ModelUploadResponse {
     pub next_chunk_index: Option<u32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct ModelListResponse {
     pub models: Vec<Model>,
     pub total: i64,
@@ -829,7 +829,7 @@ pub struct ModelListResponse {
     pub total_storage_bytes: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct ModelDetailsResponse {
     pub model: Model,
     pub files: Vec<ModelFileInfo>,
@@ -837,7 +837,7 @@ pub struct ModelDetailsResponse {
     pub validation_issues: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct ModelValidationResult {
     pub is_valid: bool,
     pub issues: Vec<String>,
@@ -845,7 +845,7 @@ pub struct ModelValidationResult {
     pub present_files: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct ModelStorageInfo {
     pub provider_id: Uuid,
     pub total_models: i64,
@@ -853,7 +853,7 @@ pub struct ModelStorageInfo {
     pub models_by_status: ModelStatusCounts,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct ModelStatusCounts {
     pub active: i64,
     pub inactive: i64,

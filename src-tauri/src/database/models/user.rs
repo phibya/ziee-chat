@@ -260,7 +260,7 @@ pub struct AssignProviderToGroupRequest {
     pub provider_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserGroupProviderResponse {
     pub id: Uuid,
     pub group_id: Uuid,
@@ -309,7 +309,7 @@ pub struct ResetPasswordRequest {
     pub new_password: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserListResponse {
     pub users: Vec<User>,
     pub total: i64,
@@ -317,7 +317,7 @@ pub struct UserListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserGroupListResponse {
     pub groups: Vec<UserGroup>,
     pub total: i64,

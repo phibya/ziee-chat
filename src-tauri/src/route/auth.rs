@@ -1,7 +1,10 @@
 use crate::api;
+use crate::api::auth::{InitResponse, AuthResponse};
+use crate::database::models::User;
 use aide::{
     axum::{ApiRouter, routing::{get_with, post_with}},
 };
+use axum::{http::StatusCode, Json};
 
 pub fn auth_routes() -> ApiRouter {
     ApiRouter::new()
@@ -11,6 +14,7 @@ pub fn auth_routes() -> ApiRouter {
                 op.description("Check if the application is initialized")
                     .id("Auth.init")
                     .tag("auth")
+                    .response::<200, Json<InitResponse>>()
             }),
         )
         .api_route(
@@ -19,6 +23,7 @@ pub fn auth_routes() -> ApiRouter {
                 op.description("Initialize the application with root user")
                     .id("Auth.setup")
                     .tag("auth")
+                    .response::<200, Json<AuthResponse>>()
             }),
         )
         .api_route(
@@ -27,6 +32,7 @@ pub fn auth_routes() -> ApiRouter {
                 op.description("Login user and return JWT token")
                     .id("Auth.login")
                     .tag("auth")
+                    .response::<200, Json<AuthResponse>>()
             }),
         )
         .api_route(
@@ -35,6 +41,7 @@ pub fn auth_routes() -> ApiRouter {
                 op.description("Register new user account")
                     .id("Auth.register")
                     .tag("auth")
+                    .response::<200, Json<AuthResponse>>()
             }),
         )
 }
@@ -47,6 +54,7 @@ pub fn protected_auth_routes() -> ApiRouter {
                 op.description("Logout user and invalidate JWT token")
                     .id("Auth.logout")
                     .tag("auth")
+                    .response::<200, ()>()
             }),
         )
         .api_route(
@@ -55,6 +63,7 @@ pub fn protected_auth_routes() -> ApiRouter {
                 op.description("Get current user information")
                     .id("Auth.me")
                     .tag("auth")
+                    .response::<200, Json<User>>()
             }),
         )
 }

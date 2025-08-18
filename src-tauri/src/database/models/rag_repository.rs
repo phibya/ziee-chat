@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGRepository {
     pub id: Uuid,
     pub name: String,
@@ -57,7 +57,7 @@ pub struct UpdateRAGRepositoryRequest {
     pub priority: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RAGRepositoryListResponse {
     pub repositories: Vec<RAGRepository>,
     pub total: i64,
@@ -65,7 +65,7 @@ pub struct RAGRepositoryListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RAGRepositoryConnectionTestResponse {
     pub success: bool,
     pub message: String,

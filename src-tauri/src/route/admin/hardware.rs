@@ -1,8 +1,8 @@
 use aide::{
     axum::{ApiRouter, routing::get_with},
 };
-
-use crate::api::hardware::{get_hardware_info, subscribe_hardware_usage};
+use axum::Json;
+use crate::api::hardware::{get_hardware_info, subscribe_hardware_usage, HardwareInfoResponse};
 
 pub fn hardware_routes() -> ApiRouter {
     ApiRouter::new()
@@ -12,6 +12,7 @@ pub fn hardware_routes() -> ApiRouter {
                 op.description("Get hardware information")
                     .id("Admin.getHardwareInfo")
                     .tag("admin")
+                    .response::<200, Json<HardwareInfoResponse>>()
             })
         )
         .api_route(

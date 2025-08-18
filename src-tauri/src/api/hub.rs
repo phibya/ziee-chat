@@ -73,6 +73,11 @@ pub struct HubQueryParams {
     pub lang: Option<String>,
 }
 
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct HubVersionResponse {
+    pub hub_version: String,
+}
+
 #[debug_handler]
 pub async fn get_hub_data(
     Query(params): Query<HubQueryParams>,
@@ -185,12 +190,12 @@ pub async fn refresh_hub_data(
 }
 
 #[debug_handler]
-pub async fn get_hub_version() -> ApiResult2<Json<serde_json::Value>> {
+pub async fn get_hub_version() -> ApiResult2<Json<HubVersionResponse>> {
     let hub_manager_guard = HUB_MANAGER.lock().await;
     if let Some(manager) = hub_manager_guard.as_ref() {
-        Ok((StatusCode::OK, Json(serde_json::json!({
-            "hub_version": manager.config.hub_version
-        }))))
+        Ok((StatusCode::OK, Json(HubVersionResponse {
+            hub_version: manager.config.hub_version.clone()
+        })))
     } else {
         Err((
             StatusCode::SERVICE_UNAVAILABLE,

@@ -9,7 +9,7 @@ use super::proxy::ProxySettings;
 // Re-export ProxySettings as ProviderProxySettings for backward compatibility
 pub type ProviderProxySettings = ProxySettings;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Provider {
     pub id: Uuid,
     pub name: String,
@@ -75,7 +75,7 @@ pub struct UpdateProviderRequest {
 }
 
 // Device detection structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DeviceInfo {
     pub id: i32, // Device index (0, 1, 2, etc.)
     pub name: String,
@@ -85,14 +85,14 @@ pub struct DeviceInfo {
     pub is_available: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AvailableDevicesResponse {
     pub devices: Vec<DeviceInfo>,
     pub default_device_type: String,
     pub supports_multi_gpu: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ProviderListResponse {
     pub providers: Vec<Provider>,
     pub total: i64,

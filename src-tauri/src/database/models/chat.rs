@@ -6,7 +6,7 @@ use uuid::Uuid;
 use schemars::JsonSchema;
 
 // Main unified structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Conversation {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -188,7 +188,7 @@ pub struct StreamChunk {
     pub finish_reason: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ConversationListResponse {
     pub conversations: Vec<ConversationSummary>,
     pub total: i64,
@@ -196,7 +196,7 @@ pub struct ConversationListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ConversationSummary {
     pub id: Uuid,
     pub title: String,

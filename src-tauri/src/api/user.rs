@@ -5,7 +5,7 @@ use axum::{
     Extension, Json,
 };
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::{
@@ -27,6 +27,11 @@ pub struct UserHello {
 pub struct PaginationQuery {
     page: Option<i32>,
     per_page: Option<i32>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct UserActiveStatusResponse {
+    pub is_active: bool,
 }
 
 #[debug_handler]
@@ -137,9 +142,9 @@ pub async fn reset_user_password(
 pub async fn toggle_user_active(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
-) -> ApiResult2<Json<serde_json::Value>> {
+) -> ApiResult2<Json<UserActiveStatusResponse>> {
     match users::toggle_user_active(user_id).await {
-        Ok(is_active) => Ok((StatusCode::OK, Json(serde_json::json!({ "is_active": is_active })))),
+        Ok(is_active) => Ok((StatusCode::OK, Json(UserActiveStatusResponse { is_active }))),
         Err(e) => {
             eprintln!("Error toggling user active status: {}", e);
             Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))

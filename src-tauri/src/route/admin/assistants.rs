@@ -5,7 +5,8 @@ use aide::axum::{
   },
   ApiRouter,
 };
-use axum::middleware;
+use axum::{middleware, Json};
+use crate::database::models::{Assistant, AssistantListResponse};
 
 pub fn admin_assistant_routes() -> ApiRouter {
     ApiRouter::new()
@@ -15,6 +16,7 @@ pub fn admin_assistant_routes() -> ApiRouter {
               op.description("List all assistants (admin)")
                 .id("Admin.listAssistants")
                 .tag("admin")
+                .response::<200, Json<AssistantListResponse>>()
           }).layer(middleware::from_fn(api::middleware::groups_read_middleware)),
       )
       .api_route(
@@ -23,6 +25,7 @@ pub fn admin_assistant_routes() -> ApiRouter {
               op.description("Create new assistant template (admin)")
                 .id("Admin.createAssistant")
                 .tag("admin")
+                .response::<200, Json<Assistant>>()
           }).layer(middleware::from_fn(api::middleware::groups_create_middleware)),
       )
       .api_route(
@@ -31,6 +34,7 @@ pub fn admin_assistant_routes() -> ApiRouter {
               op.description("Get assistant by ID (admin)")
                 .id("Admin.getAssistant")
                 .tag("admin")
+                .response::<200, Json<Assistant>>()
           }).layer(middleware::from_fn(api::middleware::groups_read_middleware)),
       )
       .api_route(
@@ -39,6 +43,7 @@ pub fn admin_assistant_routes() -> ApiRouter {
               op.description("Update assistant (admin)")
                 .id("Admin.updateAssistant")
                 .tag("admin")
+                .response::<200, Json<Assistant>>()
           }).layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
       )
       .api_route(
@@ -47,6 +52,7 @@ pub fn admin_assistant_routes() -> ApiRouter {
               op.description("Delete assistant (admin)")
                 .id("Admin.deleteAssistant")
                 .tag("admin")
+                .response::<204, ()>()
           }).layer(middleware::from_fn(api::middleware::groups_delete_middleware)),
       )
 }

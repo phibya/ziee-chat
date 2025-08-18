@@ -2,7 +2,8 @@ use crate::api;
 use aide::{
     axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
 };
-use axum::middleware;
+use axum::{middleware, Json};
+use crate::database::models::{Repository, RepositoryListResponse, TestRepositoryConnectionResponse};
 
 pub fn admin_repository_routes() -> ApiRouter {
     ApiRouter::new()
@@ -13,6 +14,7 @@ pub fn admin_repository_routes() -> ApiRouter {
                 op.description("List all repositories")
                     .id("Admin.listRepositories")
                     .tag("admin")
+                    .response::<200, Json<RepositoryListResponse>>()
             }).layer(middleware::from_fn(api::middleware::repositories_read_middleware)),
         )
         .api_route(
@@ -21,6 +23,7 @@ pub fn admin_repository_routes() -> ApiRouter {
                 op.description("Create a new repository")
                     .id("Admin.createRepository")
                     .tag("admin")
+                    .response::<200, Json<Repository>>()
             }).layer(middleware::from_fn(api::middleware::repositories_create_middleware)),
         )
         .api_route(
@@ -29,6 +32,7 @@ pub fn admin_repository_routes() -> ApiRouter {
                 op.description("Get a specific repository")
                     .id("Admin.getRepository")
                     .tag("admin")
+                    .response::<200, Json<Repository>>()
             }).layer(middleware::from_fn(api::middleware::repositories_read_middleware)),
         )
         .api_route(
@@ -37,6 +41,7 @@ pub fn admin_repository_routes() -> ApiRouter {
                 op.description("Update a repository")
                     .id("Admin.updateRepository")
                     .tag("admin")
+                    .response::<200, Json<Repository>>()
             }).layer(middleware::from_fn(api::middleware::repositories_edit_middleware)),
         )
         .api_route(
@@ -45,6 +50,7 @@ pub fn admin_repository_routes() -> ApiRouter {
                 op.description("Delete a repository")
                     .id("Admin.deleteRepository")
                     .tag("admin")
+                    .response::<204, ()>()
             }).layer(middleware::from_fn(api::middleware::repositories_delete_middleware)),
         )
         .api_route(
@@ -53,6 +59,7 @@ pub fn admin_repository_routes() -> ApiRouter {
                 op.description("Test repository connection")
                     .id("Admin.testRepositoryConnection")
                     .tag("admin")
+                    .response::<200, Json<TestRepositoryConnectionResponse>>()
             }).layer(middleware::from_fn(api::middleware::repositories_read_middleware)),
         )
 }

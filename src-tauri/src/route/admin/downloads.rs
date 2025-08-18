@@ -2,7 +2,7 @@ use crate::api;
 use aide::{
     axum::{ApiRouter, routing::{delete_with, get_with, post_with}},
 };
-use axum::middleware;
+use axum::{middleware, Json};
 
 pub fn admin_download_routes() -> ApiRouter {
     ApiRouter::new()

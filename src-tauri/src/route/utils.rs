@@ -1,7 +1,9 @@
 use crate::api;
+use crate::api::configuration::TestProxyConnectionResponse;
 use aide::{
     axum::{ApiRouter, routing::{get_with, post_with}},
 };
+use axum::Json;
 use schemars::JsonSchema;
 
 /// Public utility routes (no authentication required)
@@ -12,6 +14,7 @@ pub fn utils_routes() -> ApiRouter {
             op.description("Test the proxy connection")
                 .id("Utils.testProxy")
                 .tag("utils")
+                .response::<200, Json<TestProxyConnectionResponse>>()
         }),
     )
 }
