@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { searchModels, useHubStore } from '../../../store/hub'
 import { ModelCard } from './ModelCard'
 import {
-  loadAllModelProviders,
   loadAllAdminModelRepositories,
+  loadAllModelProviders,
 } from '../../../store'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { VscFilter } from 'react-icons/vsc'

@@ -1,8 +1,8 @@
 import {
+  ApiOutlined,
   DeleteOutlined,
   EditOutlined,
   PlusOutlined,
-  ApiOutlined,
 } from '@ant-design/icons'
 import {
   App,
@@ -20,11 +20,11 @@ import { useEffect } from 'react'
 import { isTauriView } from '../../../../api/core'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
-  Stores,
-  loadAllRAGRepositories,
-  deleteRAGRepository,
-  testRAGRepositoryConnection,
   clearRAGRepositoriesError,
+  deleteRAGRepository,
+  loadAllRAGRepositories,
+  Stores,
+  testRAGRepositoryConnection,
 } from '../../../../store'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { AddRAGRepositoryDrawer } from './AddRAGRepositoryDrawer'

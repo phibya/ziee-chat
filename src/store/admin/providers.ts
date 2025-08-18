@@ -3,10 +3,11 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client.ts'
 import {
   CreateProviderRequest,
+  Model,
+  ModelCapabilities,
   Provider,
   UpdateProviderRequest,
 } from '../../types'
-import { Model, ModelCapabilities } from '../../types'
 
 // Type definitions are now imported from the API types
 
@@ -143,8 +144,9 @@ export const deleteModelProvider = async (id: string): Promise<void> => {
 
     useAdminProvidersStore.setState(state => {
       // Clean up models loading state and errors for this provider
-      const { [id]: removedLoading, ...restModelsLoading } = state.modelsLoading
-      const { [id]: removedError, ...restModelError } = state.modelError
+      const { [id]: _removedLoading, ...restModelsLoading } =
+        state.modelsLoading
+      const { [id]: _removedError, ...restModelError } = state.modelError
 
       return {
         providers: state.providers.filter(p => p.id !== id),

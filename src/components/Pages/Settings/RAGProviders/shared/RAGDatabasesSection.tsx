@@ -1,12 +1,13 @@
 import {
-  PlayCircleOutlined,
-  PauseCircleOutlined,
-  PlusOutlined,
-  EditOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  EditOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
+  PlusOutlined,
 } from '@ant-design/icons'
 import {
+  App,
   Badge,
   Button,
   Card,
@@ -18,21 +19,20 @@ import {
   Switch,
   Table,
   Typography,
-  App,
 } from 'antd'
 import { useEffect } from 'react'
 import { RAGProvider } from '../../../../../types'
 import {
-  Stores,
-  loadDatabasesForRAGProvider,
   deleteExistingRAGDatabase,
+  disableRAGDatabase,
+  enableRAGDatabase,
+  loadDatabasesForRAGProvider,
+  openAddRAGDatabaseDownloadDrawer,
+  openAddRAGDatabaseDrawer,
+  openEditRAGDatabaseDrawer,
   startRAGDatabase,
   stopRAGDatabase,
-  enableRAGDatabase,
-  disableRAGDatabase,
-  openAddRAGDatabaseDrawer,
-  openAddRAGDatabaseDownloadDrawer,
-  openEditRAGDatabaseDrawer,
+  Stores,
 } from '../../../../../store'
 
 const { Title } = Typography

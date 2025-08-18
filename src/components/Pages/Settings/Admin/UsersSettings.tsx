@@ -34,8 +34,8 @@ import { isTauriView } from '../../../../api/core.ts'
 import { Permission, usePermissions } from '../../../../permissions'
 import {
   assignUserToUserGroup,
-  clearAdminUsersStoreError,
   clearAdminUserGroupsStoreError,
+  clearAdminUsersStoreError,
   loadSystemUsers,
   loadUserGroups,
   removeUserFromUserGroup,

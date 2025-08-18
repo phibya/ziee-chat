@@ -1,19 +1,19 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Typography, Button, Tag, Space, Alert, App, Spin } from 'antd'
+import { Alert, App, Button, Card, Space, Spin, Tag, Typography } from 'antd'
 import {
-  PlayCircleOutlined,
-  PauseCircleOutlined,
+  ArrowDownOutlined,
   ClearOutlined,
   DownloadOutlined,
   FileTextOutlined,
-  ArrowDownOutlined,
+  PauseCircleOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons'
 import { Stores } from '../../../../store'
 import {
+  clearLogBuffer,
   connectToApiProxyLogs,
   disconnectFromApiProxyLogs,
-  clearLogBuffer,
   downloadLogs,
   setAutoScroll,
 } from '../../../../store/admin/apiProxyLogMonitor.ts'

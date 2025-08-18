@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import type { HubModel, HubAssistant } from '../types'
+import type { HubAssistant, HubModel } from '../types'
 import i18n from '../i18n'
 
 interface HubState {

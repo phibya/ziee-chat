@@ -3,8 +3,8 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
 import type {
   NgrokSettingsResponse,
-  UpdateNgrokSettingsRequest,
   NgrokStatusResponse,
+  UpdateNgrokSettingsRequest,
   UpdateUserPasswordRequest,
 } from '../../types'
 

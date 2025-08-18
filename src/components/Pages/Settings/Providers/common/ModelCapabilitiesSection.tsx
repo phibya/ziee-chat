@@ -1,4 +1,4 @@
-import { Card, Form, Flex, Switch } from 'antd'
+import { Card, Flex, Form, Switch } from 'antd'
 import { useTranslation } from 'react-i18next'
 
 interface ModelCapabilitiesSectionProps {

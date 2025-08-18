@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Card, Tag, Typography, Flex, Alert, Descriptions } from 'antd'
+import { Alert, Card, Descriptions, Flex, Tag, Typography } from 'antd'
 import { LinkOutlined } from '@ant-design/icons'
 import { initializeEngines, Stores } from '../../../../store'
 import { SettingsPageContainer } from '../common/SettingsPageContainer'

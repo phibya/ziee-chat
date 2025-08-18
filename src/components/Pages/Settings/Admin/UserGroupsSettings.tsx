@@ -36,8 +36,8 @@ import {
   createNewUserGroup,
   deleteUserGroup,
   loadAllModelProviders,
-  loadUserGroups,
   loadUserGroupMembers,
+  loadUserGroups,
   Stores,
   updateUserGroup,
 } from '../../../../store'

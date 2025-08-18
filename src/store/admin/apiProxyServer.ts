@@ -3,12 +3,12 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
 import type {
   ApiProxyServerConfig,
-  ApiProxyServerStatus,
   ApiProxyServerModel,
+  ApiProxyServerStatus,
   ApiProxyServerTrustedHost,
   CreateApiProxyServerModelRequest,
-  UpdateApiProxyServerModelRequest,
   CreateTrustedHostRequest,
+  UpdateApiProxyServerModelRequest,
   UpdateTrustedHostRequest,
 } from '../../types'
 

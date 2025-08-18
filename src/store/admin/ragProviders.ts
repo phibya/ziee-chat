@@ -2,12 +2,12 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client.ts'
 import {
-  RAGProvider,
-  RAGDatabase,
-  CreateRAGProviderRequest,
-  UpdateRAGProviderRequest,
   CreateRAGDatabaseRequest,
+  CreateRAGProviderRequest,
+  RAGDatabase,
+  RAGProvider,
   UpdateRAGDatabaseRequest,
+  UpdateRAGProviderRequest,
 } from '../../types'
 
 interface AdminRAGProvidersState {

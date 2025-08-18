@@ -1,10 +1,10 @@
-import { Card, Typography, Spin, Alert, Progress, Tag, App, Button } from 'antd'
+import { Alert, App, Button, Card, Progress, Spin, Tag, Typography } from 'antd'
 import { useEffect } from 'react'
 import {
-  loadHardwareInfo,
   disconnectHardwareUsage,
-  subscribeToHardwareUsage,
+  loadHardwareInfo,
   Stores,
+  subscribeToHardwareUsage,
 } from '../../store'
 import { formatBytes } from '../../utils/formatBytes'
 

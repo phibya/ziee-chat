@@ -9,10 +9,10 @@ import {
   Button,
   Card,
   Divider,
+  Empty,
   Flex,
   Switch,
   Typography,
-  Empty,
 } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'

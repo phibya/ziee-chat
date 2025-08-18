@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { LockOutlined, UserOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { Stores, authenticateUser, clearAuthenticationError } from '../../store'
+import { authenticateUser, clearAuthenticationError, Stores } from '../../store'
 import type { LoginRequest } from '../../types'
 
 const { Text } = Typography

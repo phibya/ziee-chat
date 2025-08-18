@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Typography, Alert } from 'antd'
+import { Alert, Card, Typography } from 'antd'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'

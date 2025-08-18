@@ -1,15 +1,15 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  App,
+  Button,
   Card,
   Form,
   Input,
   InputNumber,
-  Switch,
-  Button,
-  Typography,
-  App,
   Select,
+  Switch,
+  Typography,
 } from 'antd'
 import { LockOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'

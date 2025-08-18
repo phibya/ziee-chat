@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Layout, Spin, Typography } from 'antd'
-import { Stores, loadSystemUserRegistrationSettings } from '../../store'
+import { loadSystemUserRegistrationSettings, Stores } from '../../store'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
 

@@ -3,8 +3,8 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client'
 import type {
   HardwareInfo,
-  HardwareUsageUpdate,
   HardwareInfoResponse,
+  HardwareUsageUpdate,
 } from '../../types'
 
 interface HardwareState {

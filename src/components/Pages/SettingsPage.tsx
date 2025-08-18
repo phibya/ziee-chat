@@ -9,21 +9,21 @@ import { TauriDragRegion } from '../Common/TauriDragRegion'
 import {
   IoIosArrowDown,
   IoIosArrowForward,
-  IoMdSettings,
-  IoMdPerson,
   IoMdEye,
-  IoMdLock,
   IoMdGlobe,
+  IoMdLock,
   IoMdPeople,
+  IoMdPerson,
+  IoMdSettings,
 } from 'react-icons/io'
 import {
+  FaCogs,
+  FaDatabase,
+  FaMicrochip,
+  FaNetworkWired,
   FaRobot,
   FaServer,
-  FaNetworkWired,
-  FaDatabase,
-  FaCogs,
   FaShieldAlt,
-  FaMicrochip,
 } from 'react-icons/fa'
 import { MdStorage } from 'react-icons/md'
 import { useEffect } from 'react'

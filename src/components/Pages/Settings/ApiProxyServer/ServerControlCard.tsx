@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { Card, Button, Typography, Alert, Flex, App } from 'antd'
+import { Alert, App, Button, Card, Flex, Typography } from 'antd'
 import {
   PlayCircleOutlined,
-  StopOutlined,
   ReloadOutlined,
+  StopOutlined,
 } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'

@@ -2,10 +2,10 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client.ts'
 import {
+  LlamaCppSettings,
+  MistralRsSettings,
   Model,
   ModelCapabilities,
-  MistralRsSettings,
-  LlamaCppSettings,
 } from '../../types'
 import { loadModelsForProvider } from './providers.ts'
 

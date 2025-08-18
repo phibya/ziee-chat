@@ -1,26 +1,26 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Card,
-  Button,
-  Typography,
   App,
-  Tag,
-  Empty,
+  Button,
+  Card,
   Divider,
+  Empty,
   Flex,
   Switch,
+  Tag,
+  Typography,
 } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'
 import {
-  updateApiProxyServerModel,
   removeModelFromApiProxyServer,
+  updateApiProxyServerModel,
 } from '../../../../store/admin/apiProxyServer.ts'
 import type {
-  UpdateApiProxyServerModelRequest,
   ApiProxyServerModel,
+  UpdateApiProxyServerModelRequest,
 } from '../../../../types'
 import { AddModelDrawer, EditModelDrawer } from './drawers'
 

@@ -4,7 +4,7 @@ import { ApiClient } from '../api/client'
 import { ConversationSummary } from '../types'
 import { createStoreProxy } from '../utils/createStoreProxy'
 import { StoreApi, UseBoundStore } from 'zustand/index'
-import { useMemo, useRef, useEffect } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { debounce } from '../utils/debounce'
 
 export interface ChatHistoryState {

@@ -8,7 +8,7 @@ import { ChatMessageList } from './ChatMessageList'
 import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
 import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
 import tinycolor from 'tinycolor2'
-import { EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons'
 import { IoIosArrowBack } from 'react-icons/io'
 
 export function ExistingChatInterface() {

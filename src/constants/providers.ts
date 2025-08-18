@@ -1,4 +1,4 @@
-import { RiAnthropicFill, RiOpenaiFill, RiGeminiFill } from 'react-icons/ri'
+import { RiAnthropicFill, RiGeminiFill, RiOpenaiFill } from 'react-icons/ri'
 import { SiHuggingface } from 'react-icons/si'
 import { FaServer, FaWrench } from 'react-icons/fa'
 import { BsFillLightningChargeFill } from 'react-icons/bs'

@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import { createStoreProxy } from '../utils/createStoreProxy'
 import { StoreApi, UseBoundStore } from 'zustand/index'
-import { useMemo, useRef, useEffect } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { debounce } from '../utils/debounce'
 import { MessageBranch } from '../types'
 

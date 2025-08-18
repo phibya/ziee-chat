@@ -1,10 +1,17 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { LeftSidebar } from './LeftSidebar'
-import { Stores, setSidebarCollapsed, setMainContentWidth } from '../../store'
+import {
+  setMainContentWidth,
+  setSidebarCollapsed,
+  Stores,
+  useUserAppearanceTheme,
+} from '../../store'
 import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { isTauriView } from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
+import { resolveSystemTheme } from '../Providers/ThemeProvider.tsx'
+import tinycolor from 'tinycolor2'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -130,27 +137,25 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [])
 
+  const appTheme = useUserAppearanceTheme()
+  const systemTheme = resolveSystemTheme()
+
   useEffect(() => {
     //set root document background color based on theme
     const root = document.documentElement
+    const isUsingSystemTheme = appTheme === 'system' || appTheme === systemTheme
     if (isTauriView) {
-      root.style.backgroundColor = 'transparent'
-    } else {
-      root.style.backgroundColor = token.colorBgLayout
-      // set theme in meta tag as well
-      const metaThemeColor = document.querySelector(
-        'meta[name="theme-color"]',
-      ) as HTMLMetaElement
-      if (metaThemeColor) {
-        metaThemeColor.content = token.colorBgLayout
+      if (isUsingSystemTheme) {
+        root.style.backgroundColor = 'transparent'
       } else {
-        const newMetaThemeColor = document.createElement('meta')
-        newMetaThemeColor.name = 'theme-color'
-        newMetaThemeColor.content = token.colorBgLayout
-        document.head.appendChild(newMetaThemeColor)
+        root.style.backgroundColor = tinycolor(token.colorBgContainer)
+          .setAlpha(appTheme === 'light' ? 0.9 : 0.9)
+          .toRgbString()
       }
+    } else {
+      root.style.backgroundColor = token.colorBgContainer
     }
-  }, [token.colorBgLayout])
+  }, [appTheme, systemTheme, token.colorBgContainer])
 
   // Visual viewport listener for mobile keyboard adjustments
   useEffect(() => {
@@ -194,7 +199,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div
       className="h-full w-screen flex overflow-hidden"
       style={{
-        backgroundColor: isTauriView ? 'transparent' : token.colorBgLayout,
+        backgroundColor: isTauriView ? 'transparent' : token.colorBgContainer,
       }}
     >
       {/* Sidebar - Always visible, width controlled by container */}

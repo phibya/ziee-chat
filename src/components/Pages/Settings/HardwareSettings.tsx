@@ -1,21 +1,21 @@
 import {
-  Card,
-  Typography,
-  Spin,
   Alert,
-  Progress,
-  Statistic,
-  Tag,
   App,
   Button,
+  Card,
+  Progress,
+  Spin,
+  Statistic,
+  Tag,
+  Typography,
 } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  loadHardwareInfo,
   disconnectHardwareUsage,
-  subscribeToHardwareUsage,
+  loadHardwareInfo,
   Stores,
+  subscribeToHardwareUsage,
 } from '../../../store'
 import { isTauriView } from '../../../api/core'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'

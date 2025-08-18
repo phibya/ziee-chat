@@ -31,8 +31,7 @@ import {
 } from '../../../store'
 import { FileCard } from '../../Common/FileCard'
 import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
-import { Conversation, Message } from '../../../types'
-import { Assistant } from '../../../types'
+import { Assistant, Conversation, Message } from '../../../types'
 import { createChatStore } from '../../../store/chat.ts'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
 import { IoIosArrowDown } from 'react-icons/io'
@@ -430,7 +429,7 @@ export const ChatInput = function ChatInput({
         >
           {/* Main input row with add file button on left and selectors + send on right */}
           <div style={{ padding: '8px' }}>
-            <Flex className="flex-col gap-1 w-full">
+            <Flex className="flex-col gap-3 w-full">
               <div className="w-full">
                 <Form.Item name="message" className="mb-0" noStyle>
                   <TextArea
@@ -440,7 +439,7 @@ export const ChatInput = function ChatInput({
                     placeholder={t('chat.messageAI')}
                     autoSize={{ minRows: 1, maxRows: 6 }}
                     disabled={isDisabled}
-                    className="resize-none !border-none focus:!border-none focus:!outline-none focus:!shadow-none"
+                    className="resize-none !border-none focus:!border-none focus:!outline-none focus:!shadow-none !pt-1"
                     onChange={() => {
                       setContent(form.getFieldValue('message') || '')
                     }}

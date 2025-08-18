@@ -12,12 +12,12 @@ import { useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { isTauriView } from '../../../api/core.ts'
 import type { HubModel } from '../../../types'
+import { Provider } from '../../../types'
 import { Stores } from '../../../store'
 import { adminRepositoryHasCredentials } from '../../../store/admin/repositories.ts'
 import { downloadModelFromRepository } from '../../../store/admin/modelDownload.ts'
 import { openRepositoryDrawer } from '../../../store/ui'
 import { DownloadItem } from '../../Common/DownloadItem.tsx'
-import { Provider } from '../../../types'
 import { ModelDetailsDrawer } from './ModelDetailsDrawer'
 
 const { Text } = Typography

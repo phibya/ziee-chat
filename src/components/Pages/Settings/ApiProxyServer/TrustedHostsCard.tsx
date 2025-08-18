@@ -1,18 +1,18 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, Button, Typography, App, Empty, Divider, Switch } from 'antd'
-import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { App, Button, Card, Divider, Empty, Switch, Typography } from 'antd'
+import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'
 import {
   addTrustedHostToApiProxyServer,
-  updateApiProxyServerTrustedHost,
   removeTrustedHostFromApiProxyServer,
+  updateApiProxyServerTrustedHost,
 } from '../../../../store/admin/apiProxyServer.ts'
 import type {
+  ApiProxyServerTrustedHost,
   CreateTrustedHostRequest,
   UpdateTrustedHostRequest,
-  ApiProxyServerTrustedHost,
 } from '../../../../types'
 import { AddHostDrawer, EditHostDrawer } from './drawers'
 

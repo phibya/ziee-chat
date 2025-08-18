@@ -9,8 +9,8 @@ import { useUserAppearanceLanguage } from './store'
 import { ProjectsPage } from './components/Pages/Projects/ProjectsPage'
 import { ProjectDetailsPage } from './components/Pages/Projects/ProjectDetailsPage'
 import {
-  NewChatInterface,
   ExistingChatInterface,
+  NewChatInterface,
 } from './components/Pages/Chat'
 import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
 import { HubPage } from './components/Pages/Hub/HubPage'
@@ -19,23 +19,23 @@ import { SettingsPage } from './components/Pages/SettingsPage'
 import { HardwareMonitor } from './components/Pages/HardwareMonitor'
 import { ApiProxyLogMonitor } from './components/Pages/Settings/ApiProxyServer/ApiProxyLogMonitor.tsx'
 import {
-  GeneralSettings,
-  AppearanceSettings,
-  PrivacySettings,
-  ProvidersSettings,
-  ModelRepositorySettings,
-  RAGProvidersSettings,
-  RAGRepositoriesSettings,
-  HardwareSettings,
-  HttpsProxySettings,
-  NgrokSettings,
-  ApiProxyServerSettings,
-  UserGroupsSettings,
-  UsersSettings,
   AdminAppearanceSettings,
   AdminAssistantsSettings,
-  EnginesSettings,
   AdminGeneralSettings,
+  ApiProxyServerSettings,
+  AppearanceSettings,
+  EnginesSettings,
+  GeneralSettings,
+  HardwareSettings,
+  HttpsProxySettings,
+  ModelRepositorySettings,
+  NgrokSettings,
+  PrivacySettings,
+  ProvidersSettings,
+  RAGProvidersSettings,
+  RAGRepositoriesSettings,
+  UserGroupsSettings,
+  UsersSettings,
 } from './components/Pages/Settings'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'

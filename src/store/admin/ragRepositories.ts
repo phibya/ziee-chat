@@ -2,12 +2,12 @@ import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client.ts'
 import {
-  RAGRepository,
   CreateRAGRepositoryRequest,
-  UpdateRAGRepositoryRequest,
   DownloadRAGDatabaseFromRepositoryRequest,
+  RAGDatabase,
+  RAGRepository,
+  UpdateRAGRepositoryRequest,
 } from '../../types'
-import { RAGDatabase } from '../../types'
 
 interface AdminRAGRepositoriesState {
   // Data

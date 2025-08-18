@@ -3,11 +3,11 @@ import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
 import {
-  Stores,
-  registerNewUser,
-  setupInitialAdminUser,
   clearAuthenticationError,
   loadSystemUserRegistrationSettings,
+  registerNewUser,
+  setupInitialAdminUser,
+  Stores,
 } from '../../store'
 import type { CreateUserRequest } from '../../types'
 

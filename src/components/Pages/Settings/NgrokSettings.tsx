@@ -1,15 +1,15 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  Alert,
+  App,
+  Button,
   Card,
+  Flex,
   Form,
   Input,
   Switch,
-  Button,
   Typography,
-  Alert,
-  Flex,
-  App,
 } from 'antd'
 import {
   GlobalOutlined,
@@ -23,11 +23,11 @@ import { Permission, usePermissions } from '../../../permissions'
 import { Stores } from '../../../store'
 import {
   loadNgrokSettings,
-  updateNgrokSettings,
+  refreshNgrokStatus,
   startNgrokTunnel,
   stopNgrokTunnel,
-  refreshNgrokStatus,
   updateAccountPassword,
+  updateNgrokSettings,
 } from '../../../store/admin/ngrokSettings'
 
 const { Text } = Typography

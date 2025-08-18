@@ -5,7 +5,7 @@ import {
   theme,
   Typography,
 } from 'antd'
-import React, { useRef, useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { ResizeHandle } from './ResizeHandle.tsx'
 import tinycolor from 'tinycolor2'
 import { isTauriView } from '../../api/core.ts'
@@ -61,7 +61,6 @@ export const Drawer: React.FC<DrawerProps> = props => {
     placement = 'right',
     width = 520,
     maskClosable = true,
-    className = '',
     ...restProps
   } = props
 

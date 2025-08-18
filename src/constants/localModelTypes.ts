@@ -5,6 +5,7 @@ export interface ModelFileType {
   extensions: string[]
   mimeTypes?: string[]
 }
+
 // Supported file types for Local models
 export const LOCAL_FILE_TYPES: ModelFileType[] = [
   {
