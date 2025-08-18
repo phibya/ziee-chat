@@ -198,7 +198,7 @@ pub struct UserServices {
 }
 
 // User settings structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserSetting {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -243,18 +243,18 @@ pub struct LoginResponse {
     pub expires_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserSettingRequest {
     pub key: String,
     pub value: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserSettingsResponse {
     pub settings: Vec<UserSetting>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AssignProviderToGroupRequest {
     pub group_id: Uuid,
     pub provider_id: Uuid,
@@ -271,7 +271,7 @@ pub struct UserGroupProviderResponse {
 }
 
 // User group management structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateUserGroupRequest {
     pub name: String,
     pub description: Option<String>,
@@ -279,7 +279,7 @@ pub struct CreateUserGroupRequest {
     pub provider_ids: Option<Vec<Uuid>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateUserGroupRequest {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -288,14 +288,14 @@ pub struct UpdateUserGroupRequest {
     pub is_active: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AssignUserToGroupRequest {
     pub user_id: Uuid,
     pub group_id: Uuid,
 }
 
 // User management structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateUserRequest {
     pub username: Option<String>,
     pub email: Option<String>,
@@ -303,7 +303,7 @@ pub struct UpdateUserRequest {
     pub profile: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ResetPasswordRequest {
     pub user_id: Uuid,
     pub new_password: String,

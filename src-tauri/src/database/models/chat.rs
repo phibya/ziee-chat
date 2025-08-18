@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
+use schemars::JsonSchema;
 
 // Main unified structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,7 +146,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for ConversationMetadata {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateConversationRequest {
     pub title: String,
     pub project_id: Option<Uuid>,
@@ -153,7 +154,7 @@ pub struct CreateConversationRequest {
     pub model_id: Uuid,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateConversationRequest {
     pub title: Option<String>,
     pub assistant_id: Option<Uuid>,

@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
@@ -52,7 +53,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGProvider {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateRAGProviderRequest {
     pub name: String,
     #[serde(rename = "type")]
@@ -62,7 +63,7 @@ pub struct CreateRAGProviderRequest {
     pub base_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateRAGProviderRequest {
     pub name: Option<String>,
     pub enabled: Option<bool>,

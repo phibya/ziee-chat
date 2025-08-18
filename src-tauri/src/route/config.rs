@@ -1,16 +1,20 @@
 use crate::api;
-use axum::routing::get;
-use axum::Router;
+use aide::{
+    axum::{ApiRouter, routing::get_with},
+};
 
 /// Public configuration routes (no authentication required)
-pub fn config_routes() -> Router {
-    Router::new()
-        .route(
-            "/config/user-registration",
-            get(api::configuration::get_user_registration_status),
-        )
-        .route(
-            "/config/default-language",
-            get(api::configuration::get_default_language_public),
-        )
+pub fn config_routes() -> ApiRouter {
+    ApiRouter::new()
+        .api_route("/config/user-registration", get_with(api::configuration::get_user_registration_status, |op| {
+            op.description("Get user registration status")
+                .id("Config.getUserRegistrationStatus")
+                .tag("config")
+        }))
+        
+        .api_route("/config/default-language", get_with(api::configuration::get_default_language_public, |op| {
+            op.description("Get default language")
+                .id("Config.getDefaultLanguage")
+                .tag("config")
+        }))
 }

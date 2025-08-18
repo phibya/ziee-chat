@@ -1,69 +1,91 @@
 use crate::api;
-use axum::routing::{delete, get, post, put};
-use axum::{middleware, Router};
+use aide::{
+    axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
+};
+use axum::middleware;
 
-pub fn admin_model_routes() -> Router {
-    Router::new()
+pub fn admin_model_routes() -> ApiRouter {
+    ApiRouter::new()
         // Model routes
-        .route(
+        .api_route(
             "/providers/{provider_id}/models",
-            post(api::models::create_model).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            post_with(api::models::create_model, |op| {
+                op.description("Add a model to a provider")
+                    .id("Admin.addModelToProvider")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/models/{model_id}",
-            get(api::models::get_model).layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
-            )),
+            get_with(api::models::get_model, |op| {
+                op.description("Get a specific model")
+                    .id("Admin.getModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_read_middleware)),
         )
-        .route(
+        .api_route(
             "/models/{model_id}",
-            put(api::models::update_model).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            put_with(api::models::update_model, |op| {
+                op.description("Update a model")
+                    .id("Admin.updateModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/models/{model_id}",
-            delete(api::models::delete_model).layer(middleware::from_fn(
-                api::middleware::providers_delete_middleware,
-            )),
+            delete_with(api::models::delete_model, |op| {
+                op.description("Delete a model")
+                    .id("Admin.deleteModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_delete_middleware)),
         )
-        .route(
+        .api_route(
             "/models/{model_id}/start",
-            post(api::models::start_model).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            post_with(api::models::start_model, |op| {
+                op.description("Start a model")
+                    .id("Admin.startModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/models/{model_id}/stop",
-            post(api::models::stop_model).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            post_with(api::models::stop_model, |op| {
+                op.description("Stop a model")
+                    .id("Admin.stopModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/models/{model_id}/enable",
-            post(api::models::enable_model).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            post_with(api::models::enable_model, |op| {
+                op.description("Enable a model")
+                    .id("Admin.enableModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/models/{model_id}/disable",
-            post(api::models::disable_model).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            post_with(api::models::disable_model, |op| {
+                op.description("Disable a model")
+                    .id("Admin.disableModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
         // Model uploads
-        .route(
+        .api_route(
             "/uploaded-models/upload-and-commit",
-            post(api::model_uploads::upload_multiple_files_and_commit).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            post_with(api::model_uploads::upload_multiple_files_and_commit, |op| {
+                op.description("Upload and commit model files")
+                    .id("Admin.uploadAndCommitModel")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/models/initiate-repository-download",
-            post(api::model_uploads::initiate_repository_download).layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
-            )),
+            post_with(api::model_uploads::initiate_repository_download, |op| {
+                op.description("Initiate repository download")
+                    .id("Admin.downloadFromRepository")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
         )
 }

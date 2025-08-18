@@ -1,37 +1,59 @@
 use crate::api;
-use axum::routing::{delete, get, post};
-use axum::{middleware, Router};
+use aide::{
+    axum::{ApiRouter, routing::{delete_with, get_with, post_with}},
+};
+use axum::middleware;
 
-pub fn admin_download_routes() -> Router {
-    Router::new()
+pub fn admin_download_routes() -> ApiRouter {
+    ApiRouter::new()
         // Download management routes
-        .route(
+        .api_route(
             "/downloads",
-            get(api::download_instances::list_all_downloads).layer(middleware::from_fn(
+            get_with(api::download_instances::list_all_downloads, |op| {
+                op.description("List all download instances (admin)")
+                    .id("Admin.listAllDownloads")
+                    .tag("admin")
+            }).layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
         )
-        .route(
+        .api_route(
             "/downloads/{download_id}",
-            get(api::download_instances::get_download).layer(middleware::from_fn(
+            get_with(api::download_instances::get_download, |op| {
+                op.description("Get a specific download instance")
+                    .id("Admin.getDownload")
+                    .tag("admin")
+            }).layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
         )
-        .route(
+        .api_route(
             "/downloads/{download_id}/cancel",
-            post(api::download_instances::cancel_download).layer(middleware::from_fn(
+            post_with(api::download_instances::cancel_download, |op| {
+                op.description("Cancel a download")
+                    .id("Admin.cancelDownload")
+                    .tag("admin")
+            }).layer(middleware::from_fn(
                 api::middleware::providers_edit_middleware,
             )),
         )
-        .route(
+        .api_route(
             "/downloads/{download_id}",
-            delete(api::download_instances::delete_download).layer(middleware::from_fn(
+            delete_with(api::download_instances::delete_download, |op| {
+                op.description("Delete a download instance")
+                    .id("Admin.deleteDownload")
+                    .tag("admin")
+            }).layer(middleware::from_fn(
                 api::middleware::providers_edit_middleware,
             )),
         )
-        .route(
+        .api_route(
             "/downloads/subscribe",
-            get(api::download_instances::subscribe_download_progress).layer(middleware::from_fn(
+            get_with(api::download_instances::subscribe_download_progress, |op| {
+                op.description("Subscribe to download progress updates via SSE")
+                    .id("Admin.subscribeDownloadProgress")
+                    .tag("admin")
+            }).layer(middleware::from_fn(
                 api::middleware::providers_read_middleware,
             )),
         )

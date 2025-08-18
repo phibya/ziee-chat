@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
@@ -34,7 +35,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGRepository {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateRAGRepositoryRequest {
     pub name: String,
     pub description: Option<String>,
@@ -45,7 +46,7 @@ pub struct CreateRAGRepositoryRequest {
     pub priority: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateRAGRepositoryRequest {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -71,7 +72,7 @@ pub struct RAGRepositoryConnectionTestResponse {
     pub available_databases_count: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct DownloadRAGDatabaseFromRepositoryRequest {
     pub repository_id: Uuid,
     pub database_id: String,

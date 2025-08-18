@@ -1,5 +1,6 @@
 use axum::response::sse::{Event, KeepAlive};
 use axum::{
+    debug_handler,
     extract::{Path, Query},
     http::StatusCode,
     response::Sse,
@@ -20,8 +21,9 @@ use crate::ai::{
     },
 };
 use crate::utils::proxy::create_proxy_config;
-use crate::api::errors::ErrorCode;
+use crate::api::errors::{ApiResult2, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
+use schemars::JsonSchema;
 use crate::database::models::EditMessageRequest;
 use crate::database::{
     models::{
@@ -36,14 +38,14 @@ use crate::database::{
 };
 use crate::utils::chat::{build_chat_messages, build_single_user_message};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct PaginationQuery {
     page: Option<i32>,
     per_page: Option<i32>,
     project_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchQuery {
     q: String,
     page: Option<i32>,
@@ -51,7 +53,7 @@ pub struct SearchQuery {
     project_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct ChatMessageRequest {
     pub conversation_id: Uuid,
     pub content: String,
@@ -60,7 +62,7 @@ pub struct ChatMessageRequest {
     pub file_ids: Option<Vec<Uuid>>, // Optional file attachments
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct SwitchBranchRequest {
     pub branch_id: Uuid,
 }
@@ -96,39 +98,42 @@ pub struct StreamErrorData {
 }
 
 /// Create a new conversation
+#[debug_handler]
 pub async fn create_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateConversationRequest>,
-) -> Result<Json<Conversation>, StatusCode> {
+) -> ApiResult2<Json<Conversation>> {
     match chat::create_conversation(request, auth_user.user.id).await {
-        Ok(conversation) => Ok(Json(conversation)),
+        Ok(conversation) => Ok((StatusCode::OK, Json(conversation))),
         Err(e) => {
             eprintln!("Error creating conversation: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
 
 /// Get conversation by ID (without messages)
+#[debug_handler]
 pub async fn get_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
-) -> Result<Json<Conversation>, StatusCode> {
+) -> ApiResult2<Json<Conversation>> {
     match chat::get_conversation_by_id(conversation_id, auth_user.user.id).await {
-        Ok(Some(conversation)) => Ok(Json(conversation)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(Some(conversation)) => Ok((StatusCode::OK, Json(conversation))),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
         Err(e) => {
             eprintln!("Error getting conversation: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
 
 /// List conversations for the authenticated user
+#[debug_handler]
 pub async fn list_conversations(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> Result<Json<ConversationListResponse>, StatusCode> {
+) -> ApiResult2<Json<ConversationListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -138,41 +143,43 @@ pub async fn list_conversations(
         .map(|s| Uuid::parse_str(s).ok())
         .flatten();
     match chat::list_conversations(auth_user.user.id, page, per_page, project_id).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => Ok((StatusCode::OK, Json(response))),
         Err(e) => {
             eprintln!("Error listing conversations: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
 
 /// Update conversation
+#[debug_handler]
 pub async fn update_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
     Json(request): Json<UpdateConversationRequest>,
-) -> Result<Json<Conversation>, StatusCode> {
+) -> ApiResult2<Json<Conversation>> {
     match chat::update_conversation(conversation_id, request, auth_user.user.id).await {
-        Ok(Some(conversation)) => Ok(Json(conversation)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(Some(conversation)) => Ok((StatusCode::OK, Json(conversation))),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
         Err(e) => {
             eprintln!("Error updating conversation: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
 
 /// Delete conversation
+#[debug_handler]
 pub async fn delete_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
+) -> ApiResult2<StatusCode> {
     match chat::delete_conversation(conversation_id, auth_user.user.id).await {
-        Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
+        Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
         Err(e) => {
             eprintln!("Error deleting conversation: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
@@ -475,10 +482,11 @@ async fn stream_ai_response(
 }
 
 /// Send a message with AI provider integration using SSE streaming
+#[debug_handler]
 pub async fn send_message_stream(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<ChatMessageRequest>,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+) -> ApiResult2<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
     // Create a channel for streaming events
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -513,15 +521,16 @@ pub async fn send_message_stream(
     // Convert the receiver to a stream and return as SSE
     let stream = UnboundedReceiverStream::new(rx);
 
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+    Ok((StatusCode::OK, Sse::new(stream).keep_alive(KeepAlive::default())))
 }
 
 /// Edit a message with streaming response (creates a new branch)
+#[debug_handler]
 pub async fn edit_message_stream(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
     Json(request): Json<ChatMessageRequest>,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+) -> ApiResult2<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
     // Create a channel for streaming events
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -573,7 +582,7 @@ pub async fn edit_message_stream(
 
     // Convert the receiver to a stream and return as SSE
     let stream = UnboundedReceiverStream::new(rx);
-    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+    Ok((StatusCode::OK, Sse::new(stream).keep_alive(KeepAlive::default())))
 }
 
 /// Edit a message (creates a new branch) - non-streaming version for backward compatibility
@@ -593,45 +602,48 @@ pub async fn edit_message(
 }
 
 /// Switch to a different branch for a conversation
+#[debug_handler]
 pub async fn switch_conversation_branch(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
     Json(request): Json<SwitchBranchRequest>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> ApiResult2<Json<serde_json::Value>> {
     match chat::switch_conversation_branch(conversation_id, request.branch_id, auth_user.user.id)
         .await
     {
-        Ok(true) => Ok(Json(serde_json::json!({
+        Ok(true) => Ok((StatusCode::OK, Json(serde_json::json!({
             "success": true,
             "message": "Branch switched successfully"
-        }))),
-        Ok(false) => Err(StatusCode::NOT_FOUND),
+        })))),
+        Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation branch"))),
         Err(e) => {
             eprintln!("Error switching conversation branch: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
 
 /// Get message branches for a specific message (all branches containing messages with same originated_from_id)
+#[debug_handler]
 pub async fn get_message_branches(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
-) -> Result<Json<Vec<crate::database::models::MessageBranch>>, StatusCode> {
+) -> ApiResult2<Json<Vec<crate::database::models::MessageBranch>>> {
     match chat::get_message_branches(message_id, auth_user.user.id).await {
-        Ok(branches) => Ok(Json(branches)),
+        Ok(branches) => Ok((StatusCode::OK, Json(branches))),
         Err(e) => {
             eprintln!("Error getting message branches: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
 
 /// Search conversations
+#[debug_handler]
 pub async fn search_conversations(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<SearchQuery>,
-) -> Result<Json<ConversationListResponse>, StatusCode> {
+) -> ApiResult2<Json<ConversationListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -642,10 +654,10 @@ pub async fn search_conversations(
         .flatten();
     match chat::search_conversations(auth_user.user.id, &params.q, page, per_page, project_id).await
     {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => Ok((StatusCode::OK, Json(response))),
         Err(e) => {
             eprintln!("Error searching conversations: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }
@@ -780,17 +792,18 @@ pub async fn create_ai_provider_with_model_id(
 }
 
 /// Get messages for a conversation with specific branch
+#[debug_handler]
 pub async fn get_conversation_messages_by_branch(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path((conversation_id, branch_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<Vec<Message>>, StatusCode> {
+) -> ApiResult2<Json<Vec<Message>>> {
     match chat::get_conversation_messages_by_branch(conversation_id, branch_id, auth_user.user.id)
         .await
     {
-        Ok(messages) => Ok(Json(messages)),
+        Ok(messages) => Ok((StatusCode::OK, Json(messages))),
         Err(e) => {
             eprintln!("Error getting messages for branch: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
         }
     }
 }

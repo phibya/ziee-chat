@@ -11,8 +11,9 @@ use crate::database::queries::configuration::{
     get_ngrok_settings, set_ngrok_settings, NgrokSettings,
 };
 use crate::utils::ngrok::{NgrokService, NgrokError};
-use axum::{http::StatusCode, response::Json, Extension};
+use axum::{debug_handler, http::StatusCode, response::Json, Extension};
 use serde::{Deserialize, Serialize};
+use crate::api::errors::{ApiResult2, AppError};
 use std::collections::HashMap;
 use tokio::sync::Mutex;
 use std::sync::Arc;
@@ -29,27 +30,27 @@ use schemars::JsonSchema;
 // Global ngrok service instance
 static NGROK_SERVICE: Lazy<Arc<Mutex<Option<NgrokService>>>> = Lazy::new(|| Arc::new(Mutex::new(None)));
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 pub struct UserRegistrationStatusResponse {
     pub enabled: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 pub struct UpdateUserRegistrationRequest {
     pub enabled: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 pub struct DefaultLanguageResponse {
     pub language: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 pub struct UpdateDefaultLanguageRequest {
     pub language: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 pub struct ProxySettingsResponse {
     pub enabled: bool,
     pub url: String,
@@ -63,7 +64,7 @@ pub struct ProxySettingsResponse {
     // pub host_ssl: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 pub struct UpdateProxySettingsRequest {
     pub enabled: bool,
     pub url: String,
@@ -98,7 +99,7 @@ pub struct TestProxyConnectionResponse {
 }
 
 // Ngrok API types
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 pub struct NgrokSettingsResponse {
     pub api_key: String, // Will be empty in response for security
     pub tunnel_enabled: bool,
@@ -108,7 +109,7 @@ pub struct NgrokSettingsResponse {
     pub domain: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 pub struct UpdateNgrokSettingsRequest {
     pub api_key: Option<String>,
     pub tunnel_enabled: Option<bool>,
@@ -116,7 +117,7 @@ pub struct UpdateNgrokSettingsRequest {
     pub domain: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 pub struct NgrokStatusResponse {
     pub tunnel_active: bool,
     pub tunnel_url: Option<String>,
@@ -124,79 +125,116 @@ pub struct NgrokStatusResponse {
     pub last_error: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 pub struct UpdateUserPasswordRequest {
     pub current_password: Option<String>,  // Optional for desktop apps
     pub new_password: String,
 }
 
 // Public endpoint to check registration status (no auth required)
+#[debug_handler]
 pub async fn get_user_registration_status(
-) -> Result<Json<UserRegistrationStatusResponse>, StatusCode> {
+) -> ApiResult2<Json<UserRegistrationStatusResponse>> {
     match is_user_registration_enabled().await {
-        Ok(enabled) => Ok(Json(UserRegistrationStatusResponse { enabled })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(enabled) => Ok((StatusCode::OK, Json(UserRegistrationStatusResponse { enabled }))),
+        Err(e) => {
+            eprintln!("Error getting user registration status: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+        }
     }
 }
 
-// Admin endpoint to check registration status
+/// Admin endpoint to check registration status
+#[debug_handler]
 pub async fn get_user_registration_status_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<UserRegistrationStatusResponse>, StatusCode> {
+) -> ApiResult2<Json<UserRegistrationStatusResponse>> {
     match is_user_registration_enabled().await {
-        Ok(enabled) => Ok(Json(UserRegistrationStatusResponse { enabled })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(enabled) => Ok((StatusCode::OK, Json(UserRegistrationStatusResponse { enabled }))),
+        Err(e) => {
+            eprintln!("Error getting user registration status: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get user registration status")
+            ))
+        }
     }
 }
 
-// Admin endpoint to update registration status
+/// Admin endpoint to update registration status
+#[debug_handler]
 pub async fn update_user_registration_status(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateUserRegistrationRequest>,
-) -> Result<Json<UserRegistrationStatusResponse>, StatusCode> {
+) -> ApiResult2<Json<UserRegistrationStatusResponse>> {
     match set_user_registration_enabled(request.enabled).await {
-        Ok(_) => Ok(Json(UserRegistrationStatusResponse {
+        Ok(_) => Ok((StatusCode::OK, Json(UserRegistrationStatusResponse {
             enabled: request.enabled,
-        })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        }))),
+        Err(e) => {
+            eprintln!("Error updating user registration status: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to update user registration status")
+            ))
+        }
     }
 }
 
 // Public endpoint to get default language (no auth required)
-pub async fn get_default_language_public() -> Result<Json<DefaultLanguageResponse>, StatusCode> {
+#[debug_handler]
+pub async fn get_default_language_public() -> ApiResult2<Json<DefaultLanguageResponse>> {
     match get_default_language().await {
-        Ok(language) => Ok(Json(DefaultLanguageResponse { language })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(language) => Ok((StatusCode::OK, Json(DefaultLanguageResponse { language }))),
+        Err(e) => {
+            eprintln!("Error getting default language: {}", e);
+            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+        }
     }
 }
 
-// Admin endpoint to get default language
+/// Admin endpoint to get default language
+#[debug_handler]
 pub async fn get_default_language_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<DefaultLanguageResponse>, StatusCode> {
+) -> ApiResult2<Json<DefaultLanguageResponse>> {
     match get_default_language().await {
-        Ok(language) => Ok(Json(DefaultLanguageResponse { language })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(language) => Ok((StatusCode::OK, Json(DefaultLanguageResponse { language }))),
+        Err(e) => {
+            eprintln!("Error getting default language: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get default language")
+            ))
+        }
     }
 }
 
-// Admin endpoint to update default language
+/// Admin endpoint to update default language
+#[debug_handler]
 pub async fn update_default_language(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateDefaultLanguageRequest>,
-) -> Result<Json<DefaultLanguageResponse>, StatusCode> {
+) -> ApiResult2<Json<DefaultLanguageResponse>> {
     match set_default_language(&request.language).await {
-        Ok(_) => Ok(Json(DefaultLanguageResponse {
+        Ok(_) => Ok((StatusCode::OK, Json(DefaultLanguageResponse {
             language: request.language,
-        })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        }))),
+        Err(e) => {
+            eprintln!("Error updating default language: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to update default language")
+            ))
+        }
     }
 }
 
-// Admin endpoint to get proxy settings
+/// Admin endpoint to get proxy settings
+#[debug_handler]
 pub async fn get_proxy_settings(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<ProxySettingsResponse>, StatusCode> {
+) -> ApiResult2<Json<ProxySettingsResponse>> {
     let enabled = is_proxy_enabled().await.unwrap_or(false);
     let url = get_proxy_url().await.unwrap_or_default();
     let username = get_proxy_username().await.unwrap_or_default();
@@ -208,7 +246,7 @@ pub async fn get_proxy_settings(
     // let peer_ssl = is_peer_ssl().await.unwrap_or(false);
     // let host_ssl = is_host_ssl().await.unwrap_or(false);
 
-    Ok(Json(ProxySettingsResponse {
+    Ok((StatusCode::OK, Json(ProxySettingsResponse {
         enabled,
         url,
         username,
@@ -219,32 +257,57 @@ pub async fn get_proxy_settings(
         // proxy_host_ssl,
         // peer_ssl,
         // host_ssl,
-    }))
+    })))
 }
 
-// Admin endpoint to update proxy settings
+/// Admin endpoint to update proxy settings
+#[debug_handler]
 pub async fn update_proxy_settings(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateProxySettingsRequest>,
-) -> Result<Json<ProxySettingsResponse>, StatusCode> {
+) -> ApiResult2<Json<ProxySettingsResponse>> {
     // Update all proxy settings
-    if let Err(_) = set_proxy_enabled(request.enabled).await {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    if let Err(e) = set_proxy_enabled(request.enabled).await {
+        eprintln!("Error setting proxy enabled: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error("Failed to update proxy settings")
+        ));
     }
-    if let Err(_) = set_proxy_url(&request.url).await {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    if let Err(e) = set_proxy_url(&request.url).await {
+        eprintln!("Error setting proxy URL: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error("Failed to update proxy settings")
+        ));
     }
-    if let Err(_) = set_proxy_username(&request.username).await {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    if let Err(e) = set_proxy_username(&request.username).await {
+        eprintln!("Error setting proxy username: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error("Failed to update proxy settings")
+        ));
     }
-    if let Err(_) = set_proxy_password(&request.password).await {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    if let Err(e) = set_proxy_password(&request.password).await {
+        eprintln!("Error setting proxy password: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error("Failed to update proxy settings")
+        ));
     }
-    if let Err(_) = set_proxy_no_proxy(&request.no_proxy).await {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    if let Err(e) = set_proxy_no_proxy(&request.no_proxy).await {
+        eprintln!("Error setting proxy no_proxy: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error("Failed to update proxy settings")
+        ));
     }
-    if let Err(_) = set_proxy_ignore_ssl_certificates(request.ignore_ssl_certificates).await {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    if let Err(e) = set_proxy_ignore_ssl_certificates(request.ignore_ssl_certificates).await {
+        eprintln!("Error setting proxy ignore SSL certificates: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error("Failed to update proxy settings")
+        ));
     }
     // if let Err(_) = set_proxy_ssl(request.proxy_ssl).await {
     //     return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -259,7 +322,7 @@ pub async fn update_proxy_settings(
     //     return Err(StatusCode::INTERNAL_SERVER_ERROR);
     // }
 
-    Ok(Json(ProxySettingsResponse {
+    Ok((StatusCode::OK, Json(ProxySettingsResponse {
         enabled: request.enabled,
         url: request.url,
         username: request.username,
@@ -270,7 +333,7 @@ pub async fn update_proxy_settings(
         // proxy_host_ssl: request.proxy_host_ssl,
         // peer_ssl: request.peer_ssl,
         // host_ssl: request.host_ssl,
-    }))
+    })))
 }
 
 // Public endpoint to test proxy connection (no authentication required)
@@ -311,30 +374,44 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
 
 // Ngrok API handlers
 
+#[debug_handler]
 pub async fn get_ngrok_settings_handler(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<NgrokSettingsResponse>, StatusCode> {
+) -> ApiResult2<Json<NgrokSettingsResponse>> {
     match get_ngrok_settings().await {
-        Ok(settings) => Ok(Json(NgrokSettingsResponse {
+        Ok(settings) => Ok((StatusCode::OK, Json(NgrokSettingsResponse {
             api_key: settings.api_key,
             tunnel_enabled: settings.tunnel_enabled,
             tunnel_url: settings.tunnel_url,
             tunnel_status: settings.tunnel_status,
             auto_start: settings.auto_start,
             domain: settings.domain,
-        })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        }))),
+        Err(e) => {
+            eprintln!("Error getting ngrok settings: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get ngrok settings")
+            ))
+        }
     }
 }
 
+#[debug_handler]
 pub async fn update_ngrok_settings(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(payload): Json<UpdateNgrokSettingsRequest>,
-) -> Result<Json<NgrokSettingsResponse>, StatusCode> {
+) -> ApiResult2<Json<NgrokSettingsResponse>> {
     // Get current settings
     let mut settings = match get_ngrok_settings().await {
         Ok(settings) => settings,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            eprintln!("Error getting current ngrok settings: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get current ngrok settings")
+            ));
+        }
     };
 
     // Update fields if provided
@@ -358,29 +435,45 @@ pub async fn update_ngrok_settings(
 
     // Save updated settings
     match set_ngrok_settings(&settings).await {
-        Ok(_) => Ok(Json(NgrokSettingsResponse {
+        Ok(_) => Ok((StatusCode::OK, Json(NgrokSettingsResponse {
             api_key: settings.api_key,
             tunnel_enabled: settings.tunnel_enabled,
             tunnel_url: settings.tunnel_url,
             tunnel_status: settings.tunnel_status,
             auto_start: settings.auto_start,
             domain: settings.domain,
-        })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        }))),
+        Err(e) => {
+            eprintln!("Error updating ngrok settings: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to update ngrok settings")
+            ))
+        }
     }
 }
 
+#[debug_handler]
 pub async fn start_ngrok_tunnel(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<NgrokStatusResponse>, (StatusCode, String)> {
+) -> ApiResult2<Json<NgrokStatusResponse>> {
     // Get current settings
     let settings = match get_ngrok_settings().await {
         Ok(settings) => settings,
-        Err(e) => return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get ngrok settings: {}", e))),
+        Err(e) => {
+            eprintln!("Error getting ngrok settings: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get ngrok settings")
+            ));
+        }
     };
 
     if settings.api_key.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "API key not configured".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            AppError::new(crate::api::errors::ErrorCode::ValidMissingRequiredField, "API key not configured")
+        ));
     }
 
     // Get the HTTP port from the global config
@@ -397,7 +490,11 @@ pub async fn start_ngrok_tunnel(
             updated_settings.tunnel_status = "active".to_string();
             
             if let Err(e) = set_ngrok_settings(&updated_settings).await {
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to save tunnel settings: {}", e)));
+                eprintln!("Error saving tunnel settings: {}", e);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    AppError::internal_error("Failed to save tunnel settings")
+                ));
             }
 
             // Store the service globally for later management
@@ -406,12 +503,12 @@ pub async fn start_ngrok_tunnel(
                 *global_service = Some(ngrok_service);
             }
 
-            Ok(Json(NgrokStatusResponse {
+            Ok((StatusCode::OK, Json(NgrokStatusResponse {
                 tunnel_active: true,
                 tunnel_url: Some(tunnel_url),
                 tunnel_status: "active".to_string(),
                 last_error: None,
-            }))
+            })))
         }
         Err(e) => {
             // Update settings with error info
@@ -420,26 +517,31 @@ pub async fn start_ngrok_tunnel(
             
             let _ = set_ngrok_settings(&updated_settings).await;
 
-            // Return error status code with detailed message
-            Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to start ngrok tunnel: {}", e)))
+            eprintln!("Error starting ngrok tunnel: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to start ngrok tunnel")
+            ))
         }
     }
 }
 
+#[debug_handler]
 pub async fn stop_ngrok_tunnel(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<NgrokStatusResponse>, StatusCode> {
+) -> ApiResult2<Json<NgrokStatusResponse>> {
     // Stop the global ngrok service
     {
         let mut global_service = NGROK_SERVICE.lock().await;
         if let Some(mut service) = global_service.take() {
             if let Err(e) = service.stop_tunnel().await {
-                return Ok(Json(NgrokStatusResponse {
+                eprintln!("Error stopping ngrok tunnel: {}", e);
+                return Ok((StatusCode::OK, Json(NgrokStatusResponse {
                     tunnel_active: false,
                     tunnel_url: None,
                     tunnel_status: "error".to_string(),
                     last_error: Some(format!("Failed to stop tunnel: {}", e)),
-                }));
+                })));
             }
         }
     }
@@ -447,27 +549,38 @@ pub async fn stop_ngrok_tunnel(
     // Update settings
     let mut settings = match get_ngrok_settings().await {
         Ok(settings) => settings,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            eprintln!("Error getting ngrok settings: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get ngrok settings")
+            ));
+        }
     };
 
     settings.tunnel_url = None;
     settings.tunnel_status = "inactive".to_string();
 
-    if let Err(_) = set_ngrok_settings(&settings).await {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    if let Err(e) = set_ngrok_settings(&settings).await {
+        eprintln!("Error updating ngrok settings: {}", e);
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::internal_error("Failed to update ngrok settings")
+        ));
     }
 
-    Ok(Json(NgrokStatusResponse {
+    Ok((StatusCode::OK, Json(NgrokStatusResponse {
         tunnel_active: false,
         tunnel_url: None,
         tunnel_status: "inactive".to_string(),
         last_error: None,
-    }))
+    })))
 }
 
+#[debug_handler]
 pub async fn get_ngrok_status(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> Result<Json<NgrokStatusResponse>, StatusCode> {
+) -> ApiResult2<Json<NgrokStatusResponse>> {
     // Check if service is running
     let tunnel_active = {
         let global_service = NGROK_SERVICE.lock().await;
@@ -477,15 +590,21 @@ pub async fn get_ngrok_status(
     // Get current settings
     let settings = match get_ngrok_settings().await {
         Ok(settings) => settings,
-        Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            eprintln!("Error getting ngrok settings: {}", e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get ngrok settings")
+            ));
+        }
     };
 
-    Ok(Json(NgrokStatusResponse {
+    Ok((StatusCode::OK, Json(NgrokStatusResponse {
         tunnel_active,
         tunnel_url: settings.tunnel_url,
         tunnel_status: if tunnel_active { "active".to_string() } else { "inactive".to_string() },
         last_error: None,
-    }))
+    })))
 }
 
 /// Try to autostart ngrok tunnel if configured
@@ -582,10 +701,11 @@ async fn start_ngrok_tunnel_internal(api_key: &str, local_port: u16, domain: Opt
     Ok(tunnel_url)
 }
 
+#[debug_handler]
 pub async fn update_user_password(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(payload): Json<UpdateUserPasswordRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> ApiResult2<StatusCode> {
     let auth_service = AuthService::default();
 
     // For desktop apps, skip current password verification
@@ -593,18 +713,38 @@ pub async fn update_user_password(
         // Web apps: verify current password
         if let Some(current_password) = &payload.current_password {
             match auth_service.verify_user_password(&auth_user.user, current_password).await {
-                Ok(false) => return Err(StatusCode::UNAUTHORIZED),
-                Err(_) => return Err(StatusCode::INTERNAL_SERVER_ERROR),
+                Ok(false) => {
+                    return Err((
+                        StatusCode::UNAUTHORIZED,
+                        AppError::invalid_credentials()
+                    ));
+                }
+                Err(e) => {
+                    eprintln!("Error verifying current password: {}", e);
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::internal_error("Failed to verify current password")
+                    ));
+                }
                 _ => {}
             }
         } else {
-            return Err(StatusCode::BAD_REQUEST);
+            return Err((
+                StatusCode::BAD_REQUEST,
+                AppError::new(crate::api::errors::ErrorCode::ValidMissingRequiredField, "Current password is required for web apps")
+            ));
         }
     }
     
     // Update to new password
     match auth_service.update_user_password(&auth_user.user.id, &payload.new_password).await {
-        Ok(_) => Ok(StatusCode::OK),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Ok(_) => Ok((StatusCode::OK, StatusCode::OK)),
+        Err(e) => {
+            eprintln!("Error updating user password: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to update user password")
+            ))
+        }
     }
 }

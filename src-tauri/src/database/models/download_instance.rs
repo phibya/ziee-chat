@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
@@ -6,7 +7,7 @@ use uuid::Uuid;
 use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
 
 /// Source information for download tracking
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SourceInfo {
     /// Type of download source: "manual" or "hub"
     pub r#type: String,

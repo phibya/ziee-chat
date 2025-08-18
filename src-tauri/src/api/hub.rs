@@ -1,7 +1,8 @@
 use crate::database::models::model::ModelCapabilities;
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct HubModel {
     pub id: String,
     pub name: String,
@@ -23,7 +24,7 @@ pub struct HubModel {
     pub language_support: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct HubAssistant {
     pub id: String,
     pub name: String,
@@ -54,7 +55,7 @@ pub struct HubAssistantsFile {
     pub assistants: Vec<HubAssistant>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct HubData {
     pub models: Vec<HubModel>,
     pub assistants: Vec<HubAssistant>,
@@ -64,16 +65,18 @@ pub struct HubData {
 
 // API endpoint handlers
 use crate::utils::hub_manager::HUB_MANAGER;
-use axum::{extract::Query, http::StatusCode, Json};
+use axum::{debug_handler, extract::Query, http::StatusCode, Json};
+use crate::api::errors::{ApiResult2, AppError};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct HubQueryParams {
     pub lang: Option<String>,
 }
 
+#[debug_handler]
 pub async fn get_hub_data(
     Query(params): Query<HubQueryParams>,
-) -> Result<Json<HubData>, (StatusCode, String)> {
+) -> ApiResult2<Json<HubData>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!("API: Received request for hub data with locale: {}", locale);
 
@@ -91,7 +94,7 @@ pub async fn get_hub_data(
                     data.assistants.len(),
                     locale
                 );
-                Ok(Json(data))
+                Ok((StatusCode::OK, Json(data)))
             }
             Err(e) => {
                 eprintln!(
@@ -105,15 +108,15 @@ pub async fn get_hub_data(
                         Ok(data) => {
                             println!("API: Successfully loaded fallback hub data - {} models, {} assistants", 
                                      data.models.len(), data.assistants.len());
-                            Ok(Json(data))
+                            Ok((StatusCode::OK, Json(data)))
                         }
                         Err(fallback_e) => {
                             eprintln!("API: Failed to load fallback hub data: {}", fallback_e);
-                            Err((StatusCode::INTERNAL_SERVER_ERROR, fallback_e.to_string()))
+                            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data")))
                         }
                     }
                 } else {
-                    Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+                    Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data")))
                 }
             }
         }
@@ -121,14 +124,15 @@ pub async fn get_hub_data(
         eprintln!("API: Hub manager not initialized");
         Err((
             StatusCode::SERVICE_UNAVAILABLE,
-            "Hub manager not initialized".to_string(),
+            AppError::internal_error("Hub manager not initialized"),
         ))
     }
 }
 
+#[debug_handler]
 pub async fn refresh_hub_data(
     Query(params): Query<HubQueryParams>,
-) -> Result<Json<HubData>, (StatusCode, String)> {
+) -> ApiResult2<Json<HubData>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!(
         "API: Received request to refresh hub data with locale: {}",
@@ -146,7 +150,7 @@ pub async fn refresh_hub_data(
                             "API: Successfully refreshed and loaded hub data with locale: {}",
                             locale
                         );
-                        Ok(Json(data))
+                        Ok((StatusCode::OK, Json(data)))
                     }
                     Err(e) => {
                         eprintln!(
@@ -156,40 +160,41 @@ pub async fn refresh_hub_data(
                         // Fallback to English
                         if locale != "en" {
                             match manager.load_hub_data_with_locale("en").await {
-                                Ok(data) => Ok(Json(data)),
+                                Ok(data) => Ok((StatusCode::OK, Json(data))),
                                 Err(fallback_e) => {
-                                    Err((StatusCode::INTERNAL_SERVER_ERROR, fallback_e.to_string()))
+                                    Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data after refresh")))
                                 }
                             }
                         } else {
-                            Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+                            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data after refresh")))
                         }
                     }
                 }
             }
             Err(e) => {
                 eprintln!("Failed to refresh hub data: {}", e);
-                Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+                Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to refresh hub data")))
             }
         }
     } else {
         Err((
             StatusCode::SERVICE_UNAVAILABLE,
-            "Hub manager not initialized".to_string(),
+            AppError::internal_error("Hub manager not initialized"),
         ))
     }
 }
 
-pub async fn get_hub_version() -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+#[debug_handler]
+pub async fn get_hub_version() -> ApiResult2<Json<serde_json::Value>> {
     let hub_manager_guard = HUB_MANAGER.lock().await;
     if let Some(manager) = hub_manager_guard.as_ref() {
-        Ok(Json(serde_json::json!({
+        Ok((StatusCode::OK, Json(serde_json::json!({
             "hub_version": manager.config.hub_version
-        })))
+        }))))
     } else {
         Err((
             StatusCode::SERVICE_UNAVAILABLE,
-            "Hub manager not initialized".to_string(),
+            AppError::internal_error("Hub manager not initialized"),
         ))
     }
 }

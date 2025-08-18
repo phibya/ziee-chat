@@ -231,6 +231,14 @@ impl AppError {
         )
     }
 
+    pub fn forbidden(message: &str) -> Self {
+        Self::new(ErrorCode::AuthzInsufficientPermissions, message)
+    }
+
+    pub fn conflict(message: &str) -> Self {
+        Self::new(ErrorCode::ResourceConflict, message)
+    }
+
     pub fn provider_not_found() -> Self {
         Self::new(ErrorCode::ResourceProviderNotFound, "Provider not found")
     }

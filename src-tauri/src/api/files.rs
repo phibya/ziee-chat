@@ -1,4 +1,5 @@
 use axum::{
+    debug_handler,
     extract::{Extension, Multipart, Path, Query},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
@@ -7,11 +8,12 @@ use axum::{
 use chrono::{DateTime, Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
-    api::middleware::AuthenticatedUser,
+    api::{middleware::AuthenticatedUser, errors::{ApiResult2, AppError, ErrorCode}},
     database::{models::file::*, queries::files},
     processing::ProcessingManager,
     utils::file_storage::{extract_extension, get_mime_type_from_extension},
@@ -24,18 +26,18 @@ use once_cell::sync::Lazy;
 static PROCESSING_MANAGER: Lazy<Arc<ProcessingManager>> =
     Lazy::new(|| Arc::new(ProcessingManager::new(FILE_STORAGE.clone())));
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct PreviewParams {
     pub page: Option<u32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, JsonSchema)]
 pub struct DownloadTokenResponse {
     pub token: String,
     pub expires_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct DownloadTokenParams {
     pub token: Option<String>,
 }
@@ -57,10 +59,11 @@ pub async fn initialize_file_storage() -> Result<(), StatusCode> {
 }
 
 // Upload file (general)
+#[debug_handler]
 pub async fn upload_file(
     Extension(user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
-) -> Result<Json<UploadFileResponse>, StatusCode> {
+) -> ApiResult2<Json<UploadFileResponse>> {
     let mut file_data = None;
     let mut filename = String::new();
     let mut file_size = 0u64;
@@ -69,14 +72,14 @@ pub async fn upload_file(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?
+        .map_err(|_| (StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidInvalidInput, "Invalid multipart data")))?  
     {
         let field_name = field.name().unwrap_or("");
 
         match field_name {
             "file" => {
                 filename = field.file_name().unwrap_or("unknown").to_string();
-                let data = field.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?;
+                let data = field.bytes().await.map_err(|_| (StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidInvalidInput, "Failed to read file data")))?;
                 file_size = data.len() as u64;
                 file_data = Some(data);
             }
@@ -84,20 +87,24 @@ pub async fn upload_file(
         }
     }
 
-    let file_data = file_data.ok_or(StatusCode::BAD_REQUEST)?;
+    let file_data = file_data.ok_or((StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidMissingRequiredField, "No file data provided")))?;
     if filename.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err((StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidMissingRequiredField, "Filename cannot be empty")));
     }
 
-    process_file_upload(user.user_id, filename, file_data, file_size, None).await
+    match process_file_upload(user.user_id, filename, file_data, file_size, None).await {
+        Ok(response) => Ok((StatusCode::OK, response)),
+        Err(status) => Err((status, AppError::internal_error("Failed to upload file")))
+    }
 }
 
 // Upload file to project
+#[debug_handler]
 pub async fn upload_project_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(project_id): Path<Uuid>,
     mut multipart: Multipart,
-) -> Result<Json<UploadFileResponse>, StatusCode> {
+) -> ApiResult2<Json<UploadFileResponse>> {
     let mut file_data = None;
     let mut filename = String::new();
     let mut file_size = 0u64;
@@ -106,14 +113,14 @@ pub async fn upload_project_file(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|_| StatusCode::BAD_REQUEST)?
+        .map_err(|_| (StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidInvalidInput, "Invalid multipart data")))?  
     {
         let field_name = field.name().unwrap_or("");
 
         match field_name {
             "file" => {
                 filename = field.file_name().unwrap_or("unknown").to_string();
-                let data = field.bytes().await.map_err(|_| StatusCode::BAD_REQUEST)?;
+                let data = field.bytes().await.map_err(|_| (StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidInvalidInput, "Failed to read file data")))?;
                 file_size = data.len() as u64;
                 file_data = Some(data);
             }
@@ -121,19 +128,22 @@ pub async fn upload_project_file(
         }
     }
 
-    let file_data = file_data.ok_or(StatusCode::BAD_REQUEST)?;
+    let file_data = file_data.ok_or((StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidMissingRequiredField, "No file data provided")))?;
     if filename.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err((StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidMissingRequiredField, "Filename cannot be empty")));
     }
 
-    process_file_upload(
+    match process_file_upload(
         user.user_id,
         filename,
         file_data,
         file_size,
         Some(project_id),
     )
-    .await
+    .await {
+        Ok(response) => Ok((StatusCode::OK, response)),
+        Err(status) => Err((status, AppError::internal_error("Failed to upload file to project")))
+    }
 }
 
 async fn process_file_upload(
@@ -196,27 +206,29 @@ async fn process_file_upload(
 }
 
 // Get file metadata
+#[debug_handler]
 pub async fn get_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
-) -> Result<Json<File>, StatusCode> {
+) -> ApiResult2<Json<File>> {
     let file = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Json(file))
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get file")))?
+        .ok_or((StatusCode::NOT_FOUND, AppError::not_found("File")))?;
+    Ok((StatusCode::OK, Json(file)))
 }
 
 // Generate download token
+#[debug_handler]
 pub async fn generate_download_token(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
-) -> Result<Json<DownloadTokenResponse>, StatusCode> {
+) -> ApiResult2<Json<DownloadTokenResponse>> {
     // Verify file belongs to user
     let _file = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to verify file")))?
+        .ok_or((StatusCode::NOT_FOUND, AppError::not_found("File")))?;
 
     let now = Utc::now();
     let expires_at = now + Duration::hours(1);
@@ -234,12 +246,13 @@ pub async fn generate_download_token(
     let header = Header::new(Algorithm::HS256);
     let key = EncodingKey::from_secret(jwt_secret.as_ref());
 
-    let token = encode(&header, &claims, &key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let token = encode(&header, &claims, &key).map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to generate download token")))?;
 
-    Ok(Json(DownloadTokenResponse { token, expires_at }))
+    Ok((StatusCode::OK, Json(DownloadTokenResponse { token, expires_at })))
 }
 
 // Download file (with authentication)
+#[debug_handler]
 pub async fn download_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
@@ -253,6 +266,7 @@ pub async fn download_file(
 }
 
 // Download file with token (no authentication required)
+#[debug_handler]
 pub async fn download_file_with_token(
     Path(file_id): Path<Uuid>,
     Query(params): Query<DownloadTokenParams>,
@@ -312,6 +326,7 @@ async fn download_file_internal(file_db: File) -> Result<Response, StatusCode> {
 }
 
 // Get file preview/thumbnail
+#[debug_handler]
 pub async fn get_file_preview(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
@@ -343,22 +358,23 @@ pub async fn get_file_preview(
 }
 
 // Delete file
+#[debug_handler]
 pub async fn delete_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> ApiResult2<Json<serde_json::Value>> {
     let file_db = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get file")))?
+        .ok_or((StatusCode::NOT_FOUND, AppError::not_found("File")))?;
 
     // Delete from database (this will cascade to relationships)
     let deleted = files::delete_file(file_id, user.user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete file from database")))?;
 
     if !deleted {
-        return Err(StatusCode::NOT_FOUND);
+        return Err((StatusCode::NOT_FOUND, AppError::not_found("File")));
     }
 
     // Delete from filesystem
@@ -366,96 +382,99 @@ pub async fn delete_file(
     FILE_STORAGE
         .delete_file(file_id, Some(&extension))
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete file from storage")))?;
 
-    Ok(Json(serde_json::json!({ "success": true })))
+    Ok((StatusCode::OK, Json(serde_json::json!({ "success": true }))))
 }
 
 // List files by project
+#[debug_handler]
 pub async fn list_project_files(
     Extension(user): Extension<AuthenticatedUser>,
     Path(project_id): Path<Uuid>,
     Query(params): Query<FileListParams>,
-) -> Result<Json<FileListResponse>, StatusCode> {
+) -> ApiResult2<Json<FileListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20).min(100);
 
     let (files, total) = files::get_files_by_project(project_id, user.user_id, page, per_page)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get project files")))?;
 
-    Ok(Json(FileListResponse {
+    Ok((StatusCode::OK, Json(FileListResponse {
         files,
         total,
         page,
         per_page,
-    }))
+    })))
 }
 
 // List files by message
+#[debug_handler]
 pub async fn list_message_files(
     Extension(user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
-) -> Result<Json<Vec<File>>, StatusCode> {
+) -> ApiResult2<Json<Vec<File>>> {
     let files = files::get_files_by_message(message_id, user.user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    Ok(Json(files))
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get message files")))?;
+    Ok((StatusCode::OK, Json(files)))
 }
 
 // Remove file from message
+#[debug_handler]
 pub async fn remove_file_from_message(
     Extension(user): Extension<AuthenticatedUser>,
     Path((file_id, message_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> ApiResult2<Json<serde_json::Value>> {
     // Verify file belongs to user
     let file_exists = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to verify file")))?
         .is_some();
 
     if !file_exists {
-        return Err(StatusCode::NOT_FOUND);
+        return Err((StatusCode::NOT_FOUND, AppError::not_found("File")));
     }
 
     // Remove relationship
     let removed = files::delete_message_file_relationship(message_id, file_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to remove file from message")))?;
 
     if !removed {
-        return Err(StatusCode::NOT_FOUND);
+        return Err((StatusCode::NOT_FOUND, AppError::not_found("File relationship")));
     }
 
     // Check if file is now orphaned
     let has_messages = files::check_file_has_message_associations(file_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to check file associations")))?;
 
     let has_project = files::check_file_has_project_association(file_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to check file project association")))?;
 
     // If orphaned, delete the file completely
     if !has_messages && !has_project {
         let file_db = files::get_file_by_id(file_id)
             .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get file for cleanup")))?;
 
         if let Some(file_db) = file_db {
             // Delete from database
             files::delete_file(file_id, user.user_id)
                 .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete orphaned file from database")))?;
 
             // Delete from filesystem
             let extension = extract_extension(&file_db.filename);
             FILE_STORAGE
                 .delete_file(file_id, Some(&extension))
                 .await
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete orphaned file from storage")))?;
         }
     }
 
-    Ok(Json(serde_json::json!({ "success": true })))
+    Ok((StatusCode::OK, Json(serde_json::json!({ "success": true }))))
 }

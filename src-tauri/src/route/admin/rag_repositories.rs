@@ -1,6 +1,5 @@
-use axum::{
-    routing::{delete, get, post, put},
-    Router,
+use aide::{
+    axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
 };
 
 use crate::api::rag_repositories::{
@@ -9,29 +8,71 @@ use crate::api::rag_repositories::{
     test_rag_repository_connection, update_rag_repository,
 };
 
-pub fn admin_rag_repository_routes() -> Router {
-    Router::new()
+pub fn admin_rag_repository_routes() -> ApiRouter {
+    ApiRouter::new()
         // RAG Repository routes
-        .route(
+        .api_route(
             "/rag-repositories",
-            get(list_rag_repositories).post(create_rag_repository),
+            get_with(list_rag_repositories, |op| {
+                op.description("List all RAG repositories")
+                    .id("Admin.listRAGRepositories")
+                    .tag("admin")
+            })
         )
-        .route(
+        .api_route(
+            "/rag-repositories",
+            post_with(create_rag_repository, |op| {
+                op.description("Create a new RAG repository")
+                    .id("Admin.createRAGRepository")
+                    .tag("admin")
+            })
+        )
+        .api_route(
             "/rag-repositories/{repository_id}",
-            get(get_rag_repository)
-                .put(update_rag_repository)
-                .delete(delete_rag_repository),
+            get_with(get_rag_repository, |op| {
+                op.description("Get a specific RAG repository")
+                    .id("Admin.getRAGRepository")
+                    .tag("admin")
+            })
         )
-        .route(
+        .api_route(
+            "/rag-repositories/{repository_id}",
+            put_with(update_rag_repository, |op| {
+                op.description("Update a RAG repository")
+                    .id("Admin.updateRAGRepository")
+                    .tag("admin")
+            })
+        )
+        .api_route(
+            "/rag-repositories/{repository_id}",
+            delete_with(delete_rag_repository, |op| {
+                op.description("Delete a RAG repository")
+                    .id("Admin.deleteRAGRepository")
+                    .tag("admin")
+            })
+        )
+        .api_route(
             "/rag-repositories/{repository_id}/test-connection",
-            post(test_rag_repository_connection),
+            post_with(test_rag_repository_connection, |op| {
+                op.description("Test RAG repository connection")
+                    .id("Admin.testRAGRepositoryConnection")
+                    .tag("admin")
+            })
         )
-        .route(
+        .api_route(
             "/rag-repositories/{repository_id}/databases",
-            get(list_rag_repository_databases),
+            get_with(list_rag_repository_databases, |op| {
+                op.description("List databases for a RAG repository")
+                    .id("Admin.listRAGRepositoryDatabases")
+                    .tag("admin")
+            })
         )
-        .route(
+        .api_route(
             "/rag-repositories/download-database",
-            post(download_rag_database_from_repository),
+            post_with(download_rag_database_from_repository, |op| {
+                op.description("Download RAG database from repository")
+                    .id("Admin.downloadRAGDatabaseFromRepository")
+                    .tag("admin")
+            })
         )
 }

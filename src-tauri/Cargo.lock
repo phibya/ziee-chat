@@ -606,7 +606,9 @@ dependencies = [
  "axum",
  "axum-core 0.5.2",
  "bytes",
+ "form_urlencoded",
  "futures-util",
+ "headers 0.4.1",
  "http 1.3.1",
  "http-body 1.0.1",
  "http-body-util",
@@ -614,6 +616,7 @@ dependencies = [
  "pin-project-lite",
  "rustversion",
  "serde",
+ "serde_html_form",
  "serde_json",
  "serde_path_to_error",
  "tower",
@@ -3285,8 +3288,23 @@ checksum = "06683b93020a07e3dbcf5f8c0f6d40080d725bea7936fc01ad345c01b97dc270"
 dependencies = [
  "base64 0.21.7",
  "bytes",
- "headers-core",
+ "headers-core 0.2.0",
  "http 0.2.12",
+ "httpdate",
+ "mime",
+ "sha1",
+]
+
+[[package]]
+name = "headers"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3314d5adb5d94bcdf56771f2e50dbbc80bb4bdf88967526706205ac9eff24eb"
+dependencies = [
+ "base64 0.22.1",
+ "bytes",
+ "headers-core 0.3.0",
+ "http 1.3.1",
  "httpdate",
  "mime",
  "sha1",
@@ -3299,6 +3317,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7f66481bfee273957b1f20485a4ff3362987f85b2c236580d81b4eb7a326429"
 dependencies = [
  "http 0.2.12",
+]
+
+[[package]]
+name = "headers-core"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54b4a22553d4242c49fddb9ba998a99962b5cc6f22cb5a3482bec22522403ce4"
+dependencies = [
+ "http 1.3.1",
 ]
 
 [[package]]
@@ -3554,7 +3581,7 @@ checksum = "ca815a891b24fdfb243fa3239c86154392b0953ee584aa1a2a1f66d20cbe75cc"
 dependencies = [
  "bytes",
  "futures",
- "headers",
+ "headers 0.3.9",
  "http 0.2.12",
  "hyper 0.14.32",
  "hyper-rustls 0.22.1",
@@ -7620,6 +7647,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.104",
+]
+
+[[package]]
+name = "serde_html_form"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d2de91cf02bbc07cde38891769ccd5d4f073d22a40683aa4bc7a95781aaa2c4"
+dependencies = [
+ "form_urlencoded",
+ "indexmap 2.10.0",
+ "itoa",
+ "ryu",
+ "serde",
 ]
 
 [[package]]

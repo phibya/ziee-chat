@@ -12,12 +12,12 @@ pub mod rag_repositories;
 pub mod repositories;
 pub mod users;
 
-use axum::Router;
+use aide::axum::ApiRouter;
 
-pub fn admin_routes() -> Router {
-    Router::new().nest(
+pub fn admin_routes() -> ApiRouter {
+    ApiRouter::new().nest(
         "/admin",
-        Router::new()
+        ApiRouter::new()
             .merge(users::admin_user_routes())
             .merge(groups::admin_group_routes())
             .merge(config::admin_config_routes())

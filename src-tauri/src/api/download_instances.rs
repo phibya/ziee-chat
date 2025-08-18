@@ -1,4 +1,5 @@
 use axum::{
+    debug_handler,
     extract::{Path, Query},
     http::StatusCode,
     response::sse::{Event, KeepAlive},
@@ -7,6 +8,7 @@ use axum::{
 };
 use futures_util::stream::Stream;
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use std::convert::Infallible;
 use std::time::Duration;
 use tokio::time::interval;
@@ -14,7 +16,7 @@ use tokio_stream::wrappers::IntervalStream;
 use tokio_stream::StreamExt;
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult, AppError};
+use crate::api::errors::{ApiResult, ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::api::permissions::{check_permission, permissions};
 use crate::database::{
@@ -24,7 +26,7 @@ use crate::database::{
     queries::download_instances,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct DownloadPaginationQuery {
     page: Option<i32>,
     per_page: Option<i32>,
@@ -32,15 +34,19 @@ pub struct DownloadPaginationQuery {
 }
 
 // List all download instances (admin only)
+#[debug_handler]
 pub async fn list_all_downloads(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<DownloadPaginationQuery>,
-) -> ApiResult<Json<DownloadInstanceListResponse>> {
+) -> ApiResult2<Json<DownloadInstanceListResponse>> {
     // Check if user has admin permission
     if !check_permission(&auth_user.user, permissions::ALL) {
-        return Err(AppError::new(
-            crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-            "Admin access required",
+        return Err((
+            StatusCode::FORBIDDEN,
+            AppError::new(
+                crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
+                "Admin access required",
+            )
         ));
     }
 
@@ -54,66 +60,92 @@ pub async fn list_all_downloads(
         .and_then(|s| DownloadStatus::from_str(s));
 
     match download_instances::get_download_instances(page, per_page, status_filter).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => Ok((StatusCode::OK, Json(response))),
         Err(e) => {
             eprintln!("Failed to get all downloads: {}", e);
-            Err(AppError::internal_error("Failed to retrieve downloads"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to retrieve downloads")
+            ))
         }
     }
 }
 
 // Get a specific download instance
+#[debug_handler]
 pub async fn get_download(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(download_id): Path<Uuid>,
-) -> ApiResult<Json<DownloadInstance>> {
+) -> ApiResult2<Json<DownloadInstance>> {
     match download_instances::get_download_instance_by_id(download_id).await {
         Ok(Some(download)) => {
             // Check if user has permission to read providers
             if !check_permission(&auth_user.user, permissions::PROVIDERS_READ) {
-                return Err(AppError::new(
-                    crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                    "Provider read access required",
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
+                        "Provider read access required",
+                    )
                 ));
             }
-            Ok(Json(download))
+            Ok((StatusCode::OK, Json(download)))
         }
-        Ok(None) => Err(AppError::not_found("Download instance")),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Download instance")
+        )),
         Err(e) => {
             eprintln!("Failed to get download {}: {}", download_id, e);
-            Err(AppError::internal_error("Database operation failed"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ))
         }
     }
 }
 
 // Cancel a download
+#[debug_handler]
 pub async fn cancel_download(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(download_id): Path<Uuid>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     // Verify the download exists and user has access
     match download_instances::get_download_instance_by_id(download_id).await {
         Ok(Some(download)) => {
             // Check if user has permission to edit providers
             if !check_permission(&auth_user.user, permissions::PROVIDERS_EDIT) {
-                return Err(AppError::new(
-                    crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                    "Provider edit access required",
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
+                        "Provider edit access required",
+                    )
                 ));
             }
 
             // Check if download can be cancelled
             if !download.can_cancel() {
-                return Err(AppError::new(
-                    crate::api::errors::ErrorCode::ValidInvalidInput,
-                    "Download cannot be cancelled in its current state",
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::ValidInvalidInput,
+                        "Download cannot be cancelled in its current state",
+                    )
                 ));
             }
         }
-        Ok(None) => return Err(AppError::not_found("Download instance")),
+        Ok(None) => return Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Download instance")
+        )),
         Err(e) => {
             eprintln!("Failed to verify download {}: {}", download_id, e);
-            return Err(AppError::internal_error("Database operation failed"));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ));
         }
     }
 
@@ -170,59 +202,84 @@ pub async fn cancel_download(
                 }
             });
 
-            Ok(StatusCode::NO_CONTENT)
+            Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
         }
-        Ok(None) => Err(AppError::not_found("Download instance")),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Download instance")
+        )),
         Err(e) => {
             eprintln!("Failed to cancel download {}: {}", download_id, e);
-            Err(AppError::internal_error("Failed to cancel download"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to cancel download")
+            ))
         }
     }
 }
 
 // Delete a download instance
+#[debug_handler]
 pub async fn delete_download(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(download_id): Path<Uuid>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult2<StatusCode> {
     // Verify the download exists and user has access
     match download_instances::get_download_instance_by_id(download_id).await {
         Ok(Some(download)) => {
             // Check if user has permission to edit providers
             if !check_permission(&auth_user.user, permissions::PROVIDERS_EDIT) {
-                return Err(AppError::new(
-                    crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                    "Provider edit access required",
+                return Err((
+                    StatusCode::FORBIDDEN,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
+                        "Provider edit access required",
+                    )
                 ));
             }
 
             // Only allow deleting terminal states
             if !download.is_terminal() {
-                return Err(AppError::new(
-                    crate::api::errors::ErrorCode::ValidInvalidInput,
-                    "Cannot delete active download",
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::ValidInvalidInput,
+                        "Cannot delete active download",
+                    )
                 ));
             }
         }
-        Ok(None) => return Err(AppError::not_found("Download instance")),
+        Ok(None) => return Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Download instance")
+        )),
         Err(e) => {
             eprintln!("Failed to verify download {}: {}", download_id, e);
-            return Err(AppError::internal_error("Database operation failed"));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed")
+            ));
         }
     }
 
     match download_instances::delete_download_instance(download_id).await {
-        Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(AppError::not_found("Download instance")),
+        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Download instance")
+        )),
         Err(e) => {
             eprintln!("Failed to delete download {}: {}", download_id, e);
-            Err(AppError::internal_error("Failed to delete download"))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to delete download")
+            ))
         }
     }
 }
 
 // Simplified progress data for SSE streaming
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct DownloadProgressUpdate {
     pub id: String,
     pub status: String,
@@ -258,7 +315,7 @@ impl From<&DownloadInstance> for DownloadProgressUpdate {
 }
 
 // SSE event types for download progress
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 #[serde(tag = "type")]
 pub enum DownloadProgressEvent {
     #[serde(rename = "update")]
@@ -273,12 +330,19 @@ pub enum DownloadProgressEvent {
 
 /// Subscribe to all active download progress updates via SSE
 /// The connection will automatically close when no downloads are active
+#[debug_handler]
 pub async fn subscribe_download_progress(
     Extension(auth_user): Extension<AuthenticatedUser>,
-) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, StatusCode> {
+) -> ApiResult2<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
     // Check if user has permission to read providers
     if !check_permission(&auth_user.user, permissions::PROVIDERS_READ) {
-        return Err(StatusCode::FORBIDDEN);
+        return Err((
+            StatusCode::FORBIDDEN,
+            AppError::new(
+                crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
+                "Provider read access required",
+            )
+        ));
     }
 
     // Create interval for polling (every 2 seconds)
@@ -368,9 +432,9 @@ pub async fn subscribe_download_progress(
         }
     };
 
-    Ok(Sse::new(stream).keep_alive(
+    Ok((StatusCode::OK, Sse::new(stream).keep_alive(
         KeepAlive::new()
             .interval(Duration::from_secs(15))
             .text("keep-alive"),
-    ))
+    )))
 }

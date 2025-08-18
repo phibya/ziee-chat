@@ -1,18 +1,20 @@
 use axum::{
+    debug_handler,
     response::sse::{Event, Sse},
     Extension, Json,
 };
 use futures_util::stream::Stream;
+use schemars::JsonSchema;
 use serde::Serialize;
 use std::{collections::HashMap, sync::Mutex, time::Duration};
 use sysinfo::System;
 use tokio::time::interval;
 use uuid::Uuid;
 
-use crate::api::{errors::ApiResult, middleware::AuthenticatedUser, permissions};
+use crate::api::{errors::{ApiResult, ApiResult2, AppError}, middleware::AuthenticatedUser, permissions};
 
 // Hardware information structures
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct OperatingSystemInfo {
     pub name: String,
     pub version: String,
@@ -20,7 +22,7 @@ pub struct OperatingSystemInfo {
     pub architecture: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct CPUInfo {
     pub model: String,
     pub architecture: String,
@@ -30,13 +32,13 @@ pub struct CPUInfo {
     pub max_frequency: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct MemoryInfo {
     pub total_ram: u64,
     pub total_swap: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct GPUComputeCapabilities {
     pub cuda_support: bool,
     pub cuda_version: Option<String>,
@@ -45,7 +47,7 @@ pub struct GPUComputeCapabilities {
     pub vulkan_support: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct GPUDevice {
     pub device_id: String, // e.g., "cuda:0", "metal:0", "opencl:0"
     pub name: String,
@@ -55,7 +57,7 @@ pub struct GPUDevice {
     pub compute_capabilities: GPUComputeCapabilities,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct HardwareInfo {
     pub operating_system: OperatingSystemInfo,
     pub cpu: CPUInfo,
@@ -63,20 +65,20 @@ pub struct HardwareInfo {
     pub gpu_devices: Vec<GPUDevice>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct HardwareInfoResponse {
     pub hardware: HardwareInfo,
 }
 
 // Real-time usage structures
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct CPUUsage {
     pub usage_percentage: f32,
     pub temperature: Option<f32>,
     pub frequency: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct MemoryUsage {
     pub used_ram: u64,
     pub available_ram: u64,
@@ -85,7 +87,7 @@ pub struct MemoryUsage {
     pub usage_percentage: f32,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct GPUUsage {
     pub device_id: String, // e.g., "cuda:0", "metal:0", "opencl:0"
     pub device_name: String,
@@ -97,7 +99,7 @@ pub struct GPUUsage {
     pub power_usage: Option<f32>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct HardwareUsageUpdate {
     pub timestamp: String,
     pub cpu: CPUUsage,
@@ -113,15 +115,16 @@ lazy_static::lazy_static! {
 }
 
 // Get static hardware information
+#[debug_handler]
 pub async fn get_hardware_info(
     Extension(auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Json<HardwareInfoResponse>> {
+) -> ApiResult2<Json<HardwareInfoResponse>> {
     // Check permissions - only admin users can access hardware information
     if !permissions::check_permission(&auth_user.user, permissions::permissions::PROVIDERS_READ) {
-        return Err(crate::api::errors::AppError::new(
-            crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-            "Hardware access requires admin permissions",
-        ))?;
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            AppError::forbidden("Hardware access requires admin permissions")
+        ));
     }
 
     let mut sys = System::new_all();
@@ -165,21 +168,22 @@ pub async fn get_hardware_info(
         gpu_devices,
     };
 
-    Ok(Json(HardwareInfoResponse {
+    Ok((axum::http::StatusCode::OK, Json(HardwareInfoResponse {
         hardware: hardware_info,
-    }))
+    })))
 }
 
 // SSE endpoint for real-time hardware usage monitoring
+#[debug_handler]
 pub async fn subscribe_hardware_usage(
     Extension(auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
+) -> ApiResult2<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
     // Check permissions
     if !permissions::check_permission(&auth_user.user, permissions::permissions::PROVIDERS_READ) {
-        return Err(crate::api::errors::AppError::new(
-            crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-            "Hardware access requires admin permissions",
-        ))?;
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            AppError::forbidden("Hardware access requires admin permissions")
+        ));
     }
 
     let client_id = Uuid::new_v4();
@@ -213,7 +217,7 @@ pub async fn subscribe_hardware_usage(
         remove_client(client_id);
     };
 
-    Ok(Sse::new(stream))
+    Ok((axum::http::StatusCode::OK, Sse::new(stream)))
 }
 
 // Start hardware monitoring service
@@ -840,6 +844,7 @@ fn get_amd_gpu_usage_sysfs() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>
                                 };
 
                             gpu_usage.push(GPUUsage {
+                                device_id: format!("amd:{}", gpu_usage.len()),
                                 device_name,
                                 utilization_percentage: utilization,
                                 memory_used,
@@ -942,6 +947,7 @@ fn get_intel_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
         // On Windows, Intel GPU monitoring would require WMI or Performance Counters
         // This is a placeholder for future Windows Intel GPU monitoring implementation
         gpu_usage.push(GPUUsage {
+            device_id: "intel:0".to_string(),
             device_name: "Intel GPU".to_string(),
             utilization_percentage: None,
             memory_used: None,

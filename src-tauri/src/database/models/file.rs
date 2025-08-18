@@ -2,9 +2,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
+use schemars::JsonSchema;
 
 // Main File structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct File {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -91,12 +92,12 @@ pub struct UploadFileRequest {
     pub mime_type: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UploadFileResponse {
     pub file: File,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FileListResponse {
     pub files: Vec<File>,
     pub total: i64,
@@ -104,7 +105,7 @@ pub struct FileListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct FileListParams {
     pub page: Option<i32>,
     pub per_page: Option<i32>,

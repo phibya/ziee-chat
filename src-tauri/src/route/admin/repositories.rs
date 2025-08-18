@@ -1,44 +1,58 @@
 use crate::api;
-use axum::routing::{delete, get, post, put};
-use axum::{middleware, Router};
+use aide::{
+    axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
+};
+use axum::middleware;
 
-pub fn admin_repository_routes() -> Router {
-    Router::new()
+pub fn admin_repository_routes() -> ApiRouter {
+    ApiRouter::new()
         // Repository routes
-        .route(
+        .api_route(
             "/repositories",
-            get(api::repositories::list_repositories).layer(middleware::from_fn(
-                api::middleware::repositories_read_middleware,
-            )),
+            get_with(api::repositories::list_repositories, |op| {
+                op.description("List all repositories")
+                    .id("Admin.listRepositories")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::repositories_read_middleware)),
         )
-        .route(
+        .api_route(
             "/repositories",
-            post(api::repositories::create_repository).layer(middleware::from_fn(
-                api::middleware::repositories_create_middleware,
-            )),
+            post_with(api::repositories::create_repository, |op| {
+                op.description("Create a new repository")
+                    .id("Admin.createRepository")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::repositories_create_middleware)),
         )
-        .route(
+        .api_route(
             "/repositories/{repository_id}",
-            get(api::repositories::get_repository).layer(middleware::from_fn(
-                api::middleware::repositories_read_middleware,
-            )),
+            get_with(api::repositories::get_repository, |op| {
+                op.description("Get a specific repository")
+                    .id("Admin.getRepository")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::repositories_read_middleware)),
         )
-        .route(
+        .api_route(
             "/repositories/{repository_id}",
-            put(api::repositories::update_repository).layer(middleware::from_fn(
-                api::middleware::repositories_edit_middleware,
-            )),
+            put_with(api::repositories::update_repository, |op| {
+                op.description("Update a repository")
+                    .id("Admin.updateRepository")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::repositories_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/repositories/{repository_id}",
-            delete(api::repositories::delete_repository).layer(middleware::from_fn(
-                api::middleware::repositories_delete_middleware,
-            )),
+            delete_with(api::repositories::delete_repository, |op| {
+                op.description("Delete a repository")
+                    .id("Admin.deleteRepository")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::repositories_delete_middleware)),
         )
-        .route(
+        .api_route(
             "/repositories/test",
-            post(api::repositories::test_repository_connection).layer(middleware::from_fn(
-                api::middleware::repositories_read_middleware,
-            )),
+            post_with(api::repositories::test_repository_connection, |op| {
+                op.description("Test repository connection")
+                    .id("Admin.testRepositoryConnection")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::repositories_read_middleware)),
         )
 }

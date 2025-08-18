@@ -1,56 +1,77 @@
 use crate::api;
-use axum::routing::{delete, get, post};
-use axum::{middleware, Router};
+use aide::{
+    axum::{ApiRouter, routing::{get_with, post_with, delete_with}},
+};
+use axum::middleware;
 
-pub fn file_routes() -> Router {
-    Router::new()
+pub fn file_routes() -> ApiRouter {
+    ApiRouter::new()
         // General file operations
-        .route(
-            "/files/upload",
-            post(api::files::upload_file)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .route(
-            "/files/{id}",
-            get(api::files::get_file)
-                .delete(api::files::delete_file)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .route(
-            "/files/{id}/download",
-            get(api::files::download_file)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .route(
-            "/files/{id}/download-token",
-            post(api::files::generate_download_token)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .route(
-            "/files/{id}/download-with-token",
-            get(api::files::download_file_with_token),
-        )
-        .route(
-            "/files/{id}/preview",
-            get(api::files::get_file_preview)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
+        .api_route("/files/upload", post_with(api::files::upload_file, |op| {
+            op.description("Upload a new file")
+                .id("Files.uploadFile")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
+        .api_route("/files/{id}", get_with(api::files::get_file, |op| {
+            op.description("Get file metadata by ID")
+                .id("Files.getFile")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
+        .api_route("/files/{id}", delete_with(api::files::delete_file, |op| {
+            op.description("Delete file by ID")
+                .id("Files.deleteFile")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
+        .api_route("/files/{id}/download", get_with(api::files::download_file, |op| {
+            op.description("Download file by ID")
+                .id("Files.downloadFile")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
+        .api_route("/files/{id}/download-token", post_with(api::files::generate_download_token, |op| {
+            op.description("Generate download token for file")
+                .id("Files.generateDownloadToken")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
+        .api_route("/files/{id}/download-with-token", get_with(api::files::download_file_with_token, |op| {
+            op.description("Download file using token (no auth required)")
+                .id("Files.downloadFileWithToken")
+                .tag("files")
+        }))
+        
+        .api_route("/files/{id}/preview", get_with(api::files::get_file_preview, |op| {
+            op.description("Get file preview by ID")
+                .id("Files.getFilePreview")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
         // Project file operations
-        .route(
-            "/projects/{id}/files",
-            post(api::files::upload_project_file)
-                .get(api::files::list_project_files)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
+        .api_route("/projects/{id}/files", post_with(api::files::upload_project_file, |op| {
+            op.description("Upload file to project")
+                .id("Files.uploadProjectFile")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
+        .api_route("/projects/{id}/files", get_with(api::files::list_project_files, |op| {
+            op.description("List files in project")
+                .id("Files.listProjectFiles")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
         // Message file operations
-        .route(
-            "/messages/{id}/files",
-            get(api::files::list_message_files)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .route(
-            "/files/{file_id}/messages/{message_id}",
-            delete(api::files::remove_file_from_message)
-                .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
+        .api_route("/messages/{id}/files", get_with(api::files::list_message_files, |op| {
+            op.description("List files attached to message")
+                .id("Files.listMessageFiles")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
+        
+        .api_route("/files/{file_id}/messages/{message_id}", delete_with(api::files::remove_file_from_message, |op| {
+            op.description("Remove file from message")
+                .id("Files.removeFileFromMessage")
+                .tag("files")
+        }).layer(middleware::from_fn(api::middleware::auth_middleware)))
 }

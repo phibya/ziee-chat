@@ -1,11 +1,12 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use super::model::ModelParameters;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Assistant {
     pub id: Uuid,
     pub name: String,
@@ -54,7 +55,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Assistant {
     }
 }
 // Request/Response structures for assistants
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateAssistantRequest {
     pub name: String,
     pub description: Option<String>,
@@ -64,7 +65,7 @@ pub struct CreateAssistantRequest {
     pub is_default: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateAssistantRequest {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -75,7 +76,7 @@ pub struct UpdateAssistantRequest {
     pub is_active: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AssistantListResponse {
     pub assistants: Vec<Assistant>,
     pub total: i64,

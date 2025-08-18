@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGDatabaseCapabilities {
     pub semantic_search: Option<bool>,
     pub hybrid_search: Option<bool>,
@@ -71,7 +72,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGDatabase {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateRAGDatabaseRequest {
     pub name: String,
     pub alias: String,
@@ -85,7 +86,7 @@ pub struct CreateRAGDatabaseRequest {
     pub settings: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateRAGDatabaseRequest {
     pub name: Option<String>,
     pub alias: Option<String>,

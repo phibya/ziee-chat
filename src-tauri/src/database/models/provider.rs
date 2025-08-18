@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
@@ -52,7 +53,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Provider {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CreateProviderRequest {
     pub name: String,
@@ -64,7 +65,7 @@ pub struct CreateProviderRequest {
     pub provider_type: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateProviderRequest {
     pub name: Option<String>,
     pub enabled: Option<bool>,

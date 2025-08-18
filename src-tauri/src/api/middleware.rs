@@ -4,13 +4,14 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use crate::api::app::is_desktop_app;
 use crate::api::permissions::{check_permission, permissions};
 use crate::auth::AuthService;
 use crate::database::models::User;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AuthenticatedUser {
     pub user_id: uuid::Uuid,
     pub user: User,

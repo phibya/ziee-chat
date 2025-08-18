@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
@@ -6,7 +7,7 @@ use uuid::Uuid;
 use super::download_instance::SourceInfo;
 
 /// Model capabilities configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct ModelCapabilities {
     /// Vision capability - can process images
     pub vision: Option<bool>,
@@ -46,7 +47,7 @@ impl ModelCapabilities {
 }
 
 /// Model parameters for inference configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct ModelParameters {
     // Context and generation parameters
     /// Context size for the model
@@ -176,7 +177,7 @@ impl ModelParameters {
 }
 
 /// MistralRs-specific settings for individual model performance and batching configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct MistralRsSettings {
     // Core model configuration
     /// Model command type: "plain", "gguf", "run", "vision-plain", etc.
@@ -283,7 +284,7 @@ pub struct MistralRsSettings {
 // Default value functions for MistralRsSettings - all fields are optional
 
 /// LlamaCpp-specific settings for llama-server configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct LlamaCppSettings {
     /// Device type (cpu, cuda, metal, etc.)
     pub device_type: Option<String>,
@@ -758,7 +759,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
 }
 
 // Request/Response structures for models
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateModelRequest {
     pub provider_id: Uuid,
     pub name: String,
@@ -774,7 +775,7 @@ pub struct CreateModelRequest {
     pub source: Option<SourceInfo>, // Source information for tracking download origin
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateModelRequest {
     pub name: Option<String>,
     pub alias: Option<String>,

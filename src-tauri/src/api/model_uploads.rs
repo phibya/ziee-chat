@@ -1,4 +1,5 @@
-use axum::{extract::Multipart, response::Json, Extension};
+use axum::{debug_handler, extract::Multipart, response::Json, Extension, http::StatusCode};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::path::PathBuf;
@@ -6,7 +7,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::api::{
-    errors::{ApiResult, AppError, ErrorCode},
+    errors::{ApiResult, ApiResult2, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
 use crate::database::{
@@ -473,7 +474,7 @@ pub struct ProcessedFile {
     pub is_main_file: bool,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 pub struct CommitUploadRequest {
     pub session_id: Uuid,
     pub provider_id: Uuid,
@@ -487,7 +488,7 @@ pub struct CommitUploadRequest {
     pub main_filename: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 pub struct DownloadFromRepositoryRequest {
     pub provider_id: Uuid,
     pub repository_id: Uuid,
@@ -506,13 +507,14 @@ pub struct DownloadFromRepositoryRequest {
 }
 
 /// Upload multiple model files and auto-commit as a model
+#[debug_handler]
 pub async fn upload_multiple_files_and_commit(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
-) -> ApiResult<Json<Model>> {
+) -> ApiResult2<Json<Model>> {
     let storage = ModelStorage::new()
         .await
-        .map_err(|e| AppError::internal_error(format!("Storage initialization failed: {}", e)))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(format!("Storage initialization failed: {}", e))))?;
 
     let mut uploaded_files = Vec::new();
     let mut main_filename: Option<String> = None;
@@ -527,10 +529,10 @@ pub async fn upload_multiple_files_and_commit(
 
     // Process multipart form data
     while let Some(field) = multipart.next_field().await.map_err(|e| {
-        AppError::new(
+        (StatusCode::BAD_REQUEST, AppError::new(
             ErrorCode::ValidInvalidInput,
             format!("Failed to read multipart field: {}", e),
-        )
+        ))
     })? {
         let field_name = field.name().unwrap_or("").to_string();
 
@@ -552,10 +554,10 @@ pub async fn upload_multiple_files_and_commit(
 
                     // Read file data
                     let data = field.bytes().await.map_err(|e| {
-                        AppError::new(
+                        (StatusCode::BAD_REQUEST, AppError::new(
                             ErrorCode::ValidInvalidInput,
                             format!("Failed to read file data: {}", e),
-                        )
+                        ))
                     })?;
 
                     uploaded_files.push((filename, data.to_vec()));
@@ -563,92 +565,92 @@ pub async fn upload_multiple_files_and_commit(
             }
             "main_filename" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read main_filename: {}", e),
-                    )
+                    ))
                 })?;
                 main_filename = Some(value);
             }
             "provider_id" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read provider_id: {}", e),
-                    )
+                    ))
                 })?;
                 provider_id = Some(Uuid::parse_str(&value).map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Invalid provider_id format: {}", e),
-                    )
+                    ))
                 })?);
             }
             "name" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read name: {}", e),
-                    )
+                    ))
                 })?;
                 name = Some(value);
             }
             "alias" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read alias: {}", e),
-                    )
+                    ))
                 })?;
                 alias = Some(value);
             }
             "description" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read description: {}", e),
-                    )
+                    ))
                 })?;
                 description = if value.is_empty() { None } else { Some(value) };
             }
             "file_format" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read file_format: {}", e),
-                    )
+                    ))
                 })?;
                 file_format = Some(value);
             }
             "capabilities" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read capabilities: {}", e),
-                    )
+                    ))
                 })?;
                 if !value.is_empty() {
                     capabilities = serde_json::from_str(&value).map_err(|e| {
-                        AppError::new(
+                        (StatusCode::BAD_REQUEST, AppError::new(
                             ErrorCode::ValidInvalidInput,
                             format!("Invalid capabilities JSON: {}", e),
-                        )
+                        ))
                     })?;
                 }
             }
             "settings" => {
                 let value = field.text().await.map_err(|e| {
-                    AppError::new(
+                    (StatusCode::BAD_REQUEST, AppError::new(
                         ErrorCode::ValidInvalidInput,
                         format!("Failed to read settings: {}", e),
-                    )
+                    ))
                 })?;
                 if !value.is_empty() {
                     engine_settings_mistralrs = Some(serde_json::from_str(&value).map_err(|e| {
-                        AppError::new(
+                        (StatusCode::BAD_REQUEST, AppError::new(
                             ErrorCode::ValidInvalidInput,
                             format!("Invalid settings JSON: {}", e),
-                        )
+                        ))
                     })?)
                 }
             }
@@ -661,45 +663,45 @@ pub async fn upload_multiple_files_and_commit(
 
     // Validate required fields
     if uploaded_files.is_empty() {
-        return Err(AppError::new(
+        return Err((StatusCode::BAD_REQUEST, AppError::new(
             ErrorCode::ValidInvalidInput,
             "No files provided in multipart request",
-        ));
+        )));
     }
 
     let provider_id = provider_id.ok_or_else(|| {
-        AppError::new(
+        (StatusCode::BAD_REQUEST, AppError::new(
             ErrorCode::ValidInvalidInput,
             "Missing provider_id in multipart request",
-        )
+        ))
     })?;
 
     let main_filename = main_filename.ok_or_else(|| {
-        AppError::new(
+        (StatusCode::BAD_REQUEST, AppError::new(
             ErrorCode::ValidInvalidInput,
             "Missing main_filename in multipart request",
-        )
+        ))
     })?;
 
     let name = name.ok_or_else(|| {
-        AppError::new(
+        (StatusCode::BAD_REQUEST, AppError::new(
             ErrorCode::ValidInvalidInput,
             "Missing name in multipart request",
-        )
+        ))
     })?;
 
     let alias = alias.ok_or_else(|| {
-        AppError::new(
+        (StatusCode::BAD_REQUEST, AppError::new(
             ErrorCode::ValidInvalidInput,
             "Missing alias in multipart request",
-        )
+        ))
     })?;
 
     let file_format = file_format.ok_or_else(|| {
-        AppError::new(
+        (StatusCode::BAD_REQUEST, AppError::new(
             ErrorCode::ValidInvalidInput,
             "Missing file_format in multipart request",
-        )
+        ))
     })?;
 
     println!(
@@ -732,10 +734,10 @@ pub async fn upload_multiple_files_and_commit(
             }
             Err(e) => {
                 println!("Failed to save temp file {}: {}", filename, e);
-                return Err(AppError::internal_error(format!(
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(format!(
                     "Failed to save file {}: {}",
                     filename, e
-                )));
+                ))));
             }
         }
     }
@@ -767,24 +769,25 @@ pub async fn upload_multiple_files_and_commit(
     })
     .await
     .map_err(|e| {
-        AppError::internal_error(format!("Failed to create model from uploaded files: {}", e))
+        (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(format!("Failed to create model from uploaded files: {}", e)))
     })?;
 
     println!("Model created successfully: {} ({})", model.alias, model.id);
 
-    Ok(Json(model))
+    Ok((StatusCode::OK, Json(model)))
 }
 
 /// Initiate model download from repository (returns JSON with download ID immediately)
+#[debug_handler]
 pub async fn initiate_repository_download(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<DownloadFromRepositoryRequest>,
-) -> ApiResult<Json<DownloadInstance>> {
+) -> ApiResult2<Json<DownloadInstance>> {
     // Get repository information
     let repository = repositories::get_repository_by_id(request.repository_id)
         .await
-        .map_err(|e| AppError::internal_error(&e.to_string()))?
-        .ok_or_else(|| AppError::not_found("Repository"))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(&e.to_string())))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, AppError::not_found("Repository")))?;
 
     // Create download instance in the database
     let download_request = CreateDownloadInstanceRequest {
@@ -811,7 +814,7 @@ pub async fn initiate_repository_download(
     let download_instance =
         crate::database::queries::download_instances::create_download_instance(download_request)
             .await
-            .map_err(|e| AppError::database_error(e))?;
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::database_error(e)))?;
 
     // Clone necessary data for the background task
     let download_id = download_instance.id;
@@ -1242,7 +1245,7 @@ pub async fn initiate_repository_download(
     });
 
     // Return the download instance immediately
-    Ok(Json(download_instance))
+    Ok((StatusCode::OK, Json(download_instance)))
 }
 
 /// Determine model file type based on filename

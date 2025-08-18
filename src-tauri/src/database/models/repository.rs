@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RepositoryAuthConfig {
     pub api_key: Option<String>,
     pub username: Option<String>,
@@ -53,7 +54,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Repository {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct CreateRepositoryRequest {
     pub name: String,
@@ -63,7 +64,7 @@ pub struct CreateRepositoryRequest {
     pub enabled: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateRepositoryRequest {
     pub name: Option<String>,
     pub url: Option<String>,
@@ -80,7 +81,7 @@ pub struct RepositoryListResponse {
     pub per_page: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct TestRepositoryConnectionRequest {
     pub name: String,
     pub url: String,

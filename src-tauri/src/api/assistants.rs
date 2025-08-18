@@ -1,18 +1,21 @@
 use axum::{
+    debug_handler,
     extract::{Path, Query},
     http::StatusCode,
     Extension, Json,
 };
-use serde::Deserialize;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::api::errors::{ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{Assistant, AssistantListResponse, CreateAssistantRequest, UpdateAssistantRequest},
     queries::assistants,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PaginationQuery {
     page: Option<i32>,
     per_page: Option<i32>,
@@ -34,17 +37,21 @@ pub async fn create_assistant(
 }
 
 /// Create a new template assistant (admin only)
+#[debug_handler]
 pub async fn create_template_assistant(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(mut request): Json<CreateAssistantRequest>,
-) -> Result<Json<Assistant>, StatusCode> {
+) -> ApiResult2<Json<Assistant>> {
     // Only admins can create template assistants
     request.is_template = Some(true);
     match assistants::create_assistant(request, Some(auth_user.user.id)).await {
-        Ok(assistant) => Ok(Json(assistant)),
+        Ok(assistant) => Ok((StatusCode::OK, Json(assistant))),
         Err(e) => {
             eprintln!("Error creating template assistant: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to create template assistant")
+            ))
         }
     }
 }
@@ -65,16 +72,23 @@ pub async fn get_assistant(
 }
 
 /// Get assistant by ID (admin view)
+#[debug_handler]
 pub async fn get_assistant_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
-) -> Result<Json<Assistant>, StatusCode> {
+) -> ApiResult2<Json<Assistant>> {
     match assistants::get_assistant_by_id(assistant_id, None).await {
-        Ok(Some(assistant)) => Ok(Json(assistant)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(Some(assistant)) => Ok((StatusCode::OK, Json(assistant))),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Assistant")
+        )),
         Err(e) => {
             eprintln!("Error getting assistant (admin): {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get assistant")
+            ))
         }
     }
 }
@@ -97,18 +111,22 @@ pub async fn list_assistants(
 }
 
 /// List all assistants (admin view)
+#[debug_handler]
 pub async fn list_assistants_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> Result<Json<AssistantListResponse>, StatusCode> {
+) -> ApiResult2<Json<AssistantListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
     match assistants::list_assistants(page, per_page, None, true).await {
-        Ok(response) => Ok(Json(response)),
+        Ok(response) => Ok((StatusCode::OK, Json(response))),
         Err(e) => {
             eprintln!("Error listing assistants (admin): {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to list assistants")
+            ))
         }
     }
 }
@@ -131,17 +149,24 @@ pub async fn update_assistant(
 }
 
 /// Update assistant (admin view)
+#[debug_handler]
 pub async fn update_assistant_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
     Json(request): Json<UpdateAssistantRequest>,
-) -> Result<Json<Assistant>, StatusCode> {
+) -> ApiResult2<Json<Assistant>> {
     match assistants::update_assistant(assistant_id, request, None, true).await {
-        Ok(Some(assistant)) => Ok(Json(assistant)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Ok(Some(assistant)) => Ok((StatusCode::OK, Json(assistant))),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Assistant")
+        )),
         Err(e) => {
             eprintln!("Error updating assistant (admin): {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to update assistant")
+            ))
         }
     }
 }
@@ -162,16 +187,23 @@ pub async fn delete_assistant(
 }
 
 /// Delete assistant (admin view)
+#[debug_handler]
 pub async fn delete_assistant_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
-) -> Result<StatusCode, StatusCode> {
+) -> ApiResult2<StatusCode> {
     match assistants::delete_assistant(assistant_id, None, true).await {
-        Ok(true) => Ok(StatusCode::NO_CONTENT),
-        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Assistant")
+        )),
         Err(e) => {
             eprintln!("Error deleting assistant (admin): {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to delete assistant")
+            ))
         }
     }
 }

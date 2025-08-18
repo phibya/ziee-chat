@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
+use schemars::JsonSchema;
 
 // Main Project structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,14 +33,14 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Project {
 // ProjectConversation struct removed - using conversations.project_id field instead
 
 // Request/Response structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateProjectRequest {
     pub name: String,
     pub description: Option<String>,
     pub instruction: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateProjectRequest {
     pub name: Option<String>,
     pub description: Option<String>,

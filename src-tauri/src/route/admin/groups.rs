@@ -1,71 +1,107 @@
 use crate::api;
-use axum::routing::{delete, get, post, put};
-use axum::{middleware, Router};
+use aide::{
+    axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
+};
+use axum::middleware;
 
-pub fn admin_group_routes() -> Router {
-    Router::new()
+pub fn admin_group_routes() -> ApiRouter {
+    ApiRouter::new()
         // Admin user group management routes
-        .route(
+        .api_route(
             "/groups",
-            get(api::user_groups::list_user_groups)
-                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+            get_with(api::user_groups::list_user_groups, |op| {
+                op.description("List all user groups (admin)")
+                    .id("Admin.listGroups")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
-        .route(
+        .api_route(
             "/groups",
-            post(api::user_groups::create_user_group).layer(middleware::from_fn(
-                api::middleware::groups_create_middleware,
-            )),
+            post_with(api::user_groups::create_user_group, |op| {
+                op.description("Create a new user group")
+                    .id("Admin.createGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_create_middleware)),
         )
-        .route(
+        .api_route(
             "/groups/{group_id}",
-            get(api::user_groups::get_user_group)
-                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+            get_with(api::user_groups::get_user_group, |op| {
+                op.description("Get a specific user group")
+                    .id("Admin.getGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
-        .route(
+        .api_route(
             "/groups/{group_id}",
-            put(api::user_groups::update_user_group)
-                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            put_with(api::user_groups::update_user_group, |op| {
+                op.description("Update a user group")
+                    .id("Admin.updateGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/groups/{group_id}",
-            delete(api::user_groups::delete_user_group).layer(middleware::from_fn(
-                api::middleware::groups_delete_middleware,
-            )),
+            delete_with(api::user_groups::delete_user_group, |op| {
+                op.description("Delete a user group")
+                    .id("Admin.deleteGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_delete_middleware)),
         )
-        .route(
+        .api_route(
             "/groups/{group_id}/members",
-            get(api::user_groups::get_group_members)
-                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+            get_with(api::user_groups::get_group_members, |op| {
+                op.description("Get members of a user group")
+                    .id("Admin.getGroupMembers")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
-        .route(
+        .api_route(
             "/groups/assign",
-            post(api::user_groups::assign_user_to_group)
-                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            post_with(api::user_groups::assign_user_to_group, |op| {
+                op.description("Assign a user to a group")
+                    .id("Admin.assignUserToGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/groups/{user_id}/{group_id}/remove",
-            delete(api::user_groups::remove_user_from_group)
-                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            delete_with(api::user_groups::remove_user_from_group, |op| {
+                op.description("Remove a user from a group")
+                    .id("Admin.removeUserFromGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
         // User Group Model Provider relationship routes
-        .route(
+        .api_route(
             "/groups/{group_id}/providers",
-            get(api::user_groups::get_group_providers)
-                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+            get_with(api::user_groups::get_group_providers, |op| {
+                op.description("Get providers assigned to a group")
+                    .id("Admin.getGroupProviders")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
-        .route(
-            "/groups/assign-model-provider",
-            post(api::user_groups::assign_provider_to_group)
-                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+        .api_route(
+            "/groups/assign-provider",
+            post_with(api::user_groups::assign_provider_to_group, |op| {
+                op.description("Assign a provider to a group")
+                    .id("Admin.assignProviderToGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/groups/{group_id}/providers/{provider_id}",
-            delete(api::user_groups::remove_provider_from_group)
-                .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            delete_with(api::user_groups::remove_provider_from_group, |op| {
+                op.description("Remove a provider from a group")
+                    .id("Admin.removeProviderFromGroup")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
         )
-        .route(
+        .api_route(
             "/user-group-provider-relationships",
-            get(api::user_groups::list_user_group_provider_relationships)
-                .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+            get_with(api::user_groups::list_user_group_provider_relationships, |op| {
+                op.description("List all user group provider relationships")
+                    .id("Admin.listUserGroupProviderRelationships")
+                    .tag("admin")
+            }).layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
 }
