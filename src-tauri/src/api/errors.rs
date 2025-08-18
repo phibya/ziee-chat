@@ -5,8 +5,9 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use schemars::JsonSchema;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ApiError {
     pub error: String,
     pub error_code: String,
@@ -14,7 +15,7 @@ pub struct ApiError {
     pub details: Option<serde_json::Value>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub enum ErrorCode {
     // Authentication errors (AUTH_xxx)
     AuthInvalidCredentials,
@@ -162,7 +163,7 @@ impl fmt::Display for AppError {
 
 impl std::error::Error for AppError {}
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AppError {
     code: ErrorCode,
     message: String,
@@ -283,6 +284,7 @@ impl IntoResponse for AppError {
 
 // Support for Result<T, AppError>
 pub type ApiResult<T> = Result<T, AppError>;
+pub type ApiResult2<T> = Result<(StatusCode, T), (StatusCode, AppError)>;
 
 // Conversion from common error types
 impl From<sqlx::Error> for AppError {

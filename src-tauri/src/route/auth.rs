@@ -1,17 +1,60 @@
 use crate::api;
-use axum::routing::{get, post};
-use axum::Router;
+use aide::{
+    axum::{ApiRouter, routing::{get_with, post_with}},
+};
 
-pub fn auth_routes() -> Router {
-    Router::new()
-        .route("/auth/init", get(api::auth::check_init_status))
-        .route("/auth/setup", post(api::auth::init_app))
-        .route("/auth/login", post(api::auth::login))
-        .route("/auth/register", post(api::auth::register))
+pub fn auth_routes() -> ApiRouter {
+    ApiRouter::new()
+        .api_route(
+            "/auth/init",
+            get_with(api::auth::check_init_status, |op| {
+                op.description("Check if the application is initialized")
+                    .id("Auth.init")
+                    .tag("auth")
+            }),
+        )
+        .api_route(
+            "/auth/setup",
+            post_with(api::auth::init_app, |op| {
+                op.description("Initialize the application with root user")
+                    .id("Auth.setup")
+                    .tag("auth")
+            }),
+        )
+        .api_route(
+            "/auth/login",
+            post_with(api::auth::login, |op| {
+                op.description("Login user and return JWT token")
+                    .id("Auth.login")
+                    .tag("auth")
+            }),
+        )
+        .api_route(
+            "/auth/register",
+            post_with(api::auth::register, |op| {
+                op.description("Register new user account")
+                    .id("Auth.register")
+                    .tag("auth")
+            }),
+        )
 }
 
-pub fn protected_auth_routes() -> Router {
-    Router::new()
-        .route("/auth/logout", post(api::auth::logout))
-        .route("/auth/me", get(api::auth::me))
+pub fn protected_auth_routes() -> ApiRouter {
+    ApiRouter::new()
+        .api_route(
+            "/auth/logout",
+            post_with(api::auth::logout, |op| {
+                op.description("Logout user and invalidate JWT token")
+                    .id("Auth.logout")
+                    .tag("auth")
+            }),
+        )
+        .api_route(
+            "/auth/me",
+            get_with(api::auth::me, |op| {
+                op.description("Get current user information")
+                    .id("Auth.me")
+                    .tag("auth")
+            }),
+        )
 }
