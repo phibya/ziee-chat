@@ -203,6 +203,24 @@ export function AppLayout({ children }: AppLayoutProps) {
       }}
     >
       {/* Sidebar - Always visible, width controlled by container */}
+      {/* Mask for Left Sidebar */}
+      {windowMinSize.xs && (
+        <div
+          className={
+            'fixed h-full w-full transition-all z-3 pointer-events-none'
+          }
+          style={{
+            backgroundColor: tinycolor(token.colorBgContainer)
+              .setAlpha(isSidebarCollapsed ? 0 : 0.7)
+              .toRgbString(),
+            pointerEvents: isSidebarCollapsed ? 'none' : 'auto',
+          }}
+          onClick={toggleSidebar}
+          onMouseDown={toggleSidebar}
+          onTouchStart={toggleSidebar}
+        />
+      )}
+
       <div
         ref={sidebarRef}
         className="absolute h-full z-1"
@@ -212,11 +230,16 @@ export function AppLayout({ children }: AppLayoutProps) {
             ? {
                 zIndex: 3,
                 position: 'fixed',
-                background: token.colorBgContainer,
+                // background: token.colorBgContainer,
+                backdropFilter: 'blur(8px)',
                 transform: isSidebarCollapsed
                   ? 'translateX(-100%)'
                   : 'translateX(0)',
-                width: '100%',
+                width: 250,
+                maxWidth: 'calc(100vw - 24px)',
+                borderRight: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 12,
+                boxShadow: 'rgba(0, 0, 0, 0.075) 0px 2px 16px 0px',
               }
             : {}),
         }}

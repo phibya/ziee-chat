@@ -17,7 +17,7 @@ export const TitleBarWrapper = ({
   const { isSidebarCollapsed, isFullscreen } = Stores.UI.Layout
   return (
     <div
-      className={`h-[50px] w-full flex relative border-b  px-3 transition-all duration-200 ease-in-out box-border py-0 ${className}`}
+      className={`h-[50px] w-full flex relative border-b px-3 transition-all duration-200 ease-in-out box-border py-0 ${className}`}
       style={{
         paddingLeft:
           isSidebarCollapsed && isTauriView && !isFullscreen

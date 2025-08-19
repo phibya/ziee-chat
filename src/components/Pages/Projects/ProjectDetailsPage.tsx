@@ -124,11 +124,11 @@ export const ProjectDetailsPage: React.FC = () => {
               'flex flex-col w-full px-3 flex-1 justify-center min-h-72'
             }
           >
-            <div className={'w-full'}>
+            <div className={'w-full flex flex-col justify-center'}>
               <div className="text-3xl font-light mb-4 text-center">
                 Hi! How can I assist you with your project?
               </div>
-              <Flex className={'flex-col w-full self-center'}>
+              <Flex className={'flex-col w-full self-center max-w-2xl'}>
                 <ChatInput />
               </Flex>
             </div>

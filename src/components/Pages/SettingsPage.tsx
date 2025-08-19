@@ -375,7 +375,7 @@ export function SettingsPage() {
                     return {
                       key: item.key,
                       label: (
-                        <Flex className={'gap-2'}>
+                        <Flex className={'gap-2 items-center'}>
                           {item.icon}
                           {item.label}
                         </Flex>
