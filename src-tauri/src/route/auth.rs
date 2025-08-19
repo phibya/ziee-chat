@@ -1,8 +1,9 @@
 use crate::api;
-use crate::api::auth::{InitResponse, AuthResponse};
+use crate::api::auth::{AuthResponse, InitResponse};
 use crate::database::models::User;
-use aide::{
-    axum::{ApiRouter, routing::{get_with, post_with}},
+use aide::axum::{
+    routing::{get_with, post_with},
+    ApiRouter,
 };
 use axum::Json;
 

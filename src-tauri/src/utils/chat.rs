@@ -16,10 +16,7 @@ use crate::ai::{
     file_helpers::load_file_reference,
 };
 use crate::api::chat::ChatMessageRequest;
-use crate::database::{
-    models::{Assistant, Message},
-    queries::{assistants::get_assistant_by_id, chat::get_conversation_messages},
-};
+use crate::database::queries::{assistants::get_assistant_by_id, chat::get_conversation_messages};
 
 /// Build messages array for a chat request with conversation history and file attachments
 pub async fn build_chat_messages(

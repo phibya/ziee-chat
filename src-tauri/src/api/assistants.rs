@@ -14,7 +14,6 @@ use crate::database::{
 };
 use crate::types::PaginationQuery;
 
-
 /// Create a new assistant
 pub async fn create_assistant(
     Extension(auth_user): Extension<AuthenticatedUser>,
@@ -44,7 +43,7 @@ pub async fn create_template_assistant(
             eprintln!("Error creating template assistant: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to create template assistant")
+                AppError::internal_error("Failed to create template assistant"),
             ))
         }
     }
@@ -73,15 +72,12 @@ pub async fn get_assistant_admin(
 ) -> ApiResult2<Json<Assistant>> {
     match assistants::get_assistant_by_id(assistant_id, None).await {
         Ok(Some(assistant)) => Ok((StatusCode::OK, Json(assistant))),
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Assistant")
-        )),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Assistant"))),
         Err(e) => {
             eprintln!("Error getting assistant (admin): {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get assistant")
+                AppError::internal_error("Failed to get assistant"),
             ))
         }
     }
@@ -119,7 +115,7 @@ pub async fn list_assistants_admin(
             eprintln!("Error listing assistants (admin): {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to list assistants")
+                AppError::internal_error("Failed to list assistants"),
             ))
         }
     }
@@ -151,15 +147,12 @@ pub async fn update_assistant_admin(
 ) -> ApiResult2<Json<Assistant>> {
     match assistants::update_assistant(assistant_id, request, None, true).await {
         Ok(Some(assistant)) => Ok((StatusCode::OK, Json(assistant))),
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Assistant")
-        )),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Assistant"))),
         Err(e) => {
             eprintln!("Error updating assistant (admin): {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to update assistant")
+                AppError::internal_error("Failed to update assistant"),
             ))
         }
     }
@@ -188,15 +181,12 @@ pub async fn delete_assistant_admin(
 ) -> ApiResult2<StatusCode> {
     match assistants::delete_assistant(assistant_id, None, true).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
-        Ok(false) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Assistant")
-        )),
+        Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Assistant"))),
         Err(e) => {
             eprintln!("Error deleting assistant (admin): {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to delete assistant")
+                AppError::internal_error("Failed to delete assistant"),
             ))
         }
     }

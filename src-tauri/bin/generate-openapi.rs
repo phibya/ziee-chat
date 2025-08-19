@@ -21,7 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = openapi_dir.join("openapi.json");
     fs::write(&output_path, json)?;
 
-    println!("OpenAPI specification generated successfully at: {}", output_path.display());
+    println!(
+        "OpenAPI specification generated successfully at: {}",
+        output_path.display()
+    );
 
     Ok(())
 }

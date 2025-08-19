@@ -1,9 +1,9 @@
 use crate::database::models::File;
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
-use schemars::JsonSchema;
 
 // Main unified structures
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

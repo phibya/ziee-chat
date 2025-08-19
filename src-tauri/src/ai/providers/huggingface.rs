@@ -8,12 +8,12 @@ use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
 
@@ -113,7 +113,8 @@ impl HuggingFaceProvider {
         proxy_config: Option<ProxyConfig>,
         provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let base_url = base_url.unwrap_or_else(|| "https://api-inference.huggingface.co/v1".to_string());
+        let base_url =
+            base_url.unwrap_or_else(|| "https://api-inference.huggingface.co/v1".to_string());
         let client = build_http_client(&base_url, proxy_config.as_ref())?;
 
         Ok(Self {
@@ -124,23 +125,11 @@ impl HuggingFaceProvider {
         })
     }
 
-    /// Check if the model supports vision capabilities
-    fn is_vision_model(&self, model_name: &str) -> bool {
-        model_name.contains("qwen2.5-vl") ||
-        model_name.contains("qwen2-vl") ||
-        model_name.contains("llama-3.2") && model_name.contains("vision") ||
-        model_name.contains("idefics") ||
-        model_name.contains("gemma") && model_name.contains("4b-it") ||
-        model_name.contains("command") && model_name.contains("vision") ||
-        model_name.contains("pixtral") ||
-        model_name.contains("blip") ||
-        model_name.contains("flamingo")
-    }
 
     /// Get model-specific configuration
     fn get_model_config(&self, model_name: &str) -> ModelConfig {
         let lower_name = model_name.to_lowercase();
-        
+
         match () {
             _ if lower_name.contains("qwen2.5-vl-7b") => ModelConfig {
                 supports_vision: true,
@@ -192,16 +181,18 @@ impl HuggingFaceProvider {
                 max_file_size: 20 * 1024 * 1024,
                 model_type: HuggingFaceModelType::VisionLanguage,
             },
-            _ if lower_name.contains("llama-3.1") || lower_name.contains("gemma-2") => ModelConfig {
-                supports_vision: false,
-                supports_tools: true,
-                supports_streaming: true,
-                max_images: 0,
-                max_tokens: 4096,
-                context_window: 128000,
-                max_file_size: 0,
-                model_type: HuggingFaceModelType::TextOnly,
-            },
+            _ if lower_name.contains("llama-3.1") || lower_name.contains("gemma-2") => {
+                ModelConfig {
+                    supports_vision: false,
+                    supports_tools: true,
+                    supports_streaming: true,
+                    max_images: 0,
+                    max_tokens: 4096,
+                    context_window: 128000,
+                    max_file_size: 0,
+                    model_type: HuggingFaceModelType::TextOnly,
+                }
+            }
             _ => ModelConfig {
                 supports_vision: false,
                 supports_tools: false,
@@ -211,7 +202,7 @@ impl HuggingFaceProvider {
                 context_window: 4096,
                 max_file_size: 0,
                 model_type: HuggingFaceModelType::TextOnly,
-            }
+            },
         }
     }
 
@@ -227,9 +218,7 @@ impl HuggingFaceProvider {
         for part in parts {
             match part {
                 ContentPart::Text(text) => {
-                    content_array.push(HuggingFaceContentPart::Text {
-                        text: text.clone(),
-                    });
+                    content_array.push(HuggingFaceContentPart::Text { text: text.clone() });
                 }
                 ContentPart::FileReference(file_ref) => {
                     if let Some(mime_type) = &file_ref.mime_type {
@@ -299,14 +288,15 @@ impl HuggingFaceProvider {
 
         // Load and process file
         let file_data = load_file_content(file_ref.file_id).await?;
-        
+
         // Check size limits
         if file_data.len() > model_config.max_file_size {
             return Err(format!(
                 "Image size ({} bytes) exceeds Hugging Face limit ({} bytes)",
                 file_data.len(),
                 model_config.max_file_size
-            ).into());
+            )
+            .into());
         }
 
         // Encode to base64
@@ -327,7 +317,9 @@ impl HuggingFaceProvider {
             self.provider_id,
             Some(data_url.clone()),
             provider_metadata,
-        ).await {
+        )
+        .await
+        {
             eprintln!("Error caching provider file mapping: {}", e);
             // Continue without caching
         }
@@ -338,9 +330,9 @@ impl HuggingFaceProvider {
     }
 
     fn is_supported_image_type(&self, mime_type: &str) -> bool {
-        matches!(mime_type, 
-            "image/jpeg" | "image/jpg" | "image/png" | 
-            "image/webp" | "image/gif"
+        matches!(
+            mime_type,
+            "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
         )
     }
 
@@ -360,7 +352,8 @@ impl HuggingFaceProvider {
                 },
                 MessageContent::Multimodal(parts) => {
                     if model_config.supports_vision {
-                        let content_parts = self.process_multimodal_content(parts, model_config).await?;
+                        let content_parts =
+                            self.process_multimodal_content(parts, model_config).await?;
                         HuggingFaceMessage {
                             role: message.role.clone(),
                             content: HuggingFaceContent::Array(content_parts),
@@ -376,7 +369,7 @@ impl HuggingFaceProvider {
                                 }
                             })
                             .collect();
-                        
+
                         HuggingFaceMessage {
                             role: message.role.clone(),
                             content: HuggingFaceContent::Text(text_parts.join("\n")),
@@ -391,29 +384,102 @@ impl HuggingFaceProvider {
         Ok(hf_messages)
     }
 
+    /// Optimize max_tokens based on model type and context window
+    fn optimize_max_tokens_for_model(
+        &self,
+        requested_max_tokens: Option<u32>,
+        model_config: &ModelConfig,
+    ) -> u32 {
+        let context_based_max = match model_config.model_type {
+            HuggingFaceModelType::VisionLanguage => {
+                // Vision models need more tokens for image descriptions
+                (model_config.context_window as f32 * 0.6) as u32
+            }
+            HuggingFaceModelType::Multimodal => {
+                // Multimodal models balance between modalities
+                (model_config.context_window as f32 * 0.5) as u32
+            }
+            HuggingFaceModelType::TextOnly => {
+                // Text-only models can use more of the context
+                (model_config.context_window as f32 * 0.8) as u32
+            }
+        };
+
+        match requested_max_tokens {
+            Some(max_tokens) => max_tokens.min(model_config.max_tokens).min(context_based_max),
+            None => model_config.max_tokens.min(context_based_max),
+        }
+    }
+
+    /// Apply model-specific optimizations based on capabilities
+    fn apply_model_optimizations(&self, payload: &mut Value, model_config: &ModelConfig) {
+        // Optimize for tool use models
+        if model_config.supports_tools {
+            // Lower temperature for better tool selection accuracy
+            if let Some(temp) = payload.get("temperature").and_then(|t| t.as_f64()) {
+                if temp > 0.5 {
+                    payload["temperature"] = json!(0.3);
+                }
+            }
+        }
+
+        // Apply model type specific optimizations
+        match model_config.model_type {
+            HuggingFaceModelType::VisionLanguage => {
+                // Vision models benefit from slightly higher temperature for creativity
+                if !payload.as_object().unwrap().contains_key("temperature") {
+                    payload["temperature"] = json!(0.8);
+                }
+            }
+            HuggingFaceModelType::Multimodal => {
+                // Balanced approach for multimodal
+                if !payload.as_object().unwrap().contains_key("temperature") {
+                    payload["temperature"] = json!(0.7);
+                }
+            }
+            HuggingFaceModelType::TextOnly => {
+                // More deterministic for text-only models
+                if !payload.as_object().unwrap().contains_key("temperature") {
+                    payload["temperature"] = json!(0.6);
+                }
+            }
+        }
+    }
+
     async fn prepare_request(
         &self,
         request: &ChatRequest,
         stream: bool,
     ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         let model_config = self.get_model_config(&request.model_name);
-        let messages = self.convert_messages_to_huggingface(&request.messages, &model_config).await?;
+        let messages = self
+            .convert_messages_to_huggingface(&request.messages, &model_config)
+            .await?;
 
         let params = request.parameters.as_ref();
+        
+        // Use supports_streaming to determine if streaming is allowed
+        let effective_stream = stream && model_config.supports_streaming;
+        
         let mut payload = json!({
             "model": request.model_name,
             "messages": messages,
-            "stream": stream
+            "stream": effective_stream
         });
 
-        // Add optional parameters
+        // Add optional parameters with model-aware optimizations
         if let Some(params) = params {
             if let Some(temperature) = params.temperature {
                 payload["temperature"] = json!(temperature);
             }
-            if let Some(max_tokens) = params.max_tokens {
-                payload["max_tokens"] = json!(max_tokens.min(model_config.max_tokens));
-            }
+            
+            // Use context_window and model_type to optimize max_tokens
+            let optimized_max_tokens = self.optimize_max_tokens_for_model(
+                params.max_tokens,
+                &model_config,
+            );
+            payload["max_tokens"] = json!(optimized_max_tokens);
+            
             if let Some(top_p) = params.top_p {
                 payload["top_p"] = json!(top_p);
             }
@@ -426,15 +492,14 @@ impl HuggingFaceProvider {
             if let Some(stop) = &params.stop {
                 payload["stop"] = json!(stop);
             }
+        } else {
+            // Set optimized defaults based on model capabilities
+            let default_max_tokens = self.optimize_max_tokens_for_model(None, &model_config);
+            payload["max_tokens"] = json!(default_max_tokens);
         }
 
-        // Set defaults if not provided
-        if !payload.as_object().unwrap().contains_key("temperature") {
-            payload["temperature"] = json!(0.7);
-        }
-        if !payload.as_object().unwrap().contains_key("max_tokens") {
-            payload["max_tokens"] = json!(model_config.max_tokens);
-        }
+        // Apply model-specific optimizations
+        self.apply_model_optimizations(&mut payload, &model_config);
 
         Ok(payload)
     }
@@ -442,9 +507,11 @@ impl HuggingFaceProvider {
     /// Enhanced error handling for Hugging Face API
     fn handle_huggingface_errors(&self, error: &str) -> Box<dyn std::error::Error + Send + Sync> {
         if error.contains("rate limit") || error.contains("429") {
-            "Hugging Face rate limit exceeded. Please wait before retrying or upgrade your plan.".into()
+            "Hugging Face rate limit exceeded. Please wait before retrying or upgrade your plan."
+                .into()
         } else if error.contains("unauthorized") || error.contains("401") {
-            "Hugging Face authentication failed. Please check your API token and permissions.".into()
+            "Hugging Face authentication failed. Please check your API token and permissions."
+                .into()
         } else if error.contains("model not found") || error.contains("404") {
             "Hugging Face model not found. Please check the model name and availability.".into()
         } else if error.contains("token") && error.contains("limit") {
@@ -654,7 +721,7 @@ impl AIProvider for HuggingFaceProvider {
         }
 
         let file_data = load_file_content(file_ref.file_id).await?;
-        
+
         if file_data.len() > 20 * 1024 * 1024 {
             return Err("File size exceeds 20MB limit for Hugging Face".into());
         }
@@ -676,19 +743,20 @@ impl AIProvider for HuggingFaceProvider {
 #[async_trait]
 impl HttpForwardingProvider for HuggingFaceProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}/chat/completions", self.base_url);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&request)
             .send()
             .await?;
-            
+
         Ok(response)
     }
 }

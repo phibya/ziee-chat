@@ -1,23 +1,22 @@
 use axum::{
     debug_handler,
-    extract::Path, 
-    http::StatusCode, 
-    Extension, 
-    Json,
+    extract::Path,
+    http::StatusCode,
     response::sse::{Event, Sse},
+    Extension, Json,
 };
 use futures_util::stream::Stream;
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use tokio::sync::mpsc;
 use uuid::Uuid;
-use lazy_static::lazy_static;
 
+use crate::ai::api_proxy_server;
 use crate::api::errors::{ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::models::api_proxy_server_model::*;
 use crate::database::queries::api_proxy_server_models;
-use crate::ai::api_proxy_server;
 
 // SSE log streaming types
 type ClientId = Uuid;
@@ -39,7 +38,7 @@ pub async fn get_proxy_config(
             eprintln!("Failed to get proxy config: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get proxy configuration")
+                AppError::internal_error("Failed to get proxy configuration"),
             ))
         }
     }
@@ -60,16 +59,16 @@ pub async fn update_proxy_config(
                     eprintln!("Failed to fetch updated proxy config: {}", e);
                     Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        AppError::internal_error("Failed to fetch updated proxy configuration")
+                        AppError::internal_error("Failed to fetch updated proxy configuration"),
                     ))
                 }
             }
-        },
+        }
         Err(e) => {
             eprintln!("Failed to update proxy config: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to update proxy configuration")
+                AppError::internal_error("Failed to update proxy configuration"),
             ))
         }
     }
@@ -86,7 +85,7 @@ pub async fn list_proxy_models(
             eprintln!("Failed to list proxy models: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -100,19 +99,21 @@ pub async fn add_model_to_proxy(
 ) -> ApiResult2<Json<ApiProxyServerModel>> {
     let enabled = request.enabled.unwrap_or(true);
     let is_default = request.is_default.unwrap_or(false);
-    
+
     match api_proxy_server_models::add_model_to_proxy(
-        request.model_id, 
-        request.alias_id, 
-        enabled, 
-        is_default
-    ).await {
+        request.model_id,
+        request.alias_id,
+        enabled,
+        is_default,
+    )
+    .await
+    {
         Ok(model) => Ok((StatusCode::OK, Json(model))),
         Err(e) => {
             eprintln!("Failed to add model to proxy: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -126,23 +127,20 @@ pub async fn update_proxy_model(
     Json(request): Json<UpdateApiProxyServerModelRequest>,
 ) -> ApiResult2<Json<ApiProxyServerModel>> {
     match api_proxy_server_models::update_proxy_model_status(
-        model_id, 
-        request.enabled, 
+        model_id,
+        request.enabled,
         request.is_default,
         request.alias_id,
-    ).await {
-        Ok(Some(model)) => {
-            Ok((StatusCode::OK, Json(model)))
-        }
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Proxy model")
-        )),
+    )
+    .await
+    {
+        Ok(Some(model)) => Ok((StatusCode::OK, Json(model))),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Proxy model"))),
         Err(e) => {
             eprintln!("Failed to update proxy model: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -156,15 +154,12 @@ pub async fn remove_model_from_proxy(
 ) -> ApiResult2<StatusCode> {
     match api_proxy_server_models::remove_model_from_proxy(model_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
-        Ok(false) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Proxy model")
-        )),
+        Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Proxy model"))),
         Err(e) => {
             eprintln!("Failed to remove model from proxy: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -181,7 +176,7 @@ pub async fn list_trusted_hosts(
             eprintln!("Failed to list trusted hosts: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -194,18 +189,16 @@ pub async fn add_trusted_host(
     Json(request): Json<CreateTrustedHostRequest>,
 ) -> ApiResult2<Json<ApiProxyServerTrustedHost>> {
     let enabled = request.enabled.unwrap_or(true);
-    
-    match api_proxy_server_models::add_trusted_host(
-        request.host,
-        request.description,
-        enabled,
-    ).await {
+
+    match api_proxy_server_models::add_trusted_host(request.host, request.description, enabled)
+        .await
+    {
         Ok(host) => Ok((StatusCode::OK, Json(host))),
         Err(e) => {
             eprintln!("Failed to add trusted host: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -223,17 +216,16 @@ pub async fn update_trusted_host(
         request.host,
         request.description,
         request.enabled,
-    ).await {
+    )
+    .await
+    {
         Ok(Some(host)) => Ok((StatusCode::OK, Json(host))),
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Trusted host")
-        )),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Trusted host"))),
         Err(e) => {
             eprintln!("Failed to update trusted host: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -247,15 +239,12 @@ pub async fn remove_trusted_host(
 ) -> ApiResult2<StatusCode> {
     match api_proxy_server_models::remove_trusted_host(host_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
-        Ok(false) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Trusted host")
-        )),
+        Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Trusted host"))),
         Err(e) => {
             eprintln!("Failed to remove trusted host: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -272,7 +261,7 @@ pub async fn get_proxy_status(
             eprintln!("Failed to get proxy status: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get proxy status")
+                AppError::internal_error("Failed to get proxy status"),
             ))
         }
     }
@@ -289,7 +278,7 @@ pub async fn start_proxy_server(
             eprintln!("Failed to start proxy server: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to start proxy server")
+                AppError::internal_error("Failed to start proxy server"),
             ))
         }
     }
@@ -306,7 +295,7 @@ pub async fn stop_proxy_server(
             eprintln!("Failed to stop proxy server: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to stop proxy server")
+                AppError::internal_error("Failed to stop proxy server"),
             ))
         }
     }
@@ -323,7 +312,7 @@ pub async fn reload_proxy_models(
             eprintln!("Failed to reload proxy models: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to reload proxy models")
+                AppError::internal_error("Failed to reload proxy models"),
             ))
         }
     }
@@ -340,7 +329,7 @@ pub async fn reload_proxy_trusted_hosts(
             eprintln!("Failed to reload proxy trusted hosts: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to reload proxy trusted hosts")
+                AppError::internal_error("Failed to reload proxy trusted hosts"),
             ))
         }
     }
@@ -351,24 +340,23 @@ pub async fn reload_proxy_trusted_hosts(
 pub async fn subscribe_proxy_logs(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
-    
     let client_id = Uuid::new_v4();
     let (tx, mut rx) = mpsc::unbounded_channel();
-    
+
     // Add client to the connections map
     {
         let mut clients = LOG_SSE_CLIENTS.lock().unwrap();
         clients.insert(client_id, tx.clone());
     }
-    
+
     // Send initial connection event
     let _ = tx.send(Ok(Event::default()
         .event("connected")
         .data("{\"message\":\"API Proxy log monitoring connected\"}")));
-    
+
     // Start log monitoring if not already active
     start_log_monitoring().await;
-    
+
     // Create the SSE stream with proper cleanup
     let stream = async_stream::stream! {
         // Keep the sender alive for the stream lifetime
@@ -379,7 +367,7 @@ pub async fn subscribe_proxy_logs(
         // Stream ended, remove client
         remove_log_client(client_id);
     };
-    
+
     Ok((StatusCode::OK, Sse::new(stream)))
 }
 
@@ -391,22 +379,22 @@ async fn start_log_monitoring() {
     }
     *monitoring_active = true;
     drop(monitoring_active);
-    
+
     tracing::info!("Starting API proxy log monitoring service");
     tokio::spawn(async {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1)); // Check every second
         let log_file_path = crate::ai::api_proxy_server::logging::get_log_file_path();
         let mut last_position = 0u64;
-        
+
         loop {
             interval.tick().await;
-            
+
             // Check if we have any connected clients
             let client_count = {
                 let clients = LOG_SSE_CLIENTS.lock().unwrap();
                 clients.len()
             };
-            
+
             if client_count == 0 {
                 // No clients connected, stop monitoring
                 tracing::info!("No log clients connected, stopping proxy log monitoring");
@@ -414,7 +402,7 @@ async fn start_log_monitoring() {
                 *monitoring_active = false;
                 break;
             }
-            
+
             // Read new log entries
             if let Ok(new_lines) = read_log_updates(&log_file_path, &mut last_position).await {
                 if !new_lines.is_empty() {
@@ -428,39 +416,39 @@ async fn start_log_monitoring() {
 
 // Read new log entries from the log file
 async fn read_log_updates(
-    log_file_path: &std::path::Path, 
-    last_position: &mut u64
+    log_file_path: &std::path::Path,
+    last_position: &mut u64,
 ) -> Result<Vec<String>, std::io::Error> {
     use std::fs::File;
     use std::io::{BufRead, BufReader, Seek, SeekFrom};
-    
+
     let mut new_lines = Vec::new();
-    
+
     if let Ok(mut file) = File::open(log_file_path) {
         // Get current file size
         if let Ok(metadata) = file.metadata() {
             let current_size = metadata.len();
-            
+
             // If file was truncated (log rotation), reset position
             if current_size < *last_position {
                 *last_position = 0;
             }
-            
+
             // Seek to last read position
             file.seek(SeekFrom::Start(*last_position))?;
-            
+
             let reader = BufReader::new(file);
             for line in reader.lines() {
                 if let Ok(line_content) = line {
                     new_lines.push(line_content);
                 }
             }
-            
+
             // Update position
             *last_position = current_size;
         }
     }
-    
+
     Ok(new_lines)
 }
 
@@ -470,25 +458,25 @@ async fn broadcast_log_update(new_lines: &[String]) {
         let clients_guard = LOG_SSE_CLIENTS.lock().unwrap();
         clients_guard.clone()
     };
-    
+
     let log_data = serde_json::json!({
         "lines": new_lines,
         "timestamp": chrono::Utc::now().to_rfc3339()
     });
-    
+
     let event = Event::default()
         .event("log_update")
         .data(log_data.to_string());
-    
+
     // Send to all clients and remove disconnected ones
     let mut disconnected_clients = Vec::new();
-    
+
     for (client_id, sender) in clients {
         if sender.send(Ok(event.clone())).is_err() {
             disconnected_clients.push(client_id);
         }
     }
-    
+
     // Clean up disconnected clients
     if !disconnected_clients.is_empty() {
         let mut clients_guard = LOG_SSE_CLIENTS.lock().unwrap();

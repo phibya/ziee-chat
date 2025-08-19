@@ -7,8 +7,8 @@ use axum::{
     Extension, Json,
 };
 use futures_util::stream::Stream;
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::time::Duration;
 use tokio::time::interval;
@@ -46,7 +46,7 @@ pub async fn list_all_downloads(
             AppError::new(
                 crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
                 "Admin access required",
-            )
+            ),
         ));
     }
 
@@ -65,7 +65,7 @@ pub async fn list_all_downloads(
             eprintln!("Failed to get all downloads: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to retrieve downloads")
+                AppError::internal_error("Failed to retrieve downloads"),
             ))
         }
     }
@@ -86,20 +86,20 @@ pub async fn get_download(
                     AppError::new(
                         crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
                         "Provider read access required",
-                    )
+                    ),
                 ));
             }
             Ok((StatusCode::OK, Json(download)))
         }
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            AppError::not_found("Download instance")
+            AppError::not_found("Download instance"),
         )),
         Err(e) => {
             eprintln!("Failed to get download {}: {}", download_id, e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ))
         }
     }
@@ -121,7 +121,7 @@ pub async fn cancel_download(
                     AppError::new(
                         crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
                         "Provider edit access required",
-                    )
+                    ),
                 ));
             }
 
@@ -132,19 +132,21 @@ pub async fn cancel_download(
                     AppError::new(
                         crate::api::errors::ErrorCode::ValidInvalidInput,
                         "Download cannot be cancelled in its current state",
-                    )
+                    ),
                 ));
             }
         }
-        Ok(None) => return Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Download instance")
-        )),
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                AppError::not_found("Download instance"),
+            ))
+        }
         Err(e) => {
             eprintln!("Failed to verify download {}: {}", download_id, e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ));
         }
     }
@@ -206,13 +208,13 @@ pub async fn cancel_download(
         }
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            AppError::not_found("Download instance")
+            AppError::not_found("Download instance"),
         )),
         Err(e) => {
             eprintln!("Failed to cancel download {}: {}", download_id, e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to cancel download")
+                AppError::internal_error("Failed to cancel download"),
             ))
         }
     }
@@ -234,7 +236,7 @@ pub async fn delete_download(
                     AppError::new(
                         crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
                         "Provider edit access required",
-                    )
+                    ),
                 ));
             }
 
@@ -245,19 +247,21 @@ pub async fn delete_download(
                     AppError::new(
                         crate::api::errors::ErrorCode::ValidInvalidInput,
                         "Cannot delete active download",
-                    )
+                    ),
                 ));
             }
         }
-        Ok(None) => return Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Download instance")
-        )),
+        Ok(None) => {
+            return Err((
+                StatusCode::NOT_FOUND,
+                AppError::not_found("Download instance"),
+            ))
+        }
         Err(e) => {
             eprintln!("Failed to verify download {}: {}", download_id, e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Database operation failed")
+                AppError::internal_error("Database operation failed"),
             ));
         }
     }
@@ -266,13 +270,13 @@ pub async fn delete_download(
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((
             StatusCode::NOT_FOUND,
-            AppError::not_found("Download instance")
+            AppError::not_found("Download instance"),
         )),
         Err(e) => {
             eprintln!("Failed to delete download {}: {}", download_id, e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to delete download")
+                AppError::internal_error("Failed to delete download"),
             ))
         }
     }
@@ -297,16 +301,10 @@ impl From<&DownloadInstance> for DownloadProgressUpdate {
         DownloadProgressUpdate {
             id: download.id.to_string(),
             status: download.status.as_str().to_string(),
-            phase: download
-                .progress_data
-                .as_ref()
-                .map(|p| p.phase.clone()),
+            phase: download.progress_data.as_ref().map(|p| p.phase.clone()),
             current: download.progress_data.as_ref().map(|p| p.current),
             total: download.progress_data.as_ref().map(|p| p.total),
-            message: download
-                .progress_data
-                .as_ref()
-                .map(|p| p.message.clone()),
+            message: download.progress_data.as_ref().map(|p| p.message.clone()),
             speed_bps: download.progress_data.as_ref().map(|p| p.speed_bps),
             eta_seconds: download.progress_data.as_ref().map(|p| p.eta_seconds),
             error_message: download.error_message.clone(),
@@ -341,7 +339,7 @@ pub async fn subscribe_download_progress(
             AppError::new(
                 crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
                 "Provider read access required",
-            )
+            ),
         ));
     }
 
@@ -350,7 +348,7 @@ pub async fn subscribe_download_progress(
 
     // Create the stream
     let stream = async_stream::stream! {
-        let mut last_downloads_state: Option<String> = None;
+        let mut last_downloads_state: Option<String>;
 
         // Send initial update immediately
         let downloads = download_instances::get_all_active_downloads().await;
@@ -432,9 +430,12 @@ pub async fn subscribe_download_progress(
         }
     };
 
-    Ok((StatusCode::OK, Sse::new(stream).keep_alive(
-        KeepAlive::new()
-            .interval(Duration::from_secs(15))
-            .text("keep-alive"),
-    )))
+    Ok((
+        StatusCode::OK,
+        Sse::new(stream).keep_alive(
+            KeepAlive::new()
+                .interval(Duration::from_secs(15))
+                .text("keep-alive"),
+        ),
+    ))
 }

@@ -103,10 +103,12 @@ pub async fn check_init_status() -> ApiResult2<Json<InitResponse>> {
                         }),
                     ));
                 }
-                Err(e) => return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    AppError::from_string(ErrorCode::UserRootCreationFailed, e.to_string()),
-                  )),
+                Err(e) => {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::from_string(ErrorCode::UserRootCreationFailed, e.to_string()),
+                    ))
+                }
             }
         } else {
             return Ok((
@@ -135,10 +137,7 @@ pub async fn check_init_status() -> ApiResult2<Json<InitResponse>> {
 pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json<AuthResponse>> {
     // Check if app is already initialized
     if let Ok(true) = crate::database::queries::configuration::is_app_initialized().await {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            AppError::app_already_initialized()
-          ));
+        return Err((StatusCode::BAD_REQUEST, AppError::app_already_initialized()));
     }
 
     let mut root_request = payload;
@@ -168,8 +167,8 @@ pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json
                     {
                         return Err((
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            AppError::from_error(ErrorCode::AuthTokenStorageFailed, e)
-                          ));
+                            AppError::from_error(ErrorCode::AuthTokenStorageFailed, e),
+                        ));
                     }
 
                     // Mark app as initialized
@@ -185,22 +184,19 @@ pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json
                             token,
                             user: user.sanitized(),
                             expires_at,
-                        })
-                      ))
+                        }),
+                    ))
                 }
                 Err(e) => Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    AppError::from_error(
-                        ErrorCode::AuthTokenGenerationFailed,
-                        e,
-                    )
-                  )),
+                    AppError::from_error(ErrorCode::AuthTokenGenerationFailed, e),
+                )),
             }
         }
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             AppError::from_string(ErrorCode::UserRootCreationFailed, e.to_string()),
-          )),
+        )),
     }
 }
 
@@ -218,16 +214,13 @@ pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult2<Json<AuthRes
                 token: login_response.token,
                 user: login_response.user.sanitized(),
                 expires_at: login_response.expires_at,
-            })
-          )),
-        Ok(None) => Err((
-            StatusCode::UNAUTHORIZED,
-            AppError::invalid_credentials()
-          )),
+            }),
+        )),
+        Ok(None) => Err((StatusCode::UNAUTHORIZED, AppError::invalid_credentials())),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::from_string(ErrorCode::AuthenticationFailed, e)
-          )),
+            AppError::from_string(ErrorCode::AuthenticationFailed, e),
+        )),
     }
 }
 
@@ -242,24 +235,18 @@ pub async fn logout(req: Request) -> ApiResult2<StatusCode> {
         .and_then(|h| h.strip_prefix("Bearer "));
 
     let Some(token) = auth_header else {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            AppError::missing_auth_header()
-          ));
+        return Err((StatusCode::BAD_REQUEST, AppError::missing_auth_header()));
     };
 
     // For web app, remove the login token
     if let Err(e) = AUTH_SERVICE.logout_user(token).await {
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::from_string(ErrorCode::AuthLogoutFailed, e)
-          ));
+            AppError::from_string(ErrorCode::AuthLogoutFailed, e),
+        ));
     }
 
-    Ok((
-        StatusCode::OK,
-        StatusCode::OK
-      ))
+    Ok((StatusCode::OK, StatusCode::OK))
 }
 
 /// Get current user endpoint
@@ -267,10 +254,7 @@ pub async fn logout(req: Request) -> ApiResult2<StatusCode> {
 pub async fn me(
     axum::Extension(auth_user): axum::Extension<crate::api::middleware::AuthenticatedUser>,
 ) -> ApiResult2<Json<User>> {
-    Ok((
-        StatusCode::OK,
-        Json(auth_user.user.sanitized())
-      ))
+    Ok((StatusCode::OK, Json(auth_user.user.sanitized())))
 }
 
 /// Register endpoint (for web app only)
@@ -280,25 +264,19 @@ pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json
     if is_desktop_app() {
         return Err((
             StatusCode::BAD_REQUEST,
-            AppError::desktop_mode_restriction()
-          ));
+            AppError::desktop_mode_restriction(),
+        ));
     }
 
     // Check if app is initialized
     if let Ok(false) = crate::database::queries::configuration::is_app_initialized().await {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            AppError::app_not_initialized()
-          ));
+        return Err((StatusCode::BAD_REQUEST, AppError::app_not_initialized()));
     }
 
     // Check if user registration is enabled
     if let Ok(false) = crate::database::queries::configuration::is_user_registration_enabled().await
     {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            AppError::registration_disabled()
-          ));
+        return Err((StatusCode::BAD_REQUEST, AppError::registration_disabled()));
     }
 
     // Create new user
@@ -319,8 +297,8 @@ pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json
                     {
                         return Err((
                             StatusCode::INTERNAL_SERVER_ERROR,
-                            AppError::from_error(ErrorCode::AuthTokenStorageFailed, e)
-                          ));
+                            AppError::from_error(ErrorCode::AuthTokenStorageFailed, e),
+                        ));
                     }
 
                     Ok((
@@ -329,21 +307,18 @@ pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json
                             token,
                             user: user.sanitized(),
                             expires_at,
-                        })
-                      ))
+                        }),
+                    ))
                 }
                 Err(e) => Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    AppError::from_error(
-                        ErrorCode::AuthTokenGenerationFailed,
-                        e,
-                    )
-                  )),
+                    AppError::from_error(ErrorCode::AuthTokenGenerationFailed, e),
+                )),
             }
         }
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            AppError::from_string(ErrorCode::UserCreationFailed, e)
-          )),
+            AppError::from_string(ErrorCode::UserCreationFailed, e),
+        )),
     }
 }

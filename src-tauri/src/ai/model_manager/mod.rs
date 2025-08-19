@@ -1,8 +1,8 @@
-pub mod model_manager;
 pub mod auto_unload;
 pub mod core;
+pub mod model_manager;
 
 // Re-export main functionality
-pub use model_manager::*;
 pub use auto_unload::*;
 pub use core::*;
+pub use model_manager::*;

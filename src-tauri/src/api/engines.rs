@@ -27,16 +27,16 @@ pub async fn list_engines() -> ApiResult2<Json<Vec<EngineInfo>>> {
             name: mistralrs.name().to_string(),
             version: mistralrs.version(),
             status: "available".to_string(),
-            description: Some("High-performance Rust inference engine with quantization support".to_string()),
+            description: Some(
+                "High-performance Rust inference engine with quantization support".to_string(),
+            ),
             supported_architectures: Some(vec![
                 "llama".to_string(),
                 "mistral".to_string(),
                 "gemma".to_string(),
                 "phi".to_string(),
             ]),
-            required_dependencies: Some(vec![
-                "mistralrs-server".to_string(),
-            ]),
+            required_dependencies: Some(vec!["mistralrs-server".to_string()]),
         },
         EngineInfo {
             engine_type: "llamacpp".to_string(),
@@ -49,9 +49,7 @@ pub async fn list_engines() -> ApiResult2<Json<Vec<EngineInfo>>> {
                 "gpt".to_string(),
                 "falcon".to_string(),
             ]),
-            required_dependencies: Some(vec![
-                "llama-server".to_string(),
-            ]),
+            required_dependencies: Some(vec!["llama-server".to_string()]),
         },
     ];
 

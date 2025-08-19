@@ -1,23 +1,28 @@
 use crate::api;
-use aide::{
-    axum::{ApiRouter, routing::{get_with, post_with, put_with}},
+use crate::api::configuration::{
+    DefaultLanguageResponse, NgrokSettingsResponse, NgrokStatusResponse, ProxySettingsResponse,
+    UserRegistrationStatusResponse,
+};
+use aide::axum::{
+    routing::{get_with, post_with, put_with},
+    ApiRouter,
 };
 use axum::{middleware, Json};
-use crate::api::configuration::{
-    UserRegistrationStatusResponse, DefaultLanguageResponse, ProxySettingsResponse,
-    NgrokSettingsResponse, NgrokStatusResponse
-};
 
 pub fn admin_config_routes() -> ApiRouter {
     ApiRouter::new()
         .api_route(
             "/config/user-registration",
-            get_with(api::configuration::get_user_registration_status_admin, |op| {
-                op.description("Get user registration status (admin)")
-                    .id("Admin.getUserRegistrationStatus")
-                    .tag("admin")
-                    .response::<200, Json<UserRegistrationStatusResponse>>()
-            }).layer(middleware::from_fn(
+            get_with(
+                api::configuration::get_user_registration_status_admin,
+                |op| {
+                    op.description("Get user registration status (admin)")
+                        .id("Admin.getUserRegistrationStatus")
+                        .tag("admin")
+                        .response::<200, Json<UserRegistrationStatusResponse>>()
+                },
+            )
+            .layer(middleware::from_fn(
                 api::middleware::config_user_registration_read_middleware,
             )),
         )
@@ -28,7 +33,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.updateUserRegistrationStatus")
                     .tag("admin")
                     .response::<200, Json<UserRegistrationStatusResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_user_registration_edit_middleware,
             )),
         )
@@ -39,7 +45,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.getDefaultLanguage")
                     .tag("admin")
                     .response::<200, Json<DefaultLanguageResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_appearance_read_middleware,
             )),
         )
@@ -50,7 +57,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.updateDefaultLanguage")
                     .tag("admin")
                     .response::<200, Json<DefaultLanguageResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_appearance_edit_middleware,
             )),
         )
@@ -61,7 +69,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.getProxySettings")
                     .tag("admin")
                     .response::<200, Json<ProxySettingsResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_proxy_read_middleware,
             )),
         )
@@ -72,7 +81,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.updateProxySettings")
                     .tag("admin")
                     .response::<200, Json<ProxySettingsResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_proxy_edit_middleware,
             )),
         )
@@ -83,7 +93,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.getNgrokSettings")
                     .tag("admin")
                     .response::<200, Json<NgrokSettingsResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_ngrok_read_middleware,
             )),
         )
@@ -94,7 +105,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.updateNgrokSettings")
                     .tag("admin")
                     .response::<200, Json<NgrokSettingsResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_ngrok_edit_middleware,
             )),
         )
@@ -105,7 +117,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.startNgrokTunnel")
                     .tag("admin")
                     .response::<200, Json<NgrokStatusResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_ngrok_edit_middleware,
             )),
         )
@@ -116,7 +129,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.stopNgrokTunnel")
                     .tag("admin")
                     .response::<200, Json<NgrokStatusResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_ngrok_edit_middleware,
             )),
         )
@@ -127,7 +141,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("Admin.getNgrokStatus")
                     .tag("admin")
                     .response::<200, Json<NgrokStatusResponse>>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::config_ngrok_read_middleware,
             )),
         )
@@ -138,7 +153,8 @@ pub fn admin_config_routes() -> ApiRouter {
                     .id("User.updateAccountPassword")
                     .tag("admin")
                     .response::<204, ()>()
-            }).layer(middleware::from_fn(
+            })
+            .layer(middleware::from_fn(
                 api::middleware::authenticated_middleware,
             )),
         )

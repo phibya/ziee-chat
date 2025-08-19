@@ -19,7 +19,6 @@ use url::Url;
 
 #[derive(Deserialize, Debug)]
 struct ApiResult {
-    transfer: String,
     objects: Vec<Object>,
 }
 
@@ -55,12 +54,12 @@ impl Object {
 }
 
 pub struct LfsService {
-    cache_dir: PathBuf,
+    // Field removed as it was never accessed - methods use static get_cache_dir instead
 }
 
 impl LfsService {
-    pub fn new(cache_dir: PathBuf) -> Self {
-        Self { cache_dir }
+    pub fn new(_cache_dir: PathBuf) -> Self {
+        Self {}
     }
 
     /// Find the git repository root folder of the given file
@@ -531,9 +530,8 @@ impl LfsService {
                 if is_lfs {
                     // Read the file content to get metadata
                     if let Ok(content) = fs::read_to_string(&full_path).await {
-                        if let Some((oid, size)) = parse_lfs_pointer_content(&content) {
+                        if let Some((_oid, size)) = parse_lfs_pointer_content(&content) {
                             lfs_files.push(LfsPointer {
-                                oid,
                                 size,
                                 path: PathBuf::from(file_path),
                             });

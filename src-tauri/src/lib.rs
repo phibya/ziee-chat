@@ -199,7 +199,10 @@ pub fn run() {
         tauri::Builder::default()
             .plugin(tauri_plugin_decorum::init())
             .plugin(tauri_plugin_opener::init())
-            .invoke_handler(tauri::generate_handler![api::app::get_http_port, api::app::get_desktop_auth_token,])
+            .invoke_handler(tauri::generate_handler![
+                api::app::get_http_port,
+                api::app::get_desktop_auth_token,
+            ])
             .setup(move |app| {
                 // Set APP_DATA_DIR to Tauri's app data directory only if APP_DATA_DIR env is not provided
                 if std::env::var("APP_DATA_DIR").is_err() {

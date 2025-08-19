@@ -6,11 +6,11 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     StreamingChunk, StreamingResponse, Usage,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::file_helpers::{get_file_content_for_local_provider, LocalProviderFileContent};
 use crate::database::models::model::ModelCapabilities;
 use crate::database::queries::models::get_model_by_id;
@@ -19,8 +19,6 @@ use crate::database::queries::models::get_model_by_id;
 pub struct LocalProvider {
     client: Client,
     base_url: String,
-    model_name: String,
-    provider_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,8 +64,8 @@ struct LocalStreamDelta {
 impl LocalProvider {
     pub fn new(
         port: u16,
-        model_name: String,
-        provider_id: Uuid,
+        _model_name: String,
+        _provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let base_url = format!("http://127.0.0.1:{}", port);
 
@@ -77,8 +75,6 @@ impl LocalProvider {
         Ok(Self {
             client,
             base_url,
-            model_name,
-            provider_id,
         })
     }
 
@@ -559,20 +555,21 @@ impl LocalProvider {
 #[async_trait]
 impl HttpForwardingProvider for LocalProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         let url = self.get_endpoint_url();
-        
+
         // For local providers, we forward the request directly to the local model server
         // Local models typically use OpenAI-compatible endpoints
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&request)
             .send()
             .await?;
-            
+
         Ok(response)
     }
 }

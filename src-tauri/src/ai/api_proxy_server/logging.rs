@@ -1,11 +1,11 @@
+use logroller::{LogRoller, LogRollerBuilder, Rotation, RotationSize};
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, Once};
-use std::io::{self, Write};
-use tracing_subscriber::{EnvFilter, Layer};
+use tracing_subscriber::fmt::writer::MakeWriter;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::fmt::writer::MakeWriter;
-use logroller::{LogRoller, LogRollerBuilder, Rotation, RotationSize};
+use tracing_subscriber::{EnvFilter, Layer};
 
 static PROXY_LOGGER_INIT: Once = Once::new();
 
@@ -27,14 +27,20 @@ impl Write for LogRollerWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match self.roller.lock() {
             Ok(mut roller) => roller.write(buf),
-            Err(_) => Err(io::Error::new(io::ErrorKind::Other, "Failed to acquire lock")),
+            Err(_) => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Failed to acquire lock",
+            )),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match self.roller.lock() {
             Ok(mut roller) => roller.flush(),
-            Err(_) => Err(io::Error::new(io::ErrorKind::Other, "Failed to acquire lock")),
+            Err(_) => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Failed to acquire lock",
+            )),
         }
     }
 }
@@ -56,10 +62,14 @@ pub fn configure_logging(log_level: &str) -> Result<(), Box<dyn std::error::Erro
         }
 
         // Configure LogRoller with rotation settings
-        let roller = match LogRollerBuilder::new(log_dir.to_string_lossy().to_string(), "proxy.log".to_string())
-            .rotation(Rotation::SizeBased(RotationSize::MB(100))) // Rotate when file reaches 100MB
-            .max_keep_files(5) // Keep 5 rotated log files
-            .build() {
+        let roller = match LogRollerBuilder::new(
+            log_dir.to_string_lossy().to_string(),
+            "proxy.log".to_string(),
+        )
+        .rotation(Rotation::SizeBased(RotationSize::MB(100))) // Rotate when file reaches 100MB
+        .max_keep_files(5) // Keep 5 rotated log files
+        .build()
+        {
             Ok(roller) => roller,
             Err(e) => {
                 eprintln!("Failed to create log roller: {}", e);
@@ -115,7 +125,7 @@ pub fn log_request(method: &str, path: &str, client_ip: &str, model_id: Option<&
         path = path,
         client_ip = client_ip,
         model_id = model_id,
-        "Request: {} {} from {} (model: {:?})", 
+        "Request: {} {} from {} (model: {:?})",
         method, path, client_ip, model_id
     );
 }
@@ -127,7 +137,7 @@ pub fn log_response(method: &str, path: &str, status: u16, duration_ms: u64) {
         path = path,
         status = status,
         duration_ms = duration_ms,
-        "Response: {} {} - {} ({}ms)", 
+        "Response: {} {} - {} ({}ms)",
         method, path, status, duration_ms
     );
 }
@@ -138,7 +148,7 @@ pub fn log_security_event(event_type: &str, client_ip: &str, details: &str) {
         event_type = event_type,
         client_ip = client_ip,
         details = details,
-        "Security: {} from {} - {}", 
+        "Security: {} from {} - {}",
         event_type, client_ip, details
     );
 }

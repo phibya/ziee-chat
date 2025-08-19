@@ -32,12 +32,6 @@ pub enum GitError {
     Git(#[from] git2::Error),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("Authentication failed: {0}")]
-    Auth(String),
-    #[error("Repository not found: {0}")]
-    NotFound(String),
-    #[error("Invalid URL: {0}")]
-    InvalidUrl(String),
     #[error("Operation was cancelled")]
     Cancelled,
 }
@@ -569,7 +563,6 @@ impl GitService {
                     phase: match lfs_progress.phase {
                         LfsPhase::Scanning => GitPhase::Connecting,
                         LfsPhase::Downloading => GitPhase::CheckingOut,
-                        LfsPhase::Caching => GitPhase::CheckingOut,
                         LfsPhase::Complete => GitPhase::Complete,
                         LfsPhase::Error => GitPhase::Error,
                     },
@@ -598,7 +591,6 @@ impl GitService {
             .map_err(|e| match e {
                 LfsError::Cancelled => GitError::Cancelled,
                 LfsError::Io(io_err) => GitError::Io(io_err),
-                LfsError::Git(git_msg) => GitError::Git(git2::Error::from_str(&git_msg)),
                 _ => GitError::Git(git2::Error::from_str(&e.to_string())),
             });
 

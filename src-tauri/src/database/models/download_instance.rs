@@ -1,10 +1,10 @@
+use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
+use crate::database::models::LlamaCppSettings;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
-use crate::database::models::LlamaCppSettings;
-use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
 
 /// Source information for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -240,38 +240,4 @@ impl DownloadInstance {
         )
     }
 
-    /// Get a human-readable status message
-    pub fn get_status_message(&self) -> String {
-        match &self.status {
-            DownloadStatus::Pending => "Waiting to start".to_string(),
-            DownloadStatus::Downloading => {
-                if let Some(progress) = &self.progress_data {
-                    if !progress.message.is_empty() {
-                        return progress.message.clone();
-                    }
-                    if progress.total > 0 {
-                        let percent = (progress.current as f64 / progress.total as f64 * 100.0) as i32;
-                        return format!("Downloading... {}%", percent);
-                    }
-                }
-                "Downloading...".to_string()
-            }
-            DownloadStatus::Completed => "Download completed".to_string(),
-            DownloadStatus::Failed => self
-                .error_message
-                .clone()
-                .unwrap_or_else(|| "Download failed".to_string()),
-            DownloadStatus::Cancelled => "Download cancelled".to_string(),
-        }
-    }
-
-    /// Calculate download progress percentage
-    pub fn get_progress_percentage(&self) -> Option<f64> {
-        if let Some(progress) = &self.progress_data {
-            if progress.total > 0 {
-                return Some((progress.current as f64 / progress.total as f64) * 100.0);
-            }
-        }
-        None
-    }
 }

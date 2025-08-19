@@ -3,9 +3,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use schemars::JsonSchema;
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct ApiError {

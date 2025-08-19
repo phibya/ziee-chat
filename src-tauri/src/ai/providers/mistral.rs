@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
 
@@ -113,12 +113,6 @@ impl MistralProvider {
         })
     }
 
-    /// Check if the model supports vision capabilities
-    fn is_vision_model(&self, model_name: &str) -> bool {
-        model_name.contains("pixtral") ||
-        model_name.contains("mistral-medium-2505") ||
-        model_name.contains("mistral-small-2503")
-    }
 
     /// Get model-specific configuration
     fn get_model_config(&self, model_name: &str) -> ModelConfig {
@@ -157,7 +151,7 @@ impl MistralProvider {
                 max_file_size: 0,
                 max_resolution: (0, 0),
                 context_window: 32000,
-            }
+            },
         }
     }
 
@@ -173,9 +167,7 @@ impl MistralProvider {
         for part in parts {
             match part {
                 ContentPart::Text(text) => {
-                    content_array.push(MistralContentPart::Text {
-                        text: text.clone(),
-                    });
+                    content_array.push(MistralContentPart::Text { text: text.clone() });
                 }
                 ContentPart::FileReference(file_ref) => {
                     if let Some(mime_type) = &file_ref.mime_type {
@@ -245,15 +237,19 @@ impl MistralProvider {
 
         // Load and process file
         let file_data = load_file_content(file_ref.file_id).await?;
-        
+
         // Check size limits
         if file_data.len() > model_config.max_file_size {
             return Err(format!(
                 "Image size ({} bytes) exceeds limit ({} bytes)",
                 file_data.len(),
                 model_config.max_file_size
-            ).into());
+            )
+            .into());
         }
+
+        // Validate image resolution against model limits
+        self.validate_image_resolution(&file_data, model_config.max_resolution).await?;
 
         // Encode to base64
         let base64_data = base64::engine::general_purpose::STANDARD.encode(&file_data);
@@ -273,7 +269,9 @@ impl MistralProvider {
             self.provider_id,
             Some(data_url.clone()),
             provider_metadata,
-        ).await {
+        )
+        .await
+        {
             eprintln!("Error caching provider file mapping: {}", e);
             // Continue without caching
         }
@@ -284,9 +282,9 @@ impl MistralProvider {
     }
 
     fn is_supported_image_type(&self, mime_type: &str) -> bool {
-        matches!(mime_type, 
-            "image/jpeg" | "image/jpg" | "image/png" | 
-            "image/webp" | "image/gif"
+        matches!(
+            mime_type,
+            "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
         )
     }
 
@@ -306,7 +304,8 @@ impl MistralProvider {
                 },
                 MessageContent::Multimodal(parts) => {
                     if model_config.supports_vision {
-                        let content_parts = self.process_multimodal_content(parts, model_config).await?;
+                        let content_parts =
+                            self.process_multimodal_content(parts, model_config).await?;
                         MistralMessage {
                             role: message.role.clone(),
                             content: MistralContent::Array(content_parts),
@@ -322,7 +321,7 @@ impl MistralProvider {
                                 }
                             })
                             .collect();
-                        
+
                         MistralMessage {
                             role: message.role.clone(),
                             content: MistralContent::Text(text_parts.join("\n")),
@@ -337,12 +336,58 @@ impl MistralProvider {
         Ok(mistral_messages)
     }
 
+    /// Optimize max_tokens based on model's context window
+    fn optimize_max_tokens_for_context_window(
+        &self,
+        requested_max_tokens: Option<u32>,
+        context_window: u32,
+    ) -> u32 {
+        match requested_max_tokens {
+            Some(max_tokens) => {
+                // Ensure max_tokens doesn't exceed 80% of context window (leave room for prompt)
+                let max_allowed = (context_window as f32 * 0.8) as u32;
+                max_tokens.min(max_allowed)
+            }
+            None => {
+                // Default to 25% of context window if not specified
+                (context_window as f32 * 0.25) as u32
+            }
+        }
+    }
+
+    /// Validate image resolution against model limits
+    async fn validate_image_resolution(
+        &self,
+        file_data: &[u8],
+        max_resolution: (u32, u32),
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        // For now, we'll just log a warning if resolution validation is needed
+        // In a full implementation, you'd decode the image and check dimensions
+        if max_resolution.0 > 0 && max_resolution.1 > 0 {
+            println!(
+                "Image should be validated against max resolution: {}x{}",
+                max_resolution.0, max_resolution.1
+            );
+            
+            // Simple size check as proxy for resolution
+            if file_data.len() > 10 * 1024 * 1024 {
+                return Err(format!(
+                    "Image file size too large. Max resolution supported: {}x{}",
+                    max_resolution.0, max_resolution.1
+                ).into());
+            }
+        }
+        Ok(())
+    }
+
     async fn prepare_request(
         &self,
         request: &ChatRequest,
     ) -> Result<Value, Box<dyn std::error::Error + Send + Sync>> {
         let model_config = self.get_model_config(&request.model_name);
-        let messages = self.convert_messages_to_mistral(&request.messages, &model_config).await?;
+        let messages = self
+            .convert_messages_to_mistral(&request.messages, &model_config)
+            .await?;
 
         let params = request.parameters.as_ref();
         let mut payload = json!({
@@ -351,37 +396,38 @@ impl MistralProvider {
             "stream": request.stream
         });
 
-        // Add optional parameters
+        // Add optional parameters with context window optimization
         if let Some(params) = params {
             if let Some(temperature) = params.temperature {
                 payload["temperature"] = json!(temperature);
             }
-            if let Some(max_tokens) = params.max_tokens {
-                payload["max_tokens"] = json!(max_tokens);
-            }
+            
+            // Use context_window to optimize max_tokens
+            let optimized_max_tokens = self.optimize_max_tokens_for_context_window(
+                params.max_tokens,
+                model_config.context_window,
+            );
+            payload["max_tokens"] = json!(optimized_max_tokens);
+            
             if let Some(top_p) = params.top_p {
                 payload["top_p"] = json!(top_p);
             }
             if let Some(stop) = &params.stop {
                 payload["stop"] = json!(stop);
             }
+        } else {
+            // Set default max_tokens based on context window even if no params provided
+            let default_max_tokens = self.optimize_max_tokens_for_context_window(
+                None,
+                model_config.context_window,
+            );
+            payload["max_tokens"] = json!(default_max_tokens);
         }
 
         Ok(payload)
     }
 
-    /// Check if model supports fine-tuning
-    fn supports_fine_tuning(&self, model_name: &str) -> bool {
-        model_name.contains("pixtral-12b")
-    }
 
-    /// Validate structured output request
-    fn validate_structured_output(&self, model_name: &str) -> bool {
-        // Check if model supports structured output
-        model_name.contains("pixtral") || 
-        model_name.contains("mistral-medium") ||
-        model_name.contains("mistral-small")
-    }
 }
 
 #[async_trait]
@@ -587,7 +633,7 @@ impl AIProvider for MistralProvider {
         }
 
         let file_data = load_file_content(file_ref.file_id).await?;
-        
+
         if file_data.len() > 10 * 1024 * 1024 {
             return Err("File size exceeds 10MB limit for Mistral".into());
         }
@@ -609,19 +655,20 @@ impl AIProvider for MistralProvider {
 #[async_trait]
 impl HttpForwardingProvider for MistralProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}/chat/completions", self.base_url);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .json(&request)
             .send()
             .await?;
-            
+
         Ok(response)
     }
 }

@@ -1,9 +1,10 @@
 use crate::api;
-use aide::{
-    axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
+use crate::database::models::{DownloadInstance, Model};
+use aide::axum::{
+    routing::{delete_with, get_with, post_with, put_with},
+    ApiRouter,
 };
 use axum::{middleware, Json};
-use crate::database::models::{Model, DownloadInstance};
 
 pub fn admin_model_routes() -> ApiRouter {
     ApiRouter::new()
@@ -15,7 +16,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.addModelToProvider")
                     .tag("admin")
                     .response::<200, Json<Model>>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         .api_route(
             "/models/{model_id}",
@@ -24,7 +28,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.getModel")
                     .tag("admin")
                     .response::<200, Json<Model>>()
-            }).layer(middleware::from_fn(api::middleware::providers_read_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
         )
         .api_route(
             "/models/{model_id}",
@@ -33,7 +40,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.updateModel")
                     .tag("admin")
                     .response::<200, Json<Model>>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         .api_route(
             "/models/{model_id}",
@@ -42,7 +52,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.deleteModel")
                     .tag("admin")
                     .response::<204, ()>()
-            }).layer(middleware::from_fn(api::middleware::providers_delete_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_delete_middleware,
+            )),
         )
         .api_route(
             "/models/{model_id}/start",
@@ -51,7 +64,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.startModel")
                     .tag("admin")
                     .response::<200, ()>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         .api_route(
             "/models/{model_id}/stop",
@@ -60,7 +76,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.stopModel")
                     .tag("admin")
                     .response::<200, ()>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         .api_route(
             "/models/{model_id}/enable",
@@ -69,7 +88,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.enableModel")
                     .tag("admin")
                     .response::<200, ()>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         .api_route(
             "/models/{model_id}/disable",
@@ -78,7 +100,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.disableModel")
                     .tag("admin")
                     .response::<200, ()>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         // Model uploads
         .api_route(
@@ -88,7 +113,10 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.uploadAndCommitModel")
                     .tag("admin")
                     .response::<200, Json<Model>>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         .api_route(
             "/models/initiate-repository-download",
@@ -97,6 +125,9 @@ pub fn admin_model_routes() -> ApiRouter {
                     .id("Admin.downloadFromRepository")
                     .tag("admin")
                     .response::<200, Json<DownloadInstance>>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
 }

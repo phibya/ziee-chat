@@ -75,18 +75,6 @@ pub fn verify_password(
     Ok(test_service.bcrypt == password_service.bcrypt)
 }
 
-/// Verify a password against a raw bcrypt hash
-pub fn verify_password_hash(
-    password: &str,
-    hash: &str,
-) -> Result<bool, bcrypt::BcryptError> {
-    bcrypt::verify(password, hash)
-}
-
-/// Hash a password using bcrypt (simple version)
-pub fn hash_password_simple(password: &str) -> Result<String, bcrypt::BcryptError> {
-    bcrypt::hash(password, bcrypt::DEFAULT_COST)
-}
 
 #[cfg(test)]
 mod tests {

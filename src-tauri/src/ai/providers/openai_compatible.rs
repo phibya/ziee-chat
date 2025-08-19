@@ -7,12 +7,12 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::file_helpers::load_file_content;
 
 #[derive(Debug, Clone)]
@@ -21,7 +21,6 @@ pub struct OpenAICompatibleProvider {
     api_key: String,
     base_url: String,
     provider_name: &'static str,
-    provider_id: Uuid,
 }
 
 #[derive(Debug, Deserialize)]
@@ -94,7 +93,7 @@ impl OpenAICompatibleProvider {
         base_url: String,
         provider_name: &'static str,
         proxy_config: Option<ProxyConfig>,
-        provider_id: Uuid,
+        _provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Use the common HTTP client builder
         let client = build_http_client(&base_url, proxy_config.as_ref())?;
@@ -104,7 +103,6 @@ impl OpenAICompatibleProvider {
             api_key,
             base_url,
             provider_name,
-            provider_id,
         })
     }
 
@@ -127,9 +125,7 @@ impl OpenAICompatibleProvider {
         for part in parts {
             match part {
                 ContentPart::Text(text) => {
-                    content_array.push(OpenAICompatibleContentPart::Text {
-                        text: text.clone(),
-                    });
+                    content_array.push(OpenAICompatibleContentPart::Text { text: text.clone() });
                 }
                 ContentPart::FileReference(file_ref) => {
                     if let Some(mime_type) = &file_ref.mime_type {
@@ -183,12 +179,12 @@ impl OpenAICompatibleProvider {
     ) -> Result<OpenAICompatibleContentPart, Box<dyn std::error::Error + Send + Sync>> {
         // Load file content
         let file_data = load_file_content(file_ref.file_id).await?;
-        
+
         // Check size limits based on provider
         let max_size = match self.provider_name {
-            "groq" => 4 * 1024 * 1024,  // 4MB for Groq
+            "groq" => 4 * 1024 * 1024,    // 4MB for Groq
             "openai" => 20 * 1024 * 1024, // 20MB for OpenAI
-            _ => 20 * 1024 * 1024,       // Default 20MB for others
+            _ => 20 * 1024 * 1024,        // Default 20MB for others
         };
 
         if file_data.len() > max_size {
@@ -197,7 +193,8 @@ impl OpenAICompatibleProvider {
                 file_data.len(),
                 self.provider_name,
                 max_size
-            ).into());
+            )
+            .into());
         }
 
         // Encode to base64
@@ -207,15 +204,19 @@ impl OpenAICompatibleProvider {
         Ok(OpenAICompatibleContentPart::ImageUrl {
             image_url: OpenAICompatibleImageUrl {
                 url: format!("data:{};base64,{}", mime_type, base64_data),
-                detail: if self.provider_name == "openai" { Some("high".to_string()) } else { None },
+                detail: if self.provider_name == "openai" {
+                    Some("high".to_string())
+                } else {
+                    None
+                },
             },
         })
     }
 
     fn is_supported_image_type(&self, mime_type: &str) -> bool {
-        matches!(mime_type, 
-            "image/jpeg" | "image/jpg" | "image/png" | 
-            "image/webp" | "image/gif"
+        matches!(
+            mime_type,
+            "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
         )
     }
 
@@ -250,7 +251,7 @@ impl OpenAICompatibleProvider {
                                 }
                             })
                             .collect();
-                        
+
                         OpenAICompatibleMessage {
                             role: message.role.clone(),
                             content: OpenAICompatibleContent::Text(text_parts.join("\n")),
@@ -318,7 +319,7 @@ impl OpenAICompatibleProvider {
     /// Get max file size based on provider
     fn get_max_file_size(&self) -> u64 {
         match self.provider_name {
-            "groq" => 4 * 1024 * 1024,   // 4MB
+            "groq" => 4 * 1024 * 1024,    // 4MB
             "openai" => 20 * 1024 * 1024, // 20MB
             _ => 20 * 1024 * 1024,        // Default 20MB
         }
@@ -511,9 +512,9 @@ impl AIProvider for OpenAICompatibleProvider {
         if file_data.len() as u64 > max_size {
             return Err(format!(
                 "File size exceeds {} limit ({} bytes)",
-                self.provider_name,
-                max_size
-            ).into());
+                self.provider_name, max_size
+            )
+            .into());
         }
 
         let base64_data = base64::engine::general_purpose::STANDARD.encode(file_data);
@@ -526,7 +527,11 @@ impl AIProvider for OpenAICompatibleProvider {
         _provider_id: Uuid,
     ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
         if !self.supports_vision() {
-            return Err(format!("{} does not support file content resolution", self.provider_name).into());
+            return Err(format!(
+                "{} does not support file content resolution",
+                self.provider_name
+            )
+            .into());
         }
 
         if let Some(mime_type) = &file_ref.mime_type {
@@ -536,14 +541,14 @@ impl AIProvider for OpenAICompatibleProvider {
         }
 
         let file_data = load_file_content(file_ref.file_id).await?;
-        
+
         let max_size = self.get_max_file_size();
         if file_data.len() as u64 > max_size {
             return Err(format!(
                 "File size exceeds {} limit ({} bytes)",
-                self.provider_name,
-                max_size
-            ).into());
+                self.provider_name, max_size
+            )
+            .into());
         }
 
         let base64_data = base64::engine::general_purpose::STANDARD.encode(&file_data);
@@ -559,22 +564,23 @@ impl AIProvider for OpenAICompatibleProvider {
 #[async_trait]
 impl HttpForwardingProvider for OpenAICompatibleProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         // base_url already contains /v1, just append /chat/completions
         let url = format!("{}/chat/completions", self.base_url);
-        
-        let mut req_builder = self.client
+
+        let mut req_builder = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&request);
-            
+
         // Add authentication if needed
         if self.should_include_auth() {
             req_builder = req_builder.header("Authorization", format!("Bearer {}", self.api_key));
         }
-        
+
         // Send request and return raw response
         let response = req_builder.send().await?;
         Ok(response)

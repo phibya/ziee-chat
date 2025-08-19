@@ -1,7 +1,8 @@
 use crate::api::api_proxy_server::*;
 use crate::database::models::api_proxy_server_model::*;
-use aide::{
-    axum::{ApiRouter, routing::{get_with, post_with, put_with}},
+use aide::axum::{
+    routing::{get_with, post_with, put_with},
+    ApiRouter,
 };
 use axum::Json;
 
@@ -14,7 +15,8 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                     .id("Admin.getApiProxyServerConfig")
                     .tag("admin")
                     .response::<200, Json<ApiProxyServerConfig>>()
-            }).put_with(update_proxy_config, |op| {
+            })
+            .put_with(update_proxy_config, |op| {
                 op.description("Update API proxy server configuration")
                     .id("Admin.updateApiProxyServerConfig")
                     .tag("admin")
@@ -28,7 +30,8 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                     .id("Admin.listApiProxyServerModels")
                     .tag("admin")
                     .response::<200, Json<Vec<ApiProxyServerModel>>>()
-            }).post_with(add_model_to_proxy, |op| {
+            })
+            .post_with(add_model_to_proxy, |op| {
                 op.description("Add model to API proxy server")
                     .id("Admin.addModelToApiProxyServer")
                     .tag("admin")
@@ -42,7 +45,8 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                     .id("Admin.updateApiProxyServerModel")
                     .tag("admin")
                     .response::<200, Json<ApiProxyServerModel>>()
-            }).delete_with(remove_model_from_proxy, |op| {
+            })
+            .delete_with(remove_model_from_proxy, |op| {
                 op.description("Remove model from API proxy server")
                     .id("Admin.removeModelFromApiProxyServer")
                     .tag("admin")
@@ -56,7 +60,8 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                     .id("Admin.listApiProxyServerTrustedHosts")
                     .tag("admin")
                     .response::<200, Json<Vec<ApiProxyServerTrustedHost>>>()
-            }).post_with(add_trusted_host, |op| {
+            })
+            .post_with(add_trusted_host, |op| {
                 op.description("Add trusted host to API proxy server")
                     .id("Admin.addApiProxyServerTrustedHost")
                     .tag("admin")
@@ -70,7 +75,8 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                     .id("Admin.updateApiProxyServerTrustedHost")
                     .tag("admin")
                     .response::<200, Json<ApiProxyServerTrustedHost>>()
-            }).delete_with(remove_trusted_host, |op| {
+            })
+            .delete_with(remove_trusted_host, |op| {
                 op.description("Remove trusted host from API proxy server")
                     .id("Admin.removeApiProxyServerTrustedHost")
                     .tag("admin")
@@ -128,7 +134,7 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                 op.description("Subscribe to API proxy server logs stream")
                     .id("Admin.subscribeApiProxyServerLogs")
                     .tag("admin")
-                    // SSE streams don't need response type specification in aide
+                // SSE streams don't need response type specification in aide
             }),
         )
 }

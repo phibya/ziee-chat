@@ -13,10 +13,6 @@ pub enum NgrokError {
     SessionError(String),
     #[error("Tunnel error: {0}")]
     TunnelError(String),
-    #[error("API key error: {0}")]
-    ApiKeyError(String),
-    #[error("Configuration error: {0}")]
-    ConfigError(String),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,7 +43,11 @@ impl NgrokService {
         }
     }
 
-    pub async fn start_tunnel(&mut self, local_port: u16, domain: Option<String>) -> Result<String, NgrokError> {
+    pub async fn start_tunnel(
+        &mut self,
+        local_port: u16,
+        domain: Option<String>,
+    ) -> Result<String, NgrokError> {
         // Close existing tunnel if any
         if self.tunnel_task.is_some() {
             self.stop_tunnel().await?;
@@ -64,12 +64,12 @@ impl NgrokService {
         let local_addr = format!("http://127.0.0.1:{}", local_port);
         let mut endpoint_builder = session.http_endpoint();
         endpoint_builder.pooling_enabled(true);
-        
+
         // Add domain if provided
         if let Some(domain) = domain {
             endpoint_builder.domain(&domain);
         }
-        
+
         let listener = endpoint_builder
             .listen_and_forward(Url::parse(&local_addr).unwrap())
             .await
@@ -89,7 +89,7 @@ impl NgrokService {
 
         // Create shutdown channel
         let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
-        
+
         // Clone session for the tunnel task
         let session_arc = Arc::new(session);
         let session_clone = session_arc.clone();
@@ -98,20 +98,20 @@ impl NgrokService {
         // Spawn tunnel task that runs the tunnel and handles shutdown
         let tunnel_task = tokio::spawn(async move {
             let tunnel = listener;
-            
+
             tokio::select! {
                 // Wait for shutdown signal
                 _ = shutdown_rx.recv() => {
                     println!("Received shutdown signal, closing tunnel...");
-                    
+
                     // Close tunnel on session first
                     if let Err(e) = session_clone.close_tunnel(&tunnel_id_clone).await {
                         eprintln!("Warning: Failed to close tunnel {}: {}", tunnel_id_clone, e);
                     }
-                    
+
                     // Drop the tunnel forwarder
                     drop(tunnel);
-                    
+
                     println!("Tunnel closed successfully");
                 }
                 // This will keep the tunnel alive until shutdown
@@ -172,48 +172,7 @@ impl NgrokService {
         Ok(())
     }
 
-    pub fn get_tunnel_url(&self) -> Option<&String> {
-        self.tunnel_info.as_ref().map(|info| &info.url)
-    }
-
     pub fn is_tunnel_active(&self) -> bool {
         self.tunnel_task.is_some() && self.session.is_some()
-    }
-
-    pub async fn get_tunnel_status(&self) -> Result<String, NgrokError> {
-        if self.is_tunnel_active() {
-            Ok("active".to_string())
-        } else {
-            Ok("inactive".to_string())
-        }
-    }
-
-    pub fn get_tunnel_info(&self) -> Option<&NgrokTunnelInfo> {
-        self.tunnel_info.as_ref()
-    }
-}
-
-impl Drop for NgrokService {
-    fn drop(&mut self) {
-        // Cleanup will happen automatically when Arc<Session> and Arc<Mutex<ForwarderEndpoint>> are dropped
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_ngrok_service_creation() {
-        let service = NgrokService::new("test_api_key".to_string());
-        assert!(!service.is_tunnel_active());
-        assert!(service.get_tunnel_url().is_none());
-    }
-
-    #[tokio::test]
-    async fn test_tunnel_status() {
-        let service = NgrokService::new("test_api_key".to_string());
-        let status = service.get_tunnel_status().await.unwrap();
-        assert_eq!(status, "inactive");
     }
 }

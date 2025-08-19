@@ -134,67 +134,9 @@ pub async fn delete_file(file_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Err
     Ok(result.rows_affected() > 0)
 }
 
-pub async fn update_file_thumbnail_count(
-    file_id: Uuid,
-    thumbnail_count: i32,
-) -> Result<bool, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
 
-    let result = sqlx::query("UPDATE files SET thumbnail_count = $1 WHERE id = $2")
-        .bind(thumbnail_count)
-        .bind(file_id)
-        .execute(pool)
-        .await?;
-
-    Ok(result.rows_affected() > 0)
-}
-
-pub async fn update_file_processing_results(
-    file_id: Uuid,
-    thumbnail_count: i32,
-    page_count: i32,
-    processing_metadata: serde_json::Value,
-) -> Result<bool, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let result = sqlx::query(
-        "UPDATE files SET thumbnail_count = $1, page_count = $2, processing_metadata = $3 WHERE id = $4"
-    )
-        .bind(thumbnail_count)
-        .bind(page_count)
-        .bind(processing_metadata)
-        .bind(file_id)
-        .execute(pool)
-        .await?;
-
-    Ok(result.rows_affected() > 0)
-}
 
 // Message-file relationship functions
-pub async fn create_message_file_relationship(
-    message_id: Uuid,
-    file_id: Uuid,
-) -> Result<MessageFile, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let message_file = sqlx::query_as::<_, MessageFile>(
-        r#"
-        INSERT INTO messages_files (message_id, file_id)
-        VALUES ($1, $2)
-        ON CONFLICT (message_id, file_id) DO NOTHING
-        RETURNING *
-        "#,
-    )
-    .bind(message_id)
-    .bind(file_id)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(message_file)
-}
 
 pub async fn delete_message_file_relationship(
     message_id: Uuid,
@@ -302,18 +244,3 @@ pub async fn get_provider_file_mappings_by_file(
     Ok(provider_files)
 }
 
-pub async fn delete_provider_file_mapping(
-    file_id: Uuid,
-    provider_id: Uuid,
-) -> Result<bool, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let result = sqlx::query("DELETE FROM provider_files WHERE file_id = $1 AND provider_id = $2")
-        .bind(file_id)
-        .bind(provider_id)
-        .execute(pool)
-        .await?;
-
-    Ok(result.rows_affected() > 0)
-}

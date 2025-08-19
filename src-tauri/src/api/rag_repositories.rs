@@ -18,16 +18,20 @@ use crate::database::{
 };
 use crate::types::PaginationQuery;
 
-
 // RAG Repository endpoints
 #[debug_handler]
 pub async fn list_rag_repositories(
     Extension(_user): Extension<AuthenticatedUser>,
     Query(pagination): Query<PaginationQuery>,
 ) -> ApiResult2<Json<RAGRepositoryListResponse>> {
-    let response =
-        rag_repositories::list_rag_repositories(pagination.page, pagination.per_page).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?;
+    let response = rag_repositories::list_rag_repositories(pagination.page, pagination.per_page)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?;
     Ok((StatusCode::OK, Json(response)))
 }
 
@@ -38,7 +42,12 @@ pub async fn get_rag_repository(
 ) -> ApiResult2<Json<RAGRepository>> {
     let repository = rag_repositories::get_rag_repository_by_id(repository_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG repository")))?;
 
     Ok((StatusCode::OK, Json(repository)))
@@ -49,8 +58,14 @@ pub async fn create_rag_repository(
     Extension(_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateRAGRepositoryRequest>,
 ) -> ApiResult2<Json<RAGRepository>> {
-    let repository = rag_repositories::create_rag_repository(request).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?;
+    let repository = rag_repositories::create_rag_repository(request)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?;
     Ok((StatusCode::OK, Json(repository)))
 }
 
@@ -60,8 +75,14 @@ pub async fn update_rag_repository(
     Path(repository_id): Path<Uuid>,
     Json(request): Json<UpdateRAGRepositoryRequest>,
 ) -> ApiResult2<Json<RAGRepository>> {
-    let repository = rag_repositories::update_rag_repository(repository_id, request).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?;
+    let repository = rag_repositories::update_rag_repository(repository_id, request)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?;
     Ok((StatusCode::OK, Json(repository)))
 }
 
@@ -70,8 +91,14 @@ pub async fn delete_rag_repository(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
 ) -> ApiResult2<StatusCode> {
-    rag_repositories::delete_rag_repository(repository_id).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?;
+    rag_repositories::delete_rag_repository(repository_id)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?;
     Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
 }
 
@@ -80,9 +107,14 @@ pub async fn test_rag_repository_connection(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
 ) -> ApiResult2<Json<RAGRepositoryConnectionTestResponse>> {
-    let repository = rag_repositories::get_rag_repository_by_id(repository_id)
+    let _repository = rag_repositories::get_rag_repository_by_id(repository_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG repository")))?;
 
     // TODO: Implement actual connection test logic
@@ -103,7 +135,12 @@ pub async fn list_rag_repository_databases(
 ) -> ApiResult2<Json<Vec<RAGDatabase>>> {
     let _repository = rag_repositories::get_rag_repository_by_id(repository_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG repository")))?;
 
     // TODO: Implement actual repository database listing
@@ -121,13 +158,26 @@ pub async fn download_rag_database_from_repository(
     // Validate that the target provider exists
     let _provider = rag_providers::get_rag_provider_by_id(request.target_provider_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?
-        .ok_or((StatusCode::NOT_FOUND, AppError::not_found("Target RAG provider")))?;
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?
+        .ok_or((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Target RAG provider"),
+        ))?;
 
     // Validate that the repository exists
     let _repository = rag_repositories::get_rag_repository_by_id(request.repository_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG repository")))?;
 
     // TODO: Implement actual download logic
@@ -152,8 +202,13 @@ pub async fn download_rag_database_from_repository(
         settings: None,
     };
 
-    let database =
-        rag_providers::create_rag_database(request.target_provider_id, create_request).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))?;
+    let database = rag_providers::create_rag_database(request.target_provider_id, create_request)
+        .await
+        .map_err(|_e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            )
+        })?;
     Ok((StatusCode::OK, Json(database)))
 }

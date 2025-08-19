@@ -8,7 +8,7 @@ pub fn get_http_port() -> u16 {
 #[tauri::command]
 pub async fn get_desktop_auth_token() -> Result<String, String> {
     let auth_service = AuthService::default();
-    
+
     // Get or create default admin user for desktop
     match auth_service.get_default_admin_user().await {
         Ok(user) => {

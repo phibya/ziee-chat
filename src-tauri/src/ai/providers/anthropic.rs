@@ -7,12 +7,12 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
 use crate::utils::file_storage::extract_extension;
@@ -65,13 +65,6 @@ struct AnthropicDelta {
 #[derive(Debug, Deserialize)]
 struct AnthropicFileUploadResponse {
     id: String,
-    filename: String,
-    mime_type: String,
-    size_bytes: u64,
-    #[serde(rename = "type")]
-    file_type: String,
-    created_at: String,
-    downloadable: bool,
 }
 
 impl AnthropicProvider {
@@ -722,15 +715,15 @@ impl AnthropicProvider {
 #[async_trait]
 impl HttpForwardingProvider for AnthropicProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        
         // base_url already contains the correct prefix, append /messages
         let url = format!("{}/messages", self.base_url);
-        
+
         // Forward to Anthropic API with proper headers
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("x-api-key", &self.api_key)
             .header("Content-Type", "application/json")
@@ -739,7 +732,7 @@ impl HttpForwardingProvider for AnthropicProvider {
             .json(&request)
             .send()
             .await?;
-            
+
         Ok(response)
     }
 }

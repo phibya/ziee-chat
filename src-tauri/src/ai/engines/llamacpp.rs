@@ -159,12 +159,16 @@ impl LlamaCppEngine {
                     let body = resp.text().await?;
                     let health_response: serde_json::Value = serde_json::from_str(&body)
                         .map_err(|e| format!("Failed to parse health check JSON: {}", e))?;
-                    
+
                     if let Some(status) = health_response.get("status") {
                         if status == "ok" {
                             Ok(())
                         } else {
-                            Err(format!("Health check failed: status is '{}', expected 'ok'", status).into())
+                            Err(format!(
+                                "Health check failed: status is '{}', expected 'ok'",
+                                status
+                            )
+                            .into())
                         }
                     } else {
                         Err("Health check failed: response missing 'status' field".into())
@@ -253,7 +257,7 @@ impl LlamaCppEngine {
         port: u16,
     ) -> Result<Vec<String>, EngineError> {
         let mut args = Vec::new();
-        
+
         // Get the model path
         let model_path_absolute = model.get_model_absolute_path();
 
@@ -269,12 +273,13 @@ impl LlamaCppEngine {
         args.extend(["--model".to_string(), gguf_file]);
 
         // Logging - create a log file for this model
-        let log_path = if let Some(settings) = settings {
+        let log_path = if let Some(_settings) = settings {
             // For future: settings.log_file.clone()
             None
         } else {
             None
-        }.unwrap_or_else(|| {
+        }
+        .unwrap_or_else(|| {
             let log_dir = crate::get_app_data_dir().join("logs/models");
             if !log_dir.exists() {
                 let _ = std::fs::create_dir_all(&log_dir);
@@ -386,16 +391,24 @@ impl LlamaCppEngine {
             };
 
             // Auto-select device IDs if not specified
-            let final_device_ids: Option<Vec<i32>> = if settings.device_ids.is_none() || settings.device_ids.as_ref().map(|ids| ids.is_empty()).unwrap_or(true) {
+            let final_device_ids: Option<Vec<i32>> = if settings.device_ids.is_none()
+                || settings
+                    .device_ids
+                    .as_ref()
+                    .map(|ids| ids.is_empty())
+                    .unwrap_or(true)
+            {
                 // Get all available devices of the selected device type
                 let available_devices = crate::ai::device_detection::detect_available_devices();
                 let matching_devices: Vec<i32> = available_devices
                     .devices
                     .iter()
-                    .filter(|device| device.device_type == auto_detected_device_type && device.is_available)
+                    .filter(|device| {
+                        device.device_type == auto_detected_device_type && device.is_available
+                    })
                     .map(|device| device.id)
                     .collect();
-                
+
                 if !matching_devices.is_empty() {
                     println!(
                         "Auto-selected all available {} devices: {:?}",
@@ -410,7 +423,10 @@ impl LlamaCppEngine {
                     None
                 }
             } else {
-                println!("Using explicitly configured device IDs: {:?}", settings.device_ids);
+                println!(
+                    "Using explicitly configured device IDs: {:?}",
+                    settings.device_ids
+                );
                 settings.device_ids.clone()
             };
 
@@ -428,7 +444,8 @@ impl LlamaCppEngine {
                 // For other GPU devices (CUDA, OpenCL), use device IDs
                 if let Some(device_ids) = &final_device_ids {
                     if !device_ids.is_empty() {
-                        let device_list = device_ids.iter()
+                        let device_list = device_ids
+                            .iter()
                             .map(|id| id.to_string())
                             .collect::<Vec<_>>()
                             .join(",");
@@ -558,8 +575,9 @@ impl LocalEngine for LlamaCppEngine {
         let stdout_stderr_log_path = {
             let log_dir = crate::get_app_data_dir().join("logs/models");
             if !log_dir.exists() {
-                std::fs::create_dir_all(&log_dir)
-                    .map_err(|e| EngineError::StartupFailed(format!("Failed to create log directory: {}", e)))?;
+                std::fs::create_dir_all(&log_dir).map_err(|e| {
+                    EngineError::StartupFailed(format!("Failed to create log directory: {}", e))
+                })?;
             }
             log_dir
                 .join(format!("{}_engine.log", model.id))
@@ -569,7 +587,10 @@ impl LocalEngine for LlamaCppEngine {
 
         // Clear the stdout/stderr log file before starting
         if let Err(e) = std::fs::write(&stdout_stderr_log_path, "") {
-            eprintln!("Warning: Failed to clear stdout/stderr log file {}: {}", stdout_stderr_log_path, e);
+            eprintln!(
+                "Warning: Failed to clear stdout/stderr log file {}: {}",
+                stdout_stderr_log_path, e
+            );
         }
 
         // Create or open the stdout/stderr log file for writing
@@ -578,11 +599,14 @@ impl LocalEngine for LlamaCppEngine {
             .write(true)
             .append(true)
             .open(&stdout_stderr_log_path)
-            .map_err(|e| EngineError::StartupFailed(format!("Failed to open stdout/stderr log file: {}", e)))?;
+            .map_err(|e| {
+                EngineError::StartupFailed(format!("Failed to open stdout/stderr log file: {}", e))
+            })?;
 
         // Clone the file handle for stderr
-        let stderr_file = stdout_stderr_file.try_clone()
-            .map_err(|e| EngineError::StartupFailed(format!("Failed to clone log file handle: {}", e)))?;
+        let stderr_file = stdout_stderr_file.try_clone().map_err(|e| {
+            EngineError::StartupFailed(format!("Failed to clone log file handle: {}", e))
+        })?;
 
         let mut cmd = Command::new(binary_path);
         cmd.args(&args)
@@ -591,7 +615,10 @@ impl LocalEngine for LlamaCppEngine {
             .stderr(Stdio::from(stderr_file));
 
         println!("Starting llama-server process: {:?}", cmd);
-        println!("Process output will be logged to: {}", stdout_stderr_log_path);
+        println!(
+            "Process output will be logged to: {}",
+            stdout_stderr_log_path
+        );
 
         let mut child = cmd
             .spawn()
@@ -615,7 +642,10 @@ impl LocalEngine for LlamaCppEngine {
                     "llama-server process exited immediately with status: {}",
                     status
                 );
-                return Err(EngineError::StartupFailed(format!("llama-server process failed to start: {}", status)));
+                return Err(EngineError::StartupFailed(format!(
+                    "llama-server process failed to start: {}",
+                    status
+                )));
             }
             Ok(None) => {
                 // Process is still running, we'll store it properly in the registry later
@@ -623,7 +653,10 @@ impl LocalEngine for LlamaCppEngine {
             }
             Err(e) => {
                 eprintln!("Failed to check llama-server process status: {}", e);
-                return Err(EngineError::StartupFailed(format!("Failed to check process status: {}", e)));
+                return Err(EngineError::StartupFailed(format!(
+                    "Failed to check process status: {}",
+                    e
+                )));
             }
         }
 
@@ -672,12 +705,15 @@ impl LocalEngine for LlamaCppEngine {
             .map_err(|e| EngineError::HealthCheckFailed(format!("Health check failed: {}", e)))
     }
 
-    async fn get_server_models(&self, instance: &EngineInstance) -> Result<Vec<super::ModelInfo>, EngineError> {
+    async fn get_server_models(
+        &self,
+        instance: &EngineInstance,
+    ) -> Result<Vec<super::ModelInfo>, EngineError> {
         let url = format!("http://localhost:{}/v1/models", instance.port);
 
-        let response = reqwest::get(&url)
-            .await
-            .map_err(|e| EngineError::NetworkError(format!("Failed to get server models: {}", e)))?;
+        let response = reqwest::get(&url).await.map_err(|e| {
+            EngineError::NetworkError(format!("Failed to get server models: {}", e))
+        })?;
 
         if !response.status().is_success() {
             return Err(EngineError::NetworkError(format!(
@@ -697,23 +733,29 @@ impl LocalEngine for LlamaCppEngine {
 /// Find the GGUF file in the given model directory
 fn find_gguf_file(model_path: &str) -> Result<String, EngineError> {
     let path = std::path::Path::new(model_path);
-    
+
     // If the path is already a file and ends with .gguf, return it directly
     if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("gguf") {
         return Ok(model_path.to_string());
     }
-    
+
     // If it's a directory, search for .gguf files
     if path.is_dir() {
-        let entries = std::fs::read_dir(path)
-            .map_err(|e| EngineError::StartupFailed(format!("Failed to read model directory {}: {}", model_path, e)))?;
-        
+        let entries = std::fs::read_dir(path).map_err(|e| {
+            EngineError::StartupFailed(format!(
+                "Failed to read model directory {}: {}",
+                model_path, e
+            ))
+        })?;
+
         let mut gguf_files = Vec::new();
-        
+
         for entry in entries {
-            let entry = entry.map_err(|e| EngineError::StartupFailed(format!("Failed to read directory entry: {}", e)))?;
+            let entry = entry.map_err(|e| {
+                EngineError::StartupFailed(format!("Failed to read directory entry: {}", e))
+            })?;
             let file_path = entry.path();
-            
+
             if file_path.is_file() {
                 if let Some(extension) = file_path.extension() {
                     if extension == "gguf" {
@@ -722,23 +764,35 @@ fn find_gguf_file(model_path: &str) -> Result<String, EngineError> {
                 }
             }
         }
-        
+
         if gguf_files.is_empty() {
-            return Err(EngineError::StartupFailed(format!("No GGUF files found in directory: {}", model_path)));
+            return Err(EngineError::StartupFailed(format!(
+                "No GGUF files found in directory: {}",
+                model_path
+            )));
         }
-        
+
         if gguf_files.len() > 1 {
             // If multiple GGUF files, prefer the one with "model" in the name, or take the first one
-            if let Some(model_file) = gguf_files.iter().find(|f| f.to_lowercase().contains("model")) {
+            if let Some(model_file) = gguf_files
+                .iter()
+                .find(|f| f.to_lowercase().contains("model"))
+            {
                 return Ok(model_file.clone());
             }
-            
-            println!("Warning: Multiple GGUF files found in {}, using the first one: {}", model_path, gguf_files[0]);
+
+            println!(
+                "Warning: Multiple GGUF files found in {}, using the first one: {}",
+                model_path, gguf_files[0]
+            );
         }
-        
+
         return Ok(gguf_files[0].clone());
     }
-    
+
     // If the path doesn't exist or is neither a file nor directory
-    Err(EngineError::StartupFailed(format!("Invalid model path: {} (not a file or directory)", model_path)))
+    Err(EngineError::StartupFailed(format!(
+        "Invalid model path: {} (not a file or directory)",
+        model_path
+    )))
 }

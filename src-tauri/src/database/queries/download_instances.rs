@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::database::{
     models::{
         CreateDownloadInstanceRequest, DownloadInstance, DownloadInstanceListResponse,
-        DownloadStatus, DownloadStatusSummary, UpdateDownloadProgressRequest,
+        DownloadStatus, UpdateDownloadProgressRequest,
         UpdateDownloadStatusRequest,
     },
     queries::get_database_pool,
@@ -247,53 +247,6 @@ pub async fn delete_download_instance(download_id: Uuid) -> Result<bool, sqlx::E
     Ok(result.rows_affected() > 0)
 }
 
-/// Get download status summary (system-wide)
-pub async fn get_download_summary() -> Result<DownloadStatusSummary, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let summary: (i64, i64, i64, i64, i64) = sqlx::query_as(
-        "SELECT 
-         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-         COUNT(CASE WHEN status = 'downloading' THEN 1 END) as downloading,
-         COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-         COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
-         COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled
-         FROM download_instances",
-    )
-    .fetch_one(pool)
-    .await?;
-
-    Ok(DownloadStatusSummary {
-        pending: summary.0,
-        downloading: summary.1,
-        completed: summary.2,
-        failed: summary.3,
-        cancelled: summary.4,
-    })
-}
-
-/// Get active downloads for a repository
-pub async fn get_active_downloads_for_repository(
-    repository_id: Uuid,
-) -> Result<Vec<DownloadInstance>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let downloads: Vec<DownloadInstance> = sqlx::query_as(
-        "SELECT id, provider_id, repository_id, request_data, status, progress_data, 
-         error_message, started_at, completed_at, model_id, created_at, updated_at
-         FROM download_instances 
-         WHERE repository_id = $1 AND status IN ('pending', 'downloading')
-         ORDER BY created_at ASC",
-    )
-    .bind(repository_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(downloads)
-}
-
 /// Get all active downloads (pending or downloading)
 pub async fn get_all_active_downloads() -> Result<Vec<DownloadInstance>, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -310,12 +263,6 @@ pub async fn get_all_active_downloads() -> Result<Vec<DownloadInstance>, sqlx::E
     .await?;
 
     Ok(downloads)
-}
-
-/// Get active downloads (system-wide) - alias for get_all_active_downloads
-pub async fn get_user_active_downloads() -> Result<Vec<DownloadInstance>, sqlx::Error> {
-    // Since downloads belong to the system, this is now the same as get_all_active_downloads
-    get_all_active_downloads().await
 }
 
 /// Delete all download instances (called on app startup)

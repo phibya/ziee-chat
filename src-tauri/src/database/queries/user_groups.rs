@@ -12,9 +12,8 @@ pub async fn create_user_group(
 ) -> Result<UserGroup, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let permissions_json = serde_json::to_value(&permissions).map_err(|e| {
-        sqlx::Error::Encode(Box::new(e))
-    })?;
+    let permissions_json =
+        serde_json::to_value(&permissions).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
 
     let mut group = sqlx::query_as::<_, UserGroup>(
         r#"
@@ -159,9 +158,8 @@ pub async fn update_user_group(
         sql_query = sql_query.bind(description);
     }
     if let Some(permissions) = permissions {
-        let permissions_json = serde_json::to_value(&permissions).map_err(|e| {
-            sqlx::Error::Encode(Box::new(e))
-        })?;
+        let permissions_json =
+            serde_json::to_value(&permissions).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
         sql_query = sql_query.bind(permissions_json);
     }
     if let Some(is_active) = is_active {

@@ -53,7 +53,6 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserService {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserLoginToken {
     pub id: Uuid,
@@ -154,11 +153,9 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
         let permissions = if permissions_json.is_null() {
             Vec::new()
         } else {
-            serde_json::from_value(permissions_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
-                    index: "permissions".into(),
-                    source: Box::new(e),
-                }
+            serde_json::from_value(permissions_json).map_err(|e| sqlx::Error::ColumnDecode {
+                index: "permissions".into(),
+                source: Box::new(e),
             })?
         };
 

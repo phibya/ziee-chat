@@ -47,7 +47,6 @@ pub enum ModelStartResult {
     },
 }
 
-
 /// Check if a process is running by PID (enhanced version)
 fn is_process_running(pid: u32) -> bool {
     #[cfg(unix)]
@@ -81,7 +80,6 @@ fn is_process_running(pid: u32) -> bool {
     }
 }
 
-
 /// Verify that the server at the given port is running the expected model
 async fn verify_model_uuid_match(
     port: u16,
@@ -95,11 +93,7 @@ async fn verify_model_uuid_match(
         tokio::time::timeout(Duration::from_secs(5), client.get(&models_url).send()).await??;
 
     if !response.status().is_success() {
-        return Err(format!(
-            "Models request failed with status: {}",
-            response.status()
-        )
-        .into());
+        return Err(format!("Models request failed with status: {}", response.status()).into());
     }
 
     let models_response: serde_json::Value = response.json().await?;
@@ -207,7 +201,7 @@ pub async fn start_model_with_engine(
             let pid = instance.pid.unwrap_or(0);
 
             // Register the instance in our registry
-            if let Ok(mut registry) = MODEL_REGISTRY.write() {
+            if let Ok(_registry) = MODEL_REGISTRY.write() {
                 // For now, we'll still track the Child process handle for backward compatibility
                 // This will be refactored once we fully migrate to the engine system
                 println!(
@@ -428,7 +422,10 @@ pub async fn reconcile_model_states() -> Result<(), Box<dyn std::error::Error + 
         return Ok(());
     }
 
-    println!("Found {} models marked as active in database", active_models.len());
+    println!(
+        "Found {} models marked as active in database",
+        active_models.len()
+    );
 
     let mut reconciled_count = 0;
     let mut errors = Vec::new();
@@ -456,7 +453,10 @@ pub async fn reconcile_model_states() -> Result<(), Box<dyn std::error::Error + 
                     )
                     .await
                     {
-                        eprintln!("Failed to update runtime info for model {}: {}", model.id, e);
+                        eprintln!(
+                            "Failed to update runtime info for model {}: {}",
+                            model.id, e
+                        );
                         errors.push(format!("Update runtime info for {}: {}", model.id, e));
                     } else {
                         reconciled_count += 1;
@@ -557,7 +557,10 @@ pub async fn shutdown_all_models() -> Result<(), Box<dyn std::error::Error + Sen
                 )
                 .await
                 {
-                    eprintln!("Failed to update database for stopped model {}: {}", model_id, e);
+                    eprintln!(
+                        "Failed to update database for stopped model {}: {}",
+                        model_id, e
+                    );
                     shutdown_errors.push(format!("Database update for {}: {}", model_id, e));
                 } else {
                     println!("Successfully stopped model {}", model_id);

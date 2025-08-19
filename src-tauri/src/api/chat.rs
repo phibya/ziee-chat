@@ -20,10 +20,8 @@ use crate::ai::{
         openai::OpenAIProvider,
     },
 };
-use crate::utils::proxy::create_proxy_config;
 use crate::api::errors::{ApiResult2, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
-use schemars::JsonSchema;
 use crate::database::models::EditMessageRequest;
 use crate::database::{
     models::{
@@ -36,9 +34,10 @@ use crate::database::{
         models::{get_model_by_id, get_provider_by_model_id},
     },
 };
-use crate::utils::chat::{build_chat_messages, build_single_user_message};
 use crate::types::ConversationPaginationQuery;
-
+use crate::utils::chat::{build_chat_messages, build_single_user_message};
+use crate::utils::proxy::create_proxy_config;
+use schemars::JsonSchema;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchQuery {
@@ -108,7 +107,10 @@ pub async fn create_conversation(
         Ok(conversation) => Ok((StatusCode::OK, Json(conversation))),
         Err(e) => {
             eprintln!("Error creating conversation: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -124,7 +126,10 @@ pub async fn get_conversation(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
         Err(e) => {
             eprintln!("Error getting conversation: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -147,7 +152,10 @@ pub async fn list_conversations(
         Ok(response) => Ok((StatusCode::OK, Json(response))),
         Err(e) => {
             eprintln!("Error listing conversations: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -164,7 +172,10 @@ pub async fn update_conversation(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
         Err(e) => {
             eprintln!("Error updating conversation: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -180,7 +191,10 @@ pub async fn delete_conversation(
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
         Err(e) => {
             eprintln!("Error deleting conversation: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -508,7 +522,10 @@ pub async fn send_message_stream(
     // Convert the receiver to a stream and return as SSE
     let stream = UnboundedReceiverStream::new(rx);
 
-    Ok((StatusCode::OK, Sse::new(stream).keep_alive(KeepAlive::default())))
+    Ok((
+        StatusCode::OK,
+        Sse::new(stream).keep_alive(KeepAlive::default()),
+    ))
 }
 
 /// Edit a message with streaming response (creates a new branch)
@@ -569,24 +586,12 @@ pub async fn edit_message_stream(
 
     // Convert the receiver to a stream and return as SSE
     let stream = UnboundedReceiverStream::new(rx);
-    Ok((StatusCode::OK, Sse::new(stream).keep_alive(KeepAlive::default())))
+    Ok((
+        StatusCode::OK,
+        Sse::new(stream).keep_alive(KeepAlive::default()),
+    ))
 }
 
-/// Edit a message (creates a new branch) - non-streaming version for backward compatibility
-pub async fn edit_message(
-    Extension(auth_user): Extension<AuthenticatedUser>,
-    Path(message_id): Path<Uuid>,
-    Json(request): Json<EditMessageRequest>,
-) -> Result<Json<Message>, StatusCode> {
-    match chat::edit_message(message_id, request.clone(), auth_user.user.id).await {
-        Ok(Some(edit_response)) => Ok(Json(edit_response.message)),
-        Ok(None) => Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            eprintln!("Error editing message: {}", e);
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
-        }
-    }
-}
 
 /// Switch to a different branch for a conversation
 #[debug_handler]
@@ -598,14 +603,23 @@ pub async fn switch_conversation_branch(
     match chat::switch_conversation_branch(conversation_id, request.branch_id, auth_user.user.id)
         .await
     {
-        Ok(true) => Ok((StatusCode::OK, Json(OperationSuccessResponse {
-            success: true,
-            message: "Branch switched successfully".to_string(),
-        }))),
-        Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation branch"))),
+        Ok(true) => Ok((
+            StatusCode::OK,
+            Json(OperationSuccessResponse {
+                success: true,
+                message: "Branch switched successfully".to_string(),
+            }),
+        )),
+        Ok(false) => Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("Conversation branch"),
+        )),
         Err(e) => {
             eprintln!("Error switching conversation branch: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -620,7 +634,10 @@ pub async fn get_message_branches(
         Ok(branches) => Ok((StatusCode::OK, Json(branches))),
         Err(e) => {
             eprintln!("Error getting message branches: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -644,11 +661,13 @@ pub async fn search_conversations(
         Ok(response) => Ok((StatusCode::OK, Json(response))),
         Err(e) => {
             eprintln!("Error searching conversations: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
-
 
 /// Helper function to create AI provider instances with optional model ID for Candle providers
 pub async fn create_ai_provider_with_model_id(
@@ -754,9 +773,7 @@ pub async fn create_ai_provider_with_model_id(
                         model_id
                     );
 
-                    match crate::ai::start_model_core_protected(model_id, &model, provider)
-                        .await
-                    {
+                    match crate::ai::start_model_core_protected(model_id, &model, provider).await {
                         Ok((_pid, port)) => {
                             // Register access for auto-unload tracking
                             crate::ai::register_model_access(&model_id).await;
@@ -774,7 +791,11 @@ pub async fn create_ai_provider_with_model_id(
 
             Ok(Box::new(local_provider))
         }
-        _ => Err(format!("Unsupported provider type: {}", provider.provider_type.as_str()).into()),
+        _ => Err(format!(
+            "Unsupported provider type: {}",
+            provider.provider_type.as_str()
+        )
+        .into()),
     }
 }
 
@@ -790,7 +811,10 @@ pub async fn get_conversation_messages_by_branch(
         Ok(messages) => Ok((StatusCode::OK, Json(messages))),
         Err(e) => {
             eprintln!("Error getting messages for branch: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }

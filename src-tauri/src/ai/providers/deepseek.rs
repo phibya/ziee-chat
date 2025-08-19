@@ -2,16 +2,15 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use super::openai_compatible::OpenAICompatibleProvider;
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingResponse,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 
 #[derive(Debug, Clone)]
 pub struct DeepSeekProvider {
     inner: OpenAICompatibleProvider,
-    provider_id: Uuid,
 }
 
 impl DeepSeekProvider {
@@ -19,7 +18,7 @@ impl DeepSeekProvider {
         api_key: String,
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
-        provider_id: Uuid,
+        _provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let base_url = base_url.unwrap_or_else(|| "https://api.deepseek.com/v1".to_string());
 
@@ -28,10 +27,10 @@ impl DeepSeekProvider {
             base_url,
             "deepseek",
             proxy_config,
-            provider_id,
+            _provider_id,
         )?;
 
-        Ok(Self { inner, provider_id })
+        Ok(Self { inner })
     }
 
     /// Preprocess request to handle multimodal content gracefully
@@ -43,7 +42,7 @@ impl DeepSeekProvider {
         for message in &mut request.messages {
             if let MessageContent::Multimodal(parts) = &message.content {
                 let mut text_parts = Vec::new();
-                
+
                 for part in parts {
                     match part {
                         ContentPart::Text(text) => {
@@ -52,11 +51,11 @@ impl DeepSeekProvider {
                         ContentPart::FileReference(file_ref) => {
                             // Convert file reference to text description
                             text_parts.push(format!(
-                                "[File: {} - {}]", 
+                                "[File: {} - {}]",
                                 file_ref.filename,
                                 file_ref.mime_type.as_deref().unwrap_or("unknown type")
                             ));
-                            
+
                             println!(
                                 "Warning: DeepSeek does not support file uploads. \
                                 Converted file '{}' to text description.",
@@ -65,7 +64,7 @@ impl DeepSeekProvider {
                         }
                     }
                 }
-                
+
                 // Convert multimodal to text
                 message.content = MessageContent::Text(text_parts.join("\n"));
             }
@@ -73,7 +72,7 @@ impl DeepSeekProvider {
 
         // Optimize request for specific DeepSeek models
         self.optimize_for_model(&mut request);
-        
+
         Ok(request)
     }
 
@@ -101,12 +100,10 @@ impl DeepSeekProvider {
         }
     }
 
-    fn handle_deepseek_errors(
-        &self,
-        error: &str,
-    ) -> Box<dyn std::error::Error + Send + Sync> {
+    fn handle_deepseek_errors(&self, error: &str) -> Box<dyn std::error::Error + Send + Sync> {
         if error.contains("multimodal") || error.contains("image") {
-            "DeepSeek currently does not support multimodal inputs. Please use text-only content.".into()
+            "DeepSeek currently does not support multimodal inputs. Please use text-only content."
+                .into()
         } else if error.contains("rate limit") {
             "DeepSeek API rate limit exceeded. Please wait before retrying.".into()
         } else {
@@ -176,8 +173,8 @@ impl AIProvider for DeepSeekProvider {
 #[async_trait]
 impl HttpForwardingProvider for DeepSeekProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         self.inner.forward_request(request).await
     }

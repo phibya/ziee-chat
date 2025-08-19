@@ -1,5 +1,5 @@
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Standard pagination query parameters for basic list endpoints
 #[derive(Debug, Deserialize, JsonSchema)]

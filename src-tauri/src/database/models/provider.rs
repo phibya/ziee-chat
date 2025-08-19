@@ -6,8 +6,6 @@ use uuid::Uuid;
 
 use super::proxy::ProxySettings;
 
-// Re-export ProxySettings as ProviderProxySettings for backward compatibility
-pub type ProviderProxySettings = ProxySettings;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]

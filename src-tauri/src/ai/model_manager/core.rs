@@ -1,6 +1,6 @@
-use uuid::Uuid;
 use crate::api::errors::{AppError, ErrorCode};
 use crate::database::models::{Model, Provider};
+use uuid::Uuid;
 
 /// Start a model with global mutex protection to prevent race conditions
 pub async fn start_model_core_protected(

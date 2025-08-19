@@ -34,7 +34,6 @@ pub struct LfsProgress {
 pub enum LfsPhase {
     Scanning,
     Downloading,
-    Caching,
     Complete,
     Error,
 }

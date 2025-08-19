@@ -1,4 +1,7 @@
-use crate::api::{engines::{list_engines, EngineInfo}, middleware::auth_middleware};
+use crate::api::{
+    engines::{list_engines, EngineInfo},
+    middleware::auth_middleware,
+};
 use aide::axum::{routing::get_with, ApiRouter};
 use axum::{middleware, Json};
 

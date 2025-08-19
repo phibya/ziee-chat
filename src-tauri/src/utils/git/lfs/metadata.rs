@@ -15,7 +15,6 @@ pub enum Hash {
 
 #[derive(Debug, Clone)]
 pub struct LfsMetadata {
-    pub version: String,
     pub oid: String,
     pub size: u64,
     pub hash: Option<Hash>,
@@ -23,7 +22,6 @@ pub struct LfsMetadata {
 
 #[derive(Debug, Clone)]
 pub struct LfsPointer {
-    pub oid: String,
     pub size: u64,
     pub path: PathBuf,
 }
@@ -43,7 +41,7 @@ impl LfsMetadata {
             .parse::<u64>()
             .map_err(|_| "Could not convert file size to u64")?;
 
-        let version = *lines
+        let _version = *lines
             .get(VERSION_PREFIX)
             .ok_or("Could not find version-entry")?;
 
@@ -64,7 +62,6 @@ impl LfsMetadata {
             size,
             oid: oid.to_string(),
             hash,
-            version: version.to_string(),
         })
     }
 

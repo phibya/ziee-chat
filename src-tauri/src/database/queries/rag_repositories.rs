@@ -3,8 +3,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGRepositoryRequest,
-        RAGRepository, RAGRepositoryListResponse, UpdateRAGRepositoryRequest,
+        CreateRAGRepositoryRequest, RAGRepository, RAGRepositoryListResponse,
+        UpdateRAGRepositoryRequest,
     },
 };
 
@@ -135,18 +135,3 @@ pub async fn delete_rag_repository(repository_id: Uuid) -> Result<(), sqlx::Erro
     Ok(())
 }
 
-pub async fn get_enabled_rag_repositories() -> Result<Vec<RAGRepository>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let repositories: Vec<RAGRepository> = sqlx::query_as(
-        "SELECT id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at
-         FROM rag_repositories 
-         WHERE enabled = true
-         ORDER BY priority DESC, name ASC"
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(repositories)
-}

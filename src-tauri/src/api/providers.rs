@@ -4,8 +4,6 @@ use axum::{
     http::StatusCode,
     Extension, Json,
 };
-use schemars::JsonSchema;
-use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::api::errors::{ApiResult2, AppError};
@@ -19,11 +17,6 @@ use crate::database::{
 };
 use crate::types::PaginationQuery;
 
-
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct ProviderFilters {
-    enabled_only: Option<bool>,
-}
 
 // Base function for listing providers with filtering
 async fn list_providers_base(
@@ -41,7 +34,10 @@ async fn list_providers_base(
                 "Failed to get model providers for user {}: {}",
                 auth_user.user.id, e
             );
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get user providers")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get user providers"),
+            ));
         }
     };
 
@@ -107,7 +103,10 @@ pub async fn get_provider(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
         Err(e) => {
             eprintln!("Failed to get model provider {}: {}", provider_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -128,10 +127,13 @@ pub async fn create_provider(
         "custom",
     ];
     if !valid_types.contains(&request.provider_type.as_str()) {
-        return Err((StatusCode::BAD_REQUEST, AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Invalid request",
-        )));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            AppError::new(
+                crate::api::errors::ErrorCode::ValidInvalidInput,
+                "Invalid request",
+            ),
+        ));
     }
 
     // Validate requirements for enabling non-local_server providers
@@ -140,28 +142,37 @@ pub async fn create_provider(
             // Check API key
             if request.api_key.is_none() || request.api_key.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: API key is required");
-                return Err((StatusCode::BAD_REQUEST, AppError::new(
-                    crate::api::errors::ErrorCode::ValidInvalidInput,
-                    "Invalid request",
-                )));
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::ValidInvalidInput,
+                        "Invalid request",
+                    ),
+                ));
             }
 
             // Check base URL
             if request.base_url.is_none() || request.base_url.as_ref().unwrap().trim().is_empty() {
                 eprintln!("Cannot create enabled provider: Base URL is required");
-                return Err((StatusCode::BAD_REQUEST, AppError::new(
-                    crate::api::errors::ErrorCode::ValidInvalidInput,
-                    "Invalid request",
-                )));
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::ValidInvalidInput,
+                        "Invalid request",
+                    ),
+                ));
             }
 
             // Validate URL format
             if !is_valid_url(request.base_url.as_ref().unwrap()) {
                 eprintln!("Cannot create enabled provider: Invalid base URL format");
-                return Err((StatusCode::BAD_REQUEST, AppError::new(
-                    crate::api::errors::ErrorCode::ValidInvalidInput,
-                    "Invalid request",
-                )));
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    AppError::new(
+                        crate::api::errors::ErrorCode::ValidInvalidInput,
+                        "Invalid request",
+                    ),
+                ));
             }
         } else {
             // Llama.cpp providers must start disabled (no models yet)
@@ -173,7 +184,10 @@ pub async fn create_provider(
         Ok(provider) => Ok((StatusCode::OK, Json(provider))),
         Err(e) => {
             eprintln!("Failed to create model provider: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -205,10 +219,13 @@ pub async fn update_provider(
                             "Cannot enable provider {}: API key is required",
                             provider_id
                         );
-                        return Err((StatusCode::BAD_REQUEST, AppError::new(
-                            crate::api::errors::ErrorCode::ValidInvalidInput,
-                            "Invalid operation",
-                        )));
+                        return Err((
+                            StatusCode::BAD_REQUEST,
+                            AppError::new(
+                                crate::api::errors::ErrorCode::ValidInvalidInput,
+                                "Invalid operation",
+                            ),
+                        ));
                     }
 
                     // Check base URL
@@ -221,10 +238,13 @@ pub async fn update_provider(
                             "Cannot enable provider {}: Base URL is required",
                             provider_id
                         );
-                        return Err((StatusCode::BAD_REQUEST, AppError::new(
-                            crate::api::errors::ErrorCode::ValidInvalidInput,
-                            "Invalid operation",
-                        )));
+                        return Err((
+                            StatusCode::BAD_REQUEST,
+                            AppError::new(
+                                crate::api::errors::ErrorCode::ValidInvalidInput,
+                                "Invalid operation",
+                            ),
+                        ));
                     }
 
                     // Validate URL format
@@ -233,10 +253,13 @@ pub async fn update_provider(
                             "Cannot enable provider {}: Invalid base URL format",
                             provider_id
                         );
-                        return Err((StatusCode::BAD_REQUEST, AppError::new(
-                            crate::api::errors::ErrorCode::ValidInvalidInput,
-                            "Invalid operation",
-                        )));
+                        return Err((
+                            StatusCode::BAD_REQUEST,
+                            AppError::new(
+                                crate::api::errors::ErrorCode::ValidInvalidInput,
+                                "Invalid operation",
+                            ),
+                        ));
                     }
                 }
 
@@ -248,14 +271,20 @@ pub async fn update_provider(
                             "Error fetching models for provider {}: {:?}",
                             provider_id, e
                         );
-                        return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+                        return Err((
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            AppError::internal_error("Database operation failed"),
+                        ));
                     }
                 };
             }
             Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
             Err(e) => {
                 eprintln!("Failed to get model provider {}: {}", provider_id, e);
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    AppError::internal_error("Database operation failed"),
+                ));
             }
         }
     }
@@ -265,7 +294,10 @@ pub async fn update_provider(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
         Err(e) => {
             eprintln!("Failed to update model provider {}: {}", provider_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -284,14 +316,20 @@ pub async fn delete_provider(
                 provider_id, error_message
             );
             // Return a JSON response with the error message for better UX
-            Err((StatusCode::BAD_REQUEST, AppError::new(
-                crate::api::errors::ErrorCode::ValidInvalidInput,
-                "Cannot delete model provider",
-            )))
+            Err((
+                StatusCode::BAD_REQUEST,
+                AppError::new(
+                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                    "Cannot delete model provider",
+                ),
+            ))
         }
         Err(e) => {
             eprintln!("Failed to delete model provider {}: {}", provider_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -306,7 +344,10 @@ pub async fn get_provider_groups(
         Ok(groups) => Ok((StatusCode::OK, Json(groups))),
         Err(e) => {
             eprintln!("Error getting groups for model provider: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }

@@ -1,8 +1,11 @@
 use axum::{debug_handler, extract::Path, http::StatusCode, Extension, Json};
-use serde::Serialize;
 use schemars::JsonSchema;
+use serde::Serialize;
 
-use crate::api::{middleware::AuthenticatedUser, errors::{ApiResult2, AppError}};
+use crate::api::{
+    errors::{ApiResult2, AppError},
+    middleware::AuthenticatedUser,
+};
 use crate::database::{
     models::{UserSetting, UserSettingRequest, UserSettingsResponse},
     queries::user_settings,
@@ -35,7 +38,10 @@ pub async fn get_user_settings(
         }
         Err(e) => {
             eprintln!("Error getting user settings: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get user settings")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get user settings"),
+            ))
         }
     }
 }
@@ -61,7 +67,10 @@ pub async fn get_user_setting(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User setting"))),
         Err(e) => {
             eprintln!("Error getting user setting: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get user setting")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get user setting"),
+            ))
         }
     }
 }
@@ -86,7 +95,10 @@ pub async fn set_user_setting(
         }
         Err(e) => {
             eprintln!("Error setting user setting: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to set user setting")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to set user setting"),
+            ))
         }
     }
 }
@@ -102,7 +114,10 @@ pub async fn delete_user_setting(
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User setting"))),
         Err(e) => {
             eprintln!("Error deleting user setting: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete user setting")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to delete user setting"),
+            ))
         }
     }
 }
@@ -113,10 +128,18 @@ pub async fn delete_all_user_settings(
     Extension(auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<Json<UserSettingsDeletionResponse>> {
     match user_settings::delete_all_user_settings(&auth_user.user_id).await {
-        Ok(deleted_count) => Ok((StatusCode::OK, Json(UserSettingsDeletionResponse { deleted: deleted_count }))),
+        Ok(deleted_count) => Ok((
+            StatusCode::OK,
+            Json(UserSettingsDeletionResponse {
+                deleted: deleted_count,
+            }),
+        )),
         Err(e) => {
             eprintln!("Error deleting all user settings: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete all user settings")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to delete all user settings"),
+            ))
         }
     }
 }

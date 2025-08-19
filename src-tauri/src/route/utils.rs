@@ -1,8 +1,6 @@
 use crate::api;
 use crate::api::configuration::TestProxyConnectionResponse;
-use aide::{
-    axum::{ApiRouter, routing::post_with},
-};
+use aide::axum::{routing::post_with, ApiRouter};
 use axum::Json;
 
 /// Public utility routes (no authentication required)

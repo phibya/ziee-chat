@@ -5,7 +5,7 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateModelRequest, Model, ModelFile, ModelStatusCounts, ModelStorageInfo, Provider,
+        CreateModelRequest, Model, ModelFile, Provider,
         UpdateModelRequest,
     },
 };
@@ -133,21 +133,6 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     Ok(model_row)
 }
 
-/// Get the provider_id for a given model_id
-pub async fn get_provider_id_by_model_id(model_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let row = sqlx::query("SELECT provider_id FROM models WHERE id = $1")
-        .bind(model_id)
-        .fetch_optional(pool)
-        .await?;
-
-    match row {
-        Some(row) => Ok(Some(row.get("provider_id"))),
-        None => Ok(None),
-    }
-}
 
 /// Create a Candle model with required architecture and default settings
 pub async fn create_local_model(
@@ -199,7 +184,13 @@ pub async fn create_local_model(
     .bind(serde_json::json!({}))
     .bind(serde_json::json!({}))
     .bind(&request.file_format)
-    .bind(request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null))
+    .bind(
+        request
+            .source
+            .as_ref()
+            .map(|s| serde_json::to_value(s).unwrap())
+            .unwrap_or(serde_json::Value::Null),
+    )
     .bind(now)
     .bind(now)
     .fetch_one(pool)
@@ -242,32 +233,6 @@ pub async fn update_model_validation(
     Ok(())
 }
 
-/// Update model status (enabled/active)
-pub async fn update_model_status(
-    model_id: &Uuid,
-    enabled: Option<bool>,
-    is_active: Option<bool>,
-) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-    sqlx::query(
-        r#"
-        UPDATE models 
-        SET enabled = COALESCE($1, enabled),
-            is_active = COALESCE($2, is_active),
-            updated_at = $3
-        WHERE id = $4
-        "#,
-    )
-    .bind(enabled)
-    .bind(is_active)
-    .bind(Utc::now())
-    .bind(model_id)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
 
 /// Create a model file record
 pub async fn create_model_file(
@@ -323,43 +288,6 @@ pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFile>, sqlx::Er
     Ok(files)
 }
 
-/// Get storage statistics for a provider
-pub async fn get_provider_storage_stats(
-    provider_id: &Uuid,
-) -> Result<ModelStorageInfo, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-    let row = sqlx::query(
-        r#"
-        SELECT 
-            COUNT(*) as total_models,
-            COALESCE(SUM(file_size_bytes), 0) as total_storage_bytes,
-            COUNT(*) FILTER (WHERE is_active = true) as active,
-            COUNT(*) FILTER (WHERE is_active = false) as inactive,
-            COUNT(*) FILTER (WHERE is_deprecated = true) as deprecated,
-            COUNT(*) FILTER (WHERE enabled = true) as enabled,
-            COUNT(*) FILTER (WHERE enabled = false) as disabled
-        FROM models 
-        WHERE provider_id = $1
-        "#,
-    )
-    .bind(provider_id)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(ModelStorageInfo {
-        provider_id: *provider_id,
-        total_models: row.get("total_models"),
-        total_storage_bytes: row.get::<i64, _>("total_storage_bytes") as u64,
-        models_by_status: ModelStatusCounts {
-            active: row.get("active"),
-            inactive: row.get("inactive"),
-            deprecated: row.get("deprecated"),
-            enabled: row.get("enabled"),
-            disabled: row.get("disabled"),
-        },
-    })
-}
 
 /// Get all models with their files for full response
 pub async fn get_model_with_files(model_id: &Uuid) -> Result<Option<Model>, sqlx::Error> {
@@ -471,22 +399,3 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
     Ok(models)
 }
 
-/// Get all models marked as active (regardless of provider type - for debugging)
-pub async fn get_all_active_models_debug() -> Result<Vec<Model>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let models: Vec<Model> = sqlx::query_as(
-        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
-                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
-                file_format, source
-         FROM models 
-         WHERE is_active = true
-         ORDER BY created_at ASC",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    Ok(models)
-}

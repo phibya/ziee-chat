@@ -1,3 +1,6 @@
+use crate::api::permissions::{check_permission, permissions};
+use crate::auth::AuthService;
+use crate::database::models::User;
 use axum::{
     extract::Request,
     http::{header, StatusCode},
@@ -6,9 +9,6 @@ use axum::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::api::permissions::{check_permission, permissions};
-use crate::auth::AuthService;
-use crate::database::models::User;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AuthenticatedUser {

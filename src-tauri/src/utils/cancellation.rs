@@ -6,14 +6,12 @@ use uuid::Uuid;
 /// Cancellation token for tracking and cancelling operations
 #[derive(Debug, Clone)]
 pub struct CancellationToken {
-    pub download_id: Uuid,
     receiver: Arc<RwLock<Option<oneshot::Receiver<()>>>>,
 }
 
 impl CancellationToken {
-    fn new(download_id: Uuid, receiver: oneshot::Receiver<()>) -> Self {
+    fn new(_download_id: Uuid, receiver: oneshot::Receiver<()>) -> Self {
         Self {
-            download_id,
             receiver: Arc::new(RwLock::new(Some(receiver))),
         }
     }
@@ -37,19 +35,6 @@ impl CancellationToken {
         }
     }
 
-    /// Wait for cancellation (blocks until cancelled)
-    pub async fn cancelled(&self) -> bool {
-        let mut receiver_guard = self.receiver.write().await;
-        if let Some(receiver) = receiver_guard.take() {
-            match receiver.await {
-                Ok(_) => true,
-                Err(_) => true, // Sender was dropped, consider it cancelled
-            }
-        } else {
-            // Already cancelled
-            true
-        }
-    }
 }
 
 /// Global cancellation tracker for managing download cancellations
@@ -92,11 +77,6 @@ impl CancellationTracker {
         senders.remove(&download_id);
     }
 
-    /// Check if a download is being tracked
-    pub async fn is_tracked(&self, download_id: Uuid) -> bool {
-        let senders = self.cancellation_senders.read().await;
-        senders.contains_key(&download_id)
-    }
 }
 
 // Global instance

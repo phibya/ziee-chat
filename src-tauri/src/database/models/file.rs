@@ -1,8 +1,8 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
-use schemars::JsonSchema;
 
 // Main File structure
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

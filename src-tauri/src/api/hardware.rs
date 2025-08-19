@@ -11,7 +11,11 @@ use sysinfo::System;
 use tokio::time::interval;
 use uuid::Uuid;
 
-use crate::api::{errors::{ApiResult2, AppError}, middleware::AuthenticatedUser, permissions};
+use crate::api::{
+    errors::{ApiResult2, AppError},
+    middleware::AuthenticatedUser,
+    permissions,
+};
 
 // Hardware information structures
 #[derive(Debug, Clone, Serialize, JsonSchema)]
@@ -123,7 +127,7 @@ pub async fn get_hardware_info(
     if !permissions::check_permission(&auth_user.user, permissions::permissions::PROVIDERS_READ) {
         return Err((
             axum::http::StatusCode::FORBIDDEN,
-            AppError::forbidden("Hardware access requires admin permissions")
+            AppError::forbidden("Hardware access requires admin permissions"),
         ));
     }
 
@@ -168,9 +172,12 @@ pub async fn get_hardware_info(
         gpu_devices,
     };
 
-    Ok((axum::http::StatusCode::OK, Json(HardwareInfoResponse {
-        hardware: hardware_info,
-    })))
+    Ok((
+        axum::http::StatusCode::OK,
+        Json(HardwareInfoResponse {
+            hardware: hardware_info,
+        }),
+    ))
 }
 
 // SSE endpoint for real-time hardware usage monitoring
@@ -182,7 +189,7 @@ pub async fn subscribe_hardware_usage(
     if !permissions::check_permission(&auth_user.user, permissions::permissions::PROVIDERS_READ) {
         return Err((
             axum::http::StatusCode::FORBIDDEN,
-            AppError::forbidden("Hardware access requires admin permissions")
+            AppError::forbidden("Hardware access requires admin permissions"),
         ));
     }
 
@@ -866,7 +873,7 @@ fn get_amd_gpu_usage_sysfs() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>
 // Intel GPU usage detection (Linux and Windows)
 #[cfg(feature = "gpu-detect")]
 fn get_intel_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
-    let mut gpu_usage = Vec::new();
+    let gpu_usage = Vec::new();
 
     #[cfg(target_os = "linux")]
     {
@@ -1101,20 +1108,8 @@ fn parse_apple_gpu_metrics_tasks(output: &str) -> AppleGpuMetrics {
 
     // Look for GPU-related process information in tasks output
     let mut gpu_ms_total = 0.0;
-    let mut sample_duration_ms = 1000.0; // Default 1 second
-
     for line in output.lines() {
         let line = line.trim();
-
-        // Look for sample duration
-        if line.contains("elapsed time") {
-            // Extract duration from something like "elapsed time: 250.32ms"
-            if let Some(duration_str) = line.split("elapsed time:").nth(1) {
-                if let Some(ms_str) = duration_str.split("ms").next() {
-                    sample_duration_ms = ms_str.trim().parse::<f32>().unwrap_or(1000.0);
-                }
-            }
-        }
 
         // Look for GPU time in process entries
         if line.contains("GPU Time") || line.contains("gpu_time") {
@@ -1143,7 +1138,6 @@ fn parse_apple_gpu_metrics_tasks(output: &str) -> AppleGpuMetrics {
         utilization,
         power_consumption: None,
         memory_used: None,
-        memory_allocated: None,
         total_system_memory: None,
     }
 }
@@ -1153,7 +1147,6 @@ fn parse_apple_gpu_metrics_tasks(output: &str) -> AppleGpuMetrics {
 fn parse_apple_gpu_metrics_iokit(output: &str) -> AppleGpuMetrics {
     let mut utilization = None;
     let mut memory_used = None;
-    let mut memory_allocated = None;
 
     // Get total system memory
     let total_system_memory = get_system_total_memory();
@@ -1203,22 +1196,6 @@ fn parse_apple_gpu_metrics_iokit(output: &str) -> AppleGpuMetrics {
             }
 
             // Extract Alloc system memory
-            if line.contains("Alloc system memory") {
-                if let Some(start) = line.find("\"Alloc system memory\"=") {
-                    let after_equals = &line[start + 22..];
-                    let mut end_pos = 0;
-                    for (i, ch) in after_equals.char_indices() {
-                        if ch == ',' || ch == '}' || ch.is_whitespace() {
-                            end_pos = i;
-                            break;
-                        }
-                    }
-                    if end_pos > 0 {
-                        let mem_str = &after_equals[..end_pos];
-                        memory_allocated = mem_str.parse::<u64>().ok();
-                    }
-                }
-            }
         }
         // Fallback: Look for standalone device utilization lines (older formats)
         else if line.contains("Device Utilization %") && line.contains("=") {
@@ -1246,7 +1223,6 @@ fn parse_apple_gpu_metrics_iokit(output: &str) -> AppleGpuMetrics {
         utilization,
         power_consumption: None,
         memory_used,
-        memory_allocated,
         total_system_memory,
     }
 }
@@ -1271,6 +1247,7 @@ fn get_system_total_memory() -> Option<u64> {
 }
 
 // Helper functions for GPU capability detection
+#[cfg(not(target_os = "macos"))]
 fn check_cuda_support() -> bool {
     #[cfg(feature = "gpu-detect")]
     {
@@ -1296,6 +1273,7 @@ fn check_cuda_support() -> bool {
     }
 }
 
+#[cfg(not(target_os = "macos"))]
 fn get_cuda_version() -> Option<String> {
     #[cfg(feature = "gpu-detect")]
     {
@@ -1420,7 +1398,6 @@ fn parse_apple_gpu_metrics(output: &str) -> AppleGpuMetrics {
         utilization,
         power_consumption,
         memory_used: None,
-        memory_allocated: None,
         total_system_memory: None,
     }
 }
@@ -1430,6 +1407,5 @@ struct AppleGpuMetrics {
     utilization: Option<f32>,
     power_consumption: Option<f32>,
     memory_used: Option<u64>,
-    memory_allocated: Option<u64>,
     total_system_memory: Option<u64>,
 }

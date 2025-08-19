@@ -6,12 +6,12 @@ use serde_json::Value;
 // Ngrok Settings Structure
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NgrokSettings {
-    pub api_key: String,           // Encrypted
+    pub api_key: String, // Encrypted
     pub tunnel_enabled: bool,
     pub tunnel_url: Option<String>,
     pub tunnel_status: String,
     pub auto_start: bool,
-    pub domain: Option<String>,    // Custom domain for tunnel
+    pub domain: Option<String>, // Custom domain for tunnel
 }
 
 pub async fn get_configuration(key: &str) -> Result<Option<Configuration>, sqlx::Error> {
@@ -173,16 +173,6 @@ pub async fn get_ngrok_settings() -> Result<NgrokSettings, sqlx::Error> {
 pub async fn set_ngrok_settings(settings: &NgrokSettings) -> Result<(), sqlx::Error> {
     set_config_value("ngrok", settings, Some("Ngrok tunnel configuration")).await?;
     Ok(())
-}
-
-pub async fn is_ngrok_enabled() -> Result<bool, sqlx::Error> {
-    Ok(get_ngrok_settings().await?.tunnel_enabled)
-}
-
-pub async fn set_ngrok_enabled(enabled: bool) -> Result<(), sqlx::Error> {
-    let mut settings = get_ngrok_settings().await?;
-    settings.tunnel_enabled = enabled;
-    set_ngrok_settings(&settings).await
 }
 
 pub async fn get_proxy_username() -> Result<String, sqlx::Error> {

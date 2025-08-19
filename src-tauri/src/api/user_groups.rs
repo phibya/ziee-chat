@@ -17,7 +17,6 @@ use crate::database::{
 };
 use crate::types::PaginationQuery;
 
-
 // Create user group
 #[debug_handler]
 pub async fn create_user_group(
@@ -47,15 +46,12 @@ pub async fn create_user_group(
             // Return the updated group with model provider IDs
             match user_groups::get_user_group_by_id(group.id).await {
                 Ok(Some(updated_group)) => Ok((StatusCode::OK, Json(updated_group))),
-                Ok(None) => Err((
-                    StatusCode::NOT_FOUND,
-                    AppError::not_found("User group")
-                )),
+                Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User group"))),
                 Err(e) => {
                     eprintln!("Error getting updated user group: {}", e);
                     Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        AppError::internal_error("Failed to get updated user group")
+                        AppError::internal_error("Failed to get updated user group"),
                     ))
                 }
             }
@@ -64,7 +60,7 @@ pub async fn create_user_group(
             eprintln!("Error creating user group: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to create user group")
+                AppError::internal_error("Failed to create user group"),
             ))
         }
     }
@@ -78,15 +74,12 @@ pub async fn get_user_group(
 ) -> ApiResult2<Json<crate::database::models::UserGroup>> {
     match user_groups::get_user_group_by_id(group_id).await {
         Ok(Some(group)) => Ok((StatusCode::OK, Json(group))),
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("User group")
-        )),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User group"))),
         Err(e) => {
             eprintln!("Error getting user group: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get user group")
+                AppError::internal_error("Failed to get user group"),
             ))
         }
     }
@@ -107,7 +100,7 @@ pub async fn list_user_groups(
             eprintln!("Error listing user groups: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to list user groups")
+                AppError::internal_error("Failed to list user groups"),
             ))
         }
     }
@@ -164,20 +157,16 @@ pub async fn update_user_group(
     .await
     {
         Ok(Some(group)) => Ok((StatusCode::OK, Json(group))),
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("User group")
-        )),
+        Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User group"))),
         Err(e) => {
             eprintln!("Error updating user group: {}", e);
             match e {
-                sqlx::Error::RowNotFound => Err((
-                    StatusCode::FORBIDDEN,
-                    AppError::forbidden("Access denied")
-                )),
+                sqlx::Error::RowNotFound => {
+                    Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied")))
+                }
                 _ => Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    AppError::internal_error("Failed to update user group")
+                    AppError::internal_error("Failed to update user group"),
                 )),
             }
         }
@@ -192,20 +181,16 @@ pub async fn delete_user_group(
 ) -> ApiResult2<StatusCode> {
     match user_groups::delete_user_group(group_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
-        Ok(false) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("User group")
-        )),
+        Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User group"))),
         Err(e) => {
             eprintln!("Error deleting user group: {}", e);
             match e {
-                sqlx::Error::RowNotFound => Err((
-                    StatusCode::FORBIDDEN,
-                    AppError::forbidden("Access denied")
-                )),
+                sqlx::Error::RowNotFound => {
+                    Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied")))
+                }
                 _ => Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    AppError::internal_error("Failed to delete user group")
+                    AppError::internal_error("Failed to delete user group"),
                 )),
             }
         }
@@ -224,7 +209,7 @@ pub async fn assign_user_to_group(
             eprintln!("Error assigning user to group: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to assign user to group")
+                AppError::internal_error("Failed to assign user to group"),
             ))
         }
     }
@@ -240,13 +225,13 @@ pub async fn remove_user_from_group(
         Ok(true) => Ok((StatusCode::OK, StatusCode::OK)),
         Ok(false) => Err((
             StatusCode::NOT_FOUND,
-            AppError::not_found("User group membership")
+            AppError::not_found("User group membership"),
         )),
         Err(e) => {
             eprintln!("Error removing user from group: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to remove user from group")
+                AppError::internal_error("Failed to remove user from group"),
             ))
         }
     }
@@ -268,7 +253,7 @@ pub async fn get_group_members(
             eprintln!("Error getting group members: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get group members")
+                AppError::internal_error("Failed to get group members"),
             ))
         }
     }
@@ -286,7 +271,7 @@ pub async fn get_group_providers(
             eprintln!("Error getting model providers for group: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get model providers for group")
+                AppError::internal_error("Failed to get model providers for group"),
             ))
         }
     }
@@ -303,19 +288,17 @@ pub async fn assign_provider_to_group(
         Err(e) => {
             eprintln!("Error assigning model provider to group: {}", e);
             match e {
-                sqlx::Error::Database(db_err) if db_err.constraint().is_some() => {
-                    Err((
-                        StatusCode::CONFLICT,
-                        AppError::conflict("Provider already assigned to group")
-                    ))
-                }
+                sqlx::Error::Database(db_err) if db_err.constraint().is_some() => Err((
+                    StatusCode::CONFLICT,
+                    AppError::conflict("Provider already assigned to group"),
+                )),
                 sqlx::Error::RowNotFound => Err((
                     StatusCode::NOT_FOUND,
-                    AppError::not_found("Provider or group")
+                    AppError::not_found("Provider or group"),
                 )),
                 _ => Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    AppError::internal_error("Failed to assign model provider to group")
+                    AppError::internal_error("Failed to assign model provider to group"),
                 )),
             }
         }
@@ -332,13 +315,13 @@ pub async fn remove_provider_from_group(
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((
             StatusCode::NOT_FOUND,
-            AppError::not_found("Provider assignment")
+            AppError::not_found("Provider assignment"),
         )),
         Err(e) => {
             eprintln!("Error removing model provider from group: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to remove model provider from group")
+                AppError::internal_error("Failed to remove model provider from group"),
             ))
         }
     }
@@ -358,7 +341,7 @@ pub async fn list_user_group_provider_relationships(
             );
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to list user group provider relationships")
+                AppError::internal_error("Failed to list user group provider relationships"),
             ))
         }
     }

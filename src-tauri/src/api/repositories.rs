@@ -17,7 +17,6 @@ use crate::database::{
 };
 use crate::types::PaginationQuery;
 
-
 // Repository endpoints
 #[debug_handler]
 pub async fn list_repositories(
@@ -32,7 +31,10 @@ pub async fn list_repositories(
         Ok(repositories) => repositories,
         Err(e) => {
             eprintln!("Failed to get repositories: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
@@ -47,12 +49,15 @@ pub async fn list_repositories(
         Vec::new()
     };
 
-    Ok((StatusCode::OK, Json(RepositoryListResponse {
-        repositories: paginated_repositories,
-        total,
-        page,
-        per_page,
-    })))
+    Ok((
+        StatusCode::OK,
+        Json(RepositoryListResponse {
+            repositories: paginated_repositories,
+            total,
+            page,
+            per_page,
+        }),
+    ))
 }
 
 #[debug_handler]
@@ -65,7 +70,10 @@ pub async fn get_repository(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Repository"))),
         Err(e) => {
             eprintln!("Failed to get repository {}: {}", repository_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -78,18 +86,24 @@ pub async fn create_repository(
     // Validate auth type
     let valid_auth_types = ["none", "api_key", "basic_auth", "bearer_token"];
     if !valid_auth_types.contains(&request.auth_type.as_str()) {
-        return Err((StatusCode::BAD_REQUEST, AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Invalid authentication type",
-        )));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            AppError::new(
+                crate::api::errors::ErrorCode::ValidInvalidInput,
+                "Invalid authentication type",
+            ),
+        ));
     }
 
     // Validate URL format
     if !is_valid_url(&request.url) {
-        return Err((StatusCode::BAD_REQUEST, AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Invalid URL format",
-        )));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            AppError::new(
+                crate::api::errors::ErrorCode::ValidInvalidInput,
+                "Invalid URL format",
+            ),
+        ));
     }
 
     // Validate required auth fields based on auth type
@@ -99,10 +113,13 @@ pub async fn create_repository(
                 if auth_config.api_key.is_none()
                     || auth_config.api_key.as_ref().unwrap().trim().is_empty()
                 {
-                    return Err((StatusCode::BAD_REQUEST, AppError::new(
-                        crate::api::errors::ErrorCode::ValidInvalidInput,
-                        "API key is required for api_key authentication",
-                    )));
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        AppError::new(
+                            crate::api::errors::ErrorCode::ValidInvalidInput,
+                            "API key is required for api_key authentication",
+                        ),
+                    ));
                 }
             }
             "basic_auth" => {
@@ -111,36 +128,48 @@ pub async fn create_repository(
                     || auth_config.password.is_none()
                     || auth_config.password.as_ref().unwrap().trim().is_empty()
                 {
-                    return Err((StatusCode::BAD_REQUEST, AppError::new(
-                        crate::api::errors::ErrorCode::ValidInvalidInput,
-                        "Username and password are required for basic_auth authentication",
-                    )));
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        AppError::new(
+                            crate::api::errors::ErrorCode::ValidInvalidInput,
+                            "Username and password are required for basic_auth authentication",
+                        ),
+                    ));
                 }
             }
             "bearer_token" => {
                 if auth_config.token.is_none()
                     || auth_config.token.as_ref().unwrap().trim().is_empty()
                 {
-                    return Err((StatusCode::BAD_REQUEST, AppError::new(
-                        crate::api::errors::ErrorCode::ValidInvalidInput,
-                        "Bearer token is required for bearer_token authentication",
-                    )));
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        AppError::new(
+                            crate::api::errors::ErrorCode::ValidInvalidInput,
+                            "Bearer token is required for bearer_token authentication",
+                        ),
+                    ));
                 }
             }
             _ => {} // "none" requires no additional validation
         }
     } else if request.auth_type != "none" {
-        return Err((StatusCode::BAD_REQUEST, AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Authentication configuration is required for non-none authentication types",
-        )));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            AppError::new(
+                crate::api::errors::ErrorCode::ValidInvalidInput,
+                "Authentication configuration is required for non-none authentication types",
+            ),
+        ));
     }
 
     match repositories::create_repository(request).await {
         Ok(repository) => Ok((StatusCode::OK, Json(repository))),
         Err(e) => {
             eprintln!("Failed to create repository: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -159,20 +188,26 @@ pub async fn update_repository(
     if let Some(ref auth_type) = request.auth_type {
         let valid_auth_types = ["none", "api_key", "basic_auth", "bearer_token"];
         if !valid_auth_types.contains(&auth_type.as_str()) {
-            return Err((StatusCode::BAD_REQUEST, AppError::new(
-                crate::api::errors::ErrorCode::ValidInvalidInput,
-                "Invalid authentication type",
-            )));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                AppError::new(
+                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                    "Invalid authentication type",
+                ),
+            ));
         }
     }
 
     // Validate URL format if provided
     if let Some(ref url) = request.url {
         if !is_valid_url(url) {
-            return Err((StatusCode::BAD_REQUEST, AppError::new(
-                crate::api::errors::ErrorCode::ValidInvalidInput,
-                "Invalid URL format",
-            )));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                AppError::new(
+                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                    "Invalid URL format",
+                ),
+            ));
         }
     }
 
@@ -182,7 +217,10 @@ pub async fn update_repository(
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Repository"))),
         Err(e) => {
             eprintln!("Failed to get repository {}: {}", repository_id, e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
@@ -202,16 +240,22 @@ pub async fn update_repository(
                         if current_auth.api_key.is_none()
                             || current_auth.api_key.as_ref().unwrap().trim().is_empty()
                         {
-                            return Err((StatusCode::BAD_REQUEST, AppError::new(
-                                crate::api::errors::ErrorCode::ValidInvalidInput,
-                                "API key is required for api_key authentication",
-                            )));
+                            return Err((
+                                StatusCode::BAD_REQUEST,
+                                AppError::new(
+                                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                                    "API key is required for api_key authentication",
+                                ),
+                            ));
                         }
                     } else {
-                        return Err((StatusCode::BAD_REQUEST, AppError::new(
-                            crate::api::errors::ErrorCode::ValidInvalidInput,
-                            "API key is required for api_key authentication",
-                        )));
+                        return Err((
+                            StatusCode::BAD_REQUEST,
+                            AppError::new(
+                                crate::api::errors::ErrorCode::ValidInvalidInput,
+                                "API key is required for api_key authentication",
+                            ),
+                        ));
                     }
                 }
             }
@@ -234,10 +278,13 @@ pub async fn update_repository(
                     || password.is_none()
                     || password.unwrap().trim().is_empty()
                 {
-                    return Err((StatusCode::BAD_REQUEST, AppError::new(
-                        crate::api::errors::ErrorCode::ValidInvalidInput,
-                        "Username and password are required for basic_auth authentication",
-                    )));
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        AppError::new(
+                            crate::api::errors::ErrorCode::ValidInvalidInput,
+                            "Username and password are required for basic_auth authentication",
+                        ),
+                    ));
                 }
             }
             "bearer_token" => {
@@ -249,10 +296,13 @@ pub async fn update_repository(
                 });
 
                 if token.is_none() || token.unwrap().trim().is_empty() {
-                    return Err((StatusCode::BAD_REQUEST, AppError::new(
-                        crate::api::errors::ErrorCode::ValidInvalidInput,
-                        "Bearer token is required for bearer_token authentication",
-                    )));
+                    return Err((
+                        StatusCode::BAD_REQUEST,
+                        AppError::new(
+                            crate::api::errors::ErrorCode::ValidInvalidInput,
+                            "Bearer token is required for bearer_token authentication",
+                        ),
+                    ));
                 }
             }
             _ => {} // "none" requires no additional validation
@@ -264,7 +314,10 @@ pub async fn update_repository(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Repository"))),
         Err(e) => {
             eprintln!("Failed to update repository {}: {}", repository_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -282,14 +335,20 @@ pub async fn delete_repository(
                 "Cannot delete repository {}: {}",
                 repository_id, error_message
             );
-            Err((StatusCode::BAD_REQUEST, AppError::new(
-                crate::api::errors::ErrorCode::ValidInvalidInput,
-                "Cannot delete built-in repository",
-            )))
+            Err((
+                StatusCode::BAD_REQUEST,
+                AppError::new(
+                    crate::api::errors::ErrorCode::ValidInvalidInput,
+                    "Cannot delete built-in repository",
+                ),
+            ))
         }
         Err(e) => {
             eprintln!("Failed to delete repository {}: {}", repository_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -302,22 +361,31 @@ pub async fn test_repository_connection(
 ) -> ApiResult2<Json<TestRepositoryConnectionResponse>> {
     // Validate URL format
     if !is_valid_url(&request.url) {
-        return Ok((StatusCode::OK, Json(TestRepositoryConnectionResponse {
-            success: false,
-            message: "Invalid URL format".to_string(),
-        })));
+        return Ok((
+            StatusCode::OK,
+            Json(TestRepositoryConnectionResponse {
+                success: false,
+                message: "Invalid URL format".to_string(),
+            }),
+        ));
     }
 
     // Test the repository connection
     match test_repository_connectivity(&request).await {
-        Ok(()) => Ok((StatusCode::OK, Json(TestRepositoryConnectionResponse {
-            success: true,
-            message: format!("Connection to {} successful", request.name),
-        }))),
-        Err(e) => Ok((StatusCode::OK, Json(TestRepositoryConnectionResponse {
-            success: false,
-            message: format!("Connection to {} failed: {}", request.name, e),
-        }))),
+        Ok(()) => Ok((
+            StatusCode::OK,
+            Json(TestRepositoryConnectionResponse {
+                success: true,
+                message: format!("Connection to {} successful", request.name),
+            }),
+        )),
+        Err(e) => Ok((
+            StatusCode::OK,
+            Json(TestRepositoryConnectionResponse {
+                success: false,
+                message: format!("Connection to {} failed: {}", request.name, e),
+            }),
+        )),
     }
 }
 

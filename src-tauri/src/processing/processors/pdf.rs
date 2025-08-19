@@ -5,7 +5,6 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::processing::{ContentProcessor, ImageGenerator as ImageGeneratorTrait, MAX_IMAGE_DIM};
-use crate::utils::pandoc::PandocUtils;
 use crate::utils::pdfium::initialize_pdfium;
 
 pub struct PdfProcessor;
@@ -48,32 +47,6 @@ impl PdfProcessor {
         Ok(cleaned_text)
     }
 
-    async fn extract_text_with_pandoc(
-        &self,
-        file_path: &Path,
-    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        // Get Pandoc path
-        let pandoc_path = PandocUtils::get_pandoc_path()
-            .ok_or_else(|| "Pandoc not found. PDF text extraction requires Pandoc.")?;
-
-        // Use Pandoc to convert PDF to plain text
-        let output = Command::new(&pandoc_path)
-            .arg(file_path)
-            .arg("-t")
-            .arg("plain")
-            .output()?;
-
-        if !output.status.success() {
-            return Err(format!(
-                "Pandoc PDF conversion failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            )
-            .into());
-        }
-
-        let content = String::from_utf8(output.stdout)?;
-        Ok(content)
-    }
 
     async fn get_pdf_info(
         &self,

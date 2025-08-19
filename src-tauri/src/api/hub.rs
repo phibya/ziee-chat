@@ -1,6 +1,6 @@
 use crate::database::models::model::ModelCapabilities;
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct HubModel {
@@ -64,9 +64,9 @@ pub struct HubData {
 }
 
 // API endpoint handlers
+use crate::api::errors::{ApiResult2, AppError};
 use crate::utils::hub_manager::HUB_MANAGER;
 use axum::{debug_handler, extract::Query, http::StatusCode, Json};
-use crate::api::errors::{ApiResult2, AppError};
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct HubQueryParams {
@@ -79,9 +79,7 @@ pub struct HubVersionResponse {
 }
 
 #[debug_handler]
-pub async fn get_hub_data(
-    Query(params): Query<HubQueryParams>,
-) -> ApiResult2<Json<HubData>> {
+pub async fn get_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<HubData>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!("API: Received request for hub data with locale: {}", locale);
 
@@ -117,11 +115,17 @@ pub async fn get_hub_data(
                         }
                         Err(fallback_e) => {
                             eprintln!("API: Failed to load fallback hub data: {}", fallback_e);
-                            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data")))
+                            Err((
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                AppError::internal_error("Failed to load hub data"),
+                            ))
                         }
                     }
                 } else {
-                    Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data")))
+                    Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::internal_error("Failed to load hub data"),
+                    ))
                 }
             }
         }
@@ -135,9 +139,7 @@ pub async fn get_hub_data(
 }
 
 #[debug_handler]
-pub async fn refresh_hub_data(
-    Query(params): Query<HubQueryParams>,
-) -> ApiResult2<Json<HubData>> {
+pub async fn refresh_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<HubData>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!(
         "API: Received request to refresh hub data with locale: {}",
@@ -166,19 +168,28 @@ pub async fn refresh_hub_data(
                         if locale != "en" {
                             match manager.load_hub_data_with_locale("en").await {
                                 Ok(data) => Ok((StatusCode::OK, Json(data))),
-                                Err(fallback_e) => {
-                                    Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data after refresh")))
-                                }
+                                Err(_fallback_e) => Err((
+                                    StatusCode::INTERNAL_SERVER_ERROR,
+                                    AppError::internal_error(
+                                        "Failed to load hub data after refresh",
+                                    ),
+                                )),
                             }
                         } else {
-                            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to load hub data after refresh")))
+                            Err((
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                AppError::internal_error("Failed to load hub data after refresh"),
+                            ))
                         }
                     }
                 }
             }
             Err(e) => {
                 eprintln!("Failed to refresh hub data: {}", e);
-                Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to refresh hub data")))
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    AppError::internal_error("Failed to refresh hub data"),
+                ))
             }
         }
     } else {
@@ -193,9 +204,12 @@ pub async fn refresh_hub_data(
 pub async fn get_hub_version() -> ApiResult2<Json<HubVersionResponse>> {
     let hub_manager_guard = HUB_MANAGER.lock().await;
     if let Some(manager) = hub_manager_guard.as_ref() {
-        Ok((StatusCode::OK, Json(HubVersionResponse {
-            hub_version: manager.config.hub_version.clone()
-        })))
+        Ok((
+            StatusCode::OK,
+            Json(HubVersionResponse {
+                hub_version: manager.config.hub_version.clone(),
+            }),
+        ))
     } else {
         Err((
             StatusCode::SERVICE_UNAVAILABLE,

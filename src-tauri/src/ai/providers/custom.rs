@@ -2,25 +2,21 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use super::openai_compatible::OpenAICompatibleProvider;
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingResponse,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 
 #[derive(Debug, Clone)]
 pub struct CustomProvider {
     inner: OpenAICompatibleProvider,
-    provider_id: Uuid,
 }
 
 #[derive(Debug)]
 struct CustomConfig {
     supports_vision: bool,
     supports_tools: bool,
-    supports_json: bool,
-    max_images: u32,
-    max_file_size: u64,
     recommended_temperature: f32,
 }
 
@@ -29,26 +25,23 @@ impl CustomProvider {
         api_key: String,
         base_url: Option<String>,
         proxy_config: Option<ProxyConfig>,
-        provider_id: Uuid,
+        _provider_id: Uuid,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // Default to localhost for custom providers
         let base_url = base_url.unwrap_or_else(|| "http://localhost:8080".to_string());
 
         let inner =
-            OpenAICompatibleProvider::new(api_key, base_url, "custom", proxy_config, provider_id)?;
+            OpenAICompatibleProvider::new(api_key, base_url, "custom", proxy_config, _provider_id)?;
 
-        Ok(Self { inner, provider_id })
+        Ok(Self { inner })
     }
 
     /// Get configuration for custom providers
     /// Assumes maximum flexibility since custom providers can vary widely
     fn get_config(&self) -> CustomConfig {
         CustomConfig {
-            supports_vision: true,  // Assume vision support for flexibility
-            supports_tools: true,   // Assume tool support
-            supports_json: true,    // Assume JSON support
-            max_images: 10,         // Conservative default
-            max_file_size: 20 * 1024 * 1024, // 20MB default
+            supports_vision: true,           // Assume vision support for flexibility
+            supports_tools: true,            // Assume tool support
             recommended_temperature: 0.7,
         }
     }
@@ -59,7 +52,7 @@ impl CustomProvider {
         mut request: ChatRequest,
     ) -> Result<ChatRequest, Box<dyn std::error::Error + Send + Sync>> {
         let config = self.get_config();
-        
+
         // Apply optimizations
         self.optimize_for_custom(&mut request, &config);
 
@@ -85,16 +78,16 @@ impl CustomProvider {
                             }
                         })
                         .collect();
-                    
+
                     message.content = MessageContent::Text(text_parts.join("\n"));
-                    
+
                     println!(
                         "Warning: Custom provider may not support vision. Converted multimodal content to text."
                     );
                 }
             }
         }
-        
+
         Ok(request)
     }
 
@@ -119,9 +112,9 @@ impl CustomProvider {
     }
 
     fn is_supported_image_type(&self, mime_type: &str) -> bool {
-        matches!(mime_type, 
-            "image/jpeg" | "image/jpg" | "image/png" | 
-            "image/webp" | "image/gif"
+        matches!(
+            mime_type,
+            "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
         )
     }
 
@@ -130,7 +123,8 @@ impl CustomProvider {
         if error.contains("connection") || error.contains("timeout") {
             "Custom provider connection failed. Please check if the service is running and accessible.".into()
         } else if error.contains("unauthorized") || error.contains("401") {
-            "Custom provider authentication failed. Please check your API key or credentials.".into()
+            "Custom provider authentication failed. Please check your API key or credentials."
+                .into()
         } else if error.contains("model_not_found") || error.contains("404") {
             "Custom provider model not found. Please check the model name and availability.".into()
         } else if error.contains("rate_limit") || error.contains("429") {
@@ -218,8 +212,8 @@ impl AIProvider for CustomProvider {
 #[async_trait]
 impl HttpForwardingProvider for CustomProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         match self.inner.forward_request(request).await {
             Ok(response) => Ok(response),

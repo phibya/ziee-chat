@@ -101,7 +101,10 @@ impl MistralRsEngine {
     }
 
     /// Read config.json and extract the number of layers
-    fn get_model_layer_count(&self, model_path: &str) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    fn get_model_layer_count(
+        &self,
+        model_path: &str,
+    ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
         let model_dir = Path::new(model_path);
         let config_path = if model_dir.is_dir() {
             model_dir.join("config.json")
@@ -130,7 +133,10 @@ impl MistralRsEngine {
     }
 
     /// Find GGUF files in the given model directory
-    fn find_gguf_files(&self, model_path: &str) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+    fn find_gguf_files(
+        &self,
+        model_path: &str,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
         let model_dir = Path::new(model_path);
         let mut gguf_files = Vec::new();
 
@@ -144,7 +150,7 @@ impl MistralRsEngine {
             for entry in std::fs::read_dir(model_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                
+
                 if path.is_file() {
                     if let Some(filename) = path.file_name() {
                         let filename_str = filename.to_string_lossy();
@@ -159,7 +165,11 @@ impl MistralRsEngine {
         // Sort filenames for consistent ordering
         gguf_files.sort();
 
-        println!("Searching for GGUF files in {}: found {} files", model_path, gguf_files.len());
+        println!(
+            "Searching for GGUF files in {}: found {} files",
+            model_path,
+            gguf_files.len()
+        );
         if !gguf_files.is_empty() {
             println!("GGUF files found: {}", gguf_files.join(", "));
         }
@@ -345,7 +355,7 @@ impl MistralRsEngine {
         port: u16,
     ) -> Result<Vec<String>, EngineError> {
         let mut args = Vec::new();
-        
+
         // Get the model path
         let model_path_absolute = model.get_model_absolute_path();
 
@@ -353,7 +363,7 @@ impl MistralRsEngine {
         let settings = model.engine_settings_mistralrs.as_ref();
 
         // Add global arguments first
-        
+
         // Server configuration
         args.extend(["--port".to_string(), port.to_string()]);
 
@@ -368,7 +378,8 @@ impl MistralRsEngine {
             settings.log_file.clone()
         } else {
             None
-        }.unwrap_or_else(|| {
+        }
+        .unwrap_or_else(|| {
             let log_dir = crate::get_app_data_dir().join("logs/models");
             if !log_dir.exists() {
                 let _ = std::fs::create_dir_all(&log_dir);
@@ -441,14 +452,22 @@ impl MistralRsEngine {
             }
 
             // Auto-select all available devices of the chosen type if device_ids not specified
-            let final_device_ids: Option<Vec<i32>> = if settings.device_ids.is_none() || settings.device_ids.as_ref().map(|ids| ids.is_empty()).unwrap_or(true) {
+            let final_device_ids: Option<Vec<i32>> = if settings.device_ids.is_none()
+                || settings
+                    .device_ids
+                    .as_ref()
+                    .map(|ids| ids.is_empty())
+                    .unwrap_or(true)
+            {
                 // Get all available devices of the selected device type
                 let available_devices = crate::ai::device_detection::detect_available_devices();
 
                 let matching_devices: Vec<i32> = available_devices
                     .devices
                     .iter()
-                    .filter(|device| device.device_type == auto_detected_device_type && device.is_available)
+                    .filter(|device| {
+                        device.device_type == auto_detected_device_type && device.is_available
+                    })
                     .map(|device| device.id)
                     .collect();
 
@@ -466,38 +485,53 @@ impl MistralRsEngine {
                     None
                 }
             } else {
-                println!("Using explicitly configured device IDs: {:?}", settings.device_ids);
+                println!(
+                    "Using explicitly configured device IDs: {:?}",
+                    settings.device_ids
+                );
                 settings.device_ids.clone()
             };
 
             // Device layers configuration - use explicit num_device_layers or generate from final_device_ids
             if let Some(layers) = &settings.num_device_layers {
                 args.extend(["--num-device-layers".to_string(), layers.join(";")]);
-                println!("Using explicit device layer distribution: {}", layers.join(", "));
+                println!(
+                    "Using explicit device layer distribution: {}",
+                    layers.join(", ")
+                );
             } else if let Some(device_ids) = &final_device_ids {
                 if !device_ids.is_empty() {
                     let is_cpu_mode = auto_detected_device_type == "cpu";
                     let is_cpu_forced = settings.cpu.unwrap_or(false);
-                    
+
                     if !is_cpu_mode && !is_cpu_forced {
                         // Only add --num-device-layers if there are multiple devices
                         if device_ids.len() > 1 {
                             // Try to get the actual layer count from the model
-                            let layers_per_device = match self.get_model_layer_count(&model_path_absolute) {
+                            let layers_per_device = match self
+                                .get_model_layer_count(&model_path_absolute)
+                            {
                                 Ok(total_layers) => {
                                     // Distribute layers evenly across devices
                                     let devices_count = device_ids.len();
                                     let base_layers = total_layers / devices_count;
                                     let remainder = total_layers % devices_count;
-                                    
-                                    println!("Distributing {} layers across {} devices", total_layers, devices_count);
-                                    
+
+                                    println!(
+                                        "Distributing {} layers across {} devices",
+                                        total_layers, devices_count
+                                    );
+
                                     device_ids
                                         .iter()
                                         .enumerate()
                                         .map(|(i, id)| {
                                             // Give extra layers to first devices if there's a remainder
-                                            let layers = if i < remainder { base_layers + 1 } else { base_layers };
+                                            let layers = if i < remainder {
+                                                base_layers + 1
+                                            } else {
+                                                base_layers
+                                            };
                                             format!("{}:{}", id, layers)
                                         })
                                         .collect::<Vec<_>>()
@@ -511,10 +545,13 @@ impl MistralRsEngine {
                                         .collect::<Vec<_>>()
                                 }
                             };
-                            
+
                             let device_layers_str = layers_per_device.join(";");
                             args.extend(["--num-device-layers".to_string(), device_layers_str]);
-                            println!("Device layer distribution: {}", layers_per_device.join(", "));
+                            println!(
+                                "Device layer distribution: {}",
+                                layers_per_device.join(", ")
+                            );
                         }
                         // For single device, don't add --num-device-layers parameter at all
                     }
@@ -638,13 +675,16 @@ impl MistralRsEngine {
             }
             "gguf" => {
                 args.push("gguf".to_string());
-                args.extend(["--quantized-model-id".to_string(), model_path_absolute.clone()]);
+                args.extend([
+                    "--quantized-model-id".to_string(),
+                    model_path_absolute.clone(),
+                ]);
 
                 // Handle quantized filename
                 let filename_specified = settings
                     .and_then(|s| s.quantized_filename.as_ref())
                     .cloned();
-                
+
                 if let Some(filename) = filename_specified {
                     args.extend(["--quantized-filename".to_string(), filename]);
                 } else {
@@ -740,7 +780,7 @@ impl MistralRsEngine {
                 } else {
                     args.push(model_path_absolute.clone());
                 }
-                
+
                 // Add run-specific parameters (auto-loader)
                 if let Some(settings) = settings {
                     if let Some(dtype) = &settings.dtype {
@@ -799,8 +839,9 @@ impl LocalEngine for MistralRsEngine {
         let stdout_stderr_log_path = {
             let log_dir = crate::get_app_data_dir().join("logs/models");
             if !log_dir.exists() {
-                std::fs::create_dir_all(&log_dir)
-                    .map_err(|e| EngineError::StartupFailed(format!("Failed to create log directory: {}", e)))?;
+                std::fs::create_dir_all(&log_dir).map_err(|e| {
+                    EngineError::StartupFailed(format!("Failed to create log directory: {}", e))
+                })?;
             }
             log_dir
                 .join(format!("{}_engine.log", model.id))
@@ -810,7 +851,10 @@ impl LocalEngine for MistralRsEngine {
 
         // Clear the stdout/stderr log file before starting
         if let Err(e) = std::fs::write(&stdout_stderr_log_path, "") {
-            eprintln!("Warning: Failed to clear stdout/stderr log file {}: {}", stdout_stderr_log_path, e);
+            eprintln!(
+                "Warning: Failed to clear stdout/stderr log file {}: {}",
+                stdout_stderr_log_path, e
+            );
         }
 
         // Create or open the stdout/stderr log file for writing
@@ -819,11 +863,14 @@ impl LocalEngine for MistralRsEngine {
             .write(true)
             .append(true)
             .open(&stdout_stderr_log_path)
-            .map_err(|e| EngineError::StartupFailed(format!("Failed to open stdout/stderr log file: {}", e)))?;
+            .map_err(|e| {
+                EngineError::StartupFailed(format!("Failed to open stdout/stderr log file: {}", e))
+            })?;
 
         // Clone the file handle for stderr
-        let stderr_file = stdout_stderr_file.try_clone()
-            .map_err(|e| EngineError::StartupFailed(format!("Failed to clone log file handle: {}", e)))?;
+        let stderr_file = stdout_stderr_file.try_clone().map_err(|e| {
+            EngineError::StartupFailed(format!("Failed to clone log file handle: {}", e))
+        })?;
 
         let mut cmd = Command::new(binary_path);
         cmd.args(&args)
@@ -832,7 +879,10 @@ impl LocalEngine for MistralRsEngine {
             .stderr(Stdio::from(stderr_file));
 
         println!("Starting mistralrs-server process: {:?}", cmd);
-        println!("Process output will be logged to: {}", stdout_stderr_log_path);
+        println!(
+            "Process output will be logged to: {}",
+            stdout_stderr_log_path
+        );
 
         let mut child = cmd
             .spawn()
@@ -856,7 +906,10 @@ impl LocalEngine for MistralRsEngine {
                     "mistralrs-server process exited immediately with status: {}",
                     status
                 );
-                return Err(EngineError::StartupFailed(format!("mistralrs-server process failed to start: {}", status)));
+                return Err(EngineError::StartupFailed(format!(
+                    "mistralrs-server process failed to start: {}",
+                    status
+                )));
             }
             Ok(None) => {
                 // Process is still running, we'll store it properly in the registry later
@@ -864,7 +917,10 @@ impl LocalEngine for MistralRsEngine {
             }
             Err(e) => {
                 eprintln!("Failed to check mistralrs-server process status: {}", e);
-                return Err(EngineError::StartupFailed(format!("Failed to check process status: {}", e)));
+                return Err(EngineError::StartupFailed(format!(
+                    "Failed to check process status: {}",
+                    e
+                )));
             }
         }
 
@@ -913,12 +969,15 @@ impl LocalEngine for MistralRsEngine {
             .map_err(|e| EngineError::HealthCheckFailed(format!("Health check failed: {}", e)))
     }
 
-    async fn get_server_models(&self, instance: &EngineInstance) -> Result<Vec<super::ModelInfo>, EngineError> {
+    async fn get_server_models(
+        &self,
+        instance: &EngineInstance,
+    ) -> Result<Vec<super::ModelInfo>, EngineError> {
         let url = format!("http://localhost:{}/v1/models", instance.port);
 
-        let response = reqwest::get(&url)
-            .await
-            .map_err(|e| EngineError::NetworkError(format!("Failed to get server models: {}", e)))?;
+        let response = reqwest::get(&url).await.map_err(|e| {
+            EngineError::NetworkError(format!("Failed to get server models: {}", e))
+        })?;
 
         if !response.status().is_success() {
             return Err(EngineError::NetworkError(format!(

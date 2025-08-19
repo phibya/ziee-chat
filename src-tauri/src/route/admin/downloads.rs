@@ -1,4 +1,5 @@
 use crate::api;
+use crate::api::download_instances::DownloadProgressUpdate;
 use crate::database::models::{DownloadInstance, DownloadInstanceListResponse};
 use crate::route::helper::types;
 use aide::axum::{
@@ -6,7 +7,6 @@ use aide::axum::{
     ApiRouter,
 };
 use axum::{middleware, Json};
-use crate::api::download_instances::DownloadProgressUpdate;
 
 pub fn admin_download_routes() -> ApiRouter {
     ApiRouter::new()
@@ -74,7 +74,7 @@ pub fn admin_download_routes() -> ApiRouter {
             "/downloads/types",
             get_with(types, |op| {
                 op.description("Types for open api generation")
-                    .response::<600, Json<(DownloadProgressUpdate)>>()
+                    .response::<600, Json<DownloadProgressUpdate>>()
             }),
         )
 }

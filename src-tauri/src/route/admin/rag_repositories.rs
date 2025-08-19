@@ -1,10 +1,11 @@
-use aide::{
-    axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
+use crate::database::models::{
+    RAGDatabase, RAGRepository, RAGRepositoryConnectionTestResponse, RAGRepositoryListResponse,
+};
+use aide::axum::{
+    routing::{delete_with, get_with, post_with, put_with},
+    ApiRouter,
 };
 use axum::Json;
-use crate::database::models::{
-    RAGRepository, RAGRepositoryListResponse, RAGDatabase, RAGRepositoryConnectionTestResponse
-};
 
 use crate::api::rag_repositories::{
     create_rag_repository, delete_rag_repository, download_rag_database_from_repository,
@@ -22,7 +23,7 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.listRAGRepositories")
                     .tag("admin")
                     .response::<200, Json<RAGRepositoryListResponse>>()
-            })
+            }),
         )
         .api_route(
             "/rag-repositories",
@@ -31,7 +32,7 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.createRAGRepository")
                     .tag("admin")
                     .response::<200, Json<RAGRepository>>()
-            })
+            }),
         )
         .api_route(
             "/rag-repositories/{repository_id}",
@@ -40,7 +41,7 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.getRAGRepository")
                     .tag("admin")
                     .response::<200, Json<RAGRepository>>()
-            })
+            }),
         )
         .api_route(
             "/rag-repositories/{repository_id}",
@@ -49,7 +50,7 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.updateRAGRepository")
                     .tag("admin")
                     .response::<200, Json<RAGRepository>>()
-            })
+            }),
         )
         .api_route(
             "/rag-repositories/{repository_id}",
@@ -58,7 +59,7 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.deleteRAGRepository")
                     .tag("admin")
                     .response::<204, ()>()
-            })
+            }),
         )
         .api_route(
             "/rag-repositories/{repository_id}/test-connection",
@@ -67,7 +68,7 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.testRAGRepositoryConnection")
                     .tag("admin")
                     .response::<200, Json<RAGRepositoryConnectionTestResponse>>()
-            })
+            }),
         )
         .api_route(
             "/rag-repositories/{repository_id}/databases",
@@ -76,7 +77,7 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.listRAGRepositoryDatabases")
                     .tag("admin")
                     .response::<200, Json<Vec<RAGDatabase>>>()
-            })
+            }),
         )
         .api_route(
             "/rag-repositories/download-database",
@@ -85,6 +86,6 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .id("Admin.downloadRAGDatabaseFromRepository")
                     .tag("admin")
                     .response::<200, Json<RAGDatabase>>()
-            })
+            }),
         )
 }

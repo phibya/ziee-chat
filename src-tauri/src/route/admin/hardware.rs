@@ -26,7 +26,7 @@ pub fn hardware_routes() -> ApiRouter {
             "/hardware/types",
             get_with(types, |op| {
                 op.description("Types for open api generation")
-                  .response::<600, Json<(HardwareUsageUpdate)>>()
+                  .response::<600, Json<HardwareUsageUpdate>>()
             }),
         )
 }

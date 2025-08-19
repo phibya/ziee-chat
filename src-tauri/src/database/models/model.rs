@@ -306,7 +306,7 @@ pub struct LlamaCppSettings {
     pub mlock: Option<bool>,
     /// Disable memory mapping (--no-mmap, default: false)
     pub no_mmap: Option<bool>,
-    
+
     // Threading & Performance (equivalent to MistralRs Performance)
     /// Generation threads (--threads, default: -1)
     pub threads: Option<i32>,
@@ -318,7 +318,7 @@ pub struct LlamaCppSettings {
     pub flash_attn: Option<bool>,
     /// Disable KV cache offloading (--no-kv-offload, default: false)
     pub no_kv_offload: Option<bool>,
-    
+
     // GPU Configuration (equivalent to MistralRs Device Config)
     /// Number of layers on GPU (--n-gpu-layers, default: 0)
     pub n_gpu_layers: Option<i32>,
@@ -328,7 +328,7 @@ pub struct LlamaCppSettings {
     pub split_mode: Option<String>,
     /// GPU memory distribution ratios (--tensor-split)
     pub tensor_split: Option<String>,
-    
+
     // Model Configuration (equivalent to MistralRs Model Config)
     /// RoPE base frequency (--rope-freq-base)
     pub rope_freq_base: Option<f64>,
@@ -340,7 +340,7 @@ pub struct LlamaCppSettings {
     pub cache_type_k: Option<String>,
     /// KV cache data type for V (--cache-type-v)
     pub cache_type_v: Option<String>,
-    
+
     // Advanced Options
     /// Random seed (--seed, default: -1)
     pub seed: Option<i64>,
@@ -366,7 +366,7 @@ impl LlamaCppSettings {
             keep: Some(0),
             mlock: Some(true),
             no_mmap: Some(false),
-            threads: Some(-1), // Auto-detect
+            threads: Some(-1),   // Auto-detect
             threads_batch: None, // Use same as threads
             cont_batching: Some(true),
             flash_attn: Some(true),
@@ -719,12 +719,12 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             if source_val.is_null() {
                 None
             } else {
-                Some(serde_json::from_value(source_val).map_err(|e| {
-                    sqlx::Error::ColumnDecode {
+                Some(
+                    serde_json::from_value(source_val).map_err(|e| sqlx::Error::ColumnDecode {
                         index: "source".into(),
                         source: Box::new(e),
-                    }
-                })?)
+                    })?,
+                )
             }
         } else {
             None
@@ -771,7 +771,7 @@ pub struct CreateModelRequest {
     pub engine_type: String, // Required field
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
-    pub file_format: String, // Required field
+    pub file_format: String,        // Required field
     pub source: Option<SourceInfo>, // Source information for tracking download origin
 }
 

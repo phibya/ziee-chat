@@ -46,9 +46,6 @@ pub enum LfsError {
 
     #[error("Operation was cancelled")]
     Cancelled,
-
-    #[error("Git error: {0}")]
-    Git(String),
 }
 
 impl From<&'static str> for LfsError {

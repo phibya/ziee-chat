@@ -1,11 +1,12 @@
 use crate::api;
-use aide::{
-    axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
+use crate::database::models::{
+    AvailableDevicesResponse, Model, Provider, ProviderListResponse, UserGroup,
+};
+use aide::axum::{
+    routing::{delete_with, get_with, post_with, put_with},
+    ApiRouter,
 };
 use axum::{middleware, Json};
-use crate::database::models::{
-    Provider, ProviderListResponse, UserGroup, AvailableDevicesResponse, Model
-};
 
 pub fn admin_provider_routes() -> ApiRouter {
     ApiRouter::new()
@@ -17,7 +18,10 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.listProviders")
                     .tag("admin")
                     .response::<200, Json<ProviderListResponse>>()
-            }).layer(middleware::from_fn(api::middleware::providers_read_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
         )
         .api_route(
             "/providers",
@@ -26,7 +30,10 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.createProvider")
                     .tag("admin")
                     .response::<200, Json<Provider>>()
-            }).layer(middleware::from_fn(api::middleware::providers_create_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_create_middleware,
+            )),
         )
         .api_route(
             "/providers/{provider_id}",
@@ -35,7 +42,10 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.getProvider")
                     .tag("admin")
                     .response::<200, Json<Provider>>()
-            }).layer(middleware::from_fn(api::middleware::providers_read_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
         )
         .api_route(
             "/providers/{provider_id}",
@@ -44,7 +54,10 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.updateProvider")
                     .tag("admin")
                     .response::<200, Json<Provider>>()
-            }).layer(middleware::from_fn(api::middleware::providers_edit_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_edit_middleware,
+            )),
         )
         .api_route(
             "/providers/{provider_id}",
@@ -53,7 +66,10 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.deleteProvider")
                     .tag("admin")
                     .response::<204, ()>()
-            }).layer(middleware::from_fn(api::middleware::providers_delete_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_delete_middleware,
+            )),
         )
         .api_route(
             "/providers/{provider_id}/groups",
@@ -62,7 +78,10 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.getProviderGroups")
                     .tag("admin")
                     .response::<200, Json<Vec<UserGroup>>>()
-            }).layer(middleware::from_fn(api::middleware::providers_read_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
         )
         .api_route(
             "/providers/{provider_id}/models",
@@ -71,7 +90,10 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.listProviderModels")
                     .tag("admin")
                     .response::<200, Json<Vec<Model>>>()
-            }).layer(middleware::from_fn(api::middleware::providers_read_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
         )
         .api_route(
             "/devices",
@@ -80,6 +102,9 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .id("Admin.getAvailableDevices")
                     .tag("admin")
                     .response::<200, Json<AvailableDevicesResponse>>()
-            }).layer(middleware::from_fn(api::middleware::providers_read_middleware)),
+            })
+            .layer(middleware::from_fn(
+                api::middleware::providers_read_middleware,
+            )),
         )
 }

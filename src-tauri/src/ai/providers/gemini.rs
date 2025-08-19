@@ -7,12 +7,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
 use crate::utils::file_storage::extract_extension;
@@ -48,14 +48,16 @@ struct GeminiContent {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 enum GeminiPart {
-    Text { text: String },
-    FileData { 
-        #[serde(rename = "fileData")]
-        file_data: GeminiFileData 
+    Text {
+        text: String,
     },
-    InlineData { 
+    FileData {
+        #[serde(rename = "fileData")]
+        file_data: GeminiFileData,
+    },
+    InlineData {
         #[serde(rename = "inlineData")]
-        inline_data: GeminiInlineData 
+        inline_data: GeminiInlineData,
     },
 }
 
@@ -108,14 +110,7 @@ struct GeminiFileUploadResponse {
 
 #[derive(Debug, Deserialize)]
 struct GeminiFile {
-    #[serde(rename = "displayName")]
-    display_name: String,
-    #[serde(rename = "mimeType")]
-    mime_type: String,
-    #[serde(rename = "sizeBytes")]
-    size_bytes: String,
     uri: String,
-    name: String, // This is the file ID for referencing
 }
 
 impl GeminiProvider {
@@ -144,7 +139,7 @@ impl GeminiProvider {
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         // Determine file extension from filename
         let extension = extract_extension(&file_ref.filename);
-        
+
         let file_path = FILE_STORAGE.get_original_path(file_ref.file_id, &extension);
         let file_bytes = FILE_STORAGE.read_file_bytes(&file_path).await?;
 
@@ -152,11 +147,14 @@ impl GeminiProvider {
         let form = reqwest::multipart::Form::new()
             .part(
                 "metadata",
-                reqwest::multipart::Part::text(json!({
-                    "file": {
-                        "displayName": file_ref.filename
-                    }
-                }).to_string())
+                reqwest::multipart::Part::text(
+                    json!({
+                        "file": {
+                            "displayName": file_ref.filename
+                        }
+                    })
+                    .to_string(),
+                )
                 .mime_str("application/json")?,
             )
             .part(
@@ -286,11 +284,11 @@ impl GeminiProvider {
     fn should_upload_file(&self, file_ref: &FileReference) -> bool {
         const MAX_INLINE_SIZE: i64 = 20 * 1024 * 1024; // 20MB
         const MAX_FILE_SIZE: i64 = 2 * 1024 * 1024 * 1024; // 2GB
-        
+
         // Upload if file is supported and within size limits
-        file_ref.file_size <= MAX_FILE_SIZE && 
-        file_ref.file_size > MAX_INLINE_SIZE &&
-        self.is_supported_file_type(file_ref)
+        file_ref.file_size <= MAX_FILE_SIZE
+            && file_ref.file_size > MAX_INLINE_SIZE
+            && self.is_supported_file_type(file_ref)
     }
 
     fn is_supported_file_type(&self, file_ref: &FileReference) -> bool {
@@ -303,16 +301,16 @@ impl GeminiProvider {
 
     /// Enhanced message conversion with multimodal support
     async fn convert_messages_to_gemini(
-        &self, 
-        messages: &[crate::ai::core::providers::ChatMessage]
+        &self,
+        messages: &[crate::ai::core::providers::ChatMessage],
     ) -> Result<Vec<GeminiMessage>, Box<dyn std::error::Error + Send + Sync>> {
         let mut converted_messages = Vec::new();
-        
+
         for msg in messages {
             if msg.role == "system" {
                 continue; // Handle separately
             }
-            
+
             let role = match msg.role.as_str() {
                 "user" => "user",
                 "assistant" => "model",
@@ -326,12 +324,12 @@ impl GeminiProvider {
                 }
             };
 
-            converted_messages.push(GeminiMessage { 
-                role: role.to_string(), 
-                parts 
+            converted_messages.push(GeminiMessage {
+                role: role.to_string(),
+                parts,
             });
         }
-        
+
         Ok(converted_messages)
     }
 
@@ -341,7 +339,7 @@ impl GeminiProvider {
         parts: &[ContentPart],
     ) -> Result<Vec<GeminiPart>, Box<dyn std::error::Error + Send + Sync>> {
         let mut gemini_parts = Vec::new();
-        
+
         for part in parts {
             match part {
                 ContentPart::Text(text) => {
@@ -372,22 +370,22 @@ impl GeminiProvider {
                 }
             }
         }
-        
+
         Ok(gemini_parts)
     }
 
-    fn create_system_instruction(&self, messages: &[crate::ai::core::providers::ChatMessage]) -> Option<GeminiContent> {
-        let system_messages: Vec<_> = messages
-            .iter()
-            .filter(|msg| msg.role == "system")
-            .collect();
+    fn create_system_instruction(
+        &self,
+        messages: &[crate::ai::core::providers::ChatMessage],
+    ) -> Option<GeminiContent> {
+        let system_messages: Vec<_> = messages.iter().filter(|msg| msg.role == "system").collect();
 
         if system_messages.is_empty() {
             return None;
         }
 
         let mut system_text = String::new();
-        
+
         for msg in system_messages {
             match &msg.content {
                 MessageContent::Text(text) => {
@@ -409,7 +407,8 @@ impl GeminiProvider {
                                 if !system_text.is_empty() {
                                     system_text.push('\n');
                                 }
-                                system_text.push_str(&format!("File reference: {}", file_ref.filename));
+                                system_text
+                                    .push_str(&format!("File reference: {}", file_ref.filename));
                             }
                         }
                     }
@@ -652,11 +651,14 @@ impl AIProvider for GeminiProvider {
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         use reqwest::multipart::{Form, Part};
 
-        let metadata_part = Part::text(json!({
-            "file": {
-                "displayName": filename
-            }
-        }).to_string())
+        let metadata_part = Part::text(
+            json!({
+                "file": {
+                    "displayName": filename
+                }
+            })
+            .to_string(),
+        )
         .mime_str("application/json")?;
 
         let data_part = Part::bytes(file_data.to_vec())
@@ -749,29 +751,25 @@ impl AIProvider for GeminiProvider {
 #[async_trait]
 impl HttpForwardingProvider for GeminiProvider {
     async fn forward_request(
-        &self, 
-        request: serde_json::Value
+        &self,
+        request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        
         // Extract model name from request for URL construction
-        let model_name = request["model"]
-            .as_str()
-            .unwrap_or("gemini-pro");
-            
+        let model_name = request["model"].as_str().unwrap_or("gemini-pro");
+
         let url = format!(
-            "{}/models/{}:generateContent?key={}", 
-            self.base_url, 
-            model_name, 
-            self.api_key
+            "{}/models/{}:generateContent?key={}",
+            self.base_url, model_name, self.api_key
         );
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&request)
             .send()
             .await?;
-            
+
         Ok(response)
     }
 }

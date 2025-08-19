@@ -220,51 +220,24 @@ impl AuthService {
         Ok(user)
     }
 
-    /// Auto-login for desktop app - returns JWT token for default admin
-    pub async fn auto_login_desktop(&self) -> Result<LoginResponse, String> {
-        let admin_user = self.get_default_admin_user().await?;
-
-        // Generate JWT token
-        let token = self
-            .generate_token(&admin_user)
-            .map_err(|e| e.to_string())?;
-
-        // Generate login token and store it
-        let login_token = self.generate_login_token();
-        let when_created = Utc::now().timestamp_millis();
-        let expires_at = Utc::now() + Duration::hours(self.config.jwt_expiration_hours);
-
-        users::add_login_token(
-            admin_user.id,
-            login_token.clone(),
-            when_created,
-            Some(expires_at),
-        )
-        .await
-        .map_err(|e| e.to_string())?;
-
-        Ok(LoginResponse {
-            token,
-            user: admin_user,
-            expires_at,
-        })
-    }
 
     /// Verify user password
     pub async fn verify_user_password(&self, user: &User, password: &str) -> Result<bool, String> {
         // Check if user has password service
         if let Some(password_service) = &user.services.password {
-            password::verify_password(password, password_service)
-                .map_err(|e| e.to_string())
+            password::verify_password(password, password_service).map_err(|e| e.to_string())
         } else {
             Ok(false)
         }
     }
 
     /// Update user password
-    pub async fn update_user_password(&self, user_id: &Uuid, new_password: &str) -> Result<(), String> {
-        let password_service = password::hash_password(new_password)
-            .map_err(|e| e.to_string())?;
+    pub async fn update_user_password(
+        &self,
+        user_id: &Uuid,
+        new_password: &str,
+    ) -> Result<(), String> {
+        let password_service = password::hash_password(new_password).map_err(|e| e.to_string())?;
         users::reset_user_password_with_service(*user_id, password_service)
             .await
             .map_err(|e| e.to_string())?;

@@ -61,10 +61,6 @@ impl HubManager {
         Ok(())
     }
 
-    pub async fn load_hub_data(&self) -> Result<HubData, Box<dyn std::error::Error + Send + Sync>> {
-        // Always read from APP_DATA_DIR with English as default
-        self.load_hub_data_with_locale("en").await
-    }
 
     pub async fn load_hub_data_with_locale(
         &self,

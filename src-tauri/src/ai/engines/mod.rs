@@ -92,5 +92,8 @@ pub trait LocalEngine: Send + Sync {
     ) -> Result<EngineInstance, EngineError>;
     async fn stop(&self, instance: &EngineInstance) -> Result<(), EngineError>;
     async fn health_check(&self, instance: &EngineInstance) -> Result<bool, EngineError>;
-    async fn get_server_models(&self, instance: &EngineInstance) -> Result<Vec<ModelInfo>, EngineError>;
+    async fn get_server_models(
+        &self,
+        instance: &EngineInstance,
+    ) -> Result<Vec<ModelInfo>, EngineError>;
 }

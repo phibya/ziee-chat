@@ -8,7 +8,6 @@ use crate::database::{
     queries::{models, providers, user_group_providers},
 };
 
-
 // Model endpoints
 #[debug_handler]
 pub async fn create_model(
@@ -43,7 +42,10 @@ pub async fn update_model(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
         Err(e) => {
             eprintln!("Failed to update model {}: {}", model_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -59,7 +61,10 @@ pub async fn delete_model(
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model"))),
         Err(e) => {
             eprintln!("Failed to get model {}: {}", model_id, e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
@@ -69,7 +74,10 @@ pub async fn delete_model(
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model provider"))),
         Err(e) => {
             eprintln!("Failed to get model provider: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
@@ -127,7 +135,10 @@ pub async fn delete_model(
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
         Err(e) => {
             eprintln!("Failed to delete model {} from database: {}", model_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -142,7 +153,10 @@ pub async fn get_model(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
         Err(e) => {
             eprintln!("Failed to get model {}: {}", model_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -159,7 +173,10 @@ pub async fn start_model(
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model"))),
         Err(e) => {
             eprintln!("Failed to get model {}: {}", model_id, e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
@@ -169,7 +186,10 @@ pub async fn start_model(
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model provider"))),
         Err(e) => {
             eprintln!("Failed to get model provider: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
@@ -194,7 +214,10 @@ pub async fn stop_model(
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model"))),
         Err(e) => {
             eprintln!("Failed to get model {}: {}", model_id, e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
@@ -204,19 +227,28 @@ pub async fn stop_model(
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model provider"))),
         Err(e) => {
             eprintln!("Failed to get model provider: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 
     if provider.provider_type.as_str() != "local" {
-        return Err((StatusCode::BAD_REQUEST, AppError::new(
-            crate::api::errors::ErrorCode::ValidInvalidInput,
-            "Only Candle models can be stopped",
-        )));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            AppError::new(
+                crate::api::errors::ErrorCode::ValidInvalidInput,
+                "Only Candle models can be stopped",
+            ),
+        ));
     }
 
     // Check if model is running
-    if crate::ai::verify_model_server_running(&model_id).await.is_none() {
+    if crate::ai::verify_model_server_running(&model_id)
+        .await
+        .is_none()
+    {
         // Model is not running, but we should still update the database to ensure consistency
         println!(
             "Model {} is not running, updating database status and clearing port",
@@ -237,7 +269,10 @@ pub async fn stop_model(
             }
             Err(e) => {
                 eprintln!("Failed to clear model {} port: {}", model_id, e);
-                Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    AppError::internal_error("Database operation failed"),
+                ))
             }
         };
     }
@@ -255,7 +290,10 @@ pub async fn stop_model(
             }
             Err(e) => {
                 eprintln!("Failed to get model runtime info: {}", e);
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    AppError::internal_error("Database operation failed"),
+                ));
             }
         };
 
@@ -278,16 +316,22 @@ pub async fn stop_model(
                 }
                 Err(e) => {
                     eprintln!("Failed to clear model {} port: {}", model_id, e);
-                    Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+                    Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::internal_error("Database operation failed"),
+                    ))
                 }
             }
         }
         Err(e) => {
             eprintln!("Failed to stop model {}: {}", model_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::new(
-                crate::api::errors::ErrorCode::SystemInternalError,
-                format!("Failed to stop model: {}", e),
-            )))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::new(
+                    crate::api::errors::ErrorCode::SystemInternalError,
+                    format!("Failed to stop model: {}", e),
+                ),
+            ))
         }
     }
 }
@@ -320,7 +364,10 @@ pub async fn enable_model(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Model"))),
         Err(e) => {
             eprintln!("Failed to enable model {}: {}", model_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -353,7 +400,10 @@ pub async fn disable_model(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Model"))),
         Err(e) => {
             eprintln!("Failed to disable model {}: {}", model_id, e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ))
         }
     }
 }
@@ -373,16 +423,22 @@ async fn list_provider_models_base(
                 "Failed to get model providers for user {}: {}",
                 auth_user.user.id, e
             );
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get user providers")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get user providers"),
+            ));
         }
     };
 
     // Check if user has access to this provider
     if !user_providers.iter().any(|p| p.id == provider_id) {
-        return Err((StatusCode::FORBIDDEN, AppError::new(
-            ErrorCode::AuthzInsufficientPermissions,
-            "Access denied to this model provider",
-        )));
+        return Err((
+            StatusCode::FORBIDDEN,
+            AppError::new(
+                ErrorCode::AuthzInsufficientPermissions,
+                "Access denied to this model provider",
+            ),
+        ));
     }
 
     // Get models for the provider
@@ -390,7 +446,10 @@ async fn list_provider_models_base(
         Ok(models) => models,
         Err(e) => {
             eprintln!("Failed to get models for provider {}: {}", provider_id, e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database operation failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database operation failed"),
+            ));
         }
     };
 

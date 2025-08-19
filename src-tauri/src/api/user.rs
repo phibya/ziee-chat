@@ -24,7 +24,6 @@ pub struct UserHello {
     name: String,
 }
 
-
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct UserActiveStatusResponse {
     pub is_active: bool,
@@ -34,7 +33,13 @@ pub struct UserActiveStatusResponse {
 pub async fn greet(Json(payload): Json<UserHello>) -> ApiResult2<Json<String>> {
     let name = payload.name.trim().to_string();
     if name.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, AppError::new(crate::api::errors::ErrorCode::ValidMissingRequiredField, "Name cannot be empty")));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            AppError::new(
+                crate::api::errors::ErrorCode::ValidMissingRequiredField,
+                "Name cannot be empty",
+            ),
+        ));
     }
     // Return a greeting message
     let greeting = format!("Hello, {}!", name);
@@ -62,7 +67,10 @@ pub async fn list_users(
         }
         Err(e) => {
             eprintln!("Error listing users: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -78,7 +86,10 @@ pub async fn get_user(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User"))),
         Err(e) => {
             eprintln!("Error getting user: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -103,7 +114,10 @@ pub async fn update_user(
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User"))),
         Err(e) => {
             eprintln!("Error updating user: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -119,7 +133,10 @@ pub async fn reset_user_password(
         Ok(service) => service,
         Err(e) => {
             eprintln!("Error hashing password: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Password hashing failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Password hashing failed"),
+            ));
         }
     };
 
@@ -128,7 +145,10 @@ pub async fn reset_user_password(
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User"))),
         Err(e) => {
             eprintln!("Error resetting user password: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -143,7 +163,10 @@ pub async fn toggle_user_active(
         Ok(is_active) => Ok((StatusCode::OK, Json(UserActiveStatusResponse { is_active }))),
         Err(e) => {
             eprintln!("Error toggling user active status: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
@@ -159,7 +182,10 @@ pub async fn create_user(
         Ok(service) => service,
         Err(e) => {
             eprintln!("Error hashing password: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Password hashing failed")));
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Password hashing failed"),
+            ));
         }
     };
 
@@ -175,9 +201,15 @@ pub async fn create_user(
         Err(e) => {
             eprintln!("Error creating user: {}", e);
             if e.to_string().contains("duplicate key") {
-                Err((StatusCode::CONFLICT, AppError::conflict("User already exists")))
+                Err((
+                    StatusCode::CONFLICT,
+                    AppError::conflict("User already exists"),
+                ))
             } else {
-                Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    AppError::internal_error("Database error"),
+                ))
             }
         }
     }
@@ -194,7 +226,10 @@ pub async fn delete_user(
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User"))),
         Err(e) => {
             eprintln!("Error deleting user: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Database error"),
+            ))
         }
     }
 }
