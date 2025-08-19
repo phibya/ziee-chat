@@ -30,7 +30,7 @@ import {
 } from '../../../../store'
 import { Assistant } from '../../../../types'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
-import { AssistantFormDrawer } from '../../../Common/AssistantFormDrawer'
+import { AssistantFormDrawer } from '../../../common/AssistantFormDrawer'
 
 const { Text } = Typography
 

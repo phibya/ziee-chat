@@ -5,7 +5,7 @@ import {
 } from '@ant-design/icons'
 import { App, Button, Form, Input, Select, Switch, Typography } from 'antd'
 import { useEffect } from 'react'
-import { Drawer } from '../../../Common/Drawer'
+import { Drawer } from '../../../common/Drawer'
 import {
   createNewAdminModelRepository,
   Stores,

@@ -17,7 +17,7 @@ import { Stores } from '../../../store'
 import { adminRepositoryHasCredentials } from '../../../store/admin/repositories.ts'
 import { downloadModelFromRepository } from '../../../store/admin/modelDownload.ts'
 import { openRepositoryDrawer } from '../../../store/ui'
-import { DownloadItem } from '../../Common/DownloadItem.tsx'
+import { DownloadItem } from '../../common/DownloadItem.tsx'
 import { ModelDetailsDrawer } from './ModelDetailsDrawer'
 
 const { Text } = Typography

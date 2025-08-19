@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { Button, Form, Input, Typography } from 'antd'
-import { Drawer } from '../../Common/Drawer.tsx'
+import { Drawer } from '../../common/Drawer.tsx'
 
 const { TextArea } = Input
 

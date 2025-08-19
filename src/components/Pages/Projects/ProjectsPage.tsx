@@ -10,8 +10,8 @@ import {
 } from '../../../store'
 import { ProjectFormDrawer } from './ProjectFormDrawer.tsx'
 import { ProjectCard } from './ProjectCard.tsx'
-import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
-import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
+import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
+import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 import { PiSortAscending } from 'react-icons/pi'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 

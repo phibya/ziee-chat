@@ -29,6 +29,7 @@ import {
   useAddProviderDrawerStore,
   useAddRemoteModelDrawerStore,
   useAssistantDrawerStore,
+  useChatUIStore,
   useEditLocalModelDrawerStore,
   useEditProviderDrawerStore,
   useEditRemoteModelDrawerStore,
@@ -404,6 +405,10 @@ export {
   useEditRAGDatabaseDrawerStore,
   // Chat Input UI store
   createChatInputUIStore,
+  // Chat UI store
+  useChatUIStore,
+  toggleShowTime,
+  setShowTime,
 } from './ui'
 
 export const Stores = {
@@ -434,6 +439,7 @@ export const Stores = {
   UI: {
     Layout: createStoreProxy(useLayoutUIStore),
     PathHistory: createStoreProxy(usePathHistoryStore),
+    ChatUI: createStoreProxy(useChatUIStore),
     // Individual drawer stores
     AssistantDrawer: createStoreProxy(useAssistantDrawerStore),
     AddProviderDrawer: createStoreProxy(useAddProviderDrawerStore),

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { App, Button, Checkbox, Form, Input, Select } from 'antd'
-import { Drawer } from '../../../../Common/Drawer.tsx'
+import { Drawer } from '../../../../common/Drawer.tsx'
 import { loadAllModelProviders, Stores } from '../../../../../store'
 import { addModelToApiProxyServer } from '../../../../../store/admin/apiProxyServer'
 

@@ -8,6 +8,11 @@ export {
   setMainContentWidth,
 } from './layout'
 export { createChatInputUIStore } from './chatInput.ts'
+export {
+  useChatUIStore,
+  toggleShowTime,
+  setShowTime,
+} from './chat'
 
 // Individual modal exports
 export {

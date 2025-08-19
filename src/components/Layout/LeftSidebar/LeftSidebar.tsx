@@ -15,7 +15,7 @@ import { logoutUser, setSidebarCollapsed, Stores } from '../../../store'
 import { DownloadIndicator } from './DownloadIndicator.tsx'
 import { isTauriView } from '../../../api/core.ts'
 import { RecentConversations } from './RecentConversations'
-import { TauriDragRegion } from '../../Common/TauriDragRegion'
+import { TauriDragRegion } from '../../common/TauriDragRegion'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 import { HiOutlineFaceSmile } from 'react-icons/hi2'
 

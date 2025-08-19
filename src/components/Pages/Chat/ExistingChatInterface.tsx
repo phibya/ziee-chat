@@ -6,14 +6,16 @@ import {
   Stores,
   updateExistingConversation,
   useChatStore,
+  toggleShowTime,
 } from '../../../store'
 import { ChatInput } from './ChatInput'
 import { ChatMessageList } from './ChatMessageList'
-import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
-import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
+import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
+import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 import tinycolor from 'tinycolor2'
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons'
 import { IoIosArrowBack } from 'react-icons/io'
+import { IoTimeOutline } from 'react-icons/io5'
 
 export function ExistingChatInterface() {
   const { conversationId } = useParams<{ conversationId?: string }>()
@@ -25,6 +27,7 @@ export function ExistingChatInterface() {
   const { t } = useTranslation()
   // Chat store
   const { conversation, loading } = useChatStore()
+  const { showTime } = Stores.UI.ChatUI
 
   const handleEditClick = () => {
     form.setFieldValue('title', conversation?.title || '')
@@ -77,17 +80,8 @@ export function ExistingChatInterface() {
         }}
       >
         <TauriDragRegion className={'h-full w-full absolute top-0 left-0'} />
-        <div
-          className="h-full flex items-center justify-between max-w-full overflow-hidden"
-          style={{
-            width: isEditing ? '100%' : undefined,
-          }}
-        >
-          <div
-            className={
-              'flex items-center gap-1 flex-1 max-w-full justify-start'
-            }
-          >
+        <div className="h-full flex items-center justify-between w-full overflow-hidden">
+          <div className={'flex items-center gap-1 w-full'}>
             {isEditing ? (
               <Form
                 form={form}
@@ -133,38 +127,49 @@ export function ExistingChatInterface() {
                 />
               </Form>
             ) : (
-              <>
-                <Button
-                  type={'text'}
-                  className={'!px-1'}
-                  onClick={() =>
-                    navigate(
-                      Stores.UI.PathHistory.__state
-                        .previousConversationListPagePath,
-                    )
-                  }
-                >
-                  <IoIosArrowBack className={'text-md'} />
-                </Button>
-                <Typography.Title
-                  level={5}
-                  ellipsis
-                  className={'!m-0 !leading-tight flex-1 truncate'}
-                >
-                  {conversation?.title || 'Untitled Conversation'}
-                </Typography.Title>
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  onClick={handleEditClick}
-                />
-              </>
+              <div className="flex items-center justify-between w-full overflow-hidden">
+                <div className="flex gap-1 items-center justify-start overflow-hidden">
+                  <Button
+                    type={'text'}
+                    className={'!px-1'}
+                    onClick={() =>
+                      navigate(
+                        Stores.UI.PathHistory.__state
+                          .previousConversationListPagePath,
+                      )
+                    }
+                  >
+                    <IoIosArrowBack className={'text-md'} />
+                  </Button>
+                  <Typography.Title
+                    level={5}
+                    ellipsis
+                    className={'!m-0 !leading-tight truncate'}
+                  >
+                    {conversation?.title || 'Untitled Conversation'}
+                  </Typography.Title>
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    onClick={handleEditClick}
+                  />
+                </div>
+                <div className={'flex-shrink-0'}>
+                  <Button
+                    type={!showTime ? 'text' : 'primary'}
+                    className={'!px-1'}
+                    onClick={toggleShowTime}
+                  >
+                    <IoTimeOutline className={'!text-lg'} />
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </div>
       </TitleBarWrapper>
       <div className="flex flex-col w-full h-full overflow-hidden z-1 absolute">
-        <Flex className={'w-full flex-1 h-full overflow-auto'}>
+        <Flex className={'flex w-full flex-1 h-full overflow-auto'}>
           <div
             className={'self-center max-w-4xl w-full h-full m-auto px-4 pt-16'}
           >

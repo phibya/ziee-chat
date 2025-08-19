@@ -9,10 +9,11 @@ import {
 } from '@ant-design/icons'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { ChatInput } from './ChatInput'
-import { FileCard } from '../../Common/FileCard'
-import { useChatStore } from '../../../store'
+import { FileCard } from '../../common/FileCard'
+import { Stores, useChatStore } from '../../../store'
 import { useMessageBranchStore } from '../../../store/messageBranches.ts'
 import { Message } from '../../../types'
+import dayjs from 'dayjs'
 
 export const ChatMessage = memo(function ChatMessage({
   message,
@@ -22,6 +23,7 @@ export const ChatMessage = memo(function ChatMessage({
   const { t } = useTranslation()
   const isUser = message.role === 'user'
   const { token } = theme.useToken()
+  const { showTime } = Stores.UI.ChatUI
 
   const { activeBranchId, switchBranch, isStreaming } = useChatStore()
   const { branches, loadBranches } = useMessageBranchStore(
@@ -80,7 +82,7 @@ export const ChatMessage = memo(function ChatMessage({
       )}
       <div
         key={message.id}
-        className={`flex gap-2 p-2 pr-2 rounded-lg relative w-fit min-w-36 ${isEditing ? 'w-full' : ''}`}
+        className={`flex gap-2 p-2 pr-2 rounded-lg relative w-fit min-w-36 flex-col ${isEditing ? 'w-full' : ''}`}
         style={{
           backgroundColor: isUser ? token.colorBgMask : 'transparent',
           border: isUser ? `1px solid ${token.colorBorderSecondary}` : 'none',
@@ -89,37 +91,58 @@ export const ChatMessage = memo(function ChatMessage({
         onClick={() => handleMouseOverOrClick(true)}
         onMouseLeave={handleMouseLeave}
       >
-        <div className={`flex ${!isUser ? 'hidden' : ''}`}>
-          <Avatar size={24} icon={<UserOutlined />} />
-        </div>
+        <div className={'flex items-start gap-2 w-full relative'}>
+          <div className={`flex ${!isUser ? 'hidden' : ''}`}>
+            <Avatar size={24} icon={<UserOutlined />} />
+          </div>
 
-        {/* Message content */}
-        <div
-          className={`${isUser ? '!pt-0.5' : ''} flex flex-1 -mt-[2px] w-full overflow-x-hidden`}
-        >
-          {isEditing ? (
-            <ChatInput
-              editingMessage={message}
-              onDoneEditing={() => setIsEditing(false)}
-            />
-          ) : (
-            <div
-              className={'w-full flex flex-col gap-2 pr-2'}
-              style={{
-                whiteSpace: isUser ? 'pre-wrap' : 'normal',
-              }}
-            >
-              {isUser ? (
-                message.content
-              ) : message.id === 'streaming-temp' && !message.content ? (
-                <Spin indicator={<LoadingOutlined spin />} />
-              ) : (
-                <MarkdownRenderer content={message.content.trim()} />
-              )}
-            </div>
-          )}
+          {/* Message content */}
+          <div
+            className={`${isUser ? '!pt-0.5' : ''} flex flex-1 -mt-[2px] w-full overflow-x-hidden flex-col`}
+          >
+            {isEditing ? (
+              <div className={'w-full flex flex-col gap-2'}>
+                <ChatInput
+                  editingMessage={message}
+                  onDoneEditing={() => setIsEditing(false)}
+                />
+                <Typography.Text type={'secondary'}>
+                  Editing message will create a new branch. You can switch
+                  branches using the arrows.
+                </Typography.Text>
+              </div>
+            ) : (
+              <div
+                className={'w-full flex flex-col gap-2 pr-2'}
+                style={{
+                  whiteSpace: isUser ? 'pre-wrap' : 'normal',
+                }}
+              >
+                {isUser ? (
+                  message.content
+                ) : message.id === 'streaming-temp' && !message.content ? (
+                  <Spin indicator={<LoadingOutlined spin />} />
+                ) : (
+                  <div className={'w-full overflow-hidden'}>
+                    <MarkdownRenderer content={message.content.trim()} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-
+        {showTime && !isEditing && (
+          <div
+            className={'w-full flex justify-end'}
+            style={{
+              marginTop: isUser ? '-8px' : '-16px',
+            }}
+          >
+            <Typography.Text type={'secondary'} className={'!text-xs'}>
+              {dayjs(message.created_at).format('MMM DD, HH:mm:ss')}
+            </Typography.Text>
+          </div>
+        )}
         {/* Tools/Actions at the bottom for user messages */}
         {isUser && !isEditing && (
           <div

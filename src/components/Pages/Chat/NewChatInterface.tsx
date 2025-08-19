@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { ChatInput } from './ChatInput'
-import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
+import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 
 export function NewChatInterface() {
   const { t } = useTranslation()

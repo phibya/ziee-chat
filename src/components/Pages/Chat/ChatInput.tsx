@@ -29,7 +29,7 @@ import {
   Stores,
   useChatStore,
 } from '../../../store'
-import { FileCard } from '../../Common/FileCard'
+import { FileCard } from '../../common/FileCard'
 import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
 import { Assistant, Conversation, Message } from '../../../types'
 import { createChatStore } from '../../../store/chat.ts'

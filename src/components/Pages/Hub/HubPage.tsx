@@ -15,8 +15,8 @@ import {
 } from 'antd'
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { TitleBarWrapper } from '../../Common/TitleBarWrapper'
-import { TauriDragRegion } from '../../Common/TauriDragRegion'
+import { TitleBarWrapper } from '../../common/TitleBarWrapper'
+import { TauriDragRegion } from '../../common/TauriDragRegion'
 import { initializeHub, refreshHub, setHubActiveTab } from '../../../store/hub'
 import { ModelsTab } from './ModelsTab'
 import { AssistantsTab } from './AssistantsTab'
@@ -129,7 +129,7 @@ export function HubPage() {
     // Desktop: Content only, tabs are in title bar
     return (
       <div className="flex flex-1 w-full overflow-y-auto flex-col">
-        <div className="max-w-6xl w-full flex flex-col self-center">
+        <div className="max-w-4xl w-full flex flex-col self-center">
           <TabWrapper>
             {activeTab === 'models' ? <ModelsTab /> : <AssistantsTab />}
           </TabWrapper>

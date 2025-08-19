@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { App, Button, Checkbox, Form, Input } from 'antd'
-import { Drawer } from '../../../../Common/Drawer.tsx'
+import { Drawer } from '../../../../common/Drawer.tsx'
 import type {
   ApiProxyServerTrustedHost,
   UpdateTrustedHostRequest,

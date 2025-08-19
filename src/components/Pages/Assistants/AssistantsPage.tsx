@@ -14,12 +14,12 @@ import {
   Stores,
 } from '../../../store'
 import { Assistant } from '../../../types'
-import { AssistantFormDrawer } from '../../Common/AssistantFormDrawer.tsx'
+import { AssistantFormDrawer } from '../../common/AssistantFormDrawer.tsx'
 import { isTauriView } from '../../../api/core.ts'
 import { AssistantCard } from './AssistantCard.tsx'
 import { TemplateAssistantDrawer } from './TemplateAssistantDrawer.tsx'
-import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
-import { TauriDragRegion } from '../../Common/TauriDragRegion.tsx'
+import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
+import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 import { PiSortAscending } from 'react-icons/pi'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 

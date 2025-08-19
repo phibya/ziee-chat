@@ -1,5 +1,5 @@
 import { App, Button, Form } from 'antd'
-import { Drawer } from '../../../Common/Drawer'
+import { Drawer } from '../../../common/Drawer'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {

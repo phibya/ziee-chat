@@ -19,7 +19,7 @@ import {
   updateModelProvider,
 } from '../../../../store'
 import { DownloadInstance, Provider } from '../../../../types'
-import { DownloadItem } from '../../../Common/DownloadItem'
+import { DownloadItem } from '../../../common/DownloadItem'
 import { ModelsSection } from './common/ModelsSection'
 import { ProviderHeader } from './common/ProviderHeader'
 

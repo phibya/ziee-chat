@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ConversationHistory } from '../Common/ConversationHistory'
+import { ConversationHistory } from '../common/ConversationHistory'
 import { Button, Typography } from 'antd'
-import { TauriDragRegion } from '../Common/TauriDragRegion.tsx'
+import { TauriDragRegion } from '../common/TauriDragRegion.tsx'
 import { SearchOutlined } from '@ant-design/icons'
-import { TitleBarWrapper } from '../Common/TitleBarWrapper.tsx'
+import { TitleBarWrapper } from '../common/TitleBarWrapper.tsx'
 import { useMainContentMinSize } from '../hooks/useWindowMinSize.ts'
 
 export const ChatHistoryPage: React.FC = () => {

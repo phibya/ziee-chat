@@ -1,6 +1,6 @@
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
 import { Button, Card, Flex, Form, Input, Switch } from 'antd'
-import { Drawer } from '../../../Common/Drawer'
+import { Drawer } from '../../../common/Drawer'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {

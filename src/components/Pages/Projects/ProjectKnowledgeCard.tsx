@@ -17,7 +17,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { useProjectStore } from '../../../store'
-import { FileCard } from '../../Common/FileCard.tsx'
+import { FileCard } from '../../common/FileCard.tsx'
 import { ProjectInstructionDrawer } from './ProjectInstructionDrawer.tsx'
 import { useUpdate } from 'react-use'
 

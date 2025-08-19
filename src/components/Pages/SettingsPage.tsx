@@ -4,8 +4,8 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { isTauriView } from '../../api/core'
 import { Permission, usePermissions } from '../../permissions'
 import { useMainContentMinSize } from '../hooks/useWindowMinSize'
-import { TitleBarWrapper } from '../Common/TitleBarWrapper'
-import { TauriDragRegion } from '../Common/TauriDragRegion'
+import { TitleBarWrapper } from '../common/TitleBarWrapper'
+import { TauriDragRegion } from '../common/TauriDragRegion'
 import {
   IoIosArrowDown,
   IoIosArrowForward,

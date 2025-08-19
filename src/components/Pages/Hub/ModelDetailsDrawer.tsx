@@ -7,7 +7,7 @@ import {
   UnlockOutlined,
 } from '@ant-design/icons'
 import { Card, Flex, Tag, Typography } from 'antd'
-import { Drawer } from '../../Common/Drawer'
+import { Drawer } from '../../common/Drawer'
 import type { HubModel } from '../../../types'
 
 const { Title, Text } = Typography

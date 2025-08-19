@@ -285,7 +285,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
         {!isSidebarCollapsed && (
           <div
-            className="absolute top-0 left-0 w-1 h-full cursor-col-resize"
+            className="absolute top-0 left-0 w-1 h-full cursor-col-resize z-3"
             onMouseDown={handleMouseDown}
           />
         )}
