@@ -12,10 +12,11 @@ import {
 } from 'antd'
 import { DeleteOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { ConversationSummary } from '../../types'
+import { setPreviousConversationListPagePath } from '../../store/ui/navigate.ts'
 
 // Configure dayjs
 dayjs.extend(relativeTime)
@@ -43,12 +44,14 @@ export const ConversationSummaryCard: React.FC<
   const { message } = App.useApp()
   const navigate = useNavigate()
   const { token } = theme.useToken()
+  const location = useLocation()
 
   const handleCardClick = () => {
     if (isInSelectionMode && onSelect) {
       // In selection mode, toggle selection instead of navigating
       onSelect(conversation.id, !isSelected)
     } else {
+      setPreviousConversationListPagePath(location.pathname)
       // Normal mode, navigate to conversation
       navigate(`/conversation/${conversation.id}`)
     }

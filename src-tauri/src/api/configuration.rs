@@ -609,6 +609,11 @@ pub async fn get_ngrok_status(
 
 /// Try to autostart ngrok tunnel if configured
 pub async fn try_autostart_ngrok_tunnel() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if !is_desktop_app() {
+        // Only autostart for desktop apps
+        return Ok(());
+    }
+
     // Get ngrok settings from database
     let settings = get_ngrok_settings().await
         .map_err(|e| format!("Failed to get ngrok settings: {}", e))?;

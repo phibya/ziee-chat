@@ -2,7 +2,11 @@ import { Button, Flex, Form, Input, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
-import { updateExistingConversation, useChatStore } from '../../../store'
+import {
+  Stores,
+  updateExistingConversation,
+  useChatStore,
+} from '../../../store'
 import { ChatInput } from './ChatInput'
 import { ChatMessageList } from './ChatMessageList'
 import { TitleBarWrapper } from '../../Common/TitleBarWrapper.tsx'
@@ -133,7 +137,12 @@ export function ExistingChatInterface() {
                 <Button
                   type={'text'}
                   className={'!px-1'}
-                  onClick={() => navigate('/conversations')}
+                  onClick={() =>
+                    navigate(
+                      Stores.UI.PathHistory.__state
+                        .previousConversationListPagePath,
+                    )
+                  }
                 >
                   <IoIosArrowBack className={'text-md'} />
                 </Button>
