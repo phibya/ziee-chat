@@ -3,7 +3,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 use serde_json;
 
-use super::{ModelRegistry, ProxyError, log_request, HttpForwardingProvider};
+use super::{ModelRegistry, ProxyError, log_request};
 use crate::database::queries::models;
 
 #[derive(Debug)]

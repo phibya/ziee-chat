@@ -2,7 +2,7 @@ use crate::api;
 use aide::{
     axum::{ApiRouter, routing::{delete_with, get_with, post_with, put_with}},
 };
-use axum::{middleware, Json, http::StatusCode};
+use axum::{middleware, Json};
 use crate::database::models::{
     UserGroup, UserGroupListResponse, UserListResponse, Provider, UserGroupProviderResponse
 };

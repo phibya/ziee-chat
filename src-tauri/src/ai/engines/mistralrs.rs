@@ -886,7 +886,6 @@ impl LocalEngine for MistralRsEngine {
         if let Some(pid) = instance.pid {
             #[cfg(unix)]
             {
-                use std::process;
                 // Send SIGTERM to the process
                 unsafe {
                     libc::kill(pid as i32, libc::SIGTERM);

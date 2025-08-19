@@ -1,8 +1,6 @@
 use std::net::{IpAddr, SocketAddr};
-use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 use axum::{
     extract::ConnectInfo,
     http::{Request, StatusCode},

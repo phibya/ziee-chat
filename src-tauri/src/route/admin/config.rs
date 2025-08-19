@@ -2,7 +2,7 @@ use crate::api;
 use aide::{
     axum::{ApiRouter, routing::{get_with, post_with, put_with}},
 };
-use axum::{middleware, Json, http::StatusCode};
+use axum::{middleware, Json};
 use crate::api::configuration::{
     UserRegistrationStatusResponse, DefaultLanguageResponse, ProxySettingsResponse,
     NgrokSettingsResponse, NgrokStatusResponse

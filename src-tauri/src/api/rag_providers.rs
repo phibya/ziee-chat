@@ -4,20 +4,18 @@ use axum::{
     http::StatusCode,
     Extension, Json,
 };
-use schemars::JsonSchema;
-use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult, ApiResult2, AppError};
+use crate::api::errors::{ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
         CreateRAGDatabaseRequest, CreateRAGProviderRequest,
-        DownloadRAGDatabaseFromRepositoryRequest, RAGDatabase, RAGProvider,
-        RAGProviderListResponse, RAGRepositoryConnectionTestResponse, UpdateRAGDatabaseRequest,
+        RAGProvider,
+        RAGProviderListResponse, UpdateRAGDatabaseRequest,
         UpdateRAGProviderRequest,
     },
-    queries::{rag_providers, rag_repositories},
+    queries::rag_providers,
 };
 use crate::types::PaginationQuery;
 

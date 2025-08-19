@@ -1,8 +1,8 @@
 use crate::ai::engines::{LlamaCppEngine, LocalEngine, MistralRsEngine};
-use crate::api::errors::{ApiResult2, AppError, ErrorCode};
+use crate::api::errors::ApiResult2;
 use axum::{debug_handler, http::StatusCode, response::Json};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct EngineInfo {

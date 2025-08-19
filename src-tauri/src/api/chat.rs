@@ -754,7 +754,7 @@ pub async fn create_ai_provider_with_model_id(
                         model_id
                     );
 
-                    match crate::api::models::start_model_core_protected(model_id, &model, provider)
+                    match crate::ai::start_model_core_protected(model_id, &model, provider)
                         .await
                     {
                         Ok((_pid, port)) => {

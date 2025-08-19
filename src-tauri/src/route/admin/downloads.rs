@@ -1,5 +1,4 @@
 use crate::api;
-use crate::api::hardware::HardwareUsageUpdate;
 use crate::database::models::{DownloadInstance, DownloadInstanceListResponse};
 use crate::route::helper::types;
 use aide::axum::{

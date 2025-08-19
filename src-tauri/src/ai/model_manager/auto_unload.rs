@@ -93,7 +93,7 @@ async fn check_and_unload_idle_models(
 
         if idle_duration > idle_threshold {
             // Verify model is still running using our robust verification
-            if let Some((pid, port)) = crate::ai::verify_model_server_running(&model_id).await {
+            if let Some((pid, port)) = super::verify_model_server_running(&model_id).await {
                 println!(
                     "Auto-unloading idle model {} (idle for {} minutes, {} total accesses)",
                     model_id,
@@ -102,7 +102,7 @@ async fn check_and_unload_idle_models(
                 );
 
                 // Stop the model
-                match crate::ai::stop_model(&model_id, pid, port).await {
+                match super::stop_model(&model_id, pid, port).await {
                     Ok(()) => {
                         // Update database
                         let _ = crate::database::queries::models::update_model_runtime_info(

@@ -10,19 +10,13 @@ mod utils;
 mod helper;
 
 use crate::api;
-use axum::routing::get;
-use axum::{Router, Extension, Json, response::IntoResponse, middleware};
+use axum::{Router, middleware};
 use tower_http::cors::CorsLayer;
 use aide::{
-  axum::{
-    routing::{get_with, post_with},
-    ApiRouter, IntoApiResponse,
-  },
+  axum::ApiRouter,
   openapi::OpenApi,
-  redoc::Redoc,
-  transform::{TransformOpenApi, TransformOperation},
+  transform::TransformOpenApi,
 };
-use std::sync::Arc;
 
 fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
   api.title("")

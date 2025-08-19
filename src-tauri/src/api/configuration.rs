@@ -10,21 +10,13 @@ use crate::database::queries::configuration::{
     set_proxy_url, set_proxy_username, set_user_registration_enabled,
     get_ngrok_settings, set_ngrok_settings, NgrokSettings,
 };
-use crate::utils::ngrok::{NgrokService, NgrokError};
+use crate::utils::ngrok::NgrokService;
 use axum::{debug_handler, http::StatusCode, response::Json, Extension};
 use serde::{Deserialize, Serialize};
 use crate::api::errors::{ApiResult2, AppError};
-use std::collections::HashMap;
 use tokio::sync::Mutex;
 use std::sync::Arc;
 use once_cell::sync::Lazy;
-use aide::{
-    axum::{
-        routing::{get, post},
-        ApiRouter, IntoApiResponse,
-    },
-    openapi::{Info, OpenApi},
-};
 use schemars::JsonSchema;
 
 // Global ngrok service instance

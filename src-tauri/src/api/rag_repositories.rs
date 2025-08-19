@@ -4,11 +4,9 @@ use axum::{
     http::StatusCode,
     Extension, Json,
 };
-use schemars::JsonSchema;
-use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult, ApiResult2, AppError};
+use crate::api::errors::{ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{

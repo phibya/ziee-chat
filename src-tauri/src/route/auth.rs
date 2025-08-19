@@ -4,7 +4,7 @@ use crate::database::models::User;
 use aide::{
     axum::{ApiRouter, routing::{get_with, post_with}},
 };
-use axum::{http::StatusCode, Json};
+use axum::Json;
 
 pub fn auth_routes() -> ApiRouter {
     ApiRouter::new()

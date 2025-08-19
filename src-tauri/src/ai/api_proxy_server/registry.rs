@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::database::models::api_proxy_server_model::{ApiProxyServerModel, ModelServerEntry};
+use crate::database::models::api_proxy_server_model::ModelServerEntry;
 use crate::database::queries::{api_proxy_server_models, models, providers};
 use super::{ProxyError, HttpForwardingProvider};
 use crate::ai::providers::{AnthropicProvider, OpenAICompatibleProvider};

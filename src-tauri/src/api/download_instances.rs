@@ -16,7 +16,7 @@ use tokio_stream::wrappers::IntervalStream;
 use tokio_stream::StreamExt;
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult, ApiResult2, AppError};
+use crate::api::errors::{ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::api::permissions::{check_permission, permissions};
 use crate::database::{

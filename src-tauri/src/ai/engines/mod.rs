@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use uuid::Uuid;
 
 pub mod llamacpp;
 pub mod mistralrs;

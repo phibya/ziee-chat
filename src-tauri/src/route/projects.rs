@@ -4,7 +4,7 @@ use crate::database::models::project::{ProjectListResponse, ProjectDetailRespons
 use aide::{
     axum::{ApiRouter, routing::{get_with, post_with, put_with, delete_with}},
 };
-use axum::{middleware, http::StatusCode, Json};
+use axum::{middleware, Json};
 
 pub fn project_routes() -> ApiRouter {
     ApiRouter::new()

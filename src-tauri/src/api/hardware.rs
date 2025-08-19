@@ -11,7 +11,7 @@ use sysinfo::System;
 use tokio::time::interval;
 use uuid::Uuid;
 
-use crate::api::{errors::{ApiResult, ApiResult2, AppError}, middleware::AuthenticatedUser, permissions};
+use crate::api::{errors::{ApiResult2, AppError}, middleware::AuthenticatedUser, permissions};
 
 // Hardware information structures
 #[derive(Debug, Clone, Serialize, JsonSchema)]

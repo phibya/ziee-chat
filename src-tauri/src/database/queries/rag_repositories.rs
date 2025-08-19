@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGRepositoryRequest, DownloadRAGDatabaseFromRepositoryRequest, RAGDatabase,
+        CreateRAGRepositoryRequest,
         RAGRepository, RAGRepositoryListResponse, UpdateRAGRepositoryRequest,
     },
 };

@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::api::{
-    errors::{ApiResult, ApiResult2, AppError, ErrorCode},
+    errors::{ApiResult2, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
 use crate::database::{

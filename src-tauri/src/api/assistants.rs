@@ -4,8 +4,6 @@ use axum::{
     http::StatusCode,
     Extension, Json,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::errors::{ApiResult2, AppError};

@@ -5,13 +5,12 @@
 //! It also includes local ML inference capabilities using the Candle framework.
 
 pub mod api_proxy_server;
-pub mod auto_unload;
 pub mod core;
 pub mod engines;
 pub mod file_helpers;
 pub mod model_manager;
-pub mod models;
 pub mod providers;
+pub mod utils;
 
 // Define local types that were previously from local_server
 #[derive(Debug, Clone)]
@@ -33,7 +32,7 @@ pub enum ModelSelected {
 // Re-export specific items from local_server to avoid conflicts
 pub use core::device_detection;
 // Re-export commonly used items for convenience
-pub use auto_unload::{register_model_access, start_auto_unload_task, AutoUnloadConfig};
+pub use model_manager::{register_model_access, start_auto_unload_task, AutoUnloadConfig};
 pub use core::{
     build_http_client, AIProvider, ChatMessage, ChatRequest, ChatResponse, ContentPart,
     FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingChunk,
@@ -44,5 +43,7 @@ pub use model_manager::{
     verify_model_server_running, ModelStartResult,
     // NEW EXPORTS for lifecycle management:
     reconcile_model_states, shutdown_all_models,
+    // Core model starting functions:
+    start_model_core_protected,
 };
 pub use providers::*;

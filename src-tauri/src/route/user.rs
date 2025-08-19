@@ -1,10 +1,10 @@
 use crate::api;
 use crate::api::user_settings::UserSettingsDeletionResponse;
-use crate::database::models::{Assistant, AssistantListResponse, Model, Provider, UserSetting, UserSettingsResponse, ProviderListResponse};
+use crate::database::models::{Assistant, AssistantListResponse, Model, UserSetting, UserSettingsResponse, ProviderListResponse};
 use aide::{
     axum::{ApiRouter, routing::{get_with, post_with, put_with, delete_with}},
 };
-use axum::{middleware, http::StatusCode, Json};
+use axum::{middleware, Json};
 
 pub fn user_routes() -> ApiRouter {
     ApiRouter::new()

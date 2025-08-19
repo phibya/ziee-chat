@@ -5,7 +5,7 @@ use std::process::Command;
 use tokio::fs;
 
 use crate::processing::common::spreadsheet;
-use crate::processing::{ContentProcessor, ImageGenerator as ImageGeneratorTrait, MAX_IMAGE_DIM};
+use crate::processing::{ContentProcessor, ImageGenerator as ImageGeneratorTrait};
 use crate::utils::pandoc::PandocUtils;
 
 pub struct SpreadsheetProcessor;

@@ -6,7 +6,6 @@ use axum::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::api::app::is_desktop_app;
 use crate::api::permissions::{check_permission, permissions};
 use crate::auth::AuthService;
 use crate::database::models::User;

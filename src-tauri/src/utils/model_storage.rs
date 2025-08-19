@@ -840,7 +840,7 @@ impl ModelUtils {
 
     /// Check if model directory exists using the same logic as local_models::ModelUtils
     pub fn model_exists(model_path: &str) -> bool {
-        crate::ai::models::ModelUtils::model_exists(model_path)
+        crate::ai::utils::models::ModelUtils::model_exists(model_path)
     }
 
     /// Verify model exists or return ModelNotFound error
@@ -860,7 +860,7 @@ impl ModelUtils {
     /// Discover available models in a directory using ModelDiscovery
     pub fn discover_models(
         path: &str,
-    ) -> Result<Vec<crate::ai::models::ModelConfig>, std::io::Error> {
-        crate::ai::models::ModelDiscovery::scan_models_directory(path)
+    ) -> Result<Vec<crate::ai::utils::models::ModelConfig>, std::io::Error> {
+        crate::ai::utils::models::ModelDiscovery::scan_models_directory(path)
     }
 }
