@@ -28,6 +28,8 @@ import { MdStorage } from 'react-icons/md'
 import { useEffect } from 'react'
 import { setPreviousSettingPagePath } from '../../store/ui/navigate.ts'
 import { Stores } from '../../store'
+import { hasPermission } from '../../permissions/utils.ts'
+import { Permission } from '../../types'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -66,12 +68,6 @@ export function SettingsPage() {
             icon: <MdStorage />,
             label: t('settings.modelRepository.title'),
           },
-        ]
-      : []),
-
-    // RAG Providers for desktop apps
-    ...(isDesktop
-      ? [
           {
             key: 'rag-providers',
             icon: <FaRobot />,
@@ -87,11 +83,6 @@ export function SettingsPage() {
             icon: <FaCogs />,
             label: 'Engines',
           },
-        ]
-      : []),
-    // HTTPS Proxy only shows in main menu for desktop apps
-    ...(isDesktop
-      ? [
           {
             key: 'https-proxy',
             icon: <FaShieldAlt />,
@@ -102,24 +93,20 @@ export function SettingsPage() {
             icon: <IoMdGlobe />,
             label: t('settings.apiProxyServer'),
           },
-        ]
-      : []),
-    ...(isDesktop && isTauriView
-      ? [
-          // Ngrok only shows in main menu for desktop apps
-          {
-            key: 'web-app',
-            icon: <FaNetworkWired />,
-            label: t('settings.ngrok'),
-          },
-        ]
-      : []),
-    ...(isDesktop
-      ? [
           {
             key: 'hardware',
             icon: <FaMicrochip />,
             label: t('settings.hardware'),
+          },
+        ]
+      : []),
+
+    ...(isDesktop && isTauriView
+      ? [
+          {
+            key: 'web-app',
+            icon: <FaNetworkWired />,
+            label: t('settings.ngrok'),
           },
         ]
       : []),
@@ -146,66 +133,90 @@ export function SettingsPage() {
           label: t('settings.general'),
         })
 
-        items.push({
-          key: 'admin-appearance',
-          icon: <IoMdEye />,
-          label: t('settings.appearance'),
-        })
-        items.push({
-          key: 'providers',
-          icon: <FaServer />,
-          label: t('settings.providers'),
-        })
-        items.push({
-          key: 'repositories',
-          icon: <MdStorage />,
-          label: t('settings.modelRepository.title'),
-        })
-        items.push({
-          key: 'rag-providers',
-          icon: <FaRobot />,
-          label: 'RAG Providers',
-        })
-        items.push({
-          key: 'rag-repositories',
-          icon: <FaDatabase />,
-          label: 'RAG Repositories',
-        })
-        items.push({
-          key: 'https-proxy',
-          icon: <FaShieldAlt />,
-          label: t('settings.httpsProxy'),
-        })
-        items.push({
-          key: 'api-proxy-server',
-          icon: <IoMdGlobe />,
-          label: t('settings.apiProxyServer'),
-        })
-        items.push({
-          key: 'admin-assistants',
-          icon: <FaRobot />,
-          label: t('settings.assistants'),
-        })
-        items.push({
-          key: 'engines',
-          icon: <FaCogs />,
-          label: 'Engines',
-        })
-        items.push({
-          key: 'users',
-          icon: <IoMdPerson />,
-          label: t('settings.users'),
-        })
-        items.push({
-          key: 'user-groups',
-          icon: <IoMdPeople />,
-          label: t('settings.userGroups'),
-        })
-        items.push({
-          key: 'hardware',
-          icon: <FaMicrochip />,
-          label: t('settings.hardware'),
-        })
+        if (hasPermission([Permission.ConfigAppearanceRead])) {
+          items.push({
+            key: 'admin-appearance',
+            icon: <IoMdEye />,
+            label: t('settings.appearance'),
+          })
+        }
+        if (hasPermission([Permission.ProvidersRead])) {
+          items.push({
+            key: 'providers',
+            icon: <FaServer />,
+            label: t('settings.providers'),
+          })
+        }
+        if (hasPermission([Permission.RepositoriesRead])) {
+          items.push({
+            key: 'repositories',
+            icon: <MdStorage />,
+            label: t('settings.modelRepository.title'),
+          })
+        }
+        if (hasPermission([Permission.RagProvidersRead])) {
+          items.push({
+            key: 'rag-providers',
+            icon: <FaRobot />,
+            label: 'RAG Providers',
+          })
+        }
+        if (hasPermission([Permission.RagRepositoriesRead])) {
+          items.push({
+            key: 'rag-repositories',
+            icon: <FaDatabase />,
+            label: 'RAG Repositories',
+          })
+        }
+        if (hasPermission([Permission.ConfigProxyRead])) {
+          items.push({
+            key: 'https-proxy',
+            icon: <FaShieldAlt />,
+            label: t('settings.httpsProxy'),
+          })
+        }
+        if (hasPermission([Permission.ApiProxyRead])) {
+          items.push({
+            key: 'api-proxy-server',
+            icon: <IoMdGlobe />,
+            label: t('settings.apiProxyServer'),
+          })
+        }
+        if (hasPermission([Permission.AssistantsAdminRead])) {
+          items.push({
+            key: 'admin-assistants',
+            icon: <FaRobot />,
+            label: t('settings.assistants'),
+          })
+        }
+        if (hasPermission([Permission.EnginesRead])) {
+          items.push({
+            key: 'engines',
+            icon: <FaCogs />,
+            label: 'Engines',
+          })
+        }
+        if (hasPermission([Permission.UsersRead])) {
+          items.push({
+            key: 'users',
+            icon: <IoMdPerson />,
+            label: t('settings.users'),
+          })
+        }
+        if (hasPermission([Permission.GroupsRead])) {
+          items.push({
+            key: 'user-groups',
+            icon: <IoMdPeople />,
+            label: t('settings.userGroups'),
+          })
+        }
+        if (hasPermission([Permission.HardwareRead])) {
+          items.push({
+            key: 'hardware',
+            icon: <FaMicrochip />,
+            label: t('settings.hardware'),
+          })
+        }
 
         return items
       })()

@@ -7,10 +7,12 @@ import {
   subscribeToHardwareUsage,
 } from '../../store'
 import { formatBytes } from '../../utils/formatBytes'
+import { withPermission } from '../../permissions/utils.ts'
+import { Permission } from '../../types'
 
 const { Text } = Typography
 
-export function HardwareMonitor() {
+function HardwareMonitorComponent() {
   const { message } = App.useApp()
 
   // Hardware store state
@@ -335,3 +337,7 @@ export function HardwareMonitor() {
     </div>
   )
 }
+
+export const HardwareMonitor = withPermission([Permission.HardwareMonitor])(
+  HardwareMonitorComponent,
+)

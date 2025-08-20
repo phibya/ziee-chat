@@ -21,6 +21,9 @@ import { isTauriView } from '../../../api/core'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 import { formatBytes } from '../../../utils/formatBytes'
 import { MdOutlineMonitorHeart } from 'react-icons/md'
+import { hasPermission } from '../../../permissions/utils.ts'
+import { Permission } from '../../../types'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 
 const { Text } = Typography
 
@@ -44,11 +47,13 @@ export function HardwareSettings() {
   useEffect(() => {
     // Only load static hardware info, don't auto-connect to SSE
     loadHardwareInfo().catch(console.error)
-    subscribeToHardwareUsage().catch(console.error)
+    if (hasPermission([Permission.HardwareMonitor])) {
+      subscribeToHardwareUsage().catch(console.error)
 
-    // Cleanup on component unmount
-    return () => {
-      disconnectHardwareUsage()
+      // Cleanup on component unmount
+      return () => {
+        disconnectHardwareUsage()
+      }
     }
   }, [])
 
@@ -583,36 +588,39 @@ export function HardwareSettings() {
   }
 
   const renderConnectionStatus = () => (
-    <Card
-      style={{
-        display: sseConnected ? 'none' : 'block',
-      }}
-    >
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-3 flex-wrap">
-          <Text strong>Real-time Monitoring:</Text>
-          <Tag color={sseConnected ? 'green' : 'red'}>
-            {sseConnected ? 'Connected' : 'Disconnected'}
-          </Tag>
-        </div>
-        {!sseConnected && !usageLoading && (
-          <Button type="primary" onClick={handleManualConnect}>
-            Connect
-          </Button>
-        )}
-        {usageLoading && (
-          <div className="flex items-center gap-2">
-            <Spin />
-            <Text type="secondary">Connecting...</Text>
+    <PermissionGuard permissions={[Permission.HardwareMonitor]}>
+      <Card
+        style={{
+          display: sseConnected ? 'none' : 'block',
+        }}
+      >
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-3 flex-wrap">
+            <Text strong>Real-time Monitoring:</Text>
+            <Tag color={sseConnected ? 'green' : 'red'}>
+              {sseConnected ? 'Connected' : 'Disconnected'}
+            </Tag>
           </div>
-        )}
-        {currentUsage && (
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            Last update: {new Date(currentUsage.timestamp).toLocaleTimeString()}
-          </Text>
-        )}
-      </div>
-    </Card>
+          {!sseConnected && !usageLoading && (
+            <Button type="primary" onClick={handleManualConnect}>
+              Connect
+            </Button>
+          )}
+          {usageLoading && (
+            <div className="flex items-center gap-2">
+              <Spin />
+              <Text type="secondary">Connecting...</Text>
+            </div>
+          )}
+          {currentUsage && (
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Last update:{' '}
+              {new Date(currentUsage.timestamp).toLocaleTimeString()}
+            </Text>
+          )}
+        </div>
+      </Card>
+    </PermissionGuard>
   )
 
   const titleWithButton = (
