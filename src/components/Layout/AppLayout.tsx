@@ -10,8 +10,8 @@ import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { isTauriView } from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
-import { resolveSystemTheme } from '../Providers/ThemeProvider.tsx'
 import tinycolor from 'tinycolor2'
+import { resolveSystemTheme } from '../Providers/resolveTheme.ts'
 
 interface AppLayoutProps {
   children: React.ReactNode

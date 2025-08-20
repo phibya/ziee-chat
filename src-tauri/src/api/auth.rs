@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::api::app::is_desktop_app;
-use crate::api::errors::{ApiResult, ApiResult2, AppError, ErrorCode};
+use crate::api::errors::{ApiResult2, AppError, ErrorCode};
 use crate::auth::AuthService;
 use crate::database::models::*;
 use crate::database::queries::users;
@@ -30,7 +30,7 @@ pub struct AuthResponse {
     pub expires_at: chrono::DateTime<chrono::Utc>,
 }
 
-async fn create_root_user() -> ApiResult<String> {
+async fn create_root_user() -> Result<String, AppError> {
     let user_request = CreateUserRequest {
         username: "root".to_string(),
         email: "root@domain.com".to_string(),

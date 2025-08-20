@@ -5,16 +5,11 @@ import { ThemeContext } from '../../hooks/useTheme.ts'
 import { useUserAppearanceTheme } from '../../store'
 import { themes } from '../themes'
 import { AppThemeConfig } from '../themes/light.ts'
+import { resolveSystemTheme } from './resolveTheme.ts'
 
 interface ThemeProviderProps {
   children: React.ReactNode
 }
-
-export const resolveSystemTheme = (): 'light' | 'dark' => {
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  return mediaQuery.matches ? 'dark' : 'light'
-}
-
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const selectedTheme = useUserAppearanceTheme()
   const resolvedTheme =

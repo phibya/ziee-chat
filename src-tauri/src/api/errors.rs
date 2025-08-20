@@ -290,8 +290,6 @@ impl IntoResponse for AppError {
     }
 }
 
-// Support for Result<T, AppError>
-pub type ApiResult<T> = Result<T, AppError>;
 pub type ApiResult2<T> = Result<(StatusCode, T), (StatusCode, AppError)>;
 
 // Conversion from common error types
