@@ -31,7 +31,13 @@ export const useHubStore = create<HubState>()(
 )
 
 export const initializeHub = async (locale?: string) => {
+  const state = useHubStore.getState()
   const currentLocale = locale || i18n.language || 'en'
+
+  if (state.initialized || state.loading) {
+    return
+  }
+
   useHubStore.setState({ loading: true, error: null, currentLocale })
 
   try {
@@ -63,7 +69,13 @@ export const initializeHub = async (locale?: string) => {
 }
 
 export const refreshHub = async (locale?: string) => {
-  const currentLocale = locale || useHubStore.getState().currentLocale || 'en'
+  const state = useHubStore.getState()
+  const currentLocale = locale || state.currentLocale || 'en'
+
+  if (state.loading) {
+    return
+  }
+
   useHubStore.setState({ loading: true, error: null })
 
   try {

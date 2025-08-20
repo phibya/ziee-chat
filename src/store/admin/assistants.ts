@@ -9,6 +9,7 @@ interface AdminAssistantsState {
   total: number
   currentPage: number
   pageSize: number
+  isInitialized: boolean
 
   // Loading states
   loading: boolean
@@ -28,6 +29,7 @@ export const useAdminAssistantsStore = create<AdminAssistantsState>()(
       total: 0,
       currentPage: 1,
       pageSize: 10,
+      isInitialized: false,
       loading: false,
       creating: false,
       updating: false,
@@ -47,6 +49,11 @@ export const loadAdministratorAssistants = async (
     const requestPage = page || currentState.currentPage
     const requestPageSize = pageSize || currentState.pageSize
 
+    // Skip if already initialized and loading first page without explicit page parameter
+    if (currentState.isInitialized && currentState.loading && !page) {
+      return
+    }
+
     useAdminAssistantsStore.setState({ loading: true, error: null })
 
     const response = await ApiClient.Admin.listAssistants({
@@ -59,6 +66,7 @@ export const loadAdministratorAssistants = async (
       total: response.total,
       currentPage: response.page,
       pageSize: response.per_page,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {
@@ -75,7 +83,12 @@ export const loadAdministratorAssistants = async (
 
 export const createSystemAdminAssistant = async (
   data: CreateAssistantRequest,
-): Promise<Assistant> => {
+): Promise<Assistant | undefined> => {
+  const state = useAdminAssistantsStore.getState()
+  if (state.creating) {
+    return
+  }
+
   try {
     useAdminAssistantsStore.setState({ creating: true, error: null })
 
@@ -107,7 +120,12 @@ export const createSystemAdminAssistant = async (
 export const updateSystemAdminAssistant = async (
   id: string,
   data: Partial<Assistant>,
-): Promise<Assistant> => {
+): Promise<Assistant | undefined> => {
+  const state = useAdminAssistantsStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminAssistantsStore.setState({ updating: true, error: null })
 
@@ -139,6 +157,11 @@ export const updateSystemAdminAssistant = async (
 }
 
 export const deleteSystemAdminAssistant = async (id: string): Promise<void> => {
+  const state = useAdminAssistantsStore.getState()
+  if (state.deleting) {
+    return
+  }
+
   try {
     useAdminAssistantsStore.setState({ deleting: true, error: null })
 

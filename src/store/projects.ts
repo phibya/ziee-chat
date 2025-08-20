@@ -6,10 +6,12 @@ import { Project } from '../types'
 interface ProjectsState {
   // Data
   projects: Project[]
+  isInitialized: boolean
 
   // Loading states
   loading: boolean
   creating: boolean
+  updating: boolean
   deleting: boolean
 
   // Error state
@@ -21,8 +23,10 @@ export const useProjectsStore = create<ProjectsState>()(
     (): ProjectsState => ({
       // Initial state
       projects: [],
+      isInitialized: false,
       loading: false,
       creating: false,
+      updating: false,
       deleting: false,
       error: null,
     }),
@@ -31,6 +35,10 @@ export const useProjectsStore = create<ProjectsState>()(
 
 // Project list actions
 export const loadAllUserProjects = async (): Promise<void> => {
+  const state = useProjectsStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useProjectsStore.setState({ loading: true, error: null })
 
@@ -41,6 +49,7 @@ export const loadAllUserProjects = async (): Promise<void> => {
 
     useProjectsStore.setState({
       projects: response.projects,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {
@@ -83,6 +92,8 @@ export const updateProjectInList = async (
   data: { name?: string; description?: string; instruction?: string },
 ): Promise<Project> => {
   try {
+    useProjectsStore.setState({ updating: true, error: null })
+
     const project = await ApiClient.Projects.updateProject({
       project_id: id,
       ...data,
@@ -90,6 +101,7 @@ export const updateProjectInList = async (
 
     useProjectsStore.setState(state => ({
       projects: state.projects.map(p => (p.id === id ? project : p)),
+      updating: false,
     }))
 
     return project
@@ -97,6 +109,7 @@ export const updateProjectInList = async (
     useProjectsStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to update project',
+      updating: false,
     })
     throw error
   }
@@ -130,8 +143,10 @@ export const clearProjectsStoreError = (): void => {
 export const resetProjectsStore = (): void => {
   useProjectsStore.setState({
     projects: [],
+    isInitialized: false,
     loading: false,
     creating: false,
+    updating: false,
     deleting: false,
     error: null,
   })

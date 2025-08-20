@@ -21,6 +21,11 @@ export const useEngineStore = create<EngineState>()(
 
 // Store methods - defined OUTSIDE the store definition
 export const initializeEngines = async () => {
+  const state = useEngineStore.getState()
+  if (state.initialized || state.loading) {
+    return
+  }
+
   useEngineStore.setState({ loading: true, error: null })
 
   try {

@@ -11,6 +11,7 @@ enableMapSet()
 interface UserAssistantsState {
   // Data
   assistants: Map<string, Assistant>
+  isInitialized: boolean
 
   // Loading states
   loading: boolean
@@ -28,6 +29,7 @@ export const useUserAssistantsStore = create<UserAssistantsState>()(
       (): UserAssistantsState => ({
         // Initial state
         assistants: new Map<string, Assistant>(),
+        isInitialized: false,
         loading: false,
         creating: false,
         updating: false,
@@ -40,6 +42,10 @@ export const useUserAssistantsStore = create<UserAssistantsState>()(
 
 // User assistants actions
 export const loadUserAssistants = async (): Promise<void> => {
+  const state = useUserAssistantsStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useUserAssistantsStore.setState({ loading: true, error: null })
 
@@ -52,6 +58,7 @@ export const loadUserAssistants = async (): Promise<void> => {
       assistants: new Map(
         response.assistants.map(assistant => [assistant.id, assistant]),
       ),
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {

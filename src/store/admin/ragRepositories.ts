@@ -13,6 +13,7 @@ interface AdminRAGRepositoriesState {
   // Data
   repositories: RAGRepository[]
   availableDatabasesByRepository: Record<string, RAGDatabase[]>
+  isInitialized: boolean
 
   // Loading states
   loading: boolean
@@ -33,6 +34,7 @@ export const useAdminRAGRepositoriesStore = create<AdminRAGRepositoriesState>()(
       // Initial state
       repositories: [],
       availableDatabasesByRepository: {},
+      isInitialized: false,
       loading: false,
       creating: false,
       updating: false,
@@ -47,11 +49,16 @@ export const useAdminRAGRepositoriesStore = create<AdminRAGRepositoriesState>()(
 
 // Repository actions
 export const loadAllRAGRepositories = async (): Promise<void> => {
+  const state = useAdminRAGRepositoriesStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useAdminRAGRepositoriesStore.setState({ loading: true, error: null })
     const response = await ApiClient.Admin.listRAGRepositories({})
     useAdminRAGRepositoriesStore.setState({
       repositories: response.repositories,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {
@@ -68,7 +75,12 @@ export const loadAllRAGRepositories = async (): Promise<void> => {
 
 export const createNewRAGRepository = async (
   repository: CreateRAGRepositoryRequest,
-): Promise<RAGRepository> => {
+): Promise<RAGRepository | undefined> => {
+  const state = useAdminRAGRepositoriesStore.getState()
+  if (state.creating) {
+    return
+  }
+
   try {
     useAdminRAGRepositoriesStore.setState({ creating: true, error: null })
     const newRepository = await ApiClient.Admin.createRAGRepository(repository)
@@ -93,6 +105,11 @@ export const updateRAGRepository = async (
   id: string,
   repository: UpdateRAGRepositoryRequest,
 ): Promise<void> => {
+  const state = useAdminRAGRepositoriesStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminRAGRepositoriesStore.setState({ updating: true, error: null })
     const updatedRepository = await ApiClient.Admin.updateRAGRepository({
@@ -118,6 +135,11 @@ export const updateRAGRepository = async (
 }
 
 export const deleteRAGRepository = async (id: string): Promise<void> => {
+  const state = useAdminRAGRepositoriesStore.getState()
+  if (state.deleting) {
+    return
+  }
+
   try {
     useAdminRAGRepositoriesStore.setState({ deleting: true, error: null })
     await ApiClient.Admin.deleteRAGRepository({ repository_id: id })
@@ -145,6 +167,11 @@ export const deleteRAGRepository = async (id: string): Promise<void> => {
 export const testRAGRepositoryConnection = async (
   id: string,
 ): Promise<void> => {
+  const state = useAdminRAGRepositoriesStore.getState()
+  if (state.testingConnection[id]) {
+    return
+  }
+
   try {
     useAdminRAGRepositoriesStore.setState(state => ({
       testingConnection: { ...state.testingConnection, [id]: true },
@@ -174,6 +201,11 @@ export const testRAGRepositoryConnection = async (
 export const loadAvailableDatabasesFromRepository = async (
   repositoryId: string,
 ): Promise<void> => {
+  const state = useAdminRAGRepositoriesStore.getState()
+  if (state.loadingDatabases[repositoryId]) {
+    return
+  }
+
   try {
     useAdminRAGRepositoriesStore.setState(state => ({
       loadingDatabases: { ...state.loadingDatabases, [repositoryId]: true },
@@ -206,8 +238,13 @@ export const loadAvailableDatabasesFromRepository = async (
 export const downloadRAGDatabaseFromRepository = async (
   request: DownloadRAGDatabaseFromRepositoryRequest,
 ): Promise<void> => {
+  const downloadKey = `${request.repository_id}-${request.database_id}`
+  const state = useAdminRAGRepositoriesStore.getState()
+  if (state.downloading[downloadKey]) {
+    return
+  }
+
   try {
-    const downloadKey = `${request.repository_id}-${request.database_id}`
     useAdminRAGRepositoriesStore.setState(state => ({
       downloading: { ...state.downloading, [downloadKey]: true },
       error: null,

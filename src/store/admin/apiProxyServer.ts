@@ -42,6 +42,11 @@ export const useApiProxyServerStore = create<ApiProxyServerState>()(
 
 // Configuration management
 export const loadApiProxyServerConfig = async () => {
+  const state = useApiProxyServerStore.getState()
+  if (state.loadingConfig) {
+    return
+  }
+
   useApiProxyServerStore.setState({ loadingConfig: true, error: null })
 
   try {
@@ -64,6 +69,11 @@ export const loadApiProxyServerConfig = async () => {
 export const updateApiProxyServerConfig = async (
   configUpdate: ApiProxyServerConfig,
 ) => {
+  const state = useApiProxyServerStore.getState()
+  if (state.loadingConfig) {
+    return
+  }
+
   useApiProxyServerStore.setState({ loadingConfig: true, error: null })
 
   try {
@@ -87,6 +97,11 @@ export const updateApiProxyServerConfig = async (
 
 // Status management
 export const loadApiProxyServerStatus = async () => {
+  const state = useApiProxyServerStore.getState()
+  if (state.loadingStatus) {
+    return
+  }
+
   useApiProxyServerStore.setState({ loadingStatus: true, error: null })
 
   try {
@@ -107,6 +122,11 @@ export const loadApiProxyServerStatus = async () => {
 }
 
 export const startApiProxyServer = async () => {
+  const state = useApiProxyServerStore.getState()
+  if (state.loadingStatus) {
+    return
+  }
+
   useApiProxyServerStore.setState({ loadingStatus: true, error: null })
 
   try {
@@ -124,6 +144,11 @@ export const startApiProxyServer = async () => {
 }
 
 export const stopApiProxyServer = async () => {
+  const state = useApiProxyServerStore.getState()
+  if (state.loadingStatus) {
+    return
+  }
+
   useApiProxyServerStore.setState({ loadingStatus: true, error: null })
 
   try {
@@ -142,6 +167,11 @@ export const stopApiProxyServer = async () => {
 
 // Model management
 export const loadApiProxyServerModels = async () => {
+  const state = useApiProxyServerStore.getState()
+  if (state.loadingModels) {
+    return
+  }
+
   useApiProxyServerStore.setState({ loadingModels: true, error: null })
 
   try {
@@ -218,6 +248,11 @@ export const removeModelFromApiProxyServer = async (modelId: string) => {
 
 // Trusted hosts management
 export const loadApiProxyServerTrustedHosts = async () => {
+  const state = useApiProxyServerStore.getState()
+  if (state.loadingHosts) {
+    return
+  }
+
   useApiProxyServerStore.setState({ loadingHosts: true, error: null })
 
   try {
@@ -292,6 +327,11 @@ export const removeTrustedHostFromApiProxyServer = async (hostId: string) => {
 
 // Initialize all data
 export const initializeApiProxyServerData = async () => {
+  const state = useApiProxyServerStore.getState()
+  if (state.initialized) {
+    return
+  }
+
   try {
     await Promise.all([
       loadApiProxyServerConfig(),
@@ -314,7 +354,33 @@ export const initializeApiProxyServerData = async () => {
   }
 }
 
-// Refresh all data
+// Refresh all data - bypasses loading state checks to force refresh
 export const refreshApiProxyServerData = async () => {
-  await initializeApiProxyServerData()
+  try {
+    // Reset loading states and force reload
+    useApiProxyServerStore.setState({
+      loadingConfig: false,
+      loadingStatus: false,
+      loadingModels: false,
+      loadingHosts: false,
+    })
+
+    await Promise.all([
+      loadApiProxyServerConfig(),
+      loadApiProxyServerStatus(),
+      loadApiProxyServerModels(),
+      loadApiProxyServerTrustedHosts(),
+    ])
+
+    useApiProxyServerStore.setState({
+      initialized: true,
+      error: null,
+    })
+  } catch (error) {
+    console.error('Failed to refresh API proxy server data:', error)
+    useApiProxyServerStore.setState({
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+    throw error
+  }
 }

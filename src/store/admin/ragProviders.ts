@@ -14,6 +14,7 @@ interface AdminRAGProvidersState {
   // Data
   providers: RAGProvider[]
   databasesByProvider: Record<string, RAGDatabase[]>
+  isInitialized: boolean
 
   // Loading states
   loading: boolean
@@ -33,6 +34,7 @@ export const useAdminRAGProvidersStore = create<AdminRAGProvidersState>()(
       // Initial state
       providers: [],
       databasesByProvider: {},
+      isInitialized: false,
       loading: false,
       creating: false,
       updating: false,
@@ -46,11 +48,16 @@ export const useAdminRAGProvidersStore = create<AdminRAGProvidersState>()(
 
 // Provider actions
 export const loadAllRAGProviders = async (): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useAdminRAGProvidersStore.setState({ loading: true, error: null })
     const response = await ApiClient.Admin.listRAGProviders({})
     useAdminRAGProvidersStore.setState({
       providers: response.providers,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {
@@ -65,7 +72,12 @@ export const loadAllRAGProviders = async (): Promise<void> => {
 
 export const createNewRAGProvider = async (
   provider: CreateRAGProviderRequest,
-): Promise<RAGProvider> => {
+): Promise<RAGProvider | undefined> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.creating) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState({ creating: true, error: null })
     const newProvider = await ApiClient.Admin.createRAGProvider(provider)
@@ -90,6 +102,11 @@ export const updateRAGProvider = async (
   id: string,
   provider: UpdateRAGProviderRequest,
 ): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState({ updating: true, error: null })
     const updatedProvider = await ApiClient.Admin.updateRAGProvider({
@@ -113,6 +130,11 @@ export const updateRAGProvider = async (
 }
 
 export const deleteRAGProvider = async (id: string): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.deleting) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState({ deleting: true, error: null })
     await ApiClient.Admin.deleteRAGProvider({ provider_id: id })
@@ -139,7 +161,12 @@ export const deleteRAGProvider = async (id: string): Promise<void> => {
 
 export const cloneExistingRAGProvider = async (
   id: string,
-): Promise<RAGProvider> => {
+): Promise<RAGProvider | undefined> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.creating) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState({ creating: true, error: null })
     const clonedProvider = await ApiClient.Admin.cloneRAGProvider({
@@ -164,6 +191,11 @@ export const cloneExistingRAGProvider = async (
 export const loadDatabasesForRAGProvider = async (
   providerId: string,
 ): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.loadingDatabases[providerId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       loadingDatabases: { ...state.loadingDatabases, [providerId]: true },
@@ -195,6 +227,11 @@ export const addNewDatabaseToRAGProvider = async (
   providerId: string,
   database: CreateRAGDatabaseRequest,
 ): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.loadingDatabases[providerId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       loadingDatabases: { ...state.loadingDatabases, [providerId]: true },
@@ -230,6 +267,11 @@ export const updateExistingRAGDatabase = async (
   databaseId: string,
   updates: UpdateRAGDatabaseRequest,
 ): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.databaseOperations[databaseId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       databaseOperations: { ...state.databaseOperations, [databaseId]: true },
@@ -273,6 +315,11 @@ export const updateExistingRAGDatabase = async (
 export const deleteExistingRAGDatabase = async (
   databaseId: string,
 ): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.databaseOperations[databaseId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       databaseOperations: { ...state.databaseOperations, [databaseId]: true },
@@ -310,6 +357,11 @@ export const deleteExistingRAGDatabase = async (
 
 // Database operations (only for local providers)
 export const startRAGDatabase = async (databaseId: string): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.databaseOperations[databaseId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       databaseOperations: { ...state.databaseOperations, [databaseId]: true },
@@ -349,6 +401,11 @@ export const startRAGDatabase = async (databaseId: string): Promise<void> => {
 }
 
 export const stopRAGDatabase = async (databaseId: string): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.databaseOperations[databaseId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       databaseOperations: { ...state.databaseOperations, [databaseId]: true },
@@ -388,6 +445,11 @@ export const stopRAGDatabase = async (databaseId: string): Promise<void> => {
 }
 
 export const enableRAGDatabase = async (databaseId: string): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.databaseOperations[databaseId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       databaseOperations: { ...state.databaseOperations, [databaseId]: true },
@@ -429,6 +491,11 @@ export const enableRAGDatabase = async (databaseId: string): Promise<void> => {
 }
 
 export const disableRAGDatabase = async (databaseId: string): Promise<void> => {
+  const state = useAdminRAGProvidersStore.getState()
+  if (state.databaseOperations[databaseId]) {
+    return
+  }
+
   try {
     useAdminRAGProvidersStore.setState(state => ({
       databaseOperations: { ...state.databaseOperations, [databaseId]: true },

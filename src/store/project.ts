@@ -40,7 +40,7 @@ export interface ProjectState {
     name?: string
     description?: string
     instruction?: string
-  }) => Promise<Project>
+  }) => Promise<Project | undefined>
   loadFiles: () => Promise<void>
   uploadFiles: (files: globalThis.File[]) => Promise<File[]>
   cancelFileUpload: () => void
@@ -73,7 +73,7 @@ export const createProjectStore = (project: string | Project) => {
 
   const store = create<ProjectState>()(
     subscribeWithSelector(
-      (set): ProjectState => ({
+      (set, get): ProjectState => ({
         // Initial state
         project: typeof project === 'string' ? null : project,
         files: [],
@@ -93,6 +93,10 @@ export const createProjectStore = (project: string | Project) => {
 
         // Actions
         loadProject: async () => {
+          const state = get()
+          if (state.loading) {
+            return
+          }
           try {
             set({ loading: true, error: null })
 
@@ -122,6 +126,10 @@ export const createProjectStore = (project: string | Project) => {
         },
 
         updateProject: async data => {
+          const state = get()
+          if (state.updating) {
+            return
+          }
           try {
             set({ updating: true, error: null })
 
@@ -155,6 +163,10 @@ export const createProjectStore = (project: string | Project) => {
         },
 
         loadFiles: async () => {
+          const state = get()
+          if (state.filesLoading) {
+            return
+          }
           try {
             set({ filesLoading: true, filesError: null })
 

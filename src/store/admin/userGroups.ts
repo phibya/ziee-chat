@@ -18,6 +18,8 @@ interface AdminUserGroupsState {
   total: number
   currentPage: number
   pageSize: number
+  isInitialized: boolean
+  currentGroupId: string | null
 
   // Loading states
   loading: boolean
@@ -40,6 +42,8 @@ export const useAdminUserGroupsStore = create<AdminUserGroupsState>()(
       total: 0,
       currentPage: 1,
       pageSize: 10,
+      isInitialized: false,
+      currentGroupId: null,
       loading: false,
       loadingGroups: false,
       loadingGroupMembers: false,
@@ -61,6 +65,11 @@ export const loadUserGroups = async (
     const requestPage = page || currentState.currentPage
     const requestPageSize = pageSize || currentState.pageSize
 
+    // Skip if already initialized and loading first page without explicit page parameter
+    if (currentState.isInitialized && currentState.loadingGroups && !page) {
+      return
+    }
+
     useAdminUserGroupsStore.setState({ loadingGroups: true, error: null })
 
     const response = await ApiClient.Admin.listGroups({
@@ -73,6 +82,7 @@ export const loadUserGroups = async (
       total: response.total,
       currentPage: response.page,
       pageSize: response.per_page,
+      isInitialized: true,
       loadingGroups: false,
     })
   } catch (error) {
@@ -86,7 +96,12 @@ export const loadUserGroups = async (
 
 export const createNewUserGroup = async (
   data: CreateUserGroupRequest,
-): Promise<UserGroup> => {
+): Promise<UserGroup | undefined> => {
+  const state = useAdminUserGroupsStore.getState()
+  if (state.creating) {
+    return
+  }
+
   try {
     useAdminUserGroupsStore.setState({ creating: true, error: null })
 
@@ -110,7 +125,12 @@ export const createNewUserGroup = async (
 export const updateUserGroup = async (
   id: string,
   data: Partial<UserGroup>,
-): Promise<UserGroup> => {
+): Promise<UserGroup | undefined> => {
+  const state = useAdminUserGroupsStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminUserGroupsStore.setState({ updating: true, error: null })
 
@@ -135,6 +155,11 @@ export const updateUserGroup = async (
 }
 
 export const deleteUserGroup = async (id: string): Promise<void> => {
+  const state = useAdminUserGroupsStore.getState()
+  if (state.deleting) {
+    return
+  }
+
   try {
     useAdminUserGroupsStore.setState({ deleting: true, error: null })
 
@@ -155,7 +180,21 @@ export const deleteUserGroup = async (id: string): Promise<void> => {
 
 export const loadUserGroupMembers = async (groupId: string): Promise<void> => {
   try {
-    useAdminUserGroupsStore.setState({ loadingGroupMembers: true, error: null })
+    const currentState = useAdminUserGroupsStore.getState()
+
+    // Skip if already loading members for the same group
+    if (
+      currentState.loadingGroupMembers &&
+      currentState.currentGroupId === groupId
+    ) {
+      return
+    }
+
+    useAdminUserGroupsStore.setState({
+      loadingGroupMembers: true,
+      error: null,
+      currentGroupId: groupId,
+    })
 
     const response = await ApiClient.Admin.getGroupMembers({
       group_id: groupId,
@@ -187,6 +226,11 @@ export const assignUserToUserGroup = async (
   userId: string,
   groupId: string,
 ): Promise<void> => {
+  const state = useAdminUserGroupsStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminUserGroupsStore.setState({ updating: true, error: null })
 
@@ -218,6 +262,11 @@ export const removeUserFromUserGroup = async (
   userId: string,
   groupId: string,
 ): Promise<void> => {
+  const state = useAdminUserGroupsStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminUserGroupsStore.setState({ updating: true, error: null })
 

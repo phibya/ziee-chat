@@ -17,6 +17,10 @@ interface UserSettingsState {
   // Global default language (fallback when user hasn't set language preference)
   globalDefaultLanguage: SupportedLanguage
 
+  // Initialization states
+  isInitialized: boolean
+  globalLanguageInitialized: boolean
+
   // Loading states
   loading: boolean
   initializing: boolean
@@ -28,6 +32,8 @@ export const useUserSettingsStore = create(
       // Initial state
       settings: {},
       globalDefaultLanguage: 'en',
+      isInitialized: false,
+      globalLanguageInitialized: false,
       loading: false,
       initializing: false,
     }),
@@ -36,6 +42,11 @@ export const useUserSettingsStore = create(
 
 // Settings actions
 export const loadUserSettings = async (): Promise<void> => {
+  const state = useUserSettingsStore.getState()
+  if (state.isInitialized || state.initializing) {
+    return
+  }
+
   useUserSettingsStore.setState({ initializing: true })
 
   try {
@@ -49,25 +60,40 @@ export const loadUserSettings = async (): Promise<void> => {
       }
     })
 
-    useUserSettingsStore.setState({ settings: settingsMap })
+    useUserSettingsStore.setState({
+      settings: settingsMap,
+      isInitialized: true,
+    })
   } catch (error) {
     console.error('Failed to load user settings:', error)
     // Use default settings if loading fails
-    useUserSettingsStore.setState({ settings: DEFAULT_USER_SETTINGS })
+    useUserSettingsStore.setState({
+      settings: DEFAULT_USER_SETTINGS,
+      isInitialized: true,
+    })
   } finally {
     useUserSettingsStore.setState({ initializing: false })
   }
 }
 
 export const loadGlobalDefaultLanguage = async (): Promise<void> => {
+  const state = useUserSettingsStore.getState()
+  if (state.globalLanguageInitialized) {
+    return
+  }
+
   try {
     const response = await ApiClient.Config.getDefaultLanguage()
     useUserSettingsStore.setState({
       globalDefaultLanguage: response.language as SupportedLanguage,
+      globalLanguageInitialized: true,
     })
   } catch (error) {
     console.error('Failed to load global default language:', error)
     // Keep default 'en' if loading fails
+    useUserSettingsStore.setState({
+      globalLanguageInitialized: true,
+    })
   }
 }
 

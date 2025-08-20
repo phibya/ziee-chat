@@ -6,7 +6,10 @@ import { ChatState, ChatStoreMap } from './chat.ts'
 
 interface ConversationsState {
   conversations: ConversationSummary[]
+  isInitialized: boolean
   isLoading: boolean
+  updating: boolean
+  deleting: boolean
   error: string | null
 }
 
@@ -14,7 +17,10 @@ export const useConversationsStore = create<ConversationsState>()(
   subscribeWithSelector(
     (): ConversationsState => ({
       conversations: [],
+      isInitialized: false,
       isLoading: false,
+      updating: false,
+      deleting: false,
       error: null,
     }),
   ),
@@ -22,20 +28,28 @@ export const useConversationsStore = create<ConversationsState>()(
 
 // Conversations actions
 export const loadAllRecentConversations = async (): Promise<void> => {
+  const state = useConversationsStore.getState()
+  if (state.isInitialized || state.isLoading) {
+    return
+  }
   useConversationsStore.setState({ isLoading: true, error: null })
   try {
     const response = await ApiClient.Chat.listConversations({
       page: 1,
       per_page: 20, // Show recent 20 conversations
     })
-    useConversationsStore.setState({ conversations: response.conversations })
+    useConversationsStore.setState({
+      conversations: response.conversations,
+      isInitialized: true,
+      isLoading: false,
+    })
   } catch (error) {
     useConversationsStore.setState({
       error:
         error instanceof Error ? error.message : 'Failed to load conversations',
+      isLoading: false,
     })
-  } finally {
-    useConversationsStore.setState({ isLoading: false })
+    throw error
   }
 }
 
@@ -51,8 +65,13 @@ export const updateExistingConversation = async (
   id: string,
   updates: Partial<ConversationSummary>,
 ): Promise<void> => {
+  const state = useConversationsStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
-    useConversationsStore.setState({ error: null })
+    useConversationsStore.setState({ updating: true, error: null })
 
     await ApiClient.Chat.updateConversation({
       conversation_id: id,
@@ -63,6 +82,7 @@ export const updateExistingConversation = async (
       conversations: state.conversations.map(conv =>
         conv.id === id ? { ...conv, ...updates } : conv,
       ),
+      updating: false,
     }))
 
     const chatStore = ChatStoreMap.get(id)
@@ -83,19 +103,26 @@ export const updateExistingConversation = async (
         error instanceof Error
           ? error.message
           : 'Failed to update conversation',
+      updating: false,
     })
     throw error
   }
 }
 
 export const removeConversationFromList = async (id: string): Promise<void> => {
+  const state = useConversationsStore.getState()
+  if (state.deleting) {
+    return
+  }
+
   try {
-    useConversationsStore.setState({ error: null })
+    useConversationsStore.setState({ deleting: true, error: null })
 
     await ApiClient.Chat.deleteConversation({ conversation_id: id })
 
     useConversationsStore.setState(state => ({
       conversations: state.conversations.filter(conv => conv.id !== id),
+      deleting: false,
     }))
   } catch (error) {
     useConversationsStore.setState({
@@ -103,6 +130,7 @@ export const removeConversationFromList = async (id: string): Promise<void> => {
         error instanceof Error
           ? error.message
           : 'Failed to delete conversation',
+      deleting: false,
     })
     throw error
   }

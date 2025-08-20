@@ -47,6 +47,11 @@ export const useHardwareStore = create<HardwareState>()(
 
 // Load static hardware information
 export const loadHardwareInfo = async (): Promise<void> => {
+  const state = useHardwareStore.getState()
+  if (state.hardwareInitialized || state.hardwareLoading) {
+    return
+  }
+
   useHardwareStore.setState({ hardwareLoading: true, hardwareError: null })
 
   try {

@@ -13,6 +13,8 @@ interface AdminNgrokSettingsState {
   ngrokStatus: NgrokStatusResponse | null
   loadingSettings: boolean
   loadingStatus: boolean
+  settingsInitialized: boolean
+  statusInitialized: boolean
   error: string | null
 }
 
@@ -23,6 +25,8 @@ export const useAdminNgrokSettingsStore = create<AdminNgrokSettingsState>()(
       ngrokStatus: null,
       loadingSettings: false,
       loadingStatus: false,
+      settingsInitialized: false,
+      statusInitialized: false,
       error: null,
     }),
   ),
@@ -31,12 +35,18 @@ export const useAdminNgrokSettingsStore = create<AdminNgrokSettingsState>()(
 // Store methods - defined OUTSIDE the store definition
 
 export const loadNgrokSettings = async (): Promise<void> => {
+  const state = useAdminNgrokSettingsStore.getState()
+  if (state.settingsInitialized || state.loadingSettings) {
+    return
+  }
+
   useAdminNgrokSettingsStore.setState({ loadingSettings: true, error: null })
 
   try {
     const settings = await ApiClient.Admin.getNgrokSettings()
     useAdminNgrokSettingsStore.setState({
       ngrokSettings: settings,
+      settingsInitialized: true,
       loadingSettings: false,
       error: null,
     })
@@ -46,12 +56,18 @@ export const loadNgrokSettings = async (): Promise<void> => {
       loadingSettings: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     })
+    throw error
   }
 }
 
 export const updateNgrokSettings = async (
   settings: UpdateNgrokSettingsRequest,
 ): Promise<void> => {
+  const state = useAdminNgrokSettingsStore.getState()
+  if (state.loadingSettings) {
+    return
+  }
+
   useAdminNgrokSettingsStore.setState({ loadingSettings: true, error: null })
 
   try {
@@ -83,6 +99,11 @@ export const updateAccountPassword = async (
 }
 
 export const startNgrokTunnel = async (): Promise<void> => {
+  const state = useAdminNgrokSettingsStore.getState()
+  if (state.loadingStatus) {
+    return
+  }
+
   useAdminNgrokSettingsStore.setState({ loadingStatus: true, error: null })
 
   try {
@@ -105,6 +126,11 @@ export const startNgrokTunnel = async (): Promise<void> => {
 }
 
 export const stopNgrokTunnel = async (): Promise<void> => {
+  const state = useAdminNgrokSettingsStore.getState()
+  if (state.loadingStatus) {
+    return
+  }
+
   useAdminNgrokSettingsStore.setState({ loadingStatus: true, error: null })
 
   try {
@@ -127,16 +153,27 @@ export const stopNgrokTunnel = async (): Promise<void> => {
 }
 
 export const refreshNgrokStatus = async (): Promise<void> => {
+  const state = useAdminNgrokSettingsStore.getState()
+  if (state.loadingStatus) {
+    return
+  }
+
+  useAdminNgrokSettingsStore.setState({ loadingStatus: true, error: null })
+
   try {
     const status = await ApiClient.Admin.getNgrokStatus()
     useAdminNgrokSettingsStore.setState({
       ngrokStatus: status,
+      statusInitialized: true,
+      loadingStatus: false,
       error: null,
     })
   } catch (error) {
     console.error('Failed to refresh ngrok status:', error)
     useAdminNgrokSettingsStore.setState({
+      loadingStatus: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     })
+    throw error
   }
 }

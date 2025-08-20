@@ -15,6 +15,8 @@ interface ModelDownloadState {
   sseError: string | null
   // Reconnection attempt count
   reconnectAttempts: number
+  // Initialization state
+  isInitialized: boolean
 }
 
 export const useModelDownloadStore = create<ModelDownloadState>()(
@@ -25,6 +27,7 @@ export const useModelDownloadStore = create<ModelDownloadState>()(
       sseConnected: false,
       sseError: null,
       reconnectAttempts: 0,
+      isInitialized: false,
     }),
   ),
 )
@@ -331,12 +334,19 @@ const setupDownloadTracking = (): void => {
 
 // Initialize download tracking after authentication with provider read permission
 export const initializeDownloadTracking = async (): Promise<void> => {
+  const state = useModelDownloadStore.getState()
+  if (state.isInitialized) {
+    return
+  }
+
   try {
     // Set up the subscription tracking
     setupDownloadTracking()
 
     // Load existing downloads from server
     await loadExistingDownloads()
+
+    useModelDownloadStore.setState({ isInitialized: true })
   } catch (error) {
     console.error('Failed to initialize download tracking:', error)
   }

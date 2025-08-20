@@ -19,7 +19,7 @@ const defaultState: AuthState = {
   user: null,
   token: null,
   isAuthenticated: false,
-  isLoading: true,
+  isLoading: false,
   needsSetup: false,
   isDesktop: false,
   error: null,
@@ -38,6 +38,10 @@ export const useAuthStore = create<AuthState>()(
 export const authenticateUser = async (
   credentials: LoginRequest,
 ): Promise<void> => {
+  const state = useAuthStore.getState()
+  if (state.isLoading) {
+    return
+  }
   useAuthStore.setState({ isLoading: true, error: null })
   try {
     const { token, user } = await ApiClient.Auth.login(credentials)
@@ -62,6 +66,10 @@ export const authenticateUser = async (
 }
 
 export const logoutUser = async (): Promise<void> => {
+  const state = useAuthStore.getState()
+  if (state.isLoading) {
+    return
+  }
   useAuthStore.setState({ isLoading: true, error: null })
   try {
     const { token } = useAuthStore.getState()
@@ -92,6 +100,10 @@ export const logoutUser = async (): Promise<void> => {
 export const registerNewUser = async (
   userData: CreateUserRequest,
 ): Promise<void> => {
+  const state = useAuthStore.getState()
+  if (state.isLoading) {
+    return
+  }
   useAuthStore.setState({ isLoading: true, error: null })
   try {
     const { token, user } = await ApiClient.Auth.register(userData)
@@ -115,6 +127,10 @@ export const registerNewUser = async (
 export const setupInitialAdminUser = async (
   userData: CreateUserRequest,
 ): Promise<void> => {
+  const state = useAuthStore.getState()
+  if (state.isLoading) {
+    return
+  }
   useAuthStore.setState({ isLoading: true, error: null })
   try {
     const { token, user } = await ApiClient.Auth.setup(userData)
@@ -140,6 +156,10 @@ export const clearAuthenticationError = (): void => {
 }
 
 export const auth = async () => {
+  const state = useAuthStore.getState()
+  if (state.isLoading) {
+    return
+  }
   useAuthStore.setState({ isLoading: true, error: null })
 
   try {

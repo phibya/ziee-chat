@@ -72,6 +72,11 @@ export const loadAllAdminModelRepositories = async (): Promise<void> => {
 export const createNewAdminModelRepository = async (
   data: CreateRepositoryRequest,
 ): Promise<Repository> => {
+  const state = useAdminRepositoriesStore.getState()
+  if (state.creating) {
+    return Promise.resolve(null as any)
+  }
+
   try {
     useAdminRepositoriesStore.setState({ creating: true, error: null })
 
@@ -97,6 +102,11 @@ export const updateAdminModelRepository = async (
   id: string,
   data: UpdateRepositoryRequest,
 ): Promise<Repository> => {
+  const state = useAdminRepositoriesStore.getState()
+  if (state.updating) {
+    return Promise.resolve(null as any)
+  }
+
   try {
     useAdminRepositoriesStore.setState({ updating: true, error: null })
 
@@ -122,6 +132,11 @@ export const updateAdminModelRepository = async (
 }
 
 export const deleteAdminModelRepository = async (id: string): Promise<void> => {
+  const state = useAdminRepositoriesStore.getState()
+  if (state.deleting) {
+    return
+  }
+
   try {
     useAdminRepositoriesStore.setState({ deleting: true, error: null })
 
@@ -144,6 +159,14 @@ export const deleteAdminModelRepository = async (id: string): Promise<void> => {
 export const testAdminModelRepositoryConnection = async (
   data: TestRepositoryConnectionRequest,
 ): Promise<{ success: boolean; message: string }> => {
+  const state = useAdminRepositoriesStore.getState()
+  if (state.testing) {
+    return {
+      success: false,
+      message: 'Repository connection test already in progress',
+    }
+  }
+
   try {
     useAdminRepositoriesStore.setState({ testing: true, error: null })
 

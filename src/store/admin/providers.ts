@@ -88,7 +88,12 @@ export const loadAllModelProviders = async (): Promise<void> => {
 
 export const createNewModelProvider = async (
   provider: CreateProviderRequest,
-): Promise<Provider> => {
+): Promise<Provider | undefined> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.creating) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState({ creating: true, error: null })
     const newProvider = await ApiClient.Admin.createProvider(provider)
@@ -117,6 +122,11 @@ export const updateModelProvider = async (
   id: string,
   provider: UpdateProviderRequest,
 ): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState({ updating: true, error: null })
     const updatedProvider = await ApiClient.Admin.updateProvider({
@@ -145,6 +155,11 @@ export const updateModelProvider = async (
 }
 
 export const deleteModelProvider = async (id: string): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.deleting) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState({ deleting: true, error: null })
     await ApiClient.Admin.deleteProvider({ provider_id: id })
@@ -177,6 +192,11 @@ export const deleteModelProvider = async (id: string): Promise<void> => {
 export const loadModelsForProvider = async (
   providerId: string,
 ): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelsLoading[providerId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelsLoading: { ...state.modelsLoading, [providerId]: true },
@@ -217,6 +237,11 @@ export const addNewModelToProvider = async (
     engine_type?: string
   },
 ): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelsLoading[providerId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelsLoading: { ...state.modelsLoading, [providerId]: true },
@@ -253,7 +278,12 @@ export const addNewModelToProvider = async (
 export const addNewModel = async (
   providerId: string,
   data: Partial<Model>,
-): Promise<Model> => {
+): Promise<Model | undefined> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelsLoading[providerId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelsLoading: { ...state.modelsLoading, [providerId]: true },
@@ -291,6 +321,11 @@ export const updateExistingModel = async (
   modelId: string,
   updates: { alias?: string; description?: string; enabled?: boolean },
 ): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelOperations[modelId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
@@ -319,6 +354,11 @@ export const updateExistingModel = async (
 }
 
 export const deleteExistingModel = async (modelId: string): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelOperations[modelId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
@@ -342,6 +382,11 @@ export const deleteExistingModel = async (modelId: string): Promise<void> => {
 }
 
 export const startModelExecution = async (modelId: string): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelOperations[modelId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
@@ -367,6 +412,11 @@ export const startModelExecution = async (modelId: string): Promise<void> => {
 }
 
 export const stopModelExecution = async (modelId: string): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelOperations[modelId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
@@ -392,6 +442,11 @@ export const stopModelExecution = async (modelId: string): Promise<void> => {
 }
 
 export const enableModelForUse = async (modelId: string): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelOperations[modelId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },
@@ -417,6 +472,11 @@ export const enableModelForUse = async (modelId: string): Promise<void> => {
 }
 
 export const disableModelFromUse = async (modelId: string): Promise<void> => {
+  const state = useAdminProvidersStore.getState()
+  if (state.modelOperations[modelId]) {
+    return
+  }
+
   try {
     useAdminProvidersStore.setState(state => ({
       modelOperations: { ...state.modelOperations, [modelId]: true },

@@ -11,6 +11,7 @@ interface AdminProxySettingsState {
   loading: boolean
   loadingProxySettings: boolean
   updating: boolean
+  isInitialized: boolean
 
   // Error state
   error: string | null
@@ -24,6 +25,7 @@ export const useAdminProxySettingsStore = create<AdminProxySettingsState>()(
       loading: false,
       loadingProxySettings: false,
       updating: false,
+      isInitialized: false,
       error: null,
     }),
   ),
@@ -31,6 +33,11 @@ export const useAdminProxySettingsStore = create<AdminProxySettingsState>()(
 
 // Proxy settings actions
 export const loadSystemProxySettings = async (): Promise<void> => {
+  const state = useAdminProxySettingsStore.getState()
+  if (state.isInitialized || state.loadingProxySettings) {
+    return
+  }
+
   try {
     useAdminProxySettingsStore.setState({
       loadingProxySettings: true,
@@ -48,6 +55,7 @@ export const loadSystemProxySettings = async (): Promise<void> => {
         no_proxy: settings.no_proxy,
         ignore_ssl_certificates: settings.ignore_ssl_certificates,
       },
+      isInitialized: true,
       loadingProxySettings: false,
     })
   } catch (error) {
@@ -65,6 +73,11 @@ export const loadSystemProxySettings = async (): Promise<void> => {
 export const updateSystemProxySettings = async (
   settings: UpdateProxySettingsRequest,
 ): Promise<void> => {
+  const state = useAdminProxySettingsStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminProxySettingsStore.setState({ updating: true, error: null })
 

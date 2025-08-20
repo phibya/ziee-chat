@@ -59,7 +59,12 @@ export const useLocalUploadStore = create<LocalUploadState>()(
 // Upload actions
 export const uploadLocalModel = async (
   request: LocalUploadRequest,
-): Promise<Model> => {
+): Promise<Model | undefined> => {
+  const state = useLocalUploadStore.getState()
+  if (state.uploading) {
+    return
+  }
+
   try {
     useLocalUploadStore.setState({
       uploading: true,

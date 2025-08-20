@@ -145,6 +145,10 @@ export const createChatStore = (conversation: string | Conversation) => {
 
         // Actions
         loadConversation: async () => {
+          const state = get()
+          if (state.loading) {
+            return
+          }
           try {
             set({ loading: true, error: null })
 
@@ -246,8 +250,11 @@ export const createChatStore = (conversation: string | Conversation) => {
         },
 
         sendMessage: async params => {
-          const { activeBranchId } = get()
+          const { activeBranchId, sending } = get()
           if (!conversationId || !activeBranchId) return
+          if (sending) {
+            return
+          }
 
           try {
             set({
@@ -381,8 +388,11 @@ export const createChatStore = (conversation: string | Conversation) => {
         },
 
         editMessage: async (messageId: string, params) => {
-          const { conversation } = get()
+          const { conversation, sending } = get()
           if (!conversation) return
+          if (sending) {
+            return
+          }
 
           try {
             set({

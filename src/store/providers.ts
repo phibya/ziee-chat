@@ -7,6 +7,7 @@ interface UserProvidersState {
   // Data
   providers: Provider[]
   modelsByProvider: Record<string, Model[]> // Store models by provider ID
+  isInitialized: boolean
 
   // Loading states
   loading: boolean
@@ -22,6 +23,7 @@ export const useUserProvidersStore = create<UserProvidersState>()(
       // Initial state
       providers: [],
       modelsByProvider: {},
+      isInitialized: false,
       loading: false,
       loadingModels: {},
       error: null,
@@ -31,6 +33,10 @@ export const useUserProvidersStore = create<UserProvidersState>()(
 
 // Provider actions - now loads active providers only
 export const loadUserProviders = async (): Promise<void> => {
+  const state = useUserProvidersStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useUserProvidersStore.setState({ loading: true, error: null })
 
@@ -41,6 +47,7 @@ export const loadUserProviders = async (): Promise<void> => {
 
     useUserProvidersStore.setState({
       providers: response.providers,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {
@@ -85,6 +92,10 @@ export const loadUserModelsForProvider = async (
 
 // Load all active providers and all their active models at once
 export const loadUserProvidersWithAllModels = async (): Promise<void> => {
+  const state = useUserProvidersStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useUserProvidersStore.setState({ loading: true, error: null })
 
@@ -97,6 +108,7 @@ export const loadUserProvidersWithAllModels = async (): Promise<void> => {
     const providers = response.providers
     useUserProvidersStore.setState({
       providers,
+      isInitialized: true,
       loading: false,
     })
 

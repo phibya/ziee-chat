@@ -238,6 +238,10 @@ export const createChatHistoryStore = (projectId?: string) => {
         },
 
         deleteConversationById: async (id: string) => {
+          const state = get()
+          if (state.deleting) {
+            return
+          }
           try {
             set({ deleting: true, error: null })
 
@@ -376,6 +380,9 @@ export const createChatHistoryStore = (projectId?: string) => {
           const selectedIds = Array.from(state.selectedConversations)
 
           if (selectedIds.length === 0) return
+          if (state.deleting) {
+            return
+          }
 
           try {
             set({ deleting: true, error: null })

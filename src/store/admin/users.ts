@@ -9,9 +9,11 @@ interface AdminUsersState {
   total: number
   currentPage: number
   pageSize: number
+  isInitialized: boolean
 
   // User registration settings
   userRegistrationEnabled: boolean
+  registrationSettingsInitialized: boolean
   loadingRegistrationSettings: boolean
 
   // Loading states
@@ -32,7 +34,9 @@ export const useAdminUsersStore = create<AdminUsersState>()(
       total: 0,
       currentPage: 1,
       pageSize: 10,
+      isInitialized: false,
       userRegistrationEnabled: true,
+      registrationSettingsInitialized: false,
       loadingRegistrationSettings: false,
       loading: false,
       creating: false,
@@ -53,6 +57,11 @@ export const loadSystemUsers = async (
     const requestPage = page || currentState.currentPage
     const requestPageSize = pageSize || currentState.pageSize
 
+    // Skip if already initialized and loading first page without explicit page parameter
+    if (currentState.isInitialized && currentState.loading && !page) {
+      return
+    }
+
     useAdminUsersStore.setState({ loading: true, error: null })
 
     const response = await ApiClient.Admin.listUsers({
@@ -65,6 +74,7 @@ export const loadSystemUsers = async (
       total: response.total,
       currentPage: response.page,
       pageSize: response.per_page,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {
@@ -79,7 +89,12 @@ export const loadSystemUsers = async (
 export const updateSystemUser = async (
   id: string,
   data: Partial<User>,
-): Promise<User> => {
+): Promise<User | undefined> => {
+  const state = useAdminUsersStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminUsersStore.setState({ updating: true, error: null })
 
@@ -104,6 +119,11 @@ export const resetSystemUserPassword = async (
   id: string,
   newPassword: string,
 ): Promise<void> => {
+  const state = useAdminUsersStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminUsersStore.setState({ updating: true, error: null })
 
@@ -126,6 +146,11 @@ export const resetSystemUserPassword = async (
 export const toggleSystemUserActiveStatus = async (
   id: string,
 ): Promise<void> => {
+  const state = useAdminUsersStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminUsersStore.setState({ updating: true, error: null })
 
@@ -153,6 +178,13 @@ export const clearAdminUsersStoreError = (): void => {
 
 // Registration settings
 export const loadSystemUserRegistrationSettings = async (): Promise<void> => {
+  const state = useAdminUsersStore.getState()
+  if (
+    state.registrationSettingsInitialized ||
+    state.loadingRegistrationSettings
+  ) {
+    return
+  }
   try {
     useAdminUsersStore.setState({
       loadingRegistrationSettings: true,
@@ -163,6 +195,7 @@ export const loadSystemUserRegistrationSettings = async (): Promise<void> => {
 
     useAdminUsersStore.setState({
       userRegistrationEnabled: enabled,
+      registrationSettingsInitialized: true,
       loadingRegistrationSettings: false,
     })
   } catch (error) {
@@ -180,6 +213,11 @@ export const loadSystemUserRegistrationSettings = async (): Promise<void> => {
 export const updateSystemUserRegistrationSettings = async (
   enabled: boolean,
 ): Promise<void> => {
+  const state = useAdminUsersStore.getState()
+  if (state.updating) {
+    return
+  }
+
   try {
     useAdminUsersStore.setState({ updating: true, error: null })
 
