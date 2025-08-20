@@ -382,6 +382,7 @@ async fn download_file_internal(file_db: File) -> Result<Response, StatusCode> {
 
     let headers = [
         (header::CONTENT_TYPE, "application/octet-stream".to_string()),
+        (header::CACHE_CONTROL, "public, max-age=3600000".to_string()),
         (
             header::CONTENT_DISPOSITION,
             format!("attachment; filename=\"{}\"", file_db.filename),
@@ -417,7 +418,7 @@ pub async fn get_file_preview(
 
     let headers = [
         (header::CONTENT_TYPE, "image/jpeg".to_string()),
-        (header::CACHE_CONTROL, "public, max-age=3600".to_string()),
+        (header::CACHE_CONTROL, "public, max-age=3600000".to_string()),
     ];
 
     Ok((headers, thumbnail_data).into_response())

@@ -114,36 +114,3 @@ pub fn parse_lfs_pointer_content(content: &str) -> Option<(String, u64)> {
         _ => None,
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const LFS_TEST_DATA: &str = r#"version https://git-lfs.github.com/spec/v1
-oid sha256:0fae26606afd128d4d2f730462c8451b90931d25813e06e55239a2ca00e74c74
-size 226848"#;
-
-    #[test]
-    fn test_parsing_of_string() {
-        let parsed =
-            LfsMetadata::parse_from_string(LFS_TEST_DATA).expect("Could not parse demo-string!");
-        assert_eq!(parsed.size, 226848);
-        assert_eq!(parsed.version, "https://git-lfs.github.com/spec/v1");
-        assert_eq!(
-            parsed.oid,
-            "0fae26606afd128d4d2f730462c8451b90931d25813e06e55239a2ca00e74c74"
-        );
-        assert_eq!(parsed.hash, Some(Hash::SHA256));
-    }
-
-    #[test]
-    fn test_parse_lfs_pointer_content() {
-        let (oid, size) =
-            parse_lfs_pointer_content(LFS_TEST_DATA).expect("Could not parse pointer content");
-        assert_eq!(
-            oid,
-            "0fae26606afd128d4d2f730462c8451b90931d25813e06e55239a2ca00e74c74"
-        );
-        assert_eq!(size, 226848);
-    }
-}

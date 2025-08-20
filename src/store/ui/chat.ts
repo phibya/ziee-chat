@@ -6,9 +6,11 @@ interface ChatUIState {
 }
 
 export const useChatUIStore = create<ChatUIState>()(
-  subscribeWithSelector((_set, _get) => ({
-    showTime: false,
-  })),
+  subscribeWithSelector(
+    (_set, _get): ChatUIState => ({
+      showTime: false,
+    }),
+  ),
 )
 
 // Store methods - defined OUTSIDE the store definition

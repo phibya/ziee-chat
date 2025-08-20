@@ -11,6 +11,42 @@ import { useParams } from 'react-router-dom'
 import { debounce } from '../utils/debounce'
 import { removeMessageBranchStoreByOriginatedId } from './messageBranches.ts'
 
+const BranchMessagesCacheMap = new Map<string, Message[]>()
+
+// Map to track cleanup debounce functions for inactive branches
+const BranchCleanupDebounceMap = new Map<string, ReturnType<typeof debounce>>()
+
+// Helper function to cache current branch and set up cleanup for the previous one
+const cacheBranchAndSetupCleanup = (
+  conversationId: string,
+  currentBranchId: string,
+  targetBranchId: string,
+  currentMessages: Message[],
+) => {
+  if (currentBranchId && currentBranchId !== targetBranchId) {
+    const currentCacheKey = `${conversationId}:${currentBranchId}`
+    BranchMessagesCacheMap.set(currentCacheKey, currentMessages)
+
+    // Set up debounced cleanup for the previous branch
+    const cleanupFn = debounce(() => {
+      BranchMessagesCacheMap.delete(currentCacheKey)
+      BranchCleanupDebounceMap.delete(currentCacheKey)
+    }, 60 * 1000) // 1 minute
+
+    BranchCleanupDebounceMap.set(currentCacheKey, cleanupFn)
+    cleanupFn()
+  }
+}
+
+// Helper function to cancel cleanup for an active branch
+const cancelBranchCleanup = (cacheKey: string) => {
+  const existingCleanup = BranchCleanupDebounceMap.get(cacheKey)
+  if (existingCleanup) {
+    existingCleanup.cancel()
+    BranchCleanupDebounceMap.delete(cacheKey)
+  }
+}
+
 export interface ChatState {
   // Current conversation state
   conversation: Conversation | null
@@ -87,6 +123,22 @@ export const createChatStore = (conversation: string | Conversation) => {
         isStreaming: false,
 
         destroy: () => {
+          // Clean up cached messages and debounce timers for this conversation
+          const keysToDelete: string[] = []
+          BranchMessagesCacheMap.forEach((_, key) => {
+            if (key.startsWith(`${conversationId}:`)) {
+              keysToDelete.push(key)
+            }
+          })
+          keysToDelete.forEach(key => {
+            BranchMessagesCacheMap.delete(key)
+            const cleanup = BranchCleanupDebounceMap.get(key)
+            if (cleanup) {
+              cleanup.cancel()
+              BranchCleanupDebounceMap.delete(key)
+            }
+          })
+
           // Remove the store from the map and let the browser GC it
           ChatStoreMap.delete(conversationId)
         },
@@ -132,7 +184,7 @@ export const createChatStore = (conversation: string | Conversation) => {
 
         loadMessages: async (branchId?: string) => {
           try {
-            const { conversation } = get()
+            const { conversation, activeBranchId: currentBranchId } = get()
             if (!conversation) {
               throw new Error('No conversation loaded')
             }
@@ -140,11 +192,41 @@ export const createChatStore = (conversation: string | Conversation) => {
             set({ loading: !get().messages.length, error: null })
 
             const targetBranchId = branchId || conversation.active_branch_id
+            const cacheKey = `${conversationId}:${targetBranchId}`
+
+            // Cache current branch messages before switching
+            if (currentBranchId) {
+              cacheBranchAndSetupCleanup(
+                conversationId,
+                currentBranchId,
+                targetBranchId,
+                get().messages,
+              )
+            }
+
+            // Cancel any existing cleanup for the target branch since it's being accessed
+            cancelBranchCleanup(cacheKey)
+
+            // Check if messages are cached
+            const cachedMessages = BranchMessagesCacheMap.get(cacheKey)
+            if (cachedMessages) {
+              set({
+                messages: cachedMessages,
+                activeBranchId: targetBranchId,
+                loading: false,
+              })
+              return
+            }
+
+            // Load messages from API if not cached
             const messages =
               await ApiClient.Chat.getConversationMessagesByBranch({
                 conversation_id: conversationId,
                 branch_id: targetBranchId,
               })
+
+            // Cache the loaded messages
+            BranchMessagesCacheMap.set(cacheKey, messages)
 
             set({
               messages: messages,
@@ -190,9 +272,15 @@ export const createChatStore = (conversation: string | Conversation) => {
               files: files,
             }
 
-            set(state => ({
-              messages: [...state.messages, userMessage],
-            }))
+            set(state => {
+              const newMessages = [...state.messages, userMessage]
+              // Update cache when adding new message
+              if (activeBranchId) {
+                const cacheKey = `${conversationId}:${activeBranchId}`
+                BranchMessagesCacheMap.set(cacheKey, newMessages)
+              }
+              return { messages: newMessages }
+            })
 
             // Create assistant message placeholder
             const assistantMessage: Message = {
@@ -207,9 +295,15 @@ export const createChatStore = (conversation: string | Conversation) => {
               files: [],
             }
 
-            set(state => ({
-              messages: [...state.messages, assistantMessage],
-            }))
+            set(state => {
+              const newMessages = [...state.messages, assistantMessage]
+              // Update cache when adding assistant message placeholder
+              if (activeBranchId) {
+                const cacheKey = `${conversationId}:${activeBranchId}`
+                BranchMessagesCacheMap.set(cacheKey, newMessages)
+              }
+              return { messages: newMessages }
+            })
 
             // Send message with streaming
             await ApiClient.Chat.sendMessageStream(
@@ -235,20 +329,28 @@ export const createChatStore = (conversation: string | Conversation) => {
                     }
                   } else if (event === 'complete') {
                     // Handle completion events
-                    set(state => ({
-                      isStreaming: false,
-                      sending: false,
-                      streamingMessage: '',
-                      messages: [
-                        ...state.messages,
-                        {
-                          ...assistantMessage,
-                          content: state.streamingMessage,
-                          updated_at: new Date().toISOString(),
-                          id: data.message_id,
-                        },
-                      ],
-                    }))
+                    set(state => {
+                      const finalMessage = {
+                        ...assistantMessage,
+                        content: state.streamingMessage,
+                        updated_at: new Date().toISOString(),
+                        id: data.message_id,
+                      }
+                      const newMessages = [...state.messages, finalMessage]
+
+                      // Update cache when streaming is complete
+                      if (activeBranchId) {
+                        const cacheKey = `${conversationId}:${activeBranchId}`
+                        BranchMessagesCacheMap.set(cacheKey, newMessages)
+                      }
+
+                      return {
+                        isStreaming: false,
+                        sending: false,
+                        streamingMessage: '',
+                        messages: newMessages,
+                      }
+                    })
                   } else if (event === 'error') {
                     set({
                       error: data.error,
@@ -429,7 +531,18 @@ export const createChatStore = (conversation: string | Conversation) => {
 
         switchBranch: async (branchId: string) => {
           try {
+            const { activeBranchId: currentBranchId } = get()
             set({ error: null })
+
+            // Cache current branch messages before switching
+            if (currentBranchId) {
+              cacheBranchAndSetupCleanup(
+                conversationId,
+                currentBranchId,
+                branchId,
+                get().messages,
+              )
+            }
 
             await ApiClient.Chat.switchConversationBranch({
               conversation_id: conversationId,
@@ -437,7 +550,7 @@ export const createChatStore = (conversation: string | Conversation) => {
             })
 
             // After switching, reload the conversation and get messages for the new branch
-            // await get().loadConversation()
+            // The loadMessages function will handle caching automatically
             await get().loadMessages(branchId)
             set({
               activeBranchId: branchId,
