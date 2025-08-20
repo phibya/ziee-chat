@@ -189,37 +189,6 @@ pub async fn delete_project(
     Ok(result.rows_affected() > 0)
 }
 
-// Project conversation operations
-pub async fn link_conversation_to_project(
-    pool: &PgPool,
-    project_id: Uuid,
-    conversation_id: Uuid,
-    user_id: Uuid,
-) -> Result<Option<crate::database::models::chat::Conversation>, sqlx::Error> {
-    // Verify project exists and belongs to user
-    let project = get_project_by_id(pool, project_id, user_id).await?;
-    if project.is_none() {
-        return Ok(None);
-    }
-
-    // Update conversation to link it to the project
-    let conversation = sqlx::query_as::<_, crate::database::models::chat::Conversation>(
-        r#"
-        UPDATE conversations 
-        SET project_id = $1, updated_at = NOW()
-        WHERE id = $2 AND user_id = $3
-        RETURNING id, user_id, title, project_id, assistant_id, model_id, active_branch_id, created_at, updated_at
-        "#,
-    )
-    .bind(project_id)
-    .bind(conversation_id)
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(conversation)
-}
-
 pub async fn list_project_conversations(
     pool: &PgPool,
     project_id: Uuid,
@@ -245,32 +214,4 @@ pub async fn list_project_conversations(
     .await?;
 
     Ok(Some(conversations))
-}
-
-pub async fn unlink_conversation_from_project(
-    pool: &PgPool,
-    project_id: Uuid,
-    conversation_id: Uuid,
-    user_id: Uuid,
-) -> Result<bool, sqlx::Error> {
-    // Verify project exists and belongs to user
-    let project = get_project_by_id(pool, project_id, user_id).await?;
-    if project.is_none() {
-        return Ok(false);
-    }
-
-    let result = sqlx::query(
-        r#"
-        UPDATE conversations 
-        SET project_id = NULL, updated_at = NOW()
-        WHERE id = $1 AND project_id = $2 AND user_id = $3
-        "#,
-    )
-    .bind(conversation_id)
-    .bind(project_id)
-    .bind(user_id)
-    .execute(pool)
-    .await?;
-
-    Ok(result.rows_affected() > 0)
 }

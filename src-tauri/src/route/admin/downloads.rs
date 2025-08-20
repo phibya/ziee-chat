@@ -20,7 +20,7 @@ pub fn admin_download_routes() -> ApiRouter {
                     .response::<200, Json<DownloadInstanceListResponse>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
+                api::middleware::model_downloads_read_middleware,
             )),
         )
         .api_route(
@@ -32,7 +32,7 @@ pub fn admin_download_routes() -> ApiRouter {
                     .response::<200, Json<DownloadInstance>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
+                api::middleware::model_downloads_read_middleware,
             )),
         )
         .api_route(
@@ -44,7 +44,7 @@ pub fn admin_download_routes() -> ApiRouter {
                     .response::<200, ()>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::model_downloads_cancel_middleware,
             )),
         )
         .api_route(
@@ -56,7 +56,7 @@ pub fn admin_download_routes() -> ApiRouter {
                     .response::<200, ()>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::model_downloads_delete_middleware,
             )),
         )
         .api_route(
@@ -67,7 +67,7 @@ pub fn admin_download_routes() -> ApiRouter {
                     .tag("admin")
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
+                api::middleware::model_downloads_read_middleware,
             )),
         )
         .api_route(

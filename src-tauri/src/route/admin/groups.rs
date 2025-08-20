@@ -83,7 +83,7 @@ pub fn admin_group_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            .layer(middleware::from_fn(api::middleware::groups_assign_users_middleware)),
         )
         .api_route(
             "/groups/{user_id}/{group_id}/remove",
@@ -93,7 +93,7 @@ pub fn admin_group_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            .layer(middleware::from_fn(api::middleware::groups_assign_users_middleware)),
         )
         // User Group Model Provider relationship routes
         .api_route(
@@ -114,7 +114,7 @@ pub fn admin_group_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<UserGroupProviderResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            .layer(middleware::from_fn(api::middleware::groups_assign_providers_middleware)),
         )
         .api_route(
             "/groups/{group_id}/providers/{provider_id}",
@@ -124,7 +124,7 @@ pub fn admin_group_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::groups_edit_middleware)),
+            .layer(middleware::from_fn(api::middleware::groups_assign_providers_middleware)),
         )
         .api_route(
             "/user-group-provider-relationships",

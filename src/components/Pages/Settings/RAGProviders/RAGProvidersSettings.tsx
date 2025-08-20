@@ -20,8 +20,6 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearRAGProvidersError,
   cloneExistingRAGProvider,
@@ -47,7 +45,6 @@ import { AddRAGDatabaseDrawer } from './AddRAGDatabaseDrawer'
 import { AddRAGDatabaseDownloadDrawer } from './AddRAGDatabaseDownloadDrawer'
 import { EditRAGDatabaseDrawer } from './EditRAGDatabaseDrawer'
 
-const { Title, Text } = Typography
 const { Sider, Content } = Layout
 
 const RAG_PROVIDER_ICONS: Record<RAGProviderType, string> = {
@@ -63,7 +60,6 @@ const RAG_PROVIDER_ICONS: Record<RAGProviderType, string> = {
 export function RAGProvidersSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
   const { provider_id } = useParams<{ provider_id?: string }>()
   const navigate = useNavigate()
 
@@ -77,24 +73,6 @@ export function RAGProvidersSettings() {
   const addRAGDatabaseDrawer = useAddRAGDatabaseDrawerStore()
   const addRAGDatabaseDownloadDrawer = useAddRAGDatabaseDownloadDrawerStore()
   const editRAGDatabaseDrawer = useEditRAGDatabaseDrawerStore()
-
-  // Check permissions for web app
-  const canEditProviders =
-    isTauriView || hasPermission(Permission.config.providers.edit)
-  const canViewProviders =
-    isTauriView || hasPermission(Permission.config.providers.read)
-
-  // If user doesn't have view permissions, don't render the component
-  if (!canViewProviders) {
-    return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <Title level={3}>Access Denied</Title>
-        <Text type="secondary">
-          You do not have permission to view RAG provider settings.
-        </Text>
-      </div>
-    )
-  }
 
   useEffect(() => {
     const checkMobile = () => {
@@ -143,11 +121,6 @@ export function RAGProvidersSettings() {
   }, [providers, provider_id, navigate])
 
   const handleDeleteProvider = async (providerId: string) => {
-    if (!canEditProviders) {
-      message.error('No permission to delete RAG providers')
-      return
-    }
-
     const provider = providers.find(p => p.id === providerId)
     if (!provider) return
 
@@ -182,11 +155,6 @@ export function RAGProvidersSettings() {
   }
 
   const handleCloneProvider = async (providerId: string) => {
-    if (!canEditProviders) {
-      message.error('No permission to clone RAG providers')
-      return
-    }
-
     try {
       await cloneExistingRAGProvider(providerId)
       message.success('RAG provider cloned successfully')
@@ -199,22 +167,20 @@ export function RAGProvidersSettings() {
   const getProviderActions = (provider: RAGProvider) => {
     const actions: any[] = []
 
-    if (canEditProviders) {
-      actions.push({
-        key: 'clone',
-        icon: <CopyOutlined />,
-        label: t('buttons.clone'),
-        onClick: () => handleCloneProvider(provider.id),
-      })
+    actions.push({
+      key: 'clone',
+      icon: <CopyOutlined />,
+      label: t('buttons.clone'),
+      onClick: () => handleCloneProvider(provider.id),
+    })
 
-      actions.push({
-        key: 'delete',
-        icon: <DeleteOutlined />,
-        label: t('buttons.delete'),
-        onClick: () => handleDeleteProvider(provider.id),
-        disabled: provider.built_in,
-      })
-    }
+    actions.push({
+      key: 'delete',
+      icon: <DeleteOutlined />,
+      label: t('buttons.delete'),
+      onClick: () => handleDeleteProvider(provider.id),
+      disabled: provider.built_in,
+    })
 
     return actions
   }
@@ -227,30 +193,26 @@ export function RAGProvidersSettings() {
         <div className={'flex-1'}>
           <Typography.Text>{provider.name}</Typography.Text>
         </div>
-        {canEditProviders && (
-          <Dropdown
-            menu={{ items: getProviderActions(provider) }}
-            trigger={['click']}
-          >
-            <Button
-              type="text"
-              icon={<MenuOutlined />}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            />
-          </Dropdown>
-        )}
+        <Dropdown
+          menu={{ items: getProviderActions(provider) }}
+          trigger={['click']}
+        >
+          <Button
+            type="text"
+            icon={<MenuOutlined />}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          />
+        </Dropdown>
       </Flex>
     ),
   }))
 
-  if (canEditProviders) {
-    menuItems.push({
-      key: 'add-rag-provider',
-      //@ts-ignore
-      icon: <PlusOutlined />,
-      label: <Typography.Text>Add RAG Provider</Typography.Text>,
-    })
-  }
+  menuItems.push({
+    key: 'add-rag-provider',
+    //@ts-ignore
+    icon: <PlusOutlined />,
+    label: <Typography.Text>Add RAG Provider</Typography.Text>,
+  })
 
   const ProviderMenu = () => (
     <Menu

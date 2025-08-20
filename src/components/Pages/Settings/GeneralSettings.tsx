@@ -11,8 +11,6 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileTextOutlined, FolderOpenOutlined } from '@ant-design/icons'
-import { Permission, usePermissions } from '../../../permissions'
-import { isTauriView } from '../../../api/core'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
@@ -24,7 +22,6 @@ export function GeneralSettings() {
   const [isMobile, setIsMobile] = useState(false)
   const [experimentalFeatures, setExperimentalFeatures] = useState(false)
   const [spellCheck, setSpellCheck] = useState(true)
-  const { hasPermission } = usePermissions()
 
   useEffect(() => {
     const checkMobile = () => {
@@ -47,11 +44,6 @@ export function GeneralSettings() {
   const handleFormChange = async (changedValues: any) => {
     try {
       if ('experimentalFeatures' in changedValues) {
-        if (!hasPermission(Permission.config.experimental.edit)) {
-          message.error(t('admin.noPermissionExperimental'))
-          form.setFieldsValue({ experimentalFeatures })
-          return
-        }
         setExperimentalFeatures(changedValues.experimentalFeatures)
         message.success(
           changedValues.experimentalFeatures
@@ -95,100 +87,7 @@ export function GeneralSettings() {
               </div>
               <Text type="secondary">v0.6.4</Text>
             </Flex>
-            {isTauriView && hasPermission(Permission.config.updates.read) && (
-              <>
-                <Divider style={{ margin: 0 }} />
-                <Flex
-                  justify="space-between"
-                  align={isMobile ? 'flex-start' : 'center'}
-                  vertical={isMobile}
-                  gap={isMobile ? 'small' : 0}
-                >
-                  <div>
-                    <Text strong>{t('labels.checkForUpdates')}</Text>
-                    <div>
-                      <Text type="secondary">
-                        {t('general.checkForUpdatesDescription')}
-                      </Text>
-                    </div>
-                  </div>
-                  <Button
-                    type="default"
-                    disabled={!hasPermission(Permission.config.updates.edit)}
-                  >
-                    {t('buttons.checkForUpdates')}
-                  </Button>
-                </Flex>
-              </>
-            )}
-          </Flex>
-        </Card>
-
-        {isTauriView && hasPermission(Permission.config.experimental.read) && (
-          <Card title={t('general.advanced')}>
-            <Form
-              form={form}
-              onValuesChange={handleFormChange}
-              initialValues={{
-                experimentalFeatures,
-                spellCheck,
-              }}
-            >
-              <Flex justify="space-between" align="center">
-                <div>
-                  <Text strong>{t('labels.experimentalFeatures')}</Text>
-                  <div>
-                    <Text type="secondary">
-                      {t('general.experimentalFeaturesDescription')}
-                    </Text>
-                  </div>
-                </div>
-                <Form.Item
-                  name="experimentalFeatures"
-                  valuePropName="checked"
-                  style={{ margin: 0 }}
-                >
-                  <Switch
-                    disabled={
-                      !hasPermission(Permission.config.experimental.edit)
-                    }
-                  />
-                </Form.Item>
-              </Flex>
-            </Form>
-          </Card>
-        )}
-
-        {isTauriView && hasPermission(Permission.config.dataFolder.read) && (
-          <Card title={t('general.dataFolder')}>
-            <Flex className="flex-col gap-3">
-              <Flex
-                justify="space-between"
-                align={isMobile ? 'flex-start' : 'center'}
-                vertical={isMobile}
-                gap={isMobile ? 'small' : 0}
-              >
-                <div>
-                  <Text strong>{t('labels.appData')}</Text>
-                  <div>
-                    <Text type="secondary">
-                      {t('general.appDataDescription')}
-                    </Text>
-                  </div>
-                  <div>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      /Users/user/Library/Application Support/Ziee/data
-                    </Text>
-                  </div>
-                </div>
-                <Button
-                  type="default"
-                  icon={<FolderOpenOutlined />}
-                  disabled={!hasPermission(Permission.config.dataFolder.edit)}
-                >
-                  {t('buttons.changeLocation')}
-                </Button>
-              </Flex>
+            <>
               <Divider style={{ margin: 0 }} />
               <Flex
                 justify="space-between"
@@ -197,38 +96,110 @@ export function GeneralSettings() {
                 gap={isMobile ? 'small' : 0}
               >
                 <div>
-                  <Text strong>{t('general.appLogs')}</Text>
+                  <Text strong>{t('labels.checkForUpdates')}</Text>
                   <div>
                     <Text type="secondary">
-                      {t('general.appLogsDescription')}
+                      {t('general.checkForUpdatesDescription')}
                     </Text>
                   </div>
                 </div>
-                <Flex
-                  vertical={isMobile}
-                  className={isMobile ? 'gap-2 w-full' : 'gap-2'}
+                <Button type="default">{t('buttons.checkForUpdates')}</Button>
+              </Flex>
+            </>
+          </Flex>
+        </Card>
+
+        <Card title={t('general.advanced')}>
+          <Form
+            form={form}
+            onValuesChange={handleFormChange}
+            initialValues={{
+              experimentalFeatures,
+              spellCheck,
+            }}
+          >
+            <Flex justify="space-between" align="center">
+              <div>
+                <Text strong>{t('labels.experimentalFeatures')}</Text>
+                <div>
+                  <Text type="secondary">
+                    {t('general.experimentalFeaturesDescription')}
+                  </Text>
+                </div>
+              </div>
+              <Form.Item
+                name="experimentalFeatures"
+                valuePropName="checked"
+                style={{ margin: 0 }}
+              >
+                <Switch />
+              </Form.Item>
+            </Flex>
+          </Form>
+        </Card>
+
+        <Card title={t('general.dataFolder')}>
+          <Flex className="flex-col gap-3">
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
+            >
+              <div>
+                <Text strong>{t('labels.appData')}</Text>
+                <div>
+                  <Text type="secondary">
+                    {t('general.appDataDescription')}
+                  </Text>
+                </div>
+                <div>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    /Users/user/Library/Application Support/Ziee/data
+                  </Text>
+                </div>
+              </div>
+              <Button type="default" icon={<FolderOpenOutlined />}>
+                {t('buttons.changeLocation')}
+              </Button>
+            </Flex>
+            <Divider style={{ margin: 0 }} />
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
+            >
+              <div>
+                <Text strong>{t('general.appLogs')}</Text>
+                <div>
+                  <Text type="secondary">
+                    {t('general.appLogsDescription')}
+                  </Text>
+                </div>
+              </div>
+              <Flex
+                vertical={isMobile}
+                className={isMobile ? 'gap-2 w-full' : 'gap-2'}
+              >
+                <Button
+                  type="default"
+                  icon={<FileTextOutlined />}
+                  block={isMobile}
                 >
-                  <Button
-                    type="default"
-                    icon={<FileTextOutlined />}
-                    block={isMobile}
-                    disabled={!hasPermission(Permission.config.dataFolder.edit)}
-                  >
-                    {t('buttons.openLogs')}
-                  </Button>
-                  <Button
-                    type="default"
-                    icon={<FolderOpenOutlined />}
-                    block={isMobile}
-                    disabled={!hasPermission(Permission.config.dataFolder.edit)}
-                  >
-                    {t('buttons.showInFinder')}
-                  </Button>
-                </Flex>
+                  {t('buttons.openLogs')}
+                </Button>
+                <Button
+                  type="default"
+                  icon={<FolderOpenOutlined />}
+                  block={isMobile}
+                >
+                  {t('buttons.showInFinder')}
+                </Button>
               </Flex>
             </Flex>
-          </Card>
-        )}
+          </Flex>
+        </Card>
 
         <Card title={t('general.other')}>
           <Flex className="flex-col gap-3">
@@ -264,30 +235,24 @@ export function GeneralSettings() {
               </Flex>
             </Form>
             <Divider style={{ margin: 0 }} />
-            {hasPermission(Permission.config.factoryReset.read) && (
-              <Flex
-                justify="space-between"
-                align={isMobile ? 'flex-start' : 'center'}
-                vertical={isMobile}
-                gap={isMobile ? 'small' : 0}
-              >
+            <Flex
+              justify="space-between"
+              align={isMobile ? 'flex-start' : 'center'}
+              vertical={isMobile}
+              gap={isMobile ? 'small' : 0}
+            >
+              <div>
+                <Text strong>{t('general.resetToFactorySettings')}</Text>
                 <div>
-                  <Text strong>{t('general.resetToFactorySettings')}</Text>
-                  <div>
-                    <Text type="secondary">
-                      {t('general.resetToFactorySettingsDescription')}
-                    </Text>
-                  </div>
+                  <Text type="secondary">
+                    {t('general.resetToFactorySettingsDescription')}
+                  </Text>
                 </div>
-                <Button
-                  type="primary"
-                  danger
-                  disabled={!hasPermission(Permission.config.factoryReset.edit)}
-                >
-                  {t('buttons.reset')}
-                </Button>
-              </Flex>
-            )}
+              </div>
+              <Button type="primary" danger>
+                {t('buttons.reset')}
+              </Button>
+            </Flex>
           </Flex>
         </Card>
 

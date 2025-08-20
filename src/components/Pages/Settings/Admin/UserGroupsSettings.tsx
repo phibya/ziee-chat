@@ -1,7 +1,6 @@
 import {
   DeleteOutlined,
   EditOutlined,
-  ExclamationCircleOutlined,
   PlusOutlined,
   TeamOutlined,
   UserOutlined,
@@ -20,7 +19,6 @@ import {
   List,
   Pagination,
   Popconfirm,
-  Result,
   Select,
   Spin,
   Switch,
@@ -30,7 +28,6 @@ import {
 import { Drawer } from '../../../common/Drawer'
 import { useEffect, useState } from 'react'
 import { isTauriView } from '../../../../api/core.ts'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearSystemAdminError,
   createNewUserGroup,
@@ -53,7 +50,6 @@ const { TextArea } = Input
 
 export function UserGroupsSettings() {
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
 
   const {
     groups,
@@ -74,26 +70,15 @@ export function UserGroupsSettings() {
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
 
-  // Check permissions
-  const canReadGroups = hasPermission(Permission.groups.read)
-  const canEditGroups = hasPermission(Permission.groups.edit)
-  const canCreateGroups = hasPermission(Permission.groups.create)
-  const canDeleteGroups = hasPermission(Permission.groups.delete)
-  const canManageProviders = hasPermission(Permission.config.providers.edit)
-
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
     if (isTauriView) {
       message.warning('User group management is not available in desktop mode')
       return
     }
-    if (!canReadGroups) {
-      message.warning('You do not have permission to view user groups')
-      return
-    }
     loadUserGroups(1, 10)
     loadAllModelProviders()
-  }, [canReadGroups])
+  }, [])
 
   // Show errors
   useEffect(() => {
@@ -104,17 +89,8 @@ export function UserGroupsSettings() {
   }, [error, message])
 
   const handleCreateGroup = async (values: any) => {
-    if (!canCreateGroups) {
-      message.error('You do not have permission to create user groups')
-      return
-    }
-
     // Check if user is trying to assign model providers but doesn't have permission
-    if (
-      values.provider_ids &&
-      values.provider_ids.length > 0 &&
-      !canManageProviders
-    ) {
+    if (values.provider_ids && values.provider_ids.length > 0) {
       message.error(
         'You do not have permission to assign model providers to groups',
       )
@@ -140,24 +116,6 @@ export function UserGroupsSettings() {
 
   const handleEditGroup = async (values: any) => {
     if (!selectedGroup) return
-    if (!canEditGroups) {
-      message.error('You do not have permission to edit user groups')
-      return
-    }
-
-    // Check if user is trying to modify model providers but doesn't have permission
-    const originalProviders = selectedGroup.provider_ids || []
-    const newProviders = values.provider_ids || []
-    const providersChanged =
-      JSON.stringify(originalProviders.sort()) !==
-      JSON.stringify(newProviders.sort())
-
-    if (providersChanged && !canManageProviders) {
-      message.error(
-        'You do not have permission to modify model provider assignments',
-      )
-      return
-    }
 
     try {
       const updateData: { group_id: string } & UpdateUserGroupRequest = {
@@ -184,10 +142,6 @@ export function UserGroupsSettings() {
   }
 
   const handleDeleteGroup = async (groupId: string) => {
-    if (!canDeleteGroups) {
-      message.error('You do not have permission to delete user groups')
-      return
-    }
     try {
       await deleteUserGroup(groupId)
       message.success('User group deleted successfully')
@@ -235,34 +189,30 @@ export function UserGroupsSettings() {
       </Button>,
     )
 
-    if (canEditGroups) {
-      actions.push(
-        <Button
-          key="edit"
-          type="text"
-          icon={<EditOutlined />}
-          onClick={() => openEditModal(group)}
-        >
-          Edit
-        </Button>,
-      )
-    }
+    actions.push(
+      <Button
+        key="edit"
+        type="text"
+        icon={<EditOutlined />}
+        onClick={() => openEditModal(group)}
+      >
+        Edit
+      </Button>,
+    )
 
-    if (canDeleteGroups && !group.is_protected) {
-      actions.push(
-        <Popconfirm
-          key="delete"
-          title="Are you sure you want to delete this group?"
-          onConfirm={() => handleDeleteGroup(group.id)}
-          okText="Yes"
-          cancelText="No"
-        >
-          <Button type="text" danger icon={<DeleteOutlined />}>
-            Delete
-          </Button>
-        </Popconfirm>,
-      )
-    }
+    actions.push(
+      <Popconfirm
+        key="delete"
+        title="Are you sure you want to delete this group?"
+        onConfirm={() => handleDeleteGroup(group.id)}
+        okText="Yes"
+        cancelText="No"
+      >
+        <Button type="text" danger icon={<DeleteOutlined />}>
+          Delete
+        </Button>
+      </Popconfirm>,
+    )
 
     return actions.filter(Boolean)
   }
@@ -287,36 +237,19 @@ export function UserGroupsSettings() {
     )
   }
 
-  if (!canReadGroups) {
-    return (
-      <Result
-        icon={<ExclamationCircleOutlined />}
-        title="Access Denied"
-        subTitle={`You do not have permission to view user groups. Contact your administrator to request ${Permission.groups.read} permission.`}
-        extra={
-          <Button type="primary" onClick={() => window.history.back()}>
-            Go Back
-          </Button>
-        }
-      />
-    )
-  }
-
   return (
     <SettingsPageContainer title="User Groups">
       <div>
         <Card
           title="User Groups"
           extra={
-            canCreateGroups && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => setCreateModalVisible(true)}
-              >
-                Create Group
-              </Button>
-            )
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalVisible(true)}
+            >
+              Create Group
+            </Button>
           }
         >
           {loadingGroups ? (
@@ -372,8 +305,7 @@ export function UserGroupsSettings() {
                         <Descriptions.Item label="Created">
                           {new Date(group.created_at).toLocaleDateString()}
                         </Descriptions.Item>
-                        {canManageProviders &&
-                          group.provider_ids &&
+                        {group.provider_ids &&
                           group.provider_ids.length > 0 && (
                             <Descriptions.Item
                               label="Providers"
@@ -478,29 +410,27 @@ export function UserGroupsSettings() {
               />
             </Form.Item>
 
-            {canManageProviders && (
-              <Form.Item
-                name="provider_ids"
-                label="Providers"
-                tooltip="Select which model providers this group can access"
-              >
-                <Select
-                  mode="multiple"
-                  placeholder="Select model providers"
-                  options={providers.map(provider => ({
-                    value: provider.id,
-                    label: provider.name,
-                    disabled: !provider.enabled,
-                  }))}
-                  showSearch
-                  filterOption={(input, option) =>
-                    (option?.label ?? '')
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                />
-              </Form.Item>
-            )}
+            <Form.Item
+              name="provider_ids"
+              label="Providers"
+              tooltip="Select which model providers this group can access"
+            >
+              <Select
+                mode="multiple"
+                placeholder="Select model providers"
+                options={providers.map(provider => ({
+                  value: provider.id,
+                  label: provider.name,
+                  disabled: !provider.enabled,
+                }))}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
             <Form.Item className="mb-0">
               <Flex className="gap-2">
                 <Button type="primary" htmlType="submit">
@@ -576,29 +506,27 @@ export function UserGroupsSettings() {
               <TextArea rows={6} disabled={selectedGroup?.is_protected} />
             </Form.Item>
 
-            {canManageProviders && (
-              <Form.Item
-                name="provider_ids"
-                label="Providers"
-                tooltip="Select which model providers this group can access"
-              >
-                <Select
-                  mode="multiple"
-                  placeholder="Select model providers"
-                  options={providers.map(provider => ({
-                    value: provider.id,
-                    label: provider.name,
-                    disabled: !provider.enabled,
-                  }))}
-                  showSearch
-                  filterOption={(input, option) =>
-                    (option?.label ?? '')
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                />
-              </Form.Item>
-            )}
+            <Form.Item
+              name="provider_ids"
+              label="Providers"
+              tooltip="Select which model providers this group can access"
+            >
+              <Select
+                mode="multiple"
+                placeholder="Select model providers"
+                options={providers.map(provider => ({
+                  value: provider.id,
+                  label: provider.name,
+                  disabled: !provider.enabled,
+                }))}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
 
             <Form.Item
               name="is_active"

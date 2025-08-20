@@ -12,7 +12,6 @@ import {
   Typography,
 } from 'antd'
 import { LockOutlined } from '@ant-design/icons'
-import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'
 import { updateApiProxyServerConfig } from '../../../../store/admin/apiProxyServer.ts'
 
@@ -22,10 +21,6 @@ export function ServerConfigurationCard() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
-  const { hasPermission } = usePermissions()
-
-  // Permission check
-  const canEdit = hasPermission(Permission.config.apiProxyServer?.edit)
 
   // Store data
   const { config, loadingConfig } = Stores.AdminApiProxyServer
@@ -72,7 +67,6 @@ export function ServerConfigurationCard() {
           ...config,
         }}
         onFinish={handleConfigSave}
-        disabled={!canEdit}
       >
         {/* Server Address */}
         <Form.Item
@@ -151,7 +145,7 @@ export function ServerConfigurationCard() {
             valuePropName="checked"
             style={{ margin: 0 }}
           >
-            <Switch disabled={!canEdit} />
+            <Switch />
           </Form.Item>
         </div>
 
@@ -169,7 +163,7 @@ export function ServerConfigurationCard() {
             valuePropName="checked"
             style={{ margin: 0 }}
           >
-            <Switch disabled={!canEdit} />
+            <Switch />
           </Form.Item>
         </div>
 
@@ -191,13 +185,11 @@ export function ServerConfigurationCard() {
           />
         </Form.Item>
 
-        {canEdit && (
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loadingConfig}>
-              {t('common.save')}
-            </Button>
-          </Form.Item>
-        )}
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={loadingConfig}>
+            {t('common.save')}
+          </Button>
+        </Form.Item>
       </Form>
     </Card>
   )

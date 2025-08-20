@@ -7,7 +7,6 @@ import { PROVIDER_ICONS } from '../../../../../constants/providers'
 
 interface ProviderHeaderProps {
   currentProvider: Provider
-  canEditProviders: boolean
   onProviderToggle: (providerId: string, enabled: boolean) => void
   canEnableProvider: (provider: Provider) => boolean
   getEnableDisabledReason: (provider: Provider) => string | null
@@ -15,7 +14,6 @@ interface ProviderHeaderProps {
 
 export function ProviderHeader({
   currentProvider,
-  canEditProviders,
   onProviderToggle,
   canEnableProvider,
   getEnableDisabledReason,
@@ -36,7 +34,6 @@ export function ProviderHeader({
           form={form}
           layout="inline"
           initialValues={{ name: currentProvider.name }}
-          disabled={!canEditProviders}
         >
           <div className={'flex items-center gap-2 w-full flex-wrap'}>
             <Form.Item
@@ -78,7 +75,7 @@ export function ProviderHeader({
           <Button
             type={'text'}
             onClick={() => {
-              if (canEditProviders) setIsEditingName(!isEditingName)
+              setIsEditingName(!isEditingName)
             }}
           >
             <EditOutlined />
@@ -91,14 +88,12 @@ export function ProviderHeader({
           <Switch
             checked={currentProvider.enabled}
             disabled={
-              !canEditProviders ||
-              (!currentProvider.enabled && !canEnableProvider(currentProvider))
+              !currentProvider.enabled && !canEnableProvider(currentProvider)
             }
             onChange={enabled => onProviderToggle(currentProvider.id, enabled)}
           />
         )
 
-        if (!canEditProviders) return switchElement
         if (disabledReason && !currentProvider.enabled) {
           return <Tooltip title={disabledReason}>{switchElement}</Tooltip>
         }

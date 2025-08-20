@@ -2,7 +2,6 @@ import { Button, Dropdown, Flex, Menu, theme, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { isTauriView } from '../../api/core'
-import { Permission, usePermissions } from '../../permissions'
 import { useMainContentMinSize } from '../hooks/useWindowMinSize'
 import { TitleBarWrapper } from '../common/TitleBarWrapper'
 import { TauriDragRegion } from '../common/TauriDragRegion'
@@ -34,7 +33,6 @@ export function SettingsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { hasPermission } = usePermissions()
   const mainContentMinSize = useMainContentMinSize()
   const { token } = theme.useToken()
   const { isDesktop } = Stores.Auth
@@ -132,153 +130,82 @@ export function SettingsPage() {
     ? (() => {
         const items = []
 
-        // Check if user has any admin permissions
-        const hasUserManagement = hasPermission(Permission.users.read)
-        const hasGroupManagement = hasPermission(Permission.groups.read)
-        const hasAppearanceManagement = hasPermission(
-          Permission.config.experimental.edit,
-        )
+        items.push({
+          type: 'divider' as const,
+        })
+        items.push({
+          key: 'admin',
+          icon: <IoMdSettings />,
+          label: t('settings.admin'),
+          type: 'group' as const,
+        })
 
-        const hasProviderManagement = hasPermission(
-          Permission.config.providers.read,
-        )
-        const hasRepositoryManagement = hasPermission(
-          Permission.config.repositories.read,
-        )
-        const hasProxyManagement = hasPermission(Permission.config.proxy.read)
-        const hasApiProxyManagement = hasPermission(
-          Permission.config.apiProxyServer.read,
-        )
-        const hasAssistantsManagement = hasPermission(
-          Permission.config.assistants.read,
-        )
-        const hasEngineManagement = hasPermission(
-          Permission.config.engines.read,
-        )
+        items.push({
+          key: 'admin-general',
+          icon: <IoMdPerson />,
+          label: t('settings.general'),
+        })
 
-        if (
-          hasUserManagement ||
-          hasGroupManagement ||
-          hasAppearanceManagement ||
-          hasProviderManagement ||
-          hasRepositoryManagement ||
-          hasProxyManagement ||
-          hasApiProxyManagement ||
-          hasAssistantsManagement ||
-          hasEngineManagement
-        ) {
-          items.push({
-            type: 'divider' as const,
-          })
-          items.push({
-            key: 'admin',
-            icon: <IoMdSettings />,
-            label: t('settings.admin'),
-            type: 'group' as const,
-          })
-
-          if (hasAppearanceManagement) {
-            items.push({
-              key: 'admin-general',
-              icon: <IoMdPerson />,
-              label: t('settings.general'),
-            })
-          }
-
-          if (hasAppearanceManagement) {
-            items.push({
-              key: 'admin-appearance',
-              icon: <IoMdEye />,
-              label: t('settings.appearance'),
-            })
-          }
-
-          if (hasProviderManagement) {
-            items.push({
-              key: 'providers',
-              icon: <FaServer />,
-              label: t('settings.providers'),
-            })
-          }
-
-          if (hasRepositoryManagement) {
-            items.push({
-              key: 'repositories',
-              icon: <MdStorage />,
-              label: t('settings.modelRepository.title'),
-            })
-          }
-
-          if (hasProviderManagement) {
-            items.push({
-              key: 'rag-providers',
-              icon: <FaRobot />,
-              label: 'RAG Providers',
-            })
-          }
-
-          if (hasRepositoryManagement) {
-            items.push({
-              key: 'rag-repositories',
-              icon: <FaDatabase />,
-              label: 'RAG Repositories',
-            })
-          }
-
-          if (hasProxyManagement) {
-            items.push({
-              key: 'https-proxy',
-              icon: <FaShieldAlt />,
-              label: t('settings.httpsProxy'),
-            })
-          }
-
-          if (hasApiProxyManagement) {
-            items.push({
-              key: 'api-proxy-server',
-              icon: <IoMdGlobe />,
-              label: t('settings.apiProxyServer'),
-            })
-          }
-
-          if (hasAssistantsManagement) {
-            items.push({
-              key: 'admin-assistants',
-              icon: <FaRobot />,
-              label: t('settings.assistants'),
-            })
-          }
-
-          if (hasEngineManagement) {
-            items.push({
-              key: 'engines',
-              icon: <FaCogs />,
-              label: 'Engines',
-            })
-          }
-
-          if (hasUserManagement) {
-            items.push({
-              key: 'users',
-              icon: <IoMdPerson />,
-              label: t('settings.users'),
-            })
-          }
-
-          if (hasGroupManagement) {
-            items.push({
-              key: 'user-groups',
-              icon: <IoMdPeople />,
-              label: t('settings.userGroups'),
-            })
-          }
-
-          items.push({
-            key: 'hardware',
-            icon: <FaMicrochip />,
-            label: t('settings.hardware'),
-          })
-        }
+        items.push({
+          key: 'admin-appearance',
+          icon: <IoMdEye />,
+          label: t('settings.appearance'),
+        })
+        items.push({
+          key: 'providers',
+          icon: <FaServer />,
+          label: t('settings.providers'),
+        })
+        items.push({
+          key: 'repositories',
+          icon: <MdStorage />,
+          label: t('settings.modelRepository.title'),
+        })
+        items.push({
+          key: 'rag-providers',
+          icon: <FaRobot />,
+          label: 'RAG Providers',
+        })
+        items.push({
+          key: 'rag-repositories',
+          icon: <FaDatabase />,
+          label: 'RAG Repositories',
+        })
+        items.push({
+          key: 'https-proxy',
+          icon: <FaShieldAlt />,
+          label: t('settings.httpsProxy'),
+        })
+        items.push({
+          key: 'api-proxy-server',
+          icon: <IoMdGlobe />,
+          label: t('settings.apiProxyServer'),
+        })
+        items.push({
+          key: 'admin-assistants',
+          icon: <FaRobot />,
+          label: t('settings.assistants'),
+        })
+        items.push({
+          key: 'engines',
+          icon: <FaCogs />,
+          label: 'Engines',
+        })
+        items.push({
+          key: 'users',
+          icon: <IoMdPerson />,
+          label: t('settings.users'),
+        })
+        items.push({
+          key: 'user-groups',
+          icon: <IoMdPeople />,
+          label: t('settings.userGroups'),
+        })
+        items.push({
+          key: 'hardware',
+          icon: <FaMicrochip />,
+          label: t('settings.hardware'),
+        })
 
         return items
       })()

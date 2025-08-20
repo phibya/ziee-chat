@@ -1,6 +1,6 @@
 use crate::api::hardware::{get_hardware_info, subscribe_hardware_usage, HardwareInfoResponse, HardwareUsageUpdate};
 use aide::axum::{routing::get_with, ApiRouter};
-use axum::Json;
+use axum::{middleware, Json};
 use crate::route::helper::types;
 
 pub fn hardware_routes() -> ApiRouter {
@@ -12,7 +12,8 @@ pub fn hardware_routes() -> ApiRouter {
                     .id("Admin.getHardwareInfo")
                     .tag("admin")
                     .response::<200, Json<HardwareInfoResponse>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::hardware_read_middleware)),
         )
         .api_route(
             "/hardware/usage-stream",
@@ -20,7 +21,8 @@ pub fn hardware_routes() -> ApiRouter {
                 op.description("Subscribe to hardware usage stream via SSE")
                     .id("Admin.subscribeHardwareUsage")
                     .tag("admin")
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::hardware_monitor_middleware)),
         )
         .api_route(
             "/hardware/types",

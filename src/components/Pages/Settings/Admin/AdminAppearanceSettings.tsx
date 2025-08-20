@@ -2,7 +2,6 @@ import { App, Card, Flex, Form, Select, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   loadGlobalDefaultLanguage,
   Stores,
@@ -18,12 +17,10 @@ export function AdminAppearanceSettings() {
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const [isMobile, setIsMobile] = useState(false)
-  const { hasPermission } = usePermissions()
   const { globalDefaultLanguage } = Stores.Settings
   const { updating } = Stores.Admin
 
   // Check permissions - using a general config permission for appearance settings
-  const canEditAppearance = hasPermission(Permission.config.experimental.edit)
 
   useEffect(() => {
     const checkMobile = () => {
@@ -44,12 +41,6 @@ export function AdminAppearanceSettings() {
 
   const handleFormChange = async (changedValues: any) => {
     if ('language' in changedValues) {
-      if (!canEditAppearance) {
-        message.error(t('admin.noPermissionSystemSettings'))
-        form.setFieldsValue({ language: globalDefaultLanguage })
-        return
-      }
-
       try {
         // Update global default language via admin store
         await updateSystemDefaultLanguage(changedValues.language)
@@ -109,7 +100,6 @@ export function AdminAppearanceSettings() {
               <Form.Item name="language" style={{ margin: 0 }}>
                 <Select
                   loading={updating}
-                  disabled={!canEditAppearance}
                   style={{ minWidth: 120 }}
                   options={LANGUAGE_OPTIONS}
                 />

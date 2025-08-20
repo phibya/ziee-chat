@@ -7,7 +7,7 @@ use axum::Json;
 pub fn utils_routes() -> ApiRouter {
     ApiRouter::new().api_route(
         "/utils/test-proxy",
-        post_with(api::configuration::test_proxy_connection_public, |op| {
+        post_with(api::configuration::test_proxy_connection, |op| {
             op.description("Test the proxy connection")
                 .id("Utils.testProxy")
                 .tag("utils")

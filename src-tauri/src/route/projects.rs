@@ -1,6 +1,6 @@
 use crate::api;
 use crate::database::models::project::{ProjectDetailResponse, ProjectListResponse};
-use crate::database::models::{Conversation, Project};
+use crate::database::models::{ Project};
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,
@@ -17,7 +17,7 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<ProjectListResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::projects_read_middleware)),
         )
         .api_route(
             "/projects",
@@ -27,7 +27,7 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<Project>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::projects_create_middleware)),
         )
         .api_route(
             "/projects/{project_id}",
@@ -37,7 +37,7 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<ProjectDetailResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::projects_read_middleware)),
         )
         .api_route(
             "/projects/{project_id}",
@@ -47,7 +47,7 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<Project>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::projects_edit_middleware)),
         )
         .api_route(
             "/projects/{project_id}",
@@ -57,26 +57,6 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .api_route(
-            "/projects/{project_id}/conversations/{conversation_id}",
-            post_with(api::projects::link_conversation, |op| {
-                op.description("Link conversation to project")
-                    .id("Projects.linkConversation")
-                    .tag("projects")
-                    .response::<200, Json<Conversation>>()
-            })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
-        )
-        .api_route(
-            "/projects/{project_id}/conversations/{conversation_id}",
-            delete_with(api::projects::unlink_conversation, |op| {
-                op.description("Unlink conversation from project")
-                    .id("Projects.unlinkConversation")
-                    .tag("projects")
-                    .response::<200, ()>()
-            })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::projects_delete_middleware)),
         )
 }

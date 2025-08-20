@@ -17,7 +17,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<ConversationListResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_read_middleware)),
         )
         .api_route(
             "/chat/conversations",
@@ -27,7 +27,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<Conversation>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_create_middleware)),
         )
         .api_route(
             "/chat/conversations/{conversation_id}",
@@ -37,7 +37,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<Conversation>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_read_middleware)),
         )
         .api_route(
             "/chat/conversations/{conversation_id}",
@@ -47,7 +47,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<Conversation>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_edit_middleware)),
         )
         .api_route(
             "/chat/conversations/{conversation_id}",
@@ -57,7 +57,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_delete_middleware)),
         )
         .api_route(
             "/chat/messages/stream",
@@ -67,7 +67,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                 // SSE streams don't need explicit response type
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_stream_middleware)),
         )
         .api_route(
             "/chat/messages/{message_id}/stream",
@@ -77,7 +77,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                 // SSE streams don't need explicit response type
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_stream_middleware)),
         )
         .api_route(
             "/chat/messages/{message_id}/branches",
@@ -87,7 +87,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<Vec<MessageBranch>>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_branch_middleware)),
         )
         .api_route(
             "/chat/conversations/{conversation_id}/branch/switch",
@@ -97,7 +97,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<OperationSuccessResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_branch_middleware)),
         )
         .api_route(
             "/chat/conversations/{conversation_id}/messages/{branch_id}",
@@ -107,7 +107,7 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<Vec<Message>>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_read_middleware)),
         )
         .api_route(
             "/chat/conversations/search",
@@ -117,13 +117,6 @@ pub fn chat_routes() -> ApiRouter {
                     .tag("chat")
                     .response::<200, Json<ConversationListResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::chat_search_middleware)),
         )
-    // .api_route(
-    //     "/chat/types",
-    //     get_with(types, |op| {
-    //         op.description("Types for open api generation")
-    //             .response::<600, Json<(MessageBranch)>>()
-    //     }),
-    // )
 }

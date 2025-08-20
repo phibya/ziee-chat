@@ -5,7 +5,6 @@ import {
   ReloadOutlined,
   StopOutlined,
 } from '@ant-design/icons'
-import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'
 import { isTauriView } from '../../../../api/core.ts'
 import {
@@ -20,10 +19,6 @@ const { Text } = Typography
 export function ServerControlCard() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
-
-  // Permission check
-  const canEdit = hasPermission(Permission.config.apiProxyServer?.edit)
 
   // Store data
   const { config, status, loadingStatus, loadingModels, loadingHosts, models } =
@@ -150,50 +145,48 @@ export function ServerControlCard() {
         )}
 
         {/* Control Buttons */}
-        {canEdit && (
-          <div className="flex gap-3 flex-wrap">
-            {!status?.running ? (
-              <Button
-                type="primary"
-                icon={<PlayCircleOutlined />}
-                onClick={handleStart}
-                loading={loadingStatus}
-                disabled={!isConfigured}
-              >
-                {t('apiProxyServer.startServer')}
-              </Button>
-            ) : (
-              <Button
-                danger
-                icon={<StopOutlined />}
-                onClick={handleStop}
-                loading={loadingStatus}
-              >
-                {t('apiProxyServer.stopServer')}
-              </Button>
-            )}
+        <div className="flex gap-3 flex-wrap">
+          {!status?.running ? (
+            <Button
+              type="primary"
+              icon={<PlayCircleOutlined />}
+              onClick={handleStart}
+              loading={loadingStatus}
+              disabled={!isConfigured}
+            >
+              {t('apiProxyServer.startServer')}
+            </Button>
+          ) : (
+            <Button
+              danger
+              icon={<StopOutlined />}
+              onClick={handleStop}
+              loading={loadingStatus}
+            >
+              {t('apiProxyServer.stopServer')}
+            </Button>
+          )}
 
-            {/* Reload Buttons - Only show when server is running */}
-            {status?.running && (
-              <>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={handleReloadModels}
-                  loading={loadingModels}
-                >
-                  {t('apiProxyServer.reloadModels')}
-                </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={handleReloadTrustedHosts}
-                  loading={loadingHosts}
-                >
-                  {t('apiProxyServer.reloadTrustedHosts')}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
+          {/* Reload Buttons - Only show when server is running */}
+          {status?.running && (
+            <>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleReloadModels}
+                loading={loadingModels}
+              >
+                {t('apiProxyServer.reloadModels')}
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={handleReloadTrustedHosts}
+                loading={loadingHosts}
+              >
+                {t('apiProxyServer.reloadTrustedHosts')}
+              </Button>
+            </>
+          )}
+        </div>
 
         {/* Configuration Warnings */}
         {!isConfigured && (

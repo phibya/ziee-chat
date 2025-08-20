@@ -18,7 +18,6 @@ interface ModelsSectionProps {
   currentProvider: Provider
   currentModels: Model[]
   modelsLoading: boolean
-  canEditProviders: boolean
   modelOperations: Record<string, boolean>
   onAddModel: () => void
   onToggleModel: (modelId: string, enabled: boolean) => void
@@ -32,7 +31,6 @@ export function ModelsSection({
   currentProvider,
   currentModels,
   modelsLoading,
-  canEditProviders,
   modelOperations,
   onAddModel,
   onToggleModel,
@@ -53,54 +51,50 @@ export function ModelsSection({
         key="enable"
         checked={model.enabled !== false}
         onChange={checked => onToggleModel(model.id, checked)}
-        disabled={!canEditProviders}
       />,
     )
 
-    if (canEditProviders) {
-      // Local provider specific actions
-      if (currentProvider.type === 'local' && onStartStopModel) {
-        actions.push(
-          <Button
-            key="start-stop"
-            type={model.is_active ? 'default' : 'primary'}
-            loading={modelOperations[model.id] || false}
-            disabled={modelOperations[model.id] || false}
-            onClick={() => onStartStopModel(model.id, !model.is_active)}
-          >
-            {modelOperations[model.id]
-              ? model.is_active
-                ? 'Stopping...'
-                : 'Starting...'
-              : model.is_active
-                ? 'Stop'
-                : 'Start'}
-          </Button>,
-        )
-      }
-
+    if (currentProvider.type === 'local' && onStartStopModel) {
       actions.push(
         <Button
-          key="edit"
-          type="text"
-          icon={<EditOutlined />}
-          onClick={() => onEditModel(model.id)}
+          key="start-stop"
+          type={model.is_active ? 'default' : 'primary'}
+          loading={modelOperations[model.id] || false}
+          disabled={modelOperations[model.id] || false}
+          onClick={() => onStartStopModel(model.id, !model.is_active)}
         >
-          {'Edit'}
-        </Button>,
-      )
-
-      actions.push(
-        <Button
-          key="delete"
-          type="text"
-          icon={<DeleteOutlined />}
-          onClick={() => onDeleteModel(model.id)}
-        >
-          {'Delete'}
+          {modelOperations[model.id]
+            ? model.is_active
+              ? 'Stopping...'
+              : 'Starting...'
+            : model.is_active
+              ? 'Stop'
+              : 'Start'}
         </Button>,
       )
     }
+
+    actions.push(
+      <Button
+        key="edit"
+        type="text"
+        icon={<EditOutlined />}
+        onClick={() => onEditModel(model.id)}
+      >
+        {'Edit'}
+      </Button>,
+    )
+
+    actions.push(
+      <Button
+        key="delete"
+        type="text"
+        icon={<DeleteOutlined />}
+        onClick={() => onDeleteModel(model.id)}
+      >
+        {'Delete'}
+      </Button>,
+    )
 
     return actions.filter(Boolean)
   }
@@ -109,10 +103,9 @@ export function ModelsSection({
     <Card
       title={t('providers.models')}
       extra={
-        canEditProviders &&
-        (customAddButton || (
+        customAddButton || (
           <Button type="text" icon={<PlusOutlined />} onClick={onAddModel} />
-        ))
+        )
       }
     >
       {modelsLoading ? (

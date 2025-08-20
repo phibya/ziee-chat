@@ -12,7 +12,6 @@ import {
   Typography,
 } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'
 import {
   removeModelFromApiProxyServer,
@@ -29,13 +28,9 @@ const { Text } = Typography
 export function ModelSelectionCard() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
   const [addModelDrawerOpen, setAddModelDrawerOpen] = useState(false)
   const [editModelDrawerOpen, setEditModelDrawerOpen] = useState(false)
   const [editingModelId, setEditingModelId] = useState<string | null>(null)
-
-  // Permission check
-  const canEdit = hasPermission(Permission.config.apiProxyServer?.edit)
 
   // Store data
   const { models } = Stores.AdminApiProxyServer
@@ -89,15 +84,9 @@ export function ModelSelectionCard() {
       <Card
         title={t('apiProxyServer.modelSelection')}
         extra={
-          canEdit && (
-            <Button
-              type="text"
-              icon={<PlusOutlined />}
-              onClick={handleAddModel}
-            >
-              {t('apiProxyServer.addModel')}
-            </Button>
-          )
+          <Button type="text" icon={<PlusOutlined />} onClick={handleAddModel}>
+            {t('apiProxyServer.addModel')}
+          </Button>
         }
       >
         {models.length === 0 ? (
@@ -108,7 +97,6 @@ export function ModelSelectionCard() {
               <div key={proxyModel.id}>
                 <ModelItem
                   proxyModel={proxyModel}
-                  canEdit={canEdit}
                   onUpdate={handleUpdateModel}
                   onRemove={handleRemoveModel}
                   onEdit={handleEditModel}
@@ -144,7 +132,6 @@ export function ModelSelectionCard() {
 // Model Item Component
 interface ModelItemProps {
   proxyModel: ApiProxyServerModel
-  canEdit: boolean
   onUpdate: (
     modelId: string,
     updates: UpdateApiProxyServerModelRequest,
@@ -153,13 +140,7 @@ interface ModelItemProps {
   onEdit: (modelId: string) => void
 }
 
-function ModelItem({
-  proxyModel,
-  canEdit,
-  onUpdate,
-  onRemove,
-  onEdit,
-}: ModelItemProps) {
+function ModelItem({ proxyModel, onUpdate, onRemove, onEdit }: ModelItemProps) {
   const { t } = useTranslation()
 
   // Find the actual model details
@@ -194,23 +175,20 @@ function ModelItem({
               onChange={checked =>
                 onUpdate(proxyModel.model_id, { enabled: checked })
               }
-              disabled={!canEdit}
             />
 
-            {canEdit && (
-              <>
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  onClick={() => onEdit(proxyModel.model_id)}
-                />
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  onClick={() => onRemove(proxyModel.model_id)}
-                />
-              </>
-            )}
+            <>
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => onEdit(proxyModel.model_id)}
+              />
+              <Button
+                type="text"
+                icon={<DeleteOutlined />}
+                onClick={() => onRemove(proxyModel.model_id)}
+              />
+            </>
           </div>
         </div>
 

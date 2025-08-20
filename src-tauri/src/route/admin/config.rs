@@ -119,7 +119,7 @@ pub fn admin_config_routes() -> ApiRouter {
                     .response::<200, Json<NgrokStatusResponse>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::config_ngrok_edit_middleware,
+                api::middleware::config_ngrok_start_middleware,
             )),
         )
         .api_route(
@@ -131,7 +131,7 @@ pub fn admin_config_routes() -> ApiRouter {
                     .response::<200, Json<NgrokStatusResponse>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::config_ngrok_edit_middleware,
+                api::middleware::config_ngrok_stop_middleware,
             )),
         )
         .api_route(

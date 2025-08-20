@@ -80,7 +80,7 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .response::<200, Json<Vec<UserGroup>>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
+                api::middleware::providers_view_groups_middleware,
             )),
         )
         .api_route(
@@ -104,7 +104,7 @@ pub fn admin_provider_routes() -> ApiRouter {
                     .response::<200, Json<AvailableDevicesResponse>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
+                api::middleware::devices_read_middleware,
             )),
         )
 }

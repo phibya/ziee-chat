@@ -17,8 +17,6 @@ import {
   setRepositoryDrawerLoading,
   useRepositoryDrawerStore,
 } from '../../../../store/ui'
-import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   CreateRepositoryRequest,
   UpdateRepositoryRequest,
@@ -28,14 +26,9 @@ const { Text } = Typography
 
 export function RepositoryDrawer() {
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
   const [repositoryForm] = Form.useForm()
   const { open, editingRepository, loading } = useRepositoryDrawerStore()
   const { creating, updating, testing } = Stores.AdminRepositories
-
-  // Check permissions
-  const canEditRepositories =
-    isTauriView || hasPermission(Permission.config.repositories.edit)
 
   // Update repository form when editing
   useEffect(() => {
@@ -61,11 +54,6 @@ export function RepositoryDrawer() {
   }, [editingRepository, open, repositoryForm])
 
   const testRepositoryFromForm = async () => {
-    if (!canEditRepositories) {
-      message.error('You do not have permission to test repository connections')
-      return
-    }
-
     const values = repositoryForm.getFieldsValue()
 
     // Validate required fields
@@ -125,11 +113,6 @@ export function RepositoryDrawer() {
   }
 
   const handleRepositorySubmit = async (values: any) => {
-    if (!canEditRepositories) {
-      message.error('You do not have permission to modify repository settings')
-      return
-    }
-
     setRepositoryDrawerLoading(true)
 
     let repositoryData: UpdateRepositoryRequest

@@ -3,8 +3,6 @@ import { App, Button, Card, Divider, Dropdown, Flex, Form } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearProvidersError,
   deleteExistingModel,
@@ -26,7 +24,6 @@ import { ProviderHeader } from './common/ProviderHeader'
 export function LocalProviderSettings() {
   const { t } = useTranslation()
   const { message, modal } = App.useApp()
-  const { hasPermission } = usePermissions()
   const { providerId } = useParams<{ providerId?: string }>()
 
   const [nameForm] = Form.useForm()
@@ -41,10 +38,6 @@ export function LocalProviderSettings() {
   )
   const models = currentProvider?.models || []
   const loading = modelsLoading[providerId!] || false
-
-  // Check permissions for web app
-  const canEditProviders =
-    isTauriView || hasPermission(Permission.config.providers.edit)
 
   // Get active downloads for this provider
   const providerDownloads = downloads.filter(
@@ -81,11 +74,6 @@ export function LocalProviderSettings() {
   }
 
   const handleProviderToggle = async (providerId: string, enabled: boolean) => {
-    if (!canEditProviders) {
-      message.error(t('providers.noPermissionModify'))
-      return
-    }
-
     try {
       await updateModelProvider(providerId, {
         enabled: enabled,
@@ -259,7 +247,6 @@ export function LocalProviderSettings() {
     <Flex className={'flex-col gap-3'}>
       <ProviderHeader
         currentProvider={currentProvider}
-        canEditProviders={canEditProviders}
         onProviderToggle={handleProviderToggle}
         canEnableProvider={canEnableProvider}
         getEnableDisabledReason={getEnableDisabledReason}
@@ -286,7 +273,6 @@ export function LocalProviderSettings() {
         currentProvider={currentProvider}
         currentModels={models}
         modelsLoading={loading}
-        canEditProviders={canEditProviders}
         modelOperations={modelOperations}
         onAddModel={() => {
           // Not used since we have customAddButton

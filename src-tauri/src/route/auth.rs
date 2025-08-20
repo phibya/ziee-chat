@@ -1,6 +1,8 @@
 use crate::api;
 use crate::api::auth::{AuthResponse, InitResponse};
+use crate::api::permissions::Permission;
 use crate::database::models::User;
+use crate::route::helper::types;
 use aide::axum::{
     routing::{get_with, post_with},
     ApiRouter,
@@ -43,6 +45,13 @@ pub fn auth_routes() -> ApiRouter {
                     .id("Auth.register")
                     .tag("auth")
                     .response::<200, Json<AuthResponse>>()
+            }),
+        )
+        .api_route(
+            "/auth/types-permissions",
+            get_with(types, |op| {
+                op.description("Types for open api generation")
+                    .response::<600, Json<Permission>>()
             }),
         )
 }

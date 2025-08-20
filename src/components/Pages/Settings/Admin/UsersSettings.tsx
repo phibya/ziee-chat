@@ -1,6 +1,5 @@
 import {
   EditOutlined,
-  ExclamationCircleOutlined,
   LockOutlined,
   PlusOutlined,
   TeamOutlined,
@@ -20,7 +19,6 @@ import {
   List,
   Pagination,
   Popconfirm,
-  Result,
   Select,
   Spin,
   Switch,
@@ -31,7 +29,6 @@ import { Drawer } from '../../../common/Drawer'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isTauriView } from '../../../../api/core.ts'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   assignUserToUserGroup,
   clearAdminUserGroupsStoreError,
@@ -58,7 +55,6 @@ const { Option } = Select
 export function UsersSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
 
   // Admin stores
   const {
@@ -80,26 +76,16 @@ export function UsersSettings() {
   const [passwordForm] = Form.useForm()
   const [assignGroupForm] = Form.useForm()
 
-  // Check permissions
-  const canReadUsers = hasPermission(Permission.users.read)
-  const canEditUsers = hasPermission(Permission.users.edit)
-
-  // User needs at least read permission to access this page
-  const canAccessUsers = canReadUsers
-
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
     if (isTauriView) {
       message.warning('User management is not available in desktop mode')
       return
     }
-    if (!canAccessUsers) {
-      message.warning('You do not have permission to access user management')
-      return
-    }
+
     loadSystemUsers(1, 10)
     loadUserGroups()
-  }, [canAccessUsers])
+  }, [])
 
   // Show errors
   useEffect(() => {
@@ -224,7 +210,7 @@ export function UsersSettings() {
     const actions: React.ReactNode[] = []
 
     // Always include the active/inactive status switch first
-    if (canEditUsers && !(user.is_protected && user.is_active)) {
+    if (!(user.is_protected && user.is_active)) {
       actions.push(
         <Popconfirm
           key="active-confirm"
@@ -233,16 +219,12 @@ export function UsersSettings() {
           okText="Yes"
           cancelText="No"
         >
-          <Switch
-            className={'!mr-2'}
-            checked={user.is_active}
-            disabled={!canEditUsers}
-          />
+          <Switch className={'!mr-2'} checked={user.is_active} />
         </Popconfirm>,
       )
     }
 
-    if (canEditUsers && !user.is_protected) {
+    if (!user.is_protected) {
       actions.push(
         <Button
           key="edit"
@@ -266,18 +248,16 @@ export function UsersSettings() {
       )
     }
 
-    if (canReadUsers) {
-      actions.push(
-        <Button
-          key="groups"
-          type="text"
-          icon={<TeamOutlined />}
-          onClick={() => openGroupsDrawer(user)}
-        >
-          Groups
-        </Button>,
-      )
-    }
+    actions.push(
+      <Button
+        key="groups"
+        type="text"
+        icon={<TeamOutlined />}
+        onClick={() => openGroupsDrawer(user)}
+      >
+        Groups
+      </Button>,
+    )
 
     return actions.filter(Boolean)
   }
@@ -299,23 +279,6 @@ export function UsersSettings() {
           </Text>
         </div>
       </Card>
-    )
-  }
-
-  if (!canAccessUsers) {
-    return (
-      <Result
-        icon={<ExclamationCircleOutlined />}
-        title={t('admin.users.accessDenied')}
-        subTitle={t('admin.users.accessDeniedMessage', {
-          permission: Permission.users.read,
-        })}
-        extra={
-          <Button type="primary" onClick={() => window.history.back()}>
-            Go Back
-          </Button>
-        }
-      />
     )
   }
 
@@ -595,7 +558,6 @@ export function UsersSettings() {
           open={groupsDrawerVisible}
           width={400}
           extra={
-            canEditUsers &&
             !selectedUser?.is_protected && (
               <Button
                 type="primary"
@@ -616,7 +578,7 @@ export function UsersSettings() {
             renderItem={group => (
               <List.Item
                 actions={[
-                  canEditUsers && !selectedUser?.is_protected && (
+                  !selectedUser?.is_protected && (
                     <Popconfirm
                       key="remove"
                       title={t('admin.users.removeFromGroupConfirm')}

@@ -27,7 +27,6 @@ pub fn create_rest_router_internal() -> (OpenApi, Router) {
         .merge(auth::auth_routes())
         .merge(config::config_routes())
         .merge(utils::utils_routes())
-        .merge(hub::hub_routes())
         // Protected API routes requiring authentication
         .merge(
             ApiRouter::new()
@@ -36,6 +35,7 @@ pub fn create_rest_router_internal() -> (OpenApi, Router) {
                 .merge(user::user_routes())
                 .merge(chat::chat_routes())
                 .merge(projects::project_routes())
+                .merge(hub::hub_routes())
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         );
 

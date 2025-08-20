@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { App, Button, Card, Divider, Empty, Switch, Typography } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
-import { Permission, usePermissions } from '../../../../permissions'
 import { Stores } from '../../../../store'
 import {
   addTrustedHostToApiProxyServer,
@@ -21,13 +20,9 @@ const { Text } = Typography
 export function TrustedHostsCard() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
   const [addHostDrawerOpen, setAddHostDrawerOpen] = useState(false)
   const [editHostDrawerOpen, setEditHostDrawerOpen] = useState(false)
   const [editingHostId, setEditingHostId] = useState<string | null>(null)
-
-  // Permission check
-  const canEdit = hasPermission(Permission.config.apiProxyServer?.edit)
 
   // Store data
   const { trustedHosts } = Stores.AdminApiProxyServer
@@ -91,11 +86,9 @@ export function TrustedHostsCard() {
       <Card
         title={t('apiProxyServer.trustedHosts')}
         extra={
-          canEdit && (
-            <Button type="text" icon={<PlusOutlined />} onClick={handleAddHost}>
-              {t('apiProxyServer.addHost')}
-            </Button>
-          )
+          <Button type="text" icon={<PlusOutlined />} onClick={handleAddHost}>
+            {t('apiProxyServer.addHost')}
+          </Button>
         }
       >
         {trustedHosts.length === 0 ? (
@@ -106,7 +99,6 @@ export function TrustedHostsCard() {
               <div key={host.id}>
                 <TrustedHostItem
                   host={host}
-                  canEdit={canEdit}
                   onUpdate={handleUpdateHost}
                   onRemove={handleRemoveHost}
                   onEdit={handleEditHost}
@@ -145,7 +137,6 @@ export function TrustedHostsCard() {
 // Trusted Host Item Component
 interface TrustedHostItemProps {
   host: ApiProxyServerTrustedHost
-  canEdit: boolean
   onUpdate: (hostId: string, updates: UpdateTrustedHostRequest) => Promise<void>
   onRemove: (hostId: string) => Promise<void>
   onEdit: (hostId: string) => void
@@ -153,7 +144,6 @@ interface TrustedHostItemProps {
 
 function TrustedHostItem({
   host,
-  canEdit,
   onUpdate,
   onRemove,
   onEdit,
@@ -172,23 +162,18 @@ function TrustedHostItem({
               className="!mr-2"
               checked={host.enabled}
               onChange={checked => onUpdate(host.id, { enabled: checked })}
-              disabled={!canEdit}
             />
 
-            {canEdit && (
-              <>
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  onClick={() => onEdit(host.id)}
-                />
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  onClick={() => onRemove(host.id)}
-                />
-              </>
-            )}
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => onEdit(host.id)}
+            />
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={() => onRemove(host.id)}
+            />
           </div>
         </div>
 

@@ -13,8 +13,6 @@ import {
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearProvidersError,
   deleteModelProvider,
@@ -36,36 +34,17 @@ import { CgMenuRightAlt } from 'react-icons/cg'
 import { useMainContentMinSize } from '../../../hooks/useWindowMinSize.ts'
 import { IoIosArrowDown } from 'react-icons/io'
 
-const { Title, Text } = Typography
+const { Title } = Typography
 
 export function ProvidersSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
   const { providerId } = useParams<{ providerId?: string }>()
   const navigate = useNavigate()
   const mainContentMinSize = useMainContentMinSize()
 
   // Model providers store
   const { providers, loading, error } = Stores.AdminProviders
-
-  // Check permissions for web app
-  const canEditProviders =
-    isTauriView || hasPermission(Permission.config.providers.edit)
-  const canViewProviders =
-    isTauriView || hasPermission(Permission.config.providers.read)
-
-  // If user doesn't have view permissions, don't render the component
-  if (!canViewProviders) {
-    return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <Title level={3}>Access Denied</Title>
-        <Text type="secondary">
-          You do not have permission to view model provider settings.
-        </Text>
-      </div>
-    )
-  }
 
   const currentProvider = providers.find(p => p.id === providerId)
 
@@ -103,11 +82,6 @@ export function ProvidersSettings() {
   }, [providers, providerId])
 
   const handleDeleteProvider = async (providerId: string) => {
-    if (!canEditProviders) {
-      message.error(t('providers.noPermissionDelete'))
-      return
-    }
-
     const provider = providers.find(p => p.id === providerId)
     if (!provider) return
 
@@ -144,24 +118,13 @@ export function ProvidersSettings() {
   const getProviderActions = (provider: Provider) => {
     const actions: any[] = []
 
-    if (canEditProviders) {
-      // actions.push({
-      //   key: 'edit',
-      //   icon: <EditOutlined />,
-      //   label: 'Edit',
-      //   onClick: () => {
-      //     setSelectedProvider(provider.id)
-      //   },
-      // })
-
-      actions.push({
-        key: 'delete',
-        icon: <DeleteOutlined />,
-        label: t('buttons.delete'),
-        onClick: () => handleDeleteProvider(provider.id),
-        disabled: provider.built_in,
-      })
-    }
+    actions.push({
+      key: 'delete',
+      icon: <DeleteOutlined />,
+      label: t('buttons.delete'),
+      onClick: () => handleDeleteProvider(provider.id),
+      disabled: provider.built_in,
+    })
 
     return actions
   }
@@ -176,31 +139,27 @@ export function ProvidersSettings() {
           <div className={'flex-1'}>
             <Typography.Text>{provider.name}</Typography.Text>
           </div>
-          {canEditProviders && (
-            <Dropdown
-              menu={{ items: getProviderActions(provider) }}
-              trigger={['click']}
-            >
-              <Button
-                type="text"
-                icon={<CgMenuRightAlt />}
-                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              />
-            </Dropdown>
-          )}
+          <Dropdown
+            menu={{ items: getProviderActions(provider) }}
+            trigger={['click']}
+          >
+            <Button
+              type="text"
+              icon={<CgMenuRightAlt />}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            />
+          </Dropdown>
         </Flex>
       ),
     }
   })
 
-  if (canEditProviders) {
-    menuItems.push({
-      key: 'add-provider',
-      //@ts-ignore
-      icon: <PlusOutlined />,
-      label: <Typography.Text>Add Provider</Typography.Text>,
-    })
-  }
+  menuItems.push({
+    key: 'add-provider',
+    //@ts-ignore
+    icon: <PlusOutlined />,
+    label: <Typography.Text>Add Provider</Typography.Text>,
+  })
 
   const ProviderMenu = () => (
     <Menu

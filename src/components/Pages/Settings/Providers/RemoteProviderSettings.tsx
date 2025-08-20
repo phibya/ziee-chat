@@ -7,8 +7,6 @@ import { App, Button, Card, Flex, Form, Input, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearProvidersError,
   deleteExistingModel,
@@ -29,7 +27,6 @@ const { Title, Text } = Typography
 export function RemoteProviderSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
   const { providerId } = useParams<{ providerId?: string }>()
 
   const [form] = Form.useForm()
@@ -46,10 +43,6 @@ export function RemoteProviderSettings() {
   )
   const models = currentProvider?.models || []
   const loading = modelsLoading[providerId!] || false
-
-  // Check permissions for web app
-  const canEditProviders =
-    isTauriView || hasPermission(Permission.config.providers.edit)
 
   // Helper functions for provider validation
   const canEnableProvider = (provider: any): boolean => {
@@ -95,18 +88,13 @@ export function RemoteProviderSettings() {
   }
 
   const handleFormChange = (changedValues: any) => {
-    if (!currentProvider || !canEditProviders) return
+    if (!currentProvider) return
 
     setHasUnsavedChanges(true)
     setPendingSettings((prev: any) => ({ ...prev, ...changedValues }))
   }
 
   const handleProviderToggle = async (providerId: string, enabled: boolean) => {
-    if (!canEditProviders) {
-      message.error(t('providers.noPermissionModify'))
-      return
-    }
-
     try {
       await updateModelProvider(providerId, {
         enabled: enabled,
@@ -212,7 +200,7 @@ export function RemoteProviderSettings() {
   }
 
   const handleSaveSettings = async () => {
-    if (!currentProvider || !canEditProviders || !pendingSettings) return
+    if (!currentProvider || !pendingSettings) return
 
     try {
       await updateModelProvider(currentProvider.id, pendingSettings)
@@ -227,7 +215,7 @@ export function RemoteProviderSettings() {
   }
 
   const handleProxySettingsSave = async (proxySettings: any) => {
-    if (!currentProvider || !canEditProviders) return
+    if (!currentProvider) return
 
     try {
       await updateModelProvider(currentProvider.id, {
@@ -279,7 +267,6 @@ export function RemoteProviderSettings() {
     <Flex className={'flex-col gap-3'}>
       <ProviderHeader
         currentProvider={currentProvider}
-        canEditProviders={canEditProviders}
         onProviderToggle={handleProviderToggle}
         canEnableProvider={canEnableProvider}
         getEnableDisabledReason={getEnableDisabledReason}
@@ -298,15 +285,13 @@ export function RemoteProviderSettings() {
         <Card
           title={t('providers.apiConfiguration')}
           extra={
-            canEditProviders && (
-              <Button
-                type="primary"
-                onClick={handleSaveSettings}
-                disabled={!hasUnsavedChanges}
-              >
-                Save
-              </Button>
-            )
+            <Button
+              type="primary"
+              onClick={handleSaveSettings}
+              disabled={!hasUnsavedChanges}
+            >
+              Save
+            </Button>
           }
         >
           <Flex className={'flex-col gap-3'}>
@@ -323,7 +308,6 @@ export function RemoteProviderSettings() {
               >
                 <Input.Password
                   placeholder={t('providers.insertApiKey')}
-                  disabled={!canEditProviders}
                   iconRender={visible =>
                     visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                   }
@@ -353,10 +337,7 @@ export function RemoteProviderSettings() {
                 name="base_url"
                 style={{ marginBottom: 0, marginTop: 16 }}
               >
-                <Input
-                  placeholder={t('providers.baseUrl')}
-                  disabled={!canEditProviders}
-                />
+                <Input placeholder={t('providers.baseUrl')} />
               </Form.Item>
             </div>
           </Flex>
@@ -368,7 +349,6 @@ export function RemoteProviderSettings() {
         currentProvider={currentProvider}
         currentModels={models}
         modelsLoading={loading}
-        canEditProviders={canEditProviders}
         modelOperations={modelOperations}
         onAddModel={handleAddModel}
         onToggleModel={handleToggleModel}
@@ -382,7 +362,6 @@ export function RemoteProviderSettings() {
           currentProvider.proxy_settings || ({} as ProxySettings)
         }
         onSave={handleProxySettingsSave}
-        disabled={!canEditProviders}
       />
     </Flex>
   )

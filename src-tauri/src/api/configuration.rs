@@ -352,7 +352,7 @@ pub async fn update_proxy_settings(
 }
 
 // Public endpoint to test proxy connection (no authentication required)
-pub async fn test_proxy_connection_public(
+pub async fn test_proxy_connection(
     Json(request): Json<TestProxyConnectionRequest>,
 ) -> impl IntoApiResponse {
     // Allow testing proxy even when not enabled - only check URL is provided

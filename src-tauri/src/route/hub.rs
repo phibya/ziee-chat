@@ -4,7 +4,7 @@ use aide::axum::{
     routing::{get_with, post_with},
     ApiRouter,
 };
-use axum::Json;
+use axum::{middleware, Json};
 
 pub fn hub_routes() -> ApiRouter {
     ApiRouter::new()
@@ -15,7 +15,8 @@ pub fn hub_routes() -> ApiRouter {
                     .id("Hub.getHubData")
                     .tag("hub")
                     .response::<200, Json<HubData>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::hub_access_middleware)),
         )
         .api_route(
             "/hub/refresh",
@@ -24,7 +25,8 @@ pub fn hub_routes() -> ApiRouter {
                     .id("Hub.refreshHubData")
                     .tag("hub")
                     .response::<200, Json<HubData>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::hub_access_middleware)),
         )
         .api_route(
             "/hub/version",
@@ -33,6 +35,7 @@ pub fn hub_routes() -> ApiRouter {
                     .id("Hub.getHubVersion")
                     .tag("hub")
                     .response::<200, Json<HubVersionResponse>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::hub_access_middleware)),
         )
 }

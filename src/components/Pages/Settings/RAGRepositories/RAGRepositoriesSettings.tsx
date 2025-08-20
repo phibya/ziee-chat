@@ -17,8 +17,6 @@ import {
   Typography,
 } from 'antd'
 import { useEffect } from 'react'
-import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearRAGRepositoriesError,
   deleteRAGRepository,
@@ -34,28 +32,9 @@ const { Title } = Typography
 
 export function RAGRepositoriesSettings() {
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
 
   // RAG repositories store
   const { repositories, loading, error } = Stores.AdminRAGRepositories
-
-  // Check permissions
-  const canEditRepositories =
-    isTauriView || hasPermission(Permission.config.providers.edit)
-  const canViewRepositories =
-    isTauriView || hasPermission(Permission.config.providers.read)
-
-  // If user doesn't have view permissions, don't render the component
-  if (!canViewRepositories) {
-    return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <Title level={3}>Access Denied</Title>
-        <Typography.Text type="secondary">
-          You do not have permission to view RAG repository settings.
-        </Typography.Text>
-      </div>
-    )
-  }
 
   useEffect(() => {
     loadAllRAGRepositories()
@@ -70,11 +49,6 @@ export function RAGRepositoriesSettings() {
   }, [error, message])
 
   const handleDelete = (repositoryId: string, repositoryName: string) => {
-    if (!canEditRepositories) {
-      message.error('No permission to delete RAG repositories')
-      return
-    }
-
     Modal.confirm({
       title: 'Delete RAG Repository',
       content: `Are you sure you want to delete "${repositoryName}"? This action cannot be undone.`,
@@ -151,7 +125,6 @@ export function RAGRepositoriesSettings() {
       render: (_: any, record: any) => (
         <Switch
           checked={record.enabled}
-          disabled={!canEditRepositories}
           onChange={enabled => {
             // TODO: Update repository enabled status
             console.log('Update repository enabled:', record.id, enabled)
@@ -173,26 +146,24 @@ export function RAGRepositoriesSettings() {
           },
         ]
 
-        if (canEditRepositories) {
-          menuItems.push(
-            {
-              key: 'edit',
-              icon: <EditOutlined />,
-              label: 'Edit',
-              onClick: async () => {
-                // TODO: Open edit drawer
-                console.log('Edit repository:', record.id)
-              },
+        menuItems.push(
+          {
+            key: 'edit',
+            icon: <EditOutlined />,
+            label: 'Edit',
+            onClick: async () => {
+              // TODO: Open edit drawer
+              console.log('Edit repository:', record.id)
             },
-            {
-              key: 'delete',
-              icon: <DeleteOutlined />,
-              label: 'Delete',
-              onClick: async () => handleDelete(record.id, record.name),
-              danger: true,
-            },
-          )
-        }
+          },
+          {
+            key: 'delete',
+            icon: <DeleteOutlined />,
+            label: 'Delete',
+            onClick: async () => handleDelete(record.id, record.name),
+            danger: true,
+          },
+        )
 
         return (
           <Dropdown menu={{ items: menuItems }} trigger={['click']}>
@@ -214,18 +185,16 @@ export function RAGRepositoriesSettings() {
           <Title level={4} style={{ margin: 0 }}>
             RAG Repositories
           </Title>
-          {canEditRepositories && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                // TODO: Open add drawer
-                console.log('Add repository')
-              }}
-            >
-              Add Repository
-            </Button>
-          )}
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              // TODO: Open add drawer
+              console.log('Add repository')
+            }}
+          >
+            Add Repository
+          </Button>
         </Flex>
 
         <Typography.Paragraph type="secondary">

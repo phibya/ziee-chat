@@ -16,8 +16,6 @@ import {
 } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isTauriView } from '../../../../api/core'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   deleteAdminModelRepository,
   loadAllAdminModelRepositories,
@@ -34,29 +32,9 @@ const { Text } = Typography
 export function ModelRepositorySettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
-  const { hasPermission } = usePermissions()
 
   // Use repository store
   const { repositories, testing } = Stores.AdminRepositories
-
-  // Check permissions
-  const canViewRepositories =
-    isTauriView || hasPermission(Permission.config.repositories.read)
-  const canEditRepositories =
-    isTauriView || hasPermission(Permission.config.repositories.edit)
-
-  // If user doesn't have view permissions, don't render the component
-  if (!canViewRepositories) {
-    return (
-      <SettingsPageContainer title="Access Denied">
-        <div style={{ padding: '24px', textAlign: 'center' }}>
-          <Text type="secondary">
-            You do not have permission to view model repository settings.
-          </Text>
-        </div>
-      </SettingsPageContainer>
-    )
-  }
 
   // Load repositories when component mounts
   useEffect(() => {
@@ -66,11 +44,6 @@ export function ModelRepositorySettings() {
   }, [])
 
   const testRepositoryConnection = async (repository: Repository) => {
-    if (!canEditRepositories) {
-      message.error('You do not have permission to test repository connections')
-      return
-    }
-
     // Validate required fields based on auth type
     if (
       repository.auth_type === 'api_key' &&
@@ -114,11 +87,6 @@ export function ModelRepositorySettings() {
   }
 
   const handleDeleteRepository = async (repositoryId: string) => {
-    if (!canEditRepositories) {
-      message.error('You do not have permission to modify repository settings')
-      return
-    }
-
     // Don't allow deleting built-in repositories
     const repo = repositories.find(r => r.id === repositoryId)
     if (repo?.built_in) {
@@ -139,11 +107,6 @@ export function ModelRepositorySettings() {
     repositoryId: string,
     enabled: boolean,
   ) => {
-    if (!canEditRepositories) {
-      message.error('You do not have permission to modify repository settings')
-      return
-    }
-
     try {
       await updateAdminModelRepository(repositoryId, { enabled })
     } catch (error: any) {
@@ -162,47 +125,44 @@ export function ModelRepositorySettings() {
         className="!mr-2"
         checked={repository.enabled}
         onChange={checked => handleToggleRepository(repository.id, checked)}
-        disabled={!canEditRepositories}
       />,
     )
 
-    if (canEditRepositories) {
+    actions.push(
+      <Button
+        key="test"
+        type="text"
+        icon={<CloudDownloadOutlined />}
+        loading={testing}
+        onClick={() => testRepositoryConnection(repository)}
+      >
+        Test
+      </Button>,
+    )
+
+    actions.push(
+      <Button
+        key="edit"
+        type="text"
+        icon={<EditOutlined />}
+        onClick={() => handleEditRepository(repository)}
+      >
+        Edit
+      </Button>,
+    )
+
+    if (!repository.built_in) {
       actions.push(
         <Button
-          key="test"
+          key="delete"
           type="text"
-          icon={<CloudDownloadOutlined />}
-          loading={testing}
-          onClick={() => testRepositoryConnection(repository)}
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => handleDeleteRepository(repository.id)}
         >
-          Test
+          Delete
         </Button>,
       )
-
-      actions.push(
-        <Button
-          key="edit"
-          type="text"
-          icon={<EditOutlined />}
-          onClick={() => handleEditRepository(repository)}
-        >
-          Edit
-        </Button>,
-      )
-
-      if (!repository.built_in) {
-        actions.push(
-          <Button
-            key="delete"
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteRepository(repository.id)}
-          >
-            Delete
-          </Button>,
-        )
-      }
     }
 
     return actions.filter(Boolean)
@@ -222,13 +182,11 @@ export function ModelRepositorySettings() {
           </Flex>
         }
         extra={
-          canEditRepositories && (
-            <Button
-              type={'text'}
-              icon={<PlusOutlined />}
-              onClick={handleAddRepository}
-            />
-          )
+          <Button
+            type={'text'}
+            icon={<PlusOutlined />}
+            onClick={handleAddRepository}
+          />
         }
       >
         <Flex className="flex-col gap-4">

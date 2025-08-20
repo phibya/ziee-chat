@@ -18,7 +18,6 @@ use uuid::Uuid;
 
 use crate::api::errors::{ApiResult2, AppError};
 use crate::api::middleware::AuthenticatedUser;
-use crate::api::permissions::{check_permission, permissions};
 use crate::database::{
     models::{
         DownloadInstance, DownloadInstanceListResponse, DownloadStatus, UpdateDownloadStatusRequest,
@@ -36,19 +35,9 @@ pub struct DownloadPaginationQuery {
 // List all download instances (admin only)
 #[debug_handler]
 pub async fn list_all_downloads(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<DownloadPaginationQuery>,
 ) -> ApiResult2<Json<DownloadInstanceListResponse>> {
-    // Check if user has admin permission
-    if !check_permission(&auth_user.user, permissions::ALL) {
-        return Err((
-            StatusCode::FORBIDDEN,
-            AppError::new(
-                crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                "Admin access required",
-            ),
-        ));
-    }
 
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
@@ -74,21 +63,11 @@ pub async fn list_all_downloads(
 // Get a specific download instance
 #[debug_handler]
 pub async fn get_download(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(download_id): Path<Uuid>,
 ) -> ApiResult2<Json<DownloadInstance>> {
     match download_instances::get_download_instance_by_id(download_id).await {
         Ok(Some(download)) => {
-            // Check if user has permission to read providers
-            if !check_permission(&auth_user.user, permissions::PROVIDERS_READ) {
-                return Err((
-                    StatusCode::FORBIDDEN,
-                    AppError::new(
-                        crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                        "Provider read access required",
-                    ),
-                ));
-            }
             Ok((StatusCode::OK, Json(download)))
         }
         Ok(None) => Err((
@@ -108,23 +87,12 @@ pub async fn get_download(
 // Cancel a download
 #[debug_handler]
 pub async fn cancel_download(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(download_id): Path<Uuid>,
 ) -> ApiResult2<StatusCode> {
     // Verify the download exists and user has access
     match download_instances::get_download_instance_by_id(download_id).await {
         Ok(Some(download)) => {
-            // Check if user has permission to edit providers
-            if !check_permission(&auth_user.user, permissions::PROVIDERS_EDIT) {
-                return Err((
-                    StatusCode::FORBIDDEN,
-                    AppError::new(
-                        crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                        "Provider edit access required",
-                    ),
-                ));
-            }
-
             // Check if download can be cancelled
             if !download.can_cancel() {
                 return Err((
@@ -223,22 +191,12 @@ pub async fn cancel_download(
 // Delete a download instance
 #[debug_handler]
 pub async fn delete_download(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(download_id): Path<Uuid>,
 ) -> ApiResult2<StatusCode> {
     // Verify the download exists and user has access
     match download_instances::get_download_instance_by_id(download_id).await {
         Ok(Some(download)) => {
-            // Check if user has permission to edit providers
-            if !check_permission(&auth_user.user, permissions::PROVIDERS_EDIT) {
-                return Err((
-                    StatusCode::FORBIDDEN,
-                    AppError::new(
-                        crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                        "Provider edit access required",
-                    ),
-                ));
-            }
 
             // Only allow deleting terminal states
             if !download.is_terminal() {
@@ -330,18 +288,8 @@ pub enum DownloadProgressEvent {
 /// The connection will automatically close when no downloads are active
 #[debug_handler]
 pub async fn subscribe_download_progress(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
-    // Check if user has permission to read providers
-    if !check_permission(&auth_user.user, permissions::PROVIDERS_READ) {
-        return Err((
-            StatusCode::FORBIDDEN,
-            AppError::new(
-                crate::api::errors::ErrorCode::AuthzInsufficientPermissions,
-                "Provider read access required",
-            ),
-        ));
-    }
 
     // Create interval for polling (every 2 seconds)
     let mut interval_stream = IntervalStream::new(interval(Duration::from_secs(2)));

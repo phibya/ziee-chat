@@ -18,7 +18,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, Json<Model>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::models_create_middleware,
             )),
         )
         .api_route(
@@ -30,7 +30,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, Json<Model>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_read_middleware,
+                api::middleware::models_read_middleware,
             )),
         )
         .api_route(
@@ -42,7 +42,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, Json<Model>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::models_edit_middleware,
             )),
         )
         .api_route(
@@ -54,7 +54,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<204, ()>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_delete_middleware,
+                api::middleware::models_delete_middleware,
             )),
         )
         .api_route(
@@ -66,7 +66,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, ()>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::models_start_middleware,
             )),
         )
         .api_route(
@@ -78,7 +78,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, ()>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::models_stop_middleware,
             )),
         )
         .api_route(
@@ -90,7 +90,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, ()>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::models_enable_middleware,
             )),
         )
         .api_route(
@@ -102,7 +102,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, ()>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::models_disable_middleware,
             )),
         )
         // Model uploads
@@ -115,7 +115,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, Json<Model>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::models_upload_middleware,
             )),
         )
         .api_route(
@@ -127,7 +127,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .response::<200, Json<DownloadInstance>>()
             })
             .layer(middleware::from_fn(
-                api::middleware::providers_edit_middleware,
+                api::middleware::model_downloads_create_middleware,
             )),
         )
 }

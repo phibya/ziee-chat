@@ -20,7 +20,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<UploadFileResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_upload_middleware)),
         )
         .api_route(
             "/files/{file_id}",
@@ -30,7 +30,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<File>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_read_middleware)),
         )
         .api_route(
             "/files/{file_id}",
@@ -40,7 +40,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<FileOperationSuccessResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_delete_middleware)),
         )
         .api_route(
             "/files/{file_id}/download",
@@ -50,7 +50,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<BlobType>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_download_middleware)),
         )
         .api_route(
             "/files/{file_id}/download-token",
@@ -60,7 +60,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<DownloadTokenResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_generate_token_middleware)),
         )
         .api_route(
             "/files/{file_id}/download-with-token",
@@ -79,7 +79,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<BlobType>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_preview_middleware)),
         )
         // Project file operations
         .api_route(
@@ -90,7 +90,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<UploadFileResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_upload_middleware)),
         )
         .api_route(
             "/projects/{project_id}/files",
@@ -100,7 +100,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<FileListResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_read_middleware)),
         )
         // Message file operations
         .api_route(
@@ -111,7 +111,7 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<Vec<File>>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_read_middleware)),
         )
         .api_route(
             "/files/{file_id}/messages/{message_id}",
@@ -121,6 +121,6 @@ pub fn file_routes() -> ApiRouter {
                     .tag("files")
                     .response::<200, Json<FileOperationSuccessResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::auth_middleware)),
+            .layer(middleware::from_fn(api::middleware::files_delete_middleware)),
         )
 }

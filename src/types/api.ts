@@ -730,6 +730,8 @@ export interface PasswordService {
   salt: string
 }
 
+export type Permission = 'users::read' | 'users::edit' | 'users::delete' | 'users::create' | 'users::reset-password' | 'users::toggle-status' | 'groups::read' | 'groups::edit' | 'groups::delete' | 'groups::create' | 'groups::assign-users' | 'groups::assign-providers' | 'chat::read' | 'chat::create' | 'chat::edit' | 'chat::delete' | 'chat::stream' | 'chat::search' | 'chat::branch' | 'projects::read' | 'projects::create' | 'projects::edit' | 'projects::delete' | 'files::read' | 'files::upload' | 'files::delete' | 'files::download' | 'files::preview' | 'files::generate-token' | 'assistants::read' | 'assistants::create' | 'assistants::edit' | 'assistants::delete' | 'assistants::admin::read' | 'assistants::admin::create' | 'assistants::admin::edit' | 'assistants::admin::delete' | 'settings::read' | 'settings::edit' | 'settings::delete' | 'providers::read' | 'providers::edit' | 'providers::delete' | 'providers::create' | 'providers::view-groups' | 'models::read' | 'models::create' | 'models::edit' | 'models::delete' | 'models::start' | 'models::stop' | 'models::enable' | 'models::disable' | 'models::upload' | 'repositories::read' | 'repositories::edit' | 'repositories::delete' | 'repositories::create' | 'rag::providers::read' | 'rag::providers::create' | 'rag::providers::edit' | 'rag::providers::delete' | 'rag::repositories::read' | 'rag::repositories::create' | 'rag::repositories::edit' | 'rag::repositories::delete' | 'model-downloads::read' | 'model-downloads::create' | 'model-downloads::cancel' | 'model-downloads::delete' | 'hardware::read' | 'hardware::monitor' | 'devices::read' | 'engines::read' | 'api-proxy::read' | 'api-proxy::start' | 'api-proxy::stop' | 'api-proxy::configure' | 'config::user-registration::read' | 'config::user-registration::edit' | 'config::appearance::read' | 'config::appearance::edit' | 'config::proxy::read' | 'config::proxy::edit' | 'config::ngrok::read' | 'config::ngrok::edit' | 'config::ngrok::start' | 'config::ngrok::stop' | 'hub::access' | '*'
+
 export interface PreviewParams {
   page?: number
 }
@@ -1342,9 +1344,7 @@ export const ApiEndpoints = {
   'Projects.createProject': 'POST /api/projects',
   'Projects.deleteProject': 'DELETE /api/projects/{project_id}',
   'Projects.getProject': 'GET /api/projects/{project_id}',
-  'Projects.linkConversation': 'POST /api/projects/{project_id}/conversations/{conversation_id}',
   'Projects.listProjects': 'GET /api/projects',
-  'Projects.unlinkConversation': 'DELETE /api/projects/{project_id}/conversations/{conversation_id}',
   'Projects.updateProject': 'PUT /api/projects/{project_id}',
   'Providers.listEnabledProviders': 'GET /api/providers',
   'User.greet': 'POST /api/user/greet',
@@ -1508,9 +1508,7 @@ export type ApiEndpointParameters = {
   'Projects.createProject': CreateProjectRequest
   'Projects.deleteProject': { project_id: string }
   'Projects.getProject': { project_id: string }
-  'Projects.linkConversation': { project_id: string; conversation_id: string }
   'Projects.listProjects': ProjectListQuery
-  'Projects.unlinkConversation': { project_id: string; conversation_id: string }
   'Projects.updateProject': { project_id: string } & UpdateProjectRequest
   'Providers.listEnabledProviders': PaginationQuery
   'User.greet': UserHello
@@ -1674,9 +1672,7 @@ export type ApiEndpointResponses = {
   'Projects.createProject': Project
   'Projects.deleteProject': void
   'Projects.getProject': ProjectDetailResponse
-  'Projects.linkConversation': Conversation
   'Projects.listProjects': ProjectListResponse
-  'Projects.unlinkConversation': void
   'Projects.updateProject': Project
   'Providers.listEnabledProviders': ProviderListResponse
   'User.greet': string

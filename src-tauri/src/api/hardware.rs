@@ -12,9 +12,8 @@ use tokio::time::interval;
 use uuid::Uuid;
 
 use crate::api::{
-    errors::{ApiResult2, AppError},
+    errors::ApiResult2,
     middleware::AuthenticatedUser,
-    permissions,
 };
 
 // Hardware information structures
@@ -121,16 +120,8 @@ lazy_static::lazy_static! {
 // Get static hardware information
 #[debug_handler]
 pub async fn get_hardware_info(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<Json<HardwareInfoResponse>> {
-    // Check permissions - only admin users can access hardware information
-    if !permissions::check_permission(&auth_user.user, permissions::permissions::PROVIDERS_READ) {
-        return Err((
-            axum::http::StatusCode::FORBIDDEN,
-            AppError::forbidden("Hardware access requires admin permissions"),
-        ));
-    }
-
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -183,15 +174,8 @@ pub async fn get_hardware_info(
 // SSE endpoint for real-time hardware usage monitoring
 #[debug_handler]
 pub async fn subscribe_hardware_usage(
-    Extension(auth_user): Extension<AuthenticatedUser>,
+    Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
-    // Check permissions
-    if !permissions::check_permission(&auth_user.user, permissions::permissions::PROVIDERS_READ) {
-        return Err((
-            axum::http::StatusCode::FORBIDDEN,
-            AppError::forbidden("Hardware access requires admin permissions"),
-        ));
-    }
 
     let client_id = Uuid::new_v4();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();

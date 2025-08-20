@@ -19,7 +19,6 @@ import {
 } from '@ant-design/icons'
 import { SettingsPageContainer } from './common/SettingsPageContainer'
 import { isTauriView } from '../../../api/core'
-import { Permission, usePermissions } from '../../../permissions'
 import { Stores } from '../../../store'
 import {
   loadNgrokSettings,
@@ -37,7 +36,6 @@ export function NgrokSettings() {
   const { message } = App.useApp()
   const [configForm] = Form.useForm()
   const [passwordForm] = Form.useForm()
-  const { hasPermission } = usePermissions()
 
   // Desktop-only feature check
   if (!isTauriView) {
@@ -45,20 +43,6 @@ export function NgrokSettings() {
       <SettingsPageContainer title={t('ngrok.title')}>
         <Card>
           <Text type="secondary">{t('ngrok.desktopOnly')}</Text>
-        </Card>
-      </SettingsPageContainer>
-    )
-  }
-
-  // Permission check
-  const canRead = hasPermission(Permission.config.ngrok.read)
-  const canEdit = hasPermission(Permission.config.ngrok.edit)
-
-  if (!canRead) {
-    return (
-      <SettingsPageContainer title={t('ngrok.title')}>
-        <Card>
-          <Text type="secondary">{t('permissions.insufficient')}</Text>
         </Card>
       </SettingsPageContainer>
     )
@@ -165,7 +149,6 @@ export function NgrokSettings() {
             layout="vertical"
             initialValues={ngrokSettings || {}}
             onFinish={handleConfigSave}
-            disabled={!canEdit}
           >
             <Form.Item
               name="api_key"
@@ -199,21 +182,19 @@ export function NgrokSettings() {
                 valuePropName="checked"
                 style={{ margin: 0 }}
               >
-                <Switch disabled={!canEdit} />
+                <Switch />
               </Form.Item>
             </div>
 
-            {canEdit && (
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loadingSettings}
-                >
-                  {t('common.save')}
-                </Button>
-              </Form.Item>
-            )}
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loadingSettings}
+              >
+                {t('common.save')}
+              </Button>
+            </Form.Item>
           </Form>
         </Card>
 
@@ -223,7 +204,6 @@ export function NgrokSettings() {
             form={passwordForm}
             layout="vertical"
             onFinish={handlePasswordSave}
-            disabled={!canEdit}
           >
             {!isTauriView && (
               <Form.Item
@@ -256,17 +236,15 @@ export function NgrokSettings() {
               />
             </Form.Item>
 
-            {canEdit && (
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loadingSettings}
-                >
-                  {t('ngrok.updatePassword')}
-                </Button>
-              </Form.Item>
-            )}
+            <Form.Item>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loadingSettings}
+              >
+                {t('ngrok.updatePassword')}
+              </Button>
+            </Form.Item>
           </Form>
         </Card>
 
@@ -297,37 +275,35 @@ export function NgrokSettings() {
               )}
 
               {/* Control Buttons */}
-              {canEdit && (
-                <div className="flex gap-3 flex-wrap">
-                  {!ngrokStatus?.tunnel_active ? (
-                    <Button
-                      type="primary"
-                      icon={<PlayCircleOutlined />}
-                      onClick={handleStartTunnel}
-                      loading={loadingStatus}
-                      disabled={!hasApiKey}
-                    >
-                      {t('ngrok.startTunnel')}
-                    </Button>
-                  ) : (
-                    <Button
-                      danger
-                      icon={<StopOutlined />}
-                      onClick={handleStopTunnel}
-                      loading={loadingStatus}
-                    >
-                      {t('ngrok.stopTunnel')}
-                    </Button>
-                  )}
-
+              <div className="flex gap-3 flex-wrap">
+                {!ngrokStatus?.tunnel_active ? (
                   <Button
-                    icon={<GlobalOutlined />}
-                    onClick={() => refreshNgrokStatus()}
+                    type="primary"
+                    icon={<PlayCircleOutlined />}
+                    onClick={handleStartTunnel}
+                    loading={loadingStatus}
+                    disabled={!hasApiKey}
                   >
-                    {t('ngrok.refreshStatus')}
+                    {t('ngrok.startTunnel')}
                   </Button>
-                </div>
-              )}
+                ) : (
+                  <Button
+                    danger
+                    icon={<StopOutlined />}
+                    onClick={handleStopTunnel}
+                    loading={loadingStatus}
+                  >
+                    {t('ngrok.stopTunnel')}
+                  </Button>
+                )}
+
+                <Button
+                  icon={<GlobalOutlined />}
+                  onClick={() => refreshNgrokStatus()}
+                >
+                  {t('ngrok.refreshStatus')}
+                </Button>
+              </div>
 
               {/* Error Display */}
               {error && <Alert message={error} type="error" showIcon />}

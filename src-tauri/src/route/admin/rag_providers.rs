@@ -3,7 +3,7 @@ use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,
 };
-use axum::Json;
+use axum::{middleware, Json};
 
 use crate::api::rag_providers::{
     add_database_to_rag_provider,
@@ -35,7 +35,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.listRAGProviders")
                     .tag("admin")
                     .response::<200, Json<RAGProviderListResponse>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_providers_read_middleware)),
         )
         .api_route(
             "/rag-providers",
@@ -44,7 +45,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.createRAGProvider")
                     .tag("admin")
                     .response::<200, Json<RAGProvider>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_providers_create_middleware)),
         )
         .api_route(
             "/rag-providers/{provider_id}",
@@ -53,7 +55,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.getRAGProvider")
                     .tag("admin")
                     .response::<200, Json<RAGProvider>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_providers_read_middleware)),
         )
         .api_route(
             "/rag-providers/{provider_id}",
@@ -62,7 +65,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.updateRAGProvider")
                     .tag("admin")
                     .response::<200, Json<RAGProvider>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_providers_edit_middleware)),
         )
         .api_route(
             "/rag-providers/{provider_id}",
@@ -71,7 +75,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.deleteRAGProvider")
                     .tag("admin")
                     .response::<204, ()>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_providers_delete_middleware)),
         )
         .api_route(
             "/rag-providers/{provider_id}/clone",
@@ -80,7 +85,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.cloneRAGProvider")
                     .tag("admin")
                     .response::<200, Json<RAGProvider>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_providers_create_middleware)),
         )
         // RAG Database routes
         .api_route(
@@ -90,7 +96,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.listRAGProviderDatabases")
                     .tag("admin")
                     .response::<200, Json<Vec<RAGDatabase>>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_read_middleware)),
         )
         .api_route(
             "/rag-providers/{provider_id}/databases",
@@ -99,7 +106,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.addDatabaseToRAGProvider")
                     .tag("admin")
                     .response::<200, Json<RAGDatabase>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_create_middleware)),
         )
         .api_route(
             "/rag-databases/{database_id}",
@@ -108,7 +116,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.getRAGDatabase")
                     .tag("admin")
                     .response::<200, Json<RAGDatabase>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_read_middleware)),
         )
         .api_route(
             "/rag-databases/{database_id}",
@@ -117,7 +126,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.updateRAGDatabase")
                     .tag("admin")
                     .response::<200, Json<RAGDatabase>>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_edit_middleware)),
         )
         .api_route(
             "/rag-databases/{database_id}",
@@ -126,7 +136,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.deleteRAGDatabase")
                     .tag("admin")
                     .response::<204, ()>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_delete_middleware)),
         )
         .api_route(
             "/rag-databases/{database_id}/start",
@@ -135,7 +146,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.startRAGDatabase")
                     .tag("admin")
                     .response::<200, ()>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_edit_middleware)),
         )
         .api_route(
             "/rag-databases/{database_id}/stop",
@@ -144,7 +156,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.stopRAGDatabase")
                     .tag("admin")
                     .response::<200, ()>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_edit_middleware)),
         )
         .api_route(
             "/rag-databases/{database_id}/enable",
@@ -153,7 +166,8 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.enableRAGDatabase")
                     .tag("admin")
                     .response::<200, ()>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_edit_middleware)),
         )
         .api_route(
             "/rag-databases/{database_id}/disable",
@@ -162,6 +176,7 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
                     .id("Admin.disableRAGDatabase")
                     .tag("admin")
                     .response::<200, ()>()
-            }),
+            })
+            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_edit_middleware)),
         )
 }

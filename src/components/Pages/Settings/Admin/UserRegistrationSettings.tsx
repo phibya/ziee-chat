@@ -1,7 +1,6 @@
 import { App, Card, Form, Switch, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Permission, usePermissions } from '../../../../permissions'
 import {
   clearAdminUsersStoreError,
   loadSystemUserRegistrationSettings,
@@ -15,20 +14,14 @@ export function UserRegistrationSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
-  const { hasPermission } = usePermissions()
 
   // Admin users store
   const { userRegistrationEnabled, loadingRegistrationSettings, error } =
     Stores.AdminUsers
 
-  const canRead = hasPermission(Permission.config.userRegistration.read)
-  const canEdit = hasPermission(Permission.config.userRegistration.edit)
-
   useEffect(() => {
-    if (canRead) {
-      loadSystemUserRegistrationSettings()
-    }
-  }, [canRead])
+    loadSystemUserRegistrationSettings()
+  }, [])
 
   // Show errors
   useEffect(() => {
@@ -44,10 +37,6 @@ export function UserRegistrationSettings() {
   }, [userRegistrationEnabled]) // Removed form from dependencies to prevent infinite rerenders
 
   const handleFormChange = async (changedValues: any) => {
-    if (!canEdit) {
-      message.error(t('admin.noPermissionEditSetting'))
-      return
-    }
     if ('enabled' in changedValues) {
       const newValue = changedValues.enabled
 
@@ -61,10 +50,6 @@ export function UserRegistrationSettings() {
         // Error is handled by the store
       }
     }
-  }
-
-  if (!canRead) {
-    return null
   }
 
   return (
