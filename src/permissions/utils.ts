@@ -20,11 +20,6 @@ export const hasPermission = (
     return true
   }
 
-  const permissionsSet = new Set<Permission>(permissions)
-  const permissionCategoriesSet = new Set<string>(
-    permissions.map(permission => permission.replace(/::[^:]*$/, '')),
-  )
-
   const groupPermissionsSet = user.groups.reduce(
     (acc: Set<Permission>, group: UserGroup) => {
       if (!group.is_active || !group.permissions) {
@@ -36,17 +31,33 @@ export const hasPermission = (
     new Set<Permission>(),
   )
 
-  if (groupPermissionsSet.has(Permission.All)) return true
+  // Check each required permission
+  for (const permission of permissions) {
+    let hasRequiredPermission = false
 
-  for (const groupPermission of groupPermissionsSet) {
-    const isWildcard = groupPermission.endsWith('::*')
-    if (isWildcard) {
-      const category = groupPermission.replace(/::[^:]*$/, '')
-      if (!permissionCategoriesSet.has(category)) {
-        return false
+    // Check for exact permission match
+    if (groupPermissionsSet.has(permission)) {
+      hasRequiredPermission = true
+    }
+    // Check for wildcard matches (all permissions)
+    else if (groupPermissionsSet.has(Permission.All)) {
+      hasRequiredPermission = true
+    }
+    // Check for multi-level wildcard matches
+    else {
+      const parts = permission.split('::')
+      for (let i = 1; i < parts.length; i++) {
+        const partialPath = parts.slice(0, i).join('::')
+        const wildcard = `${partialPath}::*` as Permission
+        if (groupPermissionsSet.has(wildcard)) {
+          hasRequiredPermission = true
+          break
+        }
       }
     }
-    if (!permissionsSet.has(groupPermission)) {
+
+    // If any required permission is not granted, return false
+    if (!hasRequiredPermission) {
       return false
     }
   }

@@ -9,11 +9,13 @@ import {
 import { formatBytes } from '../../utils/formatBytes'
 import { withPermission } from '../../permissions/utils.ts'
 import { Permission } from '../../types'
+import { useSetBackgroundColor } from '../hooks/useSetBackgroundColor.ts'
 
 const { Text } = Typography
 
 function HardwareMonitorComponent() {
   const { message } = App.useApp()
+  useSetBackgroundColor()
 
   // Hardware store state
   const {

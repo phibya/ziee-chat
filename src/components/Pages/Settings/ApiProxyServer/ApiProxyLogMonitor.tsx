@@ -18,12 +18,14 @@ import {
   setAutoScroll,
 } from '../../../../store/admin/apiProxyLogMonitor.ts'
 import { isTauriView } from '../../../../api/core.ts'
+import { useSetBackgroundColor } from '../../../hooks/useSetBackgroundColor.ts'
 
 const { Text, Title } = Typography
 
 export function ApiProxyLogMonitor() {
   const { t } = useTranslation()
   const { message } = App.useApp()
+  useSetBackgroundColor()
   const logContainerRef = useRef<HTMLDivElement>(null)
 
   // Store state

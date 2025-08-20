@@ -377,9 +377,11 @@ pub fn check_permission(user: &User, permission: &str) -> bool {
             return true;
         }
 
-        // Check for category wildcards (e.g., "users::*" for "users::read")
-        if let Some(category) = get_permission_category(permission) {
-            let wildcard = format!("{}::*", category);
+        // Check for multi-level wildcard matches (e.g., "config::*", "config::proxy::*" for "config::proxy::read")
+        let parts: Vec<&str> = permission.split("::").collect();
+        for i in 1..parts.len() {
+            let partial_path = parts[0..i].join("::");
+            let wildcard = format!("{}::*", partial_path);
             if group_permissions.contains(&wildcard) {
                 return true;
             }
@@ -387,9 +389,4 @@ pub fn check_permission(user: &User, permission: &str) -> bool {
     }
 
     false
-}
-
-/// Extract the category from a permission string (e.g., "users::read" -> "users")
-fn get_permission_category(permission: &str) -> Option<&str> {
-    permission.split("::").next()
 }

@@ -36,15 +36,13 @@ pub fn create_rest_router_internal() -> (OpenApi, Router) {
                 .merge(chat::chat_routes())
                 .merge(projects::project_routes())
                 .merge(hub::hub_routes())
+                .merge(files::file_routes())
                 .layer(middleware::from_fn(api::middleware::auth_middleware)),
         );
 
-    // File routes (already have auth middleware applied individually)
-    let file_routes = files::file_routes();
-
     // Combine all routes
     let router = ApiRouter::new()
-        .nest("/api", api_routes.merge(file_routes))
+        .nest("/api", api_routes)
         .finish_api_with(&mut api, api_docs)
         .layer(CorsLayer::permissive());
 
