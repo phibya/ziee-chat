@@ -8,6 +8,8 @@ import {
   setProjectDrawerLoading,
   Stores,
 } from '../../../store'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { Permission } from '../../../types'
 
 const { TextArea } = Input
 
@@ -77,31 +79,47 @@ export const ProjectFormDrawer: React.FC = () => {
         <Button key="cancel" onClick={closeProjectDrawer} disabled={loading}>
           Cancel
         </Button>,
-        <Button
-          key="submit"
-          type="primary"
-          loading={loading}
-          onClick={() => form.submit()}
+        <PermissionGuard
+          permissions={[
+            editingProject
+              ? Permission.ProjectsEdit
+              : Permission.ProjectsCreate,
+          ]}
+          type={'disabled'}
         >
-          {editingProject ? 'Update' : 'Create'}
-        </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={loading}
+            onClick={() => form.submit()}
+          >
+            {editingProject ? 'Update' : 'Create'}
+          </Button>
+        </PermissionGuard>,
       ]}
       width={400}
       maskClosable={false}
     >
-      <Form form={form} onFinish={handleSubmit} layout="vertical">
-        <Form.Item
-          name="name"
-          label="Project Name"
-          rules={[{ required: true, message: 'Please enter a project name' }]}
-        >
-          <Input placeholder="Enter project name" />
-        </Form.Item>
+      <PermissionGuard
+        permissions={[
+          editingProject ? Permission.ProjectsEdit : Permission.ProjectsCreate,
+        ]}
+        type={'disabled'}
+      >
+        <Form form={form} onFinish={handleSubmit} layout="vertical">
+          <Form.Item
+            name="name"
+            label="Project Name"
+            rules={[{ required: true, message: 'Please enter a project name' }]}
+          >
+            <Input placeholder="Enter project name" />
+          </Form.Item>
 
-        <Form.Item name="description" label="Description">
-          <TextArea placeholder="Enter project description" rows={4} />
-        </Form.Item>
-      </Form>
+          <Form.Item name="description" label="Description">
+            <TextArea placeholder="Enter project description" rows={4} />
+          </Form.Item>
+        </Form>
+      </PermissionGuard>
     </Drawer>
   )
 }

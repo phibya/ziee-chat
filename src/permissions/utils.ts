@@ -7,7 +7,7 @@ export const hasPermission = (
   user?: User,
 ): boolean => {
   // testing
-  if (permissions.includes(Permission.ChatSearch)) return false
+  if (permissions.includes(Permission.ProjectsEdit)) return false
 
   if (!user) {
     user = Stores.Auth.__state.user || undefined

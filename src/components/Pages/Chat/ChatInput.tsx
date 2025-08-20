@@ -362,18 +362,19 @@ export const ChatInput = function ChatInput({
       style={style}
     >
       {/* Drag and Drop Overlay */}
-      <Upload.Dragger
-        multiple
-        beforeUpload={(_, fileList) => {
-          if (fileList) {
-            handleFileUpload(fileList)?.catch?.(error => {
-              console.error('Failed to upload files:', error)
-            })
-          }
-          return false
-        }}
-        showUploadList={false}
-        className={`
+      <PermissionGuard permissions={[Permission.ChatCreate]}>
+        <Upload.Dragger
+          multiple
+          beforeUpload={(_, fileList) => {
+            if (fileList) {
+              handleFileUpload(fileList)?.catch?.(error => {
+                console.error('Failed to upload files:', error)
+              })
+            }
+            return false
+          }}
+          showUploadList={false}
+          className={`
           opacity-0
           [&_.ant-upload-drag]:!cursor-default
           [&_.ant-upload-drag]:!border-none
@@ -383,20 +384,21 @@ export const ChatInput = function ChatInput({
           absolute inset-0
           transition-opacity duration-300 ease-in-out
         `}
-        openFileDialogOnClick={false}
-        style={{
-          backgroundColor: token.colorBgLayout,
-          borderRadius: token.borderRadius,
-        }}
-      >
-        <Flex
-          className="h-full flex-col items-center justify-center gap-3"
-          style={{ pointerEvents: 'none' }}
+          openFileDialogOnClick={false}
+          style={{
+            backgroundColor: token.colorBgLayout,
+            borderRadius: token.borderRadius,
+          }}
         >
-          <BsFileEarmarkPlus className={'text-2xl'} />
-          <Text type="secondary">Drop files here to upload</Text>
-        </Flex>
-      </Upload.Dragger>
+          <Flex
+            className="h-full flex-col items-center justify-center gap-3"
+            style={{ pointerEvents: 'none' }}
+          >
+            <BsFileEarmarkPlus className={'text-2xl'} />
+            <Text type="secondary">Drop files here to upload</Text>
+          </Flex>
+        </Upload.Dragger>
+      </PermissionGuard>
 
       <Card
         onDragEnter={() => {

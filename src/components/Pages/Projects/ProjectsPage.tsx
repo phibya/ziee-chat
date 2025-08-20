@@ -14,10 +14,13 @@ import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
 import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 import { PiSortAscending } from 'react-icons/pi'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
+import { withPermission } from '../../../permissions/utils.ts'
+import { Permission } from '../../../types'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 
 const { Title, Text } = Typography
 
-export const ProjectsPage: React.FC = () => {
+const ProjectsPageComponent: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const pageMinSize = useMainContentMinSize()
@@ -146,14 +149,16 @@ export const ProjectsPage: React.FC = () => {
                   }}
                 />
               </Dropdown>
-              <Button
-                type="text"
-                icon={<PlusOutlined />}
-                onClick={() => openProjectDrawer()}
-                style={{
-                  fontSize: '16px',
-                }}
-              />
+              <PermissionGuard permissions={[Permission.ProjectsCreate]}>
+                <Button
+                  type="text"
+                  icon={<PlusOutlined />}
+                  onClick={() => openProjectDrawer()}
+                  style={{
+                    fontSize: '16px',
+                  }}
+                />
+              </PermissionGuard>
             </div>
           </div>
         </div>
@@ -212,3 +217,7 @@ export const ProjectsPage: React.FC = () => {
     </div>
   )
 }
+
+export const ProjectsPage = withPermission([Permission.ProjectsRead])(
+  ProjectsPageComponent,
+)

@@ -20,6 +20,9 @@ import { useProjectStore } from '../../../store'
 import { FileCard } from '../../common/FileCard.tsx'
 import { ProjectInstructionDrawer } from './ProjectInstructionDrawer.tsx'
 import { useUpdate } from 'react-use'
+import { Permission } from '../../../types'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { hasPermission } from '../../../permissions/utils.ts'
 
 const { Text } = Typography
 
@@ -106,12 +109,17 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
       <Typography.Title level={5} className={'!m-0 !pt-[2px]'}>
         Project knowledge
       </Typography.Title>
-      <Button
-        icon={<PlusOutlined />}
-        onClick={handleAddFilesClick}
-        style={{ pointerEvents: 'auto' }}
-        loading={uploading}
-      />
+      <PermissionGuard
+        permissions={[Permission.ProjectsEdit]}
+        type={'disabled'}
+      >
+        <Button
+          icon={<PlusOutlined />}
+          onClick={handleAddFilesClick}
+          style={{ pointerEvents: 'auto' }}
+          loading={uploading}
+        />
+      </PermissionGuard>
     </div>
   )
 
@@ -119,16 +127,17 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
     <div
       className={'h-full flex flex-col overflow-y-hidden overflow-x-visible'}
     >
-      <Upload.Dragger
-        multiple
-        beforeUpload={(_, fileList) => {
-          handleFileUpload(fileList).catch(error => {
-            console.error('Failed to upload files:', error)
-          })
-          return false
-        }}
-        showUploadList={false}
-        className={`
+      <PermissionGuard permissions={[Permission.ProjectsEdit]}>
+        <Upload.Dragger
+          multiple
+          beforeUpload={(_, fileList) => {
+            handleFileUpload(fileList).catch(error => {
+              console.error('Failed to upload files:', error)
+            })
+            return false
+          }}
+          showUploadList={false}
+          className={`
         opacity-0
         [&_.ant-upload-drag]:!cursor-default
         [&_.ant-upload-drag]:!border-none
@@ -138,19 +147,20 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
         absolute left-2 right-2 top-3 bottom-2
         transition-opacity duration-300 ease-in-out
         `}
-        openFileDialogOnClick={false}
-        style={{
-          backgroundColor: token.colorBgContainer,
-        }}
-      >
-        <Flex
-          className="h-full flex-col items-center justify-center gap-2"
-          style={{ pointerEvents: 'none' }}
+          openFileDialogOnClick={false}
+          style={{
+            backgroundColor: token.colorBgContainer,
+          }}
         >
-          <UploadOutlined style={{ fontSize: '24px' }} />
-          <Text type="secondary">Drag and drop files here</Text>
-        </Flex>
-      </Upload.Dragger>
+          <Flex
+            className="h-full flex-col items-center justify-center gap-2"
+            style={{ pointerEvents: 'none' }}
+          >
+            <UploadOutlined style={{ fontSize: '24px' }} />
+            <Text type="secondary">Drag and drop files here</Text>
+          </Flex>
+        </Upload.Dragger>
+      </PermissionGuard>
       {
         //portal if getHeaderRef is provided
         getHeaderRef && getHeaderRef() ? (
@@ -174,14 +184,19 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
             </Text>
           </div>
           <div>
-            <Button
-              type="link"
-              size="small"
-              style={{ pointerEvents: 'auto' }}
-              onClick={() => setInstructionDrawerOpen(true)}
+            <PermissionGuard
+              permissions={[Permission.ProjectsEdit]}
+              type={'disabled'}
             >
-              Edit
-            </Button>
+              <Button
+                type="link"
+                size="small"
+                style={{ pointerEvents: 'auto' }}
+                onClick={() => setInstructionDrawerOpen(true)}
+              >
+                Edit
+              </Button>
+            </PermissionGuard>
           </div>
         </Card>
       </div>
@@ -240,7 +255,12 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
             {/* Show existing files */}
             {projectFiles.map((file: any) => (
               <div className={'flex-1 min-w-20 max-w-28'}>
-                <FileCard key={file.id} file={file} />
+                <FileCard
+                  key={file.id}
+                  file={file}
+                  canDelete={hasPermission([Permission.ProjectsEdit])}
+                  canRemove={hasPermission([Permission.ProjectsEdit])}
+                />
               </div>
             ))}
             {new Array(10).fill(0).map((_, i) => (
