@@ -20,6 +20,7 @@ interface ProviderWithModels extends Provider {
 interface AdminProvidersState {
   // Data
   providers: ProviderWithModels[]
+  isInitialized: boolean // Track if providers have been initialized
 
   // Loading states
   loading: boolean
@@ -39,6 +40,7 @@ export const useAdminProvidersStore = create<AdminProvidersState>()(
     (): AdminProvidersState => ({
       // Initial state
       providers: [],
+      isInitialized: false,
       loading: false,
       creating: false,
       updating: false,
@@ -53,9 +55,13 @@ export const useAdminProvidersStore = create<AdminProvidersState>()(
 
 // Provider actions
 export const loadAllModelProviders = async (): Promise<void> => {
+  let state = useAdminProvidersStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useAdminProvidersStore.setState({ loading: true, error: null })
-    const response = await ApiClient.Admin.listProviders({})
+    const response = await ApiClient.Admin.listProviders({ per_page: 10000 })
     const providers = await Promise.all(
       response.providers.map(async provider => {
         // Fetch models for each provider
@@ -67,6 +73,7 @@ export const loadAllModelProviders = async (): Promise<void> => {
     )
     useAdminProvidersStore.setState({
       providers: providers,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {

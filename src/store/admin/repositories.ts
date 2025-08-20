@@ -11,6 +11,7 @@ import {
 interface AdminRepositoriesState {
   // Data
   repositories: Repository[]
+  isInitialized: boolean
 
   // Loading states
   loading: boolean
@@ -28,6 +29,7 @@ export const useAdminRepositoriesStore = create<AdminRepositoriesState>()(
     (): AdminRepositoriesState => ({
       // Initial state
       repositories: [],
+      isInitialized: false,
       loading: false,
       creating: false,
       updating: false,
@@ -40,6 +42,10 @@ export const useAdminRepositoriesStore = create<AdminRepositoriesState>()(
 
 // Repository actions
 export const loadAllAdminModelRepositories = async (): Promise<void> => {
+  const state = useAdminRepositoriesStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
   try {
     useAdminRepositoriesStore.setState({ loading: true, error: null })
 
@@ -50,6 +56,7 @@ export const loadAllAdminModelRepositories = async (): Promise<void> => {
 
     useAdminRepositoriesStore.setState({
       repositories: response.repositories,
+      isInitialized: true,
       loading: false,
     })
   } catch (error) {
