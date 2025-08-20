@@ -23,10 +23,12 @@ import { AssistantsTab } from './AssistantsTab'
 import { Stores } from '../../../store'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { IoIosArrowDown, IoIosArrowForward } from 'react-icons/io'
+import { withPermission } from '../../../permissions/utils'
+import { Permission } from '../../../types/api'
 
 const { Text } = Typography
 
-export function HubPage() {
+function HubPageComponent() {
   const { message } = App.useApp()
   const navigate = useNavigate()
   const { activeTab: urlActiveTab } = useParams<{ activeTab?: string }>()
@@ -258,3 +260,6 @@ export function HubPage() {
     </Flex>
   )
 }
+
+// Export the component wrapped with permission check
+export const HubPage = withPermission([Permission.HubAccess])(HubPageComponent)

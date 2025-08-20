@@ -15,8 +15,9 @@ import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { ConversationSummary } from '../../types'
+import { ConversationSummary, Permission } from '../../types'
 import { setPreviousConversationListPagePath } from '../../store/ui/navigate.ts'
+import { PermissionGuard } from '../Auth/PermissionGuard.tsx'
 
 // Configure dayjs
 dayjs.extend(relativeTime)
@@ -112,43 +113,45 @@ export const ConversationSummaryCard: React.FC<
         </Text>
       </div>
 
-      {/* Selection checkbox - positioned in bottom right */}
-      {onSelect && (
-        <div
-          className={`absolute bottom-2 right-2 z-10 transition-opacity ${
-            isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-          }`}
-        >
-          <Checkbox
-            checked={isSelected}
-            onChange={handleSelectChange}
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
+      <PermissionGuard permissions={[Permission.ChatDelete]}>
+        {/* Selection checkbox - positioned in bottom right */}
+        {onSelect && (
+          <div
+            className={`absolute bottom-2 right-2 z-10 transition-opacity ${
+              isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+            }`}
+          >
+            <Checkbox
+              checked={isSelected}
+              onChange={handleSelectChange}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+        )}
 
-      {!isInSelectionMode && (
-        <Popconfirm
-          title={t('conversations.deleteConversation')}
-          description={t('history.deleteConfirm')}
-          onConfirm={handleDeleteConversation}
-          okText="Yes"
-          cancelText="No"
-          okButtonProps={{ loading: false }}
-        >
-          <Tooltip title={t('buttons.delete')}>
-            <Button
-              className="!absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded"
-              style={{
-                backgroundColor: token.colorBgContainer,
-              }}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              <DeleteOutlined />
-            </Button>
-          </Tooltip>
-        </Popconfirm>
-      )}
+        {!isInSelectionMode && (
+          <Popconfirm
+            title={t('conversations.deleteConversation')}
+            description={t('history.deleteConfirm')}
+            onConfirm={handleDeleteConversation}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ loading: false }}
+          >
+            <Tooltip title={t('buttons.delete')}>
+              <Button
+                className="!absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded"
+                style={{
+                  backgroundColor: token.colorBgContainer,
+                }}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+              >
+                <DeleteOutlined />
+              </Button>
+            </Tooltip>
+          </Popconfirm>
+        )}
+      </PermissionGuard>
     </Card>
   )
 }

@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { ConversationHistory } from '../common/ConversationHistory'
 import { Button, Typography } from 'antd'
 import { TauriDragRegion } from '../common/TauriDragRegion.tsx'
-import { SearchOutlined } from '@ant-design/icons'
 import { TitleBarWrapper } from '../common/TitleBarWrapper.tsx'
 import { useMainContentMinSize } from '../hooks/useWindowMinSize.ts'
+import { PermissionGuard } from '../Auth/PermissionGuard.tsx'
+import { Permission } from '../../types'
+import { SearchOutlined } from '@ant-design/icons'
 
 export const ChatHistoryPage: React.FC = () => {
   const { t } = useTranslation()
@@ -21,20 +23,22 @@ export const ChatHistoryPage: React.FC = () => {
           <Typography.Title level={4} className="!m-0 !leading-tight">
             {t('pages.chatHistory')}
           </Typography.Title>
-          <div className="h-full flex items-center justify-between">
-            {pageMinSize.xs ? (
-              <Button
-                type={isSearchBoxVisible ? 'primary' : 'text'}
-                icon={<SearchOutlined />}
-                style={{
-                  fontSize: '18px',
-                }}
-                onClick={() => setIsSearchBoxVisible(!isSearchBoxVisible)}
-              />
-            ) : (
-              <div ref={searchBoxContainerRef} />
-            )}
-          </div>
+          <PermissionGuard permissions={[Permission.ChatSearch]}>
+            <div className="h-full flex items-center justify-between">
+              {pageMinSize.xs ? (
+                <Button
+                  type={isSearchBoxVisible ? 'primary' : 'text'}
+                  icon={<SearchOutlined />}
+                  style={{
+                    fontSize: '18px',
+                  }}
+                  onClick={() => setIsSearchBoxVisible(!isSearchBoxVisible)}
+                />
+              ) : (
+                <div ref={searchBoxContainerRef} />
+              )}
+            </div>
+          </PermissionGuard>
         </div>
       </TitleBarWrapper>
       <div className="w-full flex-1 flex flex-col overflow-y-hidden">

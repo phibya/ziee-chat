@@ -16,6 +16,8 @@ import tinycolor from 'tinycolor2'
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons'
 import { IoIosArrowBack } from 'react-icons/io'
 import { IoTimeOutline } from 'react-icons/io5'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { Permission } from '../../../types'
 
 export function ExistingChatInterface() {
   const { conversationId } = useParams<{ conversationId?: string }>()
@@ -148,11 +150,13 @@ export function ExistingChatInterface() {
                   >
                     {conversation?.title || 'Untitled Conversation'}
                   </Typography.Title>
-                  <Button
-                    type="text"
-                    icon={<EditOutlined />}
-                    onClick={handleEditClick}
-                  />
+                  <PermissionGuard permissions={[Permission.ChatEdit]}>
+                    <Button
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={handleEditClick}
+                    />
+                  </PermissionGuard>
                 </div>
                 <div className={'flex-shrink-0'}>
                   <Button

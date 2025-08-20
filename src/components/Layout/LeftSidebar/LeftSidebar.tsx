@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Divider, Dropdown, theme, Typography } from 'antd'
 import {
   AppstoreOutlined,
-  BlockOutlined,
   FolderOutlined,
   HistoryOutlined,
   LogoutOutlined,
@@ -18,6 +17,8 @@ import { RecentConversations } from './RecentConversations'
 import { TauriDragRegion } from '../../common/TauriDragRegion'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 import { HiOutlineFaceSmile } from 'react-icons/hi2'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { Permission } from '../../../types'
 
 const { Text } = Typography
 
@@ -125,57 +126,70 @@ export function LeftSidebar() {
       <TauriDragRegion className={'h-[50px]'} />
       {/* Sidebar content - always rendered */}
       {/* New Chat Button */}
-      <div className="mb-4">
-        <SidebarItem icon={<PlusOutlined />} label="New Chat" to="/" />
-      </div>
+
+      <PermissionGuard permissions={[Permission.ChatCreate]}>
+        <div className="mb-4">
+          <SidebarItem icon={<PlusOutlined />} label="New Chat" to="/" />
+        </div>
+      </PermissionGuard>
 
       {/* Navigation Section */}
       <div className="mb-4">
         <SectionHeader>Navigation</SectionHeader>
         <div className="space-y-0">
-          <SidebarItem
-            icon={<HistoryOutlined />}
-            label={t('navigation.chats')}
-            isActive={isActive('/conversations')}
-            to="/conversations"
-          />
-          <SidebarItem
-            icon={<FolderOutlined />}
-            label={t('navigation.projects')}
-            isActive={isActive('/projects')}
-            to="/projects"
-          />
-          <SidebarItem
-            icon={<BlockOutlined />}
-            label={t('navigation.artifacts')}
-            isActive={isActive('/artifacts')}
-            to="/artifacts"
-          />
+          <PermissionGuard permissions={[Permission.ChatRead]}>
+            <SidebarItem
+              icon={<HistoryOutlined />}
+              label={t('navigation.chats')}
+              isActive={isActive('/conversations')}
+              to="/conversations"
+            />
+          </PermissionGuard>
+          <PermissionGuard permissions={[Permission.ProjectsRead]}>
+            <SidebarItem
+              icon={<FolderOutlined />}
+              label={t('navigation.projects')}
+              isActive={isActive('/projects')}
+              to="/projects"
+            />
+          </PermissionGuard>
+          {/*<SidebarItem*/}
+          {/*  icon={<BlockOutlined />}*/}
+          {/*  label={t('navigation.artifacts')}*/}
+          {/*  isActive={isActive('/artifacts')}*/}
+          {/*  to="/artifacts"*/}
+          {/*/>*/}
         </div>
       </div>
 
       {/* Recent Section */}
       <div className="flex-1 overflow-hidden flex flex-col">
-        <SectionHeader>Recent</SectionHeader>
-        <RecentConversations />
+        <PermissionGuard permissions={[Permission.ChatRead]}>
+          <SectionHeader>Recent</SectionHeader>
+          <RecentConversations />
+        </PermissionGuard>
       </div>
 
       {/* Tools Section */}
       <div>
         <SectionHeader>Tools</SectionHeader>
         <div className="space-y-0 mb-2">
-          <SidebarItem
-            icon={<AppstoreOutlined />}
-            label={t('navigation.hub')}
-            isActive={isActive('/hub')}
-            to="/hub"
-          />
-          <SidebarItem
-            icon={<HiOutlineFaceSmile />}
-            label={t('navigation.assistants')}
-            isActive={isActive('/assistants')}
-            to="/assistants"
-          />
+          <PermissionGuard permissions={[Permission.HubAccess]}>
+            <SidebarItem
+              icon={<AppstoreOutlined />}
+              label={t('navigation.hub')}
+              isActive={isActive('/hub')}
+              to="/hub"
+            />
+          </PermissionGuard>
+          <PermissionGuard permissions={[Permission.AssistantsRead]}>
+            <SidebarItem
+              icon={<HiOutlineFaceSmile />}
+              label={t('navigation.assistants')}
+              isActive={isActive('/assistants')}
+              to="/assistants"
+            />
+          </PermissionGuard>
           <SidebarItem
             icon={<SettingOutlined />}
             label={t('navigation.settings')}

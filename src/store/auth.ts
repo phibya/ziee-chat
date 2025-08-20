@@ -6,13 +6,13 @@ import { isTauriView } from '../api/core'
 import type { CreateUserRequest, LoginRequest, User } from '../types'
 
 interface AuthState {
-  user: User | null
-  token: string | null
+  user?: User | null
+  token?: string | null
   isAuthenticated: boolean
   isLoading: boolean
   needsSetup: boolean
   isDesktop: boolean
-  error: string | null
+  error?: string | null
 }
 
 const defaultState: AuthState = {

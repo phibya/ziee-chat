@@ -12,8 +12,9 @@ import { ChatInput } from './ChatInput'
 import { FileCard } from '../../common/FileCard'
 import { Stores, useChatStore } from '../../../store'
 import { useMessageBranchStore } from '../../../store/messageBranches.ts'
-import { Message } from '../../../types'
+import { Message, Permission } from '../../../types'
 import dayjs from 'dayjs'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 
 export const ChatMessage = memo(function ChatMessage({
   message,
@@ -152,9 +153,13 @@ export const ChatMessage = memo(function ChatMessage({
               display: isToolBoxVisible ? 'flex' : 'none',
             }}
           >
-            <Button size="small" type="text" onClick={handleEdit}>
-              {t('chat.edit')}
-            </Button>
+            <PermissionGuard
+              permissions={[Permission.ChatCreate, Permission.ChatEdit]}
+            >
+              <Button size="small" type="text" onClick={handleEdit}>
+                {t('chat.edit')}
+              </Button>
+            </PermissionGuard>
 
             <Flex
               className={'gap-0'}

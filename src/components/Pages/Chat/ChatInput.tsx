@@ -31,11 +31,12 @@ import {
 } from '../../../store'
 import { FileCard } from '../../common/FileCard'
 import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
-import { Assistant, Conversation, Message } from '../../../types'
+import { Assistant, Conversation, Message, Permission } from '../../../types'
 import { createChatStore } from '../../../store/chat.ts'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
 import { IoIosArrowDown } from 'react-icons/io'
 import { debounce } from '../../../utils/debounce.ts'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -416,196 +417,203 @@ export const ChatInput = function ChatInput({
           backgroundColor: token.colorBgContainer,
         }}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          className="w-full"
-          initialValues={{
-            message: '',
-            assistant: undefined,
-            model: undefined,
-          }}
-          disabled={isDisabled}
+        <PermissionGuard
+          permissions={[Permission.ChatCreate]}
+          type={'disabled'}
         >
-          {/* Main input row with add file button on left and selectors + send on right */}
-          <div style={{ padding: '8px' }}>
-            <Flex className="flex-col gap-3 w-full">
-              <div className="w-full">
-                <Form.Item name="message" className="mb-0" noStyle>
-                  <TextArea
-                    onKeyDown={handleKeyDown}
-                    onFocus={handleTextAreaFocus}
-                    onBlur={handleTextAreaBlur}
-                    placeholder={t('chat.messageAI')}
-                    autoSize={{ minRows: 1, maxRows: 6 }}
-                    disabled={isDisabled}
-                    className="resize-none !border-none focus:!border-none focus:!outline-none focus:!shadow-none !pt-1"
-                    onChange={() => {
-                      setContent(form.getFieldValue('message') || '')
-                    }}
-                    style={{
-                      backgroundColor: 'transparent',
-                    }}
-                  />
-                </Form.Item>
-              </div>
-              <div className={`w-full flex justify-between gap-0`}>
-                <Upload
-                  multiple
-                  beforeUpload={(_, fileList) => {
-                    if (fileList) {
-                      handleFileUpload(fileList)?.catch?.(error => {
-                        console.error('Failed to upload files:', error)
-                      })
-                    }
-                    return false
-                  }}
-                  showUploadList={false}
-                >
-                  <Button
-                    type="default"
-                    disabled={isDisabled}
-                    title="Add files"
-                  >
-                    <BsFileEarmarkPlus />
-                  </Button>
-                </Upload>
-
-                <div className={'flex items-center gap-[6px]'}>
-                  <Form.Item name="assistant" noStyle>
-                    <Select
-                      popupMatchSelectWidth={false}
-                      placeholder="Assistant"
-                      options={availableAssistants.map(
-                        (assistant: Assistant) => ({
-                          label: assistant.name,
-                          value: assistant.id,
-                        }),
-                      )}
-                      style={{
-                        width: isBreaking ? 40 : 140,
-                        paddingLeft: isBreaking ? 0 : 6,
-                      }}
-                      labelRender={isBreaking ? () => '' : undefined}
-                      variant={isBreaking ? 'borderless' : undefined}
-                      prefix={
-                        isBreaking && (
-                          <Button>
-                            <RobotOutlined />
-                          </Button>
-                        )
-                      }
-                      suffixIcon={<IoIosArrowDown />}
-                    />
-                  </Form.Item>
-
-                  {/* Model selector */}
-                  <Form.Item name="model" noStyle>
-                    <Select
-                      popupMatchSelectWidth={false}
-                      placeholder="Model"
+          <Form
+            form={form}
+            layout="vertical"
+            className="w-full"
+            initialValues={{
+              message: '',
+              assistant: undefined,
+              model: undefined,
+            }}
+            disabled={isDisabled}
+          >
+            {/* Main input row with add file button on left and selectors + send on right */}
+            <div style={{ padding: '8px' }}>
+              <Flex className="flex-col gap-3 w-full">
+                <div className="w-full">
+                  <Form.Item name="message" className="mb-0" noStyle>
+                    <TextArea
+                      onKeyDown={handleKeyDown}
+                      onFocus={handleTextAreaFocus}
+                      onBlur={handleTextAreaBlur}
+                      placeholder={t('chat.messageAI')}
+                      autoSize={{ minRows: 1, maxRows: 6 }}
                       disabled={isDisabled}
-                      options={availableModels}
-                      style={{ width: isBreaking ? 40 : 140 }}
-                      variant={isBreaking ? 'borderless' : undefined}
-                      labelRender={isBreaking ? () => '' : undefined}
-                      prefix={
-                        isBreaking && (
-                          <Button>
-                            <SettingOutlined />
-                          </Button>
-                        )
-                      }
-                      suffixIcon={<IoIosArrowDown />}
+                      className="resize-none !border-none focus:!border-none focus:!outline-none focus:!shadow-none !pt-1"
+                      onChange={() => {
+                        setContent(form.getFieldValue('message') || '')
+                      }}
+                      style={{
+                        backgroundColor: 'transparent',
+                      }}
                     />
                   </Form.Item>
                 </div>
+                <div className={`w-full flex justify-between gap-0`}>
+                  <Upload
+                    multiple
+                    beforeUpload={(_, fileList) => {
+                      if (fileList) {
+                        handleFileUpload(fileList)?.catch?.(error => {
+                          console.error('Failed to upload files:', error)
+                        })
+                      }
+                      return false
+                    }}
+                    showUploadList={false}
+                  >
+                    <Button
+                      type="default"
+                      disabled={isDisabled}
+                      title="Add files"
+                    >
+                      <BsFileEarmarkPlus />
+                    </Button>
+                  </Upload>
 
-                <div className={`gap-2 flex flex-1 items-center justify-end`}>
-                  {/* Send/Stop/Save/Cancel buttons */}
-                  <div className="flex gap-1 items-end">
-                    <div className={'items-center justify-end  gap-1 flex'}>
-                      {isEditing ? (
-                        <>
+                  <div className={'flex items-center gap-[6px]'}>
+                    <Form.Item name="assistant" noStyle>
+                      <Select
+                        popupMatchSelectWidth={false}
+                        placeholder="Assistant"
+                        options={availableAssistants.map(
+                          (assistant: Assistant) => ({
+                            label: assistant.name,
+                            value: assistant.id,
+                          }),
+                        )}
+                        style={{
+                          width: isBreaking ? 40 : 140,
+                          paddingLeft: isBreaking ? 0 : 6,
+                        }}
+                        labelRender={isBreaking ? () => '' : undefined}
+                        variant={isBreaking ? 'borderless' : undefined}
+                        prefix={
+                          isBreaking && (
+                            <Button>
+                              <RobotOutlined />
+                            </Button>
+                          )
+                        }
+                        suffixIcon={<IoIosArrowDown />}
+                      />
+                    </Form.Item>
+
+                    {/* Model selector */}
+                    <Form.Item name="model" noStyle>
+                      <Select
+                        popupMatchSelectWidth={false}
+                        placeholder="Model"
+                        disabled={isDisabled}
+                        options={availableModels}
+                        style={{ width: isBreaking ? 40 : 140 }}
+                        variant={isBreaking ? 'borderless' : undefined}
+                        labelRender={isBreaking ? () => '' : undefined}
+                        prefix={
+                          isBreaking && (
+                            <Button>
+                              <SettingOutlined />
+                            </Button>
+                          )
+                        }
+                        suffixIcon={<IoIosArrowDown />}
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <div className={`gap-2 flex flex-1 items-center justify-end`}>
+                    {/* Send/Stop/Save/Cancel buttons */}
+                    <div className="flex gap-1 items-end">
+                      <div className={'items-center justify-end  gap-1 flex'}>
+                        {isEditing ? (
+                          <>
+                            <Button
+                              type="primary"
+                              icon={<SendOutlined rotate={270} />}
+                              onClick={handleSend}
+                              disabled={
+                                isStreaming ||
+                                isDisabled ||
+                                !form.getFieldValue('message')?.trim()
+                              }
+                            />
+                            <Button
+                              icon={<CloseOutlined />}
+                              onClick={handleCancel}
+                              size="small"
+                            />
+                          </>
+                        ) : (
                           <Button
                             type="primary"
                             icon={<SendOutlined rotate={270} />}
                             onClick={handleSend}
-                            disabled={
-                              isStreaming ||
-                              isDisabled ||
-                              !form.getFieldValue('message')?.trim()
-                            }
+                            disabled={isStreaming || sending || isDisabled}
+                            loading={sending}
                           />
-                          <Button
-                            icon={<CloseOutlined />}
-                            onClick={handleCancel}
-                            size="small"
-                          />
-                        </>
-                      ) : (
-                        <Button
-                          type="primary"
-                          icon={<SendOutlined rotate={270} />}
-                          onClick={handleSend}
-                          disabled={isStreaming || sending || isDisabled}
-                          loading={sending}
-                        />
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Flex>
-          </div>
+              </Flex>
+            </div>
 
-          {/* Divider and File Upload Preview at the bottom */}
-          {(files.size > 0 || newFiles.size > 0 || uploadingFiles.size > 0) && (
-            <>
-              <Divider style={{ margin: 0 }} />
-              <div style={{ padding: '8px' }}>
-                <div className="flex gap-2 w-full overflow-x-auto">
-                  {Array.from(files.values()).map(file => (
-                    <div className={'flex-1 min-w-20 max-w-24'}>
-                      <FileCard
-                        key={file.id}
-                        file={file}
-                        canDelete={false}
-                        canRemove={true}
-                        onRemove={handleRemoveFile}
-                      />
-                    </div>
-                  ))}
-                  {Array.from(newFiles.values()).map(file => (
-                    <div className={'flex-1 min-w-20 max-w-24'}>
-                      <FileCard
-                        key={file.id}
-                        file={file}
-                        canDelete={true}
-                        onDelete={handleRemoveFile}
-                      />
-                    </div>
-                  ))}
-                  {Array.from(uploadingFiles.values()).map(uploadingFile => (
-                    <div className={'flex-1 min-w-20 max-w-24'}>
-                      <FileCard
-                        key={uploadingFile.id}
-                        uploadingFile={{
-                          id: uploadingFile.id,
-                          filename: uploadingFile.filename,
-                          progress: uploadingFile.progress || 0,
-                          status: 'uploading',
-                          size: uploadingFile.size,
-                        }}
-                        onRemove={handleRemoveFile}
-                      />
-                    </div>
-                  ))}
+            {/* Divider and File Upload Preview at the bottom */}
+            {(files.size > 0 ||
+              newFiles.size > 0 ||
+              uploadingFiles.size > 0) && (
+              <>
+                <Divider style={{ margin: 0 }} />
+                <div style={{ padding: '8px' }}>
+                  <div className="flex gap-2 w-full overflow-x-auto">
+                    {Array.from(files.values()).map(file => (
+                      <div className={'flex-1 min-w-20 max-w-24'}>
+                        <FileCard
+                          key={file.id}
+                          file={file}
+                          canDelete={false}
+                          canRemove={true}
+                          onRemove={handleRemoveFile}
+                        />
+                      </div>
+                    ))}
+                    {Array.from(newFiles.values()).map(file => (
+                      <div className={'flex-1 min-w-20 max-w-24'}>
+                        <FileCard
+                          key={file.id}
+                          file={file}
+                          canDelete={true}
+                          onDelete={handleRemoveFile}
+                        />
+                      </div>
+                    ))}
+                    {Array.from(uploadingFiles.values()).map(uploadingFile => (
+                      <div className={'flex-1 min-w-20 max-w-24'}>
+                        <FileCard
+                          key={uploadingFile.id}
+                          uploadingFile={{
+                            id: uploadingFile.id,
+                            filename: uploadingFile.filename,
+                            progress: uploadingFile.progress || 0,
+                            status: 'uploading',
+                            size: uploadingFile.size,
+                          }}
+                          onRemove={handleRemoveFile}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-        </Form>
+              </>
+            )}
+          </Form>
+        </PermissionGuard>
       </Card>
     </div>
   )
