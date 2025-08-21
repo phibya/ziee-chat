@@ -141,7 +141,7 @@ pub async fn reset_user_password(
     };
 
     match users::reset_user_password_with_service(request.user_id, password_service).await {
-        Ok(true) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User"))),
         Err(e) => {
             eprintln!("Error resetting user password: {}", e);

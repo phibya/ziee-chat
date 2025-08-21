@@ -5,7 +5,6 @@ pub mod router;
 pub mod security;
 pub mod server;
 
-use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -19,15 +18,6 @@ pub use server::*;
 
 use crate::database::models::api_proxy_server_model::*;
 
-/// HTTP forwarding provider trait for AI providers
-#[async_trait]
-pub trait HttpForwardingProvider: Send + Sync {
-    /// Forward request to provider's API and return raw response
-    async fn forward_request(
-        &self,
-        request: serde_json::Value,
-    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>>;
-}
 
 // Global instance for the API proxy server
 static PROXY_SERVER_INSTANCE: tokio::sync::OnceCell<Arc<RwLock<Option<ApiProxyServer>>>> =

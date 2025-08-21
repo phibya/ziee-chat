@@ -196,7 +196,7 @@ pub async fn start_model(
     match crate::ai::start_model_core_protected(model_id, &model, &provider).await {
         Ok((_pid, _port)) => {
             println!("Successfully updated model {} runtime info", model_id);
-            Ok((StatusCode::OK, StatusCode::OK))
+            Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
         }
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     }
@@ -265,7 +265,7 @@ pub async fn stop_model(
         return match clear_port_result {
             Ok(_) => {
                 println!("Successfully cleared model {} port and status", model_id);
-                Ok((StatusCode::OK, StatusCode::OK))
+                Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
             }
             Err(e) => {
                 eprintln!("Failed to clear model {} port: {}", model_id, e);
@@ -286,7 +286,7 @@ pub async fn stop_model(
                     "Model {} has no runtime info, may already be stopped",
                     model_id
                 );
-                return Ok((StatusCode::OK, StatusCode::OK));
+                return Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT));
             }
             Err(e) => {
                 eprintln!("Failed to get model runtime info: {}", e);
@@ -312,7 +312,7 @@ pub async fn stop_model(
             match clear_port_result {
                 Ok(_) => {
                     println!("Successfully cleared model {} port and status", model_id);
-                    Ok((StatusCode::OK, StatusCode::OK))
+                    Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
                 }
                 Err(e) => {
                     eprintln!("Failed to clear model {} port: {}", model_id, e);
@@ -360,7 +360,7 @@ pub async fn enable_model(
     )
     .await
     {
-        Ok(Some(_)) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(Some(_)) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Model"))),
         Err(e) => {
             eprintln!("Failed to enable model {}: {}", model_id, e);
@@ -396,7 +396,7 @@ pub async fn disable_model(
     )
     .await
     {
-        Ok(Some(_)) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(Some(_)) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Model"))),
         Err(e) => {
             eprintln!("Failed to disable model {}: {}", model_id, e);

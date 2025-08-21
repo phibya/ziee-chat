@@ -246,7 +246,7 @@ pub async fn logout(req: Request) -> ApiResult2<StatusCode> {
         ));
     }
 
-    Ok((StatusCode::OK, StatusCode::OK))
+    Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
 }
 
 /// Get current user endpoint

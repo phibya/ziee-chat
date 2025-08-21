@@ -55,7 +55,7 @@ pub fn chat_routes() -> ApiRouter {
                 op.description("Delete conversation")
                     .id("Chat.deleteConversation")
                     .tag("chat")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(api::middleware::chat_delete_middleware)),
         )
@@ -65,6 +65,7 @@ pub fn chat_routes() -> ApiRouter {
                 op.description("Send message with streaming response")
                     .id("Chat.sendMessageStream")
                     .tag("chat")
+                    .response::<204, ()>()
                 // SSE streams don't need explicit response type
             })
             .layer(middleware::from_fn(api::middleware::chat_stream_middleware)),
@@ -75,6 +76,7 @@ pub fn chat_routes() -> ApiRouter {
                 op.description("Edit message with streaming response")
                     .id("Chat.editMessageStream")
                     .tag("chat")
+                    .response::<204, ()>()
                 // SSE streams don't need explicit response type
             })
             .layer(middleware::from_fn(api::middleware::chat_stream_middleware)),

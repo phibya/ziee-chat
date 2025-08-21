@@ -41,7 +41,7 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Cancel a download")
                     .id("Admin.cancelDownload")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(
                 api::middleware::model_downloads_cancel_middleware,
@@ -53,7 +53,7 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Delete a download instance")
                     .id("Admin.deleteDownload")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(
                 api::middleware::model_downloads_delete_middleware,
@@ -65,6 +65,7 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Subscribe to download progress updates via SSE")
                     .id("Admin.subscribeDownloadProgress")
                     .tag("admin")
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(
                 api::middleware::model_downloads_read_middleware,

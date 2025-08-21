@@ -80,4 +80,13 @@ pub trait AIProvider: Send + Sync {
     ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
         Err("File resolution not supported by this provider".into())
     }
+
+    /// Forward request to provider's API and return raw response
+    /// This is used for API proxy functionality
+    async fn forward_request(
+        &self,
+        _request: serde_json::Value,
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
+        Err("HTTP forwarding not supported by this provider".into())
+    }
 }

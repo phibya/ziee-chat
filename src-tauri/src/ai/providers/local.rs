@@ -6,7 +6,6 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     StreamingChunk, StreamingResponse, Usage,
@@ -411,6 +410,25 @@ impl AIProvider for LocalProvider {
     fn provider_name(&self) -> &'static str {
         "local"
     }
+
+    async fn forward_request(
+        &self,
+        request: serde_json::Value,
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
+        let url = self.get_endpoint_url();
+
+        // For local providers, we forward the request directly to the local model server
+        // Local models typically use OpenAI-compatible endpoints
+        let response = self
+            .client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        Ok(response)
+    }
 }
 
 // Public method to create LocalProvider with file handling capabilities
@@ -552,24 +570,3 @@ impl LocalProvider {
     }
 }
 
-#[async_trait]
-impl HttpForwardingProvider for LocalProvider {
-    async fn forward_request(
-        &self,
-        request: serde_json::Value,
-    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        let url = self.get_endpoint_url();
-
-        // For local providers, we forward the request directly to the local model server
-        // Local models typically use OpenAI-compatible endpoints
-        let response = self
-            .client
-            .post(&url)
-            .header("Content-Type", "application/json")
-            .json(&request)
-            .send()
-            .await?;
-
-        Ok(response)
-    }
-}

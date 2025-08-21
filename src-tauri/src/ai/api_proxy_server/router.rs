@@ -104,11 +104,28 @@ impl RequestRouter {
         let display_name = registry.get_model_display_name(&model_id).await;
         log_request("POST", "/chat/completions", "proxy", Some(&display_name));
 
-        // 3. Get forwarding provider for the model
-        let provider = registry.get_forwarding_provider(&model_id).await?;
+        // 3. Check if model is enabled in proxy
+        if !registry.is_model_enabled(&model_id) {
+            return Err(ProxyError::ModelNotInProxy(model_id));
+        }
         drop(registry); // Release the lock early
 
-        // 4. Forward request using provider's implementation
+        // 4. Get provider for the model using shared function
+        let db_model = crate::database::queries::models::get_model_by_id(model_id)
+            .await
+            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+            .ok_or(ProxyError::ModelNotFound(model_id.to_string()))?;
+
+        let db_provider = crate::database::queries::providers::get_provider_by_id(db_model.provider_id)
+            .await
+            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+            .ok_or(ProxyError::ProviderNotFound(db_model.provider_id))?;
+
+        let provider = crate::ai::model_manager::create_ai_provider_with_model_id(&db_provider, Some(model_id))
+            .await
+            .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
+
+        // 5. Forward request using provider's implementation
         let response = provider
             .forward_request(request)
             .await

@@ -214,8 +214,14 @@ pub enum Permission {
     ConfigNgrokStop,
 
     // Hub permissions
-    #[serde(rename = "hub::access")]
-    HubAccess,
+    #[serde(rename = "hub::models::read")]
+    HubModelsRead,
+    #[serde(rename = "hub::assistants::read")]
+    HubAssistantsRead,
+    #[serde(rename = "hub::refresh")]
+    HubRefresh,
+    #[serde(rename = "hub::version::read")]
+    HubVersionRead,
 
     // Wildcard permissions
     #[serde(rename = "*")]
@@ -347,7 +353,10 @@ impl Permission {
             Permission::ConfigNgrokStop => "config::ngrok::stop",
 
             // Hub permissions
-            Permission::HubAccess => "hub::access",
+            Permission::HubModelsRead => "hub::models::read",
+            Permission::HubAssistantsRead => "hub::assistants::read",
+            Permission::HubRefresh => "hub::refresh",
+            Permission::HubVersionRead => "hub::version::read",
 
             // Wildcard permissions
             Permission::All => "*",

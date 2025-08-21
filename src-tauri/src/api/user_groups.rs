@@ -204,7 +204,7 @@ pub async fn assign_user_to_group(
     Json(request): Json<AssignUserToGroupRequest>,
 ) -> ApiResult2<StatusCode> {
     match user_groups::assign_user_to_group(request.user_id, request.group_id, None).await {
-        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
             eprintln!("Error assigning user to group: {}", e);
             Err((
@@ -222,7 +222,7 @@ pub async fn remove_user_from_group(
     Path((user_id, group_id)): Path<(Uuid, Uuid)>,
 ) -> ApiResult2<StatusCode> {
     match user_groups::remove_user_from_group(user_id, group_id).await {
-        Ok(true) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((
             StatusCode::NOT_FOUND,
             AppError::not_found("User group membership"),

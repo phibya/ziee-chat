@@ -56,6 +56,7 @@ pub fn admin_user_routes() -> ApiRouter {
                 op.description("Reset user password (admin)")
                     .id("Admin.resetUserPassword")
                     .tag("admin")
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(api::middleware::users_reset_password_middleware)),
         )

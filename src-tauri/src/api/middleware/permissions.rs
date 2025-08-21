@@ -151,5 +151,8 @@ permission_middleware!(config_ngrok_start_middleware, Permission::ConfigNgrokSta
 permission_middleware!(config_ngrok_stop_middleware, Permission::ConfigNgrokStop);
 
 // Hub permissions
-permission_middleware!(hub_access_middleware, Permission::HubAccess);
+permission_middleware!(hub_models_read_middleware, Permission::HubModelsRead);
+permission_middleware!(hub_assistants_read_middleware, Permission::HubAssistantsRead);
+permission_middleware!(hub_refresh_middleware, Permission::HubRefresh);
+permission_middleware!(hub_version_read_middleware, Permission::HubVersionRead);
 

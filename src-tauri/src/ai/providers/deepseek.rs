@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use super::openai_compatible::OpenAICompatibleProvider;
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingResponse,
@@ -168,10 +167,7 @@ impl AIProvider for DeepSeekProvider {
     ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
         Err("File content resolution not supported by DeepSeek API".into())
     }
-}
 
-#[async_trait]
-impl HttpForwardingProvider for DeepSeekProvider {
     async fn forward_request(
         &self,
         request: serde_json::Value,
@@ -179,3 +175,4 @@ impl HttpForwardingProvider for DeepSeekProvider {
         self.inner.forward_request(request).await
     }
 }
+

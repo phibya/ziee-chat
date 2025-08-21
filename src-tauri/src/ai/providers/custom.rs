@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use uuid::Uuid;
 
 use super::openai_compatible::OpenAICompatibleProvider;
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingResponse,
@@ -207,10 +206,7 @@ impl AIProvider for CustomProvider {
             Err(e) => Err(self.handle_custom_errors(&e.to_string())),
         }
     }
-}
 
-#[async_trait]
-impl HttpForwardingProvider for CustomProvider {
     async fn forward_request(
         &self,
         request: serde_json::Value,
@@ -221,3 +217,4 @@ impl HttpForwardingProvider for CustomProvider {
         }
     }
 }
+

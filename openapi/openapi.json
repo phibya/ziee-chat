@@ -217,7 +217,7 @@
         "description": "Logout user and invalidate JWT token",
         "operationId": "Auth.logout",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -419,6 +419,11 @@
             }
           },
           "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
         }
       }
     },
@@ -625,7 +630,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -639,7 +644,7 @@
         "description": "Remove a user from a group",
         "operationId": "Admin.removeUserFromGroup",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1331,7 +1336,7 @@
         "description": "Start a model",
         "operationId": "Admin.startModel",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1345,7 +1350,7 @@
         "description": "Stop a model",
         "operationId": "Admin.stopModel",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1359,7 +1364,7 @@
         "description": "Enable a model",
         "operationId": "Admin.enableModel",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1373,7 +1378,7 @@
         "description": "Disable a model",
         "operationId": "Admin.disableModel",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1893,7 +1898,7 @@
         "description": "Start a RAG database",
         "operationId": "Admin.startRAGDatabase",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1907,7 +1912,7 @@
         "description": "Stop a RAG database",
         "operationId": "Admin.stopRAGDatabase",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1921,7 +1926,7 @@
         "description": "Enable a RAG database",
         "operationId": "Admin.enableRAGDatabase",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -1935,7 +1940,7 @@
         "description": "Disable a RAG database",
         "operationId": "Admin.disableRAGDatabase",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -2378,7 +2383,7 @@
         "description": "Delete a download instance",
         "operationId": "Admin.deleteDownload",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -2392,7 +2397,7 @@
         "description": "Cancel a download",
         "operationId": "Admin.cancelDownload",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -2404,7 +2409,12 @@
           "admin"
         ],
         "description": "Subscribe to download progress updates via SSE",
-        "operationId": "Admin.subscribeDownloadProgress"
+        "operationId": "Admin.subscribeDownloadProgress",
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
       }
     },
     "/api/admin/downloads/types": {
@@ -2475,7 +2485,12 @@
           "admin"
         ],
         "description": "Subscribe to hardware usage stream via SSE",
-        "operationId": "Admin.subscribeHardwareUsage"
+        "operationId": "Admin.subscribeHardwareUsage",
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
       }
     },
     "/api/admin/hardware/types": {
@@ -2766,7 +2781,7 @@
         "description": "Start API proxy server",
         "operationId": "Admin.startApiProxyServer",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -2780,7 +2795,7 @@
         "description": "Stop API proxy server",
         "operationId": "Admin.stopApiProxyServer",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -2794,7 +2809,7 @@
         "description": "Reload API proxy server models",
         "operationId": "Admin.reloadApiProxyServerModels",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -2808,7 +2823,7 @@
         "description": "Reload API proxy server trusted hosts",
         "operationId": "Admin.reloadApiProxyServerTrustedHosts",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -2820,7 +2835,12 @@
           "admin"
         ],
         "description": "Subscribe to API proxy server logs stream",
-        "operationId": "Admin.subscribeApiProxyServerLogs"
+        "operationId": "Admin.subscribeApiProxyServerLogs",
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
       }
     },
     "/api/user/greet": {
@@ -3331,7 +3351,7 @@
         "description": "Delete conversation",
         "operationId": "Chat.deleteConversation",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
@@ -3353,6 +3373,11 @@
             }
           },
           "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
         }
       }
     },
@@ -3372,6 +3397,11 @@
             }
           },
           "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
         }
       }
     },
@@ -3664,19 +3694,19 @@
         "description": "Delete project",
         "operationId": "Projects.deleteProject",
         "responses": {
-          "200": {
+          "204": {
             "description": "no content"
           }
         }
       }
     },
-    "/api/hub/data": {
+    "/api/hub/models": {
       "get": {
         "tags": [
           "hub"
         ],
-        "description": "Get hub data with locale support",
-        "operationId": "Hub.getHubData",
+        "description": "Get hub models with locale support",
+        "operationId": "Hub.getHubModels",
         "parameters": [
           {
             "in": "query",
@@ -3696,7 +3726,47 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HubData"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HubModel"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/hub/assistants": {
+      "get": {
+        "tags": [
+          "hub"
+        ],
+        "description": "Get hub assistants with locale support",
+        "operationId": "Hub.getHubAssistants",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HubAssistant"
+                  }
                 }
               }
             }
@@ -3725,15 +3795,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HubData"
-                }
-              }
-            }
+          "204": {
+            "description": "no content"
           }
         }
       }
@@ -4422,7 +4485,10 @@
           "config::ngrok::edit",
           "config::ngrok::start",
           "config::ngrok::stop",
-          "hub::access",
+          "hub::models::read",
+          "hub::assistants::read",
+          "hub::refresh",
+          "hub::version::read",
           "*"
         ]
       },
@@ -9181,35 +9247,6 @@
             ]
           }
         }
-      },
-      "HubData": {
-        "type": "object",
-        "properties": {
-          "models": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HubModel"
-            }
-          },
-          "assistants": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HubAssistant"
-            }
-          },
-          "hub_version": {
-            "type": "string"
-          },
-          "last_updated": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "models",
-          "assistants",
-          "hub_version",
-          "last_updated"
-        ]
       },
       "HubModel": {
         "type": "object",

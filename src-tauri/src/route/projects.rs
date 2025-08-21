@@ -55,7 +55,7 @@ pub fn project_routes() -> ApiRouter {
                 op.description("Delete project")
                     .id("Projects.deleteProject")
                     .tag("projects")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(api::middleware::projects_delete_middleware)),
         )

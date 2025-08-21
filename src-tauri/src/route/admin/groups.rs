@@ -81,7 +81,7 @@ pub fn admin_group_routes() -> ApiRouter {
                 op.description("Assign a user to a group")
                     .id("Admin.assignUserToGroup")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(api::middleware::groups_assign_users_middleware)),
         )
@@ -91,7 +91,7 @@ pub fn admin_group_routes() -> ApiRouter {
                 op.description("Remove a user from a group")
                     .id("Admin.removeUserFromGroup")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(api::middleware::groups_assign_users_middleware)),
         )

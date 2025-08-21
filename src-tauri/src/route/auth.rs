@@ -64,7 +64,7 @@ pub fn protected_auth_routes() -> ApiRouter {
                 op.description("Logout user and invalidate JWT token")
                     .id("Auth.logout")
                     .tag("auth")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             }),
         )
         .api_route(

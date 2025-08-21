@@ -109,7 +109,7 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                 op.description("Start API proxy server")
                     .id("Admin.startApiProxyServer")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(crate::api::middleware::api_proxy_start_middleware)),
         )
@@ -119,7 +119,7 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                 op.description("Stop API proxy server")
                     .id("Admin.stopApiProxyServer")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(crate::api::middleware::api_proxy_stop_middleware)),
         )
@@ -129,7 +129,7 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                 op.description("Reload API proxy server models")
                     .id("Admin.reloadApiProxyServerModels")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(crate::api::middleware::api_proxy_configure_middleware)),
         )
@@ -139,7 +139,7 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                 op.description("Reload API proxy server trusted hosts")
                     .id("Admin.reloadApiProxyServerTrustedHosts")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(crate::api::middleware::api_proxy_configure_middleware)),
         )
@@ -149,6 +149,7 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                 op.description("Subscribe to API proxy server logs stream")
                     .id("Admin.subscribeApiProxyServerLogs")
                     .tag("admin")
+                    .response::<204, ()>()
                 // SSE streams don't need response type specification in aide
             })
             .layer(middleware::from_fn(crate::api::middleware::api_proxy_read_middleware)),

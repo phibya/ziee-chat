@@ -74,7 +74,7 @@ function isSchemaReference(schema: any): schema is SchemaReference {
 
 function extractSchemaName(ref: string): string {
   const schemaName = ref.replace('#/components/schemas/', '')
-  
+
   // Special cases: convert to primitive types
   if (schemaName === 'AnyType') {
     return 'any'
@@ -82,7 +82,7 @@ function extractSchemaName(ref: string): string {
   if (schemaName === 'BlobType') {
     return 'Blob'
   }
-  
+
   return schemaName
 }
 
@@ -136,58 +136,67 @@ function generateEndpoints(): void {
 
 function detectQuerySchemaType(queryParams: Parameter[]): string | null {
   if (!queryParams.length) return null
-  
+
   const paramNames = queryParams.map(p => p.name).sort()
-  
+
   // Detect standard pagination pattern
-  if (paramNames.length === 2 && 
-      paramNames.includes('page') && 
-      paramNames.includes('per_page')) {
+  if (
+    paramNames.length === 2 &&
+    paramNames.includes('page') &&
+    paramNames.includes('per_page')
+  ) {
     return 'PaginationQuery'
   }
-  
-  // Detect conversation pagination pattern  
-  if (paramNames.length === 3 && 
-      paramNames.includes('page') && 
-      paramNames.includes('per_page') && 
-      paramNames.includes('project_id')) {
+
+  // Detect conversation pagination pattern
+  if (
+    paramNames.length === 3 &&
+    paramNames.includes('page') &&
+    paramNames.includes('per_page') &&
+    paramNames.includes('project_id')
+  ) {
     return 'ConversationPaginationQuery'
   }
-  
+
   // Detect download pagination pattern
-  if (paramNames.length === 3 && 
-      paramNames.includes('page') && 
-      paramNames.includes('per_page') && 
-      paramNames.includes('status')) {
+  if (
+    paramNames.length === 3 &&
+    paramNames.includes('page') &&
+    paramNames.includes('per_page') &&
+    paramNames.includes('status')
+  ) {
     return 'DownloadPaginationQuery'
   }
-  
+
   // Detect project list query pattern
-  if (paramNames.length === 3 && 
-      paramNames.includes('page') && 
-      paramNames.includes('per_page') && 
-      paramNames.includes('search')) {
+  if (
+    paramNames.length === 3 &&
+    paramNames.includes('page') &&
+    paramNames.includes('per_page') &&
+    paramNames.includes('search')
+  ) {
     return 'ProjectListQuery'
   }
-  
-  // Note: FileListParams pattern is same as ProjectListQuery, 
+
+  // Note: FileListParams pattern is same as ProjectListQuery,
   // will be handled by the previous case
-  
+
   // Detect hub query params pattern
-  if (paramNames.length === 1 && 
-      paramNames.includes('lang')) {
+  if (paramNames.length === 1 && paramNames.includes('lang')) {
     return 'HubQueryParams'
   }
-  
+
   // Detect search query pattern
-  if (paramNames.length === 4 && 
-      paramNames.includes('q') &&
-      paramNames.includes('page') && 
-      paramNames.includes('per_page') && 
-      paramNames.includes('project_id')) {
+  if (
+    paramNames.length === 4 &&
+    paramNames.includes('q') &&
+    paramNames.includes('page') &&
+    paramNames.includes('per_page') &&
+    paramNames.includes('project_id')
+  ) {
     return 'SearchQuery'
   }
-  
+
   return null
 }
 
@@ -206,7 +215,7 @@ function generateParameterType(operation: PathOperation, path: string): string {
   // Collect query parameters and detect schema patterns
   const queryParams: string[] = []
   let querySchemaType: string | null = null
-  
+
   if (operation.parameters) {
     for (const param of operation.parameters) {
       if (param.in === 'query') {
@@ -215,11 +224,13 @@ function generateParameterType(operation: PathOperation, path: string): string {
         queryParams.push(`${param.name}${isOptional ? '?' : ''}: ${paramType}`)
       }
     }
-    
+
     // Detect common query parameter patterns and map to schema types
-    querySchemaType = detectQuerySchemaType(operation.parameters.filter(p => p.in === 'query'))
+    querySchemaType = detectQuerySchemaType(
+      operation.parameters.filter(p => p.in === 'query'),
+    )
   }
-  
+
   // Use schema type if detected, otherwise use individual parameters
   if (querySchemaType) {
     // Don't add individual query params, we'll use the schema type
@@ -232,12 +243,12 @@ function generateParameterType(operation: PathOperation, path: string): string {
   if (operation.requestBody) {
     // Try application/json first
     let content = operation.requestBody.content['application/json']
-    
+
     // If no application/json, try multipart/form-data
     if (!content) {
       content = operation.requestBody.content['multipart/form-data']
     }
-    
+
     if (content && isSchemaReference(content.schema)) {
       requestBodyType = extractSchemaName(content.schema.$ref)
     } else if (content) {
@@ -282,8 +293,11 @@ function generateParameterType(operation: PathOperation, path: string): string {
   }
 }
 
-function generateResponseType(operation: PathOperation, httpMethod?: string): string {
-  if (!operation.responses) {
+function generateResponseType(
+  operation: PathOperation,
+  httpMethod?: string,
+): string {
+  if (!operation.responses || operation.responses['204']) {
     return 'void'
   }
 
@@ -294,11 +308,6 @@ function generateResponseType(operation: PathOperation, httpMethod?: string): st
     operation.responses['202']
 
   if (!successResponse) {
-    // Check for 204 No Content
-    if (operation.responses['204']) {
-      // For POST requests, even 204 should return 'any' instead of 'void'
-      return httpMethod === 'POST' ? 'any' : 'void'
-    }
     return 'any'
   }
 
@@ -321,7 +330,10 @@ function generateResponseType(operation: PathOperation, httpMethod?: string): st
   }
 }
 
-function getTypeFromSchema(schema: any, isOptionalParamOrNullable = false): string {
+function getTypeFromSchema(
+  schema: any,
+  isOptionalParamOrNullable = false,
+): string {
   // Handle boolean literal values (like profile: true in User schema)
   if (typeof schema === 'boolean') {
     return 'any' // or could be the literal boolean value
@@ -345,7 +357,7 @@ function getTypeFromSchema(schema: any, isOptionalParamOrNullable = false): stri
         }
       })
       .filter((type: string | null) => type !== null) // Remove null entries when filtered out
-    
+
     return types.length === 1 ? types[0] : types.join(' | ')
   }
 
@@ -447,19 +459,21 @@ function generateSchemaInterface(
 
     for (const [propName, propSchema] of Object.entries(schema.properties)) {
       let isOptional = !schema.required?.includes(propName)
-      
+
       // Check if property is nullable (has null in union type or anyOf with null)
-      const isNullableUnion = Array.isArray(propSchema.type) && propSchema.type.includes('null')
-      const isNullableAnyOf = propSchema.anyOf && 
-        Array.isArray(propSchema.anyOf) && 
+      const isNullableUnion =
+        Array.isArray(propSchema.type) && propSchema.type.includes('null')
+      const isNullableAnyOf =
+        propSchema.anyOf &&
+        Array.isArray(propSchema.anyOf) &&
         propSchema.anyOf.some((subSchema: any) => subSchema.type === 'null')
       const isNullable = isNullableUnion || isNullableAnyOf
-      
+
       // If property is nullable, make it optional and exclude null from type
       if (isNullable) {
         isOptional = true
       }
-      
+
       const optionalMarker = isOptional ? '?' : ''
       const propType = getTypeFromSchema(propSchema, isNullable)
       properties.push(`  ${propName}${optionalMarker}: ${propType}`)
@@ -481,14 +495,14 @@ ${properties.join('\n')}
 function generatePermissionEnum(enumValues: any[]): string {
   // Convert permission string values to PascalCase enum keys
   const enumEntries: string[] = []
-  
+
   for (const value of enumValues) {
     if (typeof value === 'string') {
       const enumKey = convertPermissionToPascalCase(value)
       enumEntries.push(`  ${enumKey} = '${value}'`)
     }
   }
-  
+
   return `export enum Permission {
 ${enumEntries.join(',\n')}
 }`
@@ -499,14 +513,15 @@ function convertPermissionToPascalCase(permission: string): string {
   if (permission === '*') {
     return 'All'
   }
-  
+
   // Split by :: and - then convert to PascalCase
   return permission
     .split('::')
-    .map(part => 
-      part.split('-')
+    .map(part =>
+      part
+        .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join('')
+        .join(''),
     )
     .join('')
 }
@@ -522,7 +537,7 @@ function generateAllSchemas(schemas: Record<string, SchemaDefinition>): string {
     if (schemaName === 'AnyType' || schemaName === 'BlobType') {
       continue
     }
-    
+
     const schema = schemas[schemaName]
     const interfaceDefinition = generateSchemaInterface(schemaName, schema)
     interfaces.push(interfaceDefinition)

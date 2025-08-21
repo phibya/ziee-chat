@@ -273,7 +273,7 @@ pub async fn start_proxy_server(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<StatusCode> {
     match api_proxy_server::start_proxy_server().await {
-        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
             eprintln!("Failed to start proxy server: {}", e);
             Err((
@@ -290,7 +290,7 @@ pub async fn stop_proxy_server(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<StatusCode> {
     match api_proxy_server::stop_proxy_server().await {
-        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
             eprintln!("Failed to stop proxy server: {}", e);
             Err((
@@ -307,7 +307,7 @@ pub async fn reload_proxy_models(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<StatusCode> {
     match api_proxy_server::reload_proxy_models().await {
-        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
             eprintln!("Failed to reload proxy models: {}", e);
             Err((
@@ -324,7 +324,7 @@ pub async fn reload_proxy_trusted_hosts(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult2<StatusCode> {
     match api_proxy_server::reload_proxy_trusted_hosts().await {
-        Ok(()) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
             eprintln!("Failed to reload proxy trusted hosts: {}", e);
             Err((

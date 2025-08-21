@@ -12,14 +12,7 @@ use std::convert::Infallible;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
-use crate::ai::{
-    core::{AIProvider, ChatRequest},
-    providers::{
-        anthropic::AnthropicProvider, custom::CustomProvider, deepseek::DeepSeekProvider,
-        gemini::GeminiProvider, groq::GroqProvider, local::LocalProvider, mistral::MistralProvider,
-        openai::OpenAIProvider,
-    },
-};
+use crate::ai::core::ChatRequest;
 use crate::api::errors::{ApiResult2, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::models::EditMessageRequest;
@@ -36,7 +29,6 @@ use crate::database::{
 };
 use crate::types::ConversationPaginationQuery;
 use crate::utils::chat::{build_chat_messages, build_single_user_message};
-use crate::utils::proxy::create_proxy_config;
 use schemars::JsonSchema;
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -330,7 +322,7 @@ async fn stream_ai_response(
 
     // Create AI provider with model ID for Candle providers
     let ai_provider =
-        match create_ai_provider_with_model_id(&provider, Some(request.model_id)).await {
+        match crate::ai::model_manager::create_ai_provider_with_model_id(&provider, Some(request.model_id)).await {
             Ok(provider) => provider,
             Err(e) => {
                 let _ = tx.send(Ok(Event::default().event("error").data(
@@ -669,135 +661,6 @@ pub async fn search_conversations(
     }
 }
 
-/// Helper function to create AI provider instances with optional model ID for Candle providers
-pub async fn create_ai_provider_with_model_id(
-    provider: &crate::database::models::Provider,
-    model_id: Option<Uuid>,
-) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
-    let proxy_config = provider
-        .proxy_settings
-        .as_ref()
-        .and_then(create_proxy_config);
-
-    match provider.provider_type.as_str() {
-        "openai" => {
-            let openai_provider = OpenAIProvider::new(
-                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                provider.base_url.clone(),
-                proxy_config,
-                provider.id,
-            )?;
-            Ok(Box::new(openai_provider))
-        }
-        "anthropic" => {
-            let anthropic_provider = AnthropicProvider::new(
-                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                provider.base_url.clone(),
-                proxy_config,
-                provider.id,
-            )?;
-            Ok(Box::new(anthropic_provider))
-        }
-        "groq" => {
-            let groq_provider = GroqProvider::new(
-                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                provider.base_url.clone(),
-                proxy_config,
-                provider.id,
-            )?;
-            Ok(Box::new(groq_provider))
-        }
-        "gemini" => {
-            let gemini_provider = GeminiProvider::new(
-                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                provider.base_url.clone(),
-                proxy_config,
-                provider.id,
-            )?;
-            Ok(Box::new(gemini_provider))
-        }
-        "mistral" => {
-            let mistral_provider = MistralProvider::new(
-                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                provider.base_url.clone(),
-                proxy_config,
-                provider.id,
-            )?;
-            Ok(Box::new(mistral_provider))
-        }
-        "deepseek" => {
-            let deepseek_provider = DeepSeekProvider::new(
-                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                provider.base_url.clone(),
-                proxy_config,
-                provider.id,
-            )?;
-            Ok(Box::new(deepseek_provider))
-        }
-        "custom" => {
-            let custom_provider = CustomProvider::new(
-                provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                provider.base_url.clone(),
-                proxy_config,
-                provider.id,
-            )?;
-            Ok(Box::new(custom_provider))
-        }
-        "local" => {
-            let model_id = model_id.ok_or("Model ID is required for local providers")?;
-
-            // Get model from database
-            let model = match crate::database::queries::models::get_model_by_id(model_id).await {
-                Ok(Some(model)) => model,
-                Ok(None) => return Err("Model not found".into()),
-                Err(e) => {
-                    eprintln!("Failed to get model {}: {}", model_id, e);
-                    return Err("Database operation failed".into());
-                }
-            };
-
-            // Multi-stage verification if model is running correctly
-            let port = match crate::ai::verify_model_server_running(&model_id).await {
-                Some((_pid, port)) => {
-                    println!("Model {} verified running on port {}", model_id, port);
-
-                    // Register access for auto-unload tracking
-                    crate::ai::register_model_access(&model_id).await;
-
-                    port
-                }
-                None => {
-                    // Model not running or verification failed, auto-start using protected logic
-                    println!(
-                        "Auto-starting model {} for chat request (with global mutex protection)",
-                        model_id
-                    );
-
-                    match crate::ai::start_model_core_protected(model_id, &model, provider).await {
-                        Ok((_pid, port)) => {
-                            // Register access for auto-unload tracking
-                            crate::ai::register_model_access(&model_id).await;
-                            port
-                        }
-                        Err(e) => {
-                            return Err(format!("Failed to auto-start model: {}", e).into());
-                        }
-                    }
-                }
-            };
-
-            // Create the Local provider with the model's port and name (no proxy for local connections)
-            let local_provider = LocalProvider::new(port, model.name.clone(), provider.id)?;
-
-            Ok(Box::new(local_provider))
-        }
-        _ => Err(format!(
-            "Unsupported provider type: {}",
-            provider.provider_type.as_str()
-        )
-        .into()),
-    }
-}
 
 /// Get messages for a conversation with specific branch
 #[debug_handler]
@@ -845,7 +708,7 @@ async fn generate_and_update_conversation_title(
         let chat_messages = build_single_user_message(title_prompt);
 
         // Create AI provider instance
-        let ai_provider = create_ai_provider_with_model_id(provider, Some(model.id)).await?;
+        let ai_provider = crate::ai::model_manager::create_ai_provider_with_model_id(provider, Some(model.id)).await?;
 
         // For title generation, use specific parameters optimized for titles
         // Don't use assistant parameters as this is an internal system function

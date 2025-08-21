@@ -8,7 +8,6 @@ use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
@@ -738,10 +737,7 @@ impl AIProvider for HuggingFaceProvider {
             mime_type: mime_type.to_string(),
         })
     }
-}
 
-#[async_trait]
-impl HttpForwardingProvider for HuggingFaceProvider {
     async fn forward_request(
         &self,
         request: serde_json::Value,
@@ -760,3 +756,4 @@ impl HttpForwardingProvider for HuggingFaceProvider {
         Ok(response)
     }
 }
+

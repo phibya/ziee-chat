@@ -10,6 +10,33 @@ use crate::ai::engines::llamacpp::LlamaCppEngine;
 use crate::ai::engines::mistralrs::MistralRsEngine;
 use crate::ai::engines::LocalEngine;
 
+// Import AI provider types
+use crate::ai::{
+    core::AIProvider,
+    providers::{
+        anthropic::AnthropicProvider, custom::CustomProvider, deepseek::DeepSeekProvider,
+        gemini::GeminiProvider, groq::GroqProvider, huggingface::HuggingFaceProvider,
+        local::LocalProvider, mistral::MistralProvider, openai::OpenAIProvider,
+    },
+};
+use crate::database::queries::models::get_model_by_id;
+use crate::utils::proxy::create_proxy_config;
+
+// Macro to create standard providers with common parameters
+macro_rules! create_standard_provider {
+    ($provider_type:ident, $provider:expr, $proxy_config:expr) => {
+        {
+            let provider_instance = $provider_type::new(
+                $provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
+                $provider.base_url.clone(),
+                $proxy_config,
+                $provider.id,
+            )?;
+            Ok(Box::new(provider_instance))
+        }
+    };
+}
+
 // Structure to hold process information
 #[derive(Debug)]
 struct ModelProcess {
@@ -597,5 +624,80 @@ pub async fn shutdown_all_models() -> Result<(), Box<dyn std::error::Error + Sen
         eprintln!("{}", error_msg);
         // Return Ok to allow app shutdown to continue
         Ok(())
+    }
+}
+
+/// Helper function to create AI provider instances with optional model ID for Candle providers
+pub async fn create_ai_provider_with_model_id(
+    provider: &crate::database::models::Provider,
+    model_id: Option<Uuid>,
+) -> Result<Box<dyn AIProvider>, Box<dyn std::error::Error + Send + Sync>> {
+    let proxy_config = provider
+        .proxy_settings
+        .as_ref()
+        .and_then(create_proxy_config);
+
+    match provider.provider_type.as_str() {
+        "openai" => create_standard_provider!(OpenAIProvider, provider, proxy_config),
+        "anthropic" => create_standard_provider!(AnthropicProvider, provider, proxy_config),
+        "groq" => create_standard_provider!(GroqProvider, provider, proxy_config),
+        "gemini" => create_standard_provider!(GeminiProvider, provider, proxy_config),
+        "mistral" => create_standard_provider!(MistralProvider, provider, proxy_config),
+        "deepseek" => create_standard_provider!(DeepSeekProvider, provider, proxy_config),
+        "custom" => create_standard_provider!(CustomProvider, provider, proxy_config),
+        "huggingface" => create_standard_provider!(HuggingFaceProvider, provider, proxy_config),
+        "local" => {
+            let model_id = model_id.ok_or("Model ID is required for local providers")?;
+
+            // Get model from database
+            let model = match get_model_by_id(model_id).await {
+                Ok(Some(model)) => model,
+                Ok(None) => return Err("Model not found".into()),
+                Err(e) => {
+                    eprintln!("Failed to get model {}: {}", model_id, e);
+                    return Err("Database operation failed".into());
+                }
+            };
+
+            // Multi-stage verification if model is running correctly
+            let port = match verify_model_server_running(&model_id).await {
+                Some((_pid, port)) => {
+                    println!("Model {} verified running on port {}", model_id, port);
+
+                    // Register access for auto-unload tracking
+                    crate::ai::register_model_access(&model_id).await;
+
+                    port
+                }
+                None => {
+                    // Model not running or verification failed, auto-start using protected logic
+                    println!(
+                        "Auto-starting model {} for chat request (with global mutex protection)",
+                        model_id
+                    );
+
+                    match crate::ai::start_model_core_protected(model_id, &model, provider).await {
+                        Ok((_pid, port)) => {
+                            // Register access for auto-unload tracking
+                            crate::ai::register_model_access(&model_id).await;
+                            port
+                        }
+                        Err(e) => {
+                            return Err(format!("Failed to auto-start model: {}", e).into());
+                        }
+                    }
+                }
+            };
+
+            // Create the Local provider with the model's port and name (no proxy for local connections)
+            let local_provider = LocalProvider::new(port, model.name.clone(), provider.id)?;
+
+            Ok(Box::new(local_provider))
+        }
+        _ => Err(format!(
+            "Unsupported provider type: {}",
+            provider.provider_type.as_str()
+        )
+        .into()),
     }
 }

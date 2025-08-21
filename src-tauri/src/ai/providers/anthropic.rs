@@ -7,7 +7,6 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
@@ -691,29 +690,7 @@ impl AIProvider for AnthropicProvider {
             })
         }
     }
-}
 
-impl AnthropicProvider {
-    fn should_upload_file(&self, file_ref: &FileReference) -> bool {
-        const MAX_FILE_SIZE: i64 = 500 * 1024 * 1024; // 500MB
-
-        // Check file size limits
-        if file_ref.file_size > MAX_FILE_SIZE {
-            return false;
-        }
-
-        // Always upload supported files regardless of size
-        // Check supported file types
-        if let Some(mime_type) = &file_ref.mime_type {
-            self.supported_file_types().contains(mime_type)
-        } else {
-            false
-        }
-    }
-}
-
-#[async_trait]
-impl HttpForwardingProvider for AnthropicProvider {
     async fn forward_request(
         &self,
         request: serde_json::Value,
@@ -736,3 +713,23 @@ impl HttpForwardingProvider for AnthropicProvider {
         Ok(response)
     }
 }
+
+impl AnthropicProvider {
+    fn should_upload_file(&self, file_ref: &FileReference) -> bool {
+        const MAX_FILE_SIZE: i64 = 500 * 1024 * 1024; // 500MB
+
+        // Check file size limits
+        if file_ref.file_size > MAX_FILE_SIZE {
+            return false;
+        }
+
+        // Always upload supported files regardless of size
+        // Check supported file types
+        if let Some(mime_type) = &file_ref.mime_type {
+            self.supported_file_types().contains(mime_type)
+        } else {
+            false
+        }
+    }
+}
+

@@ -7,7 +7,6 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-use crate::ai::api_proxy_server::HttpForwardingProvider;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
@@ -559,10 +558,7 @@ impl AIProvider for OpenAICompatibleProvider {
             mime_type: mime_type.to_string(),
         })
     }
-}
 
-#[async_trait]
-impl HttpForwardingProvider for OpenAICompatibleProvider {
     async fn forward_request(
         &self,
         request: serde_json::Value,
@@ -586,3 +582,4 @@ impl HttpForwardingProvider for OpenAICompatibleProvider {
         Ok(response)
     }
 }
+

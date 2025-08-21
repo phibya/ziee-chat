@@ -63,7 +63,7 @@ pub fn admin_model_routes() -> ApiRouter {
                 op.description("Start a model")
                     .id("Admin.startModel")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(
                 api::middleware::models_start_middleware,
@@ -75,7 +75,7 @@ pub fn admin_model_routes() -> ApiRouter {
                 op.description("Stop a model")
                     .id("Admin.stopModel")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(
                 api::middleware::models_stop_middleware,
@@ -87,7 +87,7 @@ pub fn admin_model_routes() -> ApiRouter {
                 op.description("Enable a model")
                     .id("Admin.enableModel")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(
                 api::middleware::models_enable_middleware,
@@ -99,7 +99,7 @@ pub fn admin_model_routes() -> ApiRouter {
                 op.description("Disable a model")
                     .id("Admin.disableModel")
                     .tag("admin")
-                    .response::<200, ()>()
+                    .response::<204, ()>()
             })
             .layer(middleware::from_fn(
                 api::middleware::models_disable_middleware,

@@ -79,29 +79,28 @@ pub struct HubVersionResponse {
 }
 
 #[debug_handler]
-pub async fn get_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<HubData>> {
+pub async fn get_hub_data_models(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<Vec<HubModel>>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
-    println!("API: Received request for hub data with locale: {}", locale);
+    println!("API: Received request for hub models with locale: {}", locale);
 
     let hub_manager_guard = HUB_MANAGER.lock().await;
     if let Some(manager) = hub_manager_guard.as_ref() {
         println!(
-            "API: Hub manager found, loading data with locale: {}",
+            "API: Hub manager found, loading models with locale: {}",
             locale
         );
         match manager.load_hub_data_with_locale(&locale).await {
             Ok(data) => {
                 println!(
-                    "API: Successfully loaded hub data - {} models, {} assistants (locale: {})",
+                    "API: Successfully loaded hub models - {} models (locale: {})",
                     data.models.len(),
-                    data.assistants.len(),
                     locale
                 );
-                Ok((StatusCode::OK, Json(data)))
+                Ok((StatusCode::OK, Json(data.models)))
             }
             Err(e) => {
                 eprintln!(
-                    "API: Failed to load hub data from APP_DATA_DIR with locale {}: {}",
+                    "API: Failed to load hub models from APP_DATA_DIR with locale {}: {}",
                     locale, e
                 );
                 // Fallback to English if locale loading fails
@@ -109,22 +108,22 @@ pub async fn get_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<Js
                     println!("API: Falling back to English locale");
                     match manager.load_hub_data_with_locale("en").await {
                         Ok(data) => {
-                            println!("API: Successfully loaded fallback hub data - {} models, {} assistants", 
-                                     data.models.len(), data.assistants.len());
-                            Ok((StatusCode::OK, Json(data)))
+                            println!("API: Successfully loaded fallback hub models - {} models", 
+                                     data.models.len());
+                            Ok((StatusCode::OK, Json(data.models)))
                         }
                         Err(fallback_e) => {
-                            eprintln!("API: Failed to load fallback hub data: {}", fallback_e);
+                            eprintln!("API: Failed to load fallback hub models: {}", fallback_e);
                             Err((
                                 StatusCode::INTERNAL_SERVER_ERROR,
-                                AppError::internal_error("Failed to load hub data"),
+                                AppError::internal_error("Failed to load hub models"),
                             ))
                         }
                     }
                 } else {
                     Err((
                         StatusCode::INTERNAL_SERVER_ERROR,
-                        AppError::internal_error("Failed to load hub data"),
+                        AppError::internal_error("Failed to load hub models"),
                     ))
                 }
             }
@@ -139,7 +138,66 @@ pub async fn get_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<Js
 }
 
 #[debug_handler]
-pub async fn refresh_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<HubData>> {
+pub async fn get_hub_data_assistants(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<Vec<HubAssistant>>> {
+    let locale = params.lang.unwrap_or_else(|| "en".to_string());
+    println!("API: Received request for hub assistants with locale: {}", locale);
+
+    let hub_manager_guard = HUB_MANAGER.lock().await;
+    if let Some(manager) = hub_manager_guard.as_ref() {
+        println!(
+            "API: Hub manager found, loading assistants with locale: {}",
+            locale
+        );
+        match manager.load_hub_data_with_locale(&locale).await {
+            Ok(data) => {
+                println!(
+                    "API: Successfully loaded hub assistants - {} assistants (locale: {})",
+                    data.assistants.len(),
+                    locale
+                );
+                Ok((StatusCode::OK, Json(data.assistants)))
+            }
+            Err(e) => {
+                eprintln!(
+                    "API: Failed to load hub assistants from APP_DATA_DIR with locale {}: {}",
+                    locale, e
+                );
+                // Fallback to English if locale loading fails
+                if locale != "en" {
+                    println!("API: Falling back to English locale");
+                    match manager.load_hub_data_with_locale("en").await {
+                        Ok(data) => {
+                            println!("API: Successfully loaded fallback hub assistants - {} assistants", 
+                                     data.assistants.len());
+                            Ok((StatusCode::OK, Json(data.assistants)))
+                        }
+                        Err(fallback_e) => {
+                            eprintln!("API: Failed to load fallback hub assistants: {}", fallback_e);
+                            Err((
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                AppError::internal_error("Failed to load hub assistants"),
+                            ))
+                        }
+                    }
+                } else {
+                    Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        AppError::internal_error("Failed to load hub assistants"),
+                    ))
+                }
+            }
+        }
+    } else {
+        eprintln!("API: Hub manager not initialized");
+        Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            AppError::internal_error("Hub manager not initialized"),
+        ))
+    }
+}
+
+#[debug_handler]
+pub async fn refresh_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<StatusCode> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!(
         "API: Received request to refresh hub data with locale: {}",
@@ -150,39 +208,11 @@ pub async fn refresh_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult
     if let Some(manager) = hub_manager_guard.as_ref() {
         match manager.refresh_hub().await {
             Ok(_) => {
-                // After refresh, load data with specified locale
-                match manager.load_hub_data_with_locale(&locale).await {
-                    Ok(data) => {
-                        println!(
-                            "API: Successfully refreshed and loaded hub data with locale: {}",
-                            locale
-                        );
-                        Ok((StatusCode::OK, Json(data)))
-                    }
-                    Err(e) => {
-                        eprintln!(
-                            "Failed to load hub data after refresh with locale {}: {}",
-                            locale, e
-                        );
-                        // Fallback to English
-                        if locale != "en" {
-                            match manager.load_hub_data_with_locale("en").await {
-                                Ok(data) => Ok((StatusCode::OK, Json(data))),
-                                Err(_fallback_e) => Err((
-                                    StatusCode::INTERNAL_SERVER_ERROR,
-                                    AppError::internal_error(
-                                        "Failed to load hub data after refresh",
-                                    ),
-                                )),
-                            }
-                        } else {
-                            Err((
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                AppError::internal_error("Failed to load hub data after refresh"),
-                            ))
-                        }
-                    }
-                }
+                println!(
+                    "API: Successfully refreshed hub data with locale: {}",
+                    locale
+                );
+                Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
             }
             Err(e) => {
                 eprintln!("Failed to refresh hub data: {}", e);

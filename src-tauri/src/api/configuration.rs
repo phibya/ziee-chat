@@ -818,7 +818,7 @@ pub async fn update_user_password(
         .update_user_password(&auth_user.user.id, &payload.new_password)
         .await
     {
-        Ok(_) => Ok((StatusCode::OK, StatusCode::OK)),
+        Ok(_) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
             eprintln!("Error updating user password: {}", e);
             Err((
