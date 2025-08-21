@@ -119,6 +119,23 @@
         }
       }
     },
+    "/api/auth/types-permissions": {
+      "get": {
+        "description": "Types for open api generation",
+        "responses": {
+          "600": {
+            "description": "AWS-style permissions for fine-grained access control",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Permission"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/config/user-registration": {
       "get": {
         "tags": [
@@ -185,95 +202,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TestProxyConnectionResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/hub/data": {
-      "get": {
-        "tags": [
-          "hub"
-        ],
-        "description": "Get hub data with locale support",
-        "operationId": "Hub.getHubData",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "lang",
-            "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "style": "form"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HubData"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/hub/refresh": {
-      "post": {
-        "tags": [
-          "hub"
-        ],
-        "description": "Refresh hub data from remote source",
-        "operationId": "Hub.refreshHubData",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "lang",
-            "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "style": "form"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HubData"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/hub/version": {
-      "get": {
-        "tags": [
-          "hub"
-        ],
-        "description": "Get hub version information",
-        "operationId": "Hub.getHubVersion",
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HubVersionResponse"
                 }
               }
             }
@@ -3742,35 +3670,91 @@
         }
       }
     },
-    "/api/projects/{project_id}/conversations/{conversation_id}": {
-      "post": {
+    "/api/hub/data": {
+      "get": {
         "tags": [
-          "projects"
+          "hub"
         ],
-        "description": "Link conversation to project",
-        "operationId": "Projects.linkConversation",
+        "description": "Get hub data with locale support",
+        "operationId": "Hub.getHubData",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Conversation"
+                  "$ref": "#/components/schemas/HubData"
                 }
               }
             }
           }
         }
-      },
-      "delete": {
+      }
+    },
+    "/api/hub/refresh": {
+      "post": {
         "tags": [
-          "projects"
+          "hub"
         ],
-        "description": "Unlink conversation from project",
-        "operationId": "Projects.unlinkConversation",
+        "description": "Refresh hub data from remote source",
+        "operationId": "Hub.refreshHubData",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "lang",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "no content"
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HubData"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/hub/version": {
+      "get": {
+        "tags": [
+          "hub"
+        ],
+        "description": "Get hub version information",
+        "operationId": "Hub.getHubVersion",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HubVersionResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4346,6 +4330,102 @@
           "password"
         ]
       },
+      "Permission": {
+        "description": "AWS-style permissions for fine-grained access control",
+        "type": "string",
+        "enum": [
+          "users::read",
+          "users::edit",
+          "users::delete",
+          "users::create",
+          "users::reset-password",
+          "users::toggle-status",
+          "groups::read",
+          "groups::edit",
+          "groups::delete",
+          "groups::create",
+          "groups::assign-users",
+          "groups::assign-providers",
+          "chat::read",
+          "chat::create",
+          "chat::edit",
+          "chat::delete",
+          "chat::stream",
+          "chat::search",
+          "chat::branch",
+          "projects::read",
+          "projects::create",
+          "projects::edit",
+          "projects::delete",
+          "files::read",
+          "files::upload",
+          "files::delete",
+          "files::download",
+          "files::preview",
+          "files::generate-token",
+          "assistants::read",
+          "assistants::create",
+          "assistants::edit",
+          "assistants::delete",
+          "assistants::admin::read",
+          "assistants::admin::create",
+          "assistants::admin::edit",
+          "assistants::admin::delete",
+          "settings::read",
+          "settings::edit",
+          "settings::delete",
+          "providers::read",
+          "providers::edit",
+          "providers::delete",
+          "providers::create",
+          "providers::view-groups",
+          "models::read",
+          "models::create",
+          "models::edit",
+          "models::delete",
+          "models::start",
+          "models::stop",
+          "models::enable",
+          "models::disable",
+          "models::upload",
+          "repositories::read",
+          "repositories::edit",
+          "repositories::delete",
+          "repositories::create",
+          "rag::providers::read",
+          "rag::providers::create",
+          "rag::providers::edit",
+          "rag::providers::delete",
+          "rag::repositories::read",
+          "rag::repositories::create",
+          "rag::repositories::edit",
+          "rag::repositories::delete",
+          "model-downloads::read",
+          "model-downloads::create",
+          "model-downloads::cancel",
+          "model-downloads::delete",
+          "hardware::read",
+          "hardware::monitor",
+          "devices::read",
+          "engines::read",
+          "api-proxy::read",
+          "api-proxy::start",
+          "api-proxy::stop",
+          "api-proxy::configure",
+          "config::user-registration::read",
+          "config::user-registration::edit",
+          "config::appearance::read",
+          "config::appearance::edit",
+          "config::proxy::read",
+          "config::proxy::edit",
+          "config::ngrok::read",
+          "config::ngrok::edit",
+          "config::ngrok::start",
+          "config::ngrok::stop",
+          "hub::access",
+          "*"
+        ]
+      },
       "UserRegistrationStatusResponse": {
         "type": "object",
         "properties": {
@@ -4412,282 +4492,6 @@
         "required": [
           "success",
           "message"
-        ]
-      },
-      "HubQueryParams": {
-        "type": "object",
-        "properties": {
-          "lang": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "HubData": {
-        "type": "object",
-        "properties": {
-          "models": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HubModel"
-            }
-          },
-          "assistants": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HubAssistant"
-            }
-          },
-          "hub_version": {
-            "type": "string"
-          },
-          "last_updated": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "models",
-          "assistants",
-          "hub_version",
-          "last_updated"
-        ]
-      },
-      "HubModel": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "alias": {
-            "type": "string"
-          },
-          "repository_url": {
-            "type": "string"
-          },
-          "repository_path": {
-            "type": "string"
-          },
-          "main_filename": {
-            "type": "string"
-          },
-          "file_format": {
-            "type": "string"
-          },
-          "capabilities": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelCapabilities"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "size_gb": {
-            "type": "number",
-            "format": "double"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "recommended_parameters": true,
-          "public": {
-            "type": "boolean"
-          },
-          "popularity_score": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "float"
-          },
-          "license": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "quantization_options": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "context_length": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint32",
-            "minimum": 0
-          },
-          "language_support": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "alias",
-          "repository_url",
-          "repository_path",
-          "main_filename",
-          "file_format",
-          "size_gb",
-          "tags",
-          "public"
-        ]
-      },
-      "ModelCapabilities": {
-        "description": "Model capabilities configuration",
-        "type": "object",
-        "properties": {
-          "vision": {
-            "description": "Vision capability - can process images",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "audio": {
-            "description": "Audio capability - can process audio",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "tools": {
-            "description": "Tools capability - can use function calling/tools",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "code_interpreter": {
-            "description": "Code interpreter capability",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          }
-        }
-      },
-      "HubAssistant": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "instructions": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "parameters": true,
-          "category": {
-            "type": "string"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "recommended_models": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "capabilities_required": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "popularity_score": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "float"
-          },
-          "author": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "use_cases": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "example_prompts": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "category",
-          "tags",
-          "recommended_models",
-          "capabilities_required"
-        ]
-      },
-      "HubVersionResponse": {
-        "type": "object",
-        "properties": {
-          "hub_version": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "hub_version"
         ]
       },
       "PaginationQuery": {
@@ -5527,6 +5331,40 @@
           "engine_type",
           "file_format"
         ]
+      },
+      "ModelCapabilities": {
+        "description": "Model capabilities configuration",
+        "type": "object",
+        "properties": {
+          "vision": {
+            "description": "Vision capability - can process images",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "audio": {
+            "description": "Audio capability - can process audio",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "tools": {
+            "description": "Tools capability - can use function calling/tools",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "code_interpreter": {
+            "description": "Code interpreter capability",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
       },
       "ModelParameters": {
         "description": "Model parameters for inference configuration",
@@ -9332,6 +9170,248 @@
             ]
           }
         }
+      },
+      "HubQueryParams": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "HubData": {
+        "type": "object",
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubModel"
+            }
+          },
+          "assistants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubAssistant"
+            }
+          },
+          "hub_version": {
+            "type": "string"
+          },
+          "last_updated": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "models",
+          "assistants",
+          "hub_version",
+          "last_updated"
+        ]
+      },
+      "HubModel": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "repository_url": {
+            "type": "string"
+          },
+          "repository_path": {
+            "type": "string"
+          },
+          "main_filename": {
+            "type": "string"
+          },
+          "file_format": {
+            "type": "string"
+          },
+          "capabilities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelCapabilities"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "size_gb": {
+            "type": "number",
+            "format": "double"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_parameters": true,
+          "public": {
+            "type": "boolean"
+          },
+          "popularity_score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "license": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantization_options": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "context_length": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0
+          },
+          "language_support": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "alias",
+          "repository_url",
+          "repository_path",
+          "main_filename",
+          "file_format",
+          "size_gb",
+          "tags",
+          "public"
+        ]
+      },
+      "HubAssistant": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parameters": true,
+          "category": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommended_models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capabilities_required": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "popularity_score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "use_cases": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "example_prompts": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "tags",
+          "recommended_models",
+          "capabilities_required"
+        ]
+      },
+      "HubVersionResponse": {
+        "type": "object",
+        "properties": {
+          "hub_version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hub_version"
+        ]
       },
       "UploadFileResponse": {
         "type": "object",

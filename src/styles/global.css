@@ -4,7 +4,7 @@
 @custom-variant hover (&:hover);
 
 body {
-  height: 100dvh;
+  /*height: 100dvh;*/
 }
 
 #root {

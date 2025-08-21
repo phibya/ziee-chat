@@ -65,6 +65,7 @@ interface SchemaDefinition extends SchemaType {
   $ref?: string
   required?: string[]
   anyOf?: (SchemaReference | SchemaType)[]
+  enum?: any[]
 }
 
 function isSchemaReference(schema: any): schema is SchemaReference {
@@ -436,6 +437,11 @@ function generateSchemaInterface(
     return `export type ${name} = ${extractSchemaName(schema.$ref)}`
   }
 
+  // Special handling for Permission type - convert to enum
+  if (name === 'Permission' && schema.enum && Array.isArray(schema.enum)) {
+    return generatePermissionEnum(schema.enum)
+  }
+
   if (schema.type === 'object' && schema.properties) {
     const properties: string[] = []
 
@@ -470,6 +476,39 @@ ${properties.join('\n')}
     const baseType = getTypeFromSchema(schema)
     return `export type ${name} = ${baseType}`
   }
+}
+
+function generatePermissionEnum(enumValues: any[]): string {
+  // Convert permission string values to PascalCase enum keys
+  const enumEntries: string[] = []
+  
+  for (const value of enumValues) {
+    if (typeof value === 'string') {
+      const enumKey = convertPermissionToPascalCase(value)
+      enumEntries.push(`  ${enumKey} = '${value}'`)
+    }
+  }
+  
+  return `export enum Permission {
+${enumEntries.join(',\n')}
+}`
+}
+
+function convertPermissionToPascalCase(permission: string): string {
+  // Handle special case for wildcard
+  if (permission === '*') {
+    return 'All'
+  }
+  
+  // Split by :: and - then convert to PascalCase
+  return permission
+    .split('::')
+    .map(part => 
+      part.split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+    )
+    .join('')
 }
 
 function generateAllSchemas(schemas: Record<string, SchemaDefinition>): string {
