@@ -7,7 +7,7 @@ export const hasPermission = (
   user?: User,
 ): boolean => {
   // testing
-  // if (permissions.includes(Permission.HardwareMonitor)) return false
+  // if (permissions.includes(Permission.ChatCreate)) return false
 
   if (!user) {
     user = Stores.Auth.__state.user || undefined
@@ -231,24 +231,4 @@ export const withPermission = (
 
     return WrappedComponent
   }
-}
-
-/**
- * React hook for permission checking with disable support
- *
- * Usage:
- * ```tsx
- * const MyComponent = () => {
- *   const canEdit = usePermission([Permission.UsersEdit])
- *
- *   return (
- *     <Button disabled={!canEdit}>
- *       Edit User
- *     </Button>
- *   )
- * }
- * ```
- */
-export const usePermission = (permissions: Permission[]): boolean => {
-  return hasPermission(permissions)
 }

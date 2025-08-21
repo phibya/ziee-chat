@@ -14,13 +14,12 @@ import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
 import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 import { PiSortAscending } from 'react-icons/pi'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
-import { withPermission } from '../../../permissions/utils.ts'
 import { Permission } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 
 const { Title, Text } = Typography
 
-const ProjectsPageComponent: React.FC = () => {
+export const ProjectsPage: React.FC = () => {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const pageMinSize = useMainContentMinSize()
@@ -174,7 +173,7 @@ const ProjectsPageComponent: React.FC = () => {
         {/* Projects Grid */}
         <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
           <div className={'h-full flex flex-col overflow-y-auto'}>
-            <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full self-center px-3">
+            <div className="max-w-4xl flex flex-wrap gap-3 pt-3 w-full self-center px-3">
               {getFilteredAndSortedProjects().map(project => (
                 <div className={'min-w-70 flex-1'}>
                   <ProjectCard project={project} />
@@ -217,7 +216,3 @@ const ProjectsPageComponent: React.FC = () => {
     </div>
   )
 }
-
-export const ProjectsPage = withPermission([Permission.ProjectsRead])(
-  ProjectsPageComponent,
-)

@@ -7,7 +7,7 @@ import { useChatStore } from '../../../store'
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
-  const { messages, sending, isStreaming, streamingMessage, error } =
+  const { messages, sending, isStreaming, streamingMessage, error, loading } =
     useChatStore()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -15,7 +15,7 @@ export const ChatMessageList = memo(function ChatMessageList() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length]) // Use length instead of entire array to prevent unnecessary rerenders
 
-  if (messages.length === 0) {
+  if (!loading && messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center py-20">
         <MessageOutlined className="text-5xl mb-4" />

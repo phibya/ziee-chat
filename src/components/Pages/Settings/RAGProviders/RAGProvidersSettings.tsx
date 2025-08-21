@@ -11,13 +11,12 @@ import {
   Dropdown,
   Empty,
   Flex,
-  Layout,
   Menu,
   Modal,
   Spin,
   Typography,
 } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -45,8 +44,6 @@ import { AddRAGDatabaseDrawer } from './AddRAGDatabaseDrawer'
 import { AddRAGDatabaseDownloadDrawer } from './AddRAGDatabaseDownloadDrawer'
 import { EditRAGDatabaseDrawer } from './EditRAGDatabaseDrawer'
 
-const { Sider, Content } = Layout
-
 const RAG_PROVIDER_ICONS: Record<RAGProviderType, string> = {
   local: '🏠',
   lightrag: '🔍',
@@ -66,24 +63,11 @@ export function RAGProvidersSettings() {
   // RAG providers store
   const { providers, loading, error } = Stores.AdminRAGProviders
 
-  const [isMobile, setIsMobile] = useState(false)
-
   // UI drawer states
   const addRAGProviderDrawer = useAddRAGProviderDrawerStore()
   const addRAGDatabaseDrawer = useAddRAGDatabaseDrawerStore()
   const addRAGDatabaseDownloadDrawer = useAddRAGDatabaseDownloadDrawerStore()
   const editRAGDatabaseDrawer = useEditRAGDatabaseDrawerStore()
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   const currentProvider = providers.find(p => p.id === provider_id)
 
@@ -257,61 +241,45 @@ export function RAGProvidersSettings() {
 
   return (
     <SettingsPageContainer title="RAG Providers">
-      <div className={'flex w-full'}>
-        {/* Desktop Sidebar */}
-        {!isMobile && (
-          <Sider
-            width={200}
-            theme="light"
-            style={{ backgroundColor: 'transparent' }}
+      <Flex gap="middle" className="w-full">
+        {/* Responsive Sidebar - shows as dropdown on small screens */}
+        <div className="hidden lg:block flex-shrink-0" style={{ width: 200 }}>
+          <ProviderMenu />
+        </div>
+
+        {/* Mobile Provider Selector */}
+        <div className="lg:hidden w-full mb-6">
+          <Dropdown
+            menu={{
+              items: menuItems,
+              onClick: ({ key }) => {
+                if (key === 'add-rag-provider') {
+                  openAddRAGProviderDrawer()
+                } else {
+                  navigate(`/settings/rag-providers/${key}`)
+                }
+              },
+            }}
+            trigger={['click']}
           >
-            <div>
-              <ProviderMenu />
-            </div>
-          </Sider>
-        )}
+            <Button size="large" className="w-full text-left">
+              <Flex justify="space-between" align="center">
+                <Flex align="center" gap="middle">
+                  <span style={{ fontSize: '20px' }}>
+                    {currentProvider
+                      ? RAG_PROVIDER_ICONS[currentProvider.type]
+                      : ''}
+                  </span>
+                  <span>{currentProvider?.name}</span>
+                </Flex>
+                <DownOutlined />
+              </Flex>
+            </Button>
+          </Dropdown>
+        </div>
 
         {/* Main Content */}
-        <Layout className={'px-2'}>
-          <Content>
-            {/* Mobile Header with Provider Selector */}
-            {isMobile && (
-              <div style={{ marginBottom: '24px' }}>
-                <Dropdown
-                  menu={{
-                    items: menuItems,
-                    onClick: ({ key }) => {
-                      if (key === 'add-rag-provider') {
-                        openAddRAGProviderDrawer()
-                      } else {
-                        navigate(`/settings/rag-providers/${key}`)
-                      }
-                    },
-                  }}
-                  trigger={['click']}
-                >
-                  <Button
-                    size="large"
-                    style={{ width: '100%', textAlign: 'left' }}
-                  >
-                    <Flex justify="space-between" align="center">
-                      <Flex align="center" gap="middle">
-                        <span style={{ fontSize: '20px' }}>
-                          {currentProvider
-                            ? RAG_PROVIDER_ICONS[currentProvider.type]
-                            : ''}
-                        </span>
-                        <span>{currentProvider?.name}</span>
-                      </Flex>
-                      <DownOutlined />
-                    </Flex>
-                  </Button>
-                </Dropdown>
-              </div>
-            )}
-            {renderProviderSettings()}
-          </Content>
-        </Layout>
+        <div className="flex-1 min-w-0">{renderProviderSettings()}</div>
 
         {/* Modals */}
         <AddRAGProviderDrawer
@@ -333,7 +301,7 @@ export function RAGProvidersSettings() {
           onClose={closeEditRAGDatabaseDrawer}
           database={editRAGDatabaseDrawer.database}
         />
-      </div>
+      </Flex>
     </SettingsPageContainer>
   )
 }

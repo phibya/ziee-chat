@@ -27,10 +27,10 @@ import {
   loadSystemAdminAssistants,
   openAssistantDrawer,
   Stores,
-} from '../../../../store'
-import { Assistant } from '../../../../types'
-import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
-import { AssistantFormDrawer } from '../../../common/AssistantFormDrawer'
+} from '../../../store'
+import { Assistant } from '../../../types'
+import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
+import { AssistantFormDrawer } from '../../common/AssistantFormDrawer.tsx'
 
 const { Text } = Typography
 

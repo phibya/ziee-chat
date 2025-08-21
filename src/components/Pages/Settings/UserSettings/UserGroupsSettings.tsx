@@ -25,7 +25,7 @@ import {
   Tag,
   Typography,
 } from 'antd'
-import { Drawer } from '../../../common/Drawer'
+import { Drawer } from '../../../common/Drawer.tsx'
 import { useEffect, useState } from 'react'
 import { isTauriView } from '../../../../api/core.ts'
 import {

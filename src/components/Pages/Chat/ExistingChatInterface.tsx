@@ -1,5 +1,4 @@
-import { Button, Flex, Form, Input, theme, Typography } from 'antd'
-import { useTranslation } from 'react-i18next'
+import { Button, Flex, Form, Input, Result, theme, Typography } from 'antd'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useState } from 'react'
 import {
@@ -18,6 +17,7 @@ import { IoIosArrowBack } from 'react-icons/io'
 import { IoTimeOutline } from 'react-icons/io5'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { Permission } from '../../../types'
+import { PiSmileySadLight } from 'react-icons/pi'
 
 export function ExistingChatInterface() {
   const { conversationId } = useParams<{ conversationId?: string }>()
@@ -26,7 +26,6 @@ export function ExistingChatInterface() {
   const [isEditing, setIsEditing] = useState(false)
   const navigate = useNavigate()
 
-  const { t } = useTranslation()
   // Chat store
   const { conversation, loading } = useChatStore()
   const { showTime } = Stores.UI.ChatUI
@@ -59,16 +58,33 @@ export function ExistingChatInterface() {
     return null
   }
 
-  if (loading) {
+  if (!loading && !conversation) {
     return (
-      <Flex className="flex-col items-center justify-center h-full">
-        <div className="text-lg">{t('chat.loading')}</div>
-      </Flex>
+      <div className={'w-full h-full flex items-center justify-center'}>
+        <Result
+          icon={
+            <div className={'w-full flex items-center justify-center text-8xl'}>
+              <PiSmileySadLight />
+            </div>
+          }
+          title="Conversation Not Found"
+          subTitle="The conversation you are looking for does not exist or has been deleted."
+          extra={
+            <Button
+              type="primary"
+              onClick={() =>
+                navigate(
+                  Stores.UI.PathHistory.__state
+                    .previousConversationListPagePath,
+                )
+              }
+            >
+              Go Back
+            </Button>
+          }
+        />
+      </div>
     )
-  }
-
-  if (!conversation) {
-    return <div>Conversation not found</div>
   }
 
   return (

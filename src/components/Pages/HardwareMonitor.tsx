@@ -7,13 +7,11 @@ import {
   subscribeToHardwareUsage,
 } from '../../store'
 import { formatBytes } from '../../utils/formatBytes'
-import { withPermission } from '../../permissions/utils.ts'
-import { Permission } from '../../types'
 import { useSetBackgroundColor } from '../hooks/useSetBackgroundColor.ts'
 
 const { Text } = Typography
 
-function HardwareMonitorComponent() {
+export function HardwareMonitor() {
   const { message } = App.useApp()
   useSetBackgroundColor()
 
@@ -339,7 +337,3 @@ function HardwareMonitorComponent() {
     </div>
   )
 }
-
-export const HardwareMonitor = withPermission([Permission.HardwareMonitor])(
-  HardwareMonitorComponent,
-)

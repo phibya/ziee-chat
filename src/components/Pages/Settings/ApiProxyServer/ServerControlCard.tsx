@@ -23,7 +23,6 @@ export function ServerControlCard() {
   // Store data
   const { config, status, loadingStatus, loadingModels, loadingHosts, models } =
     Stores.AdminApiProxyServer
-  console.log({ config })
 
   // Check if server is properly configured
   const isConfigured = Boolean(

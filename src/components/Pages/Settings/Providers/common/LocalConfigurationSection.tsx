@@ -11,7 +11,6 @@ import {
 } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons'
-import { useEffect, useState } from 'react'
 
 const { Text } = Typography
 
@@ -35,18 +34,6 @@ export function LocalConfigurationSection({
   wrapInCard = true,
 }: LocalConfigurationSectionProps) {
   const { t } = useTranslation()
-  const [isMobile, setIsMobile] = useState(false)
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   const getFieldName = (field: string) =>
     useNestedSettings ? ['settings', field] : field
@@ -62,17 +49,18 @@ export function LocalConfigurationSection({
   }) => (
     <Flex
       justify="space-between"
-      align={isMobile ? 'flex-start' : 'center'}
-      vertical={isMobile}
-      gap={isMobile ? 'small' : 0}
+      align="flex-start"
+      wrap
+      gap="small"
+      className="min-w-0"
     >
-      <div style={{ flex: isMobile ? undefined : 1 }}>
+      <div className="flex-1 min-w-80">
         <Text strong>{title}</Text>
         <div>
           <Text type="secondary">{description}</Text>
         </div>
       </div>
-      {children}
+      <div className="flex-shrink-0">{children}</div>
     </Flex>
   )
 
@@ -129,7 +117,8 @@ export function LocalConfigurationSection({
       >
         <Form.Item
           name={getFieldName('parallelOperations')}
-          style={{ margin: 0, width: isMobile ? '100%' : 100 }}
+          style={{ margin: 0, width: 100 }}
+          className="min-w-full sm:min-w-0"
         >
           <InputNumber
             min={1}
@@ -148,7 +137,8 @@ export function LocalConfigurationSection({
       >
         <Form.Item
           name={getFieldName('cpuThreads')}
-          style={{ margin: 0, width: isMobile ? '100%' : 100 }}
+          style={{ margin: 0, width: 100 }}
+          className="min-w-full sm:min-w-0"
         >
           <InputNumber
             placeholder={t('providers.autoPlaceholder')}
@@ -166,7 +156,8 @@ export function LocalConfigurationSection({
       >
         <Form.Item
           name={getFieldName('threadsBatch')}
-          style={{ margin: 0, width: isMobile ? '100%' : 100 }}
+          style={{ margin: 0, width: 100 }}
+          className="min-w-full sm:min-w-0"
         >
           <InputNumber
             placeholder={t('providers.sameAsThreadsPlaceholder')}
@@ -214,7 +205,8 @@ export function LocalConfigurationSection({
       >
         <Form.Item
           name={getFieldName('kvCacheType')}
-          style={{ margin: 0, width: isMobile ? '100%' : 100 }}
+          style={{ margin: 0, width: 100 }}
+          className="min-w-full sm:min-w-0"
         >
           <Select
             style={{ width: '100%' }}

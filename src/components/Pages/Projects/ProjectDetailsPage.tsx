@@ -1,4 +1,4 @@
-import { App, Button, Card, Flex, theme, Typography } from 'antd'
+import { App, Button, Card, Flex, Result, theme, Typography } from 'antd'
 import React, { useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { openProjectDrawer, useProjectStore } from '../../../store'
@@ -11,7 +11,7 @@ import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
 import { IoIosArrowBack, IoIosArrowForward } from 'react-icons/io'
 import { FiEdit } from 'react-icons/fi'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
-import { PiFiles } from 'react-icons/pi'
+import { PiFiles, PiSmileySadLight } from 'react-icons/pi'
 import { Drawer } from '../../common/Drawer.tsx'
 
 export const ProjectDetailsPage: React.FC = () => {
@@ -35,8 +35,25 @@ export const ProjectDetailsPage: React.FC = () => {
     }
   }, [error, message])
 
-  if (loading || !project) {
-    return <Typography.Text>Loading...</Typography.Text>
+  if (!loading && !project) {
+    return (
+      <div className={'w-full h-full flex items-center justify-center'}>
+        <Result
+          icon={
+            <div className={'w-full flex items-center justify-center text-8xl'}>
+              <PiSmileySadLight />
+            </div>
+          }
+          title="Project Not Found"
+          subTitle="The project you are looking for does not exist or has been deleted."
+          extra={
+            <Button type="primary" onClick={() => navigate('/projects')}>
+              Go to Projects
+            </Button>
+          }
+        />
+      </div>
+    )
   }
 
   return (
@@ -64,7 +81,7 @@ export const ProjectDetailsPage: React.FC = () => {
                   className="!m-0 !leading-tight px-1 flex-1 !font-semibold"
                   ellipsis={true}
                 >
-                  {project.name}
+                  {project?.name}
                 </Typography.Title>
               </div>
             ) : (
@@ -96,7 +113,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 style={{
                   fontSize: '20px',
                 }}
-                onClick={() => openProjectDrawer(project)}
+                onClick={() => openProjectDrawer(project!)}
               />
             </div>
           </div>
@@ -115,7 +132,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 level={4}
                 className="!m-0 !leading-tight px-3 !font-semibold"
               >
-                {project.name}
+                {project?.name}
               </Typography.Title>
             </div>
           )}

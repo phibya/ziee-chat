@@ -1,17 +1,17 @@
 import { App, Card, Divider, Flex, Form, Select, Typography } from 'antd'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Stores,
   useUserAppearanceLanguage,
   useUserAppearanceTheme,
-} from '../../../store'
+} from '../../../../store'
 import {
   setUserAppearanceLanguage,
   setUserAppearanceTheme,
-} from '../../../store/settings.ts'
-import { LANGUAGE_OPTIONS } from '../../../types'
-import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
+} from '../../../../store/settings.ts'
+import { LANGUAGE_OPTIONS } from '../../../../types'
+import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 
 const { Text } = Typography
 
@@ -19,22 +19,10 @@ export function AppearanceSettings() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
-  const [isMobile, setIsMobile] = useState(false)
 
   const theme = useUserAppearanceTheme()
   const language = useUserAppearanceLanguage()
   const { loading } = Stores.Settings
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
 
   useEffect(() => {
     form.setFieldsValue({
@@ -76,11 +64,12 @@ export function AppearanceSettings() {
           <Flex vertical className="gap-2 w-full">
             <Flex
               justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
-              vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
+              align="flex-start"
+              wrap
+              gap="small"
+              className="min-w-0"
             >
-              <div>
+              <div className="flex-1 min-w-80">
                 <Text strong>{t('labels.theme')}</Text>
                 <div>
                   <Text type="secondary">
@@ -88,26 +77,29 @@ export function AppearanceSettings() {
                   </Text>
                 </div>
               </div>
-              <Form.Item name="theme" style={{ margin: 0 }}>
-                <Select
-                  loading={loading}
-                  style={{ minWidth: 120 }}
-                  options={[
-                    { value: 'light', label: t('appearance.light') },
-                    { value: 'dark', label: t('appearance.dark') },
-                    { value: 'system', label: t('appearance.system') },
-                  ]}
-                />
-              </Form.Item>
+              <div className="flex-shrink-0">
+                <Form.Item name="theme" style={{ margin: 0 }}>
+                  <Select
+                    loading={loading}
+                    style={{ minWidth: 120 }}
+                    options={[
+                      { value: 'light', label: t('appearance.light') },
+                      { value: 'dark', label: t('appearance.dark') },
+                      { value: 'system', label: t('appearance.system') },
+                    ]}
+                  />
+                </Form.Item>
+              </div>
             </Flex>
             <Divider style={{ margin: 0 }} />
             <Flex
               justify="space-between"
-              align={isMobile ? 'flex-start' : 'center'}
-              vertical={isMobile}
-              gap={isMobile ? 'small' : 0}
+              align="flex-start"
+              wrap
+              gap="small"
+              className="min-w-0"
             >
-              <div>
+              <div className="flex-1 min-w-80">
                 <Text strong>{t('labels.language')}</Text>
                 <div>
                   <Text type="secondary">
@@ -115,13 +107,15 @@ export function AppearanceSettings() {
                   </Text>
                 </div>
               </div>
-              <Form.Item name="language" style={{ margin: 0 }}>
-                <Select
-                  loading={loading}
-                  style={{ minWidth: 120 }}
-                  options={LANGUAGE_OPTIONS}
-                />
-              </Form.Item>
+              <div className="flex-shrink-0">
+                <Form.Item name="language" style={{ margin: 0 }}>
+                  <Select
+                    loading={loading}
+                    style={{ minWidth: 120 }}
+                    options={LANGUAGE_OPTIONS}
+                  />
+                </Form.Item>
+              </div>
             </Flex>
           </Flex>
         </Form>

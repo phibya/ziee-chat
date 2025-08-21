@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { Alert, Card, Descriptions, Flex, Tag, Typography } from 'antd'
 import { LinkOutlined } from '@ant-design/icons'
-import { initializeEngines, Stores } from '../../../../store'
-import { SettingsPageContainer } from '../common/SettingsPageContainer'
+import { initializeEngines, Stores } from '../../../store'
+import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 
 const { Text, Link } = Typography
 

@@ -1,4 +1,4 @@
-import { ConfigProvider } from 'antd'
+import { App, ConfigProvider } from 'antd'
 import { useEffect } from 'react'
 import { useUpdate } from 'react-use'
 import { ThemeContext } from '../../hooks/useTheme.ts'
@@ -30,6 +30,19 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Update document class for global theme styling
   useEffect(() => {
     const root = document.documentElement
+    //find meta tag with name="theme-color" and set its content to the theme color
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]')
+    if (!metaThemeColor) {
+      metaThemeColor = document.createElement('meta')
+      metaThemeColor.setAttribute('name', 'theme-color')
+      document.head.appendChild(metaThemeColor)
+    }
+
+    metaThemeColor.setAttribute(
+      'content',
+      currentTheme.token?.colorBgContainer!,
+    )
+
     if (isDarkMode) {
       root.classList.add('dark')
       root.classList.remove('light')
@@ -41,7 +54,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   return (
     <ThemeContext.Provider value={currentTheme}>
-      <ConfigProvider theme={currentTheme}>{children}</ConfigProvider>
+      <ConfigProvider theme={currentTheme}>
+        <App
+          message={{
+            top: 50,
+          }}
+        >
+          {children}
+        </App>
+      </ConfigProvider>
     </ThemeContext.Provider>
   )
 }
