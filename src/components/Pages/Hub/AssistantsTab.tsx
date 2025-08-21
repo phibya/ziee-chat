@@ -1,7 +1,7 @@
 import { ClearOutlined, SearchOutlined } from '@ant-design/icons'
-import { Button, Flex, Input, Select, Typography } from 'antd'
-import { useMemo, useState } from 'react'
-import { searchAssistants, useHubStore } from '../../../store/hub'
+import { App, Button, Flex, Input, Select, Spin, Typography } from 'antd'
+import { useEffect, useMemo, useState } from 'react'
+import { searchAssistants, useHubStore, loadHubAssistants } from '../../../store/hub'
 import { AssistantCard } from './AssistantCard'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { VscFilter } from 'react-icons/vsc'
@@ -9,12 +9,21 @@ import { VscFilter } from 'react-icons/vsc'
 const { Text } = Typography
 
 export function AssistantsTab() {
-  const { assistants } = useHubStore()
+  const { message } = App.useApp()
+  const { assistants, assistantsInitialized, assistantsLoading, assistantsError } = useHubStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('popular')
   const mainContentMinSize = useMainContentMinSize()
   const [showFilters, setShowFilters] = useState(false)
+
+  useEffect(() => {
+    // Load assistants - function handles its own initialization checks
+    loadHubAssistants().catch(err => {
+      console.error('Failed to load hub assistants:', err)
+      message.error('Failed to load hub assistants')
+    })
+  }, [message])
 
   const clearAllFilters = () => {
     setSearchTerm('')
@@ -116,6 +125,37 @@ export function AssistantsTab() {
       )}
     </div>
   )
+
+  // Show loading state
+  if (assistantsLoading && !assistantsInitialized) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Spin size="large" />
+        <Text className="ml-4">Loading assistants...</Text>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (assistantsError && !assistantsInitialized) {
+    return (
+      <div className="text-center py-12">
+        <Text type="danger">Failed to load assistants: {assistantsError}</Text>
+        <div className="mt-4">
+          <Button
+            onClick={() => {
+              loadHubAssistants().catch(err => {
+                console.error('Failed to load hub assistants:', err)
+                message.error('Failed to load hub assistants')
+              })
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3 h-full overflow-hidden">

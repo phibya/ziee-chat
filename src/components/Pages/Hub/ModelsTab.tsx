@@ -1,7 +1,7 @@
 import { ClearOutlined, SearchOutlined } from '@ant-design/icons'
-import { Button, Flex, Input, Select, Typography } from 'antd'
+import { App, Button, Flex, Input, Select, Spin, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
-import { searchModels, useHubStore } from '../../../store/hub'
+import { searchModels, useHubStore, loadHubModels } from '../../../store/hub'
 import { ModelCard } from './ModelCard'
 import {
   loadAllAdminModelRepositories,
@@ -13,7 +13,8 @@ import { VscFilter } from 'react-icons/vsc'
 const { Text } = Typography
 
 export function ModelsTab() {
-  const { models } = useHubStore()
+  const { message } = App.useApp()
+  const { models, modelsInitialized, modelsLoading, modelsError } = useHubStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
@@ -24,7 +25,13 @@ export function ModelsTab() {
   useEffect(() => {
     loadAllAdminModelRepositories()
     loadAllModelProviders()
-  }, [])
+    
+    // Load models - function handles its own initialization checks
+    loadHubModels().catch(err => {
+      console.error('Failed to load hub models:', err)
+      message.error('Failed to load hub models')
+    })
+  }, [message])
 
   const clearAllFilters = () => {
     setSearchTerm('')
@@ -183,6 +190,37 @@ export function ModelsTab() {
       )}
     </div>
   )
+
+  // Show loading state
+  if (modelsLoading && !modelsInitialized) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Spin size="large" />
+        <Text className="ml-4">Loading models...</Text>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (modelsError && !modelsInitialized) {
+    return (
+      <div className="text-center py-12">
+        <Text type="danger">Failed to load models: {modelsError}</Text>
+        <div className="mt-4">
+          <Button
+            onClick={() => {
+              loadHubModels().catch(err => {
+                console.error('Failed to load hub models:', err)
+                message.error('Failed to load hub models')
+              })
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3 h-full overflow-hidden">

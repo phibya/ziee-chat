@@ -174,7 +174,13 @@ export function LeftSidebar() {
       <div>
         <SectionHeader>Tools</SectionHeader>
         <div className="space-y-0 mb-2">
-          <PermissionGuard permissions={[Permission.HubAccess]}>
+          <PermissionGuard
+            permissions={[
+              Permission.HubModelsRead,
+              Permission.HubAssistantsRead,
+            ]}
+            match={'any'}
+          >
             <SidebarItem
               icon={<AppstoreOutlined />}
               label={t('navigation.hub')}

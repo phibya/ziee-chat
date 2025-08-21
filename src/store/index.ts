@@ -164,8 +164,10 @@ export {
 } from './admin/modelDownload.ts'
 // Hub store
 export {
-  initializeHub,
-  refreshHub,
+  loadHubModels,
+  loadHubAssistants,
+  refreshHubModels,
+  refreshHubAssistants,
   getHubVersion,
   searchModels,
   searchAssistants,

@@ -9,30 +9,46 @@ export const PermissionGuard = ({
   permissions,
   children,
   type = 'hidden',
+  match = 'all',
 }: {
   permissions: Permission[]
   children: React.ReactNode
   type?: 'hidden' | 'disabled'
+  match?: 'any' | 'all'
 }) => {
-  if (!hasPermission(permissions)) {
-    if (type === 'hidden') {
-      return null
+  if (match === 'any') {
+    if (permissions.some(p => hasPermission([p]))) {
+      return children
     }
-    // Properly disable all children components
-    return disableChildren(children)
+  } else {
+    if (!hasPermission(permissions)) {
+      if (type === 'hidden') {
+        return null
+      }
+      return disableChildren(children)
+    }
+    return children
   }
-  return children
 }
 
 export const PagePermissionGuard403 = ({
   permissions,
   children,
+  match = 'all',
 }: {
   permissions: Permission[]
   children: React.ReactNode
+  match?: 'any' | 'all'
 }) => {
   const navigate = useNavigate()
-  if (!hasPermission(permissions)) {
+  let isGranted = false
+  if (match === 'any') {
+    isGranted = permissions.some(p => hasPermission([p]))
+  } else {
+    // Check if all permissions are granted
+    isGranted = hasPermission(permissions)
+  }
+  if (!isGranted) {
     return (
       <div className={'w-full h-full flex items-center justify-center'}>
         <Result

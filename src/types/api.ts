@@ -482,13 +482,6 @@ export interface HubAssistant {
   example_prompts?: string[]
 }
 
-export interface HubData {
-  models: HubModel[]
-  assistants: HubAssistant[]
-  hub_version: string
-  last_updated: string
-}
-
 export interface HubModel {
   description?: string
   id: string
@@ -819,7 +812,10 @@ export enum Permission {
   ConfigNgrokEdit = 'config::ngrok::edit',
   ConfigNgrokStart = 'config::ngrok::start',
   ConfigNgrokStop = 'config::ngrok::stop',
-  HubAccess = 'hub::access',
+  HubModelsRead = 'hub::models::read',
+  HubAssistantsRead = 'hub::assistants::read',
+  HubRefresh = 'hub::refresh',
+  HubVersionRead = 'hub::version::read',
   All = '*'
 }
 
@@ -1428,7 +1424,8 @@ export const ApiEndpoints = {
   'Files.removeFileFromMessage': 'DELETE /api/files/{file_id}/messages/{message_id}',
   'Files.uploadFile': 'POST /api/files/upload',
   'Files.uploadProjectFile': 'POST /api/projects/{project_id}/files',
-  'Hub.getHubData': 'GET /api/hub/data',
+  'Hub.getHubAssistants': 'GET /api/hub/assistants',
+  'Hub.getHubModels': 'GET /api/hub/models',
   'Hub.getHubVersion': 'GET /api/hub/version',
   'Hub.refreshHubData': 'POST /api/hub/refresh',
   'Models.listEnabledProviderModels': 'GET /api/providers/{provider_id}/models',
@@ -1592,7 +1589,8 @@ export type ApiEndpointParameters = {
   'Files.removeFileFromMessage': { file_id: string; message_id: string }
   'Files.uploadFile': FormData
   'Files.uploadProjectFile': { project_id: string } & FormData
-  'Hub.getHubData': HubQueryParams
+  'Hub.getHubAssistants': HubQueryParams
+  'Hub.getHubModels': HubQueryParams
   'Hub.getHubVersion': void
   'Hub.refreshHubData': HubQueryParams
   'Models.listEnabledProviderModels': { provider_id: string }
@@ -1619,8 +1617,8 @@ export type ApiEndpointResponses = {
   'Admin.addModelToApiProxyServer': ApiProxyServerModel
   'Admin.addModelToProvider': Model
   'Admin.assignProviderToGroup': UserGroupProviderResponse
-  'Admin.assignUserToGroup': any
-  'Admin.cancelDownload': any
+  'Admin.assignUserToGroup': void
+  'Admin.cancelDownload': void
   'Admin.cloneRAGProvider': RAGProvider
   'Admin.createAssistant': Assistant
   'Admin.createGroup': UserGroup
@@ -1639,12 +1637,12 @@ export type ApiEndpointResponses = {
   'Admin.deleteRAGRepository': void
   'Admin.deleteRepository': void
   'Admin.deleteUser': void
-  'Admin.disableModel': any
-  'Admin.disableRAGDatabase': any
+  'Admin.disableModel': void
+  'Admin.disableRAGDatabase': void
   'Admin.downloadFromRepository': DownloadInstance
   'Admin.downloadRAGDatabaseFromRepository': RAGDatabase
-  'Admin.enableModel': any
-  'Admin.enableRAGDatabase': any
+  'Admin.enableModel': void
+  'Admin.enableRAGDatabase': void
   'Admin.getApiProxyServerConfig': ApiProxyServerConfig
   'Admin.getApiProxyServerStatus': ApiProxyServerStatus
   'Admin.getAssistant': Assistant
@@ -1682,21 +1680,21 @@ export type ApiEndpointResponses = {
   'Admin.listRepositories': RepositoryListResponse
   'Admin.listUserGroupProviderRelationships': UserGroupProviderResponse[]
   'Admin.listUsers': UserListResponse
-  'Admin.reloadApiProxyServerModels': any
-  'Admin.reloadApiProxyServerTrustedHosts': any
+  'Admin.reloadApiProxyServerModels': void
+  'Admin.reloadApiProxyServerTrustedHosts': void
   'Admin.removeApiProxyServerTrustedHost': void
   'Admin.removeModelFromApiProxyServer': void
   'Admin.removeProviderFromGroup': void
   'Admin.removeUserFromGroup': void
   'Admin.resetUserPassword': void
-  'Admin.startApiProxyServer': any
-  'Admin.startModel': any
+  'Admin.startApiProxyServer': void
+  'Admin.startModel': void
   'Admin.startNgrokTunnel': NgrokStatusResponse
-  'Admin.startRAGDatabase': any
-  'Admin.stopApiProxyServer': any
-  'Admin.stopModel': any
+  'Admin.startRAGDatabase': void
+  'Admin.stopApiProxyServer': void
+  'Admin.stopModel': void
   'Admin.stopNgrokTunnel': NgrokStatusResponse
-  'Admin.stopRAGDatabase': any
+  'Admin.stopRAGDatabase': void
   'Admin.subscribeApiProxyServerLogs': void
   'Admin.subscribeDownloadProgress': void
   'Admin.subscribeHardwareUsage': void
@@ -1728,7 +1726,7 @@ export type ApiEndpointResponses = {
   'Assistants.updateAssistant': Assistant
   'Auth.init': InitResponse
   'Auth.login': AuthResponse
-  'Auth.logout': any
+  'Auth.logout': void
   'Auth.me': User
   'Auth.register': AuthResponse
   'Auth.setup': AuthResponse
@@ -1756,9 +1754,10 @@ export type ApiEndpointResponses = {
   'Files.removeFileFromMessage': FileOperationSuccessResponse
   'Files.uploadFile': UploadFileResponse
   'Files.uploadProjectFile': UploadFileResponse
-  'Hub.getHubData': HubData
+  'Hub.getHubAssistants': HubAssistant[]
+  'Hub.getHubModels': HubModel[]
   'Hub.getHubVersion': HubVersionResponse
-  'Hub.refreshHubData': HubData
+  'Hub.refreshHubData': void
   'Models.listEnabledProviderModels': Model[]
   'Projects.createProject': Project
   'Projects.deleteProject': void

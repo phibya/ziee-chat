@@ -127,7 +127,11 @@ function App() {
                       path="/hub/:activeTab?"
                       element={
                         <PagePermissionGuard403
-                          permissions={[Permission.HubAccess]}
+                          permissions={[
+                            Permission.HubModelsRead,
+                            Permission.HubAssistantsRead,
+                          ]}
+                          match={'any'}
                         >
                           <HubPage />
                         </PagePermissionGuard403>

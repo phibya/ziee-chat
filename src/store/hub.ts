@@ -11,97 +11,171 @@ interface HubState {
   lastUpdated: string
   lastActiveTab: string
   currentLocale: string
-  initialized: boolean
-  loading: boolean
-  error: string | null
+  modelsInitialized: boolean
+  assistantsInitialized: boolean
+  modelsLoading: boolean
+  assistantsLoading: boolean
+  modelsError: string | null
+  assistantsError: string | null
 }
 
 export const useHubStore = create<HubState>()(
   subscribeWithSelector((_set, _get) => ({
-    models: [],
-    assistants: [],
+    models: [] as HubModel[],
+    assistants: [] as HubAssistant[],
     hubVersion: '',
     lastUpdated: '',
     lastActiveTab: 'models',
     currentLocale: 'en',
-    initialized: false,
-    loading: false,
-    error: null,
+    modelsInitialized: false as boolean,
+    assistantsInitialized: false as boolean,
+    modelsLoading: false as boolean,
+    assistantsLoading: false as boolean,
+    modelsError: null as string | null,
+    assistantsError: null as string | null,
   })),
 )
 
-export const initializeHub = async (locale?: string) => {
+export const loadHubModels = async (locale?: string) => {
   const state = useHubStore.getState()
   const currentLocale = locale || i18n.language || 'en'
 
-  if (state.initialized || state.loading) {
+  if (state.modelsInitialized || state.modelsLoading) {
     return
   }
 
-  useHubStore.setState({ loading: true, error: null, currentLocale })
+  useHubStore.setState({ modelsLoading: true, modelsError: null, currentLocale })
 
   try {
-    const hubData = await ApiClient.Hub.getHubData({ lang: currentLocale })
+    const models = await ApiClient.Hub.getHubModels({ lang: currentLocale })
 
     useHubStore.setState({
-      models: hubData.models,
-      assistants: hubData.assistants,
-      hubVersion: hubData.hub_version,
-      lastUpdated: hubData.last_updated,
+      models,
       currentLocale,
-      initialized: true,
-      loading: false,
-      error: null,
+      modelsInitialized: true,
+      modelsLoading: false,
+      modelsError: null,
     })
 
     console.log(
-      `Hub initialized: ${hubData.hub_version} (${hubData.models.length} models, ${hubData.assistants.length} assistants) - locale: ${currentLocale}`,
+      `Hub models loaded: ${models.length} models - locale: ${currentLocale}`,
     )
   } catch (error) {
-    console.error('Hub initialization failed:', error)
+    console.error('Hub models loading failed:', error)
     useHubStore.setState({
-      loading: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      initialized: false,
+      modelsLoading: false,
+      modelsError: error instanceof Error ? error.message : 'Unknown error',
+      modelsInitialized: false,
     })
     throw error
   }
 }
 
-export const refreshHub = async (locale?: string) => {
+export const loadHubAssistants = async (locale?: string) => {
+  const state = useHubStore.getState()
+  const currentLocale = locale || i18n.language || 'en'
+
+  if (state.assistantsInitialized || state.assistantsLoading) {
+    return
+  }
+
+  useHubStore.setState({ assistantsLoading: true, assistantsError: null, currentLocale })
+
+  try {
+    const assistants = await ApiClient.Hub.getHubAssistants({ lang: currentLocale })
+
+    useHubStore.setState({
+      assistants,
+      currentLocale,
+      assistantsInitialized: true,
+      assistantsLoading: false,
+      assistantsError: null,
+    })
+
+    console.log(
+      `Hub assistants loaded: ${assistants.length} assistants - locale: ${currentLocale}`,
+    )
+  } catch (error) {
+    console.error('Hub assistants loading failed:', error)
+    useHubStore.setState({
+      assistantsLoading: false,
+      assistantsError: error instanceof Error ? error.message : 'Unknown error',
+      assistantsInitialized: false,
+    })
+    throw error
+  }
+}
+
+export const refreshHubModels = async (locale?: string) => {
   const state = useHubStore.getState()
   const currentLocale = locale || state.currentLocale || 'en'
 
-  if (state.loading) {
+  if (state.modelsLoading) {
     return
   }
 
-  useHubStore.setState({ loading: true, error: null })
+  useHubStore.setState({ modelsLoading: true, modelsError: null })
 
   try {
-    const hubData = await ApiClient.Hub.refreshHubData({ lang: currentLocale })
+    await ApiClient.Hub.refreshHubData({ lang: currentLocale })
+    const models = await ApiClient.Hub.getHubModels({ lang: currentLocale })
+    
     useHubStore.setState({
-      models: hubData.models,
-      assistants: hubData.assistants,
-      lastUpdated: hubData.last_updated,
+      models,
       currentLocale,
-      loading: false,
-      error: null,
+      modelsLoading: false,
+      modelsError: null,
     })
 
     console.log(
-      `Hub refreshed: ${hubData.models.length} models, ${hubData.assistants.length} assistants - locale: ${currentLocale}`,
+      `Hub models refreshed: ${models.length} models - locale: ${currentLocale}`,
     )
-    return hubData
+    return models
   } catch (error) {
-    console.error('Hub refresh failed:', error)
+    console.error('Hub models refresh failed:', error)
     useHubStore.setState({
-      loading: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      modelsLoading: false,
+      modelsError: error instanceof Error ? error.message : 'Unknown error',
     })
     throw error
   }
 }
+
+export const refreshHubAssistants = async (locale?: string) => {
+  const state = useHubStore.getState()
+  const currentLocale = locale || state.currentLocale || 'en'
+
+  if (state.assistantsLoading) {
+    return
+  }
+
+  useHubStore.setState({ assistantsLoading: true, assistantsError: null })
+
+  try {
+    await ApiClient.Hub.refreshHubData({ lang: currentLocale })
+    const assistants = await ApiClient.Hub.getHubAssistants({ lang: currentLocale })
+    
+    useHubStore.setState({
+      assistants,
+      currentLocale,
+      assistantsLoading: false,
+      assistantsError: null,
+    })
+
+    console.log(
+      `Hub assistants refreshed: ${assistants.length} assistants - locale: ${currentLocale}`,
+    )
+    return assistants
+  } catch (error) {
+    console.error('Hub assistants refresh failed:', error)
+    useHubStore.setState({
+      assistantsLoading: false,
+      assistantsError: error instanceof Error ? error.message : 'Unknown error',
+    })
+    throw error
+  }
+}
+
 
 export const getHubVersion = async (): Promise<string> => {
   try {
@@ -191,12 +265,21 @@ export const setHubActiveTab = (tab: string) => {
 export const handleLanguageChange = async (newLocale: string) => {
   const currentState = useHubStore.getState()
 
-  // Only reload if locale changed and hub is initialized
-  if (currentState.initialized && currentState.currentLocale !== newLocale) {
+  // Only reload if locale changed and data is initialized
+  if (currentState.currentLocale !== newLocale) {
     console.log(
       `Hub locale changed from ${currentState.currentLocale} to ${newLocale}`,
     )
-    await initializeHub(newLocale)
+    
+    // Reload models if they were initialized
+    if (currentState.modelsInitialized) {
+      await loadHubModels(newLocale)
+    }
+    
+    // Reload assistants if they were initialized
+    if (currentState.assistantsInitialized) {
+      await loadHubAssistants(newLocale)
+    }
   }
 }
 

@@ -3,28 +3,27 @@ import {
   ReloadOutlined,
   RobotOutlined,
 } from '@ant-design/icons'
-import {
-  App,
-  Button,
-  Dropdown,
-  Flex,
-  Segmented,
-  Spin,
-  theme,
-  Typography,
-} from 'antd'
+import { App, Button, Dropdown, Flex, Segmented, theme, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TitleBarWrapper } from '../../common/TitleBarWrapper'
 import { TauriDragRegion } from '../../common/TauriDragRegion'
-import { initializeHub, refreshHub, setHubActiveTab } from '../../../store/hub'
+import {
+  refreshHubAssistants,
+  refreshHubModels,
+  setHubActiveTab,
+} from '../../../store/hub'
 import { ModelsTab } from './ModelsTab'
 import { AssistantsTab } from './AssistantsTab'
 import { Stores } from '../../../store'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { IoIosArrowDown, IoIosArrowForward } from 'react-icons/io'
-
-const { Text } = Typography
+import { hasPermission } from '../../../permissions/utils.ts'
+import { Permission } from '../../../types'
+import {
+  PagePermissionGuard403,
+  PermissionGuard,
+} from '../../Auth/PermissionGuard.tsx'
 
 export function HubPage() {
   const { message } = App.useApp()
@@ -34,8 +33,13 @@ export function HubPage() {
   const { token } = theme.useToken()
 
   // Hub store state
-  const { models, assistants, initialized, loading, error, lastActiveTab } =
-    Stores.Hub
+  const {
+    models,
+    assistants,
+    modelsLoading,
+    assistantsLoading,
+    lastActiveTab,
+  } = Stores.Hub
 
   // Valid tab names
   const validTabs = ['models', 'assistants']
@@ -50,6 +54,20 @@ export function HubPage() {
 
   // Redirect to valid tab if current tab is invalid, or redirect to last active tab if no tab in URL
   useEffect(() => {
+    const availabelTabs = [
+      hasPermission([Permission.HubModelsRead]) && 'models',
+      hasPermission([Permission.HubAssistantsRead]) && 'assistants',
+    ].filter(Boolean) as string[]
+
+    if (!availabelTabs.includes(activeTab)) {
+      const newTab = availabelTabs[0]
+      if (!newTab) return
+      navigate(`/hub/${newTab}`, {
+        replace: true,
+      })
+      return
+    }
+
     if (activeTab !== urlActiveTab) {
       navigate(`/hub/${activeTab}`, {
         replace: true,
@@ -61,81 +79,19 @@ export function HubPage() {
     setHubActiveTab(activeTab)
   }, [activeTab])
 
-  useEffect(() => {
-    if (!initialized && !loading && !error) {
-      initializeHub().catch(err => {
-        console.error('Failed to initialize hub:', err)
-        message.error('Failed to load hub data')
-      })
-    }
-  }, [initialized, loading, error, message])
-
   const handleRefresh = async () => {
     try {
-      await refreshHub()
-      message.success('Hub data refreshed successfully')
+      if (activeTab === 'models') {
+        await refreshHubModels()
+        message.success('Hub models refreshed successfully')
+      } else if (activeTab === 'assistants') {
+        await refreshHubAssistants()
+        message.success('Hub assistants refreshed successfully')
+      }
     } catch (err) {
-      console.error('Failed to refresh hub:', err)
+      console.error('Failed to refresh hub data:', err)
       message.error('Failed to refresh hub data')
     }
-  }
-
-  const renderContent = () => {
-    if (loading && !initialized) {
-      return (
-        <div className="flex justify-center items-center h-full">
-          <Spin size="large" />
-          <Text className="ml-4">Loading hub data...</Text>
-        </div>
-      )
-    }
-
-    if (error && !initialized) {
-      return (
-        <div className="text-center py-12">
-          <Text type="danger">Failed to load hub data: {error}</Text>
-          <div className="mt-4">
-            <Button
-              onClick={() => {
-                initializeHub()
-              }}
-            >
-              Retry
-            </Button>
-          </div>
-        </div>
-      )
-    }
-
-    const TabWrapper = ({ children }: { children: React.ReactNode }) => (
-      <div className={`flex-1 h-full w-full overflow-y-auto`}>
-        <div className={'flex flex-col py-3'}>{children}</div>
-      </div>
-    )
-
-    if (mainContentMinSize.xs) {
-      // Mobile: Simple content switching (tabs are controlled via titlebar dropdown)
-      return (
-        <Flex className="flex h-full w-full flex-col gap-2">
-          <div className="flex-1 h-full w-full overflow-hidden">
-            <TabWrapper>
-              {activeTab === 'models' ? <ModelsTab /> : <AssistantsTab />}
-            </TabWrapper>
-          </div>
-        </Flex>
-      )
-    }
-
-    // Desktop: Content only, tabs are in title bar
-    return (
-      <div className="flex flex-1 w-full overflow-y-auto flex-col">
-        <div className="max-w-4xl w-full flex flex-col self-center">
-          <TabWrapper>
-            {activeTab === 'models' ? <ModelsTab /> : <AssistantsTab />}
-          </TabWrapper>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -169,7 +125,7 @@ export function HubPage() {
                 }}
                 shape="round"
                 options={[
-                  {
+                  hasPermission([Permission.HubModelsRead]) && {
                     value: 'models',
                     label: (
                       <Flex align="center" gap={4}>
@@ -178,7 +134,7 @@ export function HubPage() {
                       </Flex>
                     ),
                   },
-                  {
+                  hasPermission([Permission.HubAssistantsRead]) && {
                     value: 'assistants',
                     label: (
                       <Flex align="center" gap={4}>
@@ -187,7 +143,7 @@ export function HubPage() {
                       </Flex>
                     ),
                   },
-                ]}
+                ].filter(e => !!e)}
               />
             </div>
           )}
@@ -199,7 +155,7 @@ export function HubPage() {
               <Dropdown
                 menu={{
                   items: [
-                    {
+                    hasPermission([Permission.HubModelsRead]) && {
                       key: 'models',
                       label: (
                         <Flex className={'gap-2'}>
@@ -208,7 +164,7 @@ export function HubPage() {
                         </Flex>
                       ),
                     },
-                    {
+                    hasPermission([Permission.HubAssistantsRead]) && {
                       key: 'assistants',
                       label: (
                         <Flex className={'gap-2'}>
@@ -217,7 +173,7 @@ export function HubPage() {
                         </Flex>
                       ),
                     },
-                  ],
+                  ].filter(e => !!e),
                   onClick: ({ key }) => {
                     setHubActiveTab(key)
                     navigate(`/hub/${key}`)
@@ -228,13 +184,15 @@ export function HubPage() {
               >
                 <Button type="text" className={'!pt-1'}>
                   {activeTab === 'models' ? (
-                    <>
+                    <PermissionGuard permissions={[Permission.HubModelsRead]}>
                       <AppstoreOutlined /> Models
-                    </>
+                    </PermissionGuard>
                   ) : (
-                    <>
+                    <PermissionGuard
+                      permissions={[Permission.HubAssistantsRead]}
+                    >
                       <RobotOutlined /> Assistants
-                    </>
+                    </PermissionGuard>
                   )}{' '}
                   <IoIosArrowDown />
                 </Button>
@@ -245,7 +203,7 @@ export function HubPage() {
           <Button
             icon={<ReloadOutlined />}
             onClick={handleRefresh}
-            loading={loading}
+            loading={modelsLoading || assistantsLoading}
             type="text"
           >
             {mainContentMinSize.xs ? null : 'Refresh'}
@@ -253,7 +211,27 @@ export function HubPage() {
         </div>
       </TitleBarWrapper>
       <div className="flex flex-col w-full h-full overflow-hidden">
-        {renderContent()}
+        <div className="flex flex-1 w-full overflow-y-auto flex-col">
+          <div className="max-w-4xl w-full flex flex-col self-center">
+            <div className={`flex-1 h-full w-full overflow-y-auto`}>
+              <div className={'flex flex-col py-3'}>
+                {activeTab === 'models' ? (
+                  <PagePermissionGuard403
+                    permissions={[Permission.HubModelsRead]}
+                  >
+                    <ModelsTab />
+                  </PagePermissionGuard403>
+                ) : (
+                  <PagePermissionGuard403
+                    permissions={[Permission.HubAssistantsRead]}
+                  >
+                    <AssistantsTab />
+                  </PagePermissionGuard403>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </Flex>
   )
