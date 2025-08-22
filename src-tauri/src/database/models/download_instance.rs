@@ -15,11 +15,60 @@ pub struct SourceInfo {
     pub id: Option<String>,
 }
 
+/// Download phase enum
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum DownloadPhase {
+    Created,
+    Connecting,
+    Analyzing,
+    Downloading,
+    Receiving,
+    Resolving,
+    CheckingOut,
+    Committing,
+    Complete,
+    Error,
+}
+
+impl DownloadPhase {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DownloadPhase::Created => "created",
+            DownloadPhase::Connecting => "connecting",
+            DownloadPhase::Analyzing => "analyzing",
+            DownloadPhase::Downloading => "downloading",
+            DownloadPhase::Receiving => "receiving",
+            DownloadPhase::Resolving => "resolving",
+            DownloadPhase::CheckingOut => "checking_out",
+            DownloadPhase::Committing => "committing",
+            DownloadPhase::Complete => "complete",
+            DownloadPhase::Error => "error",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "created" => Some(DownloadPhase::Created),
+            "connecting" => Some(DownloadPhase::Connecting),
+            "analyzing" => Some(DownloadPhase::Analyzing),
+            "downloading" => Some(DownloadPhase::Downloading),
+            "receiving" => Some(DownloadPhase::Receiving),
+            "resolving" => Some(DownloadPhase::Resolving),
+            "checking_out" => Some(DownloadPhase::CheckingOut),
+            "committing" => Some(DownloadPhase::Committing),
+            "complete" => Some(DownloadPhase::Complete),
+            "error" => Some(DownloadPhase::Error),
+            _ => None,
+        }
+    }
+}
+
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DownloadProgressData {
-    /// Current download phase (e.g., "connecting", "downloading", "extracting")
-    pub phase: String,
+    /// Current download phase
+    pub phase: DownloadPhase,
     /// Current bytes/items processed
     pub current: i64,
     /// Total bytes/items to process
@@ -35,7 +84,7 @@ pub struct DownloadProgressData {
 impl Default for DownloadProgressData {
     fn default() -> Self {
         Self {
-            phase: String::new(),
+            phase: DownloadPhase::Created,
             current: 0,
             total: 0,
             message: String::new(),

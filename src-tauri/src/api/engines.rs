@@ -1,5 +1,5 @@
 use crate::ai::engines::{LlamaCppEngine, LocalEngine, MistralRsEngine};
-use crate::api::errors::ApiResult2;
+use crate::api::errors::ApiResult;
 use axum::{debug_handler, http::StatusCode, response::Json};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -17,7 +17,7 @@ pub struct EngineInfo {
 
 /// List all available ML inference engines
 #[debug_handler]
-pub async fn list_engines() -> ApiResult2<Json<Vec<EngineInfo>>> {
+pub async fn list_engines() -> ApiResult<Json<Vec<EngineInfo>>> {
     let mistralrs = MistralRsEngine;
     let llamacpp = LlamaCppEngine;
 

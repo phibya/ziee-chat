@@ -34,6 +34,8 @@ export default defineConfig(async () => ({
         '**/node_modules/**',
         '**/dist/**',
         '**/build-helpers/**',
+        '**/openapi/**',
+        '**/hub/**',
       ],
     },
   },

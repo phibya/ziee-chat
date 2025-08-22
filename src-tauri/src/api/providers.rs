@@ -6,7 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
@@ -72,7 +72,7 @@ async fn list_providers_base(
 pub async fn list_providers(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult2<Json<ProviderListResponse>> {
+) -> ApiResult<Json<ProviderListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -85,7 +85,7 @@ pub async fn list_providers(
 pub async fn list_enabled_providers(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult2<Json<ProviderListResponse>> {
+) -> ApiResult<Json<ProviderListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -97,7 +97,7 @@ pub async fn list_enabled_providers(
 pub async fn get_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult2<Json<Provider>> {
+) -> ApiResult<Json<Provider>> {
     match providers::get_provider_by_id(provider_id).await {
         Ok(Some(provider)) => Ok((StatusCode::OK, Json(provider))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
@@ -115,7 +115,7 @@ pub async fn get_provider(
 pub async fn create_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(mut request): Json<CreateProviderRequest>,
-) -> ApiResult2<Json<Provider>> {
+) -> ApiResult<Json<Provider>> {
     // Validate provider type
     let valid_types = [
         "local",
@@ -201,7 +201,7 @@ pub async fn update_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
     Json(request): Json<UpdateProviderRequest>,
-) -> ApiResult2<Json<Provider>> {
+) -> ApiResult<Json<Provider>> {
     // If trying to enable the provider, validate requirements
     if let Some(true) = request.enabled {
         // Get the current provider to check its state
@@ -306,7 +306,7 @@ pub async fn update_provider(
 pub async fn delete_provider(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match providers::delete_provider(provider_id).await {
         Ok(Ok(true)) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(Ok(false)) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
@@ -339,7 +339,7 @@ pub async fn delete_provider(
 pub async fn get_provider_groups(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult2<Json<Vec<UserGroup>>> {
+) -> ApiResult<Json<Vec<UserGroup>>> {
     match user_group_providers::get_groups_for_provider(provider_id).await {
         Ok(groups) => Ok((StatusCode::OK, Json(groups))),
         Err(e) => {
@@ -356,7 +356,7 @@ pub async fn get_provider_groups(
 #[debug_handler]
 pub async fn get_available_devices(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<AvailableDevicesResponse>> {
+) -> ApiResult<Json<AvailableDevicesResponse>> {
     let devices_response = crate::ai::core::device_detection::detect_available_devices();
     Ok((StatusCode::OK, Json(devices_response)))
 }

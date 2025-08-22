@@ -10,8 +10,8 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        errors::{ApiResult2, AppError},
-        middleware::AuthenticatedUser,
+      errors::{ApiResult, AppError},
+      middleware::AuthenticatedUser,
     },
     database::{
         models::{
@@ -33,7 +33,7 @@ pub struct ProjectListQuery {
 pub async fn list_projects(
     Extension(user): Extension<AuthenticatedUser>,
     Query(params): Query<ProjectListQuery>,
-) -> ApiResult2<Json<ProjectListResponse>> {
+) -> ApiResult<Json<ProjectListResponse>> {
     let pool = get_database_pool().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -60,7 +60,7 @@ pub async fn list_projects(
 pub async fn create_project(
     Extension(user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateProjectRequest>,
-) -> ApiResult2<Json<crate::database::models::Project>> {
+) -> ApiResult<Json<crate::database::models::Project>> {
     let pool = get_database_pool().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -95,7 +95,7 @@ pub async fn create_project(
 pub async fn get_project(
     Extension(user): Extension<AuthenticatedUser>,
     Path(project_id): Path<Uuid>,
-) -> ApiResult2<Json<ProjectDetailResponse>> {
+) -> ApiResult<Json<ProjectDetailResponse>> {
     let pool = get_database_pool().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -149,7 +149,7 @@ pub async fn update_project(
     Extension(user): Extension<AuthenticatedUser>,
     Path(project_id): Path<Uuid>,
     Json(request): Json<UpdateProjectRequest>,
-) -> ApiResult2<Json<crate::database::models::Project>> {
+) -> ApiResult<Json<crate::database::models::Project>> {
     let pool = get_database_pool().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -187,7 +187,7 @@ pub async fn update_project(
 pub async fn delete_project(
     Extension(user): Extension<AuthenticatedUser>,
     Path(project_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     let pool = get_database_pool().map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,

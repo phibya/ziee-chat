@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::api::app::is_desktop_app;
-use crate::api::errors::{ApiResult2, AppError, ErrorCode};
+use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::auth::AuthService;
 use crate::database::models::*;
 use crate::database::queries::users;
@@ -84,7 +84,7 @@ async fn create_root_user() -> Result<String, AppError> {
 
 /// Check if the app needs initial setup (not initialized)
 #[debug_handler]
-pub async fn check_init_status() -> ApiResult2<Json<InitResponse>> {
+pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
     let needs_setup = match crate::database::queries::configuration::is_app_initialized().await {
         Ok(is_initialized) => !is_initialized,
         Err(_) => true,
@@ -134,7 +134,7 @@ pub async fn check_init_status() -> ApiResult2<Json<InitResponse>> {
 
 /// Initialize the app with root user (for web app)
 #[debug_handler]
-pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json<AuthResponse>> {
+pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<AuthResponse>> {
     // Check if app is already initialized
     if let Ok(true) = crate::database::queries::configuration::is_app_initialized().await {
         return Err((StatusCode::BAD_REQUEST, AppError::app_already_initialized()));
@@ -202,7 +202,7 @@ pub async fn init_app(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json
 
 /// Login endpoint
 #[debug_handler]
-pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult2<Json<AuthResponse>> {
+pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult<Json<AuthResponse>> {
     // For web app, authenticate with credentials
     match AUTH_SERVICE
         .authenticate_user(&payload.username_or_email, &payload.password)
@@ -226,7 +226,7 @@ pub async fn login(Json(payload): Json<LoginRequest>) -> ApiResult2<Json<AuthRes
 
 /// Logout endpoint
 #[debug_handler]
-pub async fn logout(req: Request) -> ApiResult2<StatusCode> {
+pub async fn logout(req: Request) -> ApiResult<StatusCode> {
     // Extract token from Authorization header
     let auth_header = req
         .headers()
@@ -253,13 +253,13 @@ pub async fn logout(req: Request) -> ApiResult2<StatusCode> {
 #[debug_handler]
 pub async fn me(
     axum::Extension(auth_user): axum::Extension<crate::api::middleware::AuthenticatedUser>,
-) -> ApiResult2<Json<User>> {
+) -> ApiResult<Json<User>> {
     Ok((StatusCode::OK, Json(auth_user.user.sanitized())))
 }
 
 /// Register endpoint (for web app only)
 #[debug_handler]
-pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult2<Json<AuthResponse>> {
+pub async fn register(Json(payload): Json<CreateUserRequest>) -> ApiResult<Json<AuthResponse>> {
     // Desktop app doesn't support registration
     if is_desktop_app() {
         return Err((

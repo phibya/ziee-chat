@@ -13,7 +13,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::ai::core::ChatRequest;
-use crate::api::errors::{ApiResult2, AppError, ErrorCode};
+use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::models::EditMessageRequest;
 use crate::database::{
@@ -94,7 +94,7 @@ pub struct StreamErrorData {
 pub async fn create_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateConversationRequest>,
-) -> ApiResult2<Json<Conversation>> {
+) -> ApiResult<Json<Conversation>> {
     match chat::create_conversation(request, auth_user.user.id).await {
         Ok(conversation) => Ok((StatusCode::OK, Json(conversation))),
         Err(e) => {
@@ -112,7 +112,7 @@ pub async fn create_conversation(
 pub async fn get_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
-) -> ApiResult2<Json<Conversation>> {
+) -> ApiResult<Json<Conversation>> {
     match chat::get_conversation_by_id(conversation_id, auth_user.user.id).await {
         Ok(Some(conversation)) => Ok((StatusCode::OK, Json(conversation))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
@@ -131,7 +131,7 @@ pub async fn get_conversation(
 pub async fn list_conversations(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<ConversationPaginationQuery>,
-) -> ApiResult2<Json<ConversationListResponse>> {
+) -> ApiResult<Json<ConversationListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -158,7 +158,7 @@ pub async fn update_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
     Json(request): Json<UpdateConversationRequest>,
-) -> ApiResult2<Json<Conversation>> {
+) -> ApiResult<Json<Conversation>> {
     match chat::update_conversation(conversation_id, request, auth_user.user.id).await {
         Ok(Some(conversation)) => Ok((StatusCode::OK, Json(conversation))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
@@ -177,7 +177,7 @@ pub async fn update_conversation(
 pub async fn delete_conversation(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match chat::delete_conversation(conversation_id, auth_user.user.id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Conversation"))),
@@ -479,7 +479,7 @@ async fn stream_ai_response(
 pub async fn send_message_stream(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<ChatMessageRequest>,
-) -> ApiResult2<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
+) -> ApiResult<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
     // Create a channel for streaming events
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -526,7 +526,7 @@ pub async fn edit_message_stream(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
     Json(request): Json<ChatMessageRequest>,
-) -> ApiResult2<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
+) -> ApiResult<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
     // Create a channel for streaming events
     let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -591,7 +591,7 @@ pub async fn switch_conversation_branch(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(conversation_id): Path<Uuid>,
     Json(request): Json<SwitchBranchRequest>,
-) -> ApiResult2<Json<OperationSuccessResponse>> {
+) -> ApiResult<Json<OperationSuccessResponse>> {
     match chat::switch_conversation_branch(conversation_id, request.branch_id, auth_user.user.id)
         .await
     {
@@ -621,7 +621,7 @@ pub async fn switch_conversation_branch(
 pub async fn get_message_branches(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
-) -> ApiResult2<Json<Vec<crate::database::models::MessageBranch>>> {
+) -> ApiResult<Json<Vec<crate::database::models::MessageBranch>>> {
     match chat::get_message_branches(message_id, auth_user.user.id).await {
         Ok(branches) => Ok((StatusCode::OK, Json(branches))),
         Err(e) => {
@@ -639,7 +639,7 @@ pub async fn get_message_branches(
 pub async fn search_conversations(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<SearchQuery>,
-) -> ApiResult2<Json<ConversationListResponse>> {
+) -> ApiResult<Json<ConversationListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -667,7 +667,7 @@ pub async fn search_conversations(
 pub async fn get_conversation_messages_by_branch(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path((conversation_id, branch_id)): Path<(Uuid, Uuid)>,
-) -> ApiResult2<Json<Vec<Message>>> {
+) -> ApiResult<Json<Vec<Message>>> {
     match chat::get_conversation_messages_by_branch(conversation_id, branch_id, auth_user.user.id)
         .await
     {

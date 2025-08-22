@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-        errors::{ApiResult2, AppError, ErrorCode},
+        errors::{ApiResult, AppError, ErrorCode},
         middleware::AuthenticatedUser,
     },
     database::{models::file::*, queries::files},
@@ -71,7 +71,7 @@ pub async fn initialize_file_storage() -> Result<(), StatusCode> {
 pub async fn upload_file(
     Extension(user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
-) -> ApiResult2<Json<UploadFileResponse>> {
+) -> ApiResult<Json<UploadFileResponse>> {
     let mut file_data = None;
     let mut filename = String::new();
     let mut file_size = 0u64;
@@ -130,7 +130,7 @@ pub async fn upload_project_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(project_id): Path<Uuid>,
     mut multipart: Multipart,
-) -> ApiResult2<Json<UploadFileResponse>> {
+) -> ApiResult<Json<UploadFileResponse>> {
     let mut file_data = None;
     let mut filename = String::new();
     let mut file_size = 0u64;
@@ -258,7 +258,7 @@ async fn process_file_upload(
 pub async fn get_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
-) -> ApiResult2<Json<File>> {
+) -> ApiResult<Json<File>> {
     let file = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| {
@@ -276,7 +276,7 @@ pub async fn get_file(
 pub async fn generate_download_token(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
-) -> ApiResult2<Json<DownloadTokenResponse>> {
+) -> ApiResult<Json<DownloadTokenResponse>> {
     // Verify file belongs to user
     let _file = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
@@ -429,7 +429,7 @@ pub async fn get_file_preview(
 pub async fn delete_file(
     Extension(user): Extension<AuthenticatedUser>,
     Path(file_id): Path<Uuid>,
-) -> ApiResult2<Json<FileOperationSuccessResponse>> {
+) -> ApiResult<Json<FileOperationSuccessResponse>> {
     let file_db = files::get_file_by_id_and_user(file_id, user.user_id)
         .await
         .map_err(|_| {
@@ -478,7 +478,7 @@ pub async fn list_project_files(
     Extension(user): Extension<AuthenticatedUser>,
     Path(project_id): Path<Uuid>,
     Query(params): Query<FileListParams>,
-) -> ApiResult2<Json<FileListResponse>> {
+) -> ApiResult<Json<FileListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20).min(100);
 
@@ -507,7 +507,7 @@ pub async fn list_project_files(
 pub async fn list_message_files(
     Extension(user): Extension<AuthenticatedUser>,
     Path(message_id): Path<Uuid>,
-) -> ApiResult2<Json<Vec<File>>> {
+) -> ApiResult<Json<Vec<File>>> {
     let files = files::get_files_by_message(message_id, user.user_id)
         .await
         .map_err(|_| {
@@ -524,7 +524,7 @@ pub async fn list_message_files(
 pub async fn remove_file_from_message(
     Extension(user): Extension<AuthenticatedUser>,
     Path((file_id, message_id)): Path<(Uuid, Uuid)>,
-) -> ApiResult2<Json<FileOperationSuccessResponse>> {
+) -> ApiResult<Json<FileOperationSuccessResponse>> {
     // Verify file belongs to user
     let file_exists = files::get_file_by_id_and_user(file_id, user.user_id)
         .await

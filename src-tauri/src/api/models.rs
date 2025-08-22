@@ -1,7 +1,7 @@
 use axum::{debug_handler, extract::Path, http::StatusCode, Extension, Json};
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult2, AppError, ErrorCode};
+use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{CreateModelRequest, Model, UpdateModelRequest},
@@ -14,7 +14,7 @@ pub async fn create_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
     Json(request): Json<CreateModelRequest>,
-) -> ApiResult2<Json<Model>> {
+) -> ApiResult<Json<Model>> {
     match models::create_model(provider_id, request).await {
         Ok(model) => Ok((StatusCode::OK, Json(model))),
         Err(e) => {
@@ -36,7 +36,7 @@ pub async fn update_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateModelRequest>,
-) -> ApiResult2<Json<Model>> {
+) -> ApiResult<Json<Model>> {
     match models::update_model(model_id, request).await {
         Ok(Some(model)) => Ok((StatusCode::OK, Json(model))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
@@ -54,7 +54,7 @@ pub async fn update_model(
 pub async fn delete_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     // Get the model database record using proper database query
     let model = match models::get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
@@ -147,7 +147,7 @@ pub async fn delete_model(
 pub async fn get_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult2<Json<Model>> {
+) -> ApiResult<Json<Model>> {
     match models::get_model_by_id(model_id).await {
         Ok(Some(model)) => Ok((StatusCode::OK, Json(model))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Resource"))),
@@ -166,7 +166,7 @@ pub async fn get_model(
 pub async fn start_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     // Get the model from database
     let model = match models::get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
@@ -207,7 +207,7 @@ pub async fn start_model(
 pub async fn stop_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     // Get the model from database
     let model = match models::get_model_by_id(model_id).await {
         Ok(Some(model)) => model,
@@ -341,7 +341,7 @@ pub async fn stop_model(
 pub async fn enable_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match models::update_model(
         model_id,
         UpdateModelRequest {
@@ -377,7 +377,7 @@ pub async fn enable_model(
 pub async fn disable_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match models::update_model(
         model_id,
         UpdateModelRequest {
@@ -468,7 +468,7 @@ async fn list_provider_models_base(
 pub async fn list_provider_models(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult2<Json<Vec<Model>>> {
+) -> ApiResult<Json<Vec<Model>>> {
     let models = list_provider_models_base(&auth_user, provider_id, false).await?;
     Ok((StatusCode::OK, Json(models)))
 }
@@ -478,7 +478,7 @@ pub async fn list_provider_models(
 pub async fn list_enabled_provider_models(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(provider_id): Path<Uuid>,
-) -> ApiResult2<Json<Vec<Model>>> {
+) -> ApiResult<Json<Vec<Model>>> {
     let models = list_provider_models_base(&auth_user, provider_id, true).await?;
     Ok((StatusCode::OK, Json(models)))
 }

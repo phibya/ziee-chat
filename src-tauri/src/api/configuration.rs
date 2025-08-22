@@ -1,6 +1,6 @@
 use aide::axum::IntoApiResponse;
 use crate::api::app::is_desktop_app;
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::auth::AuthService;
 use crate::database::queries::configuration::{
@@ -125,7 +125,7 @@ pub struct UpdateUserPasswordRequest {
 
 // Public endpoint to check registration status (no auth required)
 #[debug_handler]
-pub async fn get_user_registration_status() -> ApiResult2<Json<UserRegistrationStatusResponse>> {
+pub async fn get_user_registration_status() -> ApiResult<Json<UserRegistrationStatusResponse>> {
     match is_user_registration_enabled().await {
         Ok(enabled) => Ok((
             StatusCode::OK,
@@ -145,7 +145,7 @@ pub async fn get_user_registration_status() -> ApiResult2<Json<UserRegistrationS
 #[debug_handler]
 pub async fn get_user_registration_status_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<UserRegistrationStatusResponse>> {
+) -> ApiResult<Json<UserRegistrationStatusResponse>> {
     match is_user_registration_enabled().await {
         Ok(enabled) => Ok((
             StatusCode::OK,
@@ -166,7 +166,7 @@ pub async fn get_user_registration_status_admin(
 pub async fn update_user_registration_status(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateUserRegistrationRequest>,
-) -> ApiResult2<Json<UserRegistrationStatusResponse>> {
+) -> ApiResult<Json<UserRegistrationStatusResponse>> {
     match set_user_registration_enabled(request.enabled).await {
         Ok(_) => Ok((
             StatusCode::OK,
@@ -186,7 +186,7 @@ pub async fn update_user_registration_status(
 
 // Public endpoint to get default language (no auth required)
 #[debug_handler]
-pub async fn get_default_language_public() -> ApiResult2<Json<DefaultLanguageResponse>> {
+pub async fn get_default_language_public() -> ApiResult<Json<DefaultLanguageResponse>> {
     match get_default_language().await {
         Ok(language) => Ok((StatusCode::OK, Json(DefaultLanguageResponse { language }))),
         Err(e) => {
@@ -203,7 +203,7 @@ pub async fn get_default_language_public() -> ApiResult2<Json<DefaultLanguageRes
 #[debug_handler]
 pub async fn get_default_language_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<DefaultLanguageResponse>> {
+) -> ApiResult<Json<DefaultLanguageResponse>> {
     match get_default_language().await {
         Ok(language) => Ok((StatusCode::OK, Json(DefaultLanguageResponse { language }))),
         Err(e) => {
@@ -221,7 +221,7 @@ pub async fn get_default_language_admin(
 pub async fn update_default_language(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateDefaultLanguageRequest>,
-) -> ApiResult2<Json<DefaultLanguageResponse>> {
+) -> ApiResult<Json<DefaultLanguageResponse>> {
     match set_default_language(&request.language).await {
         Ok(_) => Ok((
             StatusCode::OK,
@@ -243,7 +243,7 @@ pub async fn update_default_language(
 #[debug_handler]
 pub async fn get_proxy_settings(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<ProxySettingsResponse>> {
+) -> ApiResult<Json<ProxySettingsResponse>> {
     let enabled = is_proxy_enabled().await.unwrap_or(false);
     let url = get_proxy_url().await.unwrap_or_default();
     let username = get_proxy_username().await.unwrap_or_default();
@@ -277,7 +277,7 @@ pub async fn get_proxy_settings(
 pub async fn update_proxy_settings(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UpdateProxySettingsRequest>,
-) -> ApiResult2<Json<ProxySettingsResponse>> {
+) -> ApiResult<Json<ProxySettingsResponse>> {
     // Update all proxy settings
     if let Err(e) = set_proxy_enabled(request.enabled).await {
         eprintln!("Error setting proxy enabled: {}", e);
@@ -401,7 +401,7 @@ async fn test_proxy_connectivity(proxy_config: &TestProxyConnectionRequest) -> R
 #[debug_handler]
 pub async fn get_ngrok_settings_handler(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<NgrokSettingsResponse>> {
+) -> ApiResult<Json<NgrokSettingsResponse>> {
     match get_ngrok_settings().await {
         Ok(settings) => Ok((
             StatusCode::OK,
@@ -428,7 +428,7 @@ pub async fn get_ngrok_settings_handler(
 pub async fn update_ngrok_settings(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(payload): Json<UpdateNgrokSettingsRequest>,
-) -> ApiResult2<Json<NgrokSettingsResponse>> {
+) -> ApiResult<Json<NgrokSettingsResponse>> {
     // Get current settings
     let mut settings = match get_ngrok_settings().await {
         Ok(settings) => settings,
@@ -490,7 +490,7 @@ pub async fn update_ngrok_settings(
 #[debug_handler]
 pub async fn start_ngrok_tunnel(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<NgrokStatusResponse>> {
+) -> ApiResult<Json<NgrokStatusResponse>> {
     // Get current settings
     let settings = match get_ngrok_settings().await {
         Ok(settings) => settings,
@@ -572,7 +572,7 @@ pub async fn start_ngrok_tunnel(
 #[debug_handler]
 pub async fn stop_ngrok_tunnel(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<NgrokStatusResponse>> {
+) -> ApiResult<Json<NgrokStatusResponse>> {
     // Stop the global ngrok service
     {
         let mut global_service = NGROK_SERVICE.lock().await;
@@ -629,7 +629,7 @@ pub async fn stop_ngrok_tunnel(
 #[debug_handler]
 pub async fn get_ngrok_status(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<NgrokStatusResponse>> {
+) -> ApiResult<Json<NgrokStatusResponse>> {
     // Check if service is running
     let tunnel_active = {
         let global_service = NGROK_SERVICE.lock().await;
@@ -779,7 +779,7 @@ async fn start_ngrok_tunnel_internal(
 pub async fn update_user_password(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(payload): Json<UpdateUserPasswordRequest>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     let auth_service = AuthService::default();
 
     // For desktop apps, skip current password verification

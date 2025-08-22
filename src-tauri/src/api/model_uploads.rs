@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::api::{
-    errors::{ApiResult2, AppError, ErrorCode},
+    errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
 use crate::database::{
@@ -15,8 +15,21 @@ use crate::database::{
     queries::{models, repositories},
 };
 use crate::utils::git::{GitError, GitPhase, GitProgress, GitService};
+use crate::database::models::DownloadPhase;
 
 use crate::utils::model_storage::ModelStorage;
+
+/// Convert GitPhase to DownloadPhase
+fn git_phase_to_download_phase(git_phase: GitPhase) -> DownloadPhase {
+    match git_phase {
+        GitPhase::Connecting => DownloadPhase::Connecting,
+        GitPhase::Receiving => DownloadPhase::Receiving,
+        GitPhase::Resolving => DownloadPhase::Resolving,
+        GitPhase::CheckingOut => DownloadPhase::CheckingOut,
+        GitPhase::Complete => DownloadPhase::Complete,
+        GitPhase::Error => DownloadPhase::Error,
+    }
+}
 
 /// Progress tracker for calculating speed and ETA
 #[derive(Debug, Clone)]
@@ -499,7 +512,7 @@ pub struct DownloadFromRepositoryRequest {
 pub async fn upload_multiple_files_and_commit(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     mut multipart: Multipart,
-) -> ApiResult2<Json<Model>> {
+) -> ApiResult<Json<Model>> {
     let storage = ModelStorage::new().await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -833,7 +846,7 @@ pub async fn upload_multiple_files_and_commit(
 pub async fn initiate_repository_download(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<DownloadFromRepositoryRequest>,
-) -> ApiResult2<Json<DownloadInstance>> {
+) -> ApiResult<Json<DownloadInstance>> {
     // Get repository information
     let repository = repositories::get_repository_by_id(request.repository_id)
         .await
@@ -946,7 +959,7 @@ pub async fn initiate_repository_download(
                     .map(|eta| eta as i64);
 
                 let progress_data = DownloadProgressData {
-                    phase: format!("{:?}", git_progress.phase),
+                    phase: git_phase_to_download_phase(git_progress.phase),
                     current: git_progress.current as i64,
                     total: git_progress.total as i64,
                     message: git_progress.message.clone(),
@@ -1007,7 +1020,7 @@ pub async fn initiate_repository_download(
                     download_id,
                     UpdateDownloadProgressRequest {
                         progress_data: DownloadProgressData {
-                            phase: "Analyzing".to_string(),
+                            phase: DownloadPhase::Analyzing,
                             current: 10,
                             total: 100,
                             message: "Analyzing repository files...".to_string(),
@@ -1080,7 +1093,7 @@ pub async fn initiate_repository_download(
                     download_id,
                     UpdateDownloadProgressRequest {
                         progress_data: DownloadProgressData {
-                            phase: "Downloading".to_string(),
+                            phase: DownloadPhase::Downloading,
                             current: 20,
                             total: 100,
                             message: "Checking for LFS files...".to_string(),
@@ -1111,7 +1124,7 @@ pub async fn initiate_repository_download(
                             .map(|eta| eta as i64);
 
                         // Use the git_progress phase for better status reporting
-                        let phase_string = match git_progress.phase {
+                        let _phase_string = match git_progress.phase {
                             GitPhase::Connecting => "Connecting to LFS".to_string(),
                             GitPhase::CheckingOut => "Downloading LFS files".to_string(),
                             GitPhase::Complete => "LFS download complete".to_string(),
@@ -1124,7 +1137,7 @@ pub async fn initiate_repository_download(
                                 download_id_lfs,
                                 UpdateDownloadProgressRequest {
                                     progress_data: DownloadProgressData {
-                                        phase: phase_string,
+                                        phase: git_phase_to_download_phase(git_progress.phase),
                                         current: git_progress.current as i64,
                                         total: git_progress.total as i64,
                                         message: git_progress.message,
@@ -1189,7 +1202,7 @@ pub async fn initiate_repository_download(
                     download_id,
                     UpdateDownloadProgressRequest {
                         progress_data: DownloadProgressData {
-                            phase: "Committing".to_string(),
+                            phase: DownloadPhase::Committing,
                             current: 90,
                             total: 100,
                             message: "Creating model from downloaded files...".to_string(),

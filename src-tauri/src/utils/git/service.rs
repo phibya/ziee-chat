@@ -16,7 +16,7 @@ pub struct GitProgress {
     pub message: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub enum GitPhase {
     Connecting,
     Receiving,

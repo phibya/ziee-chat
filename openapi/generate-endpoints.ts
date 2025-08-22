@@ -65,6 +65,7 @@ interface SchemaDefinition extends SchemaType {
   $ref?: string
   required?: string[]
   anyOf?: (SchemaReference | SchemaType)[]
+  allOf?: (SchemaReference | SchemaType)[]
   enum?: any[]
 }
 
@@ -361,6 +362,26 @@ function getTypeFromSchema(
     return types.length === 1 ? types[0] : types.join(' | ')
   }
 
+  // Handle allOf patterns (intersection types with schema references)
+  if (schema.allOf && Array.isArray(schema.allOf)) {
+    const types = schema.allOf
+      .map((subSchema: any) => {
+        if (isSchemaReference(subSchema)) {
+          return extractSchemaName(subSchema.$ref)
+        } else {
+          return getTypeFromSchema(subSchema, isOptionalParamOrNullable)
+        }
+      })
+      .filter((type: string | null) => type !== null)
+
+    // For allOf with a single reference (common pattern for enums), return the single type
+    if (types.length === 1) {
+      return types[0]
+    }
+    // For multiple types, use intersection (though this is less common)
+    return types.join(' & ')
+  }
+
   // Handle enum types
   if (schema.enum && Array.isArray(schema.enum)) {
     // Convert enum values to union type with string literals
@@ -467,7 +488,11 @@ function generateSchemaInterface(
         propSchema.anyOf &&
         Array.isArray(propSchema.anyOf) &&
         propSchema.anyOf.some((subSchema: any) => subSchema.type === 'null')
-      const isNullable = isNullableUnion || isNullableAnyOf
+      const isNullableAllOf =
+        propSchema.allOf &&
+        Array.isArray(propSchema.allOf) &&
+        propSchema.allOf.some((subSchema: any) => subSchema.type === 'null')
+      const isNullable = isNullableUnion || isNullableAnyOf || isNullableAllOf
 
       // If property is nullable, make it optional and exclude null from type
       if (isNullable) {

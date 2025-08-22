@@ -64,7 +64,7 @@ pub struct HubData {
 }
 
 // API endpoint handlers
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::utils::hub_manager::HUB_MANAGER;
 use axum::{debug_handler, extract::Query, http::StatusCode, Json};
 
@@ -79,7 +79,7 @@ pub struct HubVersionResponse {
 }
 
 #[debug_handler]
-pub async fn get_hub_data_models(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<Vec<HubModel>>> {
+pub async fn get_hub_data_models(Query(params): Query<HubQueryParams>) -> ApiResult<Json<Vec<HubModel>>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!("API: Received request for hub models with locale: {}", locale);
 
@@ -138,7 +138,7 @@ pub async fn get_hub_data_models(Query(params): Query<HubQueryParams>) -> ApiRes
 }
 
 #[debug_handler]
-pub async fn get_hub_data_assistants(Query(params): Query<HubQueryParams>) -> ApiResult2<Json<Vec<HubAssistant>>> {
+pub async fn get_hub_data_assistants(Query(params): Query<HubQueryParams>) -> ApiResult<Json<Vec<HubAssistant>>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!("API: Received request for hub assistants with locale: {}", locale);
 
@@ -197,7 +197,7 @@ pub async fn get_hub_data_assistants(Query(params): Query<HubQueryParams>) -> Ap
 }
 
 #[debug_handler]
-pub async fn refresh_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult2<StatusCode> {
+pub async fn refresh_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult<StatusCode> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
     println!(
         "API: Received request to refresh hub data with locale: {}",
@@ -231,7 +231,7 @@ pub async fn refresh_hub_data(Query(params): Query<HubQueryParams>) -> ApiResult
 }
 
 #[debug_handler]
-pub async fn get_hub_version() -> ApiResult2<Json<HubVersionResponse>> {
+pub async fn get_hub_version() -> ApiResult<Json<HubVersionResponse>> {
     let hub_manager_guard = HUB_MANAGER.lock().await;
     if let Some(manager) = hub_manager_guard.as_ref() {
         Ok((

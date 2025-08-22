@@ -3,8 +3,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::api::{
-    errors::{ApiResult2, AppError},
-    middleware::AuthenticatedUser,
+  errors::{ApiResult, AppError},
+  middleware::AuthenticatedUser,
 };
 use crate::database::{
     models::{UserSetting, UserSettingRequest, UserSettingsResponse},
@@ -20,7 +20,7 @@ pub struct UserSettingsDeletionResponse {
 #[debug_handler]
 pub async fn get_user_settings(
     Extension(auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<UserSettingsResponse>> {
+) -> ApiResult<Json<UserSettingsResponse>> {
     match user_settings::get_user_settings(&auth_user.user_id).await {
         Ok(settings_db) => {
             let settings = settings_db
@@ -51,7 +51,7 @@ pub async fn get_user_settings(
 pub async fn get_user_setting(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(key): Path<String>,
-) -> ApiResult2<Json<UserSetting>> {
+) -> ApiResult<Json<UserSetting>> {
     match user_settings::get_user_setting(&auth_user.user_id, &key).await {
         Ok(Some(setting_db)) => {
             let setting = UserSetting {
@@ -80,7 +80,7 @@ pub async fn get_user_setting(
 pub async fn set_user_setting(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<UserSettingRequest>,
-) -> ApiResult2<Json<UserSetting>> {
+) -> ApiResult<Json<UserSetting>> {
     match user_settings::set_user_setting(&auth_user.user_id, &request.key, &request.value).await {
         Ok(setting_db) => {
             let setting = UserSetting {
@@ -108,7 +108,7 @@ pub async fn set_user_setting(
 pub async fn delete_user_setting(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(key): Path<String>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match user_settings::delete_user_setting(&auth_user.user_id, &key).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User setting"))),
@@ -126,7 +126,7 @@ pub async fn delete_user_setting(
 #[debug_handler]
 pub async fn delete_all_user_settings(
     Extension(auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<UserSettingsDeletionResponse>> {
+) -> ApiResult<Json<UserSettingsDeletionResponse>> {
     match user_settings::delete_all_user_settings(&auth_user.user_id).await {
         Ok(deleted_count) => Ok((
             StatusCode::OK,

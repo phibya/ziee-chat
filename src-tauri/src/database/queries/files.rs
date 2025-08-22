@@ -125,6 +125,11 @@ pub async fn delete_file(file_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Err
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
+    // Check if file has message associations
+    if check_file_has_message_associations(file_id).await? {
+        return Err(sqlx::Error::Protocol("Cannot delete file that is associated with messages".into()));
+    }
+
     let result = sqlx::query("DELETE FROM files WHERE id = $1 AND user_id = $2")
         .bind(file_id)
         .bind(user_id)

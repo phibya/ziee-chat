@@ -6,7 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{Assistant, AssistantListResponse, CreateAssistantRequest, UpdateAssistantRequest},
@@ -34,7 +34,7 @@ pub async fn create_assistant(
 pub async fn create_template_assistant(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Json(mut request): Json<CreateAssistantRequest>,
-) -> ApiResult2<Json<Assistant>> {
+) -> ApiResult<Json<Assistant>> {
     // Only admins can create template assistants
     request.is_template = Some(true);
     match assistants::create_assistant(request, Some(auth_user.user.id)).await {
@@ -69,7 +69,7 @@ pub async fn get_assistant(
 pub async fn get_assistant_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
-) -> ApiResult2<Json<Assistant>> {
+) -> ApiResult<Json<Assistant>> {
     match assistants::get_assistant_by_id(assistant_id, None).await {
         Ok(Some(assistant)) => Ok((StatusCode::OK, Json(assistant))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Assistant"))),
@@ -105,7 +105,7 @@ pub async fn list_assistants(
 pub async fn list_assistants_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult2<Json<AssistantListResponse>> {
+) -> ApiResult<Json<AssistantListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -144,7 +144,7 @@ pub async fn update_assistant_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
     Json(request): Json<UpdateAssistantRequest>,
-) -> ApiResult2<Json<Assistant>> {
+) -> ApiResult<Json<Assistant>> {
     match assistants::update_assistant(assistant_id, request, None, true).await {
         Ok(Some(assistant)) => Ok((StatusCode::OK, Json(assistant))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Assistant"))),
@@ -178,7 +178,7 @@ pub async fn delete_assistant(
 pub async fn delete_assistant_admin(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(assistant_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match assistants::delete_assistant(assistant_id, None, true).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Assistant"))),

@@ -206,7 +206,7 @@ export const AssistantsPage: React.FC = () => {
             </div>
           ) : (
             <div className={'flex flex-1 flex-col overflow-y-auto h-full'}>
-              <div className="max-w-4xl flex flex-wrap gap-3 pt-4 w-full h-auto p-3 self-center">
+              <div className="max-w-4xl flex flex-wrap gap-3 pt-3 w-full h-auto p-3 self-center">
                 {getFilteredAndSortedAssistants().map(
                   (assistant: Assistant) => (
                     <div key={assistant.id} className={'min-w-70 flex-1'}>

@@ -26,7 +26,7 @@ pub fn get_platform_config(target: &str) -> Result<PlatformConfig, Box<dyn std::
 fn macos_config(target: &str) -> PlatformConfig {
     let mut cmake_flags = HashMap::new();
     let env_vars = HashMap::new();
-    
+
     // Architecture-specific settings
     if target.contains("aarch64") || target.contains("arm64") {
         cmake_flags.insert("CMAKE_OSX_ARCHITECTURES".to_string(), "arm64".to_string());
@@ -40,10 +40,10 @@ fn macos_config(target: &str) -> PlatformConfig {
         // Disable Metal on Intel Macs due to compatibility issues
         cmake_flags.insert("GGML_METAL".to_string(), "OFF".to_string());
     }
-    
+
     // Enable RPC support
     cmake_flags.insert("GGML_RPC".to_string(), "ON".to_string());
-    
+
     PlatformConfig {
         name: "macOS".to_string(),
         cmake_flags,
@@ -56,16 +56,16 @@ fn macos_config(target: &str) -> PlatformConfig {
 fn linux_config(target: &str) -> PlatformConfig {
     let mut cmake_flags = HashMap::new();
     let env_vars = HashMap::new();
-    
+
     // Architecture-specific settings
     if target.contains("aarch64") || target.contains("arm") {
         // ARM-specific optimizations
         cmake_flags.insert("GGML_CPU_ARM_ARCH".to_string(), "armv8-a".to_string());
     }
-    
+
     // Enable RPC support
     cmake_flags.insert("GGML_RPC".to_string(), "ON".to_string());
-    
+
     PlatformConfig {
         name: "Linux".to_string(),
         cmake_flags,
@@ -82,25 +82,37 @@ fn linux_config(target: &str) -> PlatformConfig {
 fn windows_config(target: &str) -> PlatformConfig {
     let mut cmake_flags = HashMap::new();
     let env_vars = HashMap::new();
-    
+
     // Use Ninja generator for better performance
-    cmake_flags.insert("CMAKE_GENERATOR".to_string(), "Ninja Multi-Config".to_string());
-    
+    cmake_flags.insert(
+        "CMAKE_GENERATOR".to_string(),
+        "Ninja Multi-Config".to_string(),
+    );
+
     // Architecture-specific settings
     if target.contains("aarch64") || target.contains("arm64") {
-        cmake_flags.insert("CMAKE_TOOLCHAIN_FILE".to_string(), "cmake/arm64-windows-llvm.cmake".to_string());
+        cmake_flags.insert(
+            "CMAKE_TOOLCHAIN_FILE".to_string(),
+            "cmake/arm64-windows-llvm.cmake".to_string(),
+        );
     } else {
-        cmake_flags.insert("CMAKE_TOOLCHAIN_FILE".to_string(), "cmake/x64-windows-llvm.cmake".to_string());
+        cmake_flags.insert(
+            "CMAKE_TOOLCHAIN_FILE".to_string(),
+            "cmake/x64-windows-llvm.cmake".to_string(),
+        );
     }
-    
+
     // Windows-specific settings
     cmake_flags.insert("BUILD_SHARED_LIBS".to_string(), "OFF".to_string());
     cmake_flags.insert("GGML_RPC".to_string(), "ON".to_string());
     cmake_flags.insert("LLAMA_BUILD_SERVER".to_string(), "ON".to_string());
-    
+
     // Linker flags for Windows
-    cmake_flags.insert("CMAKE_EXE_LINKER_FLAGS".to_string(), "-Wl,--allow-shlib-undefined".to_string());
-    
+    cmake_flags.insert(
+        "CMAKE_EXE_LINKER_FLAGS".to_string(),
+        "-Wl,--allow-shlib-undefined".to_string(),
+    );
+
     PlatformConfig {
         name: "Windows".to_string(),
         cmake_flags,

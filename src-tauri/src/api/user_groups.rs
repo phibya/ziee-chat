@@ -6,7 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
@@ -22,7 +22,7 @@ use crate::types::PaginationQuery;
 pub async fn create_user_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateUserGroupRequest>,
-) -> ApiResult2<Json<crate::database::models::UserGroup>> {
+) -> ApiResult<Json<crate::database::models::UserGroup>> {
     match user_groups::create_user_group(request.name, request.description, request.permissions)
         .await
     {
@@ -71,7 +71,7 @@ pub async fn create_user_group(
 pub async fn get_user_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
-) -> ApiResult2<Json<crate::database::models::UserGroup>> {
+) -> ApiResult<Json<crate::database::models::UserGroup>> {
     match user_groups::get_user_group_by_id(group_id).await {
         Ok(Some(group)) => Ok((StatusCode::OK, Json(group))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User group"))),
@@ -90,7 +90,7 @@ pub async fn get_user_group(
 pub async fn list_user_groups(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult2<Json<crate::database::models::UserGroupListResponse>> {
+) -> ApiResult<Json<crate::database::models::UserGroupListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -112,7 +112,7 @@ pub async fn update_user_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
     Json(request): Json<UpdateUserGroupRequest>,
-) -> ApiResult2<Json<crate::database::models::UserGroup>> {
+) -> ApiResult<Json<crate::database::models::UserGroup>> {
     // Handle model provider assignments if provided
     if let Some(provider_ids) = &request.provider_ids {
         // First, get current assignments
@@ -178,7 +178,7 @@ pub async fn update_user_group(
 pub async fn delete_user_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match user_groups::delete_user_group(group_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User group"))),
@@ -202,7 +202,7 @@ pub async fn delete_user_group(
 pub async fn assign_user_to_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<AssignUserToGroupRequest>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match user_groups::assign_user_to_group(request.user_id, request.group_id, None).await {
         Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
@@ -220,7 +220,7 @@ pub async fn assign_user_to_group(
 pub async fn remove_user_from_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path((user_id, group_id)): Path<(Uuid, Uuid)>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match user_groups::remove_user_from_group(user_id, group_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((
@@ -243,7 +243,7 @@ pub async fn get_group_members(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult2<Json<crate::database::models::UserListResponse>> {
+) -> ApiResult<Json<crate::database::models::UserListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -264,7 +264,7 @@ pub async fn get_group_members(
 pub async fn get_group_providers(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
-) -> ApiResult2<Json<Vec<crate::database::models::Provider>>> {
+) -> ApiResult<Json<Vec<crate::database::models::Provider>>> {
     match user_group_providers::get_providers_for_group(group_id).await {
         Ok(providers) => Ok((StatusCode::OK, Json(providers))),
         Err(e) => {
@@ -282,7 +282,7 @@ pub async fn get_group_providers(
 pub async fn assign_provider_to_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<AssignProviderToGroupRequest>,
-) -> ApiResult2<Json<UserGroupProviderResponse>> {
+) -> ApiResult<Json<UserGroupProviderResponse>> {
     match user_group_providers::assign_provider_to_group(request).await {
         Ok(response) => Ok((StatusCode::OK, Json(response))),
         Err(e) => {
@@ -310,7 +310,7 @@ pub async fn assign_provider_to_group(
 pub async fn remove_provider_from_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path((group_id, provider_id)): Path<(Uuid, Uuid)>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match user_group_providers::remove_provider_from_group(group_id, provider_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((
@@ -331,7 +331,7 @@ pub async fn remove_provider_from_group(
 #[debug_handler]
 pub async fn list_user_group_provider_relationships(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<Vec<UserGroupProviderResponse>>> {
+) -> ApiResult<Json<Vec<UserGroupProviderResponse>>> {
     match user_group_providers::list_user_group_provider_relationships().await {
         Ok(relationships) => Ok((StatusCode::OK, Json(relationships))),
         Err(e) => {

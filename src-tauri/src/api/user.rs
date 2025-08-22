@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::{
-    errors::{ApiResult2, AppError},
-    middleware::AuthenticatedUser,
+  errors::{ApiResult, AppError},
+  middleware::AuthenticatedUser,
 };
 use crate::database::{
     models::{ResetPasswordRequest, UpdateUserRequest},
@@ -30,7 +30,7 @@ pub struct UserActiveStatusResponse {
 }
 
 #[debug_handler]
-pub async fn greet(Json(payload): Json<UserHello>) -> ApiResult2<Json<String>> {
+pub async fn greet(Json(payload): Json<UserHello>) -> ApiResult<Json<String>> {
     let name = payload.name.trim().to_string();
     if name.is_empty() {
         return Err((
@@ -51,7 +51,7 @@ pub async fn greet(Json(payload): Json<UserHello>) -> ApiResult2<Json<String>> {
 pub async fn list_users(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult2<Json<crate::database::models::UserListResponse>> {
+) -> ApiResult<Json<crate::database::models::UserListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -80,7 +80,7 @@ pub async fn list_users(
 pub async fn get_user(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
-) -> ApiResult2<Json<crate::database::models::User>> {
+) -> ApiResult<Json<crate::database::models::User>> {
     match users::get_user_by_id(user_id).await {
         Ok(Some(user)) => Ok((StatusCode::OK, Json(user.sanitized()))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("User"))),
@@ -100,7 +100,7 @@ pub async fn update_user(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
     Json(request): Json<UpdateUserRequest>,
-) -> ApiResult2<Json<crate::database::models::User>> {
+) -> ApiResult<Json<crate::database::models::User>> {
     match users::update_user(
         user_id,
         request.username,
@@ -127,7 +127,7 @@ pub async fn update_user(
 pub async fn reset_user_password(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<ResetPasswordRequest>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     // Hash the password with random salt
     let password_service = match password::hash_password(&request.new_password) {
         Ok(service) => service,
@@ -158,7 +158,7 @@ pub async fn reset_user_password(
 pub async fn toggle_user_active(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
-) -> ApiResult2<Json<UserActiveStatusResponse>> {
+) -> ApiResult<Json<UserActiveStatusResponse>> {
     match users::toggle_user_active(user_id).await {
         Ok(is_active) => Ok((StatusCode::OK, Json(UserActiveStatusResponse { is_active }))),
         Err(e) => {
@@ -176,7 +176,7 @@ pub async fn toggle_user_active(
 pub async fn create_user(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<crate::database::models::CreateUserRequest>,
-) -> ApiResult2<Json<crate::database::models::User>> {
+) -> ApiResult<Json<crate::database::models::User>> {
     // Hash the password with random salt
     let password_service = match password::hash_password(&request.password) {
         Ok(service) => service,
@@ -220,7 +220,7 @@ pub async fn create_user(
 pub async fn delete_user(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(user_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match users::delete_user(user_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User"))),

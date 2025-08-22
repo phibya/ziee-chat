@@ -128,6 +128,13 @@ export const ChatInput = function ChatInput({
       'message',
       editingMessage?.content || store.__state.content || '',
     )
+    if (editingMessage) {
+      store.__setState({
+        files: new Map(editingMessage.files.map(file => [file.id, file])),
+        newFiles: new Map(),
+        uploadingFiles: new Map(),
+      })
+    }
   }, [])
 
   // Get available assistants (exclude templates) - memoized for performance

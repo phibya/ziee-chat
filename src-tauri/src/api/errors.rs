@@ -290,7 +290,7 @@ impl IntoResponse for AppError {
     }
 }
 
-pub type ApiResult2<T> = Result<(StatusCode, T), (StatusCode, AppError)>;
+pub type ApiResult<T> = Result<(StatusCode, T), (StatusCode, AppError)>;
 
 // Conversion from common error types
 impl From<sqlx::Error> for AppError {

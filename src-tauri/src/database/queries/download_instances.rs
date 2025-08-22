@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::database::{
     models::{
         CreateDownloadInstanceRequest, DownloadInstance, DownloadInstanceListResponse,
-        DownloadStatus, UpdateDownloadProgressRequest,
+        DownloadPhase, DownloadProgressData, DownloadStatus, UpdateDownloadProgressRequest,
         UpdateDownloadStatusRequest,
     },
     queries::get_database_pool,
@@ -101,8 +101,8 @@ pub async fn create_download_instance(
     let download_id = Uuid::new_v4();
 
     let download_row: DownloadInstance = sqlx::query_as(
-        "INSERT INTO download_instances (id, provider_id, repository_id, request_data, status)
-         VALUES ($1, $2, $3, $4, $5) 
+        "INSERT INTO download_instances (id, provider_id, repository_id, request_data, status, progress_data)
+         VALUES ($1, $2, $3, $4, $5, $6) 
          RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
          error_message, started_at, completed_at, model_id, created_at, updated_at",
     )
@@ -114,6 +114,17 @@ pub async fn create_download_instance(
             .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
     )
     .bind(DownloadStatus::Pending.as_str())
+    .bind(
+        serde_json::to_value(&DownloadProgressData {
+            phase: DownloadPhase::Created,
+            current: 0,
+            total: 0,
+            message: "Download instance created".to_string(),
+            speed_bps: 0,
+            eta_seconds: 0,
+        })
+        .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
+    )
     .fetch_one(pool)
     .await?;
 

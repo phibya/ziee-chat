@@ -6,7 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
@@ -23,7 +23,7 @@ use crate::types::PaginationQuery;
 pub async fn list_rag_repositories(
     Extension(_user): Extension<AuthenticatedUser>,
     Query(pagination): Query<PaginationQuery>,
-) -> ApiResult2<Json<RAGRepositoryListResponse>> {
+) -> ApiResult<Json<RAGRepositoryListResponse>> {
     let response = rag_repositories::list_rag_repositories(pagination.page, pagination.per_page)
         .await
         .map_err(|_e| {
@@ -39,7 +39,7 @@ pub async fn list_rag_repositories(
 pub async fn get_rag_repository(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
-) -> ApiResult2<Json<RAGRepository>> {
+) -> ApiResult<Json<RAGRepository>> {
     let repository = rag_repositories::get_rag_repository_by_id(repository_id)
         .await
         .map_err(|_e| {
@@ -57,7 +57,7 @@ pub async fn get_rag_repository(
 pub async fn create_rag_repository(
     Extension(_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateRAGRepositoryRequest>,
-) -> ApiResult2<Json<RAGRepository>> {
+) -> ApiResult<Json<RAGRepository>> {
     let repository = rag_repositories::create_rag_repository(request)
         .await
         .map_err(|_e| {
@@ -74,7 +74,7 @@ pub async fn update_rag_repository(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
     Json(request): Json<UpdateRAGRepositoryRequest>,
-) -> ApiResult2<Json<RAGRepository>> {
+) -> ApiResult<Json<RAGRepository>> {
     let repository = rag_repositories::update_rag_repository(repository_id, request)
         .await
         .map_err(|_e| {
@@ -90,7 +90,7 @@ pub async fn update_rag_repository(
 pub async fn delete_rag_repository(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     rag_repositories::delete_rag_repository(repository_id)
         .await
         .map_err(|_e| {
@@ -106,7 +106,7 @@ pub async fn delete_rag_repository(
 pub async fn test_rag_repository_connection(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
-) -> ApiResult2<Json<RAGRepositoryConnectionTestResponse>> {
+) -> ApiResult<Json<RAGRepositoryConnectionTestResponse>> {
     let _repository = rag_repositories::get_rag_repository_by_id(repository_id)
         .await
         .map_err(|_e| {
@@ -132,7 +132,7 @@ pub async fn test_rag_repository_connection(
 pub async fn list_rag_repository_databases(
     Extension(_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
-) -> ApiResult2<Json<Vec<RAGDatabase>>> {
+) -> ApiResult<Json<Vec<RAGDatabase>>> {
     let _repository = rag_repositories::get_rag_repository_by_id(repository_id)
         .await
         .map_err(|_e| {
@@ -154,7 +154,7 @@ pub async fn list_rag_repository_databases(
 pub async fn download_rag_database_from_repository(
     Extension(_user): Extension<AuthenticatedUser>,
     Json(request): Json<DownloadRAGDatabaseFromRepositoryRequest>,
-) -> ApiResult2<Json<RAGDatabase>> {
+) -> ApiResult<Json<RAGDatabase>> {
     // Validate that the target provider exists
     let _provider = rag_providers::get_rag_provider_by_id(request.target_provider_id)
         .await

@@ -6,7 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
@@ -22,7 +22,7 @@ use crate::types::PaginationQuery;
 pub async fn list_repositories(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<PaginationQuery>,
-) -> ApiResult2<Json<RepositoryListResponse>> {
+) -> ApiResult<Json<RepositoryListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -64,7 +64,7 @@ pub async fn list_repositories(
 pub async fn get_repository(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
-) -> ApiResult2<Json<Repository>> {
+) -> ApiResult<Json<Repository>> {
     match repositories::get_repository_by_id(repository_id).await {
         Ok(Some(repository)) => Ok((StatusCode::OK, Json(repository))),
         Ok(None) => Err((StatusCode::NOT_FOUND, AppError::not_found("Repository"))),
@@ -82,7 +82,7 @@ pub async fn get_repository(
 pub async fn create_repository(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateRepositoryRequest>,
-) -> ApiResult2<Json<Repository>> {
+) -> ApiResult<Json<Repository>> {
     // Validate auth type
     let valid_auth_types = ["none", "api_key", "basic_auth", "bearer_token"];
     if !valid_auth_types.contains(&request.auth_type.as_str()) {
@@ -183,7 +183,7 @@ pub async fn update_repository(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
     Json(request): Json<UpdateRepositoryRequest>,
-) -> ApiResult2<Json<Repository>> {
+) -> ApiResult<Json<Repository>> {
     // Validate auth type if provided
     if let Some(ref auth_type) = request.auth_type {
         let valid_auth_types = ["none", "api_key", "basic_auth", "bearer_token"];
@@ -326,7 +326,7 @@ pub async fn update_repository(
 pub async fn delete_repository(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(repository_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match repositories::delete_repository(repository_id).await {
         Ok(Ok(true)) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(Ok(false)) => Err((StatusCode::NOT_FOUND, AppError::not_found("Repository"))),
@@ -358,7 +358,7 @@ pub async fn delete_repository(
 pub async fn test_repository_connection(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<TestRepositoryConnectionRequest>,
-) -> ApiResult2<Json<TestRepositoryConnectionResponse>> {
+) -> ApiResult<Json<TestRepositoryConnectionResponse>> {
     // Validate URL format
     if !is_valid_url(&request.url) {
         return Ok((

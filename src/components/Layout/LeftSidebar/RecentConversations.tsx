@@ -1,4 +1,4 @@
-import { App, Button, Modal, theme, Typography } from 'antd'
+import { App, Button, theme, Typography } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -16,13 +16,12 @@ import {
 import { ConversationSummary } from '../../../types'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 
-const { confirm } = Modal
 const { Text } = Typography
 
 export function RecentConversations() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { message } = App.useApp()
+  const { message, modal } = App.useApp()
   const { token } = theme.useToken()
 
   const { conversations, isLoading } = Stores.Conversations
@@ -41,7 +40,7 @@ export function RecentConversations() {
   }
 
   const handleDeleteConversation = (conversation: ConversationSummary) => {
-    confirm({
+    modal.confirm({
       title: t('conversations.deleteTitle') || 'Delete Conversation',
       icon: <ExclamationCircleOutlined />,
       content:
@@ -54,6 +53,11 @@ export function RecentConversations() {
         try {
           await removeConversationFromList(conversation.id)
           message.success(t('conversations.deleted') || 'Conversation deleted')
+          // Navigate to home if the deleted conversation was active
+          const conversationId = window.location.pathname.split('/').pop()
+          if (conversationId === conversation.id) {
+            navigate('/')
+          }
         } catch (error: any) {
           console.error('Failed to delete conversation:', error)
           message.error(

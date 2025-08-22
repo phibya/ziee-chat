@@ -6629,8 +6629,12 @@
         "type": "object",
         "properties": {
           "phase": {
-            "description": "Current download phase (e.g., \"connecting\", \"downloading\", \"extracting\")",
-            "type": "string"
+            "description": "Current download phase",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DownloadPhase"
+              }
+            ]
           },
           "current": {
             "description": "Current bytes/items processed",
@@ -6664,6 +6668,22 @@
           "message",
           "speed_bps",
           "eta_seconds"
+        ]
+      },
+      "DownloadPhase": {
+        "description": "Download phase enum",
+        "type": "string",
+        "enum": [
+          "created",
+          "connecting",
+          "analyzing",
+          "downloading",
+          "receiving",
+          "resolving",
+          "checkingout",
+          "committing",
+          "complete",
+          "error"
         ]
       },
       "RepositoryListResponse": {

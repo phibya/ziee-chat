@@ -2,7 +2,11 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-fn download_binary(url: &str, target_path: &Path, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn download_binary(
+    url: &str,
+    target_path: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("Downloading {} from: {}", name, url);
 
     let response = ureq::get(url).call()?;
@@ -55,7 +59,11 @@ fn extract_pdfium(
     Err("PDFium library not found in archive".into())
 }
 
-pub fn setup_pdfium(target: &str, target_dir: &Path, out_dir: &str) -> Result<PathBuf, Box<dyn std::error::Error>> {
+pub fn setup_pdfium(
+    target: &str,
+    target_dir: &Path,
+    out_dir: &str,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
     // Use dedicated PDFium directory
     let pdfium_dir = target_dir.join("pdfium");
     fs::create_dir_all(&pdfium_dir)
@@ -100,13 +108,13 @@ pub fn setup_pdfium(target: &str, target_dir: &Path, out_dir: &str) -> Result<Pa
     };
 
     let pdfium_target_path = pdfium_dir.join(&pdfium_binary_name);
-    
+
     println!("PDFium target path:  {:?}", pdfium_target_path);
 
     // Download PDFium if it doesn't exist
     if !pdfium_target_path.exists() {
         println!("Downloading PDFium library...");
-        
+
         // Create a temporary directory for PDFium download
         let pdfium_temp_dir = Path::new(out_dir).join("pdfium-download");
         fs::create_dir_all(&pdfium_temp_dir).unwrap();
@@ -134,12 +142,13 @@ pub fn setup_pdfium(target: &str, target_dir: &Path, out_dir: &str) -> Result<Pa
                         eprintln!("Warning: Failed to copy PDFium binary: {}", e);
                     } else {
                         println!("Successfully installed PDFium to {:?}", pdfium_target_path);
-                        
+
                         // Make it executable on Unix
                         #[cfg(unix)]
                         {
                             use std::os::unix::fs::PermissionsExt;
-                            let mut perms = fs::metadata(&pdfium_target_path).unwrap().permissions();
+                            let mut perms =
+                                fs::metadata(&pdfium_target_path).unwrap().permissions();
                             perms.set_mode(0o755);
                             fs::set_permissions(&pdfium_target_path, perms).unwrap();
                         }
@@ -156,7 +165,7 @@ pub fn setup_pdfium(target: &str, target_dir: &Path, out_dir: &str) -> Result<Pa
     } else {
         println!("PDFium binary already exists at {:?}", pdfium_target_path);
     }
-    
+
     // Always copy to lib directories for Tauri bundling (during every build)
     if pdfium_target_path.exists() {
         let standardized_name = if target.contains("windows") {
@@ -173,7 +182,10 @@ pub fn setup_pdfium(target: &str, target_dir: &Path, out_dir: &str) -> Result<Pa
         let target_path_standardized = profile_dir.join(standardized_name);
 
         if let Err(e) = fs::copy(&pdfium_target_path, &target_path_standardized) {
-            eprintln!("Warning: Failed to copy PDFium to {:?} directory: {}", profile_dir, e);
+            eprintln!(
+                "Warning: Failed to copy PDFium to {:?} directory: {}",
+                profile_dir, e
+            );
         } else {
             println!("Successfully copied PDFium to {:?}", profile_dir);
         }
@@ -183,13 +195,15 @@ pub fn setup_pdfium(target: &str, target_dir: &Path, out_dir: &str) -> Result<Pa
         {
             use std::os::unix::fs::PermissionsExt;
             if target_path_standardized.exists() {
-                let mut bundle_perms = fs::metadata(&target_path_standardized).unwrap().permissions();
+                let mut bundle_perms = fs::metadata(&target_path_standardized)
+                    .unwrap()
+                    .permissions();
                 bundle_perms.set_mode(0o755);
                 fs::set_permissions(&target_path_standardized, bundle_perms).unwrap();
             }
         }
     }
-    
+
     Ok(pdfium_target_path)
 }
 
@@ -197,19 +211,23 @@ pub fn setup_pdfium_env(target: &str, pdfium_target_path: &Path, pdfium_dir: &Pa
     // Set environment variables for PDFium dynamic library path
     if pdfium_target_path.exists() {
         let pdfium_dir_str = pdfium_dir.to_string_lossy();
-        
+
         // Set PDFIUM_DYNAMIC_LIB_PATH for pdfium-render crate
         println!("cargo:rustc-env=PDFIUM_DYNAMIC_LIB_PATH={}", pdfium_dir_str);
-        
+
         // For runtime, set the library path environment variable
         if target.contains("windows") {
-            println!("cargo:rustc-env=PATH={};{}", pdfium_dir_str, env::var("PATH").unwrap_or_default());
+            println!(
+                "cargo:rustc-env=PATH={};{}",
+                pdfium_dir_str,
+                env::var("PATH").unwrap_or_default()
+            );
         } else if target.contains("darwin") {
             println!("cargo:rustc-env=DYLD_LIBRARY_PATH={}", pdfium_dir_str);
         } else {
             println!("cargo:rustc-env=LD_LIBRARY_PATH={}", pdfium_dir_str);
         }
-        
+
         println!("cargo:rustc-env=PDFIUM_LIB_PATH={}", pdfium_dir_str);
     }
 }

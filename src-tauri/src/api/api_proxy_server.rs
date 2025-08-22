@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::ai::api_proxy_server;
-use crate::api::errors::{ApiResult2, AppError};
+use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::models::api_proxy_server_model::*;
 use crate::database::queries::api_proxy_server_models;
@@ -31,7 +31,7 @@ lazy_static! {
 #[debug_handler]
 pub async fn get_proxy_config(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<ApiProxyServerConfig>> {
+) -> ApiResult<Json<ApiProxyServerConfig>> {
     match api_proxy_server::get_proxy_config().await {
         Ok(config) => Ok((StatusCode::OK, Json(config))),
         Err(e) => {
@@ -49,7 +49,7 @@ pub async fn get_proxy_config(
 pub async fn update_proxy_config(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(config): Json<ApiProxyServerConfig>,
-) -> ApiResult2<Json<ApiProxyServerConfig>> {
+) -> ApiResult<Json<ApiProxyServerConfig>> {
     match api_proxy_server::update_proxy_config(&config).await {
         Ok(()) => {
             // Return the updated configuration by fetching it from the database
@@ -78,7 +78,7 @@ pub async fn update_proxy_config(
 #[debug_handler]
 pub async fn list_proxy_models(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<Vec<ApiProxyServerModel>>> {
+) -> ApiResult<Json<Vec<ApiProxyServerModel>>> {
     match api_proxy_server_models::list_proxy_models().await {
         Ok(models) => Ok((StatusCode::OK, Json(models))),
         Err(e) => {
@@ -96,7 +96,7 @@ pub async fn list_proxy_models(
 pub async fn add_model_to_proxy(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateApiProxyServerModelRequest>,
-) -> ApiResult2<Json<ApiProxyServerModel>> {
+) -> ApiResult<Json<ApiProxyServerModel>> {
     let enabled = request.enabled.unwrap_or(true);
     let is_default = request.is_default.unwrap_or(false);
 
@@ -125,7 +125,7 @@ pub async fn update_proxy_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
     Json(request): Json<UpdateApiProxyServerModelRequest>,
-) -> ApiResult2<Json<ApiProxyServerModel>> {
+) -> ApiResult<Json<ApiProxyServerModel>> {
     match api_proxy_server_models::update_proxy_model_status(
         model_id,
         request.enabled,
@@ -151,7 +151,7 @@ pub async fn update_proxy_model(
 pub async fn remove_model_from_proxy(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(model_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match api_proxy_server_models::remove_model_from_proxy(model_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Proxy model"))),
@@ -169,7 +169,7 @@ pub async fn remove_model_from_proxy(
 #[debug_handler]
 pub async fn list_trusted_hosts(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<Vec<ApiProxyServerTrustedHost>>> {
+) -> ApiResult<Json<Vec<ApiProxyServerTrustedHost>>> {
     match api_proxy_server_models::get_trusted_hosts().await {
         Ok(hosts) => Ok((StatusCode::OK, Json(hosts))),
         Err(e) => {
@@ -187,7 +187,7 @@ pub async fn list_trusted_hosts(
 pub async fn add_trusted_host(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Json(request): Json<CreateTrustedHostRequest>,
-) -> ApiResult2<Json<ApiProxyServerTrustedHost>> {
+) -> ApiResult<Json<ApiProxyServerTrustedHost>> {
     let enabled = request.enabled.unwrap_or(true);
 
     match api_proxy_server_models::add_trusted_host(request.host, request.description, enabled)
@@ -210,7 +210,7 @@ pub async fn update_trusted_host(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(host_id): Path<Uuid>,
     Json(request): Json<UpdateTrustedHostRequest>,
-) -> ApiResult2<Json<ApiProxyServerTrustedHost>> {
+) -> ApiResult<Json<ApiProxyServerTrustedHost>> {
     match api_proxy_server_models::update_trusted_host(
         host_id,
         request.host,
@@ -236,7 +236,7 @@ pub async fn update_trusted_host(
 pub async fn remove_trusted_host(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(host_id): Path<Uuid>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match api_proxy_server_models::remove_trusted_host(host_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("Trusted host"))),
@@ -254,7 +254,7 @@ pub async fn remove_trusted_host(
 #[debug_handler]
 pub async fn get_proxy_status(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<ApiProxyServerStatus>> {
+) -> ApiResult<Json<ApiProxyServerStatus>> {
     match api_proxy_server::get_proxy_server_status().await {
         Ok(status) => Ok((StatusCode::OK, Json(status))),
         Err(e) => {
@@ -271,7 +271,7 @@ pub async fn get_proxy_status(
 #[debug_handler]
 pub async fn start_proxy_server(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match api_proxy_server::start_proxy_server().await {
         Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
@@ -288,7 +288,7 @@ pub async fn start_proxy_server(
 #[debug_handler]
 pub async fn stop_proxy_server(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match api_proxy_server::stop_proxy_server().await {
         Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
@@ -305,7 +305,7 @@ pub async fn stop_proxy_server(
 #[debug_handler]
 pub async fn reload_proxy_models(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match api_proxy_server::reload_proxy_models().await {
         Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
@@ -322,7 +322,7 @@ pub async fn reload_proxy_models(
 #[debug_handler]
 pub async fn reload_proxy_trusted_hosts(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<StatusCode> {
+) -> ApiResult<StatusCode> {
     match api_proxy_server::reload_proxy_trusted_hosts().await {
         Ok(()) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Err(e) => {
@@ -339,7 +339,7 @@ pub async fn reload_proxy_trusted_hosts(
 #[debug_handler]
 pub async fn subscribe_proxy_logs(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
+) -> ApiResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
     let client_id = Uuid::new_v4();
     let (tx, mut rx) = mpsc::unbounded_channel();
 

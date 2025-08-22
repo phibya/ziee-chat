@@ -20,6 +20,11 @@ impl ModelUtils {
     }
 
     pub fn model_exists(model_path: &str) -> bool {
+        //print the absolute path for debugging
+        println!(
+            "Checking if model exists at: {}",
+            Self::get_model_absolute_path(model_path).display()
+        );
         Self::get_model_absolute_path(model_path).exists()
     }
 

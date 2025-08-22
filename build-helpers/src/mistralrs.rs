@@ -1,4 +1,3 @@
-use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -27,11 +26,11 @@ fn get_comprehensive_features(target: &str) -> String {
 pub fn build(
     target_dir: &Path,
     target: &str,
-    source_path: Option<&Path>
+    source_path: Option<&Path>,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     println!("Building mistralrs-server...");
 
-    // Default source path if not provided  
+    // Default source path if not provided
     let default_path;
     let mistralrs_dir = if let Some(path) = source_path {
         path
@@ -43,7 +42,11 @@ pub fn build(
     };
 
     if !mistralrs_dir.exists() {
-        return Err(format!("mistralrs-server source directory not found at: {}", mistralrs_dir.display()).into());
+        return Err(format!(
+            "mistralrs-server source directory not found at: {}",
+            mistralrs_dir.display()
+        )
+        .into());
     }
 
     // Use simple binary naming (no platform suffix)
@@ -56,7 +59,7 @@ pub fn build(
     // Use dedicated mistralrs-build directory
     let mistralrs_build_dir = target_dir.join("mistralrs-build");
     fs::create_dir_all(&mistralrs_build_dir)?;
-    
+
     // Create bin directory for the final binary
     let bin_dir = mistralrs_build_dir.join("bin");
     fs::create_dir_all(&bin_dir)?;

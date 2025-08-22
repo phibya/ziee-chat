@@ -3,7 +3,11 @@ use std::path::{Path, PathBuf};
 
 const PANDOC_VERSION: &str = "3.7.0.2";
 
-fn download_binary(url: &str, target_path: &Path, name: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn download_binary(
+    url: &str,
+    target_path: &Path,
+    name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("Downloading {} from: {}", name, url);
 
     let response = ureq::get(url).call()?;
@@ -37,7 +41,10 @@ fn extract_pandoc(
             let filename = file.name();
 
             // Look for pandoc or pandoc.exe (may be in bin/ directory or root)
-            if filename.ends_with("pandoc") || filename.ends_with("pandoc.exe") || filename.ends_with("bin/pandoc") {
+            if filename.ends_with("pandoc")
+                || filename.ends_with("pandoc.exe")
+                || filename.ends_with("bin/pandoc")
+            {
                 let output_path = target_dir.join(target_binary_name);
 
                 let mut outfile = fs::File::create(&output_path)?;
@@ -58,7 +65,10 @@ fn extract_pandoc(
             let path_str = path.to_string_lossy();
 
             // Look for pandoc (may be in bin/ directory or root)
-            if path_str.ends_with("pandoc") || path_str.ends_with("pandoc.exe") || path_str.ends_with("bin/pandoc") {
+            if path_str.ends_with("pandoc")
+                || path_str.ends_with("pandoc.exe")
+                || path_str.ends_with("bin/pandoc")
+            {
                 let output_path = target_dir.join(target_binary_name);
                 entry.unpack(&output_path)?;
                 return Ok(output_path);
@@ -69,7 +79,11 @@ fn extract_pandoc(
     Err("Pandoc binary not found in archive".into())
 }
 
-pub fn setup_pandoc(target: &str, target_dir: &Path, out_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn setup_pandoc(
+    target: &str,
+    target_dir: &Path,
+    out_dir: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Use dedicated Pandoc directory
     let pandoc_dir = target_dir.join("pandoc");
     fs::create_dir_all(&pandoc_dir)
@@ -114,13 +128,13 @@ pub fn setup_pandoc(target: &str, target_dir: &Path, out_dir: &str) -> Result<()
     };
 
     let pandoc_target_path = pandoc_dir.join(pandoc_binary_name);
-    
+
     println!("Pandoc target path: {:?}", pandoc_target_path);
 
     // Download Pandoc if it doesn't exist
     if !pandoc_target_path.exists() {
         println!("Downloading Pandoc binary...");
-        
+
         // Create a temporary directory for Pandoc download
         let pandoc_temp_dir = Path::new(out_dir).join("pandoc-download");
         fs::create_dir_all(&pandoc_temp_dir).unwrap();
@@ -128,11 +142,20 @@ pub fn setup_pandoc(target: &str, target_dir: &Path, out_dir: &str) -> Result<()
         // Construct the Pandoc download URL based on actual GitHub release assets
         // Format varies: Windows: pandoc-{version}-windows-{arch}.zip, macOS: pandoc-{version}-{arch}-macOS.zip, Linux: pandoc-{version}-linux-{arch}.tar.gz
         let pandoc_archive_name = if target.contains("windows") {
-            format!("pandoc-{}-{}-{}.{}", PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension)
+            format!(
+                "pandoc-{}-{}-{}.{}",
+                PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension
+            )
         } else if target.contains("darwin") {
-            format!("pandoc-{}-{}-{}.{}", PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension)
+            format!(
+                "pandoc-{}-{}-{}.{}",
+                PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension
+            )
         } else {
-            format!("pandoc-{}-{}-{}.{}", PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension)
+            format!(
+                "pandoc-{}-{}-{}.{}",
+                PANDOC_VERSION, pandoc_platform, pandoc_arch, pandoc_extension
+            )
         };
         let pandoc_download_url = format!(
             "https://github.com/jgm/pandoc/releases/download/{}/{}",
@@ -147,19 +170,25 @@ pub fn setup_pandoc(target: &str, target_dir: &Path, out_dir: &str) -> Result<()
             eprintln!("Pandoc functionality will not be available");
         } else {
             // Extract the Pandoc binary
-            match extract_pandoc(&pandoc_archive_path, &pandoc_temp_dir, pandoc_extension == "zip", pandoc_binary_name) {
+            match extract_pandoc(
+                &pandoc_archive_path,
+                &pandoc_temp_dir,
+                pandoc_extension == "zip",
+                pandoc_binary_name,
+            ) {
                 Ok(extracted_path) => {
                     // Copy to target directory with simple name
                     if let Err(e) = fs::copy(&extracted_path, &pandoc_target_path) {
                         eprintln!("Warning: Failed to copy Pandoc binary: {}", e);
                     } else {
                         println!("Successfully installed Pandoc to {:?}", pandoc_target_path);
-                        
+
                         // Make it executable on Unix
                         #[cfg(unix)]
                         {
                             use std::os::unix::fs::PermissionsExt;
-                            let mut perms = fs::metadata(&pandoc_target_path).unwrap().permissions();
+                            let mut perms =
+                                fs::metadata(&pandoc_target_path).unwrap().permissions();
                             perms.set_mode(0o755);
                             fs::set_permissions(&pandoc_target_path, perms).unwrap();
                         }
@@ -176,7 +205,7 @@ pub fn setup_pandoc(target: &str, target_dir: &Path, out_dir: &str) -> Result<()
     } else {
         println!("Pandoc binary already exists at {:?}", pandoc_target_path);
     }
-    
+
     // Always copy to bin directories for Tauri bundling (during every build)
     if pandoc_target_path.exists() {
         // Copy to both debug and release bin directories
@@ -184,14 +213,20 @@ pub fn setup_pandoc(target: &str, target_dir: &Path, out_dir: &str) -> Result<()
             let profile_dir = target_dir.join(build_profile);
             let bin_dir = profile_dir.join("bin");
             fs::create_dir_all(&bin_dir).ok();
-            
+
             let pandoc_bin_path = bin_dir.join(pandoc_binary_name);
             if let Err(e) = fs::copy(&pandoc_target_path, &pandoc_bin_path) {
-                eprintln!("Warning: Failed to copy Pandoc to {} bin directory: {}", build_profile, e);
+                eprintln!(
+                    "Warning: Failed to copy Pandoc to {} bin directory: {}",
+                    build_profile, e
+                );
             } else {
-                println!("Successfully copied Pandoc to {} bin directory: {:?}", build_profile, pandoc_bin_path);
+                println!(
+                    "Successfully copied Pandoc to {} bin directory: {:?}",
+                    build_profile, pandoc_bin_path
+                );
             }
-            
+
             // Make bin version executable on Unix
             #[cfg(unix)]
             {

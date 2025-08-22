@@ -67,7 +67,7 @@ export const ChatMessage = memo(function ChatMessage({
   return (
     <div className={'w-full flex flex-col overflow-visible'}>
       {/* Render files if message has any */}
-      {isUser && message.files && message.files.length > 0 && (
+      {!isEditing && isUser && message.files && message.files.length > 0 && (
         <div className="flex gap-2 w-full overflow-x-auto pb-2 !pl-2">
           {message.files.map(file => (
             <div className={'flex-1 min-w-18 max-w-24'}>

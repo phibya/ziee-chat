@@ -320,8 +320,10 @@ export interface DownloadPaginationQuery {
   status?: string
 }
 
+export type DownloadPhase = 'created' | 'connecting' | 'analyzing' | 'downloading' | 'receiving' | 'resolving' | 'checkingout' | 'committing' | 'complete' | 'error'
+
 export interface DownloadProgressData {
-  phase: string
+  phase: DownloadPhase
   current: number
   total: number
   message: string

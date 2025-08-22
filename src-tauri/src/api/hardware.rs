@@ -12,8 +12,8 @@ use tokio::time::interval;
 use uuid::Uuid;
 
 use crate::api::{
-    errors::ApiResult2,
-    middleware::AuthenticatedUser,
+  errors::ApiResult,
+  middleware::AuthenticatedUser,
 };
 
 // Hardware information structures
@@ -121,7 +121,7 @@ lazy_static::lazy_static! {
 #[debug_handler]
 pub async fn get_hardware_info(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Json<HardwareInfoResponse>> {
+) -> ApiResult<Json<HardwareInfoResponse>> {
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -175,7 +175,7 @@ pub async fn get_hardware_info(
 #[debug_handler]
 pub async fn subscribe_hardware_usage(
     Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult2<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
+) -> ApiResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
 
     let client_id = Uuid::new_v4();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
