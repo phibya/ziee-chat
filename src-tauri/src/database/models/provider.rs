@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-use super::proxy::ProxySettings;
+use super::{proxy::ProxySettings, model::DeviceType};
 
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -125,7 +125,7 @@ pub struct UpdateProviderRequest {
 pub struct DeviceInfo {
     pub id: i32, // Device index (0, 1, 2, etc.)
     pub name: String,
-    pub device_type: String,       // cpu, cuda, metal
+    pub device_type: DeviceType,
     pub memory_total: Option<u64>, // Total memory in bytes
     pub memory_free: Option<u64>,  // Free memory in bytes
     pub is_available: bool,
@@ -134,7 +134,7 @@ pub struct DeviceInfo {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AvailableDevicesResponse {
     pub devices: Vec<DeviceInfo>,
-    pub default_device_type: String,
+    pub default_device_type: DeviceType,
     pub supports_multi_gpu: bool,
 }
 

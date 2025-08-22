@@ -344,24 +344,32 @@ impl LlamaCppEngine {
             }
 
             // Device configuration with auto-detection
-            let auto_detected_device_type = match settings.device_type.as_deref() {
-                Some("cpu") => {
+            let auto_detected_device_type = match settings.device_type {
+                Some(crate::database::models::DeviceType::Cpu) => {
                     println!("Using CPU device (explicitly configured)");
                     "cpu"
                 }
-                Some("cuda") => {
+                Some(crate::database::models::DeviceType::Cuda) => {
                     println!("Using CUDA device (explicitly configured)");
                     "cuda"
                 }
-                Some("metal") => {
+                Some(crate::database::models::DeviceType::Metal) => {
                     println!("Using Metal device (explicitly configured)");
                     "metal"
                 }
-                Some("opencl") => {
+                Some(crate::database::models::DeviceType::Rocm) => {
+                    println!("Using ROCm device (explicitly configured)");
+                    "rocm"
+                }
+                Some(crate::database::models::DeviceType::Vulkan) => {
+                    println!("Using Vulkan device (explicitly configured)");
+                    "vulkan"
+                }
+                Some(crate::database::models::DeviceType::Opencl) => {
                     println!("Using OpenCL device (explicitly configured)");
                     "opencl"
                 }
-                Some("auto") | None => {
+                Some(crate::database::models::DeviceType::Auto) | None => {
                     // Auto-detect best available device type
                     let available_devices = crate::ai::device_detection::detect_available_devices();
                     println!(
@@ -384,10 +392,6 @@ impl LlamaCppEngine {
                         }
                     }
                 }
-                Some(other) => {
-                    println!("Unknown device type '{}', falling back to CPU", other);
-                    "cpu"
-                }
             };
 
             // Auto-select device IDs if not specified
@@ -404,7 +408,7 @@ impl LlamaCppEngine {
                     .devices
                     .iter()
                     .filter(|device| {
-                        device.device_type == auto_detected_device_type && device.is_available
+                        device.device_type.as_str() == auto_detected_device_type && device.is_available
                     })
                     .map(|device| device.id)
                     .collect();

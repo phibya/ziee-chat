@@ -209,15 +209,11 @@ pub async fn start_model_with_engine(
     model: &crate::database::models::model::Model,
 ) -> Result<ModelStartResult, Box<dyn std::error::Error + Send + Sync>> {
     // Create the appropriate engine based on model's engine_type
-    let engine: Box<dyn LocalEngine> = match model.engine_type.as_str() {
-        "mistralrs" => Box::new(MistralRsEngine::new()),
-        "llamacpp" => Box::new(LlamaCppEngine::new()),
-        _ => {
-            println!(
-                "Unknown engine type '{}', defaulting to mistralrs",
-                model.engine_type
-            );
-            Box::new(MistralRsEngine::new())
+    let engine: Box<dyn LocalEngine> = match model.engine_type {
+        crate::api::engines::EngineType::Mistralrs => Box::new(MistralRsEngine::new()),
+        crate::api::engines::EngineType::Llamacpp => Box::new(LlamaCppEngine::new()),
+        crate::api::engines::EngineType::None => {
+            return Err("Cannot start local engine for remote model (engine_type: None)".into());
         }
     };
 

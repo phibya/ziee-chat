@@ -407,20 +407,32 @@ impl MistralRsEngine {
             }
 
             // Device configuration with auto-detection
-            let auto_detected_device_type = match settings.device_type.as_deref() {
-                Some("cpu") => {
+            let auto_detected_device_type = match settings.device_type {
+                Some(crate::database::models::DeviceType::Cpu) => {
                     println!("Using CPU device (explicitly configured)");
                     "cpu"
                 }
-                Some("cuda") => {
+                Some(crate::database::models::DeviceType::Cuda) => {
                     println!("Using CUDA device (explicitly configured)");
                     "cuda"
                 }
-                Some("metal") => {
+                Some(crate::database::models::DeviceType::Metal) => {
                     println!("Using Metal device (explicitly configured)");
                     "metal"
                 }
-                _ => {
+                Some(crate::database::models::DeviceType::Rocm) => {
+                    println!("Using ROCm device (explicitly configured)");
+                    "rocm"
+                }
+                Some(crate::database::models::DeviceType::Vulkan) => {
+                    println!("Using Vulkan device (explicitly configured)");
+                    "vulkan"
+                }
+                Some(crate::database::models::DeviceType::Opencl) => {
+                    println!("Using OpenCL device (explicitly configured)");
+                    "opencl"
+                }
+                Some(crate::database::models::DeviceType::Auto) | None => {
                     // Auto-detect best available device: CUDA > Metal > CPU
                     let available_devices = crate::ai::device_detection::detect_available_devices();
                     println!(
@@ -466,7 +478,7 @@ impl MistralRsEngine {
                     .devices
                     .iter()
                     .filter(|device| {
-                        device.device_type == auto_detected_device_type && device.is_available
+                        device.device_type.as_str() == auto_detected_device_type && device.is_available
                     })
                     .map(|device| device.id)
                     .collect();
@@ -636,19 +648,18 @@ impl MistralRsEngine {
         }
 
         // Add the model subcommand based on model type
-        let command = if model.file_format.to_lowercase() == "gguf" {
+        let command = if model.file_format == crate::database::models::FileFormat::Gguf {
             // If file format is GGUF, force the command to be "gguf"
-            "gguf"
+            crate::database::models::MistralRsCommand::Gguf
         } else {
             // Otherwise use the configured command or default to "run"
             settings
-                .and_then(|s| s.command.as_ref())
-                .map(|s| s.as_str())
-                .unwrap_or("run") // Default to "run" (auto-loader)
+                .and_then(|s| s.command)
+                .unwrap_or(crate::database::models::MistralRsCommand::Run) // Default to "run" (auto-loader)
         };
 
-        match command.to_lowercase().as_str() {
-            "plain" => {
+        match command {
+            crate::database::models::MistralRsCommand::Plain => {
                 args.push("plain".to_string());
                 args.push("--model-id".to_string());
                 if let Some(model_id_name) = settings.and_then(|s| s.model_id_name.as_ref()) {
@@ -673,7 +684,7 @@ impl MistralRsEngine {
                     }
                 }
             }
-            "gguf" => {
+            crate::database::models::MistralRsCommand::Gguf => {
                 args.push("gguf".to_string());
                 args.extend([
                     "--quantized-model-id".to_string(),
@@ -718,7 +729,7 @@ impl MistralRsEngine {
                     }
                 }
             }
-            "vision-plain" => {
+            crate::database::models::MistralRsCommand::VisionPlain => {
                 args.push("vision-plain".to_string());
                 args.push("--model-id".to_string());
                 if let Some(model_id_name) = settings.and_then(|s| s.model_id_name.as_ref()) {
@@ -746,7 +757,7 @@ impl MistralRsEngine {
                     }
                 }
             }
-            "x-lora" => {
+            crate::database::models::MistralRsCommand::XLora => {
                 args.push("x-lora".to_string());
                 args.push("--model-id".to_string());
                 if let Some(model_id_name) = settings.and_then(|s| s.model_id_name.as_ref()) {
@@ -756,7 +767,7 @@ impl MistralRsEngine {
                 }
                 // X-LoRA specific parameters would go here
             }
-            "lora" => {
+            crate::database::models::MistralRsCommand::Lora => {
                 args.push("lora".to_string());
                 args.push("--model-id".to_string());
                 if let Some(model_id_name) = settings.and_then(|s| s.model_id_name.as_ref()) {
@@ -766,12 +777,12 @@ impl MistralRsEngine {
                 }
                 // LoRA specific parameters would go here
             }
-            "toml" => {
+            crate::database::models::MistralRsCommand::Toml => {
                 args.push("toml".to_string());
                 args.push("--toml-path".to_string());
                 args.push(model_path_absolute.clone());
             }
-            _ => {
+            crate::database::models::MistralRsCommand::Run => {
                 // Default to run (auto-loader) for unknown model types
                 args.push("run".to_string());
                 args.push("--model-id".to_string());

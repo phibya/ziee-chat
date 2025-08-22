@@ -46,7 +46,17 @@
         "fr",
         "de",
         "it"
-      ]
+      ],
+      "recommended_engine": "mistralrs",
+      "recommended_engine_settings": {
+        "command": "plain",
+        "device_type": "auto",
+        "max_seqs": 16,
+        "max_sequence_len": 8192,
+        "chat_template": true,
+        "tokenizer_json": null,
+        "arch": "llama"
+      }
     },
     {
       "id": "llama-3-1-8b-instruct",
@@ -96,7 +106,17 @@
         "pt",
         "nl",
         "pl"
-      ]
+      ],
+      "recommended_engine": "mistralrs",
+      "recommended_engine_settings": {
+        "command": "plain",
+        "device_type": "auto",
+        "max_seqs": 16,
+        "max_sequence_len": 8192,
+        "chat_template": true,
+        "tokenizer_json": null,
+        "arch": "llama"
+      }
     },
     {
       "id": "phi-3-mini-4k-instruct",
@@ -138,7 +158,17 @@
       "context_length": 4096,
       "language_support": [
         "en"
-      ]
+      ],
+      "recommended_engine": "mistralrs",
+      "recommended_engine_settings": {
+        "command": "plain",
+        "device_type": "auto",
+        "max_seqs": 8,
+        "max_sequence_len": 4096,
+        "chat_template": true,
+        "tokenizer_json": null,
+        "arch": "phi"
+      }
     },
     {
       "id": "llava-v1.6-vicuna-7b",
@@ -178,7 +208,17 @@
       "context_length": 2048,
       "language_support": [
         "en"
-      ]
+      ],
+      "recommended_engine": "mistralrs",
+      "recommended_engine_settings": {
+        "command": "vision-plain",
+        "device_type": "auto",
+        "max_seqs": 4,
+        "max_sequence_len": 2048,
+        "chat_template": true,
+        "tokenizer_json": null,
+        "arch": "llava"
+      }
     },
     {
       "id": "qwen2.5-vl-3b-instruct",
@@ -231,7 +271,17 @@
         "fr",
         "ru",
         "de"
-      ]
+      ],
+      "recommended_engine": "mistralrs",
+      "recommended_engine_settings": {
+        "command": "vision-plain",
+        "device_type": "auto",
+        "max_seqs": 8,
+        "max_sequence_len": 32768,
+        "chat_template": true,
+        "tokenizer_json": null,
+        "arch": "qwen2"
+      }
     },
     {
       "id": "tinyllama-1.1b-chat-gguf",
@@ -278,7 +328,16 @@
       "context_length": 2048,
       "language_support": [
         "en"
-      ]
+      ],
+      "recommended_engine": "llamacpp",
+      "recommended_engine_settings": {
+        "device_type": "auto",
+        "ctx_size": 2048,
+        "batch_size": 512,
+        "parallel": 1,
+        "cont_batching": true,
+        "flash_attn": false
+      }
     },
     {
       "id": "llama-3-2-3b-instruct-gguf",
@@ -333,7 +392,16 @@
         "it",
         "pt",
         "nl"
-      ]
+      ],
+      "recommended_engine": "llamacpp",
+      "recommended_engine_settings": {
+        "device_type": "auto",
+        "ctx_size": 8192,
+        "batch_size": 512,
+        "parallel": 1,
+        "cont_batching": true,
+        "flash_attn": false
+      }
     }
   ]
 }

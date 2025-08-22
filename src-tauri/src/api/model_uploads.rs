@@ -7,12 +7,13 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::api::{
+    engines::EngineType,
     errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
 use crate::database::{
     models::*,
-    queries::{models, repositories},
+    queries::{models as model_queries, repositories},
 };
 use crate::utils::git::{GitError, GitPhase, GitProgress, GitService};
 use crate::database::models::DownloadPhase;
@@ -122,12 +123,12 @@ pub struct CreateModelWithFilesRequest {
     pub name: String,
     pub alias: String,
     pub description: Option<String>,
-    pub file_format: String,
+    pub file_format: FileFormat,
     pub main_filename: String,
     pub source_dir: PathBuf,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub engine_type: Option<String>,
+    pub engine_type: Option<EngineType>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub source: Option<SourceInfo>,
 }
@@ -283,15 +284,15 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
         parameters: request.parameters,
         engine_type: request
             .engine_type
-            .unwrap_or_else(|| "mistralrs".to_string()),
+            .unwrap_or(EngineType::Mistralrs),
         engine_settings_mistralrs: request.engine_settings_mistralrs,
         engine_settings_llamacpp: None,
-        file_format: request.file_format.clone(),
+        file_format: request.file_format,
         source: request.source,
     };
 
     // Create the model record with the pre-generated ID
-    let _model_db = models::create_local_model(&model_id, &create_request)
+    let _model_db = model_queries::create_local_model(&model_id, &create_request)
         .await
         .map_err(|e| {
             let error_str = e.to_string();
@@ -305,7 +306,7 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
 
     // Create all file records in the database
     for (filename, relative_path, file_size, file_type) in file_records {
-        models::create_model_file(
+        model_queries::create_model_file(
             &model_id,
             &filename,
             &relative_path,
@@ -317,12 +318,12 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
     }
 
     // Update model with total size and validation status
-    models::update_model_validation(&model_id, "completed", None, Some(total_size as i64))
+    model_queries::update_model_validation(&model_id, "completed", None, Some(total_size as i64))
         .await
         .map_err(AppError::database_error)?;
 
     // Return the created model with files
-    let model = models::get_model_with_files(&model_id)
+    let model = model_queries::get_model_with_files(&model_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;
@@ -371,13 +372,38 @@ fn determine_files_to_copy(
         // For sharded models, weight files typically follow patterns like:
         // - model-00001-of-00004.safetensors
         // - pytorch_model-00001-of-00005.bin
+        // - model-00001-of-00003.gguf
         // We'll add all files that match the base pattern
+        // Note: User might provide any shard as main filename, so we extract the true base name
 
-        let base_name = main_filename
+        let mut base_name = main_filename
             .trim_end_matches(".safetensors")
             .trim_end_matches(".bin")
             .trim_end_matches(".pt")
-            .trim_end_matches(".pth");
+            .trim_end_matches(".pth")
+            .trim_end_matches(".gguf");
+
+        // Handle case where user provided a sharded filename as main filename
+        // e.g., "model-00001-of-00003" -> "model"
+        if let Some(of_pos) = base_name.find("-of-") {
+            // Find the start of the number before "-of-"
+            let before_of = &base_name[..of_pos];
+            if let Some(dash_pos) = before_of.rfind('-') {
+                // Check if what's after the last dash is a number
+                if before_of[dash_pos + 1..].chars().all(|c| c.is_ascii_digit()) {
+                    base_name = &before_of[..dash_pos];
+                }
+            }
+        } else if let Some(of_pos) = base_name.find("_of_") {
+            // Handle underscore separator: "model_00001_of_00003" -> "model"
+            let before_of = &base_name[..of_pos];
+            if let Some(underscore_pos) = before_of.rfind('_') {
+                // Check if what's after the last underscore is a number
+                if before_of[underscore_pos + 1..].chars().all(|c| c.is_ascii_digit()) {
+                    base_name = &before_of[..underscore_pos];
+                }
+            }
+        }
 
         // Add all weight files that match the sharding pattern
         for file in source_files {
@@ -386,7 +412,8 @@ fn determine_files_to_copy(
                 && (file.ends_with(".safetensors")
                     || file.ends_with(".bin")
                     || file.ends_with(".pt")
-                    || file.ends_with(".pth"))
+                    || file.ends_with(".pth")
+                    || file.ends_with(".gguf"))
             {
                 files_to_copy.push(file.clone());
             }
@@ -412,7 +439,8 @@ fn determine_files_to_copy(
                 && (file.ends_with(".safetensors")
                     || file.ends_with(".bin")
                     || file.ends_with(".pt")
-                    || file.ends_with(".pth"))
+                    || file.ends_with(".pth")
+                    || file.ends_with(".gguf"))
             {
                 files_to_copy.push(file.clone());
             }
@@ -497,11 +525,11 @@ pub struct DownloadFromRepositoryRequest {
     pub name: String,            // model ID
     pub alias: String,           // display name
     pub description: Option<String>,
-    pub file_format: String,
+    pub file_format: FileFormat,
     pub main_filename: String,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub engine_type: Option<String>,
+    pub engine_type: Option<EngineType>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
     pub source: SourceInfo,
@@ -528,7 +556,7 @@ pub async fn upload_multiple_files_and_commit(
     let mut description: Option<String> = None;
     let mut file_format: Option<String> = None;
     let mut capabilities: Option<ModelCapabilities> = None;
-    let engine_type: Option<String> = None;
+    let engine_type: Option<EngineType> = None;
     let mut engine_settings_mistralrs: Option<MistralRsSettings> = None;
 
     // Process multipart form data
@@ -819,7 +847,15 @@ pub async fn upload_multiple_files_and_commit(
         name,
         alias,
         description,
-        file_format,
+        file_format: FileFormat::from_str(&file_format).ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                AppError::new(
+                    ErrorCode::ValidInvalidInput,
+                    format!("Invalid file format: {}", file_format),
+                ),
+            )
+        })?,
         main_filename,
         source_dir,
         capabilities,
@@ -870,7 +906,7 @@ pub async fn initiate_repository_download(
             repository_path: Some(request.repository_path.clone()),
             alias: Some(request.alias.clone()),
             description: request.description.clone(),
-            file_format: Some(request.file_format.clone()),
+            file_format: Some(request.file_format.as_str().to_string()),
             main_filename: Some(request.main_filename.clone()),
             capabilities: request.capabilities.clone(),
             parameters: request.parameters.clone(),
@@ -1228,7 +1264,7 @@ pub async fn initiate_repository_download(
                     engine_type: Some(
                         request
                             .engine_type
-                            .unwrap_or_else(|| "mistralrs".to_string()),
+                            .unwrap_or(EngineType::Mistralrs),
                     ),
                     engine_settings_mistralrs: request.engine_settings_mistralrs,
                     source: Some(request.source.clone()),

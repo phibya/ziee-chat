@@ -91,17 +91,6 @@ export function EnginesSettings() {
                         },
                       ]
                     : []),
-                  ...(engine.description
-                    ? [
-                        {
-                          key: 'description',
-                          label: 'Description',
-                          children: (
-                            <Text type="secondary">{engine.description}</Text>
-                          ),
-                        },
-                      ]
-                    : []),
                   ...(engine.supported_architectures &&
                   engine.supported_architectures.length > 0
                     ? [

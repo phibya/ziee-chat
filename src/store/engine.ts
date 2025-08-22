@@ -69,7 +69,6 @@ export const searchEngines = (
   return engines.filter(
     engine =>
       engine.name.toLowerCase().includes(searchTerm) ||
-      engine.engine_type.toLowerCase().includes(searchTerm) ||
-      engine.description?.toLowerCase().includes(searchTerm),
+      engine.engine_type.toLowerCase().includes(searchTerm),
   )
 }

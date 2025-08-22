@@ -1,4 +1,5 @@
-use crate::database::models::model::ModelCapabilities;
+use crate::database::models::{model::ModelCapabilities, FileFormat};
+use crate::api::engines::EngineType;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +12,7 @@ pub struct HubModel {
     pub repository_url: String,
     pub repository_path: String,
     pub main_filename: String,
-    pub file_format: String,
+    pub file_format: FileFormat,
     pub capabilities: Option<ModelCapabilities>,
     pub size_gb: f64,
     pub tags: Vec<String>,
@@ -22,6 +23,8 @@ pub struct HubModel {
     pub quantization_options: Option<Vec<String>>,
     pub context_length: Option<u32>,
     pub language_support: Option<Vec<String>>,
+    pub recommended_engine: Option<EngineType>,
+    pub recommended_engine_settings: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]

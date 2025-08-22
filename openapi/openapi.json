@@ -5339,7 +5339,7 @@
             "format": "int32"
           },
           "engine_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/EngineType"
           },
           "engine_settings_mistralrs": {
             "anyOf": [
@@ -5362,7 +5362,7 @@
             ]
           },
           "file_format": {
-            "type": "string"
+            "$ref": "#/components/schemas/FileFormat"
           },
           "source": {
             "anyOf": [
@@ -5531,15 +5531,27 @@
           }
         }
       },
+      "EngineType": {
+        "type": "string",
+        "enum": [
+          "mistralrs",
+          "llamacpp",
+          "none"
+        ]
+      },
       "MistralRsSettings": {
         "description": "MistralRs-specific settings for individual model performance and batching configuration",
         "type": "object",
         "properties": {
           "command": {
-            "description": "Model command type: \"plain\", \"gguf\", \"run\", \"vision-plain\", etc.",
-            "type": [
-              "string",
-              "null"
+            "description": "Model command type for MistralRS engine",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MistralRsCommand"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "model_id_name": {
@@ -5579,9 +5591,13 @@
           },
           "device_type": {
             "description": "Device type (cpu, cuda, metal, etc.)",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceType"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "device_ids": {
@@ -5825,15 +5841,99 @@
           }
         }
       },
+      "MistralRsCommand": {
+        "description": "MistralRS command types for different model formats and use cases",
+        "oneOf": [
+          {
+            "description": "Plain model format (safetensors/pytorch)",
+            "type": "string",
+            "const": "plain"
+          },
+          {
+            "description": "GGUF quantized model format",
+            "type": "string",
+            "const": "gguf"
+          },
+          {
+            "description": "Auto-loader for various model formats",
+            "type": "string",
+            "const": "run"
+          },
+          {
+            "description": "Vision-enabled plain models for multimodal capabilities",
+            "type": "string",
+            "const": "vision-plain"
+          },
+          {
+            "description": "X-LoRA (Cross-Layer LoRA) models",
+            "type": "string",
+            "const": "x-lora"
+          },
+          {
+            "description": "LoRA (Low-Rank Adaptation) models",
+            "type": "string",
+            "const": "lora"
+          },
+          {
+            "description": "TOML configuration-based models",
+            "type": "string",
+            "const": "toml"
+          }
+        ]
+      },
+      "DeviceType": {
+        "description": "Device types for ML model inference",
+        "oneOf": [
+          {
+            "description": "CPU-only inference",
+            "type": "string",
+            "const": "cpu"
+          },
+          {
+            "description": "NVIDIA CUDA GPU acceleration",
+            "type": "string",
+            "const": "cuda"
+          },
+          {
+            "description": "Apple Metal GPU acceleration (macOS)",
+            "type": "string",
+            "const": "metal"
+          },
+          {
+            "description": "AMD ROCm GPU acceleration",
+            "type": "string",
+            "const": "rocm"
+          },
+          {
+            "description": "Vulkan GPU acceleration",
+            "type": "string",
+            "const": "vulkan"
+          },
+          {
+            "description": "OpenCL GPU acceleration",
+            "type": "string",
+            "const": "opencl"
+          },
+          {
+            "description": "Automatic device detection and selection",
+            "type": "string",
+            "const": "auto"
+          }
+        ]
+      },
       "LlamaCppSettings": {
         "description": "LlamaCpp-specific settings for llama-server configuration",
         "type": "object",
         "properties": {
           "device_type": {
             "description": "Device type (cpu, cuda, metal, etc.)",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeviceType"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "device_ids": {
@@ -6022,6 +6122,15 @@
           }
         }
       },
+      "FileFormat": {
+        "description": "File format types for local models",
+        "type": "string",
+        "enum": [
+          "safetensors",
+          "pytorch",
+          "gguf"
+        ]
+      },
       "SourceInfo": {
         "description": "Source information for download tracking",
         "type": "object",
@@ -6077,7 +6186,7 @@
             }
           },
           "default_device_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/DeviceType"
           },
           "supports_multi_gpu": {
             "type": "boolean"
@@ -6100,7 +6209,7 @@
             "type": "string"
           },
           "device_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/DeviceType"
           },
           "memory_total": {
             "type": [
@@ -6175,7 +6284,7 @@
             ]
           },
           "engine_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/EngineType"
           },
           "engine_settings_mistralrs": {
             "anyOf": [
@@ -6198,7 +6307,7 @@
             ]
           },
           "file_format": {
-            "type": "string"
+            "$ref": "#/components/schemas/FileFormat"
           },
           "source": {
             "anyOf": [
@@ -6273,9 +6382,13 @@
             ]
           },
           "engine_type": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EngineType"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "engine_settings_mistralrs": {
@@ -6299,9 +6412,13 @@
             ]
           },
           "file_format": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileFormat"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         }
@@ -6339,7 +6456,7 @@
             "type": "string"
           },
           "file_format": {
-            "type": "string"
+            "$ref": "#/components/schemas/FileFormat"
           },
           "main_filename": {
             "type": "string"
@@ -6365,9 +6482,13 @@
             ]
           },
           "engine_type": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EngineType"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "engine_settings_mistralrs": {
@@ -6572,9 +6693,13 @@
           },
           "engine_type": {
             "description": "Model settings configuration",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EngineType"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "engine_settings_mistralrs": {
@@ -7825,10 +7950,7 @@
             "type": "string"
           },
           "phase": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "$ref": "#/components/schemas/DownloadPhase"
           },
           "current": {
             "type": [
@@ -7873,20 +7995,15 @@
         },
         "required": [
           "id",
-          "status"
+          "status",
+          "phase"
         ]
       },
       "EngineInfo": {
         "type": "object",
         "properties": {
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "engine_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/EngineType"
           },
           "name": {
             "type": "string"
@@ -7898,15 +8015,6 @@
             "type": "string"
           },
           "supported_architectures": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "required_dependencies": {
             "type": [
               "array",
               "null"
@@ -9296,7 +9404,7 @@
             "type": "string"
           },
           "file_format": {
-            "type": "string"
+            "$ref": "#/components/schemas/FileFormat"
           },
           "capabilities": {
             "anyOf": [
@@ -9360,7 +9468,18 @@
             "items": {
               "type": "string"
             }
-          }
+          },
+          "recommended_engine": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EngineType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recommended_engine_settings": true
         },
         "required": [
           "id",

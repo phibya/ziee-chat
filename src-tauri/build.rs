@@ -1,70 +1,70 @@
 use std::env;
 use std::path::Path;
-use std::process::Command;
-
-fn generate_openapi_spec(target_dir: &Path) {
-    println!("Generating OpenAPI specification...");
-
-    // Get the build profile (debug or release)
-    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-
-    // Run the generate-openapi binary from the correct profile directory
-    let binary_path = target_dir.join(&profile).join("generate-openapi");
-
-    // Check if the binary exists
-    if !binary_path.exists() {
-        eprintln!("Warning: generate-openapi binary not found at {}. Run 'cargo build --bin generate-openapi' first.", binary_path.display());
-        return;
-    }
-
-    let exec_result = Command::new(&binary_path).current_dir(".").status();
-
-    match exec_result {
-        Ok(status) if status.success() => {
-            println!("OpenAPI specification generated successfully");
-        }
-        Ok(status) => {
-            eprintln!(
-                "Warning: generate-openapi binary failed (exit code: {})",
-                status
-            );
-        }
-        Err(e) => {
-            eprintln!("Warning: Failed to execute generate-openapi binary: {}", e);
-        }
-    }
-}
-
-fn generate_typescript_endpoints() {
-    println!("Generating TypeScript endpoint definitions...");
-
-    // Change to the openapi directory to run the TypeScript generation script
-    let openapi_dir = Path::new("../openapi");
-
-    let exec_result = Command::new("npx")
-        .arg("tsx")
-        .arg("generate-endpoints.ts")
-        .current_dir(openapi_dir)
-        .status();
-
-    match exec_result {
-        Ok(status) if status.success() => {
-            println!("TypeScript endpoints generated successfully");
-        }
-        Ok(status) => {
-            eprintln!(
-                "Warning: TypeScript endpoint generation failed (exit code: {})",
-                status
-            );
-        }
-        Err(e) => {
-            eprintln!(
-                "Warning: Failed to execute TypeScript endpoint generation: {}",
-                e
-            );
-        }
-    }
-}
+// use std::process::Command;
+//
+// fn generate_openapi_spec(target_dir: &Path) {
+//     println!("Generating OpenAPI specification...");
+//
+//     // Get the build profile (debug or release)
+//     let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
+//
+//     // Run the generate-openapi binary from the correct profile directory
+//     let binary_path = target_dir.join(&profile).join("generate-openapi");
+//
+//     // Check if the binary exists
+//     if !binary_path.exists() {
+//         eprintln!("Warning: generate-openapi binary not found at {}. Run 'cargo build --bin generate-openapi' first.", binary_path.display());
+//         return;
+//     }
+//
+//     let exec_result = Command::new(&binary_path).current_dir(".").status();
+//
+//     match exec_result {
+//         Ok(status) if status.success() => {
+//             println!("OpenAPI specification generated successfully");
+//         }
+//         Ok(status) => {
+//             eprintln!(
+//                 "Warning: generate-openapi binary failed (exit code: {})",
+//                 status
+//             );
+//         }
+//         Err(e) => {
+//             eprintln!("Warning: Failed to execute generate-openapi binary: {}", e);
+//         }
+//     }
+// }
+//
+// fn generate_typescript_endpoints() {
+//     println!("Generating TypeScript endpoint definitions...");
+//
+//     // Change to the openapi directory to run the TypeScript generation script
+//     let openapi_dir = Path::new("../openapi");
+//
+//     let exec_result = Command::new("npx")
+//         .arg("tsx")
+//         .arg("generate-endpoints.ts")
+//         .current_dir(openapi_dir)
+//         .status();
+//
+//     match exec_result {
+//         Ok(status) if status.success() => {
+//             println!("TypeScript endpoints generated successfully");
+//         }
+//         Ok(status) => {
+//             eprintln!(
+//                 "Warning: TypeScript endpoint generation failed (exit code: {})",
+//                 status
+//             );
+//         }
+//         Err(e) => {
+//             eprintln!(
+//                 "Warning: Failed to execute TypeScript endpoint generation: {}",
+//                 e
+//             );
+//         }
+//     }
+// }
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -139,11 +139,11 @@ fn main() {
     tauri_build::build();
 
     // === Generate OpenAPI specification ===
-    println!("cargo:rerun-if-changed=src/route");
-    println!("cargo:rerun-if-changed=src/api");
-    generate_openapi_spec(&target_dir);
-
-    // === Generate TypeScript endpoint definitions ===
-    println!("cargo:rerun-if-changed=../openapi/generate-endpoints.ts");
-    generate_typescript_endpoints();
+    // println!("cargo:rerun-if-changed=src/route");
+    // println!("cargo:rerun-if-changed=src/api");
+    // generate_openapi_spec(&target_dir);
+    //
+    // // === Generate TypeScript endpoint definitions ===
+    // println!("cargo:rerun-if-changed=../openapi/generate-endpoints.ts");
+    // generate_typescript_endpoints();
 }

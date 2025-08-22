@@ -5,6 +5,147 @@ use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use super::download_instance::SourceInfo;
+use crate::api::engines::EngineType;
+
+/// Device types for ML model inference
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum DeviceType {
+    /// CPU-only inference
+    Cpu,
+    /// NVIDIA CUDA GPU acceleration
+    Cuda,
+    /// Apple Metal GPU acceleration (macOS)
+    Metal,
+    /// AMD ROCm GPU acceleration
+    Rocm,
+    /// Vulkan GPU acceleration
+    Vulkan,
+    /// OpenCL GPU acceleration
+    Opencl,
+    /// Automatic device detection and selection
+    Auto,
+}
+
+impl DeviceType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DeviceType::Cpu => "cpu",
+            DeviceType::Cuda => "cuda",
+            DeviceType::Metal => "metal",
+            DeviceType::Rocm => "rocm",
+            DeviceType::Vulkan => "vulkan",
+            DeviceType::Opencl => "opencl",
+            DeviceType::Auto => "auto",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "cpu" => Some(DeviceType::Cpu),
+            "cuda" => Some(DeviceType::Cuda),
+            "metal" => Some(DeviceType::Metal),
+            "rocm" => Some(DeviceType::Rocm),
+            "vulkan" => Some(DeviceType::Vulkan),
+            "opencl" => Some(DeviceType::Opencl),
+            "auto" => Some(DeviceType::Auto),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for DeviceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// MistralRS command types for different model formats and use cases
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum MistralRsCommand {
+    /// Plain model format (safetensors/pytorch)
+    Plain,
+    /// GGUF quantized model format
+    Gguf,
+    /// Auto-loader for various model formats
+    Run,
+    /// Vision-enabled plain models for multimodal capabilities
+    VisionPlain,
+    /// X-LoRA (Cross-Layer LoRA) models
+    XLora,
+    /// LoRA (Low-Rank Adaptation) models
+    Lora,
+    /// TOML configuration-based models
+    Toml,
+}
+
+impl MistralRsCommand {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            MistralRsCommand::Plain => "plain",
+            MistralRsCommand::Gguf => "gguf",
+            MistralRsCommand::Run => "run",
+            MistralRsCommand::VisionPlain => "vision-plain",
+            MistralRsCommand::XLora => "x-lora",
+            MistralRsCommand::Lora => "lora",
+            MistralRsCommand::Toml => "toml",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "plain" => Some(MistralRsCommand::Plain),
+            "gguf" => Some(MistralRsCommand::Gguf),
+            "run" => Some(MistralRsCommand::Run),
+            "vision-plain" => Some(MistralRsCommand::VisionPlain),
+            "x-lora" => Some(MistralRsCommand::XLora),
+            "lora" => Some(MistralRsCommand::Lora),
+            "toml" => Some(MistralRsCommand::Toml),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for MistralRsCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// File format types for local models
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum FileFormat {
+    Safetensors,
+    Pytorch,
+    Gguf,
+}
+
+impl FileFormat {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FileFormat::Safetensors => "safetensors",
+            FileFormat::Pytorch => "pytorch",
+            FileFormat::Gguf => "gguf",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "safetensors" => Some(FileFormat::Safetensors),
+            "pytorch" => Some(FileFormat::Pytorch),
+            "gguf" => Some(FileFormat::Gguf),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for FileFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
 
 /// Model capabilities configuration
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
@@ -180,8 +321,8 @@ impl ModelParameters {
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct MistralRsSettings {
     // Core model configuration
-    /// Model command type: "plain", "gguf", "run", "vision-plain", etc.
-    pub command: Option<String>,
+    /// Model command type for MistralRS engine
+    pub command: Option<MistralRsCommand>,
     /// Model ID name for --model-id in subcommands
     pub model_id_name: Option<String>,
     /// Path to tokenizer.json file
@@ -197,7 +338,7 @@ pub struct MistralRsSettings {
 
     // Device configuration
     /// Device type (cpu, cuda, metal, etc.)
-    pub device_type: Option<String>,
+    pub device_type: Option<DeviceType>,
     /// Array of device IDs for multi-GPU
     pub device_ids: Option<Vec<i32>>,
     /// Per-device layer distribution
@@ -287,7 +428,7 @@ pub struct MistralRsSettings {
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct LlamaCppSettings {
     /// Device type (cpu, cuda, metal, etc.)
-    pub device_type: Option<String>,
+    pub device_type: Option<DeviceType>,
     /// Array of device IDs for multi-GPU
     pub device_ids: Option<Vec<i32>>,
 
@@ -488,7 +629,7 @@ impl MistralRsSettings {
     /// Create MistralRsSettings optimized for high throughput
     pub fn high_throughput() -> Self {
         Self {
-            command: Some("run".to_string()),
+            command: Some(MistralRsCommand::Run),
             model_id_name: None,
             tokenizer_json: None,
             arch: None,
@@ -531,13 +672,13 @@ impl MistralRsSettings {
     /// Create MistralRsSettings optimized for low latency
     pub fn low_latency() -> Self {
         Self {
-            command: Some("run".to_string()),
+            command: Some(MistralRsCommand::Run),
             model_id_name: None,
             tokenizer_json: None,
             arch: None,
             quantized_filename: None,
             weight_file: None,
-            device_type: Some("metal".to_string()),
+            device_type: Some(DeviceType::Metal),
             device_ids: None,
             num_device_layers: None,
             cpu: Some(false),
@@ -643,10 +784,10 @@ pub struct Model {
     pub validation_issues: Option<Vec<String>>,
     pub port: Option<i32>,   // Port number where the model server is running
     pub pid: Option<i32>,    // Process ID of the running model server
-    pub engine_type: String, // Engine type: "mistralrs" | "llamacpp" - REQUIRED
+    pub engine_type: EngineType, // Engine type: Mistralrs | Llamacpp | None - REQUIRED
     pub engine_settings_mistralrs: Option<MistralRsSettings>, // MistralRs-specific settings
     pub engine_settings_llamacpp: Option<LlamaCppSettings>, // LlamaCpp-specific settings
-    pub file_format: String, // Model file format: "safetensors", "gguf", "bin", etc. - REQUIRED
+    pub file_format: FileFormat, // Model file format: safetensors, gguf, pytorch, etc. - REQUIRED
     pub source: Option<SourceInfo>, // Source information for tracking download origin
     pub files: Option<Vec<ModelFileInfo>>,
 }
@@ -680,32 +821,38 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
         };
 
         // Parse MistralRs engine settings
-        let mistralrs_settings_json: serde_json::Value =
+        let mistralrs_settings_json: Option<serde_json::Value> =
             row.try_get("engine_settings_mistralrs")?;
-        let engine_settings_mistralrs = if mistralrs_settings_json.is_null() {
-            None
-        } else {
-            Some(
-                serde_json::from_value(mistralrs_settings_json).map_err(|e| {
+        let engine_settings_mistralrs = if let Some(json_val) = mistralrs_settings_json {
+            if json_val.is_object() && json_val.as_object().unwrap().is_empty() {
+                None
+            } else {
+                Some(serde_json::from_value(json_val).map_err(|e| {
                     sqlx::Error::ColumnDecode {
                         index: "engine_settings_mistralrs".into(),
                         source: Box::new(e),
                     }
-                })?,
-            )
+                })?)
+            }
+        } else {
+            None
         };
 
         // Parse LlamaCpp engine settings
-        let llamacpp_settings_json: serde_json::Value = row.try_get("engine_settings_llamacpp")?;
-        let engine_settings_llamacpp = if llamacpp_settings_json.is_null() {
-            None
+        let llamacpp_settings_json: Option<serde_json::Value> = row.try_get("engine_settings_llamacpp")?;
+        let engine_settings_llamacpp = if let Some(json_val) = llamacpp_settings_json {
+            if json_val.is_object() && json_val.as_object().unwrap().is_empty() {
+                None
+            } else {
+                Some(serde_json::from_value(json_val).map_err(|e| {
+                    sqlx::Error::ColumnDecode {
+                        index: "engine_settings_llamacpp".into(),
+                        source: Box::new(e),
+                    }
+                })?)
+            }
         } else {
-            Some(serde_json::from_value(llamacpp_settings_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
-                    index: "engine_settings_llamacpp".into(),
-                    source: Box::new(e),
-                }
-            })?)
+            None
         };
 
         // Parse validation_issues JSON
@@ -748,10 +895,27 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             validation_issues,
             port: row.try_get("port")?,
             pid: row.try_get("pid")?,
-            engine_type: row.try_get("engine_type")?, // Required field now
+            engine_type: {
+                let engine_type_str: String = row.try_get("engine_type")?;
+                EngineType::from_str(&engine_type_str)
+                    .ok_or_else(|| sqlx::Error::ColumnDecode {
+                        index: "engine_type".to_string(),
+                        source: Box::new(std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            format!("Invalid engine type: {}", engine_type_str),
+                        )),
+                    })?
+            },
             engine_settings_mistralrs,
             engine_settings_llamacpp,
-            file_format: row.try_get("file_format")?, // Required field now
+            file_format: {
+                let file_format_str: String = row.try_get("file_format")?;
+                FileFormat::from_str(&file_format_str)
+                    .ok_or_else(|| sqlx::Error::ColumnDecode {
+                        index: "file_format".to_string(),
+                        source: format!("Invalid file format: {}", file_format_str).into(),
+                    })?
+            }, // Convert string to enum
             source,
             files: None, // Files need to be loaded separately
         })
@@ -768,10 +932,10 @@ pub struct CreateModelRequest {
     pub enabled: Option<bool>,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub engine_type: String, // Required field
+    pub engine_type: EngineType, // Required field
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
-    pub file_format: String,        // Required field
+    pub file_format: FileFormat,        // Required field
     pub source: Option<SourceInfo>, // Source information for tracking download origin
 }
 
@@ -784,10 +948,10 @@ pub struct UpdateModelRequest {
     pub is_active: Option<bool>,
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
-    pub engine_type: Option<String>,
+    pub engine_type: Option<EngineType>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
-    pub file_format: Option<String>,
+    pub file_format: Option<FileFormat>,
 }
 
 // Model file tracking for uploaded files

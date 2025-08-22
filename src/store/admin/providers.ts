@@ -3,6 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client.ts'
 import {
   CreateProviderRequest,
+  EngineType,
   Model,
   ModelCapabilities,
   Provider,
@@ -234,7 +235,7 @@ export const addNewModelToProvider = async (
     description?: string
     enabled?: boolean
     capabilities?: ModelCapabilities
-    engine_type?: string
+    engine_type?: EngineType
   },
 ): Promise<void> => {
   const state = useAdminProvidersStore.getState()
@@ -250,7 +251,7 @@ export const addNewModelToProvider = async (
 
     const newModel = await ApiClient.Admin.addModelToProvider({
       provider_id: providerId,
-      engine_type: 'mistralrs', // Default engine type
+      engine_type: 'none', // Default engine type for remote models
       file_format: 'safetensors', // Default file format
       ...model,
     })

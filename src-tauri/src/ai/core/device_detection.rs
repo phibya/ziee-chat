@@ -1,17 +1,17 @@
-use crate::database::models::{AvailableDevicesResponse, DeviceInfo};
+use crate::database::models::{AvailableDevicesResponse, DeviceInfo, DeviceType};
 use std::process::Command;
 
 /// Detect available compute devices on the system
 pub fn detect_available_devices() -> AvailableDevicesResponse {
     let mut devices = Vec::new();
-    let mut default_device_type = "cpu".to_string();
+    let mut default_device_type = DeviceType::Cpu;
     let mut supports_multi_gpu = false;
 
     // Always add CPU device
     devices.push(DeviceInfo {
         id: 0, // CPU always gets ID 0
         name: "CPU".to_string(),
-        device_type: "cpu".to_string(),
+        device_type: DeviceType::Cpu,
         memory_total: get_system_memory(),
         memory_free: get_available_memory(),
         is_available: true,
@@ -20,16 +20,16 @@ pub fn detect_available_devices() -> AvailableDevicesResponse {
     // Check for CUDA devices
     if let Some(cuda_devices) = detect_cuda_devices() {
         devices.extend(cuda_devices);
-        if !devices.is_empty() && devices.iter().any(|d| d.device_type == "cuda") {
-            default_device_type = "cuda".to_string();
-            supports_multi_gpu = devices.iter().filter(|d| d.device_type == "cuda").count() > 1;
+        if !devices.is_empty() && devices.iter().any(|d| d.device_type == DeviceType::Cuda) {
+            default_device_type = DeviceType::Cuda;
+            supports_multi_gpu = devices.iter().filter(|d| d.device_type == DeviceType::Cuda).count() > 1;
         }
     }
 
     // Check for Metal devices (macOS)
     if let Some(metal_devices) = detect_metal_devices() {
         if !metal_devices.is_empty() {
-            default_device_type = "metal".to_string();
+            default_device_type = DeviceType::Metal;
         }
         devices.extend(metal_devices);
     }
@@ -67,7 +67,7 @@ fn detect_cuda_devices() -> Option<Vec<DeviceInfo>> {
                         devices.push(DeviceInfo {
                             id: index as i32,
                             name: format!("CUDA Device {} ({})", index, parts[1]),
-                            device_type: "cuda".to_string(),
+                            device_type: DeviceType::Cuda,
                             memory_total,
                             memory_free,
                             is_available: true,
@@ -117,7 +117,7 @@ fn detect_metal_devices() -> Option<Vec<DeviceInfo>> {
                                 devices.push(DeviceInfo {
                                     id: index as i32,
                                     name: format!("Metal GPU ({})", gpu_name),
-                                    device_type: "metal".to_string(),
+                                    device_type: DeviceType::Metal,
                                     memory_total: Some(memory_mb * 1024 * 1024), // Convert MB to bytes
                                     memory_free: Some(memory_mb * 1024 * 1024 / 2), // Estimate half available
                                     is_available: true,
@@ -135,7 +135,7 @@ fn detect_metal_devices() -> Option<Vec<DeviceInfo>> {
                 Some(vec![DeviceInfo {
                     id: 0,
                     name: "Metal GPU".to_string(),
-                    device_type: "metal".to_string(),
+                    device_type: DeviceType::Metal,
                     memory_total: Some(8 * 1024 * 1024 * 1024), // Default 8GB
                     memory_free: Some(4 * 1024 * 1024 * 1024),  // Estimate 4GB free
                     is_available: true,
@@ -263,10 +263,10 @@ mod tests {
 
         // Should always have at least CPU
         assert!(!response.devices.is_empty());
-        assert!(response.devices.iter().any(|d| d.device_type == "cpu"));
+        assert!(response.devices.iter().any(|d| d.device_type == DeviceType::Cpu));
 
         // Default device type should be valid
-        assert!(["cpu", "cuda", "metal"].contains(&response.default_device_type.as_str()));
+        assert!([DeviceType::Cpu, DeviceType::Cuda, DeviceType::Metal].contains(&response.default_device_type));
     }
 
     #[test]

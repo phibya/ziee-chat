@@ -38,7 +38,7 @@ pub async fn create_model(
     let pool = pool.as_ref();
     let model_id = Uuid::new_v4();
 
-    let model_row: Model = sqlx::query_as(
+    let model_row: Model = sqlx::query_as::<_, Model>(
     "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
          RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source"
@@ -51,10 +51,10 @@ pub async fn create_model(
     .bind(request.enabled.unwrap_or(true))
     .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
     .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})))
-    .bind(&request.engine_type)
+    .bind(request.engine_type.as_str())
     .bind(request.engine_settings_mistralrs.as_ref().map(|s| serde_json::to_value(s).unwrap()))
     .bind(request.engine_settings_llamacpp.as_ref().map(|s| serde_json::to_value(s).unwrap()))
-    .bind(&request.file_format)
+    .bind(request.file_format.as_str())
     .bind(request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null))
       .fetch_one(pool)
     .await?;
@@ -69,7 +69,7 @@ pub async fn update_model(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_row: Option<Model> = sqlx::query_as(
+    let model_row: Option<Model> = sqlx::query_as::<_, Model>(
     "UPDATE models
          SET name = COALESCE($2, name),
              alias = COALESCE($3, alias),
@@ -93,7 +93,7 @@ pub async fn update_model(
     .bind(request.is_active)
     .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()))
     .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
-    .bind(&request.engine_type)
+    .bind(request.engine_type.as_ref().map(|et| et.as_str()))
     .bind(request.engine_settings_mistralrs.as_ref().map(|s| serde_json::to_value(s).unwrap()))
     .bind(request.engine_settings_llamacpp.as_ref().map(|s| serde_json::to_value(s).unwrap()))
     .fetch_optional(pool)
@@ -118,7 +118,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_row: Option<Model> = sqlx::query_as(
+    let model_row: Option<Model> = sqlx::query_as::<_, Model>(
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
                 validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
@@ -180,10 +180,10 @@ pub async fn create_local_model(
     )
     .bind(serde_json::json!({}))
     .bind("pending")
-    .bind(&request.engine_type)
+    .bind(request.engine_type.as_str())
     .bind(serde_json::json!({}))
     .bind(serde_json::json!({}))
-    .bind(&request.file_format)
+    .bind(request.file_format.as_str())
     .bind(
         request
             .source
@@ -381,7 +381,7 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let models: Vec<Model> = sqlx::query_as(
+    let models: Vec<Model> = sqlx::query_as::<_, Model>(
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
                 validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,

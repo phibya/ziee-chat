@@ -84,7 +84,7 @@ export interface AuthResponse {
 
 export interface AvailableDevicesResponse {
   devices: DeviceInfo[]
-  default_device_type: string
+  default_device_type: DeviceType
   supports_multi_gpu: boolean
 }
 
@@ -180,10 +180,10 @@ export interface CreateModelRequest {
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  engine_type: string
+  engine_type: EngineType
   engine_settings_mistralrs?: MistralRsSettings
   engine_settings_llamacpp?: LlamaCppSettings
-  file_format: string
+  file_format: FileFormat
   source?: SourceInfo
 }
 
@@ -268,11 +268,13 @@ export interface DefaultLanguageResponse {
 export interface DeviceInfo {
   id: number
   name: string
-  device_type: string
+  device_type: DeviceType
   memory_total?: number
   memory_free?: number
   is_available: boolean
 }
+
+export type DeviceType = any
 
 export interface DownloadFromRepositoryRequest {
   description?: string
@@ -282,11 +284,11 @@ export interface DownloadFromRepositoryRequest {
   repository_branch?: string
   name: string
   alias: string
-  file_format: string
+  file_format: FileFormat
   main_filename: string
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  engine_type?: string
+  engine_type?: EngineType
   engine_settings_mistralrs?: MistralRsSettings
   engine_settings_llamacpp?: LlamaCppSettings
   source: SourceInfo
@@ -334,7 +336,7 @@ export interface DownloadProgressData {
 export interface DownloadProgressUpdate {
   id: string
   status: string
-  phase?: string
+  phase: DownloadPhase
   current?: number
   total?: number
   message?: string
@@ -363,7 +365,7 @@ export interface DownloadRequestData {
   main_filename?: string
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  engine_type?: string
+  engine_type?: EngineType
   engine_settings_mistralrs?: MistralRsSettings
   engine_settings_llamacpp?: LlamaCppSettings
   source?: SourceInfo
@@ -381,14 +383,14 @@ export interface DownloadTokenResponse {
 }
 
 export interface EngineInfo {
-  description?: string
-  engine_type: string
+  engine_type: EngineType
   name: string
   version: string
   status: string
   supported_architectures?: string[]
-  required_dependencies?: string[]
 }
+
+export type EngineType = 'mistralrs' | 'llamacpp' | 'none'
 
 export interface File {
   id: string
@@ -404,6 +406,8 @@ export interface File {
   created_at: string
   updated_at: string
 }
+
+export type FileFormat = 'safetensors' | 'pytorch' | 'gguf'
 
 export interface FileListParams {
   page?: number
@@ -492,7 +496,7 @@ export interface HubModel {
   repository_url: string
   repository_path: string
   main_filename: string
-  file_format: string
+  file_format: FileFormat
   capabilities?: ModelCapabilities
   size_gb: number
   tags: string[]
@@ -503,6 +507,8 @@ export interface HubModel {
   quantization_options?: string[]
   context_length?: number
   language_support?: string[]
+  recommended_engine?: EngineType
+  recommended_engine_settings?: any
 }
 
 export interface HubQueryParams {
@@ -520,7 +526,7 @@ export interface InitResponse {
 }
 
 export interface LlamaCppSettings {
-  device_type?: string
+  device_type?: DeviceType
   device_ids?: number[]
   ctx_size?: number
   batch_size?: number
@@ -593,14 +599,16 @@ export interface MessageMetadata {
   created_at: string
 }
 
+export type MistralRsCommand = any
+
 export interface MistralRsSettings {
-  command?: string
+  command?: MistralRsCommand
   model_id_name?: string
   tokenizer_json?: string
   arch?: string
   quantized_filename?: string
   weight_file?: string
-  device_type?: string
+  device_type?: DeviceType
   device_ids?: number[]
   num_device_layers?: string[]
   cpu?: boolean
@@ -651,10 +659,10 @@ export interface Model {
   validation_issues?: string[]
   port?: number
   pid?: number
-  engine_type: string
+  engine_type: EngineType
   engine_settings_mistralrs?: MistralRsSettings
   engine_settings_llamacpp?: LlamaCppSettings
-  file_format: string
+  file_format: FileFormat
   source?: SourceInfo
   files?: ModelFileInfo[]
 }
@@ -1074,10 +1082,10 @@ export interface UpdateModelRequest {
   is_active?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
-  engine_type?: string
+  engine_type?: EngineType
   engine_settings_mistralrs?: MistralRsSettings
   engine_settings_llamacpp?: LlamaCppSettings
-  file_format?: string
+  file_format?: FileFormat
 }
 
 export interface UpdateNgrokSettingsRequest {

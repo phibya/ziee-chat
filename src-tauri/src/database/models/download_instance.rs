@@ -1,4 +1,5 @@
 use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
+use crate::api::engines::EngineType;
 use crate::database::models::LlamaCppSettings;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
@@ -31,38 +32,6 @@ pub enum DownloadPhase {
     Error,
 }
 
-impl DownloadPhase {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            DownloadPhase::Created => "created",
-            DownloadPhase::Connecting => "connecting",
-            DownloadPhase::Analyzing => "analyzing",
-            DownloadPhase::Downloading => "downloading",
-            DownloadPhase::Receiving => "receiving",
-            DownloadPhase::Resolving => "resolving",
-            DownloadPhase::CheckingOut => "checking_out",
-            DownloadPhase::Committing => "committing",
-            DownloadPhase::Complete => "complete",
-            DownloadPhase::Error => "error",
-        }
-    }
-
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "created" => Some(DownloadPhase::Created),
-            "connecting" => Some(DownloadPhase::Connecting),
-            "analyzing" => Some(DownloadPhase::Analyzing),
-            "downloading" => Some(DownloadPhase::Downloading),
-            "receiving" => Some(DownloadPhase::Receiving),
-            "resolving" => Some(DownloadPhase::Resolving),
-            "checking_out" => Some(DownloadPhase::CheckingOut),
-            "committing" => Some(DownloadPhase::Committing),
-            "complete" => Some(DownloadPhase::Complete),
-            "error" => Some(DownloadPhase::Error),
-            _ => None,
-        }
-    }
-}
 
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -120,7 +89,7 @@ pub struct DownloadRequestData {
     /// Model parameters configuration
     pub parameters: Option<ModelParameters>,
     /// Model settings configuration
-    pub engine_type: Option<String>,
+    pub engine_type: Option<EngineType>,
     pub engine_settings_mistralrs: Option<MistralRsSettings>,
     pub engine_settings_llamacpp: Option<LlamaCppSettings>,
     /// Source information for tracking download origin

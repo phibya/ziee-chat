@@ -4,7 +4,7 @@ import {
   RobotOutlined,
 } from '@ant-design/icons'
 import { App, Button, Dropdown, Flex, Segmented, theme, Typography } from 'antd'
-import { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { TitleBarWrapper } from '../../common/TitleBarWrapper'
 import { TauriDragRegion } from '../../common/TauriDragRegion'
@@ -124,26 +124,31 @@ export function HubPage() {
                   backgroundColor: token.colorBgMask,
                 }}
                 shape="round"
-                options={[
-                  hasPermission([Permission.HubModelsRead]) && {
-                    value: 'models',
-                    label: (
-                      <Flex align="center" gap={4}>
-                        <AppstoreOutlined />
-                        Models ({models.length})
-                      </Flex>
-                    ),
-                  },
-                  hasPermission([Permission.HubAssistantsRead]) && {
-                    value: 'assistants',
-                    label: (
-                      <Flex align="center" gap={4}>
-                        <RobotOutlined />
-                        Assistants ({assistants.length})
-                      </Flex>
-                    ),
-                  },
-                ].filter(e => !!e)}
+                options={
+                  [
+                    hasPermission([Permission.HubModelsRead]) && {
+                      value: 'models',
+                      label: (
+                        <Flex align="center" gap={4}>
+                          <AppstoreOutlined />
+                          Models ({models.length})
+                        </Flex>
+                      ),
+                    },
+                    hasPermission([Permission.HubAssistantsRead]) && {
+                      value: 'assistants',
+                      label: (
+                        <Flex align="center" gap={4}>
+                          <RobotOutlined />
+                          Assistants ({assistants.length})
+                        </Flex>
+                      ),
+                    },
+                  ].filter(e => !!e) as {
+                    value: string
+                    label: React.ReactNode
+                  }[]
+                }
               />
             </div>
           )}
@@ -173,7 +178,10 @@ export function HubPage() {
                         </Flex>
                       ),
                     },
-                  ].filter(e => !!e),
+                  ].filter(e => !!e) as {
+                    key: string
+                    label: React.ReactNode
+                  }[],
                   onClick: ({ key }) => {
                     setHubActiveTab(key)
                     navigate(`/hub/${key}`)
