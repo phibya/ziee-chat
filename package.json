@@ -12,7 +12,7 @@
     "format": "biome format --write ./src",
     "format:check": "biome check ./src",
     "format:lint": "biome lint --write --unsafe ./src",
-    "generate:types": "npx tsc openapi/generate-endpoints.ts"
+    "generate:types": "npx tsc ./openapi/generate-endpoints.ts"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
