@@ -22,7 +22,6 @@ export const getBaseUrl = (function () {
     if (baseUrl) {
       return baseUrl // Return existing promise if already created
     }
-
     baseUrl = new Promise<string>(resolve => {
       if (isDesktopApp) {
         invoke('get_http_port')

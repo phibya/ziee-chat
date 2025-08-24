@@ -105,12 +105,6 @@ async fn initialize_app_common() -> Result<(), String> {
         }
     }
 
-    // Start auto-unload task for local model management
-    let auto_unload_config = ai::AutoUnloadConfig::default();
-    ai::start_auto_unload_task(auto_unload_config);
-    
-    println!("Auto-unload task started for local models");
-
     Ok(())
 }
 
@@ -234,25 +228,25 @@ pub fn run() {
                         "main",
                         tauri::WebviewUrl::App("index.html".into()),
                     )
-                    .title("")
-                    .inner_size(1024.0, 800.0)
-                    .min_inner_size(375.0, 600.0)
-                    .resizable(true)
-                    .fullscreen(false)
-                    .decorations(false)
-                    .center()
-                    .effects(tauri::utils::config::WindowEffectsConfig {
-                        effects: vec![
-                            tauri::window::Effect::FullScreenUI,
-                            tauri::window::Effect::Mica,
-                            tauri::window::Effect::Acrylic,
-                            tauri::window::Effect::Blur,
-                            tauri::window::Effect::Tabbed,
-                        ],
-                        state: Some(tauri::window::EffectState::Active),
-                        radius: Some(8.0),
-                        color: None,
-                    });
+                        .title("")
+                        .inner_size(1024.0, 800.0)
+                        .min_inner_size(375.0, 600.0)
+                        .resizable(true)
+                        .fullscreen(false)
+                        .decorations(false)
+                        .center()
+                        .effects(tauri::utils::config::WindowEffectsConfig {
+                            effects: vec![
+                                tauri::window::Effect::FullScreenUI,
+                                tauri::window::Effect::Mica,
+                                tauri::window::Effect::Acrylic,
+                                tauri::window::Effect::Blur,
+                                tauri::window::Effect::Tabbed,
+                            ],
+                            state: Some(tauri::window::EffectState::Active),
+                            radius: Some(8.0),
+                            color: None,
+                        });
 
                     #[cfg(target_os = "macos")]
                     {
@@ -287,19 +281,16 @@ pub fn run() {
             .on_window_event(|window, event| {
                 match event {
                     tauri::WindowEvent::CloseRequested { .. } => {
-                        // Only trigger cleanup when the main window is closed, not popup windows
-                        if window.label() == "main" {
-                            // Clear temp directory and cleanup database before closing
-                            let handle = tauri::async_runtime::spawn(async move {
-                                cleanup_app_common().await;
-                            });
+                        // Clear temp directory and cleanup database before closing
+                        let handle = tauri::async_runtime::spawn(async move {
+                            cleanup_app_common().await;
+                        });
 
-                            // Wait for cleanup to complete
-                            std::thread::spawn(move || {
-                                let rt = tokio::runtime::Runtime::new().unwrap();
-                                rt.block_on(handle).unwrap();
-                            });
-                        }
+                        // Wait for cleanup to complete
+                        std::thread::spawn(move || {
+                            let rt = tokio::runtime::Runtime::new().unwrap();
+                            rt.block_on(handle).unwrap();
+                        });
                     }
                     #[cfg(target_os = "macos")]
                     tauri::WindowEvent::Resized(..) => {
@@ -350,7 +341,7 @@ async fn start_api_server(port: u16, api_router: Router) {
 
         if static_dir.exists() {
             println!("Serving UI from: {}", static_dir.display());
-            
+
             // Create assets service with aggressive caching
             let assets_dir = static_dir.join("assets");
             let assets_service = if assets_dir.exists() {
@@ -363,21 +354,21 @@ async fn start_api_server(port: u16, api_router: Router) {
             } else {
                 None
             };
-            
+
             // Create main SPA service with fallback to index.html
             let index_path = static_dir.join("index.html");
             let spa_service = ServeDir::new(&static_dir)
                 .not_found_service(ServeFile::new(&index_path));
-            
+
             let mut router = api_router
                 .layer(DefaultBodyLimit::disable()) // Unlimited file size uploads
                 .layer(CorsLayer::permissive());
-            
+
             // Add assets route with caching if assets directory exists
             if let Some(assets_service) = assets_service {
                 router = router.nest_service("/assets", assets_service);
             }
-            
+
             // Add SPA fallback service
             router.fallback_service(spa_service)
         } else {

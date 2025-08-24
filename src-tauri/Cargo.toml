@@ -77,6 +77,16 @@ opencl3 = { version = "0.10", optional = true }
 ash = { version = "0.38", optional = true }
 wgpu-hal = { version = "26", optional = true }
 libamdgpu_top = { version = "0.9", optional = true }
+tauri-plugin-decorum = "1.1.1"
+calamine = "0.29"
+pdf-extract = "0.9"
+image = "0.25"
+pdfium-render = "0.8"
+base64 = "0.22"
+encoding_rs = "0.8"
+sha2 = "0.10"
+bytes = "1.8"
+tracing = "0.1"
 
 # macOS-specific dependencies  
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -111,7 +121,7 @@ nix = { version = "0.29", features = ["signal", "process"] }
 winapi = { version = "0.3", features = ["processthreadsapi", "winnt", "handleapi"] }
 
 [features]
-default = ["gpu-detect"]
+default = []
 gpu-detect = ["nvml-wrapper", "opencl3", "ash", "wgpu-hal", "libamdgpu_top", "metal", "core-foundation"]
 
 [profile.dev.package.gemm-f16]

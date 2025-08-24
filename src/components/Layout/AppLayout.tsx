@@ -5,6 +5,8 @@ import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { isDesktopApp } from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
+import { useDesktopEnv } from './usePlatform'
+import { Titlebar } from './Titlebar'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -14,6 +16,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { isSidebarCollapsed, isFullscreen } = Stores.UI.Layout
   const { token } = theme.useToken()
   const windowMinSize = useWindowMinSize()
+  const { isDesktop, platform, decorated } = useDesktopEnv()
+
+// custom titlebar height only when desktop + frameless + not fullscreen
+  const TITLEBAR_H =
+      isDesktop && !decorated && !isFullscreen ? (platform === 'mac' ? 38 : 32) : 0
 
   const sidebarRef = useRef<HTMLDivElement>(null)
   const spacerRef = useRef<HTMLDivElement>(null)
@@ -24,29 +31,50 @@ export function AppLayout({ children }: AppLayoutProps) {
   const MAX_WIDTH = 400
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
+      (e: React.MouseEvent) => {
+        e.preventDefault()
 
-      const handleMouseMove = (e: MouseEvent) => {
-        const newWidth = e.clientX
+        const handleMouseMove = (e: MouseEvent) => {
+          const newWidth = e.clientX
 
-        if (spacerRef.current) {
-          spacerRef.current.style.transition = 'none'
-        }
-
-        if (newWidth < MIN_WIDTH / 2) {
           if (spacerRef.current) {
-            spacerRef.current.style.transition = 'all 200ms ease-out'
+            spacerRef.current.style.transition = 'none'
           }
-          setSidebarCollapsed(true)
-        } else if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
-          // If coming from collapsed state, re-enable transition for smooth expand
-          if (isSidebarCollapsed) {
+
+          if (newWidth < MIN_WIDTH / 2) {
             if (spacerRef.current) {
               spacerRef.current.style.transition = 'all 200ms ease-out'
             }
+            setSidebarCollapsed(true)
+          } else if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+            // If coming from collapsed state, re-enable transition for smooth expand
+            if (isSidebarCollapsed) {
+              if (spacerRef.current) {
+                spacerRef.current.style.transition = 'all 200ms ease-out'
+              }
 
-            setTimeout(() => {
+              setTimeout(() => {
+                setSidebarCollapsed(false)
+                currentWidth.current = newWidth
+                if (sidebarRef.current) {
+                  sidebarRef.current.style.width = `${newWidth}px`
+                }
+                if (spacerRef.current) {
+                  spacerRef.current.style.width = `${newWidth}px`
+                }
+
+                // Resume no-transition dragging after expand
+                setTimeout(() => {
+                  if (sidebarRef.current) {
+                    sidebarRef.current.style.transition = 'none'
+                  }
+                  if (spacerRef.current) {
+                    spacerRef.current.style.transition = 'none'
+                  }
+                }, 300) // Wait for transition to complete
+              }, 10)
+            } else {
+              // Disable the transition for smooth dragging
               setSidebarCollapsed(false)
               currentWidth.current = newWidth
               if (sidebarRef.current) {
@@ -55,52 +83,31 @@ export function AppLayout({ children }: AppLayoutProps) {
               if (spacerRef.current) {
                 spacerRef.current.style.width = `${newWidth}px`
               }
-
-              // Resume no-transition dragging after expand
-              setTimeout(() => {
-                if (sidebarRef.current) {
-                  sidebarRef.current.style.transition = 'none'
-                }
-                if (spacerRef.current) {
-                  spacerRef.current.style.transition = 'none'
-                }
-              }, 300) // Wait for transition to complete
-            }, 10)
-          } else {
-            // Disable the transition for smooth dragging
-            setSidebarCollapsed(false)
-            currentWidth.current = newWidth
+            }
+          } else if (newWidth > MAX_WIDTH) {
+            currentWidth.current = MAX_WIDTH
             if (sidebarRef.current) {
-              sidebarRef.current.style.width = `${newWidth}px`
+              sidebarRef.current.style.width = `${MAX_WIDTH}px`
             }
             if (spacerRef.current) {
-              spacerRef.current.style.width = `${newWidth}px`
+              spacerRef.current.style.width = `${MAX_WIDTH}px`
             }
           }
-        } else if (newWidth > MAX_WIDTH) {
-          currentWidth.current = MAX_WIDTH
-          if (sidebarRef.current) {
-            sidebarRef.current.style.width = `${MAX_WIDTH}px`
-          }
+        }
+
+        const handleMouseUp = () => {
           if (spacerRef.current) {
-            spacerRef.current.style.width = `${MAX_WIDTH}px`
+            spacerRef.current.style.transition = 'all 200ms ease-out'
           }
-        }
-      }
 
-      const handleMouseUp = () => {
-        if (spacerRef.current) {
-          spacerRef.current.style.transition = 'all 200ms ease-out'
+          document.removeEventListener('mousemove', handleMouseMove)
+          document.removeEventListener('mouseup', handleMouseUp)
         }
 
-        document.removeEventListener('mousemove', handleMouseMove)
-        document.removeEventListener('mouseup', handleMouseUp)
-      }
-
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    },
-    [MIN_WIDTH, MAX_WIDTH],
+        document.addEventListener('mousemove', handleMouseMove)
+        document.addEventListener('mouseup', handleMouseUp)
+      },
+      [MIN_WIDTH, MAX_WIDTH],
   )
 
   useEffect(() => {
@@ -139,7 +146,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       root.style.backgroundColor = token.colorBgLayout
       // set theme in meta tag as well
       const metaThemeColor = document.querySelector(
-        'meta[name="theme-color"]',
+          'meta[name="theme-color"]',
       ) as HTMLMetaElement
       if (metaThemeColor) {
         metaThemeColor.content = token.colorBgLayout
@@ -191,100 +198,104 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div
-      className="h-full w-screen flex overflow-hidden"
-      style={{
-        backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
-      }}
-    >
-      {/* Sidebar - Always visible, width controlled by container */}
       <div
-        ref={sidebarRef}
-        className="absolute h-full z-1"
-        style={{
-          width: `${currentWidth.current}px`,
-          ...(windowMinSize.xs
-            ? {
-                zIndex: 3,
-                position: 'fixed',
-                background: token.colorBgContainer,
-                transform: isSidebarCollapsed
-                  ? 'translateX(-100%)'
-                  : 'translateX(0)',
-                width: '100%',
-              }
-            : {}),
-        }}
-      >
-        <LeftSidebar />
-      </div>
-
-      <div
-        className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
-        style={{
-          left: isDesktopApp && !isFullscreen ? 78 : 12,
-          top: 0,
-        }}
-      >
-        {/* Collapse/Expand Sidebar Button */}
-        <Button
-          type="text"
-          onClick={toggleSidebar}
-          className="flex items-center justify-center"
+          className="h-full w-screen flex overflow-hidden"
           style={{
-            width: '24px',
-            height: '24px',
-            padding: 0,
-            fontSize: '30px',
-            borderRadius: '4px',
-            minWidth: '20px',
+            backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
           }}
+      >     {isDesktopApp && <Titlebar hidden={isFullscreen} />}
+
+        {/* Sidebar - Always visible, width controlled by container */}
+        <div
+            ref={sidebarRef}
+            className="absolute h-full z-1"
+            style={{
+              width: `${currentWidth.current}px`,
+              top: TITLEBAR_H,
+              ...(windowMinSize.xs
+                  ? {
+                    zIndex: 3,
+                    position: 'fixed',
+                    background: token.colorBgContainer,
+                    transform: isSidebarCollapsed
+                        ? 'translateX(-100%)'
+                        : 'translateX(0)',
+                    width: '100%',
+                  }
+                  : {}),
+            }}
         >
-          {isSidebarCollapsed ? <GoSidebarCollapse /> : <GoSidebarExpand />}
-        </Button>
-      </div>
-
-      {/* Spacer div for layout */}
-      <div
-        ref={spacerRef}
-        className="flex-shrink-0 z-2 pointer-events-none"
-        style={
-          windowMinSize.xs
-            ? {
-                width: 0,
-              }
-            : {
-                width: isSidebarCollapsed ? 0 : `${currentWidth.current}px`,
-                transition: 'all 200ms ease-out', // Default transition, overridden during dragging
-              }
-        }
-      />
-
-      {/* Main Content Area */}
-      <div
-        className="flex-1 flex flex-col z-2 relative overflow-hidden"
-        style={{
-          backgroundColor: token.colorBgLayout,
-        }}
-      >
-        {/* Toolbar with Traffic Lights */}
-
-        {/* Content */}
-        <div className="flex-1 overflow-hidden relative">
-          <div
-            ref={mainContentRef}
-            className="w-full h-full overflow-hidden relative"
-          >
-            {children}
-          </div>
+          <LeftSidebar />
         </div>
-        {!isSidebarCollapsed && (
-          <div
-            className="absolute top-0 left-0 w-1 h-full cursor-col-resize"
-            onMouseDown={handleMouseDown}
-          />
-        )}
+
+        <div
+            className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
+            style={{
+              left: isDesktopApp && !isFullscreen ? 78 : 12,
+              top: 6 + TITLEBAR_H,
+            }}
+        >
+          {/* Collapse/Expand Sidebar Button */}
+          <Button
+              type="text"
+              onClick={toggleSidebar}
+              className="flex items-center justify-center"
+              style={{
+                width: '24px',
+                height: '24px',
+                padding: 0,
+                fontSize: '30px',
+                borderRadius: '4px',
+                minWidth: '20px',
+              }}
+          >
+            {isSidebarCollapsed ? <GoSidebarCollapse /> : <GoSidebarExpand />}
+          </Button>
+        </div>
+
+        {/* Spacer div for layout */}
+        <div
+            ref={spacerRef}
+            className="flex-shrink-0 z-2 pointer-events-none"
+            style={
+              windowMinSize.xs
+                  ? {
+                    width: 0,
+                  }
+                  : {
+                    width: isSidebarCollapsed ? 0 : `${currentWidth.current}px`,
+                    transition: 'all 200ms ease-out', // Default transition, overridden during dragging
+                    marginTop: TITLEBAR_H,
+                  }
+            }
+        />
+
+        {/* Main Content Area */}
+        <div
+            className="flex-1 flex flex-col z-2 relative overflow-hidden"
+            style={{
+              backgroundColor: token.colorBgLayout,
+              marginTop: TITLEBAR_H,
+            }}
+        >
+          {/* Toolbar with Traffic Lights */}
+
+          {/* Content */}
+          <div className="flex-1 overflow-hidden relative">
+            <div
+                ref={mainContentRef}
+                className="w-full h-full overflow-hidden relative"
+            >
+              {children}
+            </div>
+          </div>
+          {!isSidebarCollapsed && (
+              <div
+                  className="absolute top-0 left-0 w-1 h-full cursor-col-resize"
+                  onMouseDown={handleMouseDown}
+              />
+          )}
+        </div>
       </div>
-    </div>
   )
 }
