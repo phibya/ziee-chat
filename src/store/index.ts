@@ -16,8 +16,6 @@ import { useProjectsStore } from './projects'
 import { useAdminProvidersStore } from './admin/providers.ts'
 import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
-import { useAdminRAGProvidersStore } from './admin/ragProviders.ts'
-import { useAdminRAGRepositoriesStore } from './admin/ragRepositories.ts'
 import { useApiProxyServerStore } from './admin/apiProxyServer.ts'
 import { useApiProxyLogMonitorStore } from './admin/apiProxyLogMonitor.ts'
 import { useEngineStore } from './engine'
@@ -246,41 +244,7 @@ export {
   updateAdminModelRepository,
   useAdminRepositoriesStore,
 } from './admin/repositories.ts'
-// Admin RAG Providers store
-export {
-  addNewDatabaseToRAGProvider,
-  clearRAGProvidersError,
-  cloneExistingRAGProvider,
-  createNewRAGProvider,
-  deleteExistingRAGDatabase,
-  deleteRAGProvider,
-  disableRAGDatabase,
-  enableRAGDatabase,
-  findRAGDatabaseById,
-  findRAGProviderById,
-  loadAllRAGProviders,
-  loadDatabasesForRAGProvider,
-  startRAGDatabase,
-  stopRAGDatabase,
-  updateExistingRAGDatabase,
-  updateRAGProvider,
-  useAdminRAGProvidersStore,
-} from './admin/ragProviders.ts'
-// Admin RAG Repositories store
-export {
-  clearRAGRepositoriesError,
-  createNewRAGRepository,
-  deleteRAGRepository,
-  downloadRAGDatabaseFromRepository,
-  findRAGRepositoryById,
-  loadAllRAGRepositories,
-  loadAvailableDatabasesFromRepository,
-  searchAvailableRAGDatabases,
-  searchRAGRepositories,
-  testRAGRepositoryConnection,
-  updateRAGRepository,
-  useAdminRAGRepositoriesStore,
-} from './admin/ragRepositories.ts'
+
 // Admin API Proxy Server store
 export {
   loadApiProxyServerConfig,
@@ -347,19 +311,6 @@ export {
   closeMobileOverlay,
   closeProjectDrawer,
   closeViewDownloadModal,
-  // RAG drawer actions
-  closeAddRAGProviderDrawer,
-  closeAddRAGDatabaseDrawer,
-  closeAddRAGDatabaseDownloadDrawer,
-  closeEditRAGDatabaseDrawer,
-  openAddRAGProviderDrawer,
-  openAddRAGDatabaseDrawer,
-  openAddRAGDatabaseDownloadDrawer,
-  openEditRAGDatabaseDrawer,
-  setAddRAGProviderDrawerLoading,
-  setAddRAGDatabaseDrawerLoading,
-  setAddRAGDatabaseDownloadDrawerLoading,
-  setEditRAGDatabaseDrawerLoading,
   openAddLocalModelDownloadDrawer,
   openAddLocalModelUploadDrawer,
   openAddModelDrawer,
@@ -400,11 +351,6 @@ export {
   useEditRemoteModelDrawerStore,
   useLayoutUIStore,
   useViewDownloadModalStore,
-  // RAG drawer stores
-  useAddRAGProviderDrawerStore,
-  useAddRAGDatabaseDrawerStore,
-  useAddRAGDatabaseDownloadDrawerStore,
-  useEditRAGDatabaseDrawerStore,
   // Chat Input UI store
   createChatInputUIStore,
   // Chat UI store
@@ -432,8 +378,6 @@ export const Stores = {
   AdminProviders: createStoreProxy(useAdminProvidersStore),
   AdminModels: createStoreProxy(useAdminProvidersStore), // Legacy compatibility
   AdminRepositories: createStoreProxy(useAdminRepositoriesStore),
-  AdminRAGProviders: createStoreProxy(useAdminRAGProvidersStore),
-  AdminRAGRepositories: createStoreProxy(useAdminRAGRepositoriesStore),
   AdminApiProxyServer: createStoreProxy(useApiProxyServerStore),
   AdminApiProxyLogMonitor: createStoreProxy(useApiProxyLogMonitorStore),
   AdminEngines: createStoreProxy(useEngineStore),
