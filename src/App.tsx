@@ -31,6 +31,7 @@ import {
   NgrokSettings,
   PrivacySettings,
   ProvidersSettings,
+  RAGProvidersSettings,
   UserGroupsSettings,
   UsersSettings,
 } from './components/Pages/Settings'
@@ -161,6 +162,26 @@ function App() {
                             permissions={[Permission.ProvidersRead]}
                           >
                             <ProvidersSettings />
+                          </PagePermissionGuard403>
+                        }
+                      />
+                      <Route
+                        path="rag-providers"
+                        element={
+                          <PagePermissionGuard403
+                            permissions={[Permission.RagProvidersRead]}
+                          >
+                            <RAGProvidersSettings />
+                          </PagePermissionGuard403>
+                        }
+                      />
+                      <Route
+                        path="rag-providers/:providerId"
+                        element={
+                          <PagePermissionGuard403
+                            permissions={[Permission.RagProvidersRead]}
+                          >
+                            <RAGProvidersSettings />
                           </PagePermissionGuard403>
                         }
                       />

@@ -16,6 +16,7 @@ import { useProjectsStore } from './projects'
 import { useAdminProvidersStore } from './admin/providers.ts'
 import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
+import { useAdminRAGProvidersStore } from './admin/ragProviders.ts'
 import { useApiProxyServerStore } from './admin/apiProxyServer.ts'
 import { useApiProxyLogMonitorStore } from './admin/apiProxyLogMonitor.ts'
 import { useEngineStore } from './engine'
@@ -36,6 +37,12 @@ import {
   useProjectDrawerStore,
   useViewDownloadModalStore,
 } from './ui'
+import {
+  useAddRAGProviderDrawerStore,
+  useEditRAGProviderDrawerStore,
+  useAddSystemInstanceDrawerStore,
+  useEditSystemInstanceDrawerStore,
+} from './ui/ragProviderDrawers.ts'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'
 
 export {
@@ -244,6 +251,26 @@ export {
   updateAdminModelRepository,
   useAdminRepositoriesStore,
 } from './admin/repositories.ts'
+// Admin RAG Providers store
+export {
+  clearRAGProvidersError,
+  clearRAGInstanceError,
+  createNewRAGProvider,
+  createSystemRAGInstance,
+  deleteRAGProvider,
+  deleteSystemRAGInstance,
+  disableSystemRAGInstance,
+  enableSystemRAGInstance,
+  findRAGInstanceById,
+  findRAGProviderById,
+  getCurrentRAGProvider,
+  getInstancesForProvider,
+  loadAllRAGProviders,
+  loadInstancesForProvider,
+  updateRAGProvider,
+  updateSystemRAGInstance,
+  useAdminRAGProvidersStore,
+} from './admin/ragProviders.ts'
 
 // Admin API Proxy Server store
 export {
@@ -359,6 +386,22 @@ export {
   setShowTime,
 } from './ui'
 
+// RAG Provider UI stores
+export {
+  openAddRAGProviderDrawer,
+  closeAddRAGProviderDrawer,
+  setAddRAGProviderDrawerLoading,
+  openEditRAGProviderDrawer,
+  closeEditRAGProviderDrawer,
+  setEditRAGProviderDrawerLoading,
+  openAddSystemInstanceDrawer,
+  closeAddSystemInstanceDrawer,
+  setAddSystemInstanceDrawerLoading,
+  openEditSystemInstanceDrawer,
+  closeEditSystemInstanceDrawer,
+  setEditSystemInstanceDrawerLoading,
+} from './ui/ragProviderDrawers.ts'
+
 export const Stores = {
   Auth: createStoreProxy(useAuthStore),
   Admin: createStoreProxy(useAdminStore),
@@ -378,6 +421,7 @@ export const Stores = {
   AdminProviders: createStoreProxy(useAdminProvidersStore),
   AdminModels: createStoreProxy(useAdminProvidersStore), // Legacy compatibility
   AdminRepositories: createStoreProxy(useAdminRepositoriesStore),
+  AdminRAGProviders: createStoreProxy(useAdminRAGProvidersStore),
   AdminApiProxyServer: createStoreProxy(useApiProxyServerStore),
   AdminApiProxyLogMonitor: createStoreProxy(useApiProxyLogMonitorStore),
   AdminEngines: createStoreProxy(useEngineStore),
@@ -402,10 +446,10 @@ export const Stores = {
       useAddLocalModelDownloadDrawerStore,
     ),
     ProjectDrawer: createStoreProxy(useProjectDrawerStore),
-    // RAG drawer stores - temporarily commented out for debugging
-    // AddRAGProviderDrawer: createStoreProxy(useAddRAGProviderDrawerStore),
-    // AddRAGDatabaseDrawer: createStoreProxy(useAddRAGDatabaseDrawerStore),
-    // AddRAGDatabaseDownloadDrawer: createStoreProxy(useAddRAGDatabaseDownloadDrawerStore),
-    // EditRAGDatabaseDrawer: createStoreProxy(useEditRAGDatabaseDrawerStore),
+    // RAG drawer stores
+    AddRAGProviderDrawer: createStoreProxy(useAddRAGProviderDrawerStore),
+    EditRAGProviderDrawer: createStoreProxy(useEditRAGProviderDrawerStore),
+    AddSystemInstanceDrawer: createStoreProxy(useAddSystemInstanceDrawerStore),
+    EditSystemInstanceDrawer: createStoreProxy(useEditSystemInstanceDrawerStore),
   },
 }
