@@ -72,11 +72,3 @@ pub struct RAGRepositoryConnectionTestResponse {
     pub available_databases_count: Option<i32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct DownloadRAGDatabaseFromRepositoryRequest {
-    pub repository_id: Uuid,
-    pub database_id: String,
-    pub target_provider_id: Uuid,
-    pub database_name: Option<String>,
-    pub database_alias: Option<String>,
-}

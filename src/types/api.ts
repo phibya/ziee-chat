@@ -10,6 +10,15 @@
 // TYPE DEFINITIONS
 // =============================================================================
 
+export interface AddFilesToRAGInstanceRequest {
+  file_ids: string[]
+}
+
+export interface AddFilesToRAGInstanceResponse {
+  added_files: RAGInstanceFile[]
+  errors: RAGFileError[]
+}
+
 export interface ApiProxyServerConfig {
   port: number
   address: string
@@ -48,6 +57,12 @@ export interface ApiProxyServerTrustedHost {
 export interface AssignProviderToGroupRequest {
   group_id: string
   provider_id: string
+}
+
+export interface AssignRAGProviderToGroupRequest {
+  group_id: string
+  provider_id: string
+  can_create_instance: boolean
 }
 
 export interface AssignUserToGroupRequest {
@@ -202,17 +217,17 @@ export interface CreateProviderRequest {
   proxy_settings?: ProxySettings
 }
 
-export interface CreateRAGDatabaseRequest {
+export interface CreateRAGInstanceRequest {
   description?: string
+  provider_id: string
+  project_id?: string
   name: string
   alias: string
-  enabled?: boolean
-  collection_name?: string
-  embedding_model?: string
-  chunk_size?: number
-  chunk_overlap?: number
-  capabilities?: RAGDatabaseCapabilities
-  settings?: any
+  engine_type: RAGEngineType
+  embedding_model_id: string
+  llm_model_id?: string
+  parameters?: any
+  engine_settings?: any
 }
 
 export interface CreateRAGProviderRequest {
@@ -239,6 +254,18 @@ export interface CreateRepositoryRequest {
   auth_type: string
   auth_config?: RepositoryAuthConfig
   enabled?: boolean
+}
+
+export interface CreateSystemRAGInstanceRequest {
+  description?: string
+  provider_id: string
+  name: string
+  alias: string
+  engine_type: RAGEngineType
+  embedding_model_id: string
+  llm_model_id?: string
+  parameters?: any
+  engine_settings?: any
 }
 
 export interface CreateTrustedHostRequest {
@@ -343,14 +370,6 @@ export interface DownloadProgressUpdate {
   speed_bps?: number
   eta_seconds?: number
   error_message?: string
-}
-
-export interface DownloadRAGDatabaseFromRepositoryRequest {
-  repository_id: string
-  database_id: string
-  target_provider_id: string
-  database_name?: string
-  database_alias?: string
 }
 
 export interface DownloadRequestData {
@@ -800,6 +819,21 @@ export enum Permission {
   RagRepositoriesCreate = 'rag::repositories::create',
   RagRepositoriesEdit = 'rag::repositories::edit',
   RagRepositoriesDelete = 'rag::repositories::delete',
+  RagInstancesRead = 'rag::instances::read',
+  RagInstancesCreate = 'rag::instances::create',
+  RagInstancesEdit = 'rag::instances::edit',
+  RagInstancesDelete = 'rag::instances::delete',
+  RagFilesRead = 'rag::files::read',
+  RagFilesAdd = 'rag::files::add',
+  RagFilesRemove = 'rag::files::remove',
+  RagAdminProvidersRead = 'rag::admin::providers::read',
+  RagAdminProvidersCreate = 'rag::admin::providers::create',
+  RagAdminProvidersEdit = 'rag::admin::providers::edit',
+  RagAdminProvidersDelete = 'rag::admin::providers::delete',
+  RagAdminInstancesRead = 'rag::admin::instances::read',
+  RagAdminInstancesCreate = 'rag::admin::instances::create',
+  RagAdminInstancesEdit = 'rag::admin::instances::edit',
+  RagAdminInstancesDelete = 'rag::admin::instances::delete',
   ModelDownloadsRead = 'model-downloads::read',
   ModelDownloadsCreate = 'model-downloads::create',
   ModelDownloadsCancel = 'model-downloads::cancel',
@@ -901,30 +935,61 @@ export interface ProxySettingsResponse {
   ignore_ssl_certificates: boolean
 }
 
-export interface RAGDatabase {
+export type RAGEngineType = 'rag_simple_vector' | 'rag_simple_graph'
+
+export interface RAGFileError {
+  file_id: string
+  error: string
+}
+
+export interface RAGInstance {
   description?: string
   id: string
   provider_id: string
+  user_id?: string
+  project_id?: string
   name: string
   alias: string
   enabled: boolean
   is_active: boolean
-  collection_name?: string
-  embedding_model?: string
-  chunk_size: number
-  chunk_overlap: number
-  capabilities?: RAGDatabaseCapabilities
-  settings?: any
+  is_system: boolean
+  engine_type: RAGEngineType
+  engine_settings_rag_simple_vector?: any
+  engine_settings_rag_simple_graph?: any
+  embedding_model_id?: string
+  llm_model_id?: string
+  age_graph_name?: string
+  parameters: any
   created_at: string
   updated_at: string
 }
 
-export interface RAGDatabaseCapabilities {
-  semantic_search?: boolean
-  hybrid_search?: boolean
-  metadata_filtering?: boolean
-  similarity_threshold?: boolean
+export interface RAGInstanceFile {
+  id: string
+  rag_instance_id: string
+  file_id: string
+  processing_status: RAGProcessingStatus
+  processed_at?: string
+  processing_error?: string
+  rag_metadata: any
+  created_at: string
+  updated_at: string
 }
+
+export interface RAGInstanceFilesQuery {
+  page?: number
+  per_page?: number
+  status_filter?: RAGProcessingStatus
+}
+
+export interface RAGInstanceListResponse {
+  instances: RAGInstance[]
+  total: number
+  page: number
+  per_page: number
+}
+
+export type RAGProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export interface RAGProvider {
   type: RAGProviderType
@@ -1074,6 +1139,10 @@ export interface UpdateDefaultLanguageRequest {
   language: string
 }
 
+export interface UpdateGroupRAGProviderRequest {
+  can_create_instance?: boolean
+}
+
 export interface UpdateModelRequest {
   description?: string
   name?: string
@@ -1118,17 +1187,14 @@ export interface UpdateProxySettingsRequest {
   ignore_ssl_certificates: boolean
 }
 
-export interface UpdateRAGDatabaseRequest {
+export interface UpdateRAGInstanceRequest {
   description?: string
   name?: string
-  alias?: string
   enabled?: boolean
-  collection_name?: string
-  embedding_model?: string
-  chunk_size?: number
-  chunk_overlap?: number
-  capabilities?: RAGDatabaseCapabilities
-  settings?: any
+  embedding_model_id?: string
+  llm_model_id?: string
+  parameters?: any
+  engine_settings?: any
 }
 
 export interface UpdateRAGProviderRequest {
@@ -1245,6 +1311,17 @@ export interface UserGroupProviderResponse {
   group: UserGroup
 }
 
+export interface UserGroupRAGProviderResponse {
+  id: string
+  group_id: string
+  provider_id: string
+  can_create_instance: boolean
+  assigned_at: string
+  updated_at: string
+  provider: RAGProvider
+  group: UserGroup
+}
+
 export interface UserHello {
   name: string
 }
@@ -1293,36 +1370,33 @@ export interface UserSettingsResponse {
 // API endpoint definitions
 export const ApiEndpoints = {
   'Admin.addApiProxyServerTrustedHost': 'POST /api/admin/api-proxy-server/trusted-hosts',
-  'Admin.addDatabaseToRAGProvider': 'POST /api/admin/rag-providers/{provider_id}/databases',
   'Admin.addModelToApiProxyServer': 'POST /api/admin/api-proxy-server/models',
   'Admin.addModelToProvider': 'POST /api/admin/providers/{provider_id}/models',
   'Admin.assignProviderToGroup': 'POST /api/admin/groups/assign-provider',
+  'Admin.assignRagProviderToGroup': 'POST /api/admin/user-groups/{group_id}/rag-providers',
   'Admin.assignUserToGroup': 'POST /api/admin/groups/assign',
   'Admin.cancelDownload': 'POST /api/admin/downloads/{download_id}/cancel',
-  'Admin.cloneRAGProvider': 'POST /api/admin/rag-providers/{provider_id}/clone',
   'Admin.createAssistant': 'POST /api/admin/assistants',
   'Admin.createGroup': 'POST /api/admin/groups',
   'Admin.createProvider': 'POST /api/admin/providers',
-  'Admin.createRAGProvider': 'POST /api/admin/rag-providers',
-  'Admin.createRAGRepository': 'POST /api/admin/rag-repositories',
+  'Admin.createRAGRepository': 'POST /api/admin/rag/repositories',
+  'Admin.createRagProvider': 'POST /api/admin/rag/providers',
   'Admin.createRepository': 'POST /api/admin/repositories',
+  'Admin.createSystemRagInstance': 'POST /api/admin/rag/providers/{provider_id}/instances',
   'Admin.createUser': 'POST /api/admin/users',
   'Admin.deleteAssistant': 'DELETE /api/admin/assistants/{assistant_id}',
   'Admin.deleteDownload': 'DELETE /api/admin/downloads/{download_id}',
   'Admin.deleteGroup': 'DELETE /api/admin/groups/{group_id}',
   'Admin.deleteModel': 'DELETE /api/admin/models/{model_id}',
   'Admin.deleteProvider': 'DELETE /api/admin/providers/{provider_id}',
-  'Admin.deleteRAGDatabase': 'DELETE /api/admin/rag-databases/{database_id}',
-  'Admin.deleteRAGProvider': 'DELETE /api/admin/rag-providers/{provider_id}',
-  'Admin.deleteRAGRepository': 'DELETE /api/admin/rag-repositories/{repository_id}',
+  'Admin.deleteRAGRepository': 'DELETE /api/admin/rag/repositories/{repository_id}',
+  'Admin.deleteRagProvider': 'DELETE /api/admin/rag/providers/{provider_id}',
   'Admin.deleteRepository': 'DELETE /api/admin/repositories/{repository_id}',
+  'Admin.deleteSystemRagInstance': 'DELETE /api/admin/rag/instances/{instance_id}',
   'Admin.deleteUser': 'DELETE /api/admin/users/{user_id}',
   'Admin.disableModel': 'POST /api/admin/models/{model_id}/disable',
-  'Admin.disableRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/disable',
   'Admin.downloadFromRepository': 'POST /api/admin/models/initiate-repository-download',
-  'Admin.downloadRAGDatabaseFromRepository': 'POST /api/admin/rag-repositories/download-database',
   'Admin.enableModel': 'POST /api/admin/models/{model_id}/enable',
-  'Admin.enableRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/enable',
   'Admin.getApiProxyServerConfig': 'GET /api/admin/api-proxy-server/config',
   'Admin.getApiProxyServerStatus': 'GET /api/admin/api-proxy-server/status',
   'Admin.getAssistant': 'GET /api/admin/assistants/{assistant_id}',
@@ -1339,10 +1413,10 @@ export const ApiEndpoints = {
   'Admin.getProvider': 'GET /api/admin/providers/{provider_id}',
   'Admin.getProviderGroups': 'GET /api/admin/providers/{provider_id}/groups',
   'Admin.getProxySettings': 'GET /api/admin/config/proxy',
-  'Admin.getRAGDatabase': 'GET /api/admin/rag-databases/{database_id}',
-  'Admin.getRAGProvider': 'GET /api/admin/rag-providers/{provider_id}',
-  'Admin.getRAGRepository': 'GET /api/admin/rag-repositories/{repository_id}',
+  'Admin.getRAGRepository': 'GET /api/admin/rag/repositories/{repository_id}',
+  'Admin.getRagProvider': 'GET /api/admin/rag/providers/{provider_id}',
   'Admin.getRepository': 'GET /api/admin/repositories/{repository_id}',
+  'Admin.getSystemRagInstance': 'GET /api/admin/rag/instances/{instance_id}',
   'Admin.getUser': 'GET /api/admin/users/{user_id}',
   'Admin.getUserRegistrationStatus': 'GET /api/admin/config/user-registration',
   'Admin.listAllDownloads': 'GET /api/admin/downloads',
@@ -1353,32 +1427,32 @@ export const ApiEndpoints = {
   'Admin.listGroups': 'GET /api/admin/groups',
   'Admin.listProviderModels': 'GET /api/admin/providers/{provider_id}/models',
   'Admin.listProviders': 'GET /api/admin/providers',
-  'Admin.listRAGProviderDatabases': 'GET /api/admin/rag-providers/{provider_id}/databases',
-  'Admin.listRAGProviders': 'GET /api/admin/rag-providers',
-  'Admin.listRAGRepositories': 'GET /api/admin/rag-repositories',
-  'Admin.listRAGRepositoryDatabases': 'GET /api/admin/rag-repositories/{repository_id}/databases',
+  'Admin.listRAGRepositories': 'GET /api/admin/rag/repositories',
+  'Admin.listRagProviders': 'GET /api/admin/rag/providers',
   'Admin.listRepositories': 'GET /api/admin/repositories',
+  'Admin.listSystemRagInstances': 'GET /api/admin/rag/providers/{provider_id}/instances',
   'Admin.listUserGroupProviderRelationships': 'GET /api/admin/user-group-provider-relationships',
+  'Admin.listUserGroupRagProviderRelationships': 'GET /api/admin/user-group-rag-providers',
   'Admin.listUsers': 'GET /api/admin/users',
   'Admin.reloadApiProxyServerModels': 'POST /api/admin/api-proxy-server/reload/models',
   'Admin.reloadApiProxyServerTrustedHosts': 'POST /api/admin/api-proxy-server/reload/trusted-hosts',
   'Admin.removeApiProxyServerTrustedHost': 'DELETE /api/admin/api-proxy-server/trusted-hosts/{host_id}',
   'Admin.removeModelFromApiProxyServer': 'DELETE /api/admin/api-proxy-server/models/{model_id}',
   'Admin.removeProviderFromGroup': 'DELETE /api/admin/groups/{group_id}/providers/{provider_id}',
+  'Admin.removeRagProviderFromGroup': 'DELETE /api/admin/user-groups/{group_id}/rag-providers/{provider_id}',
   'Admin.removeUserFromGroup': 'DELETE /api/admin/groups/{user_id}/{group_id}/remove',
   'Admin.resetUserPassword': 'POST /api/admin/users/reset-password',
   'Admin.startApiProxyServer': 'POST /api/admin/api-proxy-server/start',
   'Admin.startModel': 'POST /api/admin/models/{model_id}/start',
   'Admin.startNgrokTunnel': 'POST /api/admin/config/ngrok/start',
-  'Admin.startRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/start',
   'Admin.stopApiProxyServer': 'POST /api/admin/api-proxy-server/stop',
   'Admin.stopModel': 'POST /api/admin/models/{model_id}/stop',
   'Admin.stopNgrokTunnel': 'POST /api/admin/config/ngrok/stop',
-  'Admin.stopRAGDatabase': 'POST /api/admin/rag-databases/{database_id}/stop',
   'Admin.subscribeApiProxyServerLogs': 'GET /api/admin/api-proxy-server/logs/stream',
   'Admin.subscribeDownloadProgress': 'GET /api/admin/downloads/subscribe',
   'Admin.subscribeHardwareUsage': 'GET /api/admin/hardware/usage-stream',
-  'Admin.testRAGRepositoryConnection': 'POST /api/admin/rag-repositories/{repository_id}/test-connection',
+  'Admin.testRAGRepositoryConnection': 'POST /api/admin/rag/repositories/{repository_id}/test-connection',
+  'Admin.testRagProvider': 'POST /api/admin/rag/providers/{provider_id}/test',
   'Admin.testRepositoryConnection': 'POST /api/admin/repositories/test',
   'Admin.toggleUserActive': 'POST /api/admin/users/{user_id}/toggle-active',
   'Admin.updateApiProxyServerConfig': 'PUT /api/admin/api-proxy-server/config',
@@ -1387,14 +1461,15 @@ export const ApiEndpoints = {
   'Admin.updateAssistant': 'PUT /api/admin/assistants/{assistant_id}',
   'Admin.updateDefaultLanguage': 'PUT /api/admin/config/default-language',
   'Admin.updateGroup': 'PUT /api/admin/groups/{group_id}',
+  'Admin.updateGroupRagProviderPermissions': 'PUT /api/admin/user-groups/{group_id}/rag-providers/{provider_id}',
   'Admin.updateModel': 'PUT /api/admin/models/{model_id}',
   'Admin.updateNgrokSettings': 'PUT /api/admin/config/ngrok',
   'Admin.updateProvider': 'PUT /api/admin/providers/{provider_id}',
   'Admin.updateProxySettings': 'PUT /api/admin/config/proxy',
-  'Admin.updateRAGDatabase': 'PUT /api/admin/rag-databases/{database_id}',
-  'Admin.updateRAGProvider': 'PUT /api/admin/rag-providers/{provider_id}',
-  'Admin.updateRAGRepository': 'PUT /api/admin/rag-repositories/{repository_id}',
+  'Admin.updateRAGRepository': 'PUT /api/admin/rag/repositories/{repository_id}',
+  'Admin.updateRagProvider': 'PUT /api/admin/rag/providers/{provider_id}',
   'Admin.updateRepository': 'PUT /api/admin/repositories/{repository_id}',
+  'Admin.updateSystemRagInstance': 'PUT /api/admin/rag/instances/{instance_id}',
   'Admin.updateUser': 'PUT /api/admin/users/{user_id}',
   'Admin.updateUserRegistrationStatus': 'PUT /api/admin/config/user-registration',
   'Admin.uploadAndCommitModel': 'POST /api/admin/uploaded-models/upload-and-commit',
@@ -1445,6 +1520,15 @@ export const ApiEndpoints = {
   'Projects.listProjects': 'GET /api/projects',
   'Projects.updateProject': 'PUT /api/projects/{project_id}',
   'Providers.listEnabledProviders': 'GET /api/providers',
+  'Rag.addFilesToInstance': 'POST /api/rag/instances/{instance_id}/files',
+  'Rag.createInstance': 'POST /api/rag/providers/{provider_id}/instances',
+  'Rag.deleteInstance': 'DELETE /api/rag/instances/{instance_id}',
+  'Rag.getInstance': 'GET /api/rag/instances/{instance_id}',
+  'Rag.listCreatableProviders': 'GET /api/rag/providers',
+  'Rag.listInstanceFiles': 'GET /api/rag/instances/{instance_id}/files',
+  'Rag.listInstances': 'GET /api/rag/instances',
+  'Rag.removeFileFromInstance': 'DELETE /api/rag/instances/{instance_id}/files/{file_id}',
+  'Rag.updateInstance': 'PUT /api/rag/instances/{instance_id}',
   'User.greet': 'POST /api/user/greet',
   'User.updateAccountPassword': 'PUT /api/admin/config/user/password',
   'UserSettings.deleteAllUserSettings': 'DELETE /api/user/settings/all',
@@ -1458,36 +1542,33 @@ export const ApiEndpoints = {
 // API endpoint parameters
 export type ApiEndpointParameters = {
   'Admin.addApiProxyServerTrustedHost': CreateTrustedHostRequest
-  'Admin.addDatabaseToRAGProvider': { provider_id: string } & CreateRAGDatabaseRequest
   'Admin.addModelToApiProxyServer': CreateApiProxyServerModelRequest
   'Admin.addModelToProvider': { provider_id: string } & CreateModelRequest
   'Admin.assignProviderToGroup': AssignProviderToGroupRequest
+  'Admin.assignRagProviderToGroup': { group_id: string } & AssignRAGProviderToGroupRequest
   'Admin.assignUserToGroup': AssignUserToGroupRequest
   'Admin.cancelDownload': { download_id: string }
-  'Admin.cloneRAGProvider': { provider_id: string }
   'Admin.createAssistant': CreateAssistantRequest
   'Admin.createGroup': CreateUserGroupRequest
   'Admin.createProvider': CreateProviderRequest
-  'Admin.createRAGProvider': CreateRAGProviderRequest
   'Admin.createRAGRepository': CreateRAGRepositoryRequest
+  'Admin.createRagProvider': CreateRAGProviderRequest
   'Admin.createRepository': CreateRepositoryRequest
+  'Admin.createSystemRagInstance': { provider_id: string } & CreateSystemRAGInstanceRequest
   'Admin.createUser': CreateUserRequest
   'Admin.deleteAssistant': { assistant_id: string }
   'Admin.deleteDownload': { download_id: string }
   'Admin.deleteGroup': { group_id: string }
   'Admin.deleteModel': { model_id: string }
   'Admin.deleteProvider': { provider_id: string }
-  'Admin.deleteRAGDatabase': { database_id: string }
-  'Admin.deleteRAGProvider': { provider_id: string }
   'Admin.deleteRAGRepository': { repository_id: string }
+  'Admin.deleteRagProvider': { provider_id: string }
   'Admin.deleteRepository': { repository_id: string }
+  'Admin.deleteSystemRagInstance': { instance_id: string }
   'Admin.deleteUser': { user_id: string }
   'Admin.disableModel': { model_id: string }
-  'Admin.disableRAGDatabase': { database_id: string }
   'Admin.downloadFromRepository': DownloadFromRepositoryRequest
-  'Admin.downloadRAGDatabaseFromRepository': DownloadRAGDatabaseFromRepositoryRequest
   'Admin.enableModel': { model_id: string }
-  'Admin.enableRAGDatabase': { database_id: string }
   'Admin.getApiProxyServerConfig': void
   'Admin.getApiProxyServerStatus': void
   'Admin.getAssistant': { assistant_id: string }
@@ -1504,10 +1585,10 @@ export type ApiEndpointParameters = {
   'Admin.getProvider': { provider_id: string }
   'Admin.getProviderGroups': { provider_id: string }
   'Admin.getProxySettings': void
-  'Admin.getRAGDatabase': { database_id: string }
-  'Admin.getRAGProvider': { provider_id: string }
   'Admin.getRAGRepository': { repository_id: string }
+  'Admin.getRagProvider': { provider_id: string }
   'Admin.getRepository': { repository_id: string }
+  'Admin.getSystemRagInstance': { instance_id: string }
   'Admin.getUser': { user_id: string }
   'Admin.getUserRegistrationStatus': void
   'Admin.listAllDownloads': DownloadPaginationQuery
@@ -1518,32 +1599,32 @@ export type ApiEndpointParameters = {
   'Admin.listGroups': PaginationQuery
   'Admin.listProviderModels': { provider_id: string }
   'Admin.listProviders': PaginationQuery
-  'Admin.listRAGProviderDatabases': { provider_id: string }
-  'Admin.listRAGProviders': PaginationQuery
   'Admin.listRAGRepositories': PaginationQuery
-  'Admin.listRAGRepositoryDatabases': { repository_id: string }
+  'Admin.listRagProviders': PaginationQuery
   'Admin.listRepositories': PaginationQuery
+  'Admin.listSystemRagInstances': { provider_id: string } & PaginationQuery
   'Admin.listUserGroupProviderRelationships': void
+  'Admin.listUserGroupRagProviderRelationships': PaginationQuery
   'Admin.listUsers': PaginationQuery
   'Admin.reloadApiProxyServerModels': void
   'Admin.reloadApiProxyServerTrustedHosts': void
   'Admin.removeApiProxyServerTrustedHost': { host_id: string }
   'Admin.removeModelFromApiProxyServer': { model_id: string }
   'Admin.removeProviderFromGroup': { group_id: string; provider_id: string }
+  'Admin.removeRagProviderFromGroup': { group_id: string; provider_id: string }
   'Admin.removeUserFromGroup': { user_id: string; group_id: string }
   'Admin.resetUserPassword': ResetPasswordRequest
   'Admin.startApiProxyServer': void
   'Admin.startModel': { model_id: string }
   'Admin.startNgrokTunnel': void
-  'Admin.startRAGDatabase': { database_id: string }
   'Admin.stopApiProxyServer': void
   'Admin.stopModel': { model_id: string }
   'Admin.stopNgrokTunnel': void
-  'Admin.stopRAGDatabase': { database_id: string }
   'Admin.subscribeApiProxyServerLogs': void
   'Admin.subscribeDownloadProgress': void
   'Admin.subscribeHardwareUsage': void
   'Admin.testRAGRepositoryConnection': { repository_id: string }
+  'Admin.testRagProvider': { provider_id: string }
   'Admin.testRepositoryConnection': TestRepositoryConnectionRequest
   'Admin.toggleUserActive': { user_id: string }
   'Admin.updateApiProxyServerConfig': ApiProxyServerConfig
@@ -1552,14 +1633,15 @@ export type ApiEndpointParameters = {
   'Admin.updateAssistant': { assistant_id: string } & UpdateAssistantRequest
   'Admin.updateDefaultLanguage': UpdateDefaultLanguageRequest
   'Admin.updateGroup': { group_id: string } & UpdateUserGroupRequest
+  'Admin.updateGroupRagProviderPermissions': { group_id: string; provider_id: string } & UpdateGroupRAGProviderRequest
   'Admin.updateModel': { model_id: string } & UpdateModelRequest
   'Admin.updateNgrokSettings': UpdateNgrokSettingsRequest
   'Admin.updateProvider': { provider_id: string } & UpdateProviderRequest
   'Admin.updateProxySettings': UpdateProxySettingsRequest
-  'Admin.updateRAGDatabase': { database_id: string } & UpdateRAGDatabaseRequest
-  'Admin.updateRAGProvider': { provider_id: string } & UpdateRAGProviderRequest
   'Admin.updateRAGRepository': { repository_id: string } & UpdateRAGRepositoryRequest
+  'Admin.updateRagProvider': { provider_id: string } & UpdateRAGProviderRequest
   'Admin.updateRepository': { repository_id: string } & UpdateRepositoryRequest
+  'Admin.updateSystemRagInstance': { instance_id: string } & UpdateRAGInstanceRequest
   'Admin.updateUser': { user_id: string } & UpdateUserRequest
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
   'Admin.uploadAndCommitModel': FormData
@@ -1610,6 +1692,15 @@ export type ApiEndpointParameters = {
   'Projects.listProjects': ProjectListQuery
   'Projects.updateProject': { project_id: string } & UpdateProjectRequest
   'Providers.listEnabledProviders': PaginationQuery
+  'Rag.addFilesToInstance': { instance_id: string } & AddFilesToRAGInstanceRequest
+  'Rag.createInstance': { provider_id: string } & CreateRAGInstanceRequest
+  'Rag.deleteInstance': { instance_id: string }
+  'Rag.getInstance': { instance_id: string }
+  'Rag.listCreatableProviders': PaginationQuery
+  'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; status_filter?: RAGProcessingStatus }
+  'Rag.listInstances': PaginationQuery
+  'Rag.removeFileFromInstance': { instance_id: string; file_id: string }
+  'Rag.updateInstance': { instance_id: string } & UpdateRAGInstanceRequest
   'User.greet': UserHello
   'User.updateAccountPassword': UpdateUserPasswordRequest
   'UserSettings.deleteAllUserSettings': void
@@ -1623,36 +1714,33 @@ export type ApiEndpointParameters = {
 // API endpoint responses
 export type ApiEndpointResponses = {
   'Admin.addApiProxyServerTrustedHost': ApiProxyServerTrustedHost
-  'Admin.addDatabaseToRAGProvider': RAGDatabase
   'Admin.addModelToApiProxyServer': ApiProxyServerModel
   'Admin.addModelToProvider': Model
   'Admin.assignProviderToGroup': UserGroupProviderResponse
+  'Admin.assignRagProviderToGroup': UserGroupRAGProviderResponse
   'Admin.assignUserToGroup': void
   'Admin.cancelDownload': void
-  'Admin.cloneRAGProvider': RAGProvider
   'Admin.createAssistant': Assistant
   'Admin.createGroup': UserGroup
   'Admin.createProvider': Provider
-  'Admin.createRAGProvider': RAGProvider
   'Admin.createRAGRepository': RAGRepository
+  'Admin.createRagProvider': RAGProvider
   'Admin.createRepository': Repository
+  'Admin.createSystemRagInstance': RAGInstance
   'Admin.createUser': User
   'Admin.deleteAssistant': void
   'Admin.deleteDownload': void
   'Admin.deleteGroup': void
   'Admin.deleteModel': void
   'Admin.deleteProvider': void
-  'Admin.deleteRAGDatabase': void
-  'Admin.deleteRAGProvider': void
   'Admin.deleteRAGRepository': void
+  'Admin.deleteRagProvider': void
   'Admin.deleteRepository': void
+  'Admin.deleteSystemRagInstance': void
   'Admin.deleteUser': void
   'Admin.disableModel': void
-  'Admin.disableRAGDatabase': void
   'Admin.downloadFromRepository': DownloadInstance
-  'Admin.downloadRAGDatabaseFromRepository': RAGDatabase
   'Admin.enableModel': void
-  'Admin.enableRAGDatabase': void
   'Admin.getApiProxyServerConfig': ApiProxyServerConfig
   'Admin.getApiProxyServerStatus': ApiProxyServerStatus
   'Admin.getAssistant': Assistant
@@ -1669,10 +1757,10 @@ export type ApiEndpointResponses = {
   'Admin.getProvider': Provider
   'Admin.getProviderGroups': UserGroup[]
   'Admin.getProxySettings': ProxySettingsResponse
-  'Admin.getRAGDatabase': RAGDatabase
-  'Admin.getRAGProvider': RAGProvider
   'Admin.getRAGRepository': RAGRepository
+  'Admin.getRagProvider': RAGProvider
   'Admin.getRepository': Repository
+  'Admin.getSystemRagInstance': RAGInstance
   'Admin.getUser': User
   'Admin.getUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.listAllDownloads': DownloadInstanceListResponse
@@ -1683,32 +1771,32 @@ export type ApiEndpointResponses = {
   'Admin.listGroups': UserGroupListResponse
   'Admin.listProviderModels': Model[]
   'Admin.listProviders': ProviderListResponse
-  'Admin.listRAGProviderDatabases': RAGDatabase[]
-  'Admin.listRAGProviders': RAGProviderListResponse
   'Admin.listRAGRepositories': RAGRepositoryListResponse
-  'Admin.listRAGRepositoryDatabases': RAGDatabase[]
+  'Admin.listRagProviders': RAGProviderListResponse
   'Admin.listRepositories': RepositoryListResponse
+  'Admin.listSystemRagInstances': RAGInstanceListResponse
   'Admin.listUserGroupProviderRelationships': UserGroupProviderResponse[]
+  'Admin.listUserGroupRagProviderRelationships': UserGroupRAGProviderResponse[]
   'Admin.listUsers': UserListResponse
   'Admin.reloadApiProxyServerModels': void
   'Admin.reloadApiProxyServerTrustedHosts': void
   'Admin.removeApiProxyServerTrustedHost': void
   'Admin.removeModelFromApiProxyServer': void
   'Admin.removeProviderFromGroup': void
+  'Admin.removeRagProviderFromGroup': void
   'Admin.removeUserFromGroup': void
   'Admin.resetUserPassword': void
   'Admin.startApiProxyServer': void
   'Admin.startModel': void
   'Admin.startNgrokTunnel': NgrokStatusResponse
-  'Admin.startRAGDatabase': void
   'Admin.stopApiProxyServer': void
   'Admin.stopModel': void
   'Admin.stopNgrokTunnel': NgrokStatusResponse
-  'Admin.stopRAGDatabase': void
   'Admin.subscribeApiProxyServerLogs': void
   'Admin.subscribeDownloadProgress': void
   'Admin.subscribeHardwareUsage': void
   'Admin.testRAGRepositoryConnection': RAGRepositoryConnectionTestResponse
+  'Admin.testRagProvider': void
   'Admin.testRepositoryConnection': TestRepositoryConnectionResponse
   'Admin.toggleUserActive': UserActiveStatusResponse
   'Admin.updateApiProxyServerConfig': ApiProxyServerConfig
@@ -1717,14 +1805,15 @@ export type ApiEndpointResponses = {
   'Admin.updateAssistant': Assistant
   'Admin.updateDefaultLanguage': DefaultLanguageResponse
   'Admin.updateGroup': UserGroup
+  'Admin.updateGroupRagProviderPermissions': UserGroupRAGProviderResponse
   'Admin.updateModel': Model
   'Admin.updateNgrokSettings': NgrokSettingsResponse
   'Admin.updateProvider': Provider
   'Admin.updateProxySettings': ProxySettingsResponse
-  'Admin.updateRAGDatabase': RAGDatabase
-  'Admin.updateRAGProvider': RAGProvider
   'Admin.updateRAGRepository': RAGRepository
+  'Admin.updateRagProvider': RAGProvider
   'Admin.updateRepository': Repository
+  'Admin.updateSystemRagInstance': RAGInstance
   'Admin.updateUser': User
   'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.uploadAndCommitModel': Model
@@ -1775,6 +1864,15 @@ export type ApiEndpointResponses = {
   'Projects.listProjects': ProjectListResponse
   'Projects.updateProject': Project
   'Providers.listEnabledProviders': ProviderListResponse
+  'Rag.addFilesToInstance': AddFilesToRAGInstanceResponse
+  'Rag.createInstance': RAGInstance
+  'Rag.deleteInstance': void
+  'Rag.getInstance': RAGInstance
+  'Rag.listCreatableProviders': RAGProvider[]
+  'Rag.listInstanceFiles': RAGInstanceFile[]
+  'Rag.listInstances': RAGInstanceListResponse
+  'Rag.removeFileFromInstance': void
+  'Rag.updateInstance': RAGInstance
   'User.greet': string
   'User.updateAccountPassword': void
   'UserSettings.deleteAllUserSettings': UserSettingsDeletionResponse

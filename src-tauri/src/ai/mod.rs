@@ -10,6 +10,7 @@ pub mod engines;
 pub mod file_helpers;
 pub mod model_manager;
 pub mod providers;
+pub mod rag;
 pub mod utils;
 
 // Define local types that were previously from local_server

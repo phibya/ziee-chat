@@ -1,3 +1,9 @@
 [submodule "src-engines/llama.cpp"]
 	path = src-engines/llama.cpp
 	url = https://github.com/ggml-org/llama.cpp
+[submodule "src-databases/pgvector"]
+	path = src-databases/pgvector
+	url = git@github.com:pgvector/pgvector.git
+[submodule "src-databases/apache-age"]
+	path = src-databases/apache-age
+	url = git@github.com:apache/age.git

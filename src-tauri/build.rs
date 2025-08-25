@@ -73,7 +73,7 @@ fn main() {
     let target = env::var("TARGET").unwrap();
 
     // === PostgreSQL Setup ===
-    build_helpers::postgresql::setup_postgresql(&target);
+    env::set_var("POSTGRESQL_VERSION", "17.5.0");
 
     // Get the output directory and build profile
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -128,6 +128,18 @@ fn main() {
         build_helpers::llamacpp::build(&target_dir, &target, llamacpp_source.as_deref()).expect(
             "Failed to build llama.cpp with comprehensive features - build cannot continue",
         );
+
+    // === Build pgvector extension ===
+    println!("cargo:rerun-if-changed=src-databases/pgvector");
+    let pgvector_source = Path::new("../src-databases/pgvector").canonicalize().ok();
+    let _pgvector_path = build_helpers::pgvector::build(&target_dir, &target, pgvector_source.as_deref())
+        .expect("Failed to build pgvector extension - build cannot continue");
+
+    // === Build Apache AGE extension ===
+    println!("cargo:rerun-if-changed=src-databases/apache-age");
+    let apache_age_source = Path::new("../src-databases/apache-age").canonicalize().ok();
+    let _apache_age_path = build_helpers::apache_age::build(&target_dir, &target, apache_age_source.as_deref())
+        .expect("Failed to build Apache AGE extension - build cannot continue");
 
     // === Set PDFium environment variables ===
     if let Some(ref path) = pdfium_target_path {

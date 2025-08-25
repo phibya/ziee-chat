@@ -5,6 +5,7 @@ use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use super::proxy::ProxySettings;
+use super::user::UserGroup;
 
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -32,18 +33,6 @@ impl RAGProviderType {
             _ => RAGProviderType::Custom, // fallback to custom for unknown types
         }
     }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            RAGProviderType::Local => "local",
-            RAGProviderType::LightRAG => "lightrag",
-            RAGProviderType::RAGStack => "ragstack",
-            RAGProviderType::Chroma => "chroma",
-            RAGProviderType::Weaviate => "weaviate",
-            RAGProviderType::Pinecone => "pinecone",
-            RAGProviderType::Custom => "custom",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -63,16 +52,20 @@ pub struct RAGProvider {
 
 impl FromRow<'_, sqlx::postgres::PgRow> for RAGProvider {
     fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        let proxy_settings_json: serde_json::Value = row.try_get("proxy_settings")?;
-        let proxy_settings = if proxy_settings_json.is_null() {
-            None
+        let proxy_settings_json: Option<serde_json::Value> = row.try_get("proxy_settings")?;
+        let proxy_settings = if let Some(json_value) = proxy_settings_json {
+            if json_value.is_null() {
+                None
+            } else {
+                Some(serde_json::from_value(json_value).map_err(|e| {
+                    sqlx::Error::ColumnDecode {
+                        index: "proxy_settings".into(),
+                        source: Box::new(e),
+                    }
+                })?)
+            }
         } else {
-            Some(serde_json::from_value(proxy_settings_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
-                    index: "proxy_settings".into(),
-                    source: Box::new(e),
-                }
-            })?)
+            None
         };
 
         let provider_type_str: String = row.try_get("provider_type")?;
@@ -118,4 +111,52 @@ pub struct RAGProviderListResponse {
     pub total: i64,
     pub page: i32,
     pub per_page: i32,
+}
+
+// User Group RAG Provider Relationship Models
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct UserGroupRAGProvider {
+    pub id: Uuid,
+    pub group_id: Uuid,
+    pub provider_id: Uuid,
+    pub can_create_instance: bool,
+    pub assigned_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl FromRow<'_, sqlx::postgres::PgRow> for UserGroupRAGProvider {
+    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
+        Ok(UserGroupRAGProvider {
+            id: row.try_get("id")?,
+            group_id: row.try_get("group_id")?,
+            provider_id: row.try_get("provider_id")?,
+            can_create_instance: row.try_get("can_create_instance")?,
+            assigned_at: row.try_get("assigned_at")?,
+            updated_at: row.try_get("updated_at")?,
+        })
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UserGroupRAGProviderResponse {
+    pub id: Uuid,
+    pub group_id: Uuid,
+    pub provider_id: Uuid,
+    pub can_create_instance: bool,
+    pub assigned_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub provider: RAGProvider,
+    pub group: UserGroup,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct AssignRAGProviderToGroupRequest {
+    pub group_id: Uuid,
+    pub provider_id: Uuid,
+    pub can_create_instance: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct UpdateGroupRAGProviderRequest {
+    pub can_create_instance: Option<bool>,
 }

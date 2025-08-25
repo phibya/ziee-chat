@@ -473,7 +473,7 @@ impl AIProvider for AnthropicProvider {
 
         // Process file references - for now we'll skip provider_id
         // This will be fixed when we integrate with the chat handler
-        let processed_request = request; // TODO: Add provider_id parameter
+        let processed_request = request;
         let body = self.prepare_request(&processed_request).await?;
 
         let response = self

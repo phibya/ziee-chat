@@ -1616,13 +1616,151 @@
         }
       }
     },
-    "/api/admin/rag-providers": {
+    "/api/admin/rag/providers/{provider_id}/instances": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "description": "List system RAG instances for provider",
+        "operationId": "Admin.listSystemRagInstances",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstanceListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "description": "Create system RAG instance for provider",
+        "operationId": "Admin.createSystemRagInstance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSystemRAGInstanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/rag/instances/{instance_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "description": "Get system RAG instance by ID",
+        "operationId": "Admin.getSystemRagInstance",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstance"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "description": "Update system RAG instance",
+        "operationId": "Admin.updateSystemRagInstance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRAGInstanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstance"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "description": "Delete system RAG instance",
+        "operationId": "Admin.deleteSystemRagInstance",
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
+    },
+    "/api/admin/rag/providers": {
       "get": {
         "tags": [
           "admin"
         ],
         "description": "List all RAG providers",
-        "operationId": "Admin.listRAGProviders",
+        "operationId": "Admin.listRagProviders",
         "parameters": [
           {
             "in": "query",
@@ -1666,8 +1804,8 @@
         "tags": [
           "admin"
         ],
-        "description": "Create a new RAG provider",
-        "operationId": "Admin.createRAGProvider",
+        "description": "Create new RAG provider",
+        "operationId": "Admin.createRagProvider",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1679,7 +1817,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -1692,13 +1830,13 @@
         }
       }
     },
-    "/api/admin/rag-providers/{provider_id}": {
+    "/api/admin/rag/providers/{provider_id}": {
       "get": {
         "tags": [
           "admin"
         ],
-        "description": "Get a specific RAG provider",
-        "operationId": "Admin.getRAGProvider",
+        "description": "Get RAG provider by ID",
+        "operationId": "Admin.getRagProvider",
         "responses": {
           "200": {
             "description": "",
@@ -1716,8 +1854,8 @@
         "tags": [
           "admin"
         ],
-        "description": "Update a RAG provider",
-        "operationId": "Admin.updateRAGProvider",
+        "description": "Update RAG provider",
+        "operationId": "Admin.updateRagProvider",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1745,8 +1883,8 @@
         "tags": [
           "admin"
         ],
-        "description": "Delete a RAG provider",
-        "operationId": "Admin.deleteRAGProvider",
+        "description": "Delete RAG provider",
+        "operationId": "Admin.deleteRagProvider",
         "responses": {
           "204": {
             "description": "no content"
@@ -1754,135 +1892,13 @@
         }
       }
     },
-    "/api/admin/rag-providers/{provider_id}/clone": {
+    "/api/admin/rag/providers/{provider_id}/test": {
       "post": {
         "tags": [
           "admin"
         ],
-        "description": "Clone a RAG provider",
-        "operationId": "Admin.cloneRAGProvider",
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RAGProvider"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/rag-providers/{provider_id}/databases": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "description": "List databases for a RAG provider",
-        "operationId": "Admin.listRAGProviderDatabases",
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RAGDatabase"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Add a database to a RAG provider",
-        "operationId": "Admin.addDatabaseToRAGProvider",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateRAGDatabaseRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RAGDatabase"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/rag-databases/{database_id}": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Get a specific RAG database",
-        "operationId": "Admin.getRAGDatabase",
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RAGDatabase"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Update a RAG database",
-        "operationId": "Admin.updateRAGDatabase",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateRAGDatabaseRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RAGDatabase"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Delete a RAG database",
-        "operationId": "Admin.deleteRAGDatabase",
+        "description": "Test RAG provider connection",
+        "operationId": "Admin.testRagProvider",
         "responses": {
           "204": {
             "description": "no content"
@@ -1890,63 +1906,7 @@
         }
       }
     },
-    "/api/admin/rag-databases/{database_id}/start": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Start a RAG database",
-        "operationId": "Admin.startRAGDatabase",
-        "responses": {
-          "204": {
-            "description": "no content"
-          }
-        }
-      }
-    },
-    "/api/admin/rag-databases/{database_id}/stop": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Stop a RAG database",
-        "operationId": "Admin.stopRAGDatabase",
-        "responses": {
-          "204": {
-            "description": "no content"
-          }
-        }
-      }
-    },
-    "/api/admin/rag-databases/{database_id}/enable": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Enable a RAG database",
-        "operationId": "Admin.enableRAGDatabase",
-        "responses": {
-          "204": {
-            "description": "no content"
-          }
-        }
-      }
-    },
-    "/api/admin/rag-databases/{database_id}/disable": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Disable a RAG database",
-        "operationId": "Admin.disableRAGDatabase",
-        "responses": {
-          "204": {
-            "description": "no content"
-          }
-        }
-      }
-    },
-    "/api/admin/rag-repositories": {
+    "/api/admin/rag/repositories": {
       "get": {
         "tags": [
           "admin"
@@ -2022,7 +1982,7 @@
         }
       }
     },
-    "/api/admin/rag-repositories/{repository_id}": {
+    "/api/admin/rag/repositories/{repository_id}": {
       "get": {
         "tags": [
           "admin"
@@ -2084,7 +2044,7 @@
         }
       }
     },
-    "/api/admin/rag-repositories/{repository_id}/test-connection": {
+    "/api/admin/rag/repositories/{repository_id}/test-connection": {
       "post": {
         "tags": [
           "admin"
@@ -2105,23 +2065,30 @@
         }
       }
     },
-    "/api/admin/rag-repositories/{repository_id}/databases": {
-      "get": {
+    "/api/admin/user-groups/{group_id}/rag-providers": {
+      "post": {
         "tags": [
           "admin"
         ],
-        "description": "List databases for a RAG repository",
-        "operationId": "Admin.listRAGRepositoryDatabases",
+        "description": "Assign RAG provider to user group",
+        "operationId": "Admin.assignRagProviderToGroup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRAGProviderToGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RAGDatabase"
-                  }
+                  "$ref": "#/components/schemas/UserGroupRAGProviderResponse"
                 }
               }
             }
@@ -2129,18 +2096,18 @@
         }
       }
     },
-    "/api/admin/rag-repositories/download-database": {
-      "post": {
+    "/api/admin/user-groups/{group_id}/rag-providers/{provider_id}": {
+      "put": {
         "tags": [
           "admin"
         ],
-        "description": "Download RAG database from repository",
-        "operationId": "Admin.downloadRAGDatabaseFromRepository",
+        "description": "Update RAG provider permissions for user group",
+        "operationId": "Admin.updateGroupRagProviderPermissions",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DownloadRAGDatabaseFromRepositoryRequest"
+                "$ref": "#/components/schemas/UpdateGroupRAGProviderRequest"
               }
             }
           },
@@ -2152,7 +2119,69 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RAGDatabase"
+                  "$ref": "#/components/schemas/UserGroupRAGProviderResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "description": "Remove RAG provider from user group",
+        "operationId": "Admin.removeRagProviderFromGroup",
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
+    },
+    "/api/admin/user-group-rag-providers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "description": "List all user group RAG provider relationships",
+        "operationId": "Admin.listUserGroupRagProviderRelationships",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserGroupRAGProviderResponse"
+                  }
                 }
               }
             }
@@ -4138,6 +4167,304 @@
           }
         }
       }
+    },
+    "/api/rag/providers": {
+      "get": {
+        "tags": [
+          "rag"
+        ],
+        "description": "List RAG providers available for creating instances",
+        "operationId": "Rag.listCreatableProviders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RAGProvider"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rag/instances": {
+      "get": {
+        "tags": [
+          "rag"
+        ],
+        "description": "List user's RAG instances",
+        "operationId": "Rag.listInstances",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstanceListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rag/providers/{provider_id}/instances": {
+      "post": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Create new RAG instance for provider",
+        "operationId": "Rag.createInstance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRAGInstanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rag/instances/{instance_id}": {
+      "get": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Get RAG instance by ID",
+        "operationId": "Rag.getInstance",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstance"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Update RAG instance",
+        "operationId": "Rag.updateInstance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRAGInstanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstance"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Delete RAG instance",
+        "operationId": "Rag.deleteInstance",
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
+    },
+    "/api/rag/instances/{instance_id}/files": {
+      "get": {
+        "tags": [
+          "rag"
+        ],
+        "description": "List files in RAG instance",
+        "operationId": "Rag.listInstanceFiles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "status_filter",
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RAGProcessingStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RAGInstanceFile"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Add files to RAG instance",
+        "operationId": "Rag.addFilesToInstance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddFilesToRAGInstanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddFilesToRAGInstanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rag/instances/{instance_id}/files/{file_id}": {
+      "delete": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Remove file from RAG instance",
+        "operationId": "Rag.removeFileFromInstance",
+        "responses": {
+          "204": {
+            "description": "no content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4463,6 +4790,21 @@
           "rag::repositories::create",
           "rag::repositories::edit",
           "rag::repositories::delete",
+          "rag::instances::read",
+          "rag::instances::create",
+          "rag::instances::edit",
+          "rag::instances::delete",
+          "rag::files::read",
+          "rag::files::add",
+          "rag::files::remove",
+          "rag::admin::providers::read",
+          "rag::admin::providers::create",
+          "rag::admin::providers::edit",
+          "rag::admin::providers::delete",
+          "rag::admin::instances::read",
+          "rag::admin::instances::create",
+          "rag::admin::instances::edit",
+          "rag::admin::instances::delete",
           "model-downloads::read",
           "model-downloads::create",
           "model-downloads::cancel",
@@ -7046,6 +7388,220 @@
           "message"
         ]
       },
+      "RAGInstanceListResponse": {
+        "type": "object",
+        "properties": {
+          "instances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RAGInstance"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "per_page": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "instances",
+          "total",
+          "page",
+          "per_page"
+        ]
+      },
+      "RAGInstance": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "is_system": {
+            "type": "boolean"
+          },
+          "engine_type": {
+            "$ref": "#/components/schemas/RAGEngineType"
+          },
+          "engine_settings_rag_simple_vector": true,
+          "engine_settings_rag_simple_graph": true,
+          "embedding_model_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "llm_model_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "age_graph_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parameters": true,
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "provider_id",
+          "name",
+          "alias",
+          "enabled",
+          "is_active",
+          "is_system",
+          "engine_type",
+          "parameters",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "RAGEngineType": {
+        "type": "string",
+        "enum": [
+          "rag_simple_vector",
+          "rag_simple_graph"
+        ]
+      },
+      "CreateSystemRAGInstanceRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "engine_type": {
+            "$ref": "#/components/schemas/RAGEngineType"
+          },
+          "embedding_model_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "llm_model_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "parameters": true,
+          "engine_settings": true
+        },
+        "required": [
+          "provider_id",
+          "name",
+          "alias",
+          "engine_type",
+          "embedding_model_id"
+        ]
+      },
+      "UpdateRAGInstanceRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "embedding_model_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "llm_model_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "parameters": true,
+          "engine_settings": true
+        }
+      },
       "RAGProviderListResponse": {
         "type": "object",
         "properties": {
@@ -7217,247 +7773,6 @@
               }
             ]
           }
-        }
-      },
-      "RAGDatabase": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "provider_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "alias": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "is_active": {
-            "type": "boolean"
-          },
-          "collection_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "embedding_model": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "chunk_size": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "chunk_overlap": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "capabilities": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RAGDatabaseCapabilities"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "settings": true,
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "provider_id",
-          "name",
-          "alias",
-          "enabled",
-          "is_active",
-          "chunk_size",
-          "chunk_overlap",
-          "created_at",
-          "updated_at"
-        ]
-      },
-      "RAGDatabaseCapabilities": {
-        "type": "object",
-        "properties": {
-          "semantic_search": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "hybrid_search": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "metadata_filtering": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "similarity_threshold": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          }
-        }
-      },
-      "CreateRAGDatabaseRequest": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "type": "string"
-          },
-          "alias": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "collection_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "embedding_model": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "chunk_size": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "chunk_overlap": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "capabilities": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RAGDatabaseCapabilities"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "settings": true
-        },
-        "required": [
-          "name",
-          "alias"
-        ]
-      },
-      "UpdateRAGDatabaseRequest": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "alias": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "enabled": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "collection_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "embedding_model": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "chunk_size": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "chunk_overlap": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "capabilities": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RAGDatabaseCapabilities"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "settings": true
         }
       },
       "RAGRepositoryListResponse": {
@@ -7660,38 +7975,81 @@
           "message"
         ]
       },
-      "DownloadRAGDatabaseFromRepositoryRequest": {
+      "AssignRAGProviderToGroupRequest": {
         "type": "object",
         "properties": {
-          "repository_id": {
+          "group_id": {
             "type": "string",
             "format": "uuid"
           },
-          "database_id": {
-            "type": "string"
-          },
-          "target_provider_id": {
+          "provider_id": {
             "type": "string",
             "format": "uuid"
           },
-          "database_name": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "database_alias": {
-            "type": [
-              "string",
-              "null"
-            ]
+          "can_create_instance": {
+            "type": "boolean"
           }
         },
         "required": [
-          "repository_id",
-          "database_id",
-          "target_provider_id"
+          "group_id",
+          "provider_id",
+          "can_create_instance"
         ]
+      },
+      "UserGroupRAGProviderResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "group_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "can_create_instance": {
+            "type": "boolean"
+          },
+          "assigned_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/RAGProvider"
+          },
+          "group": {
+            "$ref": "#/components/schemas/UserGroup"
+          }
+        },
+        "required": [
+          "id",
+          "group_id",
+          "provider_id",
+          "can_create_instance",
+          "assigned_at",
+          "updated_at",
+          "provider",
+          "group"
+        ]
+      },
+      "UpdateGroupRAGProviderRequest": {
+        "type": "object",
+        "properties": {
+          "can_create_instance": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
       },
       "AssistantListResponse": {
         "type": "object",
@@ -9706,6 +10064,198 @@
           "total",
           "page",
           "per_page"
+        ]
+      },
+      "CreateRAGInstanceRequest": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "project_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "engine_type": {
+            "$ref": "#/components/schemas/RAGEngineType"
+          },
+          "embedding_model_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "llm_model_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "parameters": true,
+          "engine_settings": true
+        },
+        "required": [
+          "provider_id",
+          "name",
+          "alias",
+          "engine_type",
+          "embedding_model_id"
+        ]
+      },
+      "RAGInstanceFilesQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "per_page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "status_filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGProcessingStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "RAGProcessingStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "processing",
+          "completed",
+          "failed"
+        ]
+      },
+      "RAGInstanceFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rag_instance_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "file_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "processing_status": {
+            "$ref": "#/components/schemas/RAGProcessingStatus"
+          },
+          "processed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "processing_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rag_metadata": true,
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "rag_instance_id",
+          "file_id",
+          "processing_status",
+          "rag_metadata",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "AddFilesToRAGInstanceRequest": {
+        "type": "object",
+        "properties": {
+          "file_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "file_ids"
+        ]
+      },
+      "AddFilesToRAGInstanceResponse": {
+        "type": "object",
+        "properties": {
+          "added_files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RAGInstanceFile"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RAGFileError"
+            }
+          }
+        },
+        "required": [
+          "added_files",
+          "errors"
+        ]
+      },
+      "RAGFileError": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "error"
         ]
       }
     }

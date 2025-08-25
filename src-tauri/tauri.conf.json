@@ -32,7 +32,11 @@
       "./target/pdfium/target/*": "lib",
       "./target/pandoc/*": "bin",
       "./target/mistralrs-build/bin/*": "bin",
-      "./target/llamacpp/bin/*": "bin"
+      "./target/llamacpp/bin/*": "bin",
+      "./target/pgvector/*": "pgvector",
+      "./target/pgvector/sql/*": "pgvector/sql",
+      "./target/apache-age/*": "apache-age",
+      "./target/apache-age/sql/*": "apache-age/sql"
     }
   }
 }

@@ -117,14 +117,33 @@ permission_middleware!(models_disable_middleware, Permission::ModelsDisable);
 permission_middleware!(models_upload_middleware, Permission::ModelsUpload);
 
 // RAG permissions
-permission_middleware!(rag_providers_read_middleware, Permission::RagProvidersRead);
-permission_middleware!(rag_providers_create_middleware, Permission::RagProvidersCreate);
-permission_middleware!(rag_providers_edit_middleware, Permission::RagProvidersEdit);
-permission_middleware!(rag_providers_delete_middleware, Permission::RagProvidersDelete);
 permission_middleware!(rag_repositories_read_middleware, Permission::RagRepositoriesRead);
 permission_middleware!(rag_repositories_create_middleware, Permission::RagRepositoriesCreate);
 permission_middleware!(rag_repositories_edit_middleware, Permission::RagRepositoriesEdit);
 permission_middleware!(rag_repositories_delete_middleware, Permission::RagRepositoriesDelete);
+
+// RAG provider admin middleware
+permission_middleware!(rag_admin_providers_read_middleware, Permission::RagAdminProvidersRead);
+permission_middleware!(rag_admin_providers_create_middleware, Permission::RagAdminProvidersCreate);
+permission_middleware!(rag_admin_providers_edit_middleware, Permission::RagAdminProvidersEdit);
+permission_middleware!(rag_admin_providers_delete_middleware, Permission::RagAdminProvidersDelete);
+
+// RAG instance user middleware
+permission_middleware!(rag_instances_read_middleware, Permission::RagInstancesRead);
+permission_middleware!(rag_instances_create_middleware, Permission::RagInstancesCreate);
+permission_middleware!(rag_instances_edit_middleware, Permission::RagInstancesEdit);
+permission_middleware!(rag_instances_delete_middleware, Permission::RagInstancesDelete);
+
+// RAG file middleware
+permission_middleware!(rag_files_read_middleware, Permission::RagFilesRead);
+permission_middleware!(rag_files_add_middleware, Permission::RagFilesAdd);
+permission_middleware!(rag_files_remove_middleware, Permission::RagFilesRemove);
+
+// RAG system instance admin middleware
+permission_middleware!(rag_admin_instances_read_middleware, Permission::RagAdminInstancesRead);
+permission_middleware!(rag_admin_instances_create_middleware, Permission::RagAdminInstancesCreate);
+permission_middleware!(rag_admin_instances_edit_middleware, Permission::RagAdminInstancesEdit);
+permission_middleware!(rag_admin_instances_delete_middleware, Permission::RagAdminInstancesDelete);
 
 // Model download permissions
 permission_middleware!(model_downloads_read_middleware, Permission::ModelDownloadsRead);
