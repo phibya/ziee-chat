@@ -129,7 +129,7 @@ pub struct CreateModelWithFilesRequest {
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
     pub engine_type: Option<EngineType>,
-    pub engine_settings_mistralrs: Option<MistralRsSettings>,
+    pub engine_settings: Option<ModelEngineSettings>,
     pub source: Option<SourceInfo>,
 }
 
@@ -285,8 +285,7 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
         engine_type: request
             .engine_type
             .unwrap_or(EngineType::Mistralrs),
-        engine_settings_mistralrs: request.engine_settings_mistralrs,
-        engine_settings_llamacpp: None,
+        engine_settings: request.engine_settings,
         file_format: request.file_format,
         source: request.source,
     };
@@ -530,8 +529,7 @@ pub struct DownloadFromRepositoryRequest {
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
     pub engine_type: Option<EngineType>,
-    pub engine_settings_mistralrs: Option<MistralRsSettings>,
-    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
+    pub engine_settings: Option<ModelEngineSettings>,
     pub source: SourceInfo,
 }
 
@@ -557,7 +555,7 @@ pub async fn upload_multiple_files_and_commit(
     let mut file_format: Option<String> = None;
     let mut capabilities: Option<ModelCapabilities> = None;
     let engine_type: Option<EngineType> = None;
-    let mut engine_settings_mistralrs: Option<MistralRsSettings> = None;
+    let mut engine_settings: Option<ModelEngineSettings> = None;
 
     // Process multipart form data
     while let Some(field) = multipart.next_field().await.map_err(|e| {
@@ -714,7 +712,7 @@ pub async fn upload_multiple_files_and_commit(
                     )
                 })?;
                 if !value.is_empty() {
-                    engine_settings_mistralrs = Some(serde_json::from_str(&value).map_err(|e| {
+                    engine_settings = Some(serde_json::from_str(&value).map_err(|e| {
                         (
                             StatusCode::BAD_REQUEST,
                             AppError::new(
@@ -861,7 +859,7 @@ pub async fn upload_multiple_files_and_commit(
         capabilities,
         parameters: None, // No parameters available in upload request
         engine_type,
-        engine_settings_mistralrs,
+        engine_settings,
         source: None, // No source for direct uploads
     })
     .await
@@ -911,8 +909,7 @@ pub async fn initiate_repository_download(
             capabilities: request.capabilities.clone(),
             parameters: request.parameters.clone(),
             engine_type: request.engine_type.clone(),
-            engine_settings_mistralrs: request.engine_settings_mistralrs.clone(),
-            engine_settings_llamacpp: request.engine_settings_llamacpp.clone(),
+            engine_settings: request.engine_settings.clone(),
             source: Some(request.source.clone()),
         },
     };
@@ -1266,7 +1263,7 @@ pub async fn initiate_repository_download(
                             .engine_type
                             .unwrap_or(EngineType::Mistralrs),
                     ),
-                    engine_settings_mistralrs: request.engine_settings_mistralrs,
+                    engine_settings: request.engine_settings,
                     source: Some(request.source.clone()),
                 })
                 .await

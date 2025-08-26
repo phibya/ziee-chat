@@ -1,6 +1,7 @@
 use crate::database::get_database_pool;
 use crate::database::models::*;
 use crate::database::queries::user_group_providers::get_provider_ids_for_group;
+use crate::database::queries::user_group_rag_providers::get_rag_provider_ids_for_group;
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -31,8 +32,12 @@ pub async fn create_user_group(
     let provider_ids = get_provider_ids_for_group(group.id)
         .await
         .unwrap_or_default();
+    let rag_provider_ids = get_rag_provider_ids_for_group(group.id)
+        .await
+        .unwrap_or_default();
 
     group.provider_ids = provider_ids;
+    group.rag_provider_ids = rag_provider_ids;
 
     Ok(group)
 }
@@ -49,7 +54,11 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
         let provider_ids = get_provider_ids_for_group(group.id)
             .await
             .unwrap_or_default();
+        let rag_provider_ids = get_rag_provider_ids_for_group(group.id)
+            .await
+            .unwrap_or_default();
         group.provider_ids = provider_ids;
+        group.rag_provider_ids = rag_provider_ids;
     }
 
     Ok(group)
@@ -77,12 +86,16 @@ pub async fn list_user_groups(
     .fetch_all(&*pool)
     .await?;
 
-    // Load provider_ids for each group
+    // Load provider_ids and rag_provider_ids for each group
     for group in &mut groups {
         let provider_ids = get_provider_ids_for_group(group.id)
             .await
             .unwrap_or_default();
+        let rag_provider_ids = get_rag_provider_ids_for_group(group.id)
+            .await
+            .unwrap_or_default();
         group.provider_ids = provider_ids;
+        group.rag_provider_ids = rag_provider_ids;
     }
 
     Ok(UserGroupListResponse {
@@ -174,7 +187,11 @@ pub async fn update_user_group(
         let provider_ids = get_provider_ids_for_group(group.id)
             .await
             .unwrap_or_default();
+        let rag_provider_ids = get_rag_provider_ids_for_group(group.id)
+            .await
+            .unwrap_or_default();
         group.provider_ids = provider_ids;
+        group.rag_provider_ids = rag_provider_ids;
     }
 
     Ok(group)

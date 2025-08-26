@@ -1,6 +1,5 @@
-use super::model::{MistralRsSettings, ModelCapabilities, ModelParameters};
+use super::model::{ModelCapabilities, ModelEngineSettings, ModelParameters};
 use crate::api::engines::EngineType;
-use crate::database::models::LlamaCppSettings;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -90,8 +89,7 @@ pub struct DownloadRequestData {
     pub parameters: Option<ModelParameters>,
     /// Model settings configuration
     pub engine_type: Option<EngineType>,
-    pub engine_settings_mistralrs: Option<MistralRsSettings>,
-    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
+    pub engine_settings: Option<ModelEngineSettings>,
     /// Source information for tracking download origin
     pub source: Option<SourceInfo>,
 }

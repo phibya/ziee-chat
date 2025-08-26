@@ -353,8 +353,7 @@ pub async fn enable_model(
             is_active: None,
             capabilities: None,
             engine_type: None,
-            engine_settings_mistralrs: None,
-            engine_settings_llamacpp: None,
+            engine_settings: None,
             file_format: None,
         },
     )
@@ -389,8 +388,7 @@ pub async fn disable_model(
             is_active: None,
             capabilities: None,
             engine_type: None,
-            engine_settings_mistralrs: None,
-            engine_settings_llamacpp: None,
+            engine_settings: None,
             file_format: None,
         },
     )

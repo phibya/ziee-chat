@@ -764,6 +764,15 @@ impl MistralRsSettings {
     }
 }
 
+/// Engine-specific settings for model configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+pub struct ModelEngineSettings {
+    /// MistralRs-specific settings
+    pub mistralrs: Option<MistralRsSettings>,
+    /// LlamaCpp-specific settings  
+    pub llamacpp: Option<LlamaCppSettings>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Model {
     pub id: Uuid,
@@ -785,8 +794,7 @@ pub struct Model {
     pub port: Option<i32>,   // Port number where the model server is running
     pub pid: Option<i32>,    // Process ID of the running model server
     pub engine_type: EngineType, // Engine type: Mistralrs | Llamacpp | None - REQUIRED
-    pub engine_settings_mistralrs: Option<MistralRsSettings>, // MistralRs-specific settings
-    pub engine_settings_llamacpp: Option<LlamaCppSettings>, // LlamaCpp-specific settings
+    pub engine_settings: Option<ModelEngineSettings>, // Engine-specific settings
     pub file_format: FileFormat, // Model file format: safetensors, gguf, pytorch, etc. - REQUIRED
     pub source: Option<SourceInfo>, // Source information for tracking download origin
     pub files: Option<Vec<ModelFileInfo>>,
@@ -820,33 +828,15 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             })?)
         };
 
-        // Parse MistralRs engine settings
-        let mistralrs_settings_json: Option<serde_json::Value> =
-            row.try_get("engine_settings_mistralrs")?;
-        let engine_settings_mistralrs = if let Some(json_val) = mistralrs_settings_json {
+        // Parse engine settings from the new consolidated column
+        let engine_settings_json: Option<serde_json::Value> = row.try_get("engine_settings")?;
+        let engine_settings = if let Some(json_val) = engine_settings_json {
             if json_val.is_object() && json_val.as_object().unwrap().is_empty() {
                 None
             } else {
                 Some(serde_json::from_value(json_val).map_err(|e| {
                     sqlx::Error::ColumnDecode {
-                        index: "engine_settings_mistralrs".into(),
-                        source: Box::new(e),
-                    }
-                })?)
-            }
-        } else {
-            None
-        };
-
-        // Parse LlamaCpp engine settings
-        let llamacpp_settings_json: Option<serde_json::Value> = row.try_get("engine_settings_llamacpp")?;
-        let engine_settings_llamacpp = if let Some(json_val) = llamacpp_settings_json {
-            if json_val.is_object() && json_val.as_object().unwrap().is_empty() {
-                None
-            } else {
-                Some(serde_json::from_value(json_val).map_err(|e| {
-                    sqlx::Error::ColumnDecode {
-                        index: "engine_settings_llamacpp".into(),
+                        index: "engine_settings".into(),
                         source: Box::new(e),
                     }
                 })?)
@@ -906,8 +896,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
                         )),
                     })?
             },
-            engine_settings_mistralrs,
-            engine_settings_llamacpp,
+            engine_settings,
             file_format: {
                 let file_format_str: String = row.try_get("file_format")?;
                 FileFormat::from_str(&file_format_str)
@@ -933,8 +922,7 @@ pub struct CreateModelRequest {
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
     pub engine_type: EngineType, // Required field
-    pub engine_settings_mistralrs: Option<MistralRsSettings>,
-    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
+    pub engine_settings: Option<ModelEngineSettings>,
     pub file_format: FileFormat,        // Required field
     pub source: Option<SourceInfo>, // Source information for tracking download origin
 }
@@ -949,8 +937,7 @@ pub struct UpdateModelRequest {
     pub capabilities: Option<ModelCapabilities>,
     pub parameters: Option<ModelParameters>,
     pub engine_type: Option<EngineType>,
-    pub engine_settings_mistralrs: Option<MistralRsSettings>,
-    pub engine_settings_llamacpp: Option<LlamaCppSettings>,
+    pub engine_settings: Option<ModelEngineSettings>,
     pub file_format: Option<FileFormat>,
 }
 
@@ -1057,11 +1044,17 @@ impl Model {
 
     /// Get the MistralRs settings, or return default settings if none are set
     pub fn get_mistralrs_settings(&self) -> MistralRsSettings {
-        self.engine_settings_mistralrs.clone().unwrap_or_default()
+        self.engine_settings
+            .as_ref()
+            .and_then(|s| s.mistralrs.clone())
+            .unwrap_or_default()
     }
 
     /// Get the LlamaCpp settings, or return default settings if none are set
     pub fn get_llamacpp_settings(&self) -> LlamaCppSettings {
-        self.engine_settings_llamacpp.clone().unwrap_or_default()
+        self.engine_settings
+            .as_ref()
+            .and_then(|s| s.llamacpp.clone())
+            .unwrap_or_default()
     }
 }

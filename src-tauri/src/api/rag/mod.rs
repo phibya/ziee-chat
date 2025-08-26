@@ -5,4 +5,3 @@ pub mod repositories;
 
 // Admin modules
 pub mod admin_instances;
-pub mod admin_providers;

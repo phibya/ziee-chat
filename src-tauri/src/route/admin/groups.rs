@@ -1,6 +1,6 @@
 use crate::api;
 use crate::database::models::{
-    Provider, UserGroup, UserGroupListResponse, UserGroupProviderResponse, UserListResponse,
+     UserGroup, UserGroupListResponse, UserListResponse,
 };
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
@@ -94,49 +94,5 @@ pub fn admin_group_routes() -> ApiRouter {
                     .response::<204, ()>()
             })
             .layer(middleware::from_fn(api::middleware::groups_assign_users_middleware)),
-        )
-        // User Group Model Provider relationship routes
-        .api_route(
-            "/groups/{group_id}/providers",
-            get_with(api::user_groups::get_group_providers, |op| {
-                op.description("Get providers assigned to a group")
-                    .id("Admin.getGroupProviders")
-                    .tag("admin")
-                    .response::<200, Json<Vec<Provider>>>()
-            })
-            .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
-        )
-        .api_route(
-            "/groups/assign-provider",
-            post_with(api::user_groups::assign_provider_to_group, |op| {
-                op.description("Assign a provider to a group")
-                    .id("Admin.assignProviderToGroup")
-                    .tag("admin")
-                    .response::<200, Json<UserGroupProviderResponse>>()
-            })
-            .layer(middleware::from_fn(api::middleware::groups_assign_providers_middleware)),
-        )
-        .api_route(
-            "/groups/{group_id}/providers/{provider_id}",
-            delete_with(api::user_groups::remove_provider_from_group, |op| {
-                op.description("Remove a provider from a group")
-                    .id("Admin.removeProviderFromGroup")
-                    .tag("admin")
-                    .response::<204, ()>()
-            })
-            .layer(middleware::from_fn(api::middleware::groups_assign_providers_middleware)),
-        )
-        .api_route(
-            "/user-group-provider-relationships",
-            get_with(
-                api::user_groups::list_user_group_provider_relationships,
-                |op| {
-                    op.description("List all user group provider relationships")
-                        .id("Admin.listUserGroupProviderRelationships")
-                        .tag("admin")
-                        .response::<200, Json<Vec<UserGroupProviderResponse>>>()
-                },
-            )
-            .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
 }

@@ -45,6 +45,7 @@ pub struct RAGProvider {
     pub api_key: Option<String>,
     pub base_url: Option<String>,
     pub built_in: bool,
+    pub can_user_create_instance: bool,
     pub proxy_settings: Option<ProxySettings>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -79,6 +80,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGProvider {
             api_key: row.try_get("api_key")?,
             base_url: row.try_get("base_url")?,
             built_in: row.try_get("built_in")?,
+            can_user_create_instance: row.try_get("can_user_create_instance")?,
             proxy_settings,
             created_at: row.try_get("created_at")?,
             updated_at: row.try_get("updated_at")?,
@@ -94,6 +96,7 @@ pub struct CreateRAGProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
+    pub can_user_create_instance: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -102,6 +105,7 @@ pub struct UpdateRAGProviderRequest {
     pub enabled: Option<bool>,
     pub api_key: Option<String>,
     pub base_url: Option<String>,
+    pub can_user_create_instance: Option<bool>,
     pub proxy_settings: Option<ProxySettings>,
 }
 
@@ -119,7 +123,6 @@ pub struct UserGroupRAGProvider {
     pub id: Uuid,
     pub group_id: Uuid,
     pub provider_id: Uuid,
-    pub can_create_instance: bool,
     pub assigned_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -130,7 +133,6 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserGroupRAGProvider {
             id: row.try_get("id")?,
             group_id: row.try_get("group_id")?,
             provider_id: row.try_get("provider_id")?,
-            can_create_instance: row.try_get("can_create_instance")?,
             assigned_at: row.try_get("assigned_at")?,
             updated_at: row.try_get("updated_at")?,
         })
@@ -142,7 +144,6 @@ pub struct UserGroupRAGProviderResponse {
     pub id: Uuid,
     pub group_id: Uuid,
     pub provider_id: Uuid,
-    pub can_create_instance: bool,
     pub assigned_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub provider: RAGProvider,
@@ -153,10 +154,5 @@ pub struct UserGroupRAGProviderResponse {
 pub struct AssignRAGProviderToGroupRequest {
     pub group_id: Uuid,
     pub provider_id: Uuid,
-    pub can_create_instance: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct UpdateGroupRAGProviderRequest {
-    pub can_create_instance: Option<bool>,
-}

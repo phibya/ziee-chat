@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
+use crate::database::models::RagEngineSettings;
 
 /// RAG provider model
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,8 +51,7 @@ pub struct RagInstance {
     pub enabled: bool,
     pub is_active: bool,
     pub engine_type: String,
-    pub engine_settings_rag_simple_vector: Option<serde_json::Value>,
-    pub engine_settings_rag_simple_graph: Option<serde_json::Value>,
+    pub engine_settings: RagEngineSettings,
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub age_graph_name: Option<String>,
@@ -73,8 +73,9 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RagInstance {
             enabled: row.try_get("enabled")?,
             is_active: row.try_get("is_active")?,
             engine_type: row.try_get("engine_type")?,
-            engine_settings_rag_simple_vector: row.try_get("engine_settings_rag_simple_vector")?,
-            engine_settings_rag_simple_graph: row.try_get("engine_settings_rag_simple_graph")?,
+            engine_settings: row.try_get::<serde_json::Value, _>("engine_settings")
+                .map(|v| serde_json::from_value(v).unwrap_or_default())
+                .unwrap_or_default(),
             embedding_model_id: row.try_get("embedding_model_id")?,
             llm_model_id: row.try_get("llm_model_id")?,
             age_graph_name: row.try_get("age_graph_name")?,
@@ -407,16 +408,16 @@ pub struct ChunkWithEmbedding {
 impl RagInstance {
     pub fn get_engine_settings(&self) -> Result<serde_json::Value, serde_json::Error> {
         match self.engine_type.as_str() {
-            "rag_simple_vector" => Ok(self.engine_settings_rag_simple_vector.clone().unwrap_or(serde_json::json!({}))),
-            "rag_simple_graph" => Ok(self.engine_settings_rag_simple_graph.clone().unwrap_or(serde_json::json!({}))),
+            "simple_vector" => Ok(self.engine_settings.simple_vector.clone().unwrap_or(serde_json::json!({}))),
+            "simple_graph" => Ok(self.engine_settings.simple_graph.clone().unwrap_or(serde_json::json!({}))),
             _ => Ok(serde_json::json!({})),
         }
     }
 
     pub fn set_engine_settings(&mut self, settings: serde_json::Value) {
         match self.engine_type.as_str() {
-            "rag_simple_vector" => self.engine_settings_rag_simple_vector = Some(settings),
-            "rag_simple_graph" => self.engine_settings_rag_simple_graph = Some(settings),
+            "simple_vector" => self.engine_settings.simple_vector = Some(settings),
+            "simple_graph" => self.engine_settings.simple_graph = Some(settings),
             _ => {}
         }
     }

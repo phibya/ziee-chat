@@ -104,27 +104,6 @@ pub async fn get_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>, sql
     Ok(provider_ids.into_iter().map(|(id,)| id).collect())
 }
 
-/// Get all providers assigned to a user group
-pub async fn get_providers_for_group(group_id: Uuid) -> Result<Vec<Provider>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let provider_ids: Vec<(Uuid,)> =
-        sqlx::query_as("SELECT provider_id FROM user_group_providers WHERE group_id = $1")
-            .bind(group_id)
-            .fetch_all(pool)
-            .await?;
-
-    let mut providers = Vec::new();
-    for (provider_id,) in provider_ids {
-        if let Some(provider) = get_provider_by_id(provider_id).await? {
-            providers.push(provider);
-        }
-    }
-
-    Ok(providers)
-}
-
 /// Get all user groups that have access to a model provider
 pub async fn get_groups_for_provider(provider_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -229,38 +208,4 @@ async fn get_all_providers() -> Result<Vec<Provider>, sqlx::Error> {
     }
 
     Ok(providers)
-}
-
-/// Get all relationships between user groups and model providers
-pub async fn list_user_group_provider_relationships(
-) -> Result<Vec<UserGroupProviderResponse>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let relationships: Vec<UserGroupProvider> = sqlx::query_as(
-        "SELECT id, group_id, provider_id, assigned_at 
-         FROM user_group_providers 
-         ORDER BY assigned_at DESC",
-    )
-    .fetch_all(pool)
-    .await?;
-
-    let mut responses = Vec::new();
-    for relationship in relationships {
-        if let (Some(provider), Some(group)) = (
-            get_provider_by_id(relationship.provider_id).await?,
-            get_user_group_by_id(relationship.group_id).await?,
-        ) {
-            responses.push(UserGroupProviderResponse {
-                id: relationship.id,
-                group_id: relationship.group_id,
-                provider_id: relationship.provider_id,
-                assigned_at: relationship.assigned_at,
-                provider,
-                group,
-            });
-        }
-    }
-
-    Ok(responses)
 }

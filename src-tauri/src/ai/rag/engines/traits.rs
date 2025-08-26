@@ -10,17 +10,17 @@ use uuid::Uuid;
 /// RAG engine types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum RAGEngineType {
-    #[serde(rename = "rag_simple_vector")]
+    #[serde(rename = "simple_vector")]
     SimpleVector,
-    #[serde(rename = "rag_simple_graph")]
+    #[serde(rename = "simple_graph")]
     SimpleGraph,
 }
 
 impl std::fmt::Display for RAGEngineType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RAGEngineType::SimpleVector => write!(f, "rag_simple_vector"),
-            RAGEngineType::SimpleGraph => write!(f, "rag_simple_graph"),
+            RAGEngineType::SimpleVector => write!(f, "simple_vector"),
+            RAGEngineType::SimpleGraph => write!(f, "simple_graph"),
         }
     }
 }
@@ -30,8 +30,8 @@ impl std::str::FromStr for RAGEngineType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "rag_simple_vector" => Ok(RAGEngineType::SimpleVector),
-            "rag_simple_graph" => Ok(RAGEngineType::SimpleGraph),
+            "simple_vector" => Ok(RAGEngineType::SimpleVector),
+            "simple_graph" => Ok(RAGEngineType::SimpleGraph),
             _ => Err(RAGError::ConfigurationError(format!(
                 "Invalid engine type: {}",
                 s

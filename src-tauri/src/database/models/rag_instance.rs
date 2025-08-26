@@ -4,6 +4,15 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
+/// Engine-specific settings for RAG instance configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+pub struct RagEngineSettings {
+    /// Simple vector RAG engine settings
+    pub simple_vector: Option<serde_json::Value>,
+    /// Simple graph RAG engine settings  
+    pub simple_graph: Option<serde_json::Value>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGInstance {
     pub id: Uuid,
@@ -17,8 +26,7 @@ pub struct RAGInstance {
     pub is_active: bool,
     pub is_system: bool,
     pub engine_type: RAGEngineType,
-    pub engine_settings_rag_simple_vector: Option<serde_json::Value>,
-    pub engine_settings_rag_simple_graph: Option<serde_json::Value>,
+    pub engine_settings: RagEngineSettings,
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub age_graph_name: Option<String>,
@@ -44,8 +52,9 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGInstance {
             is_active: row.try_get("is_active")?,
             is_system: row.try_get("is_system").unwrap_or(false),
             engine_type,
-            engine_settings_rag_simple_vector: row.try_get("engine_settings_rag_simple_vector")?,
-            engine_settings_rag_simple_graph: row.try_get("engine_settings_rag_simple_graph")?,
+            engine_settings: row.try_get::<serde_json::Value, _>("engine_settings")
+                .map(|v| serde_json::from_value(v).unwrap_or_default())
+                .unwrap_or_default(),
             embedding_model_id: row.try_get("embedding_model_id")?,
             llm_model_id: row.try_get("llm_model_id")?,
             age_graph_name: row.try_get("age_graph_name")?,
@@ -59,25 +68,25 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGInstance {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGEngineType {
-    #[serde(rename = "rag_simple_vector")]
+    #[serde(rename = "simple_vector")]
     RagSimpleVector,
-    #[serde(rename = "rag_simple_graph")]
+    #[serde(rename = "simple_graph")]
     RagSimpleGraph,
 }
 
 impl RAGEngineType {
     pub fn from_str(s: &str) -> RAGEngineType {
         match s {
-            "rag_simple_vector" => RAGEngineType::RagSimpleVector,
-            "rag_simple_graph" => RAGEngineType::RagSimpleGraph,
+            "simple_vector" => RAGEngineType::RagSimpleVector,
+            "simple_graph" => RAGEngineType::RagSimpleGraph,
             _ => RAGEngineType::RagSimpleVector, // fallback to vector for unknown types
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            RAGEngineType::RagSimpleVector => "rag_simple_vector",
-            RAGEngineType::RagSimpleGraph => "rag_simple_graph",
+            RAGEngineType::RagSimpleVector => "simple_vector",
+            RAGEngineType::RagSimpleGraph => "simple_graph",
         }
     }
 }
@@ -90,10 +99,10 @@ pub struct CreateRAGInstanceRequest {
     pub alias: String,
     pub description: Option<String>,
     pub engine_type: RAGEngineType,
-    pub embedding_model_id: Uuid,
+    pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,
-    pub engine_settings: Option<serde_json::Value>,
+    pub engine_settings: Option<RagEngineSettings>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -103,10 +112,10 @@ pub struct CreateSystemRAGInstanceRequest {
     pub alias: String,
     pub description: Option<String>,
     pub engine_type: RAGEngineType,
-    pub embedding_model_id: Uuid,
+    pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,
-    pub engine_settings: Option<serde_json::Value>,
+    pub engine_settings: Option<RagEngineSettings>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -117,7 +126,7 @@ pub struct UpdateRAGInstanceRequest {
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,
-    pub engine_settings: Option<serde_json::Value>,
+    pub engine_settings: Option<RagEngineSettings>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]

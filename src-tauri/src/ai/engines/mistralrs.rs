@@ -360,7 +360,7 @@ impl MistralRsEngine {
         let model_path_absolute = model.get_model_absolute_path();
 
         // Get mistralrs settings or use defaults
-        let settings = model.engine_settings_mistralrs.as_ref();
+        let settings = model.engine_settings.as_ref().and_then(|s| s.mistralrs.as_ref());
 
         // Add global arguments first
 

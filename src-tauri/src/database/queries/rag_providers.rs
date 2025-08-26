@@ -14,7 +14,7 @@ pub async fn get_rag_provider_by_id(provider_id: Uuid) -> Result<Option<RAGProvi
     let pool = pool.as_ref();
 
     let provider_row: Option<RAGProvider> = sqlx::query_as(
-        "SELECT id, name, provider_type, enabled, api_key, base_url, built_in, proxy_settings, created_at, updated_at
+        "SELECT id, name, provider_type, enabled, api_key, base_url, built_in, can_user_create_instance, proxy_settings, created_at, updated_at
          FROM rag_providers 
          WHERE id = $1"
     )
@@ -43,7 +43,7 @@ pub async fn list_rag_providers(
 
     // Get providers with pagination
     let providers: Vec<RAGProvider> = sqlx::query_as(
-        "SELECT id, name, provider_type, enabled, api_key, base_url, built_in, proxy_settings, created_at, updated_at
+        "SELECT id, name, provider_type, enabled, api_key, base_url, built_in, can_user_create_instance, proxy_settings, created_at, updated_at
          FROM rag_providers 
          ORDER BY created_at DESC 
          LIMIT $1 OFFSET $2"
@@ -69,9 +69,9 @@ pub async fn create_rag_provider(
     let provider_id = Uuid::new_v4();
 
     let provider_row: RAGProvider = sqlx::query_as(
-        "INSERT INTO rag_providers (id, name, provider_type, enabled, api_key, base_url, built_in, proxy_settings)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, provider_type, enabled, api_key, base_url, built_in, proxy_settings, created_at, updated_at"
+        "INSERT INTO rag_providers (id, name, provider_type, enabled, api_key, base_url, built_in, can_user_create_instance, proxy_settings)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+         RETURNING id, name, provider_type, enabled, api_key, base_url, built_in, can_user_create_instance, proxy_settings, created_at, updated_at"
     )
     .bind(provider_id)
     .bind(&request.name)
@@ -80,6 +80,7 @@ pub async fn create_rag_provider(
     .bind(&request.api_key)
     .bind(&request.base_url)
     .bind(false) // Custom RAG providers are never built-in
+    .bind(request.can_user_create_instance.unwrap_or(true))
     .bind(serde_json::Value::Null) // No proxy settings by default
     .fetch_one(pool)
     .await?;
@@ -100,16 +101,18 @@ pub async fn update_rag_provider(
              enabled = COALESCE($3, enabled),
              api_key = COALESCE($4, api_key),
              base_url = COALESCE($5, base_url),
-             proxy_settings = COALESCE($6, proxy_settings),
+             can_user_create_instance = COALESCE($6, can_user_create_instance),
+             proxy_settings = COALESCE($7, proxy_settings),
              updated_at = NOW()
          WHERE id = $1
-         RETURNING id, name, provider_type, enabled, api_key, base_url, built_in, proxy_settings, created_at, updated_at"
+         RETURNING id, name, provider_type, enabled, api_key, base_url, built_in, can_user_create_instance, proxy_settings, created_at, updated_at"
     )
     .bind(provider_id)
     .bind(&request.name)
     .bind(request.enabled)
     .bind(&request.api_key)
     .bind(&request.base_url)
+    .bind(request.can_user_create_instance)
     .bind(request.proxy_settings.map(|ps| serde_json::to_value(ps).unwrap_or(serde_json::Value::Null)))
     .fetch_one(pool)
     .await?;

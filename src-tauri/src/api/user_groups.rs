@@ -10,10 +10,10 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        AssignProviderToGroupRequest, AssignUserToGroupRequest, CreateUserGroupRequest,
-        UpdateUserGroupRequest, UserGroupProviderResponse,
+        AssignProviderToGroupRequest, AssignRAGProviderToGroupRequest, AssignUserToGroupRequest, CreateUserGroupRequest,
+        UpdateUserGroupRequest,
     },
-    queries::{user_group_providers, user_groups},
+    queries::{user_group_providers, user_group_rag_providers, user_groups},
 };
 use crate::types::PaginationQuery;
 
@@ -38,6 +38,22 @@ pub async fn create_user_group(
                         user_group_providers::assign_provider_to_group(assign_request).await
                     {
                         eprintln!("Error assigning model provider to group: {}", e);
+                        // Continue with other providers even if one fails
+                    }
+                }
+            }
+
+            // If rag_provider_ids are provided, assign them to the group
+            if let Some(rag_provider_ids) = request.rag_provider_ids {
+                for provider_id in rag_provider_ids {
+                    let assign_request = AssignRAGProviderToGroupRequest {
+                        group_id: group.id,
+                        provider_id,
+                    };
+                    if let Err(e) =
+                        user_group_rag_providers::assign_rag_provider_to_group(assign_request).await
+                    {
+                        eprintln!("Error assigning RAG provider to group: {}", e);
                         // Continue with other providers even if one fails
                     }
                 }
@@ -142,6 +158,40 @@ pub async fn update_user_group(
                 if let Err(e) = user_group_providers::assign_provider_to_group(assign_request).await
                 {
                     eprintln!("Error assigning model provider to group: {}", e);
+                }
+            }
+        }
+    }
+
+    // Handle RAG provider assignments if provided
+    if let Some(rag_provider_ids) = &request.rag_provider_ids {
+        // First, get current assignments
+        let current_rag_providers = user_group_rag_providers::get_rag_provider_ids_for_group(group_id)
+            .await
+            .unwrap_or_default();
+
+        // Remove RAG providers that are no longer in the list
+        for current_provider in &current_rag_providers {
+            if !rag_provider_ids.contains(current_provider) {
+                if let Err(e) =
+                    user_group_rag_providers::remove_rag_provider_from_group(group_id, *current_provider)
+                        .await
+                {
+                    eprintln!("Error removing RAG provider from group: {}", e);
+                }
+            }
+        }
+
+        // Add new RAG providers
+        for provider_id in rag_provider_ids {
+            if !current_rag_providers.contains(provider_id) {
+                let assign_request = AssignRAGProviderToGroupRequest {
+                    group_id,
+                    provider_id: *provider_id,
+                };
+                if let Err(e) = user_group_rag_providers::assign_rag_provider_to_group(assign_request).await
+                {
+                    eprintln!("Error assigning RAG provider to group: {}", e);
                 }
             }
         }
@@ -254,94 +304,6 @@ pub async fn get_group_members(
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 AppError::internal_error("Failed to get group members"),
-            ))
-        }
-    }
-}
-
-// Get model providers for a group
-#[debug_handler]
-pub async fn get_group_providers(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path(group_id): Path<Uuid>,
-) -> ApiResult<Json<Vec<crate::database::models::Provider>>> {
-    match user_group_providers::get_providers_for_group(group_id).await {
-        Ok(providers) => Ok((StatusCode::OK, Json(providers))),
-        Err(e) => {
-            eprintln!("Error getting model providers for group: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to get model providers for group"),
-            ))
-        }
-    }
-}
-
-// Assign model provider to group
-#[debug_handler]
-pub async fn assign_provider_to_group(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Json(request): Json<AssignProviderToGroupRequest>,
-) -> ApiResult<Json<UserGroupProviderResponse>> {
-    match user_group_providers::assign_provider_to_group(request).await {
-        Ok(response) => Ok((StatusCode::OK, Json(response))),
-        Err(e) => {
-            eprintln!("Error assigning model provider to group: {}", e);
-            match e {
-                sqlx::Error::Database(db_err) if db_err.constraint().is_some() => Err((
-                    StatusCode::CONFLICT,
-                    AppError::conflict("Provider already assigned to group"),
-                )),
-                sqlx::Error::RowNotFound => Err((
-                    StatusCode::NOT_FOUND,
-                    AppError::not_found("Provider or group"),
-                )),
-                _ => Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    AppError::internal_error("Failed to assign model provider to group"),
-                )),
-            }
-        }
-    }
-}
-
-// Remove model provider from group
-#[debug_handler]
-pub async fn remove_provider_from_group(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-    Path((group_id, provider_id)): Path<(Uuid, Uuid)>,
-) -> ApiResult<StatusCode> {
-    match user_group_providers::remove_provider_from_group(group_id, provider_id).await {
-        Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
-        Ok(false) => Err((
-            StatusCode::NOT_FOUND,
-            AppError::not_found("Provider assignment"),
-        )),
-        Err(e) => {
-            eprintln!("Error removing model provider from group: {}", e);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to remove model provider from group"),
-            ))
-        }
-    }
-}
-
-// List all user group model provider relationships
-#[debug_handler]
-pub async fn list_user_group_provider_relationships(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
-) -> ApiResult<Json<Vec<UserGroupProviderResponse>>> {
-    match user_group_providers::list_user_group_provider_relationships().await {
-        Ok(relationships) => Ok((StatusCode::OK, Json(relationships))),
-        Err(e) => {
-            eprintln!(
-                "Error listing user group model provider relationships: {}",
-                e
-            );
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::internal_error("Failed to list user group provider relationships"),
             ))
         }
     }

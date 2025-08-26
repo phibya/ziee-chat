@@ -141,6 +141,7 @@ pub struct UserGroup {
     pub description: Option<String>,
     pub permissions: Vec<String>,
     pub provider_ids: Vec<Uuid>,
+    pub rag_provider_ids: Vec<Uuid>,
     pub is_protected: bool,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
@@ -165,6 +166,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
             description: row.try_get("description")?,
             permissions,
             provider_ids: Vec::new(), // Loaded separately via joins
+            rag_provider_ids: Vec::new(), // Loaded separately via joins
             is_protected: row.try_get("is_protected")?,
             is_active: row.try_get("is_active")?,
             created_at: row.try_get("created_at")?,
@@ -286,6 +288,8 @@ pub struct CreateUserGroupRequest {
     pub description: Option<String>,
     pub permissions: Vec<String>,
     pub provider_ids: Option<Vec<Uuid>>,
+    pub rag_provider_ids: Option<Vec<Uuid>>,
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -294,6 +298,7 @@ pub struct UpdateUserGroupRequest {
     pub description: Option<String>,
     pub permissions: Option<Vec<String>>,
     pub provider_ids: Option<Vec<Uuid>>,
+    pub rag_provider_ids: Option<Vec<Uuid>>,
     pub is_active: Option<bool>,
 }
 

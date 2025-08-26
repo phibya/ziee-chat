@@ -67,7 +67,6 @@ permission_middleware!(users_toggle_status_middleware, Permission::UsersToggleSt
 
 // Enhanced group permissions
 permission_middleware!(groups_assign_users_middleware, Permission::GroupsAssignUsers);
-permission_middleware!(groups_assign_providers_middleware, Permission::GroupsAssignProviders);
 
 // Chat permissions
 permission_middleware!(chat_read_middleware, Permission::ChatRead);

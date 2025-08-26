@@ -37,8 +37,8 @@ impl RAGEngineFactory {
     /// Get engine type from string
     pub fn parse_engine_type(engine_type: &str) -> RAGResult<RAGEngineType> {
         match engine_type {
-            "rag_simple_vector" => Ok(RAGEngineType::SimpleVector),
-            "rag_simple_graph" => Ok(RAGEngineType::SimpleGraph),
+            "simple_vector" => Ok(RAGEngineType::SimpleVector),
+            "simple_graph" => Ok(RAGEngineType::SimpleGraph),
             _ => Err(RAGError::ConfigurationError(format!(
                 "Unknown engine type: {}",
                 engine_type

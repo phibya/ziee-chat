@@ -17,7 +17,7 @@ pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, 
     let model_rows: Vec<Model> = sqlx::query_as(
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+                validation_issues, port, pid, engine_type, engine_settings,
                 file_format, source
          FROM models 
          WHERE provider_id = $1 
@@ -39,9 +39,9 @@ pub async fn create_model(
     let model_id = Uuid::new_v4();
 
     let model_row: Model = sqlx::query_as::<_, Model>(
-    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source)
+    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings, file_format, source)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings, file_format, source"
   )
     .bind(model_id)
     .bind(provider_id)
@@ -52,8 +52,7 @@ pub async fn create_model(
     .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
     .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})))
     .bind(request.engine_type.as_str())
-    .bind(request.engine_settings_mistralrs.as_ref().map(|s| serde_json::to_value(s).unwrap()))
-    .bind(request.engine_settings_llamacpp.as_ref().map(|s| serde_json::to_value(s).unwrap()))
+    .bind(request.engine_settings.as_ref().map(|s| serde_json::to_value(s).unwrap()))
     .bind(request.file_format.as_str())
     .bind(request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null))
       .fetch_one(pool)
@@ -79,11 +78,10 @@ pub async fn update_model(
              capabilities = COALESCE($7, capabilities),
              parameters = COALESCE($8, parameters),
              engine_type = COALESCE($9, engine_type),
-             engine_settings_mistralrs = COALESCE($10, engine_settings_mistralrs),
-             engine_settings_llamacpp = COALESCE($11, engine_settings_llamacpp),
+             engine_settings = COALESCE($10, engine_settings),
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp, file_format, source"
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings, file_format, source"
   )
     .bind(model_id)
     .bind(&request.name)
@@ -94,8 +92,7 @@ pub async fn update_model(
     .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()))
     .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
     .bind(request.engine_type.as_ref().map(|et| et.as_str()))
-    .bind(request.engine_settings_mistralrs.as_ref().map(|s| serde_json::to_value(s).unwrap()))
-    .bind(request.engine_settings_llamacpp.as_ref().map(|s| serde_json::to_value(s).unwrap()))
+    .bind(request.engine_settings.as_ref().map(|s| serde_json::to_value(s).unwrap()))
     .fetch_optional(pool)
     .await?;
 
@@ -121,7 +118,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let model_row: Option<Model> = sqlx::query_as::<_, Model>(
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+                validation_issues, port, pid, engine_type, engine_settings,
                 file_format, source
          FROM models 
          WHERE id = $1",
@@ -150,7 +147,7 @@ pub async fn create_local_model(
             file_size_bytes, enabled, 
             is_deprecated, is_active, capabilities, parameters, 
             validation_status,
-            engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+            engine_type, engine_settings,
             file_format, source, created_at, updated_at
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
@@ -158,7 +155,7 @@ pub async fn create_local_model(
                    file_size_bytes, enabled, 
                    is_deprecated, is_active, capabilities, parameters, 
                    validation_status, validation_issues, 
-                   engine_type, engine_settings_mistralrs, engine_settings_llamacpp, 
+                   engine_type, engine_settings, 
                    file_format, source, port, pid, created_at, updated_at
         "#,
     )
@@ -384,7 +381,7 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
     let models: Vec<Model> = sqlx::query_as::<_, Model>(
         "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
                 capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings_mistralrs, engine_settings_llamacpp,
+                validation_issues, port, pid, engine_type, engine_settings,
                 file_format, source
          FROM models 
          WHERE is_active = true 

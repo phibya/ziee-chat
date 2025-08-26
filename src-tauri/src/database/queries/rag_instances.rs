@@ -3,7 +3,7 @@ use crate::database::{
     get_database_pool,
     models::{
         CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, UpdateRAGInstanceRequest, 
-        RAGInstance, RAGInstanceListResponse, RAGEngineType
+        RAGInstance, RAGInstanceListResponse
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
 };
@@ -26,23 +26,19 @@ pub async fn create_user_rag_instance(
     let instance_id = Uuid::new_v4();
     let engine_type_str = request.engine_type.as_str();
     
-    // Prepare engine settings based on type
-    let (vector_settings, graph_settings) = match request.engine_type {
-        RAGEngineType::RagSimpleVector => (request.engine_settings, None),
-        RAGEngineType::RagSimpleGraph => (None, request.engine_settings),
-    };
+    // Serialize consolidated engine settings for database storage
+    let engine_settings_json = serde_json::to_value(&request.engine_settings.unwrap_or_default())
+        .unwrap_or_else(|_| serde_json::json!({}));
 
     let instance: RAGInstance = sqlx::query_as(
         "INSERT INTO rag_instances (
             id, provider_id, user_id, project_id, name, alias, description, 
             enabled, is_active, is_system, engine_type, 
-            engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-            embedding_model_id, llm_model_id, parameters
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            engine_settings, embedding_model_id, llm_model_id, parameters
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, provider_id, user_id, project_id, name, alias, description, 
                   enabled, is_active, is_system, engine_type, 
-                  engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-                  embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                  engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
                   created_at, updated_at",
     )
     .bind(instance_id)
@@ -56,8 +52,7 @@ pub async fn create_user_rag_instance(
     .bind(false) // is_active = false by default
     .bind(false) // is_system = false for user instances
     .bind(engine_type_str)
-    .bind(&vector_settings)
-    .bind(&graph_settings)
+    .bind(&engine_settings_json)
     .bind(request.embedding_model_id)
     .bind(request.llm_model_id)
     .bind(request.parameters.unwrap_or_else(|| serde_json::json!({})))
@@ -77,23 +72,19 @@ pub async fn create_system_rag_instance(
     let instance_id = Uuid::new_v4();
     let engine_type_str = request.engine_type.as_str();
     
-    // Prepare engine settings based on type
-    let (vector_settings, graph_settings) = match request.engine_type {
-        RAGEngineType::RagSimpleVector => (request.engine_settings, None),
-        RAGEngineType::RagSimpleGraph => (None, request.engine_settings),
-    };
+    // Serialize consolidated engine settings for database storage
+    let engine_settings_json = serde_json::to_value(&request.engine_settings.unwrap_or_default())
+        .unwrap_or_else(|_| serde_json::json!({}));
 
     let instance: RAGInstance = sqlx::query_as(
         "INSERT INTO rag_instances (
             id, provider_id, user_id, project_id, name, alias, description, 
             enabled, is_active, is_system, engine_type, 
-            engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-            embedding_model_id, llm_model_id, parameters
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            engine_settings, embedding_model_id, llm_model_id, parameters
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, provider_id, user_id, project_id, name, alias, description, 
                   enabled, is_active, is_system, engine_type, 
-                  engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-                  embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                  engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
                   created_at, updated_at",
     )
     .bind(instance_id)
@@ -107,8 +98,7 @@ pub async fn create_system_rag_instance(
     .bind(false) // is_active = false by default
     .bind(true) // is_system = true for system instances
     .bind(engine_type_str)
-    .bind(&vector_settings)
-    .bind(&graph_settings)
+    .bind(&engine_settings_json)
     .bind(request.embedding_model_id)
     .bind(request.llm_model_id)
     .bind(request.parameters.unwrap_or_else(|| serde_json::json!({})))
@@ -126,8 +116,7 @@ pub async fn get_rag_instance(instance_id: Uuid) -> Result<Option<RAGInstance>, 
     let instance: Option<RAGInstance> = sqlx::query_as(
         "SELECT id, provider_id, user_id, project_id, name, alias, description, 
                 enabled, is_active, is_system, engine_type, 
-                engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-                embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
                 created_at, updated_at
          FROM rag_instances 
          WHERE id = $1",
@@ -162,8 +151,7 @@ pub async fn list_user_rag_instances(
     let instances: Vec<RAGInstance> = sqlx::query_as(
         "SELECT id, provider_id, user_id, project_id, name, alias, description, 
                 enabled, is_active, is_system, engine_type, 
-                engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-                embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
                 created_at, updated_at
          FROM rag_instances 
          WHERE user_id = $1 AND is_system = false
@@ -205,8 +193,7 @@ pub async fn list_system_rag_instances(
     let instances: Vec<RAGInstance> = sqlx::query_as(
         "SELECT id, provider_id, user_id, project_id, name, alias, description, 
                 enabled, is_active, is_system, engine_type, 
-                engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-                embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
                 created_at, updated_at
          FROM rag_instances 
          WHERE is_system = true
@@ -234,11 +221,9 @@ pub async fn update_rag_instance(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    // Prepare engine settings if provided
-    let _engine_settings_update = if let Some(settings) = &request.engine_settings {
-        // We would need to know the engine type to determine which column to update
-        // For now, we'll update both and let the application logic handle it
-        Some(settings)
+    // Handle engine settings update
+    let engine_settings_update = if let Some(settings) = &request.engine_settings {
+        Some(serde_json::to_value(settings).unwrap_or_else(|_| serde_json::json!({})))
     } else {
         None
     };
@@ -250,12 +235,12 @@ pub async fn update_rag_instance(
              enabled = COALESCE($4, enabled),
              embedding_model_id = COALESCE($5, embedding_model_id),
              llm_model_id = COALESCE($6, llm_model_id),
-             parameters = COALESCE($7, parameters)
+             parameters = COALESCE($7, parameters),
+             engine_settings = COALESCE($8, engine_settings)
          WHERE id = $1
          RETURNING id, provider_id, user_id, project_id, name, alias, description, 
                    enabled, is_active, is_system, engine_type, 
-                   engine_settings_rag_simple_vector, engine_settings_rag_simple_graph,
-                   embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                   engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
                    created_at, updated_at",
     )
     .bind(instance_id)
@@ -265,6 +250,7 @@ pub async fn update_rag_instance(
     .bind(&request.embedding_model_id)
     .bind(&request.llm_model_id)
     .bind(&request.parameters)
+    .bind(&engine_settings_update)
     .fetch_optional(pool)
     .await?;
 
