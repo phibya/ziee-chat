@@ -11,11 +11,7 @@ interface EditHostDrawerProps {
   hostId: string | null
 }
 
-export function EditHostDrawer({
-  open,
-  onClose,
-  hostId,
-}: EditHostDrawerProps) {
+export function EditHostDrawer({ open, onClose, hostId }: EditHostDrawerProps) {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()

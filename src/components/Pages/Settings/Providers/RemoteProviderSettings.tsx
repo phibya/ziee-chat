@@ -53,8 +53,6 @@ export function RemoteProviderSettings() {
     setPendingSettings((prev: any) => ({ ...prev, ...changedValues }))
   }
 
-
-
   const handleSaveSettings = async () => {
     if (!currentProvider || !pendingSettings) return
 
@@ -83,7 +81,6 @@ export function RemoteProviderSettings() {
       // Error is handled by the store
     }
   }
-
 
   // Show errors
   useEffect(() => {

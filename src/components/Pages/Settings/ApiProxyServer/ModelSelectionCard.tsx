@@ -44,7 +44,6 @@ export function ModelSelectionCard() {
     setEditModelDrawerOpen(true)
   }
 
-
   const handleRemoveModel = async (modelId: string) => {
     try {
       await removeModelFromApiProxyServer(modelId)

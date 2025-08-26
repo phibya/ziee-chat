@@ -2,10 +2,7 @@ import { App, Card, Divider, Flex, Form } from 'antd'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
-import {
-  clearProvidersError,
-  Stores,
-} from '../../../../store'
+import { clearProvidersError, Stores } from '../../../../store'
 import { DownloadInstance } from '../../../../types'
 import { DownloadItem } from '../../../common/DownloadItem'
 import { ModelsSection } from './common/ModelsSection'
@@ -31,7 +28,6 @@ export function LocalProviderSettings() {
   const providerDownloads = downloads.filter(
     (download: DownloadInstance) => download.provider_id === providerId,
   )
-
 
   // Show errors
   useEffect(() => {

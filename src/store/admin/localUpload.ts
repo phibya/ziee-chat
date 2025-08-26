@@ -1,11 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../../api/client.ts'
-import {
-  Model,
-  ModelCapabilities,
-  ModelEngineSettings,
-} from '../../types'
+import { Model, ModelCapabilities, ModelEngineSettings } from '../../types'
 import { loadModelsForProvider } from './providers.ts'
 
 export interface FileUploadProgress {
@@ -107,7 +103,6 @@ export const uploadLocalModel = async (
     if (request.engine_settings) {
       formData.append('settings', JSON.stringify(request.engine_settings))
     }
-
 
     // Call the upload API with file upload progress tracking
     const model = await ApiClient.Admin.uploadAndCommitModel(formData, {

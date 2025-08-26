@@ -8,9 +8,7 @@ interface AdvancedCardProps {
   isAdmin?: boolean
 }
 
-export function AdvancedCard({
-  isAdmin = false,
-}: AdvancedCardProps) {
+export function AdvancedCard({ isAdmin = false }: AdvancedCardProps) {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()

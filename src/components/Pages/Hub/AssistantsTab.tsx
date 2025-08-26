@@ -1,7 +1,11 @@
 import { ClearOutlined, SearchOutlined } from '@ant-design/icons'
 import { App, Button, Flex, Input, Select, Spin, Typography } from 'antd'
 import { useEffect, useMemo, useState } from 'react'
-import { searchAssistants, useHubStore, loadHubAssistants } from '../../../store/hub'
+import {
+  searchAssistants,
+  useHubStore,
+  loadHubAssistants,
+} from '../../../store/hub'
 import { AssistantCard } from './AssistantCard'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { VscFilter } from 'react-icons/vsc'
@@ -10,7 +14,12 @@ const { Text } = Typography
 
 export function AssistantsTab() {
   const { message } = App.useApp()
-  const { assistants, assistantsInitialized, assistantsLoading, assistantsError } = useHubStore()
+  const {
+    assistants,
+    assistantsInitialized,
+    assistantsLoading,
+    assistantsError,
+  } = useHubStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('popular')

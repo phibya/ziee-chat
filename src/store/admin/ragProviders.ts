@@ -65,7 +65,10 @@ export const loadAllRAGProviders = async (): Promise<void> => {
         const instancesResponse = await ApiClient.Admin.listSystemRagInstances({
           provider_id: provider.id,
         })
-        return { ...provider, instances: instancesResponse.instances } as RAGProviderWithInstances
+        return {
+          ...provider,
+          instances: instancesResponse.instances,
+        } as RAGProviderWithInstances
       }),
     )
     useAdminRAGProvidersStore.setState({
@@ -108,7 +111,9 @@ export const createNewRAGProvider = async (
   } catch (error) {
     useAdminRAGProvidersStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to create RAG provider',
+        error instanceof Error
+          ? error.message
+          : 'Failed to create RAG provider',
       creating: false,
     })
     throw error
@@ -144,7 +149,9 @@ export const updateRAGProvider = async (
   } catch (error) {
     useAdminRAGProvidersStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to update RAG provider',
+        error instanceof Error
+          ? error.message
+          : 'Failed to update RAG provider',
       updating: false,
     })
     throw error
@@ -177,7 +184,9 @@ export const deleteRAGProvider = async (id: string): Promise<void> => {
   } catch (error) {
     useAdminRAGProvidersStore.setState({
       error:
-        error instanceof Error ? error.message : 'Failed to delete RAG provider',
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete RAG provider',
       deleting: false,
     })
     throw error
@@ -205,7 +214,9 @@ export const loadInstancesForProvider = async (
 
     useAdminRAGProvidersStore.setState(state => ({
       providers: state.providers.map(p =>
-        p.id === providerId ? { ...p, instances: instancesResponse.instances } : p,
+        p.id === providerId
+          ? { ...p, instances: instancesResponse.instances }
+          : p,
       ),
       instancesLoading: { ...state.instancesLoading, [providerId]: false },
     }))
@@ -251,7 +262,9 @@ export const createSystemRAGInstance = async (
 
     useAdminRAGProvidersStore.setState(state => ({
       providers: state.providers.map(p =>
-        p.id === providerId ? { ...p, instances: [...p.instances, newInstance] } : p,
+        p.id === providerId
+          ? { ...p, instances: [...p.instances, newInstance] }
+          : p,
       ),
       instancesLoading: { ...state.instancesLoading, [providerId]: false },
     }))
@@ -304,7 +317,9 @@ export const updateSystemRAGInstance = async (
   }
 }
 
-export const deleteSystemRAGInstance = async (instanceId: string): Promise<void> => {
+export const deleteSystemRAGInstance = async (
+  instanceId: string,
+): Promise<void> => {
   const state = useAdminRAGProvidersStore.getState()
   if (state.instanceOperations[instanceId]) {
     return
@@ -320,7 +335,9 @@ export const deleteSystemRAGInstance = async (instanceId: string): Promise<void>
     useAdminRAGProvidersStore.setState(state => ({
       providers: state.providers.map(provider => ({
         ...provider,
-        instances: provider.instances.filter(instance => instance.id !== instanceId),
+        instances: provider.instances.filter(
+          instance => instance.id !== instanceId,
+        ),
       })),
       instanceOperations: { ...state.instanceOperations, [instanceId]: false },
     }))
@@ -332,7 +349,9 @@ export const deleteSystemRAGInstance = async (instanceId: string): Promise<void>
   }
 }
 
-export const enableSystemRAGInstance = async (instanceId: string): Promise<void> => {
+export const enableSystemRAGInstance = async (
+  instanceId: string,
+): Promise<void> => {
   const state = useAdminRAGProvidersStore.getState()
   if (state.instanceOperations[instanceId]) {
     return
@@ -352,7 +371,9 @@ export const enableSystemRAGInstance = async (instanceId: string): Promise<void>
       providers: state.providers.map(provider => ({
         ...provider,
         instances: provider.instances.map(instance =>
-          instance.id === instanceId ? { ...instance, enabled: true } : instance,
+          instance.id === instanceId
+            ? { ...instance, enabled: true }
+            : instance,
         ),
       })),
       instanceOperations: { ...state.instanceOperations, [instanceId]: false },
@@ -365,7 +386,9 @@ export const enableSystemRAGInstance = async (instanceId: string): Promise<void>
   }
 }
 
-export const disableSystemRAGInstance = async (instanceId: string): Promise<void> => {
+export const disableSystemRAGInstance = async (
+  instanceId: string,
+): Promise<void> => {
   const state = useAdminRAGProvidersStore.getState()
   if (state.instanceOperations[instanceId]) {
     return
@@ -385,7 +408,9 @@ export const disableSystemRAGInstance = async (instanceId: string): Promise<void
       providers: state.providers.map(provider => ({
         ...provider,
         instances: provider.instances.map(instance =>
-          instance.id === instanceId ? { ...instance, enabled: false } : instance,
+          instance.id === instanceId
+            ? { ...instance, enabled: false }
+            : instance,
         ),
       })),
       instanceOperations: { ...state.instanceOperations, [instanceId]: false },

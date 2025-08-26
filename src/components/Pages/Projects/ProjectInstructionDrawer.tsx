@@ -22,7 +22,7 @@ export const ProjectInstructionDrawer: React.FC<
   const { projectId } = useParams<{ projectId: string }>()
   const [form] = Form.useForm<ProjectInstructionFormData>()
   const [loading, setLoading] = useState(false)
-  
+
   // Get project store
   const { project, updateProject } = useProjectStore(projectId)
 

@@ -71,7 +71,6 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
     }
   }
 
-
   const handleAddFilesClick = () => {
     fileInputRef.current?.click()
   }

@@ -450,6 +450,8 @@ export const Stores = {
     AddRAGProviderDrawer: createStoreProxy(useAddRAGProviderDrawerStore),
     EditRAGProviderDrawer: createStoreProxy(useEditRAGProviderDrawerStore),
     AddSystemInstanceDrawer: createStoreProxy(useAddSystemInstanceDrawerStore),
-    EditSystemInstanceDrawer: createStoreProxy(useEditSystemInstanceDrawerStore),
+    EditSystemInstanceDrawer: createStoreProxy(
+      useEditSystemInstanceDrawerStore,
+    ),
   },
 }

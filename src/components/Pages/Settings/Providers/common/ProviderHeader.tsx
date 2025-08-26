@@ -16,7 +16,11 @@ import {
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { deleteModelProvider, updateModelProvider, Stores } from '../../../../../store'
+import {
+  deleteModelProvider,
+  updateModelProvider,
+  Stores,
+} from '../../../../../store'
 import { PROVIDER_ICONS } from '../../../../../constants/providers'
 import { Provider } from '../../../../../types'
 
@@ -233,7 +237,9 @@ export function ProviderHeader() {
             disabled={
               !currentProvider.enabled && !canEnableProvider(currentProvider)
             }
-            onChange={enabled => handleProviderToggle(currentProvider.id, enabled)}
+            onChange={enabled =>
+              handleProviderToggle(currentProvider.id, enabled)
+            }
           />
         )
 

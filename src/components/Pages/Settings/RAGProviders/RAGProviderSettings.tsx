@@ -1,4 +1,4 @@
-import { App, Button, Card, Flex, Form, Input, Typography } from 'antd'
+import { App, Button, Card, Flex, Form, Input, Switch, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
@@ -18,8 +18,11 @@ export function RAGProviderSettings() {
   const { providerId } = useParams<{ providerId?: string }>()
 
   const [form] = Form.useForm()
+  const [configForm] = Form.useForm()
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [hasUnsavedConfigChanges, setHasUnsavedConfigChanges] = useState(false)
   const [pendingSettings, setPendingSettings] = useState<any>(null)
+  const [pendingConfigSettings, setPendingConfigSettings] = useState<any>(null)
 
   // Store data
   const { error } = Stores.AdminRAGProviders
@@ -29,7 +32,6 @@ export function RAGProviderSettings() {
     p => p.id === providerId,
   )
 
-
   const handleFormChange = (changedValues: any) => {
     if (!currentProvider) return
 
@@ -37,6 +39,12 @@ export function RAGProviderSettings() {
     setPendingSettings((prev: any) => ({ ...prev, ...changedValues }))
   }
 
+  const handleConfigFormChange = (changedValues: any) => {
+    if (!currentProvider) return
+
+    setHasUnsavedConfigChanges(true)
+    setPendingConfigSettings((prev: any) => ({ ...prev, ...changedValues }))
+  }
 
   const handleSaveSettings = async () => {
     if (!currentProvider || !pendingSettings) return
@@ -53,6 +61,20 @@ export function RAGProviderSettings() {
     }
   }
 
+  const handleSaveConfigSettings = async () => {
+    if (!currentProvider || !pendingConfigSettings) return
+
+    try {
+      await updateRAGProvider(currentProvider.id, pendingConfigSettings)
+
+      setHasUnsavedConfigChanges(false)
+      setPendingConfigSettings(null)
+      message.success('Configuration updated successfully')
+    } catch (error) {
+      console.error('Failed to save configuration:', error)
+      // Error is handled by the store
+    }
+  }
 
   // Show errors
   useEffect(() => {
@@ -69,11 +91,16 @@ export function RAGProviderSettings() {
         api_key: currentProvider.api_key,
         base_url: currentProvider.base_url,
       })
+      configForm.setFieldsValue({
+        can_user_create_instance: currentProvider.can_user_create_instance,
+      })
       // Clear unsaved changes when switching providers
       setHasUnsavedChanges(false)
       setPendingSettings(null)
+      setHasUnsavedConfigChanges(false)
+      setPendingConfigSettings(null)
     }
-  }, [currentProvider])
+  }, [currentProvider, form, configForm])
 
   // Return early if no provider
   if (!currentProvider) {
@@ -146,6 +173,50 @@ export function RAGProviderSettings() {
 
       {/* Instances Section */}
       <SystemInstancesSection />
+
+      {/* Configurations Section */}
+      <Form
+        form={configForm}
+        layout="vertical"
+        initialValues={{
+          can_user_create_instance: currentProvider.can_user_create_instance,
+        }}
+        onValuesChange={handleConfigFormChange}
+      >
+        <Card
+          title="Configurations"
+          extra={
+            <Button
+              type="primary"
+              onClick={handleSaveConfigSettings}
+              disabled={!hasUnsavedConfigChanges}
+            >
+              Save
+            </Button>
+          }
+        >
+          <Flex className={'flex-col gap-4'}>
+            <div className={'flex items-center justify-between'}>
+              <div className={'flex-1'}>
+                <Title level={5} className={'mb-1'}>
+                  Allow User Instance Creation
+                </Title>
+                <Text type="secondary">
+                  When enabled, users can create their own instances of this RAG
+                  provider
+                </Text>
+              </div>
+              <Form.Item
+                name="can_user_create_instance"
+                valuePropName="checked"
+                style={{ margin: 0 }}
+              >
+                <Switch />
+              </Form.Item>
+            </div>
+          </Flex>
+        </Card>
+      </Form>
     </Flex>
   )
 }

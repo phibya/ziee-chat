@@ -9,7 +9,10 @@ import {
   Stores,
   updateRAGProvider,
 } from '../../../../store'
-import { UpdateRAGProviderRequest, RAGProviderType } from '../../../../types/api'
+import {
+  UpdateRAGProviderRequest,
+  RAGProviderType,
+} from '../../../../types/api'
 
 export function EditRAGProviderDrawer() {
   const { t } = useTranslation()
@@ -84,11 +87,7 @@ export function EditRAGProviderDrawer() {
           <Input placeholder="Enter provider name" />
         </Form.Item>
 
-        <Form.Item
-          name="enabled"
-          label="Enabled"
-          valuePropName="checked"
-        >
+        <Form.Item name="enabled" label="Enabled" valuePropName="checked">
           <Switch />
         </Form.Item>
 
@@ -96,10 +95,7 @@ export function EditRAGProviderDrawer() {
         {provider.type !== 'local' && (
           <Flex vertical className="gap-2 w-full">
             <Card title="API Configuration">
-              <Form.Item
-                name="api_key"
-                label="API Key"
-              >
+              <Form.Item name="api_key" label="API Key">
                 <Input.Password
                   placeholder="Enter API key"
                   iconRender={visible =>
@@ -123,7 +119,6 @@ export function EditRAGProviderDrawer() {
             </Card>
           </Flex>
         )}
-
       </Form>
     </Drawer>
   )

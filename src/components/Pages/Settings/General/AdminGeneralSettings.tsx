@@ -26,9 +26,7 @@ export function AdminGeneralSettings() {
     <SettingsPageContainer title={t('admin.title')}>
       <Flex className={'flex-col gap-3 w-full'}>
         <ApplicationCard isAdmin={true} />
-        <AdvancedCard
-          isAdmin={true}
-        />
+        <AdvancedCard isAdmin={true} />
         <DataFolderCard isAdmin={true} />
       </Flex>
     </SettingsPageContainer>

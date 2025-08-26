@@ -14,7 +14,8 @@ const { Text } = Typography
 
 export function ModelsTab() {
   const { message } = App.useApp()
-  const { models, modelsInitialized, modelsLoading, modelsError } = useHubStore()
+  const { models, modelsInitialized, modelsLoading, modelsError } =
+    useHubStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
@@ -25,7 +26,7 @@ export function ModelsTab() {
   useEffect(() => {
     loadAllAdminModelRepositories()
     loadAllModelProviders()
-    
+
     // Load models - function handles its own initialization checks
     loadHubModels().catch(err => {
       console.error('Failed to load hub models:', err)

@@ -34,8 +34,6 @@ export function TrustedHostsCard() {
     setEditHostDrawerOpen(true)
   }
 
-
-
   const handleRemoveHost = async (hostId: string) => {
     try {
       await removeTrustedHostFromApiProxyServer(hostId)

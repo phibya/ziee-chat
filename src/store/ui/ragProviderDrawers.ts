@@ -6,10 +6,12 @@ interface AddRAGProviderDrawerState {
   loading: boolean
 }
 
-export const useAddRAGProviderDrawerStore = create<AddRAGProviderDrawerState>(() => ({
-  open: false,
-  loading: false,
-}))
+export const useAddRAGProviderDrawerStore = create<AddRAGProviderDrawerState>(
+  () => ({
+    open: false,
+    loading: false,
+  }),
+)
 
 export const openAddRAGProviderDrawer = (): void => {
   useAddRAGProviderDrawerStore.setState({ open: true })
@@ -30,18 +32,24 @@ interface EditRAGProviderDrawerState {
   providerId: string | null
 }
 
-export const useEditRAGProviderDrawerStore = create<EditRAGProviderDrawerState>(() => ({
-  open: false,
-  loading: false,
-  providerId: null,
-}))
+export const useEditRAGProviderDrawerStore = create<EditRAGProviderDrawerState>(
+  () => ({
+    open: false,
+    loading: false,
+    providerId: null,
+  }),
+)
 
 export const openEditRAGProviderDrawer = (providerId: string): void => {
   useEditRAGProviderDrawerStore.setState({ open: true, providerId })
 }
 
 export const closeEditRAGProviderDrawer = (): void => {
-  useEditRAGProviderDrawerStore.setState({ open: false, loading: false, providerId: null })
+  useEditRAGProviderDrawerStore.setState({
+    open: false,
+    loading: false,
+    providerId: null,
+  })
 }
 
 export const setEditRAGProviderDrawerLoading = (loading: boolean): void => {
@@ -55,18 +63,23 @@ interface AddSystemInstanceDrawerState {
   providerId: string | null
 }
 
-export const useAddSystemInstanceDrawerStore = create<AddSystemInstanceDrawerState>(() => ({
-  open: false,
-  loading: false,
-  providerId: null,
-}))
+export const useAddSystemInstanceDrawerStore =
+  create<AddSystemInstanceDrawerState>(() => ({
+    open: false,
+    loading: false,
+    providerId: null,
+  }))
 
 export const openAddSystemInstanceDrawer = (providerId: string): void => {
   useAddSystemInstanceDrawerStore.setState({ open: true, providerId })
 }
 
 export const closeAddSystemInstanceDrawer = (): void => {
-  useAddSystemInstanceDrawerStore.setState({ open: false, loading: false, providerId: null })
+  useAddSystemInstanceDrawerStore.setState({
+    open: false,
+    loading: false,
+    providerId: null,
+  })
 }
 
 export const setAddSystemInstanceDrawerLoading = (loading: boolean): void => {
@@ -80,18 +93,23 @@ interface EditSystemInstanceDrawerState {
   instanceId: string | null
 }
 
-export const useEditSystemInstanceDrawerStore = create<EditSystemInstanceDrawerState>(() => ({
-  open: false,
-  loading: false,
-  instanceId: null,
-}))
+export const useEditSystemInstanceDrawerStore =
+  create<EditSystemInstanceDrawerState>(() => ({
+    open: false,
+    loading: false,
+    instanceId: null,
+  }))
 
 export const openEditSystemInstanceDrawer = (instanceId: string): void => {
   useEditSystemInstanceDrawerStore.setState({ open: true, instanceId })
 }
 
 export const closeEditSystemInstanceDrawer = (): void => {
-  useEditSystemInstanceDrawerStore.setState({ open: false, loading: false, instanceId: null })
+  useEditSystemInstanceDrawerStore.setState({
+    open: false,
+    loading: false,
+    instanceId: null,
+  })
 }
 
 export const setEditSystemInstanceDrawerLoading = (loading: boolean): void => {

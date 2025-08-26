@@ -12,8 +12,10 @@ import {
   setAddRAGProviderDrawerLoading,
   Stores,
 } from '../../../../store'
-import { CreateRAGProviderRequest, RAGProviderType } from '../../../../types/api'
-
+import {
+  CreateRAGProviderRequest,
+  RAGProviderType,
+} from '../../../../types/api'
 
 export function AddRAGProviderDrawer() {
   const { t } = useTranslation()
@@ -115,21 +117,14 @@ export function AddRAGProviderDrawer() {
           />
         </Form.Item>
 
-        <Form.Item
-          name="enabled"
-          label="Enabled"
-          valuePropName="checked"
-        >
+        <Form.Item name="enabled" label="Enabled" valuePropName="checked">
           <Switch />
         </Form.Item>
 
         {/* API Configuration for non-local providers */}
         {providerType !== 'local' && (
           <>
-            <Form.Item
-              name="api_key"
-              label="API Key"
-            >
+            <Form.Item name="api_key" label="API Key">
               <Input.Password placeholder="Enter API key" />
             </Form.Item>
 
@@ -147,7 +142,6 @@ export function AddRAGProviderDrawer() {
             </Form.Item>
           </>
         )}
-
       </Form>
     </Drawer>
   )

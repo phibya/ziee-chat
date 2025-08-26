@@ -238,7 +238,9 @@ export function RAGProviderHeader() {
             disabled={
               !currentProvider.enabled && !canEnableProvider(currentProvider)
             }
-            onChange={enabled => handleProviderToggle(currentProvider.id, enabled)}
+            onChange={enabled =>
+              handleProviderToggle(currentProvider.id, enabled)
+            }
           />
         )
 

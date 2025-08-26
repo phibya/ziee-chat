@@ -33,6 +33,7 @@ import {
   createNewUserGroup,
   deleteUserGroup,
   loadAllModelProviders,
+  loadAllRAGProviders,
   loadUserGroupMembers,
   loadUserGroups,
   Stores,
@@ -62,6 +63,7 @@ export function UserGroupsSettings() {
     error,
   } = Stores.AdminUserGroups
   const { providers: providers } = Stores.AdminProviders
+  const { providers: ragProviders } = Stores.AdminRAGProviders
 
   const [createModalVisible, setCreateModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
@@ -78,6 +80,7 @@ export function UserGroupsSettings() {
     }
     loadUserGroups(1, 10)
     loadAllModelProviders()
+    loadAllRAGProviders()
   }, [])
 
   // Show errors
@@ -103,6 +106,7 @@ export function UserGroupsSettings() {
         description: values.description,
         permissions: values.permissions ? JSON.parse(values.permissions) : {},
         provider_ids: values.provider_ids || [],
+        rag_provider_ids: values.rag_provider_ids || [],
       }
       await createNewUserGroup(groupData)
       message.success('User group created successfully')
@@ -128,6 +132,7 @@ export function UserGroupsSettings() {
             ? JSON.parse(values.permissions)
             : undefined,
         provider_ids: values.provider_ids || [],
+        rag_provider_ids: values.rag_provider_ids || [],
         is_active: selectedGroup.is_protected ? undefined : values.is_active,
       }
       await updateUserGroup(selectedGroup.id, updateData)
@@ -170,6 +175,7 @@ export function UserGroupsSettings() {
       description: group.description,
       permissions: JSON.stringify(group.permissions, null, 2),
       provider_ids: group.provider_ids || [],
+      rag_provider_ids: group.rag_provider_ids || [],
       is_active: group.is_active,
     })
     setEditModalVisible(true)
@@ -308,7 +314,7 @@ export function UserGroupsSettings() {
                         {group.provider_ids &&
                           group.provider_ids.length > 0 && (
                             <Descriptions.Item
-                              label="Providers"
+                              label="Model Providers"
                               span={{ xs: 1, sm: 2, md: 3 }}
                             >
                               <Flex wrap className="gap-1">
@@ -320,6 +326,30 @@ export function UserGroupsSettings() {
                                     <Tag
                                       key={providerId}
                                       color="blue"
+                                      className="text-xs"
+                                    >
+                                      {provider?.name || providerId}
+                                    </Tag>
+                                  )
+                                })}
+                              </Flex>
+                            </Descriptions.Item>
+                          )}
+                        {group.rag_provider_ids &&
+                          group.rag_provider_ids.length > 0 && (
+                            <Descriptions.Item
+                              label="RAG Providers"
+                              span={{ xs: 1, sm: 2, md: 3 }}
+                            >
+                              <Flex wrap className="gap-1">
+                                {group.rag_provider_ids.map(providerId => {
+                                  const provider = ragProviders.find(
+                                    p => p.id === providerId,
+                                  )
+                                  return (
+                                    <Tag
+                                      key={providerId}
+                                      color="green"
                                       className="text-xs"
                                     >
                                       {provider?.name || providerId}
@@ -412,13 +442,34 @@ export function UserGroupsSettings() {
 
             <Form.Item
               name="provider_ids"
-              label="Providers"
+              label="Model Providers"
               tooltip="Select which model providers this group can access"
             >
               <Select
                 mode="multiple"
                 placeholder="Select model providers"
                 options={providers.map(provider => ({
+                  value: provider.id,
+                  label: provider.name,
+                  disabled: !provider.enabled,
+                }))}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+            <Form.Item
+              name="rag_provider_ids"
+              label="RAG Providers"
+              tooltip="Select which RAG providers this group can access"
+            >
+              <Select
+                mode="multiple"
+                placeholder="Select RAG providers"
+                options={ragProviders.map(provider => ({
                   value: provider.id,
                   label: provider.name,
                   disabled: !provider.enabled,
@@ -508,13 +559,35 @@ export function UserGroupsSettings() {
 
             <Form.Item
               name="provider_ids"
-              label="Providers"
+              label="Model Providers"
               tooltip="Select which model providers this group can access"
             >
               <Select
                 mode="multiple"
                 placeholder="Select model providers"
                 options={providers.map(provider => ({
+                  value: provider.id,
+                  label: provider.name,
+                  disabled: !provider.enabled,
+                }))}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="rag_provider_ids"
+              label="RAG Providers"
+              tooltip="Select which RAG providers this group can access"
+            >
+              <Select
+                mode="multiple"
+                placeholder="Select RAG providers"
+                options={ragProviders.map(provider => ({
                   value: provider.id,
                   label: provider.name,
                   disabled: !provider.enabled,

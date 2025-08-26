@@ -44,7 +44,11 @@ export const loadHubModels = async (locale?: string) => {
     return
   }
 
-  useHubStore.setState({ modelsLoading: true, modelsError: null, currentLocale })
+  useHubStore.setState({
+    modelsLoading: true,
+    modelsError: null,
+    currentLocale,
+  })
 
   try {
     const models = await ApiClient.Hub.getHubModels({ lang: currentLocale })
@@ -79,10 +83,16 @@ export const loadHubAssistants = async (locale?: string) => {
     return
   }
 
-  useHubStore.setState({ assistantsLoading: true, assistantsError: null, currentLocale })
+  useHubStore.setState({
+    assistantsLoading: true,
+    assistantsError: null,
+    currentLocale,
+  })
 
   try {
-    const assistants = await ApiClient.Hub.getHubAssistants({ lang: currentLocale })
+    const assistants = await ApiClient.Hub.getHubAssistants({
+      lang: currentLocale,
+    })
 
     useHubStore.setState({
       assistants,
@@ -119,7 +129,7 @@ export const refreshHubModels = async (locale?: string) => {
   try {
     await ApiClient.Hub.refreshHubData({ lang: currentLocale })
     const models = await ApiClient.Hub.getHubModels({ lang: currentLocale })
-    
+
     useHubStore.setState({
       models,
       currentLocale,
@@ -153,8 +163,10 @@ export const refreshHubAssistants = async (locale?: string) => {
 
   try {
     await ApiClient.Hub.refreshHubData({ lang: currentLocale })
-    const assistants = await ApiClient.Hub.getHubAssistants({ lang: currentLocale })
-    
+    const assistants = await ApiClient.Hub.getHubAssistants({
+      lang: currentLocale,
+    })
+
     useHubStore.setState({
       assistants,
       currentLocale,
@@ -175,7 +187,6 @@ export const refreshHubAssistants = async (locale?: string) => {
     throw error
   }
 }
-
 
 export const getHubVersion = async (): Promise<string> => {
   try {
@@ -270,12 +281,12 @@ export const handleLanguageChange = async (newLocale: string) => {
     console.log(
       `Hub locale changed from ${currentState.currentLocale} to ${newLocale}`,
     )
-    
+
     // Reload models if they were initialized
     if (currentState.modelsInitialized) {
       await loadHubModels(newLocale)
     }
-    
+
     // Reload assistants if they were initialized
     if (currentState.assistantsInitialized) {
       await loadHubAssistants(newLocale)

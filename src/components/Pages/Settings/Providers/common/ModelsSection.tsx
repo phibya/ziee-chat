@@ -1,4 +1,9 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
+import {
+  DeleteOutlined,
+  EditOutlined,
+  PlusOutlined,
+  UploadOutlined,
+} from '@ant-design/icons'
 import {
   App,
   Button,
@@ -228,13 +233,15 @@ export function ModelsSection() {
                 key: 'upload',
                 label: 'Upload from Files',
                 icon: <UploadOutlined />,
-                onClick: () => openAddLocalModelUploadDrawer(currentProvider.id),
+                onClick: () =>
+                  openAddLocalModelUploadDrawer(currentProvider.id),
               },
               {
                 key: 'download',
                 label: 'Download from Repository',
                 icon: <PlusOutlined />,
-                onClick: () => openAddLocalModelDownloadDrawer(currentProvider.id),
+                onClick: () =>
+                  openAddLocalModelDownloadDrawer(currentProvider.id),
               },
             ],
           }}
@@ -245,7 +252,9 @@ export function ModelsSection() {
       )
     }
 
-    return <Button type="text" icon={<PlusOutlined />} onClick={handleAddModel} />
+    return (
+      <Button type="text" icon={<PlusOutlined />} onClick={handleAddModel} />
+    )
   }
 
   // Return early if no provider
@@ -254,10 +263,7 @@ export function ModelsSection() {
   }
 
   return (
-    <Card
-      title={t('providers.models')}
-      extra={getAddButton()}
-    >
+    <Card title={t('providers.models')} extra={getAddButton()}>
       {loading ? (
         <div className="flex justify-center py-8">
           <Spin size="large" />
