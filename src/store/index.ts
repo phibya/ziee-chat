@@ -283,6 +283,7 @@ export {
   clearRAGStoreError,
   resetRAGStore,
   searchRAGInstances,
+  toggleSystemInstances,
   useRAGStore,
 } from './rag'
 

@@ -108,61 +108,110 @@ pub async fn create_system_rag_instance(
     Ok(instance)
 }
 
-/// Get RAG instance by ID with ownership validation
-pub async fn get_rag_instance(instance_id: Uuid) -> Result<Option<RAGInstance>, sqlx::Error> {
+/// Get RAG instance by ID (active instances for regular users, all instances for admins)
+pub async fn get_rag_instance(instance_id: Uuid, user_id: Uuid) -> Result<Option<RAGInstance>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let instance: Option<RAGInstance> = sqlx::query_as(
+    // Check if user has admin read permission
+    use crate::database::queries::users::get_user_by_id;
+    let has_admin_read = if let Some(user) = get_user_by_id(user_id).await? {
+        use crate::api::permissions::check_permission;
+        check_permission(&user, "rag::admin::instances::read")
+    } else {
+        false
+    };
+
+    let query = if has_admin_read {
+        // Admin users can see all instances (enabled and disabled)
         "SELECT id, provider_id, user_id, project_id, name, alias, description, 
                 enabled, is_active, is_system, engine_type, 
                 engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
                 created_at, updated_at
          FROM rag_instances 
-         WHERE id = $1",
-    )
-    .bind(instance_id)
-    .fetch_optional(pool)
-    .await?;
+         WHERE id = $1"
+    } else {
+        // Regular users can only see enabled instances
+        "SELECT id, provider_id, user_id, project_id, name, alias, description, 
+                enabled, is_active, is_system, engine_type, 
+                engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                created_at, updated_at
+         FROM rag_instances 
+         WHERE id = $1 AND enabled = true"
+    };
+
+    let instance: Option<RAGInstance> = sqlx::query_as(query)
+        .bind(instance_id)
+        .fetch_optional(pool)
+        .await?;
 
     Ok(instance)
 }
 
-/// List user's RAG instances (is_system = false, owned by user)
+/// List user's RAG instances with optional system instances
 pub async fn list_user_rag_instances(
     user_id: Uuid,
     page: i32,
     per_page: i32,
+    include_system: Option<bool>,
 ) -> Result<RAGInstanceListResponse, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
     let offset = (page - 1) * per_page;
+    let include_sys = include_system.unwrap_or(false);
 
-    // Get total count of user's instances
-    let total_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM rag_instances WHERE user_id = $1 AND is_system = false"
-    )
-    .bind(user_id)
-    .fetch_one(pool)
-    .await?;
+    let (count_query, list_query) = if include_sys {
+        // Include both user instances AND accessible system instances (only enabled ones)
+        (
+            "SELECT COUNT(DISTINCT ri.id) FROM rag_instances ri
+             LEFT JOIN user_group_rag_providers ugrp ON ri.provider_id = ugrp.provider_id AND ri.is_system = true
+             LEFT JOIN user_group_memberships ugm ON ugrp.group_id = ugm.group_id AND ugm.user_id = $1
+             LEFT JOIN user_groups ug ON ugm.group_id = ug.id AND ug.is_active = true
+             WHERE ((ri.user_id = $1 AND ri.is_system = false AND ri.enabled = true) 
+             OR (ri.is_system = true AND ri.enabled = true AND ugm.user_id IS NOT NULL))",
+             
+            "SELECT DISTINCT ri.id, ri.provider_id, ri.user_id, ri.project_id, ri.name, ri.alias, ri.description, 
+                    ri.enabled, ri.is_active, ri.is_system, ri.engine_type, 
+                    ri.engine_settings, ri.embedding_model_id, ri.llm_model_id, ri.age_graph_name, ri.parameters, 
+                    ri.created_at, ri.updated_at
+             FROM rag_instances ri
+             LEFT JOIN user_group_rag_providers ugrp ON ri.provider_id = ugrp.provider_id AND ri.is_system = true
+             LEFT JOIN user_group_memberships ugm ON ugrp.group_id = ugm.group_id AND ugm.user_id = $1
+             LEFT JOIN user_groups ug ON ugm.group_id = ug.id AND ug.is_active = true
+             WHERE ((ri.user_id = $1 AND ri.is_system = false AND ri.enabled = true) 
+             OR (ri.is_system = true AND ri.enabled = true AND ugm.user_id IS NOT NULL))
+             ORDER BY ri.is_system ASC, ri.created_at DESC 
+             LIMIT $2 OFFSET $3"
+        )
+    } else {
+        // Only user instances (only enabled ones)
+        (
+            "SELECT COUNT(*) FROM rag_instances WHERE user_id = $1 AND is_system = false AND enabled = true",
+            "SELECT id, provider_id, user_id, project_id, name, alias, description, 
+                    enabled, is_active, is_system, engine_type, 
+                    engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                    created_at, updated_at
+             FROM rag_instances 
+             WHERE user_id = $1 AND is_system = false AND enabled = true
+             ORDER BY created_at DESC 
+             LIMIT $2 OFFSET $3"
+        )
+    };
 
-    // Get user's instances with pagination
-    let instances: Vec<RAGInstance> = sqlx::query_as(
-        "SELECT id, provider_id, user_id, project_id, name, alias, description, 
-                enabled, is_active, is_system, engine_type, 
-                engine_settings, embedding_model_id, llm_model_id, age_graph_name, parameters, 
-                created_at, updated_at
-         FROM rag_instances 
-         WHERE user_id = $1 AND is_system = false
-         ORDER BY created_at DESC 
-         LIMIT $2 OFFSET $3",
-    )
-    .bind(user_id)
-    .bind(per_page)
-    .bind(offset)
-    .fetch_all(pool)
-    .await?;
+    // Get total count
+    let total_count: (i64,) = sqlx::query_as(count_query)
+        .bind(user_id)
+        .fetch_one(pool)
+        .await?;
+
+    // Get instances with pagination
+    let instances: Vec<RAGInstance> = sqlx::query_as(list_query)
+        .bind(user_id)
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(pool)
+        .await?;
 
     Ok(RAGInstanceListResponse {
         instances,
@@ -270,7 +319,10 @@ pub async fn delete_rag_instance(instance_id: Uuid) -> Result<bool, sqlx::Error>
     Ok(result.rows_affected() > 0)
 }
 
-/// Validate user owns RAG instance or it's a system instance
+/// Validate user can access RAG instance 
+/// - Users can access their own instances
+/// - Users can view system instances if they have provider access
+/// - Users can edit system instances if they have RagAdminInstancesEdit permission
 pub async fn validate_rag_instance_access(
     user_id: Uuid,
     instance_id: Uuid,
@@ -279,29 +331,64 @@ pub async fn validate_rag_instance_access(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let has_access: Option<(bool,)> = if require_owner {
-        // User must own the instance
-        sqlx::query_as(
-            "SELECT true FROM rag_instances 
-             WHERE id = $1 AND user_id = $2 AND is_system = false
-             LIMIT 1",
-        )
-        .bind(instance_id)
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?
-    } else {
-        // User can access if they own it or if it's a system instance
-        sqlx::query_as(
-            "SELECT true FROM rag_instances 
-             WHERE id = $1 AND (user_id = $2 OR is_system = true)
-             LIMIT 1",
-        )
-        .bind(instance_id)
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?
+    // First get the instance and user details
+    let query_result: Option<(Uuid, Option<Uuid>, bool, Uuid)> = sqlx::query_as(
+        "SELECT ri.id, ri.user_id, ri.is_system, ri.provider_id
+         FROM rag_instances ri 
+         WHERE ri.id = $1"
+    )
+    .bind(instance_id)
+    .fetch_optional(pool)
+    .await?;
+
+    let (_, instance_user_id, is_system, provider_id) = match query_result {
+        Some(result) => result,
+        None => return Ok(false), // Instance not found
     };
 
-    Ok(has_access.is_some())
+    // If user owns the instance, they have access
+    if instance_user_id == Some(user_id) {
+        return Ok(true);
+    }
+
+    // If not a system instance, user can't access
+    if !is_system {
+        return Ok(false);
+    }
+
+    // For system instances, check provider access first
+    let has_provider_access: Option<(bool,)> = sqlx::query_as(
+        "SELECT true FROM user_group_rag_providers ugrp
+         JOIN user_group_memberships ugm ON ugrp.group_id = ugm.group_id
+         JOIN user_groups ug ON ugm.group_id = ug.id
+         WHERE ugm.user_id = $1 AND ug.is_active = true 
+         AND ugrp.provider_id = $2
+         LIMIT 1"
+    )
+    .bind(user_id)
+    .bind(provider_id)
+    .fetch_optional(pool)
+    .await?;
+
+    // If no provider access, deny access
+    if has_provider_access.is_none() {
+        return Ok(false);
+    }
+
+    // If only read access needed, grant it
+    if !require_owner {
+        return Ok(true);
+    }
+
+    // For write operations on system instances, check admin permission
+    // Use existing function to get user with all related data including groups
+    use crate::database::queries::users::get_user_by_id;
+    
+    if let Some(user) = get_user_by_id(user_id).await? {
+        // Check if user has admin edit permission using the permission system
+        use crate::api::permissions::check_permission;
+        Ok(check_permission(&user, "rag::admin::instances::edit"))
+    } else {
+        Ok(false)
+    }
 }

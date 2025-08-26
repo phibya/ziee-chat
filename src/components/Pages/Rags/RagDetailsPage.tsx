@@ -11,6 +11,8 @@ import { FiEdit } from 'react-icons/fi'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 import { PiFiles, PiSmileySadLight } from 'react-icons/pi'
 import { Drawer } from '../../common/Drawer.tsx'
+import { Permission } from '../../../types'
+import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 
 export const RagDetailsPage: React.FC = () => {
   const { message } = App.useApp()
@@ -23,6 +25,9 @@ export const RagDetailsPage: React.FC = () => {
 
   // RAG instance store
   const { ragInstance, loading, error, clearError } = useRAGInstanceStore(ragInstanceId)
+
+  // Check permissions for system instances
+  const isSystemInstance = ragInstance?.is_system
 
   // Show errors
   useEffect(() => {
@@ -104,14 +109,19 @@ export const RagDetailsPage: React.FC = () => {
                   onClick={() => setIsKnowledgeCardOpen(true)}
                 />
               )}
-              <Button
-                type={'text'}
-                icon={<FiEdit />}
-                style={{
-                  fontSize: '20px',
-                }}
-                onClick={() => openRAGInstanceDrawer(ragInstance!)}
-              />
+              <PermissionGuard 
+                permissions={isSystemInstance ? [Permission.RagAdminInstancesEdit] : [Permission.RagInstancesEdit]}
+                type="hidden"
+              >
+                <Button
+                  type={'text'}
+                  icon={<FiEdit />}
+                  style={{
+                    fontSize: '20px',
+                  }}
+                  onClick={() => openRAGInstanceDrawer(ragInstance!)}
+                />
+              </PermissionGuard>
             </div>
           </div>
         </TitleBarWrapper>
@@ -133,6 +143,8 @@ export const RagDetailsPage: React.FC = () => {
               </Typography.Title>
             </div>
           )}
+          
+          
           <div
             className={
               'flex flex-col w-full px-3 flex-1 justify-center min-h-72'

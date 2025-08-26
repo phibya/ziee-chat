@@ -4,10 +4,11 @@ use axum::{
     http::StatusCode,
     Extension, Json,
 };
+use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use uuid::Uuid;
 
 use crate::api::{errors::{ApiResult, AppError}, middleware::auth::AuthenticatedUser};
-use crate::types::PaginationQuery;
 use crate::database::{
     models::{CreateRAGInstanceRequest, UpdateRAGInstanceRequest, RAGInstance, RAGInstanceListResponse, RAGProvider},
     queries::{
@@ -19,16 +20,23 @@ use crate::database::{
     },
 };
 
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct RAGInstanceListQuery {
+    pub page: Option<i32>,
+    pub per_page: Option<i32>,
+    pub include_system: Option<bool>,
+}
+
 /// List user's RAG instances
 #[debug_handler]
 pub async fn list_user_rag_instances_handler(
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Query(params): Query<PaginationQuery>,
+    Query(params): Query<RAGInstanceListQuery>,
 ) -> ApiResult<Json<RAGInstanceListResponse>> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(50).min(100); // Cap at 100 items
 
-    let response = list_user_rag_instances(auth_user.user.id, page, per_page).await
+    let response = list_user_rag_instances(auth_user.user.id, page, per_page, params.include_system).await
         .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
     Ok((axum::http::StatusCode::OK, Json(response)))
 }
@@ -57,7 +65,7 @@ pub async fn get_rag_instance_handler(
         return Err((axum::http::StatusCode::FORBIDDEN, AppError::forbidden("Access denied")));
     }
 
-    let instance = get_rag_instance(instance_id).await
+    let instance = get_rag_instance(instance_id, auth_user.user.id).await
         .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
     
     match instance {
@@ -116,7 +124,6 @@ pub async fn delete_rag_instance_handler(
 #[debug_handler]
 pub async fn list_creatable_rag_providers_handler(
     Extension(auth_user): Extension<AuthenticatedUser>,
-    Query(_params): Query<PaginationQuery>,
 ) -> ApiResult<Json<Vec<RAGProvider>>> {
     let providers = get_creatable_rag_providers_for_user(auth_user.user.id).await
         .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;

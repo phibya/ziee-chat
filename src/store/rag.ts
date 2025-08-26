@@ -19,6 +19,9 @@ interface RagState {
   updating: boolean
   deleting: boolean
 
+  // System instances toggle
+  includeSystemInstances: boolean
+
   // Error state
   error: string | null
 }
@@ -34,6 +37,7 @@ export const useRAGStore = create<RagState>()(
       creating: false,
       updating: false,
       deleting: false,
+      includeSystemInstances: false,
       error: null,
     }),
   ),
@@ -42,22 +46,25 @@ export const useRAGStore = create<RagState>()(
 // Store methods - defined OUTSIDE the store definition
 
 // RAG list actions
-export const loadAllUserRAGInstances = async (): Promise<void> => {
+export const loadAllUserRAGInstances = async (includeSystem?: boolean): Promise<void> => {
   const state = useRAGStore.getState()
-  if (state.isInitialized || state.loading) {
+  const shouldIncludeSystem = includeSystem ?? state.includeSystemInstances
+  
+  if (state.loading) {
     return
   }
   try {
     useRAGStore.setState({ loading: true, error: null })
 
     const [instancesResponse, providersResponse] = await Promise.all([
-      ApiClient.Rag.listInstances({}),
-      ApiClient.Rag.listCreatableProviders({})
+      ApiClient.Rag.listInstances({ include_system: shouldIncludeSystem }),
+      ApiClient.Rag.listCreatableProviders()
     ])
 
     useRAGStore.setState({
       ragInstances: instancesResponse.instances || [],
       creatableProviders: providersResponse || [],
+      includeSystemInstances: shouldIncludeSystem,
       isInitialized: true,
       loading: false,
     })
@@ -68,6 +75,20 @@ export const loadAllUserRAGInstances = async (): Promise<void> => {
     })
     throw error
   }
+}
+
+// New toggle function
+export const toggleSystemInstances = async (): Promise<void> => {
+  const currentState = useRAGStore.getState()
+  const newIncludeSystem = !currentState.includeSystemInstances
+  
+  // Reset state and reload with new setting
+  useRAGStore.setState({ 
+    isInitialized: false,
+    includeSystemInstances: newIncludeSystem 
+  })
+  
+  await loadAllUserRAGInstances(newIncludeSystem)
 }
 
 export const createRAGInstance = async (data: {
@@ -157,6 +178,7 @@ export const resetRAGStore = (): void => {
     creating: false,
     updating: false,
     deleting: false,
+    includeSystemInstances: false,
     error: null,
   })
 }

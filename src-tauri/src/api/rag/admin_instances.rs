@@ -44,10 +44,10 @@ pub async fn list_system_rag_instances_handler(
 /// Get system RAG instance by ID (admin only)
 #[debug_handler]
 pub async fn get_system_rag_instance_handler(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
     Path(instance_id): Path<Uuid>,
 ) -> ApiResult<Json<RAGInstance>> {
-    let instance = get_rag_instance(instance_id).await
+    let instance = get_rag_instance(instance_id, auth_user.user.id).await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
     
     match instance {
@@ -60,12 +60,12 @@ pub async fn get_system_rag_instance_handler(
 /// Update system RAG instance (admin only)
 #[debug_handler]
 pub async fn update_system_rag_instance_handler(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
     Path(instance_id): Path<Uuid>,
     Json(request): Json<UpdateRAGInstanceRequest>,
 ) -> ApiResult<Json<RAGInstance>> {
     // First check if instance exists and is a system instance
-    let existing = get_rag_instance(instance_id).await
+    let existing = get_rag_instance(instance_id, auth_user.user.id).await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
     
     match existing {
@@ -86,11 +86,11 @@ pub async fn update_system_rag_instance_handler(
 /// Delete system RAG instance (admin only)
 #[debug_handler]
 pub async fn delete_system_rag_instance_handler(
-    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
     Path(instance_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
     // First check if instance exists and is a system instance
-    let existing = get_rag_instance(instance_id).await
+    let existing = get_rag_instance(instance_id, auth_user.user.id).await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
     
     match existing {

@@ -190,9 +190,6 @@ export function SystemInstancesSection() {
 
                   <div className="space-y-1">
                     <Text type="secondary" className="text-xs block">
-                      Instance ID: {instance.id}
-                    </Text>
-                    <Text type="secondary" className="text-xs block">
                       Engine Type: {instance.engine_type}
                     </Text>
                     {instance.description && (
@@ -200,9 +197,6 @@ export function SystemInstancesSection() {
                         {instance.description}
                       </Text>
                     )}
-                    <Text type="secondary" className="text-xs block">
-                      Status: {instance.enabled ? 'Enabled' : 'Disabled'}
-                    </Text>
                     <Text type="secondary" className="text-xs block">
                       Created:{' '}
                       {new Date(instance.created_at).toLocaleDateString()}

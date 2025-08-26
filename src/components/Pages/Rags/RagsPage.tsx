@@ -38,7 +38,7 @@ export const RagsPage: React.FC = () => {
   )
 
   useEffect(() => {
-    loadAllUserRAGInstances()
+    loadAllUserRAGInstances(true) // Always load system instances
   }, [])
 
   // Show errors
@@ -48,6 +48,7 @@ export const RagsPage: React.FC = () => {
       clearRAGStoreError()
     }
   }, [error, message])
+
 
   // Get filtered and sorted RAG instances
   const getFilteredAndSortedInstances = () => {
@@ -85,6 +86,14 @@ export const RagsPage: React.FC = () => {
     }
 
     return sortedInstances
+  }
+
+  // Separate instances by type for display
+  const getInstancesByType = () => {
+    const allInstances = getFilteredAndSortedInstances()
+    const userInstances = allInstances.filter(r => !r.is_system)
+    const systemInstances = allInstances.filter(r => r.is_system)
+    return { userInstances, systemInstances, allInstances }
   }
 
   const searchInputComponent = (
@@ -175,26 +184,67 @@ export const RagsPage: React.FC = () => {
           </div>
         )}
         {/* RAG Instances Grid */}
-        {getFilteredAndSortedInstances().length > 0 && (
-          <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-            <div className={'h-full flex flex-col overflow-y-auto'}>
-              <div className="max-w-4xl flex flex-wrap gap-3 pt-3 w-full self-center px-3">
-                {getFilteredAndSortedInstances().map(instance => (
-                  <div key={instance.id} className={'min-w-70 flex-1'}>
-                    <RagCard ragInstance={instance} />
-                  </div>
-                ))}
-                {/* Placeholder divs for grid layout */}
-                <div className={'min-w-70 flex-1'}></div>
-                <div className={'min-w-70 flex-1'}></div>
-                <div className={'min-w-70 flex-1'}></div>
+        {(() => {
+          const { userInstances, systemInstances, allInstances } = getInstancesByType()
+          
+          if (allInstances.length === 0) {
+            return null
+          }
+          
+          return (
+            <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
+              <div className={'h-full flex flex-col overflow-y-auto'}>
+                <div className="max-w-4xl flex flex-col gap-4 pt-3 w-full self-center px-3">
+                  
+                  {/* Personal Instances Section */}
+                  {userInstances.length > 0 && (
+                    <div>
+                      {systemInstances.length > 0 && (
+                        <Typography.Title level={5} className="!mb-3">
+                          Personal Instances
+                        </Typography.Title>
+                      )}
+                      <div className="flex flex-wrap gap-3">
+                        {userInstances.map(instance => (
+                          <div key={instance.id} className={'min-w-70 flex-1'}>
+                            <RagCard ragInstance={instance} />
+                          </div>
+                        ))}
+                        {/* Placeholder divs for grid layout */}
+                        <div className={'min-w-70 flex-1'}></div>
+                        <div className={'min-w-70 flex-1'}></div>
+                        <div className={'min-w-70 flex-1'}></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* System Instances Section */}
+                  {systemInstances.length > 0 && (
+                    <div>
+                      <Typography.Title level={5} className="!mb-3">
+                        System Instances
+                      </Typography.Title>
+                      <div className="flex flex-wrap gap-3">
+                        {systemInstances.map(instance => (
+                          <div key={instance.id} className={'min-w-70 flex-1'}>
+                            <RagCard ragInstance={instance} />
+                          </div>
+                        ))}
+                        {/* Placeholder divs for grid layout */}
+                        <div className={'min-w-70 flex-1'}></div>
+                        <div className={'min-w-70 flex-1'}></div>
+                        <div className={'min-w-70 flex-1'}></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Empty State */}
-        {!loading && getFilteredAndSortedInstances().length === 0 && (
+        {!loading && getInstancesByType().allInstances.length === 0 && (
           <div className="text-center py-12 m-auto">
             <DatabaseOutlined className="text-6xl mb-4" />
             <Title level={3} type="secondary">

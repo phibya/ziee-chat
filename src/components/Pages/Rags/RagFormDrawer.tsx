@@ -26,6 +26,9 @@ export const RagFormDrawer: React.FC = () => {
   const { open, loading, editingInstance } = Stores.UI.RAGInstanceDrawer
   const { creatableProviders } = Stores.RAG
 
+  // System instance permission checks
+  const isSystemInstance = editingInstance?.is_system
+
   const handleSubmit = async (values: RAGInstanceFormData) => {
     const finalValues = {
       ...values,
@@ -73,7 +76,10 @@ export const RagFormDrawer: React.FC = () => {
   }, [open, editingInstance, form])
 
   const getTitle = () => {
-    return editingInstance ? 'Edit RAG Instance' : 'Create RAG Instance'
+    if (editingInstance) {
+      return `RAG Instance: ${editingInstance.name}`
+    }
+    return 'Create RAG Instance'
   }
 
   return (
@@ -88,7 +94,7 @@ export const RagFormDrawer: React.FC = () => {
         <PermissionGuard
           permissions={[
             editingInstance
-              ? Permission.RagInstancesEdit
+              ? (isSystemInstance ? Permission.RagAdminInstancesEdit : Permission.RagInstancesEdit)
               : Permission.RagInstancesCreate,
           ]}
           type={'disabled'}
@@ -106,15 +112,20 @@ export const RagFormDrawer: React.FC = () => {
       width={400}
       maskClosable={false}
     >
+      
       <PermissionGuard
         permissions={[
           editingInstance 
-            ? Permission.RagInstancesEdit 
+            ? (isSystemInstance ? Permission.RagAdminInstancesEdit : Permission.RagInstancesEdit)
             : Permission.RagInstancesCreate,
         ]}
         type={'disabled'}
       >
-        <Form form={form} onFinish={handleSubmit} layout="vertical">
+        <Form 
+          form={form} 
+          onFinish={handleSubmit} 
+          layout="vertical"
+        >
           <Form.Item
             name="name"
             label="Instance Name"
