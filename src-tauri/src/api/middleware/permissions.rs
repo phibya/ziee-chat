@@ -135,8 +135,6 @@ permission_middleware!(rag_instances_delete_middleware, Permission::RagInstances
 
 // RAG file middleware
 permission_middleware!(rag_files_read_middleware, Permission::RagFilesRead);
-permission_middleware!(rag_files_add_middleware, Permission::RagFilesAdd);
-permission_middleware!(rag_files_remove_middleware, Permission::RagFilesRemove);
 
 // RAG system instance admin middleware
 permission_middleware!(rag_admin_instances_read_middleware, Permission::RagAdminInstancesRead);
