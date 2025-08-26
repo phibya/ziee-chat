@@ -651,6 +651,7 @@
   "navigation": {
     "chats": "Chats",
     "projects": "Projects",
+    "ragInstances": "RAG Instances",
     "artifacts": "Artifacts",
     "assistants": "Assistants",
     "models": "Models",

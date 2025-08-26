@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { useUserAppearanceLanguage } from './store'
 import { ProjectsPage } from './components/Pages/Projects/ProjectsPage'
 import { ProjectDetailsPage } from './components/Pages/Projects/ProjectDetailsPage'
+import { RagsPage } from './components/Pages/Rags/RagsPage'
+import { RagDetailsPage } from './components/Pages/Rags/RagDetailsPage'
 import {
   ExistingChatInterface,
   NewChatInterface,
@@ -119,6 +121,26 @@ function App() {
                           permissions={[Permission.ProjectsRead]}
                         >
                           <ProjectDetailsPage />
+                        </PagePermissionGuard403>
+                      }
+                    />
+                    <Route
+                      path="/rags"
+                      element={
+                        <PagePermissionGuard403
+                          permissions={[Permission.RagInstancesRead]}
+                        >
+                          <RagsPage />
+                        </PagePermissionGuard403>
+                      }
+                    />
+                    <Route
+                      path="/rags/:ragInstanceId"
+                      element={
+                        <PagePermissionGuard403
+                          permissions={[Permission.RagInstancesRead]}
+                        >
+                          <RagDetailsPage />
                         </PagePermissionGuard403>
                       }
                     />

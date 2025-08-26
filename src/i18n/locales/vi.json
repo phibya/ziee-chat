@@ -7,6 +7,7 @@
   "navigation": {
     "newChat": "Trò chuyện mới",
     "assistants": "Trợ lý",
+    "ragInstances": "RAG Instances",
     "hub": "Trung tâm",
     "settings": "Cài đặt"
   },

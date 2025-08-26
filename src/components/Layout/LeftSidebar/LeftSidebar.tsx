@@ -19,6 +19,7 @@ import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 import { HiOutlineFaceSmile } from 'react-icons/hi2'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { Permission } from '../../../types'
+import { GoDatabase } from 'react-icons/go'
 
 const { Text } = Typography
 
@@ -104,6 +105,7 @@ export function LeftSidebar() {
     if (path === '/conversations')
       return location.pathname.startsWith('/conversations')
     if (path === '/projects') return location.pathname.startsWith('/projects')
+    if (path === '/rags') return location.pathname.startsWith('/rags')
     if (path === '/artifacts') return location.pathname.startsWith('/artifacts')
     if (path === '/hub') return location.pathname.startsWith('/hub')
     if (path === '/assistants')
@@ -151,6 +153,14 @@ export function LeftSidebar() {
               label={t('navigation.projects')}
               isActive={isActive('/projects')}
               to="/projects"
+            />
+          </PermissionGuard>
+          <PermissionGuard permissions={[Permission.RagInstancesRead]}>
+            <SidebarItem
+              icon={<GoDatabase />}
+              label={'RAG'}
+              isActive={isActive('/rags')}
+              to="/rags"
             />
           </PermissionGuard>
           {/*<SidebarItem*/}

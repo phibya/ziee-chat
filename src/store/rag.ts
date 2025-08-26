@@ -1,0 +1,173 @@
+import { create } from 'zustand'
+import { subscribeWithSelector } from 'zustand/middleware'
+import { ApiClient } from '../api/client'
+import type { 
+  RAGInstance, 
+  RAGProvider,
+  UpdateRAGInstanceRequest 
+} from '../types/api'
+
+interface RagState {
+  // Data
+  ragInstances: RAGInstance[]
+  creatableProviders: RAGProvider[]
+  isInitialized: boolean
+
+  // Loading states
+  loading: boolean
+  creating: boolean
+  updating: boolean
+  deleting: boolean
+
+  // Error state
+  error: string | null
+}
+
+export const useRAGStore = create<RagState>()(
+  subscribeWithSelector(
+    (): RagState => ({
+      // Initial state
+      ragInstances: [],
+      creatableProviders: [],
+      isInitialized: false,
+      loading: false,
+      creating: false,
+      updating: false,
+      deleting: false,
+      error: null,
+    }),
+  ),
+)
+
+// Store methods - defined OUTSIDE the store definition
+
+// RAG list actions
+export const loadAllUserRAGInstances = async (): Promise<void> => {
+  const state = useRAGStore.getState()
+  if (state.isInitialized || state.loading) {
+    return
+  }
+  try {
+    useRAGStore.setState({ loading: true, error: null })
+
+    const [instancesResponse, providersResponse] = await Promise.all([
+      ApiClient.Rag.listInstances({}),
+      ApiClient.Rag.listCreatableProviders({})
+    ])
+
+    useRAGStore.setState({
+      ragInstances: instancesResponse.instances || [],
+      creatableProviders: providersResponse || [],
+      isInitialized: true,
+      loading: false,
+    })
+  } catch (error) {
+    useRAGStore.setState({
+      error: error instanceof Error ? error.message : 'Failed to load RAG instances',
+      loading: false,
+    })
+    throw error
+  }
+}
+
+export const createRAGInstance = async (data: {
+  name: string
+  description: string
+  provider_id: string
+  alias: string
+  engine_type: any
+}): Promise<RAGInstance> => {
+  try {
+    useRAGStore.setState({ creating: true, error: null })
+
+    const ragInstance = await ApiClient.Rag.createInstance(data)
+
+    useRAGStore.setState(state => ({
+      ragInstances: [...state.ragInstances, ragInstance],
+      creating: false,
+    }))
+
+    return ragInstance
+  } catch (error) {
+    useRAGStore.setState({
+      error: error instanceof Error ? error.message : 'Failed to create RAG instance',
+      creating: false,
+    })
+    throw error
+  }
+}
+
+export const updateRAGInstanceInList = async (
+  id: string,
+  data: UpdateRAGInstanceRequest,
+): Promise<RAGInstance> => {
+  try {
+    useRAGStore.setState({ updating: true, error: null })
+
+    const ragInstance = await ApiClient.Rag.updateInstance({
+      instance_id: id,
+      ...data,
+    })
+
+    useRAGStore.setState(state => ({
+      ragInstances: state.ragInstances.map(r => (r.id === id ? ragInstance : r)),
+      updating: false,
+    }))
+
+    return ragInstance
+  } catch (error) {
+    useRAGStore.setState({
+      error: error instanceof Error ? error.message : 'Failed to update RAG instance',
+      updating: false,
+    })
+    throw error
+  }
+}
+
+export const deleteRAGInstance = async (id: string): Promise<void> => {
+  try {
+    useRAGStore.setState({ deleting: true, error: null })
+
+    await ApiClient.Rag.deleteInstance({ instance_id: id })
+
+    useRAGStore.setState(state => ({
+      ragInstances: state.ragInstances.filter(r => r.id !== id),
+      deleting: false,
+    }))
+  } catch (error) {
+    useRAGStore.setState({
+      error: error instanceof Error ? error.message : 'Failed to delete RAG instance',
+      deleting: false,
+    })
+    throw error
+  }
+}
+
+// Utility actions
+export const clearRAGStoreError = (): void => {
+  useRAGStore.setState({ error: null })
+}
+
+export const resetRAGStore = (): void => {
+  useRAGStore.setState({
+    ragInstances: [],
+    creatableProviders: [],
+    isInitialized: false,
+    loading: false,
+    creating: false,
+    updating: false,
+    deleting: false,
+    error: null,
+  })
+}
+
+// Helper/utility functions
+export const searchRAGInstances = (instances: RAGInstance[], query: string): RAGInstance[] => {
+  if (!query.trim()) return instances
+
+  const searchTerm = query.toLowerCase()
+  return instances.filter(instance =>
+    instance.name.toLowerCase().includes(searchTerm) ||
+    instance.description?.toLowerCase().includes(searchTerm)
+  )
+}

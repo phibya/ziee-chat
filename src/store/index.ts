@@ -13,6 +13,8 @@ import { useLocalUploadStore } from './admin/localUpload.ts'
 import { useModelDownloadStore } from './admin/modelDownload.ts'
 import { useProjectsStore } from './projects'
 // import { useProjectStore } from './project' // Imported via export below
+import { useRAGStore } from './rag'
+import { useRAGInstanceDrawerStore } from './ui/ragDrawers'
 import { useAdminProvidersStore } from './admin/providers.ts'
 import { useUserProvidersStore } from './providers.ts'
 import { useAdminRepositoriesStore } from './admin/repositories.ts'
@@ -272,6 +274,32 @@ export {
   useAdminRAGProvidersStore,
 } from './admin/ragProviders.ts'
 
+// RAG store (user-level)
+export {
+  loadAllUserRAGInstances,
+  createRAGInstance,
+  updateRAGInstanceInList,
+  deleteRAGInstance,
+  clearRAGStoreError,
+  resetRAGStore,
+  searchRAGInstances,
+  useRAGStore,
+} from './rag'
+
+// RAG Instance store
+export {
+  createRAGInstanceStore,
+  useRAGInstanceStore,
+} from './ragInstance'
+
+// RAG UI stores
+export {
+  openRAGInstanceDrawer,
+  closeRAGInstanceDrawer,
+  setRAGInstanceDrawerLoading,
+  useRAGInstanceDrawerStore,
+} from './ui/ragDrawers'
+
 // Admin API Proxy Server store
 export {
   loadApiProxyServerConfig,
@@ -417,6 +445,7 @@ export const Stores = {
   LocalUpload: createStoreProxy(useLocalUploadStore),
   ModelDownload: createStoreProxy(useModelDownloadStore),
   Projects: createStoreProxy(useProjectsStore),
+  RAG: createStoreProxy(useRAGStore),
   Providers: createStoreProxy(useUserProvidersStore),
   AdminProviders: createStoreProxy(useAdminProvidersStore),
   AdminModels: createStoreProxy(useAdminProvidersStore), // Legacy compatibility
@@ -446,6 +475,7 @@ export const Stores = {
       useAddLocalModelDownloadDrawerStore,
     ),
     ProjectDrawer: createStoreProxy(useProjectDrawerStore),
+    RAGInstanceDrawer: createStoreProxy(useRAGInstanceDrawerStore),
     // RAG drawer stores
     AddRAGProviderDrawer: createStoreProxy(useAddRAGProviderDrawerStore),
     EditRAGProviderDrawer: createStoreProxy(useEditRAGProviderDrawerStore),
