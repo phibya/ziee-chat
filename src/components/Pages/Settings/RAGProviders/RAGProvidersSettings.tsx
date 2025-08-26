@@ -1,4 +1,4 @@
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { PlusOutlined } from '@ant-design/icons'
 import {
   App,
   Button,
@@ -6,7 +6,6 @@ import {
   Empty,
   Flex,
   Menu,
-  Modal,
   Spin,
   Typography,
 } from 'antd'
@@ -15,19 +14,16 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   clearRAGProvidersError,
-  deleteRAGProvider,
   loadAllRAGProviders,
   openAddRAGProviderDrawer,
   Stores,
 } from '../../../../store'
-import { RAGProvider } from '../../../../types/api'
 import { RAG_PROVIDER_ICONS } from '../../../../constants/ragProviders'
 import { AddRAGProviderDrawer } from './AddRAGProviderDrawer'
 import { EditRAGProviderDrawer } from './EditRAGProviderDrawer'
 import { AddSystemInstanceDrawer } from './AddSystemInstanceDrawer'
 import { EditSystemInstanceDrawer } from './EditSystemInstanceDrawer'
 import { RAGProviderSettings } from './RAGProviderSettings'
-import { CgMenuRightAlt } from 'react-icons/cg'
 import { useMainContentMinSize } from '../../../hooks/useWindowMinSize'
 import { IoIosArrowDown } from 'react-icons/io'
 
@@ -78,74 +74,16 @@ export function RAGProvidersSettings() {
     }
   }, [providers, providerId])
 
-  const handleDeleteProvider = async (providerId: string) => {
-    const provider = providers.find(p => p.id === providerId)
-    if (!provider) return
-
-    Modal.confirm({
-      title: t('providers.deleteProvider'),
-      content: `Are you sure you want to delete "${provider.name}"? This action cannot be undone.`,
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          await deleteRAGProvider(providerId)
-          if (providerId === providerId) {
-            const remainingProviders = providers.filter(
-              p => p.id !== providerId,
-            )
-            if (remainingProviders.length > 0) {
-              navigate(`/settings/rag-providers/${remainingProviders[0].id}`, {
-                replace: true,
-              })
-            } else {
-              navigate('/settings/rag-providers', { replace: true })
-            }
-          }
-          message.success(t('providers.providerDeleted'))
-        } catch (error: any) {
-          console.error('Failed to delete RAG provider:', error)
-          // Error is handled by the store
-        }
-      },
-    })
-  }
-
-  const getProviderActions = (provider: RAGProvider) => {
-    const actions: any[] = []
-
-    actions.push({
-      key: 'delete',
-      icon: <DeleteOutlined />,
-      label: t('buttons.delete'),
-      onClick: () => handleDeleteProvider(provider.id),
-      disabled: provider.built_in,
-    })
-
-    return actions
-  }
-
   const menuItems = providers.map(provider => {
     const IconComponent = RAG_PROVIDER_ICONS[provider.type]
     return {
       key: provider.id,
       label: (
-        <Flex className={'flex-row gap-2 items-center'}>
+        <Flex className={'flex-row gap-2 items-center h-full'}>
           <IconComponent className={'text-lg'} />
-          <div className={'flex-1'}>
-            <Typography.Text>{provider.name}</Typography.Text>
+          <div className={'flex-1 flex items-center h-full overflow-x-hidden'}>
+            <Typography.Text ellipsis>{provider.name}</Typography.Text>
           </div>
-          <Dropdown
-            menu={{ items: getProviderActions(provider) }}
-            trigger={['click']}
-          >
-            <Button
-              type="text"
-              icon={<CgMenuRightAlt />}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            />
-          </Dropdown>
         </Flex>
       ),
     }
@@ -224,8 +162,12 @@ export function RAGProvidersSettings() {
             </div>
           )}
           {/* Main Content */}
-          <div className={'flex flex-1'}>
-            <div className={'flex w-full flex-col py-3 px-3 overflow-y-auto'}>
+          <div className={'flex flex-1 max-w-full'}>
+            <div
+              className={
+                'flex w-full flex-col py-3 px-3 overflow-y-auto overflow-x-hidden'
+              }
+            >
               {mainContentMinSize.sm && (
                 <div className={'w-full flex flex-row gap-2 items-center mb-4'}>
                   <Dropdown

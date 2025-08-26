@@ -1,15 +1,14 @@
 import { useTranslation } from 'react-i18next'
 import { App, Button, Checkbox, Form, Input } from 'antd'
 import { Drawer } from '../../../../common/Drawer.tsx'
-import type { CreateTrustedHostRequest } from '../../../../../types'
+import { addTrustedHostToApiProxyServer } from '../../../../../store/admin/apiProxyServer'
 
 interface AddHostDrawerProps {
   open: boolean
   onClose: () => void
-  onAdd: (data: CreateTrustedHostRequest) => Promise<any>
 }
 
-export function AddHostDrawer({ open, onClose, onAdd }: AddHostDrawerProps) {
+export function AddHostDrawer({ open, onClose }: AddHostDrawerProps) {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
@@ -17,12 +16,13 @@ export function AddHostDrawer({ open, onClose, onAdd }: AddHostDrawerProps) {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields()
-      await onAdd(values)
+      await addTrustedHostToApiProxyServer(values)
       message.success(t('apiProxyServer.hostAdded'))
       form.resetFields()
       onClose()
     } catch (error) {
-      console.error('Form validation failed:', error)
+      console.error('Add host failed:', error)
+      message.error(t('apiProxyServer.hostAddError'))
     }
   }
 

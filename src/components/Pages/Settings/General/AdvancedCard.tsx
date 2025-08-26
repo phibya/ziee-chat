@@ -1,28 +1,44 @@
-import { Card, Flex, Form, Switch, Typography } from 'antd'
+import { App, Card, Flex, Form, Switch, Typography } from 'antd'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const { Text } = Typography
 
 interface AdvancedCardProps {
-  form: any
-  experimentalFeatures: boolean
-  onFormChange: (changedValues: any) => void
   isAdmin?: boolean
 }
 
 export function AdvancedCard({
-  form,
-  experimentalFeatures,
-  onFormChange,
   isAdmin = false,
 }: AdvancedCardProps) {
   const { t } = useTranslation()
+  const { message } = App.useApp()
+  const [form] = Form.useForm()
+  const [experimentalFeatures, setExperimentalFeatures] = useState(false)
+
+  const handleFormChange = async (changedValues: any) => {
+    try {
+      if ('experimentalFeatures' in changedValues) {
+        setExperimentalFeatures(changedValues.experimentalFeatures)
+        message.success(
+          changedValues.experimentalFeatures
+            ? t('admin.experimentalEnabled')
+            : t('admin.experimentalDisabled'),
+        )
+      }
+    } catch (error: any) {
+      message.error(error?.message || t('common.failedToUpdate'))
+      form.setFieldsValue({
+        experimentalFeatures,
+      })
+    }
+  }
 
   return (
     <Card title={isAdmin ? t('admin.advanced') : t('general.advanced')}>
       <Form
         form={form}
-        onValuesChange={onFormChange}
+        onValuesChange={handleFormChange}
         initialValues={{
           experimentalFeatures,
         }}

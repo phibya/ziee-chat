@@ -1,11 +1,8 @@
-import { Button, Form, Input, Select, Switch } from 'antd'
+import { Button, Form, Input, Switch } from 'antd'
 import { Drawer } from '../../../common/Drawer'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RAG_ENGINE_TYPES,
-  RAG_ENGINE_DEFAULTS,
-} from '../../../../constants/ragProviders'
+import { RAG_ENGINE_DEFAULTS } from '../../../../constants/ragProviders'
 import {
   closeEditSystemInstanceDrawer,
   findRAGInstanceById,
@@ -18,7 +15,6 @@ import { UpdateRAGInstanceRequest, RAGEngineType } from '../../../../types/api'
 export function EditSystemInstanceDrawer() {
   const { t } = useTranslation()
   const [form] = Form.useForm()
-  const [engineType, setEngineType] = useState<RAGEngineType>('rag_simple_vector')
 
   const { open, loading, instanceId } = Stores.UI.EditSystemInstanceDrawer
 
@@ -27,22 +23,12 @@ export function EditSystemInstanceDrawer() {
 
   useEffect(() => {
     if (instance && open) {
-      setEngineType(instance.engine_type)
-      
-      // Get engine settings based on engine type
-      let engineSettings = {}
-      if (instance.engine_type === 'rag_simple_vector' && instance.engine_settings_rag_simple_vector) {
-        engineSettings = instance.engine_settings_rag_simple_vector
-      } else if (instance.engine_type === 'rag_simple_graph' && instance.engine_settings_rag_simple_graph) {
-        engineSettings = instance.engine_settings_rag_simple_graph
-      }
-      
       form.setFieldsValue({
         name: instance.name,
         description: instance.description,
         engine_type: instance.engine_type,
         enabled: instance.enabled,
-        settings: JSON.stringify(engineSettings, null, 2),
+        settings: instance.engine_settings || {},
       })
     }
   }, [instance, open, form])
@@ -53,7 +39,7 @@ export function EditSystemInstanceDrawer() {
     try {
       setEditSystemInstanceDrawerLoading(true)
       const values = await form.validateFields()
-      
+
       let parsedSettings = values.settings
       if (typeof values.settings === 'string') {
         try {
@@ -78,12 +64,6 @@ export function EditSystemInstanceDrawer() {
     } finally {
       setEditSystemInstanceDrawerLoading(false)
     }
-  }
-
-  const handleEngineTypeChange = (type: RAGEngineType) => {
-    setEngineType(type)
-    const defaultSettings = getDefaultEngineSettings(type)
-    form.setFieldValue('settings', JSON.stringify(defaultSettings, null, 2))
   }
 
   const getDefaultEngineSettings = (type: RAGEngineType) => {
@@ -127,59 +107,14 @@ export function EditSystemInstanceDrawer() {
           <Input placeholder="Enter instance name" />
         </Form.Item>
 
-        <Form.Item
-          name="engine_type"
-          label="Engine Type"
-          rules={[
-            {
-              required: true,
-              message: 'Engine type is required',
-            },
-          ]}
-        >
-          <Select
-            options={RAG_ENGINE_TYPES.map(engine => ({
-              value: engine.value,
-              label: engine.label,
-              engine: engine,
-            }))}
-            optionRender={(option) => (
-              <div className="flex flex-col gap-1 py-1">
-                <div className="font-medium">{option.data.engine.label}</div>
-                <div className="text-xs text-gray-500">{option.data.engine.description}</div>
-              </div>
-            )}
-            onChange={handleEngineTypeChange}
-            placeholder="Select engine type"
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="enabled"
-          label="Enabled"
-          valuePropName="checked"
-        >
+        <Form.Item name="enabled" label="Enabled" valuePropName="checked">
           <Switch />
         </Form.Item>
 
-        <Form.Item
-          name="description"
-          label="Description"
-        >
-          <Input.TextArea 
+        <Form.Item name="description" label="Description">
+          <Input.TextArea
             placeholder="Optional description for this instance"
             rows={3}
-          />
-        </Form.Item>
-
-        <Form.Item
-          name="settings"
-          label="Engine Settings (JSON)"
-          help="Advanced settings for the RAG engine in JSON format"
-        >
-          <Input.TextArea
-            placeholder={JSON.stringify(getDefaultEngineSettings(engineType), null, 2)}
-            rows={6}
           />
         </Form.Item>
       </Form>

@@ -1,4 +1,4 @@
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+import { PlusOutlined } from '@ant-design/icons'
 import {
   App,
   Button,
@@ -6,7 +6,6 @@ import {
   Empty,
   Flex,
   Menu,
-  Modal,
   Spin,
   Typography,
 } from 'antd'
@@ -15,12 +14,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   clearProvidersError,
-  deleteModelProvider,
   loadAllModelProviders,
   openAddProviderDrawer,
   Stores,
 } from '../../../../store'
-import { Provider } from '../../../../types'
 import { PROVIDER_ICONS } from '../../../../constants/providers'
 import { AddLocalModelDownloadDrawer } from './AddLocalModelDownloadDrawer.tsx'
 import { AddLocalModelUploadDrawer } from './AddLocalModelUploadDrawer.tsx'
@@ -30,7 +27,6 @@ import { EditLocalModelDrawer } from './EditLocalModelDrawer.tsx'
 import { EditRemoteModelDrawer } from './EditRemoteModelDrawer.tsx'
 import { LocalProviderSettings } from './LocalProviderSettings'
 import { RemoteProviderSettings } from './RemoteProviderSettings'
-import { CgMenuRightAlt } from 'react-icons/cg'
 import { useMainContentMinSize } from '../../../hooks/useWindowMinSize.ts'
 import { IoIosArrowDown } from 'react-icons/io'
 
@@ -81,74 +77,16 @@ export function ProvidersSettings() {
     }
   }, [providers, providerId])
 
-  const handleDeleteProvider = async (providerId: string) => {
-    const provider = providers.find(p => p.id === providerId)
-    if (!provider) return
-
-    Modal.confirm({
-      title: t('providers.deleteProvider'),
-      content: `Are you sure you want to delete "${provider.name}"? This action cannot be undone.`,
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          await deleteModelProvider(providerId)
-          if (providerId === providerId) {
-            const remainingProviders = providers.filter(
-              p => p.id !== providerId,
-            )
-            if (remainingProviders.length > 0) {
-              navigate(`/settings/providers/${remainingProviders[0].id}`, {
-                replace: true,
-              })
-            } else {
-              navigate('/settings/providers', { replace: true })
-            }
-          }
-          message.success(t('providers.providerDeleted'))
-        } catch (error: any) {
-          console.error('Failed to delete provider:', error)
-          // Error is handled by the store
-        }
-      },
-    })
-  }
-
-  const getProviderActions = (provider: Provider) => {
-    const actions: any[] = []
-
-    actions.push({
-      key: 'delete',
-      icon: <DeleteOutlined />,
-      label: t('buttons.delete'),
-      onClick: () => handleDeleteProvider(provider.id),
-      disabled: provider.built_in,
-    })
-
-    return actions
-  }
-
   const menuItems = providers.map(provider => {
     const IconComponent = PROVIDER_ICONS[provider.type]
     return {
       key: provider.id,
       label: (
-        <Flex className={'flex-row gap-2 items-center'}>
+        <Flex className={'flex-row gap-2 items-center h-full'}>
           <IconComponent className={'text-lg'} />
-          <div className={'flex-1'}>
-            <Typography.Text>{provider.name}</Typography.Text>
+          <div className={'flex-1 flex items-center h-full overflow-x-hidden'}>
+            <Typography.Text ellipsis>{provider.name}</Typography.Text>
           </div>
-          <Dropdown
-            menu={{ items: getProviderActions(provider) }}
-            trigger={['click']}
-          >
-            <Button
-              type="text"
-              icon={<CgMenuRightAlt />}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            />
-          </Dropdown>
         </Flex>
       ),
     }

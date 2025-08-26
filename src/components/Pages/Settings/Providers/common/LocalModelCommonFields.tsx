@@ -17,15 +17,7 @@ const ENGINE_OPTIONS = [
   },
 ]
 
-interface LocalModelCommonFieldsProps {
-  onFileFormatChange?: (value: string) => void
-  onEngineChange?: (value: string) => void
-}
-
-export function LocalModelCommonFields({
-  onFileFormatChange,
-  onEngineChange,
-}: LocalModelCommonFieldsProps) {
+export function LocalModelCommonFields() {
   const { t } = useTranslation()
 
   return (
@@ -45,7 +37,6 @@ export function LocalModelCommonFields({
       >
         <Select
           placeholder="Select Engine"
-          onChange={onEngineChange}
           options={ENGINE_OPTIONS.map(option => ({
             value: option.value,
             label: option.label,
@@ -66,7 +57,6 @@ export function LocalModelCommonFields({
       >
         <Select
           placeholder={t('providers.selectFileFormat')}
-          onChange={onFileFormatChange}
           options={LOCAL_FILE_TYPE_OPTIONS.map(option => ({
             value: option.value,
             label: option.label,

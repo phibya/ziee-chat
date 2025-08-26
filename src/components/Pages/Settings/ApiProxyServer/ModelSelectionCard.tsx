@@ -44,19 +44,6 @@ export function ModelSelectionCard() {
     setEditModelDrawerOpen(true)
   }
 
-  const handleUpdateModelSubmit = async (
-    modelId: string,
-    updates: UpdateApiProxyServerModelRequest,
-  ) => {
-    try {
-      await updateApiProxyServerModel(modelId, updates)
-      message.success(t('apiProxyServer.modelUpdated'))
-      setEditModelDrawerOpen(false)
-      setEditingModelId(null)
-    } catch (_error) {
-      message.error(t('apiProxyServer.modelUpdateError'))
-    }
-  }
 
   const handleRemoveModel = async (modelId: string) => {
     try {
@@ -122,8 +109,6 @@ export function ModelSelectionCard() {
           setEditingModelId(null)
         }}
         modelId={editingModelId}
-        models={models}
-        onUpdate={handleUpdateModelSubmit}
       />
     </>
   )

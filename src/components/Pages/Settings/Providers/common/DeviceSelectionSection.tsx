@@ -7,18 +7,7 @@ import { useUpdate } from 'react-use'
 
 const { Text } = Typography
 
-interface DeviceSelectionSectionProps {
-  value?: {
-    device_type?: string
-    device_ids?: number[]
-  }
-  onChange?: (value: { device_type?: string; device_ids?: number[] }) => void
-  disabled?: boolean
-}
-
-export const DeviceSelectionSection: React.FC<DeviceSelectionSectionProps> = ({
-  onChange,
-}) => {
+export const DeviceSelectionSection: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [devicesByType, setDevicesByType] = useState<
@@ -29,7 +18,8 @@ export const DeviceSelectionSection: React.FC<DeviceSelectionSectionProps> = ({
 
   const engine_type = Form.useWatch('engine_type', form) || 'mistralrs'
   const getFieldName = (field: string) => [
-    `engine_settings_${engine_type}`,
+    'engine_settings',
+    engine_type,
     field,
   ]
 
@@ -82,28 +72,11 @@ export const DeviceSelectionSection: React.FC<DeviceSelectionSectionProps> = ({
     : []
 
   const handleDeviceTypeChange = (deviceType: string) => {
-    const newValue = {
-      device_type: deviceType,
-      device_ids: selectedDeviceIds,
-    }
-    onChange?.(newValue)
-    form.setFieldsValue({
-      [`engine_settings_${engine_type}`]: {
-        ...form.getFieldValue(`engine_settings_${engine_type}`),
-        device_ids: [devicesByType[deviceType]?.[0]?.id || undefined].filter(
-          Boolean,
-        ), // Set first device ID if available
-      },
-    }) // Update form state
+    form.setFieldValue(
+      getFieldName('device_ids'),
+      [devicesByType[deviceType]?.[0]?.id || undefined].filter(Boolean),
+    )
     update()
-  }
-
-  const handleDeviceIdsChange = (deviceIds: number[]) => {
-    const newValue = {
-      device_type: selectedDeviceType,
-      device_ids: deviceIds,
-    }
-    onChange?.(newValue)
   }
 
   const formatMemorySize = (bytes?: number) => {
@@ -199,7 +172,6 @@ export const DeviceSelectionSection: React.FC<DeviceSelectionSectionProps> = ({
             <Select
               mode="multiple"
               placeholder="Select specific devices (optional)"
-              onChange={handleDeviceIdsChange}
               allowClear
               options={availableDevicesForType.map(device => ({
                 value: device.id,

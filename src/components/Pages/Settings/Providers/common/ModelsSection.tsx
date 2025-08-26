@@ -1,8 +1,10 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons'
 import {
+  App,
   Button,
   Card,
   Divider,
+  Dropdown,
   Empty,
   Flex,
   Spin,
@@ -10,36 +12,151 @@ import {
   Typography,
 } from 'antd'
 import { useTranslation } from 'react-i18next'
-import { Model, Provider } from '../../../../../types'
+import { useParams } from 'react-router-dom'
+import {
+  deleteExistingModel,
+  disableModelFromUse,
+  enableModelForUse,
+  openAddLocalModelDownloadDrawer,
+  openAddLocalModelUploadDrawer,
+  openAddRemoteModelDrawer,
+  openEditLocalModelDrawer,
+  openEditRemoteModelDrawer,
+  startModelExecution,
+  stopModelExecution,
+  Stores,
+  updateModelProvider,
+} from '../../../../../store'
+import { Model } from '../../../../../types'
 
 const { Text } = Typography
 
-interface ModelsSectionProps {
-  currentProvider: Provider
-  currentModels: Model[]
-  modelsLoading: boolean
-  modelOperations: Record<string, boolean>
-  onAddModel: () => void
-  onToggleModel: (modelId: string, enabled: boolean) => void
-  onEditModel: (modelId: string) => void
-  onDeleteModel: (modelId: string) => void
-  onStartStopModel?: (modelId: string, isActive: boolean) => void
-  customAddButton?: React.ReactNode
-}
-
-export function ModelsSection({
-  currentProvider,
-  currentModels,
-  modelsLoading,
-  modelOperations,
-  onAddModel,
-  onToggleModel,
-  onEditModel,
-  onDeleteModel,
-  onStartStopModel,
-  customAddButton,
-}: ModelsSectionProps) {
+export function ModelsSection() {
   const { t } = useTranslation()
+  const { message, modal } = App.useApp()
+  const { providerId } = useParams<{ providerId?: string }>()
+
+  // Store data
+  const { modelsLoading, modelOperations } = Stores.AdminProviders
+
+  // Get current provider and its models
+  const currentProvider = Stores.AdminProviders.providers.find(
+    p => p.id === providerId,
+  )
+  const models = currentProvider?.models || []
+  const loading = modelsLoading[providerId!] || false
+
+  const handleToggleModel = async (modelId: string, enabled: boolean) => {
+    if (!currentProvider) return
+
+    try {
+      if (enabled) {
+        await enableModelForUse(modelId)
+      } else {
+        await disableModelFromUse(modelId)
+      }
+
+      // Check if this was the last enabled model being disabled
+      if (!enabled) {
+        const remainingEnabledModels = models.filter(
+          m => m.id !== modelId && m.enabled !== false,
+        )
+
+        // If no models remain enabled and provider is currently enabled, disable the provider
+        if (remainingEnabledModels.length === 0 && currentProvider.enabled) {
+          try {
+            await updateModelProvider(currentProvider.id, { enabled: false })
+            const modelName =
+              models.find(m => m.id === modelId)?.name || 'Model'
+            message.success(
+              `${modelName} disabled. ${currentProvider.name} provider disabled as no models remain active.`,
+            )
+          } catch (providerError) {
+            console.error('Failed to disable provider:', providerError)
+            const modelName =
+              models.find(m => m.id === modelId)?.name || 'Model'
+            message.warning(
+              `${modelName} disabled, but failed to disable provider automatically`,
+            )
+          }
+        } else {
+          const modelName = models.find(m => m.id === modelId)?.name || 'Model'
+          message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
+        }
+      } else {
+        const modelName = models.find(m => m.id === modelId)?.name || 'Model'
+        message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
+      }
+    } catch (error) {
+      console.error('Failed to toggle model:', error)
+      // Error is handled by the store
+    }
+  }
+
+  const handleDeleteModel = async (modelId: string) => {
+    if (!currentProvider) return
+
+    try {
+      await deleteExistingModel(modelId)
+      message.success(t('providers.modelDeleted'))
+    } catch (error) {
+      console.error('Failed to delete model:', error)
+      // Error is handled by the store
+    }
+  }
+
+  const handleStartStopModel = async (modelId: string, is_active: boolean) => {
+    if (!currentProvider || currentProvider.type !== 'local') return
+
+    try {
+      if (is_active) {
+        await startModelExecution(modelId)
+      } else {
+        await stopModelExecution(modelId)
+      }
+
+      const modelName = models.find(m => m.id === modelId)?.name || 'Model'
+      message.success(`${modelName} ${is_active ? 'started' : 'stopped'}`)
+    } catch (error) {
+      console.error('Failed to start/stop model:', error)
+      if (error instanceof Error) {
+        const modelName = models.find(m => m.id === modelId)?.name || 'Model'
+        const action = is_active ? 'start' : 'stop'
+
+        const errorMessage = error.message
+        modal.error({
+          title: `Failed to ${action} ${modelName}`,
+          width: '100%',
+          closable: true,
+          maskClosable: false,
+          content: (
+            <div className={'w-full h-full overflow-y-auto overflow-x-auto'}>
+              <pre>{errorMessage}</pre>
+            </div>
+          ),
+        })
+      }
+    }
+  }
+
+  const handleAddModel = () => {
+    if (!currentProvider) return
+    if (currentProvider.type === 'local') {
+      // For local providers, open the upload drawer by default
+      openAddLocalModelUploadDrawer(currentProvider.id)
+    } else {
+      openAddRemoteModelDrawer(currentProvider.id, currentProvider.type)
+    }
+  }
+
+  const handleEditModel = (modelId: string) => {
+    if (!currentProvider) return
+    if (currentProvider.type === 'local') {
+      openEditLocalModelDrawer(modelId)
+    } else {
+      openEditRemoteModelDrawer(modelId)
+    }
+  }
 
   const getModelActions = (model: Model) => {
     const actions: React.ReactNode[] = []
@@ -50,18 +167,18 @@ export function ModelsSection({
         className={'!mr-2'}
         key="enable"
         checked={model.enabled !== false}
-        onChange={checked => onToggleModel(model.id, checked)}
+        onChange={checked => handleToggleModel(model.id, checked)}
       />,
     )
 
-    if (currentProvider.type === 'local' && onStartStopModel) {
+    if (currentProvider?.type === 'local') {
       actions.push(
         <Button
           key="start-stop"
           type={model.is_active ? 'default' : 'primary'}
           loading={modelOperations[model.id] || false}
           disabled={modelOperations[model.id] || false}
-          onClick={() => onStartStopModel(model.id, !model.is_active)}
+          onClick={() => handleStartStopModel(model.id, !model.is_active)}
         >
           {modelOperations[model.id]
             ? model.is_active
@@ -79,7 +196,7 @@ export function ModelsSection({
         key="edit"
         type="text"
         icon={<EditOutlined />}
-        onClick={() => onEditModel(model.id)}
+        onClick={() => handleEditModel(model.id)}
       >
         {'Edit'}
       </Button>,
@@ -90,7 +207,7 @@ export function ModelsSection({
         key="delete"
         type="text"
         icon={<DeleteOutlined />}
-        onClick={() => onDeleteModel(model.id)}
+        onClick={() => handleDeleteModel(model.id)}
       >
         {'Delete'}
       </Button>,
@@ -99,26 +216,59 @@ export function ModelsSection({
     return actions.filter(Boolean)
   }
 
+  const getAddButton = () => {
+    if (!currentProvider) return null
+
+    if (currentProvider.type === 'local') {
+      return (
+        <Dropdown
+          menu={{
+            items: [
+              {
+                key: 'upload',
+                label: 'Upload from Files',
+                icon: <UploadOutlined />,
+                onClick: () => openAddLocalModelUploadDrawer(currentProvider.id),
+              },
+              {
+                key: 'download',
+                label: 'Download from Repository',
+                icon: <PlusOutlined />,
+                onClick: () => openAddLocalModelDownloadDrawer(currentProvider.id),
+              },
+            ],
+          }}
+          trigger={['click']}
+        >
+          <Button type="text" icon={<PlusOutlined />} />
+        </Dropdown>
+      )
+    }
+
+    return <Button type="text" icon={<PlusOutlined />} onClick={handleAddModel} />
+  }
+
+  // Return early if no provider
+  if (!currentProvider) {
+    return null
+  }
+
   return (
     <Card
       title={t('providers.models')}
-      extra={
-        customAddButton || (
-          <Button type="text" icon={<PlusOutlined />} onClick={onAddModel} />
-        )
-      }
+      extra={getAddButton()}
     >
-      {modelsLoading ? (
+      {loading ? (
         <div className="flex justify-center py-8">
           <Spin size="large" />
         </div>
-      ) : currentModels.length === 0 ? (
+      ) : models.length === 0 ? (
         <div>
           <Empty description="No models added yet" />
         </div>
       ) : (
         <div>
-          {currentModels.map((model, index) => (
+          {models.map((model, index) => (
             <div key={model.id}>
               <div className="flex items-start gap-3 flex-wrap">
                 {/* Model Info */}
@@ -183,7 +333,7 @@ export function ModelsSection({
                   </div>
                 </div>
               </div>
-              {index < currentModels.length - 1 && <Divider className="my-0" />}
+              {index < models.length - 1 && <Divider className="my-0" />}
             </div>
           ))}
         </div>

@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react'
-import { Button, Form, Input, Typography } from 'antd'
+import React, { useEffect, useState } from 'react'
+import { App, Button, Form, Input, Typography } from 'antd'
+import { useParams } from 'react-router-dom'
 import { Drawer } from '../../common/Drawer.tsx'
+import { useProjectStore } from '../../../store'
 
 const { TextArea } = Input
 
@@ -11,22 +13,32 @@ interface ProjectInstructionFormData {
 interface ProjectInstructionDrawerProps {
   open: boolean
   onClose: () => void
-  onSave: (instruction: string) => Promise<void>
-  currentInstruction?: string
-  loading?: boolean
 }
 
 export const ProjectInstructionDrawer: React.FC<
   ProjectInstructionDrawerProps
-> = ({ open, onClose, onSave, currentInstruction, loading = false }) => {
+> = ({ open, onClose }) => {
+  const { message } = App.useApp()
+  const { projectId } = useParams<{ projectId: string }>()
   const [form] = Form.useForm<ProjectInstructionFormData>()
+  const [loading, setLoading] = useState(false)
+  
+  // Get project store
+  const { project, updateProject } = useProjectStore(projectId)
 
   const handleSubmit = async (values: ProjectInstructionFormData) => {
+    if (!project) return
+
+    setLoading(true)
     try {
-      await onSave(values.instruction)
+      await updateProject({ instruction: values.instruction })
+      message.success('Project instructions updated successfully')
       onClose()
     } catch (error) {
-      console.error('Failed to save instruction:', error)
+      console.error('Failed to update instruction:', error)
+      message.error('Failed to update project instructions')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -34,13 +46,13 @@ export const ProjectInstructionDrawer: React.FC<
   useEffect(() => {
     if (open) {
       form.setFieldsValue({
-        instruction: currentInstruction || '',
+        instruction: project?.instruction || '',
       })
     } else {
       // Reset when drawer closes
       form.resetFields()
     }
-  }, [open, currentInstruction, form])
+  }, [open, project?.instruction, form])
 
   return (
     <Drawer

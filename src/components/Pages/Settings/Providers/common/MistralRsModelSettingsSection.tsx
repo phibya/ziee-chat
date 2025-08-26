@@ -61,9 +61,10 @@ export function MistralRsModelSettingsSection() {
 
   // Watch for device type changes
   const selectedDeviceType =
-    Form.useWatch(['engine_settings_mistralrs', 'device_type'], form) || 'cpu'
+    Form.useWatch(['engine_settings', 'mistralrs', 'device_type'], form) ||
+    'cpu'
   const currentQuantization = Form.useWatch(
-    ['engine_settings_mistralrs', 'in_situ_quant'],
+    ['engine_settings', 'mistralrs', 'in_situ_quant'],
     form,
   )
 
@@ -86,14 +87,18 @@ export function MistralRsModelSettingsSection() {
 
       if (!isCurrentQuantizationCompatible) {
         form.setFieldValue(
-          ['engine_settings_mistralrs', 'in_situ_quant'],
+          ['engine_settings', 'mistralrs', 'in_situ_quant'],
           undefined,
         )
       }
     }
   }, [selectedDeviceType, currentQuantization, form])
 
-  const getFieldName = (field: string) => ['engine_settings_mistralrs', field]
+  const getFieldName = (field: string) => [
+    'engine_settings',
+    'mistralrs',
+    field,
+  ]
 
   const ResponsiveConfigItem = ({
     title,

@@ -4,16 +4,9 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import {
   clearRAGProvidersError,
-  deleteSystemRAGInstance,
-  disableSystemRAGInstance,
-  enableSystemRAGInstance,
-  getInstancesForProvider,
-  openAddSystemInstanceDrawer,
-  openEditSystemInstanceDrawer,
   Stores,
   updateRAGProvider,
 } from '../../../../store'
-import { RAGProvider } from '../../../../types/api'
 import { RAGProviderHeader } from './RAGProviderHeader'
 import { SystemInstancesSection } from './SystemInstancesSection'
 
@@ -29,48 +22,13 @@ export function RAGProviderSettings() {
   const [pendingSettings, setPendingSettings] = useState<any>(null)
 
   // Store data
-  const { error, instanceOperations, instancesLoading } = Stores.AdminRAGProviders
+  const { error } = Stores.AdminRAGProviders
 
-  // Get current provider and its instances
+  // Get current provider
   const currentProvider = Stores.AdminRAGProviders.providers.find(
     p => p.id === providerId,
   )
-  const instances = getInstancesForProvider(providerId || '')
-  const loading = instancesLoading[providerId!] || false
 
-  // Helper functions for provider validation
-  const canEnableProvider = (provider: RAGProvider): boolean => {
-    if (provider.enabled) return true // Already enabled
-    const providerInstances = provider.id === providerId ? instances : []
-    if (providerInstances.length === 0) return false
-    if (provider.type === 'local') return true
-    if (!provider.api_key || provider.api_key.trim() === '') return false
-    if (!provider.base_url || provider.base_url.trim() === '') return false
-    try {
-      new globalThis.URL(provider.base_url)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const getEnableDisabledReason = (provider: RAGProvider): string | null => {
-    if (provider.enabled) return null
-    const providerInstances = provider.id === providerId ? instances : []
-    if (providerInstances.length === 0)
-      return 'No instances available. Add at least one instance first.'
-    if (provider.type === 'local') return null
-    if (!provider.api_key || provider.api_key.trim() === '')
-      return 'API key is required'
-    if (!provider.base_url || provider.base_url.trim() === '')
-      return 'Base URL is required'
-    try {
-      new globalThis.URL(provider.base_url)
-      return null
-    } catch {
-      return 'Invalid base URL format'
-    }
-  }
 
   const handleFormChange = (changedValues: any) => {
     if (!currentProvider) return
@@ -79,110 +37,6 @@ export function RAGProviderSettings() {
     setPendingSettings((prev: any) => ({ ...prev, ...changedValues }))
   }
 
-  const handleProviderToggle = async (providerId: string, enabled: boolean) => {
-    try {
-      await updateRAGProvider(providerId, {
-        enabled: enabled,
-      })
-      message.success(
-        `${currentProvider?.name || 'Provider'} ${enabled ? 'enabled' : 'disabled'}`,
-      )
-    } catch (error: any) {
-      console.error('Failed to update RAG provider:', error)
-      // Handle error similar to original implementation
-      if (error.response?.status === 400) {
-        if (currentProvider) {
-          if (instances.length === 0) {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - No instances available`,
-            )
-          } else if (
-            currentProvider.type !== 'local' &&
-            (!currentProvider.api_key || currentProvider.api_key.trim() === '')
-          ) {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - API key is required`,
-            )
-          } else if (
-            currentProvider.type !== 'local' &&
-            (!currentProvider.base_url ||
-              currentProvider.base_url.trim() === '')
-          ) {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - Base URL is required`,
-            )
-          } else {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - Invalid base URL format`,
-            )
-          }
-        } else {
-          message.error(error?.message || 'Failed to update RAG provider')
-        }
-      } else {
-        message.error(error?.message || 'Failed to update RAG provider')
-      }
-    }
-  }
-
-  const handleToggleInstance = async (instanceId: string, enabled: boolean) => {
-    if (!currentProvider) return
-
-    try {
-      if (enabled) {
-        await enableSystemRAGInstance(instanceId)
-      } else {
-        await disableSystemRAGInstance(instanceId)
-      }
-
-      // Check if this was the last enabled instance being disabled
-      if (!enabled) {
-        const remainingEnabledInstances = instances.filter(
-          i => i.id !== instanceId && i.enabled !== false,
-        )
-
-        // If no instances remain enabled and provider is currently enabled, disable the provider
-        if (remainingEnabledInstances.length === 0 && currentProvider.enabled) {
-          try {
-            await updateRAGProvider(currentProvider.id, { enabled: false })
-            const instanceName =
-              instances.find(i => i.id === instanceId)?.name || 'Instance'
-            message.success(
-              `${instanceName} disabled. ${currentProvider.name} provider disabled as no instances remain active.`,
-            )
-          } catch (providerError) {
-            console.error('Failed to disable RAG provider:', providerError)
-            const instanceName =
-              instances.find(i => i.id === instanceId)?.name || 'Instance'
-            message.warning(
-              `${instanceName} disabled, but failed to disable provider automatically`,
-            )
-          }
-        } else {
-          const instanceName = instances.find(i => i.id === instanceId)?.name || 'Instance'
-          message.success(`${instanceName} ${enabled ? 'enabled' : 'disabled'}`)
-        }
-      } else {
-        const instanceName = instances.find(i => i.id === instanceId)?.name || 'Instance'
-        message.success(`${instanceName} ${enabled ? 'enabled' : 'disabled'}`)
-      }
-    } catch (error) {
-      console.error('Failed to toggle instance:', error)
-      // Error is handled by the store
-    }
-  }
-
-  const handleDeleteInstance = async (instanceId: string) => {
-    if (!currentProvider) return
-
-    try {
-      await deleteSystemRAGInstance(instanceId)
-      message.success(t('providers.instanceDeleted'))
-    } catch (error) {
-      console.error('Failed to delete instance:', error)
-      // Error is handled by the store
-    }
-  }
 
   const handleSaveSettings = async () => {
     if (!currentProvider || !pendingSettings) return
@@ -199,11 +53,6 @@ export function RAGProviderSettings() {
     }
   }
 
-  const handleAddInstance = () => {
-    if (currentProvider) {
-      openAddSystemInstanceDrawer(currentProvider.id)
-    }
-  }
 
   // Show errors
   useEffect(() => {
@@ -232,13 +81,8 @@ export function RAGProviderSettings() {
   }
 
   return (
-    <Flex className={'flex-col gap-3'}>
-      <RAGProviderHeader
-        currentProvider={currentProvider}
-        onProviderToggle={handleProviderToggle}
-        canEnableProvider={canEnableProvider}
-        getEnableDisabledReason={getEnableDisabledReason}
-      />
+    <Flex className={'flex-col gap-3 w-full overflow-x-hidden'}>
+      <RAGProviderHeader />
 
       {/* API Configuration - Only for non-local providers */}
       {currentProvider.type !== 'local' && (
@@ -267,17 +111,15 @@ export function RAGProviderSettings() {
               <div>
                 <Title level={5}>API Key</Title>
                 <Text type="secondary">
-                  The {currentProvider.name} API uses API keys for authentication.
-                  Visit your <Text type="danger">API Keys</Text> page to retrieve
-                  the API key you'll use in your requests.
+                  The {currentProvider.name} API uses API keys for
+                  authentication. Visit your <Text type="danger">API Keys</Text>{' '}
+                  page to retrieve the API key you'll use in your requests.
                 </Text>
                 <Form.Item
                   name="api_key"
                   style={{ marginBottom: 0, marginTop: 16 }}
                 >
-                  <Input.Password
-                    placeholder={t('providers.insertApiKey')}
-                  />
+                  <Input.Password placeholder={t('providers.insertApiKey')} />
                 </Form.Item>
               </div>
 
@@ -285,7 +127,9 @@ export function RAGProviderSettings() {
                 <Title level={5}>Base URL</Title>
                 <Text type="secondary">
                   The base endpoint to use. See the{' '}
-                  <Text type="danger">{currentProvider.name} documentation</Text>{' '}
+                  <Text type="danger">
+                    {currentProvider.name} documentation
+                  </Text>{' '}
                   for more information.
                 </Text>
                 <Form.Item
@@ -301,16 +145,7 @@ export function RAGProviderSettings() {
       )}
 
       {/* Instances Section */}
-      <SystemInstancesSection
-        currentProvider={currentProvider}
-        currentInstances={instances}
-        instancesLoading={loading}
-        instanceOperations={instanceOperations}
-        onAddInstance={handleAddInstance}
-        onToggleInstance={handleToggleInstance}
-        onEditInstance={instanceId => openEditSystemInstanceDrawer(instanceId)}
-        onDeleteInstance={handleDeleteInstance}
-      />
+      <SystemInstancesSection />
     </Flex>
   )
 }

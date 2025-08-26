@@ -4,13 +4,11 @@ import { App, Button, Card, Divider, Empty, Switch, Typography } from 'antd'
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import { Stores } from '../../../../store'
 import {
-  addTrustedHostToApiProxyServer,
   removeTrustedHostFromApiProxyServer,
   updateApiProxyServerTrustedHost,
 } from '../../../../store/admin/apiProxyServer.ts'
 import type {
   ApiProxyServerTrustedHost,
-  CreateTrustedHostRequest,
   UpdateTrustedHostRequest,
 } from '../../../../types'
 import { AddHostDrawer, EditHostDrawer } from './drawers'
@@ -36,29 +34,7 @@ export function TrustedHostsCard() {
     setEditHostDrawerOpen(true)
   }
 
-  const handleAddHostSubmit = async (data: CreateTrustedHostRequest) => {
-    try {
-      await addTrustedHostToApiProxyServer(data)
-      message.success(t('apiProxyServer.hostAdded'))
-      setAddHostDrawerOpen(false)
-    } catch (_error) {
-      message.error(t('apiProxyServer.hostAddError'))
-    }
-  }
 
-  const handleUpdateHostSubmit = async (
-    hostId: string,
-    updates: UpdateTrustedHostRequest,
-  ) => {
-    try {
-      await updateApiProxyServerTrustedHost(hostId, updates)
-      message.success(t('apiProxyServer.hostUpdated'))
-      setEditHostDrawerOpen(false)
-      setEditingHostId(null)
-    } catch (_error) {
-      message.error(t('apiProxyServer.hostUpdateError'))
-    }
-  }
 
   const handleRemoveHost = async (hostId: string) => {
     try {
@@ -116,7 +92,6 @@ export function TrustedHostsCard() {
       <AddHostDrawer
         open={addHostDrawerOpen}
         onClose={() => setAddHostDrawerOpen(false)}
-        onAdd={handleAddHostSubmit}
       />
 
       {/* Edit Host Drawer */}
@@ -127,8 +102,6 @@ export function TrustedHostsCard() {
           setEditingHostId(null)
         }}
         hostId={editingHostId}
-        hosts={trustedHosts}
-        onUpdate={handleUpdateHostSubmit}
       />
     </>
   )

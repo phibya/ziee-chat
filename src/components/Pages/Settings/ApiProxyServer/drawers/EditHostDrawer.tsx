@@ -2,31 +2,27 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { App, Button, Checkbox, Form, Input } from 'antd'
 import { Drawer } from '../../../../common/Drawer.tsx'
-import type {
-  ApiProxyServerTrustedHost,
-  UpdateTrustedHostRequest,
-} from '../../../../../types'
+import { Stores } from '../../../../../store'
+import { updateApiProxyServerTrustedHost } from '../../../../../store/admin/apiProxyServer'
 
 interface EditHostDrawerProps {
   open: boolean
   onClose: () => void
   hostId: string | null
-  hosts: ApiProxyServerTrustedHost[]
-  onUpdate: (hostId: string, updates: UpdateTrustedHostRequest) => Promise<any>
 }
 
 export function EditHostDrawer({
   open,
   onClose,
   hostId,
-  hosts,
-  onUpdate,
 }: EditHostDrawerProps) {
   const { t } = useTranslation()
   const { message } = App.useApp()
   const [form] = Form.useForm()
 
-  const host = hosts.find(h => h.id === hostId)
+  // Get host data from store
+  const { trustedHosts } = Stores.AdminApiProxyServer
+  const host = trustedHosts.find(h => h.id === hostId)
 
   useEffect(() => {
     if (host) {
@@ -43,11 +39,12 @@ export function EditHostDrawer({
 
     try {
       const values = await form.validateFields()
-      await onUpdate(hostId, values)
+      await updateApiProxyServerTrustedHost(hostId, values)
       message.success(t('apiProxyServer.hostUpdated'))
       onClose()
     } catch (error) {
       console.error('Form validation failed:', error)
+      message.error(t('apiProxyServer.hostUpdateError'))
     }
   }
 

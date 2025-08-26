@@ -40,8 +40,7 @@ export function EditLocalModelDrawer() {
         capabilities: currentModel.capabilities || {},
         parameters: currentModel.parameters || {},
         engine_type: currentModel.engine_type || 'mistralrs',
-        engine_settings_mistralrs: currentModel.engine_settings_mistralrs || {},
-        engine_settings_llamacpp: currentModel.engine_settings_llamacpp || {},
+        engine_settings: currentModel.engine_settings || {},
       })
     }
   }, [currentModel, open, form])
@@ -56,6 +55,7 @@ export function EditLocalModelDrawer() {
       const modelData = {
         ...currentModel,
         ...values,
+        engine_settings: values.engine_settings || {},
       }
       await updateExistingModel(modelData.id, modelData)
       closeEditLocalModelDrawer()

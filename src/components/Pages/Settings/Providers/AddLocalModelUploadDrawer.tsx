@@ -12,7 +12,7 @@ import {
   Upload,
 } from 'antd'
 import { Drawer } from '../../../common/Drawer'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LOCAL_FILE_TYPE_OPTIONS } from '../../../../constants/localModelTypes'
 import {
@@ -113,8 +113,7 @@ export function AddLocalModelUploadDrawer() {
         file_format: values.file_format,
         capabilities: values.capabilities || {},
         engine_type: values.engine_type || 'mistralrs',
-        engine_settings_mistralrs: values.engine_settings_mistralrs || {},
-        engine_settings_llamacpp: values.engine_settings_llamacpp || {},
+        engine_settings: values.engine_settings || {},
         files: filesToUpload,
       })
 
@@ -188,13 +187,13 @@ export function AddLocalModelUploadDrawer() {
     }
   }
 
-  // Handle file format change - update filtered files
-  const handleFileFormatChange = (newFormat: string) => {
+  const file_format = Form.useWatch('file_format', form)
+  useEffect(() => {
     if (selectedFiles.length > 0) {
-      const newFilteredFiles = filterFilesByFormat(selectedFiles, newFormat)
+      const newFilteredFiles = filterFilesByFormat(selectedFiles, file_format)
       setFilteredFiles(newFilteredFiles)
     }
-  }
+  }, [file_format])
 
   // Filter files based on the selected format
   const filterFilesByFormat = (
@@ -290,7 +289,7 @@ export function AddLocalModelUploadDrawer() {
           settings: {},
         }}
       >
-        <LocalModelCommonFields onFileFormatChange={handleFileFormatChange} />
+        <LocalModelCommonFields />
 
         <Form.Item
           name="local_folder_path"

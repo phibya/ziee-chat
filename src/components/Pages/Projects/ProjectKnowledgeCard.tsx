@@ -37,14 +37,12 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
   const { projectId } = useParams<{ projectId: string }>()
   const { token } = theme.useToken()
   const [instructionDrawerOpen, setInstructionDrawerOpen] = useState(false)
-  const [savingInstruction, setSavingInstruction] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const update = useUpdate()
 
   // Project store
   const {
     project,
-    updateProject,
     uploading,
     uploadProgress,
     files,
@@ -73,21 +71,6 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
     }
   }
 
-  const handleSaveInstruction = async (instruction: string) => {
-    if (!project) return
-
-    setSavingInstruction(true)
-    try {
-      await updateProject({ instruction })
-      message.success('Project instructions updated successfully')
-    } catch (error) {
-      console.error('Failed to update instruction:', error)
-      message.error('Failed to update project instructions')
-      throw error
-    } finally {
-      setSavingInstruction(false)
-    }
-  }
 
   const handleAddFilesClick = () => {
     fileInputRef.current?.click()
@@ -282,9 +265,6 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
       <ProjectInstructionDrawer
         open={instructionDrawerOpen}
         onClose={() => setInstructionDrawerOpen(false)}
-        onSave={handleSaveInstruction}
-        currentInstruction={project?.instruction}
-        loading={savingInstruction}
       />
     </div>
   )

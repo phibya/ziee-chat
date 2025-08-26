@@ -9,11 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 import {
   clearProvidersError,
-  deleteExistingModel,
-  disableModelFromUse,
-  enableModelForUse,
-  openAddRemoteModelDrawer,
-  openEditRemoteModelDrawer,
   Stores,
   updateModelProvider,
 } from '../../../../store'
@@ -35,48 +30,12 @@ export function RemoteProviderSettings() {
   const [pendingSettings, setPendingSettings] = useState<any>(null)
 
   // Store data
-  const { error, modelsLoading, modelOperations } = Stores.AdminProviders
+  const { error } = Stores.AdminProviders
 
   // Get current provider and its models
   const currentProvider = Stores.AdminProviders.providers.find(
     p => p.id === providerId,
   )
-  const models = currentProvider?.models || []
-  const loading = modelsLoading[providerId!] || false
-
-  // Helper functions for provider validation
-  const canEnableProvider = (provider: any): boolean => {
-    if (provider.enabled) return true // Already enabled
-    const providerModels = provider.id === providerId ? models : []
-    if (providerModels.length === 0) return false
-    if (provider.type === 'local') return true
-    if (!provider.api_key || provider.api_key.trim() === '') return false
-    if (!provider.base_url || provider.base_url.trim() === '') return false
-    try {
-      new globalThis.URL(provider.base_url)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const getEnableDisabledReason = (provider: any): string | null => {
-    if (provider.enabled) return null
-    const providerModels = provider.id === providerId ? models : []
-    if (providerModels.length === 0)
-      return 'No models available. Add at least one model first.'
-    if (provider.type === 'local') return null
-    if (!provider.api_key || provider.api_key.trim() === '')
-      return 'API key is required'
-    if (!provider.base_url || provider.base_url.trim() === '')
-      return 'Base URL is required'
-    try {
-      new globalThis.URL(provider.base_url)
-      return null
-    } catch {
-      return 'Invalid base URL format'
-    }
-  }
 
   const copyToClipboard = (text: string) => {
     if (typeof window !== 'undefined' && window.navigator?.clipboard) {
@@ -94,110 +53,7 @@ export function RemoteProviderSettings() {
     setPendingSettings((prev: any) => ({ ...prev, ...changedValues }))
   }
 
-  const handleProviderToggle = async (providerId: string, enabled: boolean) => {
-    try {
-      await updateModelProvider(providerId, {
-        enabled: enabled,
-      })
-      message.success(
-        `${currentProvider?.name || 'Provider'} ${enabled ? 'enabled' : 'disabled'}`,
-      )
-    } catch (error: any) {
-      console.error('Failed to update provider:', error)
-      // Handle error similar to original implementation
-      if (error.response?.status === 400) {
-        if (currentProvider) {
-          if (models.length === 0) {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - No models available`,
-            )
-          } else if (
-            currentProvider.type !== 'local' &&
-            (!currentProvider.api_key || currentProvider.api_key.trim() === '')
-          ) {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - API key is required`,
-            )
-          } else if (
-            currentProvider.type !== 'local' &&
-            (!currentProvider.base_url ||
-              currentProvider.base_url.trim() === '')
-          ) {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - Base URL is required`,
-            )
-          } else {
-            message.error(
-              `Cannot enable "${currentProvider.name}" - Invalid base URL format`,
-            )
-          }
-        } else {
-          message.error(error?.message || 'Failed to update provider')
-        }
-      } else {
-        message.error(error?.message || 'Failed to update provider')
-      }
-    }
-  }
 
-  const handleToggleModel = async (modelId: string, enabled: boolean) => {
-    if (!currentProvider) return
-
-    try {
-      if (enabled) {
-        await enableModelForUse(modelId)
-      } else {
-        await disableModelFromUse(modelId)
-      }
-
-      // Check if this was the last enabled model being disabled
-      if (!enabled) {
-        const remainingEnabledModels = models.filter(
-          m => m.id !== modelId && m.enabled !== false,
-        )
-
-        // If no models remain enabled and provider is currently enabled, disable the provider
-        if (remainingEnabledModels.length === 0 && currentProvider.enabled) {
-          try {
-            await updateModelProvider(currentProvider.id, { enabled: false })
-            const modelName =
-              models.find(m => m.id === modelId)?.name || 'Model'
-            message.success(
-              `${modelName} disabled. ${currentProvider.name} provider disabled as no models remain active.`,
-            )
-          } catch (providerError) {
-            console.error('Failed to disable provider:', providerError)
-            const modelName =
-              models.find(m => m.id === modelId)?.name || 'Model'
-            message.warning(
-              `${modelName} disabled, but failed to disable provider automatically`,
-            )
-          }
-        } else {
-          const modelName = models.find(m => m.id === modelId)?.name || 'Model'
-          message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
-        }
-      } else {
-        const modelName = models.find(m => m.id === modelId)?.name || 'Model'
-        message.success(`${modelName} ${enabled ? 'enabled' : 'disabled'}`)
-      }
-    } catch (error) {
-      console.error('Failed to toggle model:', error)
-      // Error is handled by the store
-    }
-  }
-
-  const handleDeleteModel = async (modelId: string) => {
-    if (!currentProvider) return
-
-    try {
-      await deleteExistingModel(modelId)
-      message.success(t('providers.modelDeleted'))
-    } catch (error) {
-      console.error('Failed to delete model:', error)
-      // Error is handled by the store
-    }
-  }
 
   const handleSaveSettings = async () => {
     if (!currentProvider || !pendingSettings) return
@@ -228,11 +84,6 @@ export function RemoteProviderSettings() {
     }
   }
 
-  const handleAddModel = () => {
-    if (currentProvider) {
-      openAddRemoteModelDrawer(currentProvider.id, currentProvider.type)
-    }
-  }
 
   // Show errors
   useEffect(() => {
@@ -256,7 +107,7 @@ export function RemoteProviderSettings() {
       setHasUnsavedChanges(false)
       setPendingSettings(null)
     }
-  }, [currentProvider]) // Removed form and nameForm from dependencies to prevent infinite rerenders
+  }, [currentProvider, form, nameForm])
 
   // Return early if no provider or not remote
   if (!currentProvider || currentProvider.type === 'local') {
@@ -265,12 +116,7 @@ export function RemoteProviderSettings() {
 
   return (
     <Flex className={'flex-col gap-3'}>
-      <ProviderHeader
-        currentProvider={currentProvider}
-        onProviderToggle={handleProviderToggle}
-        canEnableProvider={canEnableProvider}
-        getEnableDisabledReason={getEnableDisabledReason}
-      />
+      <ProviderHeader />
 
       {/* API Configuration */}
       <Form
@@ -345,16 +191,7 @@ export function RemoteProviderSettings() {
       </Form>
 
       {/* Models Section */}
-      <ModelsSection
-        currentProvider={currentProvider}
-        currentModels={models}
-        modelsLoading={loading}
-        modelOperations={modelOperations}
-        onAddModel={handleAddModel}
-        onToggleModel={handleToggleModel}
-        onEditModel={modelId => openEditRemoteModelDrawer(modelId)}
-        onDeleteModel={handleDeleteModel}
-      />
+      <ModelsSection />
 
       {/* Proxy Settings - For non-Local providers */}
       <ProviderProxySettingsForm

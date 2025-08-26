@@ -13,7 +13,7 @@ import {
 const { Text } = Typography
 
 export function LlamaCppModelSettingsSection() {
-  const getFieldName = (field: string) => ['engine_settings_llamacpp', field]
+  const getFieldName = (field: string) => ['engine_settings', 'llamacpp', field]
 
   const ResponsiveConfigItem = ({
     title,

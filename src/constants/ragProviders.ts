@@ -30,18 +30,21 @@ export const SUPPORTED_RAG_PROVIDERS: RAGProviderOption[] = [
   { value: 'custom', label: 'Custom' },
 ]
 
-export const RAG_PROVIDER_DEFAULTS: Record<RAGProviderType, RAGProviderDefaults> = {
+export const RAG_PROVIDER_DEFAULTS: Record<
+  RAGProviderType,
+  RAGProviderDefaults
+> = {
   local: {},
   lightrag: {},
   ragstack: {},
-  chroma: { 
-    base_url: 'http://localhost:8000' 
+  chroma: {
+    base_url: 'http://localhost:8000',
   },
-  weaviate: { 
-    base_url: 'http://localhost:8080' 
+  weaviate: {
+    base_url: 'http://localhost:8080',
   },
-  pinecone: { 
-    base_url: 'https://api.pinecone.io' 
+  pinecone: {
+    base_url: 'https://api.pinecone.io',
   },
   custom: {},
 }
@@ -57,27 +60,27 @@ export const RAG_PROVIDER_ICONS: Record<RAGProviderType, IconType> = {
 }
 
 export const RAG_ENGINE_TYPES: RAGEngineOption[] = [
-  { 
-    value: 'rag_simple_vector', 
+  {
+    value: 'simple_vector',
     label: 'Simple Vector Search',
-    description: 'Basic vector similarity search with embeddings'
+    description: 'Basic vector similarity search with embeddings',
   },
-  { 
-    value: 'rag_simple_graph', 
+  {
+    value: 'simple_graph',
     label: 'Simple Graph RAG',
-    description: 'Graph-based RAG with entity and relationship extraction'
+    description: 'Graph-based RAG with entity and relationship extraction',
   },
 ]
 
 // Default engine settings for different engine types
 export const RAG_ENGINE_DEFAULTS = {
-  rag_simple_vector: {
+  simple_vector: {
     similarity_threshold: 0.7,
     max_results: 10,
     chunk_size: 1000,
     chunk_overlap: 200,
   },
-  rag_simple_graph: {
+  simple_graph: {
     similarity_threshold: 0.7,
     max_results: 10,
     community_level: 1,
