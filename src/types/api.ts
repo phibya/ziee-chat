@@ -10,15 +10,6 @@
 // TYPE DEFINITIONS
 // =============================================================================
 
-export interface AddFilesToRAGInstanceRequest {
-  file_ids: string[]
-}
-
-export interface AddFilesToRAGInstanceResponse {
-  added_files: RAGInstanceFile[]
-  errors: RAGFileError[]
-}
-
 export interface ApiProxyServerConfig {
   port: number
   address: string
@@ -407,6 +398,7 @@ export interface File {
   mime_type?: string
   checksum?: string
   project_id?: string
+  rag_instance_id?: string
   thumbnail_count: number
   page_count: number
   processing_metadata: any
@@ -929,11 +921,6 @@ export interface ProxySettingsResponse {
 
 export type RAGEngineType = 'simple_vector' | 'simple_graph'
 
-export interface RAGFileError {
-  file_id: string
-  error: string
-}
-
 export interface RAGInstance {
   description?: string
   id: string
@@ -959,6 +946,7 @@ export interface RAGInstanceFile {
   id: string
   rag_instance_id: string
   file_id: string
+  filename: string
   processing_status: RAGProcessingStatus
   processed_at?: string
   processing_error?: string
@@ -967,10 +955,18 @@ export interface RAGInstanceFile {
   updated_at: string
 }
 
+export interface RAGInstanceFilesListResponse {
+  files: RAGInstanceFile[]
+  total: number
+  page: number
+  per_page: number
+}
+
 export interface RAGInstanceFilesQuery {
   page?: number
   per_page?: number
   status_filter?: RAGProcessingStatus
+  search?: string
 }
 
 export interface RAGInstanceListQuery {
@@ -1493,15 +1489,15 @@ export const ApiEndpoints = {
   'Projects.listProjects': 'GET /api/projects',
   'Projects.updateProject': 'PUT /api/projects/{project_id}',
   'Providers.listEnabledProviders': 'GET /api/providers',
-  'Rag.addFilesToInstance': 'POST /api/rag/instances/{instance_id}/files',
   'Rag.createInstance': 'POST /api/rag/providers/{provider_id}/instances',
   'Rag.deleteInstance': 'DELETE /api/rag/instances/{instance_id}',
+  'Rag.deleteInstanceFile': 'DELETE /api/rag/instances/{instance_id}/files/{file_id}',
   'Rag.getInstance': 'GET /api/rag/instances/{instance_id}',
   'Rag.listCreatableProviders': 'GET /api/rag/providers',
   'Rag.listInstanceFiles': 'GET /api/rag/instances/{instance_id}/files',
   'Rag.listInstances': 'GET /api/rag/instances',
-  'Rag.removeFileFromInstance': 'DELETE /api/rag/instances/{instance_id}/files/{file_id}',
   'Rag.updateInstance': 'PUT /api/rag/instances/{instance_id}',
+  'Rag.uploadInstanceFile': 'POST /api/rag/instances/{instance_id}/files',
   'User.greet': 'POST /api/user/greet',
   'User.updateAccountPassword': 'PUT /api/admin/config/user/password',
   'UserSettings.deleteAllUserSettings': 'DELETE /api/user/settings/all',
@@ -1561,7 +1557,7 @@ export type ApiEndpointParameters = {
   'Admin.getSystemRagInstance': { instance_id: string }
   'Admin.getUser': { user_id: string }
   'Admin.getUserRegistrationStatus': void
-  'Admin.listAllDownloads': DownloadPaginationQuery
+  'Admin.listAllDownloads': { page?: number; per_page?: number; status?: string }
   'Admin.listApiProxyServerModels': void
   'Admin.listApiProxyServerTrustedHosts': void
   'Admin.listAssistants': PaginationQuery
@@ -1628,8 +1624,8 @@ export type ApiEndpointParameters = {
   'Chat.getConversation': { conversation_id: string }
   'Chat.getConversationMessagesByBranch': { conversation_id: string; branch_id: string }
   'Chat.getMessageBranches': { message_id: string }
-  'Chat.listConversations': ConversationPaginationQuery
-  'Chat.searchConversations': SearchQuery
+  'Chat.listConversations': { page?: number; per_page?: number; project_id?: string }
+  'Chat.searchConversations': { q: string; page?: number; per_page?: number; project_id?: string }
   'Chat.sendMessageStream': ChatMessageRequest
   'Chat.switchConversationBranch': { conversation_id: string } & SwitchBranchRequest
   'Chat.updateConversation': { conversation_id: string } & UpdateConversationRequest
@@ -1642,30 +1638,30 @@ export type ApiEndpointParameters = {
   'Files.getFile': { file_id: string }
   'Files.getFilePreview': { file_id: string; page?: number }
   'Files.listMessageFiles': { message_id: string }
-  'Files.listProjectFiles': { project_id: string } & ProjectListQuery
+  'Files.listProjectFiles': { project_id: string; page?: number; per_page?: number; search?: string }
   'Files.removeFileFromMessage': { file_id: string; message_id: string }
   'Files.uploadFile': FormData
   'Files.uploadProjectFile': { project_id: string } & FormData
-  'Hub.getHubAssistants': HubQueryParams
-  'Hub.getHubModels': HubQueryParams
+  'Hub.getHubAssistants': { lang?: string }
+  'Hub.getHubModels': { lang?: string }
   'Hub.getHubVersion': void
-  'Hub.refreshHubData': HubQueryParams
+  'Hub.refreshHubData': { lang?: string }
   'Models.listEnabledProviderModels': { provider_id: string }
   'Projects.createProject': CreateProjectRequest
   'Projects.deleteProject': { project_id: string }
   'Projects.getProject': { project_id: string }
-  'Projects.listProjects': ProjectListQuery
+  'Projects.listProjects': { page?: number; per_page?: number; search?: string }
   'Projects.updateProject': { project_id: string } & UpdateProjectRequest
   'Providers.listEnabledProviders': PaginationQuery
-  'Rag.addFilesToInstance': { instance_id: string } & AddFilesToRAGInstanceRequest
   'Rag.createInstance': { provider_id: string } & CreateRAGInstanceRequest
   'Rag.deleteInstance': { instance_id: string }
+  'Rag.deleteInstanceFile': { instance_id: string; file_id: string }
   'Rag.getInstance': { instance_id: string }
   'Rag.listCreatableProviders': void
-  'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; status_filter?: RAGProcessingStatus }
+  'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; status_filter?: RAGProcessingStatus; search?: string }
   'Rag.listInstances': { page?: number; per_page?: number; include_system?: boolean }
-  'Rag.removeFileFromInstance': { instance_id: string; file_id: string }
   'Rag.updateInstance': { instance_id: string } & UpdateRAGInstanceRequest
+  'Rag.uploadInstanceFile': { instance_id: string } & FormData
   'User.greet': UserHello
   'User.updateAccountPassword': UpdateUserPasswordRequest
   'UserSettings.deleteAllUserSettings': void
@@ -1821,15 +1817,15 @@ export type ApiEndpointResponses = {
   'Projects.listProjects': ProjectListResponse
   'Projects.updateProject': Project
   'Providers.listEnabledProviders': ProviderListResponse
-  'Rag.addFilesToInstance': AddFilesToRAGInstanceResponse
   'Rag.createInstance': RAGInstance
   'Rag.deleteInstance': void
+  'Rag.deleteInstanceFile': FileOperationSuccessResponse
   'Rag.getInstance': RAGInstance
   'Rag.listCreatableProviders': RAGProvider[]
-  'Rag.listInstanceFiles': RAGInstanceFile[]
+  'Rag.listInstanceFiles': RAGInstanceFilesListResponse
   'Rag.listInstances': RAGInstanceListResponse
-  'Rag.removeFileFromInstance': void
   'Rag.updateInstance': RAGInstance
+  'Rag.uploadInstanceFile': UploadFileResponse
   'User.greet': string
   'User.updateAccountPassword': void
   'UserSettings.deleteAllUserSettings': UserSettingsDeletionResponse

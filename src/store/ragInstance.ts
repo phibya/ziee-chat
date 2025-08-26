@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import { RAGInstance, RAGInstanceFile, UpdateRAGInstanceRequest } from '../types/api'
+import { RAGInstance, RAGInstanceFile, RAGInstanceFilesListResponse, UpdateRAGInstanceRequest } from '../types/api'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'
 import { StoreApi, UseBoundStore } from 'zustand/index'
 import { useEffect, useMemo, useRef } from 'react'
@@ -36,6 +36,16 @@ export interface RAGInstanceState {
   filesLoading: boolean
   filesError: string | null
 
+  // Search and pagination state
+  searchQuery: string
+  currentPage: number
+  filesPerPage: number
+  totalFiles: number
+
+  // Multi-select state
+  selectedFiles: string[]
+  bulkOperationInProgress: boolean
+
   // Error state
   error: string | null
 
@@ -45,7 +55,11 @@ export interface RAGInstanceState {
   // Actions
   loadRAGInstance: () => Promise<void>
   updateRAGInstance: (data: UpdateRAGInstanceRequest) => Promise<RAGInstance | undefined>
-  loadFiles: () => Promise<void>
+  loadFiles: (page?: number, search?: string) => Promise<void>
+  nextPage: () => Promise<void>
+  previousPage: () => Promise<void>
+  goToPage: (page: number) => Promise<void>
+  changePageSize: (pageSize: number) => Promise<void>
   uploadFiles: (files: globalThis.File[]) => Promise<RAGInstanceFile[]>
   cancelFileUpload: () => void
   removeUploadProgress: (progressId: string) => void
@@ -88,6 +102,12 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
         overallUploadProgress: 0,
         filesLoading: false,
         filesError: null,
+        searchQuery: '',
+        currentPage: 1,
+        filesPerPage: 10,
+        totalFiles: 0,
+        selectedFiles: [],
+        bulkOperationInProgress: false,
         error: null,
 
         destroy: () => {
@@ -163,7 +183,7 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
           }
         },
 
-        loadFiles: async () => {
+        loadFiles: async (page?: number, search?: string) => {
           const state = get()
           if (state.filesLoading) {
             return
@@ -171,12 +191,21 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
           try {
             set({ filesLoading: true, filesError: null })
 
-            const response = await ApiClient.Rag.listInstanceFiles({
+            const currentPage = page || state.currentPage
+            const searchQuery = search !== undefined ? search : state.searchQuery
+
+            const response: RAGInstanceFilesListResponse = await ApiClient.Rag.listInstanceFiles({
               instance_id: ragInstanceId,
+              page: currentPage,
+              per_page: state.filesPerPage,
+              search: searchQuery || undefined,
             })
 
             set({
-              files: response || [],
+              files: response.files || [],
+              currentPage,
+              searchQuery,
+              totalFiles: response.total || 0,
               filesLoading: false,
             })
           } catch (error) {
@@ -188,6 +217,42 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
               filesLoading: false,
             })
             throw error
+          }
+        },
+
+        nextPage: async () => {
+          const state = get()
+          const totalPages = Math.ceil(state.totalFiles / state.filesPerPage)
+          const nextPage = Math.min(state.currentPage + 1, totalPages)
+          if (nextPage !== state.currentPage) {
+            await get().loadFiles(nextPage)
+          }
+        },
+
+        previousPage: async () => {
+          const state = get()
+          const prevPage = Math.max(state.currentPage - 1, 1)
+          if (prevPage !== state.currentPage) {
+            await get().loadFiles(prevPage)
+          }
+        },
+
+        goToPage: async (page: number) => {
+          const state = get()
+          const totalPages = Math.ceil(state.totalFiles / state.filesPerPage)
+          const targetPage = Math.max(1, Math.min(page, totalPages))
+          if (targetPage !== state.currentPage) {
+            await get().loadFiles(targetPage)
+          }
+        },
+
+        changePageSize: async (pageSize: number) => {
+          const state = get()
+          const newPageSize = Math.max(1, Math.min(pageSize, 100)) // Cap at 100
+          if (newPageSize !== state.filesPerPage) {
+            set({ filesPerPage: newPageSize })
+            // Reset to page 1 when changing page size
+            await get().loadFiles(1)
           }
         },
 
@@ -227,43 +292,61 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
               }))
 
               try {
-                // TODO: Implement file upload via API when available
-                // For now, this is a placeholder that will be implemented in Phase 3
-                console.log('File upload not yet implemented for RAG instance:', ragInstanceId, file.name)
-                
-                // Simulate upload progress
-                for (let progress = 0; progress <= 100; progress += 10) {
-                  set(state => ({
-                    uploadProgress: state.uploadProgress.map(
-                      (fp: FileUploadProgress) =>
-                        fp.id === fileProgressId
-                          ? { ...fp, progress }
-                          : fp,
-                    ),
-                    overallUploadProgress:
-                      (i * 100 + progress) / files.length,
-                  }))
-                  await new Promise(resolve => setTimeout(resolve, 100))
-                }
+                // Create FormData for the file
+                const formData = new FormData()
+                formData.append('file', file, file.name)
+                formData.append('instance_id', ragInstanceId)
 
-                // Mark as completed and remove from progress
-                set(state => ({
-                  uploadProgress: state.uploadProgress.filter(
-                    (fp: FileUploadProgress) => fp.id !== fileProgressId,
-                  ),
-                }))
+                // Call the upload API with progress tracking
+                const response = await ApiClient.Rag.uploadInstanceFile(
+                  formData as any, // FormData with instance_id
+                  {
+                    fileUploadProgress: {
+                      onProgress: (progress: number) => {
+                        // Update file-specific progress
+                        set(state => ({
+                          uploadProgress: state.uploadProgress.map(
+                            (fp: FileUploadProgress) =>
+                              fp.id === fileProgressId
+                                ? { ...fp, progress: progress * 100 }
+                                : fp,
+                          ),
+                          overallUploadProgress:
+                            (i * 100 + progress * 100) / files.length,
+                        }))
+                      },
+                      onComplete: () => {
+                        // Remove completed file from upload progress
+                        set(state => ({
+                          uploadProgress: state.uploadProgress.filter(
+                            (fp: FileUploadProgress) =>
+                              fp.id !== fileProgressId,
+                          ),
+                        }))
+                      },
+                      onError: (error: string) => {
+                        // Mark this file as failed
+                        set(state => ({
+                          uploadProgress: state.uploadProgress.map(
+                            (fp: FileUploadProgress) =>
+                              fp.id === fileProgressId
+                                ? {
+                                    ...fp,
+                                    status: 'error' as const,
+                                    error: error,
+                                  }
+                                : fp,
+                          ),
+                        }))
+                      },
+                    },
+                  },
+                )
 
-                // Add placeholder file (this would be the actual uploaded file in real implementation)
-                const mockFile: RAGInstanceFile = {
-                  id: crypto.randomUUID(),
-                  rag_instance_id: ragInstanceId,
-                  file_id: crypto.randomUUID(),
-                  processing_status: 'pending' as any,
-                  rag_metadata: {},
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                }
-                uploadedFiles.push(mockFile)
+                // The backend should have created the RAGInstanceFile entry
+                // We'll reload the files list to get the proper RAGInstanceFile data
+                // For now, just track that upload was successful
+                console.log('File uploaded successfully:', response.file.filename)
               } catch (fileError) {
                 // Mark this file as failed
                 set(state => ({
@@ -284,12 +367,14 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
               }
             }
 
-            // Update overall progress to complete and add files to RAG instance
-            set(state => ({
+            // Update overall progress to complete and reload files list
+            set({
               overallUploadProgress: 100,
               uploading: false,
-              files: [...state.files, ...uploadedFiles],
-            }))
+            })
+
+            // Reload files from server to get the latest RAGInstanceFile entries
+            await get().loadFiles()
 
             return uploadedFiles
           } catch (error) {
@@ -341,6 +426,12 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
             overallUploadProgress: 0,
             filesLoading: false,
             filesError: null,
+            searchQuery: '',
+            currentPage: 1,
+            filesPerPage: 10,
+            totalFiles: 0,
+            selectedFiles: [],
+            bulkOperationInProgress: false,
             error: null,
           })
         },
@@ -365,6 +456,96 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
   }
 
   return storeProxy
+}
+
+// Store methods for file selection and bulk operations
+export const toggleFileSelection = (instanceId: string, fileId: string) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  
+  const selected = store.__state.selectedFiles
+  const newSelected = selected.includes(fileId) 
+    ? selected.filter((id: string) => id !== fileId)
+    : [...selected, fileId]
+  store.__setState({ selectedFiles: newSelected })
+}
+
+export const selectAllVisibleFiles = (instanceId: string, fileIds: string[]) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  store.__setState({ selectedFiles: fileIds })
+}
+
+export const clearFileSelection = (instanceId: string) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  store.__setState({ selectedFiles: [] })
+}
+
+export const bulkDeleteFiles = async (instanceId: string, fileIds: string[]) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  
+  try {
+    store.__setState({ bulkOperationInProgress: true })
+
+    // Delete files sequentially using existing single delete API
+    const deletePromises = fileIds.map(fileId => 
+      ApiClient.Rag.deleteInstanceFile({ instance_id: instanceId, file_id: fileId })
+    )
+
+    await Promise.all(deletePromises)
+
+    // Remove deleted files from local state
+    const currentFiles = store.__state.files
+    const remainingFiles = currentFiles.filter((file: RAGInstanceFile) => !fileIds.includes(file.file_id))
+    
+    store.__setState({
+      files: remainingFiles,
+      selectedFiles: [],
+      bulkOperationInProgress: false,
+    })
+
+  } catch (error) {
+    store.__setState({ bulkOperationInProgress: false })
+    throw error
+  }
+}
+
+export const searchFiles = async (instanceId: string, query: string) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  
+  // Reset to page 1 when searching
+  await store.__state.loadFiles(1, query)
+}
+
+export const changePage = async (instanceId: string, page: number) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  
+  await store.__state.goToPage(page)
+}
+
+export const nextPage = async (instanceId: string) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  
+  await store.__state.nextPage()
+}
+
+export const previousPage = async (instanceId: string) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  
+  await store.__state.previousPage()
+}
+
+export const changePageSize = async (instanceId: string, pageSize: number) => {
+  const store = RAGInstanceStoreMap.get(instanceId)
+  if (!store) return
+  
+  await store.__state.changePageSize(pageSize)
 }
 
 // Hook for components to use RAG instance-specific stores

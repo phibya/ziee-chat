@@ -2,6 +2,7 @@ pub mod cancellation;
 pub mod chat;
 pub mod file_storage;
 pub mod git;
+pub mod rag_file_storage;
 pub mod hub_config;
 pub mod hub_manager;
 pub mod jwt_secret;

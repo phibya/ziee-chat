@@ -306,17 +306,27 @@ pub async fn update_rag_instance(
     Ok(instance)
 }
 
-/// Delete RAG instance with ownership validation
+/// Delete RAG instance with automatic CASCADE cleanup
 pub async fn delete_rag_instance(instance_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
+    // Delete RAG instance (CASCADE will automatically delete associated files and rag_instance_files)
     let result = sqlx::query("DELETE FROM rag_instances WHERE id = $1")
         .bind(instance_id)
         .execute(pool)
         .await?;
 
-    Ok(result.rows_affected() > 0)
+    let deleted = result.rows_affected() > 0;
+    
+    if deleted {
+        // Clean up file system
+        if let Err(e) = crate::RAG_FILE_STORAGE.delete_instance_files(instance_id).await {
+            eprintln!("Failed to delete RAG instance files from filesystem: {}", e);
+        }
+    }
+    
+    Ok(deleted)
 }
 
 /// Validate user can access RAG instance 

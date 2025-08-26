@@ -241,6 +241,7 @@ async fn process_file_upload(
         mime_type,
         checksum: Some(checksum),
         project_id,
+        rag_instance_id: None, // Regular files don't belong to RAG instances
         thumbnail_count: processing_result.thumbnail_count,
         page_count: processing_result.page_count,
         processing_metadata: processing_result.metadata,

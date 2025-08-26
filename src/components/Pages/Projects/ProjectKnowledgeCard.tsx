@@ -23,6 +23,7 @@ import { useUpdate } from 'react-use'
 import { Permission } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { hasPermission } from '../../../permissions/utils.ts'
+import { debounce } from '../../../utils/debounce.ts'
 
 const { Text } = Typography
 
@@ -59,7 +60,7 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
     ? files.filter(file => file.project_id === projectId)
     : []
 
-  const handleFileUpload = async (files: globalThis.File[]) => {
+  const handleFileUpload = debounce(async (files: globalThis.File[]) => {
     if (!project || !projectId) return
 
     try {
@@ -69,7 +70,7 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
       console.error('Failed to upload files:', error)
       message.error('Failed to upload files')
     }
-  }
+  })
 
   const handleAddFilesClick = () => {
     fileInputRef.current?.click()
@@ -113,9 +114,7 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
         <Upload.Dragger
           multiple
           beforeUpload={(_, fileList) => {
-            handleFileUpload(fileList).catch(error => {
-              console.error('Failed to upload files:', error)
-            })
+            handleFileUpload(fileList)
             return false
           }}
           showUploadList={false}

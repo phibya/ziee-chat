@@ -10,9 +10,9 @@ pub async fn create_file(data: FileCreateData) -> Result<File, sqlx::Error> {
         r#"
         INSERT INTO files (
             id, user_id, filename, file_size, mime_type, 
-            checksum, project_id, thumbnail_count, page_count, processing_metadata
+            checksum, project_id, rag_instance_id, thumbnail_count, page_count, processing_metadata
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING *
         "#,
     )
@@ -23,6 +23,7 @@ pub async fn create_file(data: FileCreateData) -> Result<File, sqlx::Error> {
     .bind(data.mime_type)
     .bind(data.checksum)
     .bind(data.project_id)
+    .bind(data.rag_instance_id)
     .bind(data.thumbnail_count)
     .bind(data.page_count)
     .bind(data.processing_metadata)

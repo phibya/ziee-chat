@@ -143,6 +143,7 @@ pub struct RAGInstanceFile {
     pub id: Uuid,
     pub rag_instance_id: Uuid,
     pub file_id: Uuid,
+    pub filename: String,
     pub processing_status: RAGProcessingStatus,
     pub processed_at: Option<DateTime<Utc>>,
     pub processing_error: Option<String>,
@@ -160,6 +161,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGInstanceFile {
             id: row.try_get("id")?,
             rag_instance_id: row.try_get("rag_instance_id")?,
             file_id: row.try_get("file_id")?,
+            filename: row.try_get("filename")?,
             processing_status,
             processed_at: row.try_get("processed_at")?,
             processing_error: row.try_get("processing_error")?,
@@ -222,4 +224,13 @@ pub struct RAGInstanceFilesQuery {
     pub page: Option<i32>,
     pub per_page: Option<i32>,
     pub status_filter: Option<RAGProcessingStatus>,
+    pub search: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct RAGInstanceFilesListResponse {
+    pub files: Vec<RAGInstanceFile>,
+    pub total: i64,
+    pub page: i32,
+    pub per_page: i32,
 }

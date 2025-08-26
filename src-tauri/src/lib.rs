@@ -9,6 +9,7 @@ mod utils;
 
 use crate::api::app::get_http_port;
 use crate::utils::file_storage::FileStorage;
+use crate::utils::rag_file_storage::RagFileStorage;
 use crate::utils::hub_manager::{HubManager, HUB_MANAGER};
 use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
 use once_cell::sync::Lazy;
@@ -53,6 +54,10 @@ pub fn get_app_data_dir() -> PathBuf {
 pub static FILE_STORAGE: Lazy<Arc<FileStorage>> =
     Lazy::new(|| Arc::new(FileStorage::new(&get_app_data_dir())));
 
+// Global RAG_FILE_STORAGE instance
+pub static RAG_FILE_STORAGE: Lazy<Arc<RagFileStorage>> =
+    Lazy::new(|| Arc::new(RagFileStorage::new(&get_app_data_dir())));
+
 async fn initialize_app_common() -> Result<(), String> {
     // Initialize environment variables
 
@@ -85,6 +90,13 @@ async fn initialize_app_common() -> Result<(), String> {
         eprintln!("Failed to initialize file storage: {:?}", e);
     } else {
         println!("File storage initialized successfully");
+    }
+
+    // Initialize RAG file storage
+    if let Err(e) = RAG_FILE_STORAGE.initialize().await {
+        eprintln!("Failed to initialize RAG file storage: {:?}", e);
+    } else {
+        println!("RAG file storage initialized successfully");
     }
 
     // Initialize hub manager

@@ -1,7 +1,11 @@
 use crate::api::rag::{files, instances};
-use crate::database::models::{ RAGInstance, RAGInstanceFile, RAGInstanceListResponse, RAGProvider};
+use crate::database::models::{
+    RAGInstance, RAGInstanceFilesListResponse, RAGInstanceListResponse, RAGProvider,
+    file::UploadFileResponse,
+};
+use crate::api::files::FileOperationSuccessResponse;
 use aide::axum::{
-    routing::{ get_with, post_with},
+    routing::{delete_with, get_with, post_with},
     ApiRouter,
 };
 use axum::{middleware, Json};
@@ -87,9 +91,26 @@ fn user_rag_routes() -> ApiRouter {
                 op.description("List files in RAG instance")
                     .id("Rag.listInstanceFiles")
                     .tag("rag")
-                    .response::<200, Json<Vec<RAGInstanceFile>>>()
+                    .response::<200, Json<RAGInstanceFilesListResponse>>()
             })
             .layer(middleware::from_fn(crate::api::middleware::permissions::rag_files_read_middleware))
+            .post_with(files::upload_rag_file_handler, |op| {
+                op.description("Upload file to RAG instance")
+                    .id("Rag.uploadInstanceFile")
+                    .tag("rag")
+                    .response::<200, Json<UploadFileResponse>>()
+            })
+            .layer(middleware::from_fn(crate::api::middleware::files_upload_middleware)),
+        )
+        .api_route(
+            "/instances/{instance_id}/files/{file_id}",
+            delete_with(files::delete_rag_file_handler, |op| {
+                op.description("Delete file from RAG instance")
+                    .id("Rag.deleteInstanceFile")
+                    .tag("rag")
+                    .response::<200, Json<FileOperationSuccessResponse>>()
+            })
+            .layer(middleware::from_fn(crate::api::middleware::files_delete_middleware)),
         )
         // TODO: Query endpoint - Enable once OperationHandler trait issue is resolved
         // .api_route(
