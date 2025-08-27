@@ -14,6 +14,22 @@ export function ModelCapabilitiesSection() {
             alignItems: 'center',
           }}
         >
+          <span>{t('providers.chat')}</span>
+          <Form.Item
+            name={['capabilities', 'chat']}
+            valuePropName="checked"
+            style={{ marginBottom: 0 }}
+          >
+            <Switch />
+          </Form.Item>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <span>{t('providers.vision')}</span>
           <Form.Item
             name={['capabilities', 'vision']}
@@ -68,6 +84,40 @@ export function ModelCapabilitiesSection() {
           <span>{t('providers.codeInterpreter')}</span>
           <Form.Item
             name={['capabilities', 'codeInterpreter']}
+            valuePropName="checked"
+            style={{ marginBottom: 0 }}
+          >
+            <Switch />
+          </Form.Item>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>{t('providers.textEmbedding')}</span>
+          <Form.Item
+            name={['capabilities', 'text_embedding']}
+            valuePropName="checked"
+            style={{ marginBottom: 0 }}
+          >
+            <Switch />
+          </Form.Item>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>{t('providers.imageGenerator')}</span>
+          <Form.Item
+            name={['capabilities', 'image_generator']}
             valuePropName="checked"
             style={{ marginBottom: 0 }}
           >

@@ -55,12 +55,18 @@ export function ModelsTab() {
     const hasTools = models.some(m => m.capabilities?.tools)
     const hasCode = models.some(m => m.capabilities?.code_interpreter)
     const hasAudio = models.some(m => m.capabilities?.audio)
+    const hasChat = models.some(m => m.capabilities?.chat)
+    const hasTextEmbedding = models.some(m => m.capabilities?.text_embedding)
+    const hasImageGenerator = models.some(m => m.capabilities?.image_generator)
 
     if (hasVision) capabilities.push({ key: 'vision', label: 'Vision' })
     if (hasTools) capabilities.push({ key: 'tools', label: 'Tools' })
     if (hasCode)
       capabilities.push({ key: 'code_interpreter', label: 'Code Interpreter' })
     if (hasAudio) capabilities.push({ key: 'audio', label: 'Audio' })
+    if (hasChat) capabilities.push({ key: 'chat', label: 'Chat' })
+    if (hasTextEmbedding) capabilities.push({ key: 'text_embedding', label: 'Text Embedding' })
+    if (hasImageGenerator) capabilities.push({ key: 'image_generator', label: 'Image Generator' })
 
     return capabilities
   }, [models])
@@ -89,6 +95,12 @@ export function ModelsTab() {
               return model.capabilities?.code_interpreter || false
             case 'audio':
               return model.capabilities?.audio || false
+            case 'chat':
+              return model.capabilities?.chat || false
+            case 'text_embedding':
+              return model.capabilities?.text_embedding || false
+            case 'image_generator':
+              return model.capabilities?.image_generator || false
             default:
               return false
           }

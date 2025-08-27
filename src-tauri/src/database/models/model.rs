@@ -158,32 +158,18 @@ pub struct ModelCapabilities {
     pub tools: Option<bool>,
     /// Code interpreter capability
     pub code_interpreter: Option<bool>,
+    /// Chat capability - can engage in conversational text generation
+    pub chat: Option<bool>,
+    /// Text embedding capability - can generate text embeddings for semantic search
+    pub text_embedding: Option<bool>,
+    /// Image generation capability - can generate images from text descriptions
+    pub image_generator: Option<bool>,
 }
 
 impl ModelCapabilities {
     /// Create new capabilities with all disabled
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Create capabilities for a vision model
-    pub fn vision_enabled() -> Self {
-        Self {
-            vision: Some(true),
-            audio: Some(false),
-            tools: Some(false),
-            code_interpreter: Some(false),
-        }
-    }
-
-    /// Create capabilities for a code model
-    pub fn code_enabled() -> Self {
-        Self {
-            vision: Some(false),
-            audio: Some(false),
-            tools: Some(true),
-            code_interpreter: Some(true),
-        }
     }
 }
 

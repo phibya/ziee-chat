@@ -3,6 +3,9 @@ import {
   EyeOutlined,
   FileTextOutlined,
   LockOutlined,
+  MessageOutlined,
+  PictureOutlined,
+  SearchOutlined,
   ToolOutlined,
   UnlockOutlined,
 } from '@ant-design/icons'
@@ -124,6 +127,21 @@ export function ModelDetailsDrawer({
               {model.capabilities.audio && (
                 <Tag color="green" icon={<FileTextOutlined />}>
                   Audio
+                </Tag>
+              )}
+              {model.capabilities.chat && (
+                <Tag color="cyan" icon={<MessageOutlined />}>
+                  Chat
+                </Tag>
+              )}
+              {model.capabilities.text_embedding && (
+                <Tag color="gold" icon={<SearchOutlined />}>
+                  Text Embedding
+                </Tag>
+              )}
+              {model.capabilities.image_generator && (
+                <Tag color="magenta" icon={<PictureOutlined />}>
+                  Image Generator
                 </Tag>
               )}
             </Flex>

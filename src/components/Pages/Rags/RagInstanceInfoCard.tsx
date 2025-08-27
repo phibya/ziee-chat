@@ -15,7 +15,11 @@ import { SettingOutlined } from '@ant-design/icons'
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useRAGInstanceStore } from '../../../store/ragInstance'
-import { useUserProvidersStore, loadUserProviders } from '../../../store/providers'
+import {
+  useUserProvidersStore,
+  loadUserProviders,
+  loadUserProvidersWithAllModels,
+} from '../../../store/providers'
 import { Permission, UpdateRAGInstanceRequest } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 
@@ -27,11 +31,12 @@ export const RagInstanceInfoCard: React.FC = () => {
   const [configurationVisible, setConfigurationVisible] = useState(false)
   const [updatingInstance, setUpdatingInstance] = useState(false)
 
+  useEffect(() => {
+    loadUserProvidersWithAllModels()
+  }, [])
+
   // RAG instance store
-  const {
-    ragInstance,
-    updateRAGInstance,
-  } = useRAGInstanceStore(ragInstanceId)
+  const { ragInstance, updateRAGInstance } = useRAGInstanceStore(ragInstanceId)
 
   // Providers store for models
   const {
@@ -68,13 +73,23 @@ export const RagInstanceInfoCard: React.FC = () => {
 
     try {
       setUpdatingInstance(true)
-      
+
       const updateData: UpdateRAGInstanceRequest = {
         name: values.name !== ragInstance.name ? values.name : undefined,
-        description: values.description !== ragInstance.description ? values.description : undefined,
-        enabled: values.enabled !== ragInstance.enabled ? values.enabled : undefined,
-        embedding_model_id: values.embedding_model_id !== ragInstance.embedding_model_id ? values.embedding_model_id : undefined,
-        llm_model_id: values.llm_model_id !== ragInstance.llm_model_id ? values.llm_model_id : undefined,
+        description:
+          values.description !== ragInstance.description
+            ? values.description
+            : undefined,
+        enabled:
+          values.enabled !== ragInstance.enabled ? values.enabled : undefined,
+        embedding_model_id:
+          values.embedding_model_id !== ragInstance.embedding_model_id
+            ? values.embedding_model_id
+            : undefined,
+        llm_model_id:
+          values.llm_model_id !== ragInstance.llm_model_id
+            ? values.llm_model_id
+            : undefined,
         engine_settings: values.engine_settings,
       }
 
@@ -94,22 +109,38 @@ export const RagInstanceInfoCard: React.FC = () => {
     }
   }
 
-  // Get available models for model selectors
-  const getAvailableModels = () => {
-    const allModels: Array<{id: string, name: string, providerId: string}> = []
-    
+  // Get available models grouped by provider, filtered by capability
+  const getAvailableModels = (capability?: 'text_embedding' | 'chat') => {
+    const options: Array<{
+      label: string
+      options: Array<{
+        label: string
+        value: string
+        description?: string
+      }>
+    }> = []
+
     providers.forEach(provider => {
       const providerModels = modelsByProvider[provider.id] || []
-      providerModels.forEach(model => {
-        allModels.push({
-          id: model.id,
-          name: `${provider.name} - ${model.name}`,
-          providerId: provider.id
+
+      // Filter models by capability if specified
+      const filteredModels = capability
+        ? providerModels.filter(model => model.capabilities?.[capability])
+        : providerModels
+
+      if (filteredModels.length > 0) {
+        options.push({
+          label: provider.name,
+          options: filteredModels.map(model => ({
+            label: model.alias || model.name,
+            value: model.id,
+            description: model.description || '',
+          })),
         })
-      })
+      }
     })
-    
-    return allModels
+
+    return options
   }
 
   return (
@@ -117,7 +148,10 @@ export const RagInstanceInfoCard: React.FC = () => {
       title={
         <Flex className="items-center justify-between">
           <Text strong>Instance Information</Text>
-          <PermissionGuard permissions={[Permission.RagInstancesEdit]} type="disabled">
+          <PermissionGuard
+            permissions={[Permission.RagInstancesEdit]}
+            type="disabled"
+          >
             <Button
               type="text"
               icon={<SettingOutlined />}
@@ -171,17 +205,16 @@ export const RagInstanceInfoCard: React.FC = () => {
             <Form.Item
               label="Instance Name"
               name="name"
-              rules={[{ required: true, message: 'Please enter instance name' }]}
+              rules={[
+                { required: true, message: 'Please enter instance name' },
+              ]}
             >
               <Input placeholder="Enter instance name" />
             </Form.Item>
 
-            <Form.Item
-              label="Description"
-              name="description"
-            >
-              <Input.TextArea 
-                placeholder="Enter instance description" 
+            <Form.Item label="Description" name="description">
+              <Input.TextArea
+                placeholder="Enter instance description"
                 rows={2}
               />
             </Form.Item>
@@ -205,49 +238,53 @@ export const RagInstanceInfoCard: React.FC = () => {
               <Text type="secondary">Model Configuration</Text>
             </Divider>
 
-            <Form.Item
-              label="Embedding Model"
-              name="embedding_model_id"
-            >
+            <Form.Item label="Embedding Model" name="embedding_model_id">
               <Select
                 placeholder="Select embedding model"
                 allowClear
                 showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-                onDropdownVisibleChange={(open) => {
+                filterOption={(input, option) => {
+                  if (!option) return false
+                  if ('options' in option && Array.isArray(option.options)) {
+                    // This is a group option - search in children
+                    return option.options.some((child: any) =>
+                      child?.label?.toLowerCase().includes(input.toLowerCase())
+                    )
+                  }
+                  // This is a regular option
+                  return (option.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }}
+                onDropdownVisibleChange={(open: boolean) => {
                   if (open && !providersInitialized) {
                     loadUserProviders().catch(console.error)
                   }
                 }}
-                options={getAvailableModels().map(model => ({
-                  label: model.name,
-                  value: model.id,
-                }))}
+                options={getAvailableModels('text_embedding')}
               />
             </Form.Item>
 
-            <Form.Item
-              label="LLM Model"
-              name="llm_model_id"
-            >
+            <Form.Item label="LLM Model" name="llm_model_id">
               <Select
                 placeholder="Select LLM model"
                 allowClear
                 showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-                onDropdownVisibleChange={(open) => {
+                filterOption={(input, option) => {
+                  if (!option) return false
+                  if ('options' in option && Array.isArray(option.options)) {
+                    // This is a group option - search in children
+                    return option.options.some((child: any) =>
+                      child?.label?.toLowerCase().includes(input.toLowerCase())
+                    )
+                  }
+                  // This is a regular option
+                  return (option.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }}
+                onDropdownVisibleChange={(open: boolean) => {
                   if (open && !providersInitialized) {
                     loadUserProviders().catch(console.error)
                   }
                 }}
-                options={getAvailableModels().map(model => ({
-                  label: model.name,
-                  value: model.id,
-                }))}
+                options={getAvailableModels('chat')}
               />
             </Form.Item>
 
@@ -255,9 +292,11 @@ export const RagInstanceInfoCard: React.FC = () => {
               <Text type="secondary">Engine Settings</Text>
             </Divider>
 
-            <Form.Item shouldUpdate={(prevValues, currentValues) => 
-              prevValues.engine_type !== currentValues.engine_type
-            }>
+            <Form.Item
+              shouldUpdate={(prevValues, currentValues) =>
+                prevValues.engine_type !== currentValues.engine_type
+              }
+            >
               {({ getFieldValue }) => {
                 const engineType = getFieldValue('engine_type')
                 return (
@@ -267,7 +306,11 @@ export const RagInstanceInfoCard: React.FC = () => {
                         <Text strong>Vector Engine Settings</Text>
                         <Form.Item
                           label="Chunk Size"
-                          name={['engine_settings', 'simple_vector', 'chunk_size']}
+                          name={[
+                            'engine_settings',
+                            'simple_vector',
+                            'chunk_size',
+                          ]}
                           className="mb-2 mt-2"
                         >
                           <InputNumber
@@ -291,13 +334,17 @@ export const RagInstanceInfoCard: React.FC = () => {
                         </Form.Item>
                       </Card>
                     )}
-                    
+
                     {engineType === 'simple_graph' && (
                       <Card size="small" className="bg-green-50">
                         <Text strong>Graph Engine Settings</Text>
                         <Form.Item
                           label="Max Depth"
-                          name={['engine_settings', 'simple_graph', 'max_depth']}
+                          name={[
+                            'engine_settings',
+                            'simple_graph',
+                            'max_depth',
+                          ]}
                           className="mb-2 mt-2"
                         >
                           <InputNumber
@@ -309,7 +356,11 @@ export const RagInstanceInfoCard: React.FC = () => {
                         </Form.Item>
                         <Form.Item
                           label="Min Score"
-                          name={['engine_settings', 'simple_graph', 'min_score']}
+                          name={[
+                            'engine_settings',
+                            'simple_graph',
+                            'min_score',
+                          ]}
                           className="mb-0"
                         >
                           <InputNumber

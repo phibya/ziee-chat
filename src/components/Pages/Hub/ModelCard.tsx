@@ -4,6 +4,9 @@ import {
   EyeOutlined,
   FileTextOutlined,
   LockOutlined,
+  MessageOutlined,
+  PictureOutlined,
+  SearchOutlined,
   ToolOutlined,
   UnlockOutlined,
 } from '@ant-design/icons'
@@ -321,6 +324,33 @@ export function ModelCard({ model }: ModelCardProps) {
                         className="text-xs"
                       >
                         Code
+                      </Tag>
+                    )}
+                    {model.capabilities.chat && (
+                      <Tag
+                        color="green"
+                        icon={<MessageOutlined />}
+                        className="text-xs"
+                      >
+                        Chat
+                      </Tag>
+                    )}
+                    {model.capabilities.text_embedding && (
+                      <Tag
+                        color="cyan"
+                        icon={<SearchOutlined />}
+                        className="text-xs"
+                      >
+                        Embedding
+                      </Tag>
+                    )}
+                    {model.capabilities.image_generator && (
+                      <Tag
+                        color="magenta"
+                        icon={<PictureOutlined />}
+                        className="text-xs"
+                      >
+                        Image Gen
                       </Tag>
                     )}
                   </Flex>

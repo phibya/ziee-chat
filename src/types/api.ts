@@ -670,6 +670,9 @@ export interface ModelCapabilities {
   audio?: boolean
   tools?: boolean
   code_interpreter?: boolean
+  chat?: boolean
+  text_embedding?: boolean
+  image_generator?: boolean
 }
 
 export interface ModelEngineSettings {

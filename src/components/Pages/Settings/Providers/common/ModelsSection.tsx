@@ -334,6 +334,21 @@ export function ModelsSection() {
                             💻 Code
                           </Text>
                         )}
+                        {model.capabilities.chat && (
+                          <Text type="secondary" className="text-xs">
+                            💬 Chat
+                          </Text>
+                        )}
+                        {model.capabilities.text_embedding && (
+                          <Text type="secondary" className="text-xs">
+                            🔍 Embedding
+                          </Text>
+                        )}
+                        {model.capabilities.image_generator && (
+                          <Text type="secondary" className="text-xs">
+                            🎨 Image Gen
+                          </Text>
+                        )}
                       </Flex>
                     )}
                   </div>
