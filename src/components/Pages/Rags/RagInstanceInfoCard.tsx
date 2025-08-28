@@ -5,7 +5,6 @@ import {
   Form,
   Select,
   Divider,
-  InputNumber,
   Tag,
   Typography,
   Input,
@@ -22,6 +21,8 @@ import {
 } from '../../../store/providers'
 import { Permission, UpdateRAGInstanceRequest } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { RagVectorEngineSettings } from './RagVectorEngineSettings'
+import { RagGraphEngineSettings } from './RagGraphEngineSettings'
 
 const { Text } = Typography
 
@@ -30,6 +31,7 @@ export const RagInstanceInfoCard: React.FC = () => {
   const [form] = Form.useForm()
   const [configurationVisible, setConfigurationVisible] = useState(false)
   const [updatingInstance, setUpdatingInstance] = useState(false)
+  const engineType = Form.useWatch('engine_type', form)
 
   useEffect(() => {
     loadUserProvidersWithAllModels()
@@ -248,16 +250,13 @@ export const RagInstanceInfoCard: React.FC = () => {
                   if ('options' in option && Array.isArray(option.options)) {
                     // This is a group option - search in children
                     return option.options.some((child: any) =>
-                      child?.label?.toLowerCase().includes(input.toLowerCase())
+                      child?.label?.toLowerCase().includes(input.toLowerCase()),
                     )
                   }
                   // This is a regular option
-                  return (option.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }}
-                onDropdownVisibleChange={(open: boolean) => {
-                  if (open && !providersInitialized) {
-                    loadUserProviders().catch(console.error)
-                  }
+                  return (option.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }}
                 options={getAvailableModels('text_embedding')}
               />
@@ -273,16 +272,13 @@ export const RagInstanceInfoCard: React.FC = () => {
                   if ('options' in option && Array.isArray(option.options)) {
                     // This is a group option - search in children
                     return option.options.some((child: any) =>
-                      child?.label?.toLowerCase().includes(input.toLowerCase())
+                      child?.label?.toLowerCase().includes(input.toLowerCase()),
                     )
                   }
                   // This is a regular option
-                  return (option.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }}
-                onDropdownVisibleChange={(open: boolean) => {
-                  if (open && !providersInitialized) {
-                    loadUserProviders().catch(console.error)
-                  }
+                  return (option.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }}
                 options={getAvailableModels('chat')}
               />
@@ -292,91 +288,13 @@ export const RagInstanceInfoCard: React.FC = () => {
               <Text type="secondary">Engine Settings</Text>
             </Divider>
 
-            <Form.Item
-              shouldUpdate={(prevValues, currentValues) =>
-                prevValues.engine_type !== currentValues.engine_type
-              }
-            >
-              {({ getFieldValue }) => {
-                const engineType = getFieldValue('engine_type')
-                return (
-                  <>
-                    {engineType === 'simple_vector' && (
-                      <Card size="small" className="bg-blue-50">
-                        <Text strong>Vector Engine Settings</Text>
-                        <Form.Item
-                          label="Chunk Size"
-                          name={[
-                            'engine_settings',
-                            'simple_vector',
-                            'chunk_size',
-                          ]}
-                          className="mb-2 mt-2"
-                        >
-                          <InputNumber
-                            placeholder="1000"
-                            min={100}
-                            max={10000}
-                            style={{ width: '100%' }}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          label="Overlap"
-                          name={['engine_settings', 'simple_vector', 'overlap']}
-                          className="mb-0"
-                        >
-                          <InputNumber
-                            placeholder="200"
-                            min={0}
-                            max={1000}
-                            style={{ width: '100%' }}
-                          />
-                        </Form.Item>
-                      </Card>
-                    )}
+            <div style={{ display: engineType === 'simple_vector' ? 'block' : 'none' }}>
+              <RagVectorEngineSettings />
+            </div>
 
-                    {engineType === 'simple_graph' && (
-                      <Card size="small" className="bg-green-50">
-                        <Text strong>Graph Engine Settings</Text>
-                        <Form.Item
-                          label="Max Depth"
-                          name={[
-                            'engine_settings',
-                            'simple_graph',
-                            'max_depth',
-                          ]}
-                          className="mb-2 mt-2"
-                        >
-                          <InputNumber
-                            placeholder="3"
-                            min={1}
-                            max={10}
-                            style={{ width: '100%' }}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          label="Min Score"
-                          name={[
-                            'engine_settings',
-                            'simple_graph',
-                            'min_score',
-                          ]}
-                          className="mb-0"
-                        >
-                          <InputNumber
-                            placeholder="0.5"
-                            min={0}
-                            max={1}
-                            step={0.1}
-                            style={{ width: '100%' }}
-                          />
-                        </Form.Item>
-                      </Card>
-                    )}
-                  </>
-                )
-              }}
-            </Form.Item>
+            <div style={{ display: engineType === 'simple_graph' ? 'block' : 'none' }}>
+              <RagGraphEngineSettings />
+            </div>
 
             <Form.Item className="mb-0 mt-3">
               <Space>

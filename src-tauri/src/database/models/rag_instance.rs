@@ -3,14 +3,15 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
+use crate::ai::rag::engines::settings::*;
 
 /// Engine-specific settings for RAG instance configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
 pub struct RagEngineSettings {
     /// Simple vector RAG engine settings
-    pub simple_vector: Option<serde_json::Value>,
+    pub simple_vector: Option<RAGSimpleVectorEngineSettings>,
     /// Simple graph RAG engine settings  
-    pub simple_graph: Option<serde_json::Value>,
+    pub simple_graph: Option<RAGSimpleGraphEngineSettings>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

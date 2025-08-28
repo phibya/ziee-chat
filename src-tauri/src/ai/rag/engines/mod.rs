@@ -1,5 +1,6 @@
 // RAG Engine implementations
 
+pub mod settings;
 pub mod simple_graph;
 pub mod simple_vector;
 pub mod traits;

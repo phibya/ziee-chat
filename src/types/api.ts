@@ -922,6 +922,8 @@ export interface ProxySettingsResponse {
   ignore_ssl_certificates: boolean
 }
 
+export type RAGChunkSelectionMethod = 'weight' | 'vector'
+
 export type RAGEngineType = 'simple_vector' | 'simple_graph'
 
 export interface RAGInstance {
@@ -1036,9 +1038,65 @@ export interface RAGRepositoryListResponse {
   per_page: number
 }
 
+export interface RAGSimpleGraphEngineSettings {
+  indexing?: RAGSimpleGraphIndexingSettings
+  querying?: RAGSimpleGraphQueryingSettings
+}
+
+export interface RAGSimpleGraphIndexingSettings {
+  chunk_token_size?: number
+  chunk_overlap_token_size?: number
+  entity_extract_max_gleaning?: number
+  force_llm_summary_on_merge?: number
+  max_graph_nodes?: number
+  summary_max_tokens?: number
+  entity_types?: string[]
+  extraction_language?: string
+}
+
+export type RAGSimpleGraphQueryMode = 'local' | 'global' | 'hybrid' | 'naive' | 'mix' | 'bypass'
+
+export interface RAGSimpleGraphQueryingSettings {
+  max_entity_tokens?: number
+  max_relation_tokens?: number
+  max_total_tokens?: number
+  max_graph_nodes_per_query?: number
+  top_k?: number
+  chunk_top_k?: number
+  related_chunk_number?: number
+  query_mode?: RAGSimpleGraphQueryMode
+  chunk_selection_method?: RAGChunkSelectionMethod
+  user_prompt?: string
+  enable_rerank?: boolean
+  min_rerank_score?: number
+}
+
+export interface RAGSimpleVectorEngineSettings {
+  indexing?: RAGSimpleVectorIndexingSettings
+  querying?: RAGSimpleVectorQueryingSettings
+}
+
+export interface RAGSimpleVectorIndexingSettings {
+  chunk_token_size?: number
+  chunk_overlap_token_size?: number
+  cosine_better_than_threshold?: number
+}
+
+export interface RAGSimpleVectorQueryingSettings {
+  top_k?: number
+  chunk_top_k?: number
+  similarity_threshold?: number
+  related_chunk_number?: number
+  max_total_tokens?: number
+  chunk_selection_method?: RAGChunkSelectionMethod
+  user_prompt?: string
+  enable_rerank?: boolean
+  min_rerank_score?: number
+}
+
 export interface RagEngineSettings {
-  simple_vector?: any
-  simple_graph?: any
+  simple_vector?: RAGSimpleVectorEngineSettings
+  simple_graph?: RAGSimpleGraphEngineSettings
 }
 
 export interface Repository {

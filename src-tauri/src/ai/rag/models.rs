@@ -408,17 +408,43 @@ pub struct ChunkWithEmbedding {
 impl RagInstance {
     pub fn get_engine_settings(&self) -> Result<serde_json::Value, serde_json::Error> {
         match self.engine_type.as_str() {
-            "simple_vector" => Ok(self.engine_settings.simple_vector.clone().unwrap_or(serde_json::json!({}))),
-            "simple_graph" => Ok(self.engine_settings.simple_graph.clone().unwrap_or(serde_json::json!({}))),
+            "simple_vector" => {
+                if let Some(ref settings) = self.engine_settings.simple_vector {
+                    serde_json::to_value(settings)
+                } else {
+                    Ok(serde_json::json!({}))
+                }
+            },
+            "simple_graph" => {
+                if let Some(ref settings) = self.engine_settings.simple_graph {
+                    serde_json::to_value(settings)
+                } else {
+                    Ok(serde_json::json!({}))
+                }
+            },
             _ => Ok(serde_json::json!({})),
         }
     }
 
-    pub fn set_engine_settings(&mut self, settings: serde_json::Value) {
+    pub fn set_engine_settings(&mut self, settings: serde_json::Value) -> Result<(), serde_json::Error> {
         match self.engine_type.as_str() {
-            "simple_vector" => self.engine_settings.simple_vector = Some(settings),
-            "simple_graph" => self.engine_settings.simple_graph = Some(settings),
-            _ => {}
+            "simple_vector" => {
+                if settings.is_null() || settings == serde_json::json!({}) {
+                    self.engine_settings.simple_vector = None;
+                } else {
+                    self.engine_settings.simple_vector = Some(serde_json::from_value(settings)?);
+                }
+                Ok(())
+            },
+            "simple_graph" => {
+                if settings.is_null() || settings == serde_json::json!({}) {
+                    self.engine_settings.simple_graph = None;
+                } else {
+                    self.engine_settings.simple_graph = Some(serde_json::from_value(settings)?);
+                }
+                Ok(())
+            },
+            _ => Ok(())
         }
     }
 }
