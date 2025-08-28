@@ -948,56 +948,6 @@ pub struct ModelFileInfo {
     pub uploaded_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct ModelUploadResponse {
-    pub model_id: Uuid,
-    pub upload_url: Option<String>,
-    pub chunk_uploaded: bool,
-    pub upload_complete: bool,
-    pub next_chunk_index: Option<u32>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct ModelListResponse {
-    pub models: Vec<Model>,
-    pub total: i64,
-    pub page: i32,
-    pub per_page: i32,
-    pub total_storage_bytes: u64,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct ModelDetailsResponse {
-    pub model: Model,
-    pub files: Vec<ModelFileInfo>,
-    pub storage_size_bytes: u64,
-    pub validation_issues: Vec<String>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct ModelValidationResult {
-    pub is_valid: bool,
-    pub issues: Vec<String>,
-    pub required_files: Vec<String>,
-    pub present_files: Vec<String>,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct ModelStorageInfo {
-    pub provider_id: Uuid,
-    pub total_models: i64,
-    pub total_storage_bytes: u64,
-    pub models_by_status: ModelStatusCounts,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
-pub struct ModelStatusCounts {
-    pub active: i64,
-    pub inactive: i64,
-    pub deprecated: i64,
-    pub enabled: i64,
-    pub disabled: i64,
-}
 
 impl Model {
     /// Get the model path using the pattern {provider_id}/{id}
