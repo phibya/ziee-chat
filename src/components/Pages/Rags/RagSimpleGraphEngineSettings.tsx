@@ -21,16 +21,13 @@ const getFieldName = (section: 'indexing' | 'querying', field: string) => [
   field,
 ]
 
-export const RagGraphEngineSettings: React.FC = () => {
+export const RagSimpleGraphEngineSettings: React.FC = () => {
   return (
     <div>
-      <Collapse defaultActiveKey={['indexing', 'querying']} ghost>
+      <Collapse defaultActiveKey={['indexing', 'querying']}>
         <Panel header="Indexing Settings" key="indexing">
-          <div className="pl-4">
-            <Text
-              type="secondary"
-              className="text-xs block mb-4"
-            >
+          <div>
+            <Text type="secondary" className="text-xs block mb-4">
               Changes to indexing settings require reprocessing of documents
             </Text>
 
@@ -145,8 +142,8 @@ export const RagGraphEngineSettings: React.FC = () => {
               name={getFieldName('indexing', 'extraction_language')}
               tooltip="Language for entity extraction (default: English)"
             >
-              <Select 
-                placeholder="Select language" 
+              <Select
+                placeholder="Select language"
                 allowClear
                 options={[
                   { value: 'English', label: 'English' },
@@ -162,11 +159,8 @@ export const RagGraphEngineSettings: React.FC = () => {
         </Panel>
 
         <Panel header="Querying Settings" key="querying">
-          <div className="pl-4">
-            <Text
-              type="secondary"
-              className="text-xs block mb-4"
-            >
+          <div>
+            <Text type="secondary" className="text-xs block mb-4">
               Changes to querying settings apply immediately without
               reprocessing
             </Text>
@@ -271,12 +265,18 @@ export const RagGraphEngineSettings: React.FC = () => {
               name={getFieldName('querying', 'query_mode')}
               tooltip="Graph query mode (default: mix)"
             >
-              <Select 
-                placeholder="Select query mode" 
+              <Select
+                placeholder="Select query mode"
                 allowClear
                 options={[
-                  { value: 'local', label: 'Local - Context-dependent queries' },
-                  { value: 'global', label: 'Global - Global knowledge queries' },
+                  {
+                    value: 'local',
+                    label: 'Local - Context-dependent queries',
+                  },
+                  {
+                    value: 'global',
+                    label: 'Global - Global knowledge queries',
+                  },
                   { value: 'hybrid', label: 'Hybrid - Combined local/global' },
                   { value: 'naive', label: 'Naive - Basic search' },
                   { value: 'mix', label: 'Mix - Knowledge graph + vector' },
@@ -290,8 +290,8 @@ export const RagGraphEngineSettings: React.FC = () => {
               name={getFieldName('querying', 'chunk_selection_method')}
               tooltip="Method for selecting relevant chunks (default: vector)"
             >
-              <Select 
-                placeholder="Select method" 
+              <Select
+                placeholder="Select method"
                 allowClear
                 options={[
                   { value: 'vector', label: 'Vector Similarity' },

@@ -1,5 +1,14 @@
 import React from 'react'
-import { Form, InputNumber, Select, Input, Divider, Typography, Collapse, Switch } from 'antd'
+import {
+  Form,
+  InputNumber,
+  Select,
+  Input,
+  Divider,
+  Typography,
+  Collapse,
+  Switch,
+} from 'antd'
 
 const { Text } = Typography
 const { Panel } = Collapse
@@ -12,50 +21,50 @@ const getFieldName = (section: 'indexing' | 'querying', field: string) => [
   field,
 ]
 
-export const RagVectorEngineSettings: React.FC = () => {
+export const RagSimpleVectorEngineSettings: React.FC = () => {
   return (
     <div>
-      <Collapse defaultActiveKey={['indexing', 'querying']} ghost>
+      <Collapse defaultActiveKey={['indexing', 'querying']}>
         <Panel header="Indexing Settings" key="indexing">
-          <div className="pl-4">
+          <div>
             <Text type="secondary" className="text-xs block mb-4">
               Changes to indexing settings require reprocessing of documents
             </Text>
-            
-            <Form.Item 
-              label="Chunk Token Size" 
+
+            <Form.Item
+              label="Chunk Token Size"
               name={getFieldName('indexing', 'chunk_token_size')}
               tooltip="Maximum number of tokens per chunk (default: 1200)"
             >
-              <InputNumber 
-                placeholder="1200" 
-                min={100} 
+              <InputNumber
+                placeholder="1200"
+                min={100}
                 max={8192}
                 className="w-full"
               />
             </Form.Item>
 
-            <Form.Item 
-              label="Chunk Overlap Size" 
+            <Form.Item
+              label="Chunk Overlap Size"
               name={getFieldName('indexing', 'chunk_overlap_token_size')}
               tooltip="Number of tokens to overlap between chunks (default: 100)"
             >
-              <InputNumber 
-                placeholder="100" 
-                min={0} 
+              <InputNumber
+                placeholder="100"
+                min={0}
                 max={500}
                 className="w-full"
               />
             </Form.Item>
 
-            <Form.Item 
-              label="Cosine Similarity Threshold" 
+            <Form.Item
+              label="Cosine Similarity Threshold"
               name={getFieldName('indexing', 'cosine_better_than_threshold')}
               tooltip="Minimum cosine similarity score for relevance (default: 0.2)"
             >
-              <InputNumber 
-                placeholder="0.2" 
-                min={0} 
+              <InputNumber
+                placeholder="0.2"
+                min={0}
                 max={1}
                 step={0.1}
                 className="w-full"
@@ -65,84 +74,85 @@ export const RagVectorEngineSettings: React.FC = () => {
         </Panel>
 
         <Panel header="Querying Settings" key="querying">
-          <div className="pl-4">
+          <div>
             <Text type="secondary" className="text-xs block mb-4">
-              Changes to querying settings apply immediately without reprocessing
+              Changes to querying settings apply immediately without
+              reprocessing
             </Text>
 
-            <Form.Item 
-              label="Top K Results" 
+            <Form.Item
+              label="Top K Results"
               name={getFieldName('querying', 'top_k')}
               tooltip="Maximum number of results to retrieve (default: 40)"
             >
-              <InputNumber 
-                placeholder="40" 
-                min={1} 
+              <InputNumber
+                placeholder="40"
+                min={1}
                 max={200}
                 className="w-full"
               />
             </Form.Item>
 
-            <Form.Item 
-              label="Chunk Top K" 
+            <Form.Item
+              label="Chunk Top K"
               name={getFieldName('querying', 'chunk_top_k')}
               tooltip="Maximum number of chunks to consider (default: 20)"
             >
-              <InputNumber 
-                placeholder="20" 
-                min={1} 
+              <InputNumber
+                placeholder="20"
+                min={1}
                 max={100}
                 className="w-full"
               />
             </Form.Item>
 
-            <Form.Item 
-              label="Similarity Threshold" 
+            <Form.Item
+              label="Similarity Threshold"
               name={getFieldName('querying', 'similarity_threshold')}
               tooltip="Minimum similarity score for query results (default: 0.2)"
             >
-              <InputNumber 
-                placeholder="0.2" 
-                min={0} 
+              <InputNumber
+                placeholder="0.2"
+                min={0}
                 max={1}
                 step={0.1}
                 className="w-full"
               />
             </Form.Item>
 
-            <Form.Item 
-              label="Related Chunk Number" 
+            <Form.Item
+              label="Related Chunk Number"
               name={getFieldName('querying', 'related_chunk_number')}
               tooltip="Number of related chunks to include (default: 5)"
             >
-              <InputNumber 
-                placeholder="5" 
-                min={0} 
+              <InputNumber
+                placeholder="5"
+                min={0}
                 max={20}
                 className="w-full"
               />
             </Form.Item>
 
-            <Form.Item 
-              label="Max Total Tokens" 
+            <Form.Item
+              label="Max Total Tokens"
               name={getFieldName('querying', 'max_total_tokens')}
               tooltip="Maximum total tokens for context (default: 30000)"
             >
-              <InputNumber 
-                placeholder="30000" 
-                min={1000} 
+              <InputNumber
+                placeholder="30000"
+                min={1000}
                 max={100000}
                 className="w-full"
               />
             </Form.Item>
 
-            <Form.Item 
-              label="Chunk Selection Method" 
+            <Form.Item
+              label="Chunk Selection Method"
               name={getFieldName('querying', 'chunk_selection_method')}
               tooltip="Method for selecting relevant chunks (default: vector)"
             >
-              <Select 
-                placeholder="Select method" 
+              <Select
+                placeholder="Select method"
                 allowClear
                 options={[
                   { value: 'vector', label: 'Vector Similarity' },
@@ -151,13 +161,13 @@ export const RagVectorEngineSettings: React.FC = () => {
               />
             </Form.Item>
 
-            <Form.Item 
-              label="User Prompt" 
+            <Form.Item
+              label="User Prompt"
               name={getFieldName('querying', 'user_prompt')}
               tooltip="Custom prompt template for queries"
             >
-              <Input.TextArea 
-                placeholder="Enter custom prompt template..." 
+              <Input.TextArea
+                placeholder="Enter custom prompt template..."
                 rows={3}
               />
             </Form.Item>
@@ -166,8 +176,8 @@ export const RagVectorEngineSettings: React.FC = () => {
               <Text type="secondary">Reranking</Text>
             </Divider>
 
-            <Form.Item 
-              label="Enable Reranking" 
+            <Form.Item
+              label="Enable Reranking"
               name={getFieldName('querying', 'enable_rerank')}
               tooltip="Enable reranking of search results (default: false)"
               valuePropName="checked"
@@ -175,14 +185,14 @@ export const RagVectorEngineSettings: React.FC = () => {
               <Switch />
             </Form.Item>
 
-            <Form.Item 
-              label="Min Rerank Score" 
+            <Form.Item
+              label="Min Rerank Score"
               name={getFieldName('querying', 'min_rerank_score')}
               tooltip="Minimum score threshold for reranking (default: 0.0)"
             >
-              <InputNumber 
-                placeholder="0.0" 
-                min={0} 
+              <InputNumber
+                placeholder="0.0"
+                min={0}
                 max={1}
                 step={0.1}
                 className="w-full"

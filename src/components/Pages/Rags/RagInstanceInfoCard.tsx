@@ -21,8 +21,8 @@ import {
 } from '../../../store/providers'
 import { Permission, UpdateRAGInstanceRequest } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
-import { RagVectorEngineSettings } from './RagVectorEngineSettings'
-import { RagGraphEngineSettings } from './RagGraphEngineSettings'
+import { RagSimpleVectorEngineSettings } from './RagSimpleVectorEngineSettings.tsx'
+import { RagSimpleGraphEngineSettings } from './RagSimpleGraphEngineSettings.tsx'
 
 const { Text } = Typography
 
@@ -155,9 +155,8 @@ export const RagInstanceInfoCard: React.FC = () => {
             type="disabled"
           >
             <Button
-              type="text"
+              type={configurationVisible ? 'primary' : 'text'}
               icon={<SettingOutlined />}
-              size="small"
               onClick={() => setConfigurationVisible(!configurationVisible)}
             />
           </PermissionGuard>
@@ -288,15 +287,23 @@ export const RagInstanceInfoCard: React.FC = () => {
               <Text type="secondary">Engine Settings</Text>
             </Divider>
 
-            <div style={{ display: engineType === 'simple_vector' ? 'block' : 'none' }}>
-              <RagVectorEngineSettings />
+            <div
+              style={{
+                display: engineType === 'simple_vector' ? 'block' : 'none',
+              }}
+            >
+              <RagSimpleVectorEngineSettings />
             </div>
 
-            <div style={{ display: engineType === 'simple_graph' ? 'block' : 'none' }}>
-              <RagGraphEngineSettings />
+            <div
+              style={{
+                display: engineType === 'simple_graph' ? 'block' : 'none',
+              }}
+            >
+              <RagSimpleGraphEngineSettings />
             </div>
 
-            <Form.Item className="mb-0 mt-3">
+            <Form.Item className="mb-0 !mt-3">
               <Space>
                 <Button
                   type="primary"
