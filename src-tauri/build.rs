@@ -213,27 +213,27 @@ fn main() {
 
     // Determine the target platform
     let target = env::var("TARGET").unwrap();
-    
+
     // Set PostgreSQL version for postgresql_embedded crate
     env::set_var("POSTGRESQL_VERSION", "17.5.0");
     println!("cargo:rustc-env=POSTGRESQL_VERSION=17.5.0");
     println!("Setting PostgreSQL version to 17.5.0");
-    
+
     // Force x86_64 PostgreSQL binaries on Windows aarch64
     if target == "aarch64-pc-windows-msvc" {
         // Force specific PostgreSQL release URL for Windows aarch64 to use x86_64 binary
         let postgresql_url = "https://github.com/theseus-rs/postgresql-binaries/releases/download/17.5.0/postgresql-17.5.0-x86_64-pc-windows-msvc.zip";
         env::set_var("POSTGRESQL_RELEASES_URL", postgresql_url);
         println!("cargo:rustc-env=POSTGRESQL_RELEASES_URL={}", postgresql_url);
-        
+
         // Set environment variables to force x86_64 PostgreSQL binary download
         println!("cargo:rustc-env=POSTGRESQL_ARCH=x86_64-pc-windows-msvc");
         println!("cargo:rustc-env=TARGET_ARCH_OVERRIDE=x86_64-pc-windows-msvc");
-        
+
         // Also set it for the postgresql_embedded crate at build time
         env::set_var("POSTGRESQL_ARCH", "x86_64-pc-windows-msvc");
         env::set_var("TARGET_ARCH_OVERRIDE", "x86_64-pc-windows-msvc");
-        
+
         println!("Forcing x86_64 PostgreSQL binaries for Windows aarch64 target");
         println!("Setting PostgreSQL releases URL to: {}", postgresql_url);
     }
@@ -255,7 +255,7 @@ fn main() {
         .unwrap();
 
     // === PDFium Binary Download ===
-    
+
     // Use dedicated PDFium directory
     let pdfium_dir = target_dir.join("pdfium");
     fs::create_dir_all(&pdfium_dir)
@@ -300,13 +300,13 @@ fn main() {
     };
 
     let pdfium_target_path = pdfium_dir.join(&pdfium_binary_name);
-    
+
     println!("PDFium target path:  {:?}", pdfium_target_path);
 
     // Download PDFium if it doesn't exist
     if !pdfium_target_path.exists() {
         println!("Downloading PDFium library...");
-        
+
         // Create a temporary directory for PDFium download
         let pdfium_temp_dir = Path::new(&out_dir).join("pdfium-download");
         fs::create_dir_all(&pdfium_temp_dir).unwrap();
@@ -334,7 +334,7 @@ fn main() {
                         eprintln!("Warning: Failed to copy PDFium binary: {}", e);
                     } else {
                         println!("Successfully installed PDFium to {:?}", pdfium_target_path);
-                        
+
                         // Make it executable on Unix
                         #[cfg(unix)]
                         {
@@ -356,7 +356,7 @@ fn main() {
     } else {
         println!("PDFium binary already exists at {:?}", pdfium_target_path);
     }
-    
+
     // Always copy to lib directories for Tauri bundling (during every build)
     if pdfium_target_path.exists() {
         let standardized_name = if target.contains("windows") {
@@ -391,7 +391,7 @@ fn main() {
     }
 
     // === Pandoc Binary Download ===
-    
+
     // Use dedicated Pandoc directory
     let pandoc_dir = target_dir.join("pandoc");
     fs::create_dir_all(&pandoc_dir)
@@ -436,13 +436,13 @@ fn main() {
     };
 
     let pandoc_target_path = pandoc_dir.join(&pandoc_binary_name);
-    
+
     println!("Pandoc target path: {:?}", pandoc_target_path);
 
     // Download Pandoc if it doesn't exist
     if !pandoc_target_path.exists() {
         println!("Downloading Pandoc binary...");
-        
+
         // Create a temporary directory for Pandoc download
         let pandoc_temp_dir = Path::new(&out_dir).join("pandoc-download");
         fs::create_dir_all(&pandoc_temp_dir).unwrap();
@@ -476,7 +476,7 @@ fn main() {
                         eprintln!("Warning: Failed to copy Pandoc binary: {}", e);
                     } else {
                         println!("Successfully installed Pandoc to {:?}", pandoc_target_path);
-                        
+
                         // Make it executable on Unix
                         #[cfg(unix)]
                         {
@@ -498,7 +498,7 @@ fn main() {
     } else {
         println!("Pandoc binary already exists at {:?}", pandoc_target_path);
     }
-    
+
     // Always copy to bin directories for Tauri bundling (during every build)
     if pandoc_target_path.exists() {
         let standardized_name = if target.contains("windows") {
@@ -506,20 +506,20 @@ fn main() {
         } else {
             "pandoc"
         };
-        
+
         // Copy to both debug and release bin directories
         for build_profile in ["debug", "release"] {
             let profile_dir = target_dir.join(build_profile);
             let bin_dir = profile_dir.join("bin");
             fs::create_dir_all(&bin_dir).ok();
-            
+
             let pandoc_bin_path = bin_dir.join(standardized_name);
             if let Err(e) = fs::copy(&pandoc_target_path, &pandoc_bin_path) {
                 eprintln!("Warning: Failed to copy Pandoc to {} bin directory: {}", build_profile, e);
             } else {
                 println!("Successfully copied Pandoc to {} bin directory: {:?}", build_profile, pandoc_bin_path);
             }
-            
+
             // Make bin version executable on Unix
             #[cfg(unix)]
             {
@@ -544,14 +544,14 @@ fn main() {
             None
         }
     };
-    
+
     // Set environment variables for PDFium dynamic library path
     if pdfium_target_path.exists() {
         let pdfium_dir_str = pdfium_dir.to_string_lossy();
-        
+
         // Set PDFIUM_DYNAMIC_LIB_PATH for pdfium-render crate
         println!("cargo:rustc-env=PDFIUM_DYNAMIC_LIB_PATH={}", pdfium_dir_str);
-        
+
         // For runtime, set the library path environment variable
         if target.contains("windows") {
             println!("cargo:rustc-env=PATH={};{}", pdfium_dir_str, env::var("PATH").unwrap_or_default());
@@ -560,7 +560,7 @@ fn main() {
         } else {
             println!("cargo:rustc-env=LD_LIBRARY_PATH={}", pdfium_dir_str);
         }
-        
+
         println!("cargo:rustc-env=PDFIUM_LIB_PATH={}", pdfium_dir_str);
     }
 
