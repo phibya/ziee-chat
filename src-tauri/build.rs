@@ -132,14 +132,16 @@ fn main() {
     // === Build pgvector extension ===
     println!("cargo:rerun-if-changed=src-databases/pgvector");
     let pgvector_source = Path::new("../src-databases/pgvector").canonicalize().ok();
-    let _pgvector_path = build_helpers::pgvector::build(&target_dir, &target, pgvector_source.as_deref())
-        .expect("Failed to build pgvector extension - build cannot continue");
+    let _pgvector_path =
+        build_helpers::pgvector::build(&target_dir, &target, pgvector_source.as_deref())
+            .expect("Failed to build pgvector extension - build cannot continue");
 
     // === Build Apache AGE extension ===
     println!("cargo:rerun-if-changed=src-databases/apache-age");
     let apache_age_source = Path::new("../src-databases/apache-age").canonicalize().ok();
-    let _apache_age_path = build_helpers::apache_age::build(&target_dir, &target, apache_age_source.as_deref())
-        .expect("Failed to build Apache AGE extension - build cannot continue");
+    let _apache_age_path =
+        build_helpers::apache_age::build(&target_dir, &target, apache_age_source.as_deref())
+            .expect("Failed to build Apache AGE extension - build cannot continue");
 
     // === Set PDFium environment variables ===
     if let Some(ref path) = pdfium_target_path {

@@ -11280,6 +11280,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "unicode-normalization",
  "url",
  "uuid 1.18.0",
  "wgpu-hal",
