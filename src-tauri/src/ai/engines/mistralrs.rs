@@ -360,7 +360,10 @@ impl MistralRsEngine {
         let model_path_absolute = model.get_model_absolute_path();
 
         // Get mistralrs settings or use defaults
-        let settings = model.engine_settings.as_ref().and_then(|s| s.mistralrs.as_ref());
+        let settings = model
+            .engine_settings
+            .as_ref()
+            .and_then(|s| s.mistralrs.as_ref());
 
         // Add global arguments first
 
@@ -478,7 +481,8 @@ impl MistralRsEngine {
                     .devices
                     .iter()
                     .filter(|device| {
-                        device.device_type.as_str() == auto_detected_device_type && device.is_available
+                        device.device_type.as_str() == auto_detected_device_type
+                            && device.is_available
                     })
                     .map(|device| device.id)
                     .collect();

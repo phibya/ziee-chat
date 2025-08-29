@@ -71,10 +71,7 @@ impl LocalProvider {
         // Local providers don't use proxy - they connect to localhost
         let client = Client::new();
 
-        Ok(Self {
-            client,
-            base_url,
-        })
+        Ok(Self { client, base_url })
     }
 
     async fn build_request_with_capabilities(
@@ -435,8 +432,9 @@ impl AIProvider for LocalProvider {
         request: EmbeddingsRequest,
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}/embeddings", self.base_url);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&request)
@@ -592,4 +590,3 @@ impl LocalProvider {
         Ok(Box::pin(stream))
     }
 }
-

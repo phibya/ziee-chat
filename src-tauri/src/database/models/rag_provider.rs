@@ -7,7 +7,6 @@ use uuid::Uuid;
 use super::proxy::ProxySettings;
 use super::user::UserGroup;
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum RAGProviderType {
@@ -58,12 +57,12 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGProvider {
             if json_value.is_null() {
                 None
             } else {
-                Some(serde_json::from_value(json_value).map_err(|e| {
-                    sqlx::Error::ColumnDecode {
+                Some(
+                    serde_json::from_value(json_value).map_err(|e| sqlx::Error::ColumnDecode {
                         index: "proxy_settings".into(),
                         source: Box::new(e),
-                    }
-                })?)
+                    })?,
+                )
             }
         } else {
             None
@@ -155,4 +154,3 @@ pub struct AssignRAGProviderToGroupRequest {
     pub group_id: Uuid,
     pub provider_id: Uuid,
 }
-

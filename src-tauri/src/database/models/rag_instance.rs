@@ -1,9 +1,9 @@
+use crate::ai::rag::engines::settings::*;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
-use crate::ai::rag::engines::settings::*;
 
 /// Engine-specific settings for RAG instance configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
@@ -53,7 +53,8 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGInstance {
             is_active: row.try_get("is_active")?,
             is_system: row.try_get("is_system").unwrap_or(false),
             engine_type,
-            engine_settings: row.try_get::<serde_json::Value, _>("engine_settings")
+            engine_settings: row
+                .try_get::<serde_json::Value, _>("engine_settings")
                 .map(|v| serde_json::from_value(v).unwrap_or_default())
                 .unwrap_or_default(),
             embedding_model_id: row.try_get("embedding_model_id")?,

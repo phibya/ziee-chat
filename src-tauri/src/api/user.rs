@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::{
-  errors::{ApiResult, AppError},
-  middleware::AuthenticatedUser,
+    errors::{ApiResult, AppError},
+    middleware::AuthenticatedUser,
 };
 use crate::database::{
     models::{ResetPasswordRequest, UpdateUserRequest},

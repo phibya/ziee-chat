@@ -18,7 +18,6 @@ pub use server::*;
 
 use crate::database::models::api_proxy_server_model::*;
 
-
 // Global instance for the API proxy server
 static PROXY_SERVER_INSTANCE: tokio::sync::OnceCell<Arc<RwLock<Option<ApiProxyServer>>>> =
     tokio::sync::OnceCell::const_new();

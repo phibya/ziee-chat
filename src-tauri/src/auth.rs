@@ -220,7 +220,6 @@ impl AuthService {
         Ok(user)
     }
 
-
     /// Verify user password
     pub async fn verify_user_password(&self, user: &User, password: &str) -> Result<bool, String> {
         // Check if user has password service

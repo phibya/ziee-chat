@@ -158,7 +158,7 @@ pub enum Permission {
     RagRepositoriesEdit,
     #[serde(rename = "rag::repositories::delete")]
     RagRepositoriesDelete,
-    
+
     // RAG instance user permissions
     #[serde(rename = "rag::instances::read")]
     RagInstancesRead,
@@ -357,24 +357,24 @@ impl Permission {
             Permission::RagRepositoriesCreate => "rag::repositories::create",
             Permission::RagRepositoriesEdit => "rag::repositories::edit",
             Permission::RagRepositoriesDelete => "rag::repositories::delete",
-            
+
             // RAG instance permissions
             Permission::RagInstancesRead => "rag::instances::read",
             Permission::RagInstancesCreate => "rag::instances::create",
             Permission::RagInstancesEdit => "rag::instances::edit",
             Permission::RagInstancesDelete => "rag::instances::delete",
-            
+
             // RAG file permissions
             Permission::RagFilesRead => "rag::files::read",
             Permission::RagFilesAdd => "rag::files::add",
             Permission::RagFilesRemove => "rag::files::remove",
-            
+
             // RAG admin provider permissions
             Permission::RagAdminProvidersRead => "rag::admin::providers::read",
             Permission::RagAdminProvidersCreate => "rag::admin::providers::create",
             Permission::RagAdminProvidersEdit => "rag::admin::providers::edit",
             Permission::RagAdminProvidersDelete => "rag::admin::providers::delete",
-            
+
             // RAG admin instance permissions
             Permission::RagAdminInstancesRead => "rag::admin::instances::read",
             Permission::RagAdminInstancesCreate => "rag::admin::instances::create",
@@ -424,7 +424,6 @@ impl Permission {
         }
     }
 }
-
 
 /// Check if the authenticated user has a specific permission
 /// Supports wildcard permissions (e.g., "users::*" grants all users permissions)

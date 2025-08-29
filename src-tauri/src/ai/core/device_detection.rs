@@ -22,7 +22,11 @@ pub fn detect_available_devices() -> AvailableDevicesResponse {
         devices.extend(cuda_devices);
         if !devices.is_empty() && devices.iter().any(|d| d.device_type == DeviceType::Cuda) {
             default_device_type = DeviceType::Cuda;
-            supports_multi_gpu = devices.iter().filter(|d| d.device_type == DeviceType::Cuda).count() > 1;
+            supports_multi_gpu = devices
+                .iter()
+                .filter(|d| d.device_type == DeviceType::Cuda)
+                .count()
+                > 1;
         }
     }
 
@@ -263,10 +267,14 @@ mod tests {
 
         // Should always have at least CPU
         assert!(!response.devices.is_empty());
-        assert!(response.devices.iter().any(|d| d.device_type == DeviceType::Cpu));
+        assert!(response
+            .devices
+            .iter()
+            .any(|d| d.device_type == DeviceType::Cpu));
 
         // Default device type should be valid
-        assert!([DeviceType::Cpu, DeviceType::Cuda, DeviceType::Metal].contains(&response.default_device_type));
+        assert!([DeviceType::Cpu, DeviceType::Cuda, DeviceType::Metal]
+            .contains(&response.default_device_type));
     }
 
     #[test]

@@ -1,5 +1,5 @@
-use crate::database::models::{model::ModelCapabilities, FileFormat};
 use crate::api::engines::EngineType;
+use crate::database::models::{model::ModelCapabilities, FileFormat};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -82,9 +82,14 @@ pub struct HubVersionResponse {
 }
 
 #[debug_handler]
-pub async fn get_hub_data_models(Query(params): Query<HubQueryParams>) -> ApiResult<Json<Vec<HubModel>>> {
+pub async fn get_hub_data_models(
+    Query(params): Query<HubQueryParams>,
+) -> ApiResult<Json<Vec<HubModel>>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
-    println!("API: Received request for hub models with locale: {}", locale);
+    println!(
+        "API: Received request for hub models with locale: {}",
+        locale
+    );
 
     let hub_manager_guard = HUB_MANAGER.lock().await;
     if let Some(manager) = hub_manager_guard.as_ref() {
@@ -111,8 +116,10 @@ pub async fn get_hub_data_models(Query(params): Query<HubQueryParams>) -> ApiRes
                     println!("API: Falling back to English locale");
                     match manager.load_hub_data_with_locale("en").await {
                         Ok(data) => {
-                            println!("API: Successfully loaded fallback hub models - {} models", 
-                                     data.models.len());
+                            println!(
+                                "API: Successfully loaded fallback hub models - {} models",
+                                data.models.len()
+                            );
                             Ok((StatusCode::OK, Json(data.models)))
                         }
                         Err(fallback_e) => {
@@ -141,9 +148,14 @@ pub async fn get_hub_data_models(Query(params): Query<HubQueryParams>) -> ApiRes
 }
 
 #[debug_handler]
-pub async fn get_hub_data_assistants(Query(params): Query<HubQueryParams>) -> ApiResult<Json<Vec<HubAssistant>>> {
+pub async fn get_hub_data_assistants(
+    Query(params): Query<HubQueryParams>,
+) -> ApiResult<Json<Vec<HubAssistant>>> {
     let locale = params.lang.unwrap_or_else(|| "en".to_string());
-    println!("API: Received request for hub assistants with locale: {}", locale);
+    println!(
+        "API: Received request for hub assistants with locale: {}",
+        locale
+    );
 
     let hub_manager_guard = HUB_MANAGER.lock().await;
     if let Some(manager) = hub_manager_guard.as_ref() {
@@ -170,12 +182,17 @@ pub async fn get_hub_data_assistants(Query(params): Query<HubQueryParams>) -> Ap
                     println!("API: Falling back to English locale");
                     match manager.load_hub_data_with_locale("en").await {
                         Ok(data) => {
-                            println!("API: Successfully loaded fallback hub assistants - {} assistants", 
-                                     data.assistants.len());
+                            println!(
+                                "API: Successfully loaded fallback hub assistants - {} assistants",
+                                data.assistants.len()
+                            );
                             Ok((StatusCode::OK, Json(data.assistants)))
                         }
                         Err(fallback_e) => {
-                            eprintln!("API: Failed to load fallback hub assistants: {}", fallback_e);
+                            eprintln!(
+                                "API: Failed to load fallback hub assistants: {}",
+                                fallback_e
+                            );
                             Err((
                                 StatusCode::INTERNAL_SERVER_ERROR,
                                 AppError::internal_error("Failed to load hub assistants"),

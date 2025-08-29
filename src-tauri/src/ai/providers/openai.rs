@@ -37,7 +37,6 @@ impl OpenAIProvider {
         Ok(Self { inner })
     }
 
-
     /// Get model-specific configuration
     fn get_model_config(&self, model_name: &str) -> ModelConfig {
         match model_name {
@@ -79,8 +78,6 @@ impl OpenAIProvider {
             },
         }
     }
-
-
 
     /// Enhanced request processing for vision models
     async fn preprocess_request(
@@ -234,7 +231,10 @@ impl AIProvider for OpenAIProvider {
         _filename: &str,
         mime_type: &str,
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        if !matches!(mime_type, "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif") {
+        if !matches!(
+            mime_type,
+            "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
+        ) {
             return Err(format!("Unsupported file type: {}", mime_type).into());
         }
 
@@ -258,7 +258,10 @@ impl AIProvider for OpenAIProvider {
     ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
         // OpenAI uses direct base64 embedding, no separate file storage
         if let Some(mime_type) = &file_ref.mime_type {
-            if !matches!(mime_type.as_str(), "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif") {
+            if !matches!(
+                mime_type.as_str(),
+                "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
+            ) {
                 return Err(format!("Unsupported file type: {}", mime_type).into());
             }
         }
@@ -300,4 +303,3 @@ impl AIProvider for OpenAIProvider {
         }
     }
 }
-

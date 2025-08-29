@@ -1,4 +1,3 @@
-use aide::axum::IntoApiResponse;
 use crate::api::app::is_desktop_app;
 use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
@@ -11,6 +10,7 @@ use crate::database::queries::configuration::{
     set_proxy_username, set_user_registration_enabled, NgrokSettings,
 };
 use crate::utils::ngrok::NgrokService;
+use aide::axum::IntoApiResponse;
 use axum::{debug_handler, http::StatusCode, response::Json, Extension};
 use once_cell::sync::Lazy;
 use schemars::JsonSchema;

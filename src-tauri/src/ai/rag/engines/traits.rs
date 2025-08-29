@@ -1,7 +1,8 @@
 // RAG Engine traits and common types
 
 use crate::ai::rag::{
-    InstanceStats, PipelineStatus, ProcessingOptions, RAGError, RAGQuery, RAGQueryResponse, RAGResult,
+    InstanceStats, PipelineStatus, ProcessingOptions, RAGError, RAGQuery, RAGQueryResponse,
+    RAGResult,
 };
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

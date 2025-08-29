@@ -10,8 +10,8 @@ use uuid::Uuid;
 
 use crate::{
     api::{
-      errors::{ApiResult, AppError},
-      middleware::AuthenticatedUser,
+        errors::{ApiResult, AppError},
+        middleware::AuthenticatedUser,
     },
     database::{
         models::{

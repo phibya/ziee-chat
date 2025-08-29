@@ -36,7 +36,6 @@ impl GroqProvider {
         Ok(Self { inner })
     }
 
-
     /// Get model-specific recommendations
     fn get_model_config(&self, model_name: &str) -> ModelConfig {
         match model_name {
@@ -62,7 +61,6 @@ impl GroqProvider {
             },
         }
     }
-
 
     /// Enhanced request processing for vision models
     async fn preprocess_request(
@@ -189,7 +187,10 @@ impl AIProvider for GroqProvider {
         mime_type: &str,
     ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
         // Groq doesn't have a separate upload endpoint, but we can prepare base64
-        if !matches!(mime_type, "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif") {
+        if !matches!(
+            mime_type,
+            "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
+        ) {
             return Err(format!("Unsupported file type: {}", mime_type).into());
         }
 
@@ -206,7 +207,10 @@ impl AIProvider for GroqProvider {
     ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
         // Groq uses direct base64 embedding, no separate file storage
         if let Some(mime_type) = &file_ref.mime_type {
-            if !matches!(mime_type.as_str(), "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif") {
+            if !matches!(
+                mime_type.as_str(),
+                "image/jpeg" | "image/jpg" | "image/png" | "image/webp" | "image/gif"
+            ) {
                 return Err(format!("Unsupported file type: {}", mime_type).into());
             }
         }
@@ -237,4 +241,3 @@ impl AIProvider for GroqProvider {
         self.inner.embeddings_impl(request).await
     }
 }
-

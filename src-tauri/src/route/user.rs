@@ -91,7 +91,9 @@ pub fn user_routes() -> ApiRouter {
                     .tag("assistants")
                     .response::<200, Json<AssistantListResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_read_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_read_middleware,
+            )),
         )
         .api_route(
             "/assistants",
@@ -101,7 +103,9 @@ pub fn user_routes() -> ApiRouter {
                     .tag("assistants")
                     .response::<200, Json<Assistant>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_create_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_create_middleware,
+            )),
         )
         .api_route(
             "/assistants/{assistant_id}",
@@ -111,7 +115,9 @@ pub fn user_routes() -> ApiRouter {
                     .tag("assistants")
                     .response::<200, Json<Assistant>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_read_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_read_middleware,
+            )),
         )
         .api_route(
             "/assistants/{assistant_id}",
@@ -121,7 +127,9 @@ pub fn user_routes() -> ApiRouter {
                     .tag("assistants")
                     .response::<200, Json<Assistant>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_edit_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_edit_middleware,
+            )),
         )
         .api_route(
             "/assistants/{assistant_id}",
@@ -131,7 +139,9 @@ pub fn user_routes() -> ApiRouter {
                     .tag("assistants")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_delete_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_delete_middleware,
+            )),
         )
         .api_route(
             "/assistants/default",
@@ -141,7 +151,9 @@ pub fn user_routes() -> ApiRouter {
                     .tag("assistants")
                     .response::<200, Json<Assistant>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_read_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_read_middleware,
+            )),
         )
         // Provider routes - User endpoints (active providers/models only)
         .api_route(

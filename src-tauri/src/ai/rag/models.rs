@@ -1,10 +1,10 @@
 // Database models for RAG functionality
 
+use crate::database::models::RagEngineSettings;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
-use crate::database::models::RagEngineSettings;
 
 /// RAG provider model
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -73,7 +73,8 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RagInstance {
             enabled: row.try_get("enabled")?,
             is_active: row.try_get("is_active")?,
             engine_type: row.try_get("engine_type")?,
-            engine_settings: row.try_get::<serde_json::Value, _>("engine_settings")
+            engine_settings: row
+                .try_get::<serde_json::Value, _>("engine_settings")
                 .map(|v| serde_json::from_value(v).unwrap_or_default())
                 .unwrap_or_default(),
             embedding_model_id: row.try_get("embedding_model_id")?,
@@ -225,7 +226,7 @@ pub struct SimpleGraphChunk {
     pub content: String,
     pub content_hash: String,
     pub token_count: i32,
-    pub entities: serde_json::Value, // Array of entity names
+    pub entities: serde_json::Value,      // Array of entity names
     pub relationships: serde_json::Value, // Array of relationship descriptions
     pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
@@ -414,19 +415,22 @@ impl RagInstance {
                 } else {
                     Ok(serde_json::json!({}))
                 }
-            },
+            }
             "simple_graph" => {
                 if let Some(ref settings) = self.engine_settings.simple_graph {
                     serde_json::to_value(settings)
                 } else {
                     Ok(serde_json::json!({}))
                 }
-            },
+            }
             _ => Ok(serde_json::json!({})),
         }
     }
 
-    pub fn set_engine_settings(&mut self, settings: serde_json::Value) -> Result<(), serde_json::Error> {
+    pub fn set_engine_settings(
+        &mut self,
+        settings: serde_json::Value,
+    ) -> Result<(), serde_json::Error> {
         match self.engine_type.as_str() {
             "simple_vector" => {
                 if settings.is_null() || settings == serde_json::json!({}) {
@@ -435,7 +439,7 @@ impl RagInstance {
                     self.engine_settings.simple_vector = Some(serde_json::from_value(settings)?);
                 }
                 Ok(())
-            },
+            }
             "simple_graph" => {
                 if settings.is_null() || settings == serde_json::json!({}) {
                     self.engine_settings.simple_graph = None;
@@ -443,8 +447,8 @@ impl RagInstance {
                     self.engine_settings.simple_graph = Some(serde_json::from_value(settings)?);
                 }
                 Ok(())
-            },
-            _ => Ok(())
+            }
+            _ => Ok(()),
         }
     }
 }
@@ -470,7 +474,10 @@ impl SimpleGraphChunk {
         Ok(())
     }
 
-    pub fn set_relationship_descriptions(&mut self, descriptions: Vec<String>) -> Result<(), serde_json::Error> {
+    pub fn set_relationship_descriptions(
+        &mut self,
+        descriptions: Vec<String>,
+    ) -> Result<(), serde_json::Error> {
         self.relationships = serde_json::to_value(descriptions)?;
         Ok(())
     }

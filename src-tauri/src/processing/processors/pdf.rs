@@ -47,7 +47,6 @@ impl PdfProcessor {
         Ok(cleaned_text)
     }
 
-
     async fn get_pdf_info(
         &self,
         file_path: &Path,

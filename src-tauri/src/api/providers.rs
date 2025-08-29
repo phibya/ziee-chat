@@ -17,7 +17,6 @@ use crate::database::{
 };
 use crate::types::PaginationQuery;
 
-
 // Base function for listing providers with filtering
 async fn list_providers_base(
     auth_user: &AuthenticatedUser,

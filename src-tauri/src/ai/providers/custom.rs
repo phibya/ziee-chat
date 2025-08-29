@@ -39,8 +39,8 @@ impl CustomProvider {
     /// Assumes maximum flexibility since custom providers can vary widely
     fn get_config(&self) -> CustomConfig {
         CustomConfig {
-            supports_vision: true,           // Assume vision support for flexibility
-            supports_tools: true,            // Assume tool support
+            supports_vision: true, // Assume vision support for flexibility
+            supports_tools: true,  // Assume tool support
             recommended_temperature: 0.7,
         }
     }
@@ -227,4 +227,3 @@ impl AIProvider for CustomProvider {
         }
     }
 }
-

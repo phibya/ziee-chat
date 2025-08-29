@@ -12,7 +12,10 @@ use crate::{
         middleware::AuthenticatedUser,
     },
     database::{
-        models::{RAGProvider, CreateRAGProviderRequest, UpdateRAGProviderRequest, RAGProviderListResponse},
+        models::{
+            CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse,
+            UpdateRAGProviderRequest,
+        },
         queries::rag_providers,
     },
     types::PaginationQuery,
@@ -54,7 +57,7 @@ pub async fn get_rag_provider(
             )
         })?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG provider")))?;
-    
+
     Ok((StatusCode::OK, Json(provider)))
 }
 
@@ -72,7 +75,7 @@ pub async fn create_rag_provider(
                 AppError::internal_error("Database operation failed"),
             )
         })?;
-    
+
     Ok((StatusCode::CREATED, Json(provider)))
 }
 
@@ -91,7 +94,7 @@ pub async fn update_rag_provider(
                 AppError::internal_error("Database operation failed"),
             )
         })?;
-    
+
     Ok((StatusCode::OK, Json(provider)))
 }
 
@@ -109,7 +112,7 @@ pub async fn delete_rag_provider(
                 AppError::internal_error("Database operation failed"),
             )
         })?;
-    
+
     Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT))
 }
 

@@ -42,7 +42,6 @@ pub struct TempFile {
     // Struct kept for API compatibility but fields removed as they were never read
 }
 
-
 pub struct ModelStorage {
     base_path: PathBuf,
 }
@@ -129,7 +128,6 @@ impl ModelStorage {
     /// Get total storage size for a provider
 
     /// Validate model files
-
 
     /// Convert absolute file path to relative path (relative to APP_DATA_DIR)
 
@@ -218,10 +216,6 @@ impl ModelStorage {
         })
     }
 
-
-
-
-
     /// Clear all temporary files from the temp directory
     /// Called during app startup and shutdown to ensure clean state
     pub async fn clear_temp_directory() -> Result<(), ModelStorageError> {
@@ -286,5 +280,4 @@ impl ModelStorage {
 
         Ok(())
     }
-
 }

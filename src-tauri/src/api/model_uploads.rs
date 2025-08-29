@@ -1,6 +1,6 @@
 use axum::{debug_handler, extract::Multipart, http::StatusCode, response::Json, Extension};
 use schemars::JsonSchema;
-use serde::{Deserialize};
+use serde::Deserialize;
 use serde_json;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
@@ -11,12 +11,12 @@ use crate::api::{
     errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
+use crate::database::models::DownloadPhase;
 use crate::database::{
     models::*,
     queries::{models as model_queries, repositories},
 };
 use crate::utils::git::{GitError, GitPhase, GitProgress, GitService};
-use crate::database::models::DownloadPhase;
 
 use crate::utils::model_storage::ModelStorage;
 
@@ -273,9 +273,7 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
             .capabilities
             .or_else(|| Some(ModelCapabilities::new())),
         parameters: request.parameters,
-        engine_type: request
-            .engine_type
-            .unwrap_or(EngineType::Mistralrs),
+        engine_type: request.engine_type.unwrap_or(EngineType::Mistralrs),
         engine_settings: request.engine_settings,
         file_format: request.file_format,
         source: request.source,
@@ -380,7 +378,10 @@ fn determine_files_to_copy(
             let before_of = &base_name[..of_pos];
             if let Some(dash_pos) = before_of.rfind('-') {
                 // Check if what's after the last dash is a number
-                if before_of[dash_pos + 1..].chars().all(|c| c.is_ascii_digit()) {
+                if before_of[dash_pos + 1..]
+                    .chars()
+                    .all(|c| c.is_ascii_digit())
+                {
                     base_name = &before_of[..dash_pos];
                 }
             }
@@ -389,7 +390,10 @@ fn determine_files_to_copy(
             let before_of = &base_name[..of_pos];
             if let Some(underscore_pos) = before_of.rfind('_') {
                 // Check if what's after the last underscore is a number
-                if before_of[underscore_pos + 1..].chars().all(|c| c.is_ascii_digit()) {
+                if before_of[underscore_pos + 1..]
+                    .chars()
+                    .all(|c| c.is_ascii_digit())
+                {
                     base_name = &before_of[..underscore_pos];
                 }
             }
@@ -1231,11 +1235,7 @@ pub async fn initiate_repository_download(
                     source_dir: cache_path,
                     capabilities: request.capabilities,
                     parameters: request.parameters,
-                    engine_type: Some(
-                        request
-                            .engine_type
-                            .unwrap_or(EngineType::Mistralrs),
-                    ),
+                    engine_type: Some(request.engine_type.unwrap_or(EngineType::Mistralrs)),
                     engine_settings: request.engine_settings,
                     source: Some(request.source.clone()),
                 })

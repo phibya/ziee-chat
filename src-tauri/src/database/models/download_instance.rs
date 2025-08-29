@@ -31,7 +31,6 @@ pub enum DownloadPhase {
     Error,
 }
 
-
 /// Progress data for download tracking
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct DownloadProgressData {
@@ -255,5 +254,4 @@ impl DownloadInstance {
             DownloadStatus::Pending | DownloadStatus::Downloading
         )
     }
-
 }

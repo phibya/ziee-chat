@@ -262,7 +262,10 @@ impl LlamaCppEngine {
         let model_path_absolute = model.get_model_absolute_path();
 
         // Get llamacpp settings or use defaults
-        let settings = model.engine_settings.as_ref().and_then(|s| s.llamacpp.as_ref());
+        let settings = model
+            .engine_settings
+            .as_ref()
+            .and_then(|s| s.llamacpp.as_ref());
 
         // Add basic server configuration
         args.extend(["--port".to_string(), port.to_string()]);
@@ -408,7 +411,8 @@ impl LlamaCppEngine {
                     .devices
                     .iter()
                     .filter(|device| {
-                        device.device_type.as_str() == auto_detected_device_type && device.is_available
+                        device.device_type.as_str() == auto_detected_device_type
+                            && device.is_available
                     })
                     .map(|device| device.id)
                     .collect();

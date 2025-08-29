@@ -777,8 +777,8 @@ pub struct Model {
     pub file_size_bytes: Option<i64>,
     pub validation_status: Option<String>,
     pub validation_issues: Option<Vec<String>>,
-    pub port: Option<i32>,   // Port number where the model server is running
-    pub pid: Option<i32>,    // Process ID of the running model server
+    pub port: Option<i32>, // Port number where the model server is running
+    pub pid: Option<i32>,  // Process ID of the running model server
     pub engine_type: EngineType, // Engine type: Mistralrs | Llamacpp | None - REQUIRED
     pub engine_settings: Option<ModelEngineSettings>, // Engine-specific settings
     pub file_format: FileFormat, // Model file format: safetensors, gguf, pytorch, etc. - REQUIRED
@@ -820,12 +820,12 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             if json_val.is_object() && json_val.as_object().unwrap().is_empty() {
                 None
             } else {
-                Some(serde_json::from_value(json_val).map_err(|e| {
-                    sqlx::Error::ColumnDecode {
+                Some(
+                    serde_json::from_value(json_val).map_err(|e| sqlx::Error::ColumnDecode {
                         index: "engine_settings".into(),
                         source: Box::new(e),
-                    }
-                })?)
+                    })?,
+                )
             }
         } else {
             None
@@ -873,23 +873,21 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
             pid: row.try_get("pid")?,
             engine_type: {
                 let engine_type_str: String = row.try_get("engine_type")?;
-                EngineType::from_str(&engine_type_str)
-                    .ok_or_else(|| sqlx::Error::ColumnDecode {
-                        index: "engine_type".to_string(),
-                        source: Box::new(std::io::Error::new(
-                            std::io::ErrorKind::InvalidData,
-                            format!("Invalid engine type: {}", engine_type_str),
-                        )),
-                    })?
+                EngineType::from_str(&engine_type_str).ok_or_else(|| sqlx::Error::ColumnDecode {
+                    index: "engine_type".to_string(),
+                    source: Box::new(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("Invalid engine type: {}", engine_type_str),
+                    )),
+                })?
             },
             engine_settings,
             file_format: {
                 let file_format_str: String = row.try_get("file_format")?;
-                FileFormat::from_str(&file_format_str)
-                    .ok_or_else(|| sqlx::Error::ColumnDecode {
-                        index: "file_format".to_string(),
-                        source: format!("Invalid file format: {}", file_format_str).into(),
-                    })?
+                FileFormat::from_str(&file_format_str).ok_or_else(|| sqlx::Error::ColumnDecode {
+                    index: "file_format".to_string(),
+                    source: format!("Invalid file format: {}", file_format_str).into(),
+                })?
             }, // Convert string to enum
             source,
             files: None, // Files need to be loaded separately
@@ -909,7 +907,7 @@ pub struct CreateModelRequest {
     pub parameters: Option<ModelParameters>,
     pub engine_type: EngineType, // Required field
     pub engine_settings: Option<ModelEngineSettings>,
-    pub file_format: FileFormat,        // Required field
+    pub file_format: FileFormat,    // Required field
     pub source: Option<SourceInfo>, // Source information for tracking download origin
 }
 
@@ -947,7 +945,6 @@ pub struct ModelFileInfo {
     pub file_type: String,
     pub uploaded_at: DateTime<Utc>,
 }
-
 
 impl Model {
     /// Get the model path using the pattern {provider_id}/{id}

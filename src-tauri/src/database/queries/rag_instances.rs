@@ -1,12 +1,12 @@
-use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, UpdateRAGInstanceRequest, 
-        RAGInstance, RAGInstanceListResponse
+        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGInstance,
+        RAGInstanceListResponse, UpdateRAGInstanceRequest,
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
 };
+use uuid::Uuid;
 
 /// Create a user RAG instance (is_system = false)
 pub async fn create_user_rag_instance(
@@ -19,13 +19,16 @@ pub async fn create_user_rag_instance(
     // First validate that user can create instances with this provider
     let can_create = can_user_create_rag_instance(user_id, request.provider_id).await?;
     if !can_create {
-        eprintln!("User {} cannot create instances with provider {}", user_id, request.provider_id);
+        eprintln!(
+            "User {} cannot create instances with provider {}",
+            user_id, request.provider_id
+        );
         return Err(sqlx::Error::RowNotFound);
     }
 
     let instance_id = Uuid::new_v4();
     let engine_type_str = request.engine_type.as_str();
-    
+
     // Serialize consolidated engine settings for database storage
     let engine_settings_json = serde_json::to_value(&request.engine_settings.unwrap_or_default())
         .unwrap_or_else(|_| serde_json::json!({}));
@@ -71,7 +74,7 @@ pub async fn create_system_rag_instance(
 
     let instance_id = Uuid::new_v4();
     let engine_type_str = request.engine_type.as_str();
-    
+
     // Serialize consolidated engine settings for database storage
     let engine_settings_json = serde_json::to_value(&request.engine_settings.unwrap_or_default())
         .unwrap_or_else(|_| serde_json::json!({}));
@@ -109,7 +112,10 @@ pub async fn create_system_rag_instance(
 }
 
 /// Get RAG instance by ID (active instances for regular users, all instances for admins)
-pub async fn get_rag_instance(instance_id: Uuid, user_id: Uuid) -> Result<Option<RAGInstance>, sqlx::Error> {
+pub async fn get_rag_instance(
+    instance_id: Uuid,
+    user_id: Uuid,
+) -> Result<Option<RAGInstance>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -232,11 +238,10 @@ pub async fn list_system_rag_instances(
     let offset = (page - 1) * per_page;
 
     // Get total count of system instances
-    let total_count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM rag_instances WHERE is_system = true"
-    )
-    .fetch_one(pool)
-    .await?;
+    let total_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM rag_instances WHERE is_system = true")
+            .fetch_one(pool)
+            .await?;
 
     // Get system instances with pagination
     let instances: Vec<RAGInstance> = sqlx::query_as(
@@ -318,18 +323,21 @@ pub async fn delete_rag_instance(instance_id: Uuid) -> Result<bool, sqlx::Error>
         .await?;
 
     let deleted = result.rows_affected() > 0;
-    
+
     if deleted {
         // Clean up file system
-        if let Err(e) = crate::RAG_FILE_STORAGE.delete_instance_files(instance_id).await {
+        if let Err(e) = crate::RAG_FILE_STORAGE
+            .delete_instance_files(instance_id)
+            .await
+        {
             eprintln!("Failed to delete RAG instance files from filesystem: {}", e);
         }
     }
-    
+
     Ok(deleted)
 }
 
-/// Validate user can access RAG instance 
+/// Validate user can access RAG instance
 /// - Users can access their own instances
 /// - Users can view system instances if they have provider access
 /// - Users can edit system instances if they have RagAdminInstancesEdit permission
@@ -345,7 +353,7 @@ pub async fn validate_rag_instance_access(
     let query_result: Option<(Uuid, Option<Uuid>, bool, Uuid)> = sqlx::query_as(
         "SELECT ri.id, ri.user_id, ri.is_system, ri.provider_id
          FROM rag_instances ri 
-         WHERE ri.id = $1"
+         WHERE ri.id = $1",
     )
     .bind(instance_id)
     .fetch_optional(pool)
@@ -373,7 +381,7 @@ pub async fn validate_rag_instance_access(
          JOIN user_groups ug ON ugm.group_id = ug.id
          WHERE ugm.user_id = $1 AND ug.is_active = true 
          AND ugrp.provider_id = $2
-         LIMIT 1"
+         LIMIT 1",
     )
     .bind(user_id)
     .bind(provider_id)
@@ -393,7 +401,7 @@ pub async fn validate_rag_instance_access(
     // For write operations on system instances, check admin permission
     // Use existing function to get user with all related data including groups
     use crate::database::queries::users::get_user_by_id;
-    
+
     if let Some(user) = get_user_by_id(user_id).await? {
         // Check if user has admin edit permission using the permission system
         use crate::api::permissions::check_permission;

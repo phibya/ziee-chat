@@ -24,17 +24,15 @@ use crate::utils::proxy::create_proxy_config;
 
 // Macro to create standard providers with common parameters
 macro_rules! create_standard_provider {
-    ($provider_type:ident, $provider:expr, $proxy_config:expr) => {
-        {
-            let provider_instance = $provider_type::new(
-                $provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
-                $provider.base_url.clone(),
-                $proxy_config,
-                $provider.id,
-            )?;
-            Ok(Box::new(provider_instance))
-        }
-    };
+    ($provider_type:ident, $provider:expr, $proxy_config:expr) => {{
+        let provider_instance = $provider_type::new(
+            $provider.api_key.as_ref().unwrap_or(&String::new()).clone(),
+            $provider.base_url.clone(),
+            $proxy_config,
+            $provider.id,
+        )?;
+        Ok(Box::new(provider_instance))
+    }};
 }
 
 // Structure to hold process information

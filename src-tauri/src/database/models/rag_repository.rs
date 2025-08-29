@@ -71,4 +71,3 @@ pub struct RAGRepositoryConnectionTestResponse {
     pub message: String,
     pub available_databases_count: Option<i32>,
 }
-

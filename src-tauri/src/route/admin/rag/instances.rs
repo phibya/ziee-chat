@@ -3,16 +3,12 @@ use aide::axum::ApiRouter;
 use axum::{middleware, Json};
 
 use crate::api::middleware::permissions::{
-    rag_admin_instances_create_middleware,
-    rag_admin_instances_delete_middleware,
-    rag_admin_instances_edit_middleware,
-    rag_admin_instances_read_middleware,
+    rag_admin_instances_create_middleware, rag_admin_instances_delete_middleware,
+    rag_admin_instances_edit_middleware, rag_admin_instances_read_middleware,
 };
 use crate::api::rag::admin_instances::{
-    create_system_rag_instance_handler,
-    delete_system_rag_instance_handler,
-    get_system_rag_instance_handler,
-    list_system_rag_instances_handler,
+    create_system_rag_instance_handler, delete_system_rag_instance_handler,
+    get_system_rag_instance_handler, list_system_rag_instances_handler,
     update_system_rag_instance_handler,
 };
 use crate::database::models::{RAGInstance, RAGInstanceListResponse};

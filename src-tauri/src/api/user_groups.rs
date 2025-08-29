@@ -10,8 +10,8 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        AssignProviderToGroupRequest, AssignRAGProviderToGroupRequest, AssignUserToGroupRequest, CreateUserGroupRequest,
-        UpdateUserGroupRequest,
+        AssignProviderToGroupRequest, AssignRAGProviderToGroupRequest, AssignUserToGroupRequest,
+        CreateUserGroupRequest, UpdateUserGroupRequest,
     },
     queries::{user_group_providers, user_group_rag_providers, user_groups},
 };
@@ -166,16 +166,19 @@ pub async fn update_user_group(
     // Handle RAG provider assignments if provided
     if let Some(rag_provider_ids) = &request.rag_provider_ids {
         // First, get current assignments
-        let current_rag_providers = user_group_rag_providers::get_rag_provider_ids_for_group(group_id)
-            .await
-            .unwrap_or_default();
+        let current_rag_providers =
+            user_group_rag_providers::get_rag_provider_ids_for_group(group_id)
+                .await
+                .unwrap_or_default();
 
         // Remove RAG providers that are no longer in the list
         for current_provider in &current_rag_providers {
             if !rag_provider_ids.contains(current_provider) {
-                if let Err(e) =
-                    user_group_rag_providers::remove_rag_provider_from_group(group_id, *current_provider)
-                        .await
+                if let Err(e) = user_group_rag_providers::remove_rag_provider_from_group(
+                    group_id,
+                    *current_provider,
+                )
+                .await
                 {
                     eprintln!("Error removing RAG provider from group: {}", e);
                 }
@@ -189,7 +192,8 @@ pub async fn update_user_group(
                     group_id,
                     provider_id: *provider_id,
                 };
-                if let Err(e) = user_group_rag_providers::assign_rag_provider_to_group(assign_request).await
+                if let Err(e) =
+                    user_group_rag_providers::assign_rag_provider_to_group(assign_request).await
                 {
                     eprintln!("Error assigning RAG provider to group: {}", e);
                 }

@@ -10,9 +10,8 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        CreateRAGRepositoryRequest,
-        RAGRepository, RAGRepositoryConnectionTestResponse, RAGRepositoryListResponse,
-        UpdateRAGRepositoryRequest,
+        CreateRAGRepositoryRequest, RAGRepository, RAGRepositoryConnectionTestResponse,
+        RAGRepositoryListResponse, UpdateRAGRepositoryRequest,
     },
     queries::rag_repositories,
 };
@@ -127,4 +126,3 @@ pub async fn test_rag_repository_connection(
 
     Ok((StatusCode::OK, Json(response)))
 }
-

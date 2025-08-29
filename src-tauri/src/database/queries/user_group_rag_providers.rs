@@ -1,6 +1,8 @@
 use uuid::Uuid;
 
-use crate::database::queries::{rag_providers::get_rag_provider_by_id, user_groups::get_user_group_by_id};
+use crate::database::queries::{
+    rag_providers::get_rag_provider_by_id, user_groups::get_user_group_by_id,
+};
 use crate::database::{
     get_database_pool,
     models::{
@@ -71,7 +73,6 @@ pub async fn assign_rag_provider_to_group(
     })
 }
 
-
 /// Remove a RAG provider from a user group
 pub async fn remove_rag_provider_from_group(
     group_id: Uuid,
@@ -93,7 +94,9 @@ pub async fn remove_rag_provider_from_group(
 }
 
 /// Get all RAG providers available to a user for creating instances
-pub async fn get_creatable_rag_providers_for_user(user_id: Uuid) -> Result<Vec<RAGProvider>, sqlx::Error> {
+pub async fn get_creatable_rag_providers_for_user(
+    user_id: Uuid,
+) -> Result<Vec<RAGProvider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -123,7 +126,10 @@ pub async fn get_creatable_rag_providers_for_user(user_id: Uuid) -> Result<Vec<R
 }
 
 /// Check if a user can create instances with a specific RAG provider
-pub async fn can_user_create_rag_instance(user_id: Uuid, provider_id: Uuid) -> Result<bool, sqlx::Error> {
+pub async fn can_user_create_rag_instance(
+    user_id: Uuid,
+    provider_id: Uuid,
+) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
@@ -153,12 +159,11 @@ pub async fn get_rag_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>,
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
-        "SELECT provider_id FROM user_group_rag_providers WHERE group_id = $1"
-    )
-    .bind(group_id)
-    .fetch_all(pool)
-    .await?;
+    let provider_ids: Vec<(Uuid,)> =
+        sqlx::query_as("SELECT provider_id FROM user_group_rag_providers WHERE group_id = $1")
+            .bind(group_id)
+            .fetch_all(pool)
+            .await?;
 
     Ok(provider_ids.into_iter().map(|(id,)| id).collect())
 }

@@ -7,6 +7,5 @@ pub(crate) async fn types() -> ApiResult<StatusCode> {
     Ok((StatusCode::OK, StatusCode::OK))
 }
 
-
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub(crate) struct BlobType {}

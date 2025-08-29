@@ -1,6 +1,6 @@
 use crate::api;
 use crate::database::models::project::{ProjectDetailResponse, ProjectListResponse};
-use crate::database::models::{ Project};
+use crate::database::models::Project;
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,
@@ -17,7 +17,9 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<ProjectListResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::projects_read_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::projects_read_middleware,
+            )),
         )
         .api_route(
             "/projects",
@@ -27,7 +29,9 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<Project>>()
             })
-            .layer(middleware::from_fn(api::middleware::projects_create_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::projects_create_middleware,
+            )),
         )
         .api_route(
             "/projects/{project_id}",
@@ -37,7 +41,9 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<ProjectDetailResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::projects_read_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::projects_read_middleware,
+            )),
         )
         .api_route(
             "/projects/{project_id}",
@@ -47,7 +53,9 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<200, Json<Project>>()
             })
-            .layer(middleware::from_fn(api::middleware::projects_edit_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::projects_edit_middleware,
+            )),
         )
         .api_route(
             "/projects/{project_id}",
@@ -57,6 +65,8 @@ pub fn project_routes() -> ApiRouter {
                     .tag("projects")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::projects_delete_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::projects_delete_middleware,
+            )),
         )
 }

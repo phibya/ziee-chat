@@ -1,7 +1,5 @@
 use crate::api;
-use crate::database::models::{
-     UserGroup, UserGroupListResponse, UserListResponse,
-};
+use crate::database::models::{UserGroup, UserGroupListResponse, UserListResponse};
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,
@@ -83,7 +81,9 @@ pub fn admin_group_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::groups_assign_users_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::groups_assign_users_middleware,
+            )),
         )
         .api_route(
             "/groups/{user_id}/{group_id}/remove",
@@ -93,6 +93,8 @@ pub fn admin_group_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::groups_assign_users_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::groups_assign_users_middleware,
+            )),
         )
 }

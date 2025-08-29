@@ -40,12 +40,12 @@ impl RagFileStorage {
     ) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
         let instance_dir = self.get_instance_dir(instance_id);
         tokio_fs::create_dir_all(&instance_dir).await?;
-        
+
         let file_path = self.get_file_path(instance_id, file_id, extension);
         let mut file = tokio_fs::File::create(&file_path).await?;
         file.write_all(data).await?;
         file.sync_all().await?;
-        
+
         Ok(file_path)
     }
 

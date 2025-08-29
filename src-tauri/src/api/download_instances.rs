@@ -20,7 +20,8 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::{
     models::{
-        DownloadInstance, DownloadInstanceListResponse, DownloadPhase, DownloadStatus, UpdateDownloadStatusRequest,
+        DownloadInstance, DownloadInstanceListResponse, DownloadPhase, DownloadStatus,
+        UpdateDownloadStatusRequest,
     },
     queries::download_instances,
 };
@@ -38,7 +39,6 @@ pub async fn list_all_downloads(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Query(params): Query<DownloadPaginationQuery>,
 ) -> ApiResult<Json<DownloadInstanceListResponse>> {
-
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(20);
 
@@ -67,9 +67,7 @@ pub async fn get_download(
     Path(download_id): Path<Uuid>,
 ) -> ApiResult<Json<DownloadInstance>> {
     match download_instances::get_download_instance_by_id(download_id).await {
-        Ok(Some(download)) => {
-            Ok((StatusCode::OK, Json(download)))
-        }
+        Ok(Some(download)) => Ok((StatusCode::OK, Json(download))),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
             AppError::not_found("Download instance"),
@@ -197,7 +195,6 @@ pub async fn delete_download(
     // Verify the download exists and user has access
     match download_instances::get_download_instance_by_id(download_id).await {
         Ok(Some(download)) => {
-
             // Only allow deleting terminal states
             if !download.is_terminal() {
                 return Err((
@@ -259,7 +256,11 @@ impl From<&DownloadInstance> for DownloadProgressUpdate {
         DownloadProgressUpdate {
             id: download.id.to_string(),
             status: download.status.as_str().to_string(),
-            phase: download.progress_data.as_ref().map(|p| p.phase).unwrap_or(DownloadPhase::Created),
+            phase: download
+                .progress_data
+                .as_ref()
+                .map(|p| p.phase)
+                .unwrap_or(DownloadPhase::Created),
             current: download.progress_data.as_ref().map(|p| p.current),
             total: download.progress_data.as_ref().map(|p| p.total),
             message: download.progress_data.as_ref().map(|p| p.message.clone()),
@@ -290,7 +291,6 @@ pub enum DownloadProgressEvent {
 pub async fn subscribe_download_progress(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult<Sse<impl Stream<Item = Result<Event, Infallible>>>> {
-
     // Create interval for polling (every 2 seconds)
     let mut interval_stream = IntervalStream::new(interval(Duration::from_secs(2)));
 

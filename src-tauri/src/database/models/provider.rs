@@ -4,8 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
-use super::{proxy::ProxySettings, model::DeviceType};
-
+use super::{model::DeviceType, proxy::ProxySettings};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]

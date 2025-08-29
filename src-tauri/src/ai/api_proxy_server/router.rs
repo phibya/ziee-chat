@@ -13,9 +13,7 @@ pub struct RequestRouter {
 
 impl RequestRouter {
     pub fn new(registry: Arc<RwLock<ModelRegistry>>) -> Self {
-        Self {
-            registry,
-        }
+        Self { registry }
     }
 
     pub async fn handle_models_request(&self) -> Result<serde_json::Value, ProxyError> {
@@ -116,14 +114,18 @@ impl RequestRouter {
             .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
             .ok_or(ProxyError::ModelNotFound(model_id.to_string()))?;
 
-        let db_provider = crate::database::queries::providers::get_provider_by_id(db_model.provider_id)
-            .await
-            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
-            .ok_or(ProxyError::ProviderNotFound(db_model.provider_id))?;
+        let db_provider =
+            crate::database::queries::providers::get_provider_by_id(db_model.provider_id)
+                .await
+                .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+                .ok_or(ProxyError::ProviderNotFound(db_model.provider_id))?;
 
-        let provider = crate::ai::model_manager::create_ai_provider_with_model_id(&db_provider, Some(model_id))
-            .await
-            .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
+        let provider = crate::ai::model_manager::create_ai_provider_with_model_id(
+            &db_provider,
+            Some(model_id),
+        )
+        .await
+        .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
 
         // 5. Forward request using provider's implementation
         let response = provider
@@ -159,14 +161,18 @@ impl RequestRouter {
             .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
             .ok_or(ProxyError::ModelNotFound(model_id.to_string()))?;
 
-        let db_provider = crate::database::queries::providers::get_provider_by_id(db_model.provider_id)
-            .await
-            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
-            .ok_or(ProxyError::ProviderNotFound(db_model.provider_id))?;
+        let db_provider =
+            crate::database::queries::providers::get_provider_by_id(db_model.provider_id)
+                .await
+                .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+                .ok_or(ProxyError::ProviderNotFound(db_model.provider_id))?;
 
-        let provider = crate::ai::model_manager::create_ai_provider_with_model_id(&db_provider, Some(model_id))
-            .await
-            .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
+        let provider = crate::ai::model_manager::create_ai_provider_with_model_id(
+            &db_provider,
+            Some(model_id),
+        )
+        .await
+        .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
 
         // 5. Forward request using provider's implementation
         let response = provider

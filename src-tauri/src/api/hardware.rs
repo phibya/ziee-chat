@@ -11,10 +11,7 @@ use sysinfo::System;
 use tokio::time::interval;
 use uuid::Uuid;
 
-use crate::api::{
-  errors::ApiResult,
-  middleware::AuthenticatedUser,
-};
+use crate::api::{errors::ApiResult, middleware::AuthenticatedUser};
 
 // Hardware information structures
 #[derive(Debug, Clone, Serialize, JsonSchema)]
@@ -176,7 +173,6 @@ pub async fn get_hardware_info(
 pub async fn subscribe_hardware_usage(
     Extension(_auth_user): Extension<AuthenticatedUser>,
 ) -> ApiResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
-
     let client_id = Uuid::new_v4();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 

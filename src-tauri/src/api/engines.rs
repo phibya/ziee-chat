@@ -2,7 +2,7 @@ use crate::ai::engines::{LlamaCppEngine, LocalEngine, MistralRsEngine};
 use crate::api::errors::ApiResult;
 use axum::{debug_handler, http::StatusCode, response::Json};
 use schemars::JsonSchema;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]

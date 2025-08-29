@@ -16,7 +16,9 @@ pub fn hub_routes() -> ApiRouter {
                     .tag("hub")
                     .response::<200, Json<Vec<HubModel>>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::hub_models_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::hub_models_read_middleware,
+            )),
         )
         .api_route(
             "/hub/assistants",
@@ -26,7 +28,9 @@ pub fn hub_routes() -> ApiRouter {
                     .tag("hub")
                     .response::<200, Json<Vec<HubAssistant>>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::hub_assistants_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::hub_assistants_read_middleware,
+            )),
         )
         .api_route(
             "/hub/refresh",
@@ -36,7 +40,9 @@ pub fn hub_routes() -> ApiRouter {
                     .tag("hub")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::hub_refresh_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::hub_refresh_middleware,
+            )),
         )
         .api_route(
             "/hub/version",
@@ -46,6 +52,8 @@ pub fn hub_routes() -> ApiRouter {
                     .tag("hub")
                     .response::<200, Json<HubVersionResponse>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::hub_version_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::hub_version_read_middleware,
+            )),
         )
 }

@@ -1,6 +1,4 @@
-use crate::api::{
-    engines::{list_engines, EngineInfo},
-};
+use crate::api::engines::{list_engines, EngineInfo};
 use aide::axum::{routing::get_with, ApiRouter};
 use axum::{middleware, Json};
 
@@ -13,6 +11,8 @@ pub fn admin_engine_routes() -> ApiRouter {
                 .tag("admin")
                 .response::<200, Json<Vec<EngineInfo>>>()
         })
-        .layer(middleware::from_fn(crate::api::middleware::engines_read_middleware)),
+        .layer(middleware::from_fn(
+            crate::api::middleware::engines_read_middleware,
+        )),
     )
 }

@@ -3,8 +3,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::api::{
-  errors::{ApiResult, AppError},
-  middleware::AuthenticatedUser,
+    errors::{ApiResult, AppError},
+    middleware::AuthenticatedUser,
 };
 use crate::database::{
     models::{UserSetting, UserSettingRequest, UserSettingsResponse},

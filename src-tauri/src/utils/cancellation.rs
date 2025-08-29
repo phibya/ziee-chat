@@ -34,7 +34,6 @@ impl CancellationToken {
             true
         }
     }
-
 }
 
 /// Global cancellation tracker for managing download cancellations
@@ -76,7 +75,6 @@ impl CancellationTracker {
         let mut senders = self.cancellation_senders.write().await;
         senders.remove(&download_id);
     }
-
 }
 
 // Global instance

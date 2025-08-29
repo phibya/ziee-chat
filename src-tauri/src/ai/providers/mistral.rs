@@ -10,7 +10,8 @@ use uuid::Uuid;
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
     AIProvider, ChatRequest, ChatResponse, ContentPart, EmbeddingsRequest, EmbeddingsResponse,
-    FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
+    FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingChunk,
+    StreamingResponse, Usage,
 };
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
@@ -111,7 +112,6 @@ impl MistralProvider {
             provider_id,
         })
     }
-
 
     /// Get model-specific configuration
     fn get_model_config(&self, model_name: &str) -> ModelConfig {
@@ -248,7 +248,8 @@ impl MistralProvider {
         }
 
         // Validate image resolution against model limits
-        self.validate_image_resolution(&file_data, model_config.max_resolution).await?;
+        self.validate_image_resolution(&file_data, model_config.max_resolution)
+            .await?;
 
         // Encode to base64
         let base64_data = base64::engine::general_purpose::STANDARD.encode(&file_data);
@@ -367,13 +368,14 @@ impl MistralProvider {
                 "Image should be validated against max resolution: {}x{}",
                 max_resolution.0, max_resolution.1
             );
-            
+
             // Simple size check as proxy for resolution
             if file_data.len() > 10 * 1024 * 1024 {
                 return Err(format!(
                     "Image file size too large. Max resolution supported: {}x{}",
                     max_resolution.0, max_resolution.1
-                ).into());
+                )
+                .into());
             }
         }
         Ok(())
@@ -400,14 +402,14 @@ impl MistralProvider {
             if let Some(temperature) = params.temperature {
                 payload["temperature"] = json!(temperature);
             }
-            
+
             // Use context_window to optimize max_tokens
             let optimized_max_tokens = self.optimize_max_tokens_for_context_window(
                 params.max_tokens,
                 model_config.context_window,
             );
             payload["max_tokens"] = json!(optimized_max_tokens);
-            
+
             if let Some(top_p) = params.top_p {
                 payload["top_p"] = json!(top_p);
             }
@@ -416,17 +418,13 @@ impl MistralProvider {
             }
         } else {
             // Set default max_tokens based on context window even if no params provided
-            let default_max_tokens = self.optimize_max_tokens_for_context_window(
-                None,
-                model_config.context_window,
-            );
+            let default_max_tokens =
+                self.optimize_max_tokens_for_context_window(None, model_config.context_window);
             payload["max_tokens"] = json!(default_max_tokens);
         }
 
         Ok(payload)
     }
-
-
 }
 
 #[async_trait]
@@ -673,8 +671,9 @@ impl AIProvider for MistralProvider {
         request: EmbeddingsRequest,
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}/embeddings", self.base_url);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
@@ -692,4 +691,3 @@ impl AIProvider for MistralProvider {
         Ok(embeddings_response)
     }
 }
-

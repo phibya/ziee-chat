@@ -48,7 +48,9 @@ pub fn admin_user_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<UserActiveStatusResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::users_toggle_status_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::users_toggle_status_middleware,
+            )),
         )
         .api_route(
             "/users/reset-password",
@@ -58,7 +60,9 @@ pub fn admin_user_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(api::middleware::users_reset_password_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::users_reset_password_middleware,
+            )),
         )
         .api_route(
             "/users",

@@ -125,7 +125,6 @@ impl HuggingFaceProvider {
         })
     }
 
-
     /// Get model-specific configuration
     fn get_model_config(&self, model_name: &str) -> ModelConfig {
         let lower_name = model_name.to_lowercase();
@@ -406,7 +405,9 @@ impl HuggingFaceProvider {
         };
 
         match requested_max_tokens {
-            Some(max_tokens) => max_tokens.min(model_config.max_tokens).min(context_based_max),
+            Some(max_tokens) => max_tokens
+                .min(model_config.max_tokens)
+                .min(context_based_max),
             None => model_config.max_tokens.min(context_based_max),
         }
     }
@@ -457,10 +458,10 @@ impl HuggingFaceProvider {
             .await?;
 
         let params = request.parameters.as_ref();
-        
+
         // Use supports_streaming to determine if streaming is allowed
         let effective_stream = stream && model_config.supports_streaming;
-        
+
         let mut payload = json!({
             "model": request.model_name,
             "messages": messages,
@@ -472,14 +473,12 @@ impl HuggingFaceProvider {
             if let Some(temperature) = params.temperature {
                 payload["temperature"] = json!(temperature);
             }
-            
+
             // Use context_window and model_type to optimize max_tokens
-            let optimized_max_tokens = self.optimize_max_tokens_for_model(
-                params.max_tokens,
-                &model_config,
-            );
+            let optimized_max_tokens =
+                self.optimize_max_tokens_for_model(params.max_tokens, &model_config);
             payload["max_tokens"] = json!(optimized_max_tokens);
-            
+
             if let Some(top_p) = params.top_p {
                 payload["top_p"] = json!(top_p);
             }
@@ -762,20 +761,21 @@ impl AIProvider for HuggingFaceProvider {
         request: EmbeddingsRequest,
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}/models/{}", self.base_url, request.model);
-        
+
         let texts = match &request.input {
             EmbeddingsInput::Single(text) => vec![text.clone()],
             EmbeddingsInput::Multiple(texts) => texts.clone(),
         };
-        
+
         let hf_request = json!({
             "inputs": texts,
             "options": {
                 "wait_for_model": true
             }
         });
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
@@ -791,7 +791,7 @@ impl AIProvider for HuggingFaceProvider {
 
         // Parse HuggingFace response - returns array of embeddings
         let hf_response: Vec<Vec<f32>> = response.json().await?;
-        
+
         // Convert to standard format
         let data: Vec<EmbeddingData> = hf_response
             .into_iter()
@@ -802,7 +802,7 @@ impl AIProvider for HuggingFaceProvider {
                 embedding,
             })
             .collect();
-            
+
         Ok(EmbeddingsResponse {
             object: "list".to_string(),
             data,
@@ -814,4 +814,3 @@ impl AIProvider for HuggingFaceProvider {
         })
     }
 }
-

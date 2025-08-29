@@ -1,8 +1,6 @@
 use crate::api::middleware::permissions::{
-    rag_admin_providers_create_middleware,
-    rag_admin_providers_delete_middleware,
-    rag_admin_providers_edit_middleware,
-    rag_admin_providers_read_middleware,
+    rag_admin_providers_create_middleware, rag_admin_providers_delete_middleware,
+    rag_admin_providers_edit_middleware, rag_admin_providers_read_middleware,
 };
 use crate::api::rag::providers;
 use crate::database::models::{RAGProvider, RAGProviderListResponse};
@@ -67,5 +65,4 @@ pub fn admin_rag_provider_routes() -> ApiRouter {
             })
             .layer(middleware::from_fn(rag_admin_providers_read_middleware)),
         )
-
 }

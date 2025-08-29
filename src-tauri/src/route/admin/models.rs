@@ -29,9 +29,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<Model>>()
             })
-            .layer(middleware::from_fn(
-                api::middleware::models_read_middleware,
-            )),
+            .layer(middleware::from_fn(api::middleware::models_read_middleware)),
         )
         .api_route(
             "/models/{model_id}",
@@ -41,9 +39,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<Model>>()
             })
-            .layer(middleware::from_fn(
-                api::middleware::models_edit_middleware,
-            )),
+            .layer(middleware::from_fn(api::middleware::models_edit_middleware)),
         )
         .api_route(
             "/models/{model_id}",
@@ -77,9 +73,7 @@ pub fn admin_model_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(
-                api::middleware::models_stop_middleware,
-            )),
+            .layer(middleware::from_fn(api::middleware::models_stop_middleware)),
         )
         .api_route(
             "/models/{model_id}/enable",

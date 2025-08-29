@@ -1,8 +1,7 @@
 // Entity extraction service with multi-pass gleaning approach (inspired by LightRAG)
 
 use crate::ai::rag::{
-    services::{LLMService, ServiceHealth},
-    types::{Entity, EntityExtractionConfig, LLMConfig, Relationship},
+    types::{Entity, EntityExtractionConfig, Relationship},
     RAGError, RAGResult,
 };
 use async_trait::async_trait;
@@ -34,9 +33,6 @@ pub trait EntityExtractionService: Send + Sync {
         text: &str,
         config: EntityExtractionConfig,
     ) -> RAGResult<(Vec<Entity>, Vec<Relationship>)>;
-
-    /// Health check
-    async fn health_check(&self) -> RAGResult<ServiceHealth>;
 }
 
 /// Entity extraction result for internal processing
@@ -69,18 +65,22 @@ struct RelationshipCandidate {
 
 /// Implementation of entity extraction service
 pub struct EntityExtractionServiceImpl {
-    llm_service: Arc<dyn LLMService>,
+    ai_provider: Arc<dyn crate::ai::core::AIProvider>,
 }
 
 impl EntityExtractionServiceImpl {
-    pub fn new(llm_service: Arc<dyn LLMService>) -> Self {
-        Self { llm_service }
+    pub fn new(ai_provider: Arc<dyn crate::ai::core::AIProvider>) -> Self {
+        Self { ai_provider }
     }
 
     /// Create the initial entity extraction prompt
-    fn create_entity_extraction_prompt(&self, text: &str, config: &EntityExtractionConfig) -> String {
+    fn create_entity_extraction_prompt(
+        &self,
+        text: &str,
+        config: &EntityExtractionConfig,
+    ) -> String {
         let entity_types = config.entity_types.join(", ");
-        
+
         let cot_instruction = if config.use_cot_reasoning {
             "\n\nUse step-by-step reasoning to identify entities. Think about:\n1. What are the key subjects, objects, and concepts mentioned?\n2. How do they relate to the specified entity types?\n3. What is the context that helps determine their importance?"
         } else {
@@ -125,8 +125,14 @@ JSON Response:"#,
     }
 
     /// Create the gleaning prompt for finding missed entities
-    fn create_gleaning_prompt(&self, text: &str, existing_entities: &[EntityCandidate], config: &EntityExtractionConfig) -> String {
-        let existing_names: Vec<String> = existing_entities.iter().map(|e| e.name.clone()).collect();
+    fn create_gleaning_prompt(
+        &self,
+        text: &str,
+        existing_entities: &[EntityCandidate],
+        config: &EntityExtractionConfig,
+    ) -> String {
+        let existing_names: Vec<String> =
+            existing_entities.iter().map(|e| e.name.clone()).collect();
         let existing_list = if existing_names.is_empty() {
             "None found yet".to_string()
         } else {
@@ -227,21 +233,26 @@ JSON Response:"#,
         let parsed: serde_json::Value = serde_json::from_str(cleaned)
             .map_err(|e| RAGError::EntityExtractionError(format!("Failed to parse JSON: {}", e)))?;
 
-        let entities_array = parsed.get("entities")
+        let entities_array = parsed
+            .get("entities")
             .and_then(|e| e.as_array())
-            .ok_or_else(|| RAGError::EntityExtractionError("Missing 'entities' array in response".to_string()))?;
+            .ok_or_else(|| {
+                RAGError::EntityExtractionError("Missing 'entities' array in response".to_string())
+            })?;
 
         let mut candidates = Vec::new();
         for entity_val in entities_array {
             if let (Some(name), Some(entity_type)) = (
                 entity_val.get("name").and_then(|n| n.as_str()),
-                entity_val.get("type").and_then(|t| t.as_str())
+                entity_val.get("type").and_then(|t| t.as_str()),
             ) {
-                let description = entity_val.get("description")
+                let description = entity_val
+                    .get("description")
                     .and_then(|d| d.as_str())
                     .map(|s| s.to_string());
-                
-                let confidence = entity_val.get("confidence")
+
+                let confidence = entity_val
+                    .get("confidence")
                     .and_then(|c| c.as_f64())
                     .unwrap_or(0.5) as f32;
 
@@ -269,25 +280,33 @@ JSON Response:"#,
             .trim();
 
         // Parse JSON
-        let parsed: serde_json::Value = serde_json::from_str(cleaned)
-            .map_err(|e| RAGError::EntityExtractionError(format!("Failed to parse relationship JSON: {}", e)))?;
+        let parsed: serde_json::Value = serde_json::from_str(cleaned).map_err(|e| {
+            RAGError::EntityExtractionError(format!("Failed to parse relationship JSON: {}", e))
+        })?;
 
-        let relationships_array = parsed.get("relationships")
+        let relationships_array = parsed
+            .get("relationships")
             .and_then(|r| r.as_array())
-            .ok_or_else(|| RAGError::EntityExtractionError("Missing 'relationships' array in response".to_string()))?;
+            .ok_or_else(|| {
+                RAGError::EntityExtractionError(
+                    "Missing 'relationships' array in response".to_string(),
+                )
+            })?;
 
         let mut candidates = Vec::new();
         for rel_val in relationships_array {
             if let (Some(source), Some(target), Some(rel_type)) = (
                 rel_val.get("source").and_then(|s| s.as_str()),
                 rel_val.get("target").and_then(|t| t.as_str()),
-                rel_val.get("type").and_then(|t| t.as_str())
+                rel_val.get("type").and_then(|t| t.as_str()),
             ) {
-                let description = rel_val.get("description")
+                let description = rel_val
+                    .get("description")
                     .and_then(|d| d.as_str())
                     .map(|s| s.to_string());
-                
-                let confidence = rel_val.get("confidence")
+
+                let confidence = rel_val
+                    .get("confidence")
                     .and_then(|c| c.as_f64())
                     .unwrap_or(0.7) as f32;
 
@@ -308,14 +327,23 @@ JSON Response:"#,
     /// Convert entity candidates to final entities
     fn candidates_to_entities(&self, candidates: Vec<EntityCandidate>) -> Vec<Entity> {
         let now = chrono::Utc::now();
-        
+
         candidates
             .into_iter()
             .map(|candidate| {
                 let mut metadata = HashMap::new();
-                metadata.insert("confidence".to_string(), serde_json::json!(candidate.confidence));
-                metadata.insert("mentions".to_string(), serde_json::json!(candidate.mentions));
-                metadata.insert("extraction_method".to_string(), serde_json::Value::String("llm_extraction".to_string()));
+                metadata.insert(
+                    "confidence".to_string(),
+                    serde_json::json!(candidate.confidence),
+                );
+                metadata.insert(
+                    "mentions".to_string(),
+                    serde_json::json!(candidate.mentions),
+                );
+                metadata.insert(
+                    "extraction_method".to_string(),
+                    serde_json::Value::String("llm_extraction".to_string()),
+                );
 
                 Entity {
                     id: None, // Will be set when saved to database
@@ -332,9 +360,13 @@ JSON Response:"#,
     }
 
     /// Convert relationship candidates to final relationships
-    fn candidates_to_relationships(&self, candidates: Vec<RelationshipCandidate>, entity_map: &HashMap<String, Uuid>) -> Vec<Relationship> {
+    fn candidates_to_relationships(
+        &self,
+        candidates: Vec<RelationshipCandidate>,
+        entity_map: &HashMap<String, Uuid>,
+    ) -> Vec<Relationship> {
         let now = chrono::Utc::now();
-        
+
         candidates
             .into_iter()
             .filter_map(|candidate| {
@@ -343,9 +375,18 @@ JSON Response:"#,
                 let target_id = entity_map.get(&candidate.target)?;
 
                 let mut metadata = HashMap::new();
-                metadata.insert("confidence".to_string(), serde_json::json!(candidate.confidence));
-                metadata.insert("evidence".to_string(), serde_json::json!(candidate.evidence));
-                metadata.insert("extraction_method".to_string(), serde_json::Value::String("llm_extraction".to_string()));
+                metadata.insert(
+                    "confidence".to_string(),
+                    serde_json::json!(candidate.confidence),
+                );
+                metadata.insert(
+                    "evidence".to_string(),
+                    serde_json::json!(candidate.evidence),
+                );
+                metadata.insert(
+                    "extraction_method".to_string(),
+                    serde_json::Value::String("llm_extraction".to_string()),
+                );
 
                 Some(Relationship {
                     id: None, // Will be set when saved to database
@@ -374,16 +415,29 @@ impl EntityExtractionService for EntityExtractionServiceImpl {
             return Ok(Vec::new());
         }
 
-        let llm_config = LLMConfig {
-            model_name: "gpt-3.5-turbo".to_string(), // Could be configurable
-            max_tokens: 2048,
-            temperature: 0.1, // Lower temperature for more consistent extraction
-            ..LLMConfig::default()
-        };
-
         // First pass: initial entity extraction
         let initial_prompt = self.create_entity_extraction_prompt(text, &config);
-        let initial_response = self.llm_service.generate_response(&initial_prompt, llm_config.clone()).await?;
+
+        // Create chat request for AI provider
+        let chat_request = crate::ai::core::providers::ChatRequest {
+            messages: vec![crate::ai::core::providers::ChatMessage {
+                role: "user".to_string(),
+                content: crate::ai::core::providers::MessageContent::Text(initial_prompt),
+            }],
+            model_name: "gpt-3.5-turbo".to_string(), // Could be configurable
+            model_id: Uuid::new_v4(),                // Placeholder
+            provider_id: Uuid::new_v4(),             // Placeholder
+            stream: false,
+            parameters: Some(crate::database::models::model::ModelParameters {
+                temperature: Some(0.1), // Lower temperature for more consistent extraction
+                max_tokens: Some(2048),
+                ..Default::default()
+            }),
+        };
+
+        let initial_response = self.ai_provider.chat(chat_request).await.map_err(|e| {
+            RAGError::EntityExtractionError(format!("AI provider chat error: {}", e))
+        })?;
         let mut all_candidates = self.parse_entity_response(&initial_response.content)?;
 
         // Multi-pass gleaning if configured
@@ -393,8 +447,32 @@ impl EntityExtractionService for EntityExtractionServiceImpl {
             }
 
             let gleaning_prompt = self.create_gleaning_prompt(text, &all_candidates, &config);
-            let gleaning_response = self.llm_service.generate_response(&gleaning_prompt, llm_config.clone()).await?;
-            
+
+            // Create chat request for gleaning
+            let gleaning_chat_request = crate::ai::core::providers::ChatRequest {
+                messages: vec![crate::ai::core::providers::ChatMessage {
+                    role: "user".to_string(),
+                    content: crate::ai::core::providers::MessageContent::Text(gleaning_prompt),
+                }],
+                model_name: "gpt-3.5-turbo".to_string(),
+                model_id: Uuid::new_v4(),    // Placeholder
+                provider_id: Uuid::new_v4(), // Placeholder
+                stream: false,
+                parameters: Some(crate::database::models::model::ModelParameters {
+                    temperature: Some(0.1),
+                    max_tokens: Some(2048),
+                    ..Default::default()
+                }),
+            };
+
+            let gleaning_response =
+                self.ai_provider
+                    .chat(gleaning_chat_request)
+                    .await
+                    .map_err(|e| {
+                        RAGError::EntityExtractionError(format!("AI provider chat error: {}", e))
+                    })?;
+
             match self.parse_entity_response(&gleaning_response.content) {
                 Ok(new_candidates) => {
                     // Filter out duplicates and add new entities
@@ -402,7 +480,7 @@ impl EntityExtractionService for EntityExtractionServiceImpl {
                         .iter()
                         .map(|e| e.name.to_lowercase())
                         .collect();
-                    
+
                     for candidate in new_candidates {
                         if !existing_names.contains(&candidate.name.to_lowercase()) {
                             all_candidates.push(candidate);
@@ -436,15 +514,32 @@ impl EntityExtractionService for EntityExtractionServiceImpl {
             return Ok(Vec::new());
         }
 
-        let llm_config = LLMConfig {
+        let relationship_prompt = self.create_relationship_extraction_prompt(text, entities);
+
+        // Create chat request for relationship extraction
+        let relationship_chat_request = crate::ai::core::providers::ChatRequest {
+            messages: vec![crate::ai::core::providers::ChatMessage {
+                role: "user".to_string(),
+                content: crate::ai::core::providers::MessageContent::Text(relationship_prompt),
+            }],
             model_name: "gpt-3.5-turbo".to_string(),
-            max_tokens: 1500,
-            temperature: 0.1,
-            ..LLMConfig::default()
+            model_id: Uuid::new_v4(),    // Placeholder
+            provider_id: Uuid::new_v4(), // Placeholder
+            stream: false,
+            parameters: Some(crate::database::models::model::ModelParameters {
+                temperature: Some(0.1),
+                max_tokens: Some(1500),
+                ..Default::default()
+            }),
         };
 
-        let relationship_prompt = self.create_relationship_extraction_prompt(text, entities);
-        let response = self.llm_service.generate_response(&relationship_prompt, llm_config).await?;
+        let response = self
+            .ai_provider
+            .chat(relationship_chat_request)
+            .await
+            .map_err(|e| {
+                RAGError::EntityExtractionError(format!("AI provider chat error: {}", e))
+            })?;
         let relationship_candidates = self.parse_relationship_response(&response.content)?;
 
         // Create entity name to ID mapping
@@ -463,7 +558,7 @@ impl EntityExtractionService for EntityExtractionServiceImpl {
     ) -> RAGResult<(Vec<Entity>, Vec<Relationship>)> {
         // First extract entities
         let mut entities = self.extract_entities(text, config.clone()).await?;
-        
+
         // Generate temporary IDs for entities (for relationship mapping)
         for entity in &mut entities {
             entity.id = Some(Uuid::new_v4());
@@ -475,45 +570,4 @@ impl EntityExtractionService for EntityExtractionServiceImpl {
         Ok((entities, relationships))
     }
 
-    async fn health_check(&self) -> RAGResult<ServiceHealth> {
-        let start_time = std::time::Instant::now();
-        
-        // Test entity extraction with sample text
-        let test_text = "Apple Inc. is a technology company founded by Steve Jobs. The company is headquartered in Cupertino, California.";
-        let test_config = EntityExtractionConfig {
-            max_entities_per_chunk: 5,
-            gleaning_iterations: 1,
-            ..EntityExtractionConfig::default()
-        };
-        
-        match self.extract_entities(test_text, test_config).await {
-            Ok(entities) => {
-                if entities.len() > 0 && entities.iter().any(|e| e.name.contains("Apple") || e.name.contains("Steve")) {
-                    let response_time = start_time.elapsed().as_millis() as u64;
-                    Ok(ServiceHealth {
-                        is_healthy: true,
-                        status: crate::ai::rag::services::ServiceStatus::Healthy,
-                        error_message: None,
-                        response_time_ms: Some(response_time),
-                        last_check: chrono::Utc::now(),
-                    })
-                } else {
-                    Ok(ServiceHealth {
-                        is_healthy: false,
-                        status: crate::ai::rag::services::ServiceStatus::Error,
-                        error_message: Some("Health check failed: no relevant entities extracted".to_string()),
-                        response_time_ms: None,
-                        last_check: chrono::Utc::now(),
-                    })
-                }
-            }
-            Err(e) => Ok(ServiceHealth {
-                is_healthy: false,
-                status: crate::ai::rag::services::ServiceStatus::Error,
-                error_message: Some(format!("Health check failed: {}", e)),
-                response_time_ms: None,
-                last_check: chrono::Utc::now(),
-            }),
-        }
-    }
 }

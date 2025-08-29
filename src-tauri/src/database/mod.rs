@@ -174,7 +174,7 @@ async fn try_initialize_database_once(
 
     // Install pgvector extension if needed
     install_pgvector_extension(&postgresql).await?;
-    
+
     // Install Apache AGE extension if needed
     install_apache_age_extension(&postgresql).await?;
 
@@ -348,12 +348,14 @@ static _CLEANUP: std::sync::LazyLock<DatabaseCleanup> =
     std::sync::LazyLock::new(|| DatabaseCleanup);
 
 /// Install pgvector extension to the PostgreSQL installation directory
-async fn install_pgvector_extension(postgresql: &PostgreSQL) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn install_pgvector_extension(
+    postgresql: &PostgreSQL,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Checking if pgvector extension is installed...");
-    
+
     if !is_pgvector_extension_installed(postgresql).await? {
         println!("Installing pgvector extension...");
-        
+
         // Find the built pgvector files using get_library_search_paths
         let library_name = if cfg!(target_os = "windows") {
             "vector.dll"
@@ -364,7 +366,8 @@ async fn install_pgvector_extension(postgresql: &PostgreSQL) -> Result<(), Box<d
         };
 
         // Use get_library_search_paths to find the pgvector directory
-        let search_paths = crate::utils::resource_paths::ResourcePaths::get_resource_paths("pgvector");
+        let search_paths =
+            crate::utils::resource_paths::ResourcePaths::get_resource_paths("pgvector");
         let mut built_library = None;
         let mut pgvector_dir = None;
 
@@ -380,19 +383,21 @@ async fn install_pgvector_extension(postgresql: &PostgreSQL) -> Result<(), Box<d
 
         let built_library = built_library.ok_or("Built pgvector library not found in library search paths. Make sure pgvector is built during cargo build.")?;
         let _pgvector_dir = pgvector_dir.unwrap();
-        
+
         install_pgvector_from_built_library(postgresql, &built_library).await?;
-        
+
         println!("Successfully installed pgvector extension");
     } else {
         println!("pgvector extension is already installed");
     }
-    
+
     Ok(())
 }
 
 /// Check if pgvector extension is installed by looking for the library file
-async fn is_pgvector_extension_installed(postgresql: &PostgreSQL) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+async fn is_pgvector_extension_installed(
+    postgresql: &PostgreSQL,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     let lib_dir = postgresql.settings().installation_dir.join("lib");
     let library_file = if cfg!(target_os = "windows") {
         "vector.dll"
@@ -401,24 +406,24 @@ async fn is_pgvector_extension_installed(postgresql: &PostgreSQL) -> Result<bool
     } else {
         "vector.so"
     };
-    
+
     Ok(lib_dir.join(library_file).exists())
 }
 
 /// Install pgvector extension from our built library
 async fn install_pgvector_from_built_library(
-    postgresql: &PostgreSQL, 
-    built_library: &PathBuf
+    postgresql: &PostgreSQL,
+    built_library: &PathBuf,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let pg_dir = postgresql.settings().installation_dir.clone();
     let lib_dir = pg_dir.join("lib");
     let share_dir = pg_dir.join("share");
     let extension_dir = share_dir.join("extension");
-    
+
     // Ensure directories exist
     std::fs::create_dir_all(&lib_dir)?;
     std::fs::create_dir_all(&extension_dir)?;
-    
+
     // Copy the built library
     let target_library = if cfg!(target_os = "windows") {
         lib_dir.join("vector.dll")
@@ -427,13 +432,13 @@ async fn install_pgvector_from_built_library(
     } else {
         lib_dir.join("vector.so")
     };
-    
+
     std::fs::copy(built_library, &target_library)?;
     println!("Copied pgvector library to {:?}", target_library);
-    
+
     // Get pgvector build directory for SQL and control files
     let pgvector_build_dir = built_library.parent().unwrap();
-    
+
     // Copy SQL extension files from build directory
     let source_sql_dir = pgvector_build_dir.join("sql");
     if source_sql_dir.exists() {
@@ -446,24 +451,26 @@ async fn install_pgvector_from_built_library(
             }
         }
     }
-    
+
     // Copy the control file from build directory
     let source_control = pgvector_build_dir.join("vector.control");
     if source_control.exists() {
         let target_control = extension_dir.join("vector.control");
         std::fs::copy(&source_control, &target_control)?;
     }
-    
+
     Ok(())
 }
 
 /// Install Apache AGE extension to the PostgreSQL installation directory
-async fn install_apache_age_extension(postgresql: &PostgreSQL) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn install_apache_age_extension(
+    postgresql: &PostgreSQL,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Checking if Apache AGE extension is installed...");
-    
+
     if !is_apache_age_extension_installed(postgresql).await? {
         println!("Installing Apache AGE extension...");
-        
+
         // Find the built Apache AGE files using get_library_search_paths
         let library_name = if cfg!(target_os = "windows") {
             "age.dll"
@@ -474,7 +481,8 @@ async fn install_apache_age_extension(postgresql: &PostgreSQL) -> Result<(), Box
         };
 
         // Use get_library_search_paths to find the apache-age directory
-        let search_paths = crate::utils::resource_paths::ResourcePaths::get_resource_paths("apache-age");
+        let search_paths =
+            crate::utils::resource_paths::ResourcePaths::get_resource_paths("apache-age");
         let mut built_library = None;
         let mut apache_age_dir = None;
 
@@ -490,19 +498,21 @@ async fn install_apache_age_extension(postgresql: &PostgreSQL) -> Result<(), Box
 
         let built_library = built_library.ok_or("Built Apache AGE library not found in library search paths. Make sure Apache AGE is built during cargo build.")?;
         let _apache_age_dir = apache_age_dir.unwrap();
-        
+
         install_apache_age_from_built_library(postgresql, &built_library).await?;
-        
+
         println!("Successfully installed Apache AGE extension");
     } else {
         println!("Apache AGE extension is already installed");
     }
-    
+
     Ok(())
 }
 
 /// Check if Apache AGE extension is installed by looking for the library file
-async fn is_apache_age_extension_installed(postgresql: &PostgreSQL) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+async fn is_apache_age_extension_installed(
+    postgresql: &PostgreSQL,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
     let lib_dir = postgresql.settings().installation_dir.join("lib");
     let library_file = if cfg!(target_os = "windows") {
         "age.dll"
@@ -511,24 +521,24 @@ async fn is_apache_age_extension_installed(postgresql: &PostgreSQL) -> Result<bo
     } else {
         "age.so"
     };
-    
+
     Ok(lib_dir.join(library_file).exists())
 }
 
 /// Install Apache AGE extension from our built library
 async fn install_apache_age_from_built_library(
-    postgresql: &PostgreSQL, 
-    built_library: &PathBuf
+    postgresql: &PostgreSQL,
+    built_library: &PathBuf,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let pg_dir = postgresql.settings().installation_dir.clone();
     let lib_dir = pg_dir.join("lib");
     let share_dir = pg_dir.join("share");
     let extension_dir = share_dir.join("extension");
-    
+
     // Ensure directories exist
     std::fs::create_dir_all(&lib_dir)?;
     std::fs::create_dir_all(&extension_dir)?;
-    
+
     // Copy the built library
     let target_library = if cfg!(target_os = "windows") {
         lib_dir.join("age.dll")
@@ -537,13 +547,13 @@ async fn install_apache_age_from_built_library(
     } else {
         lib_dir.join("age.so")
     };
-    
+
     std::fs::copy(built_library, &target_library)?;
     println!("Copied Apache AGE library to {:?}", target_library);
-    
+
     // Get Apache AGE build directory for SQL and control files
     let apache_age_build_dir = built_library.parent().unwrap();
-    
+
     // Copy SQL extension files from build directory
     let source_sql_dir = apache_age_build_dir.join("sql");
     if source_sql_dir.exists() {
@@ -556,7 +566,7 @@ async fn install_apache_age_from_built_library(
             }
         }
     }
-    
+
     // Copy upgrade SQL files (age--*.sql pattern)
     for entry in std::fs::read_dir(apache_age_build_dir)? {
         let entry = entry?;
@@ -570,31 +580,39 @@ async fn install_apache_age_from_built_library(
             }
         }
     }
-    
+
     // Copy the control file from build directory
     let source_control = apache_age_build_dir.join("age.control");
     if source_control.exists() {
         let target_control = extension_dir.join("age.control");
         std::fs::copy(&source_control, &target_control)?;
     }
-    
+
     Ok(())
 }
 
 /// Initialize Apache AGE extension for database connections
 /// This needs to be called for every connection to AGE
-async fn initialize_apache_age_extension(pool: &PgPool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn initialize_apache_age_extension(
+    pool: &PgPool,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Initializing Apache AGE extension for database connections...");
-    
+
     // Create the AGE extension if it doesn't exist
-    match sqlx::query("CREATE EXTENSION IF NOT EXISTS age").execute(pool).await {
+    match sqlx::query("CREATE EXTENSION IF NOT EXISTS age")
+        .execute(pool)
+        .await
+    {
         Ok(_) => println!("Apache AGE extension created/verified successfully"),
         Err(e) => {
-            println!("Warning: Failed to create Apache AGE extension (it may not be installed): {}", e);
+            println!(
+                "Warning: Failed to create Apache AGE extension (it may not be installed): {}",
+                e
+            );
             return Ok(()); // Don't fail if AGE is not installed
         }
     }
-    
+
     // Load the AGE library
     match sqlx::query("LOAD 'age'").execute(pool).await {
         Ok(_) => println!("Apache AGE library loaded successfully"),
@@ -603,16 +621,19 @@ async fn initialize_apache_age_extension(pool: &PgPool) -> Result<(), Box<dyn st
             return Ok(()); // Don't fail if AGE is not properly installed
         }
     }
-    
+
     // Set search path to include ag_catalog
-    match sqlx::query("SET search_path = ag_catalog, \"$user\", public").execute(pool).await {
+    match sqlx::query("SET search_path = ag_catalog, \"$user\", public")
+        .execute(pool)
+        .await
+    {
         Ok(_) => println!("Apache AGE search_path configured successfully"),
         Err(e) => {
             println!("Warning: Failed to set Apache AGE search_path: {}", e);
             return Ok(()); // Don't fail if AGE catalog doesn't exist
         }
     }
-    
+
     println!("Apache AGE extension initialization completed");
     Ok(())
 }

@@ -104,5 +104,4 @@ impl ModelRegistry {
     pub fn get_active_models_count(&self) -> usize {
         self.enabled_models.len()
     }
-
 }

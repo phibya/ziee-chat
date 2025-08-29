@@ -8,8 +8,7 @@ use aide::axum::{
 use axum::{middleware, Json};
 
 use crate::api::rag::repositories::{
-    create_rag_repository, delete_rag_repository,
-    get_rag_repository, list_rag_repositories,
+    create_rag_repository, delete_rag_repository, get_rag_repository, list_rag_repositories,
     test_rag_repository_connection, update_rag_repository,
 };
 
@@ -24,7 +23,9 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<RAGRepositoryListResponse>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::rag_repositories_read_middleware,
+            )),
         )
         .api_route(
             "/repositories",
@@ -34,7 +35,9 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<RAGRepository>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_create_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::rag_repositories_create_middleware,
+            )),
         )
         .api_route(
             "/repositories/{repository_id}",
@@ -44,7 +47,9 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<RAGRepository>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::rag_repositories_read_middleware,
+            )),
         )
         .api_route(
             "/repositories/{repository_id}",
@@ -54,7 +59,9 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<RAGRepository>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_edit_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::rag_repositories_edit_middleware,
+            )),
         )
         .api_route(
             "/repositories/{repository_id}",
@@ -64,7 +71,9 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_delete_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::rag_repositories_delete_middleware,
+            )),
         )
         .api_route(
             "/repositories/{repository_id}/test-connection",
@@ -74,6 +83,8 @@ pub fn admin_rag_repository_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<RAGRepositoryConnectionTestResponse>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::rag_repositories_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::rag_repositories_read_middleware,
+            )),
         )
 }

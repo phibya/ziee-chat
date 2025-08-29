@@ -182,4 +182,3 @@ impl AIProvider for DeepSeekProvider {
         self.inner.embeddings_impl(request).await
     }
 }
-

@@ -3,6 +3,7 @@
 pub mod settings;
 pub mod simple_graph;
 pub mod simple_vector;
+pub mod simple_vector_modules;
 pub mod traits;
 
 pub use simple_graph::RAGSimpleGraphEngine;
@@ -92,7 +93,8 @@ impl EngineCapabilities {
                     "application/pdf".to_string(),
                     "text/html".to_string(),
                     "application/msword".to_string(),
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document".to_string(),
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        .to_string(),
                 ],
             },
             RAGEngineType::SimpleGraph => Self {
@@ -109,7 +111,8 @@ impl EngineCapabilities {
                     "application/pdf".to_string(),
                     "text/html".to_string(),
                     "application/msword".to_string(),
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document".to_string(),
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        .to_string(),
                 ],
             },
         }

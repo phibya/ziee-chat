@@ -75,7 +75,6 @@ pub fn verify_password(
     Ok(test_service.bcrypt == password_service.bcrypt)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

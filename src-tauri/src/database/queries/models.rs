@@ -4,10 +4,7 @@ use uuid::Uuid;
 
 use crate::database::{
     get_database_pool,
-    models::{
-        CreateModelRequest, Model, ModelFile, Provider,
-        UpdateModelRequest,
-    },
+    models::{CreateModelRequest, Model, ModelFile, Provider, UpdateModelRequest},
 };
 
 pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
@@ -130,7 +127,6 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     Ok(model_row)
 }
 
-
 /// Create a Candle model with required architecture and default settings
 pub async fn create_local_model(
     model_id: &Uuid,
@@ -230,7 +226,6 @@ pub async fn update_model_validation(
     Ok(())
 }
 
-
 /// Create a model file record
 pub async fn create_model_file(
     model_id: &Uuid,
@@ -284,7 +279,6 @@ pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFile>, sqlx::Er
 
     Ok(files)
 }
-
 
 /// Get all models with their files for full response
 pub async fn get_model_with_files(model_id: &Uuid) -> Result<Option<Model>, sqlx::Error> {
@@ -395,4 +389,3 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
 
     Ok(models)
 }
-

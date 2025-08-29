@@ -108,7 +108,10 @@ impl ApiProxyServer {
                 &format!("{}/chat/completions", config.prefix),
                 post(handle_chat_completions),
             )
-            .route(&format!("{}/embeddings", config.prefix), post(handle_embeddings))
+            .route(
+                &format!("{}/embeddings", config.prefix),
+                post(handle_embeddings),
+            )
             .route(&format!("{}/models", config.prefix), get(handle_models))
             .route(&format!("{}/health", config.prefix), get(handle_health))
             .layer(middleware::from_fn(auth_middleware))

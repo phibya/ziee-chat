@@ -165,7 +165,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
             name: row.try_get("name")?,
             description: row.try_get("description")?,
             permissions,
-            provider_ids: Vec::new(), // Loaded separately via joins
+            provider_ids: Vec::new(),     // Loaded separately via joins
             rag_provider_ids: Vec::new(), // Loaded separately via joins
             is_protected: row.try_get("is_protected")?,
             is_active: row.try_get("is_active")?,
@@ -289,7 +289,6 @@ pub struct CreateUserGroupRequest {
     pub permissions: Vec<String>,
     pub provider_ids: Option<Vec<Uuid>>,
     pub rag_provider_ids: Option<Vec<Uuid>>,
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

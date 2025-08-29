@@ -6,11 +6,15 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::api::{errors::{ApiResult, AppError}, middleware::auth::AuthenticatedUser};
+use crate::api::{errors::ErrorCode, files::FileOperationSuccessResponse};
+use crate::api::{
+    errors::{ApiResult, AppError},
+    middleware::auth::AuthenticatedUser,
+};
 use crate::database::{
     models::{
-        RAGInstanceFilesQuery, RAGInstanceFilesListResponse,
         file::{FileCreateData, UploadFileResponse},
+        RAGInstanceFilesListResponse, RAGInstanceFilesQuery,
     },
     queries::{
         files,
@@ -20,7 +24,6 @@ use crate::database::{
         rag_instances::validate_rag_instance_access,
     },
 };
-use crate::api::{errors::ErrorCode, files::FileOperationSuccessResponse};
 use crate::utils::file_storage::{extract_extension, get_mime_type_from_extension};
 use crate::RAG_FILE_STORAGE;
 
@@ -32,10 +35,19 @@ pub async fn list_rag_instance_files_handler(
     Query(params): Query<RAGInstanceFilesQuery>,
 ) -> ApiResult<Json<RAGInstanceFilesListResponse>> {
     // Check if user has access to this instance
-    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false).await
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
+    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::from(e),
+            )
+        })?;
     if !has_access {
-        return Err((axum::http::StatusCode::FORBIDDEN, AppError::forbidden("Access denied")));
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            AppError::forbidden("Access denied"),
+        ));
     }
 
     let page = params.page.unwrap_or(1);
@@ -47,9 +59,15 @@ pub async fn list_rag_instance_files_handler(
         per_page,
         params.status_filter,
         params.search,
-    ).await
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
-    
+    )
+    .await
+    .map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::from(e),
+        )
+    })?;
+
     Ok((axum::http::StatusCode::OK, Json(response)))
 }
 
@@ -61,7 +79,8 @@ pub async fn upload_rag_file_handler(
     mut multipart: Multipart,
 ) -> ApiResult<Json<UploadFileResponse>> {
     // Validate user has access to RAG instance
-    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false).await
+    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
     if !has_access {
         return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied")));
@@ -73,14 +92,20 @@ pub async fn upload_rag_file_handler(
     let mut file_size = 0u64;
 
     while let Some(field) = multipart.next_field().await.map_err(|_| {
-        (StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidInvalidInput, "Invalid multipart data"))
+        (
+            StatusCode::BAD_REQUEST,
+            AppError::new(ErrorCode::ValidInvalidInput, "Invalid multipart data"),
+        )
     })? {
         let field_name = field.name().unwrap_or("");
         match field_name {
             "file" => {
                 filename = field.file_name().unwrap_or("unknown").to_string();
                 let data = field.bytes().await.map_err(|_| {
-                    (StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidInvalidInput, "Failed to read file data"))
+                    (
+                        StatusCode::BAD_REQUEST,
+                        AppError::new(ErrorCode::ValidInvalidInput, "Failed to read file data"),
+                    )
                 })?;
                 file_size = data.len() as u64;
                 file_data = Some(data);
@@ -91,19 +116,36 @@ pub async fn upload_rag_file_handler(
 
     let file_data = file_data.ok_or((
         StatusCode::BAD_REQUEST,
-        AppError::new(ErrorCode::ValidMissingRequiredField, "No file data provided")
+        AppError::new(
+            ErrorCode::ValidMissingRequiredField,
+            "No file data provided",
+        ),
     ))?;
 
     if filename.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
-            AppError::new(ErrorCode::ValidMissingRequiredField, "Filename cannot be empty")
+            AppError::new(
+                ErrorCode::ValidMissingRequiredField,
+                "Filename cannot be empty",
+            ),
         ));
     }
 
-    match process_rag_file_upload(auth_user.user.id, instance_id, filename, file_data, file_size).await {
+    match process_rag_file_upload(
+        auth_user.user.id,
+        instance_id,
+        filename,
+        file_data,
+        file_size,
+    )
+    .await
+    {
         Ok(response) => Ok((StatusCode::OK, response)),
-        Err(status) => Err((status, AppError::internal_error("Failed to upload RAG file"))),
+        Err(status) => Err((
+            status,
+            AppError::internal_error("Failed to upload RAG file"),
+        )),
     }
 }
 
@@ -139,9 +181,9 @@ async fn process_rag_file_upload(
         file_size: file_size as i64,
         mime_type,
         checksum: Some(checksum),
-        project_id: None, // RAG files don't belong to projects
+        project_id: None,                   // RAG files don't belong to projects
         rag_instance_id: Some(instance_id), // Associate with RAG instance
-        thumbnail_count: 0, // No processing for RAG files
+        thumbnail_count: 0,                 // No processing for RAG files
         page_count: 0,
         processing_metadata: serde_json::json!({}),
     };
@@ -165,7 +207,8 @@ pub async fn delete_rag_file_handler(
     Path((instance_id, file_id)): Path<(Uuid, Uuid)>,
 ) -> ApiResult<Json<FileOperationSuccessResponse>> {
     // Validate access
-    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false).await
+    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
     if !has_access {
         return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied")));
@@ -174,16 +217,29 @@ pub async fn delete_rag_file_handler(
     // Get file info to verify ownership and get filename
     let file_db = files::get_file_by_id_and_user(file_id, auth_user.user.id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to get file")))?
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get file"),
+            )
+        })?
         .ok_or((StatusCode::NOT_FOUND, AppError::not_found("File")))?;
 
     // Remove from rag_instance_files table
     let removed = remove_file_from_rag_instance(instance_id, file_id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to remove file from RAG instance")))?;
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to remove file from RAG instance"),
+            )
+        })?;
 
     if !removed {
-        return Err((StatusCode::NOT_FOUND, AppError::not_found("File not found in RAG instance")));
+        return Err((
+            StatusCode::NOT_FOUND,
+            AppError::not_found("File not found in RAG instance"),
+        ));
     }
 
     // Delete from RAG storage
@@ -191,12 +247,25 @@ pub async fn delete_rag_file_handler(
     RAG_FILE_STORAGE
         .delete_rag_file(instance_id, file_id, &extension)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete file from storage")))?;
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to delete file from storage"),
+            )
+        })?;
 
     // Delete file from database (rag_instance_files will be handled by CASCADE)
     files::delete_file(file_id, auth_user.user.id)
         .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to delete file from database")))?;
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to delete file from database"),
+            )
+        })?;
 
-    Ok((StatusCode::OK, Json(FileOperationSuccessResponse { success: true })))
+    Ok((
+        StatusCode::OK,
+        Json(FileOperationSuccessResponse { success: true }),
+    ))
 }

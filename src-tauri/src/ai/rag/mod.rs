@@ -3,7 +3,7 @@
 
 pub mod engines;
 pub mod models;
-pub mod services;
+pub mod processors;
 pub mod types;
 
 use async_trait::async_trait;
@@ -14,7 +14,7 @@ use uuid::Uuid;
 // Re-export commonly used types
 pub use engines::{RAGEngine, RAGEngineType};
 pub use models::*;
-pub use services::*;
+pub use processors::*;
 pub use types::*;
 
 /// Result type for RAG operations
@@ -73,11 +73,7 @@ pub trait RAGManager: Send + Sync {
     ) -> RAGResult<ProcessingStatus>;
 
     /// Query the RAG instance
-    async fn query(
-        &self,
-        instance_id: Uuid,
-        query: RAGQuery,
-    ) -> RAGResult<RAGQueryResponse>;
+    async fn query(&self, instance_id: Uuid, query: RAGQuery) -> RAGResult<RAGQueryResponse>;
 
     /// Get processing status for a file
     async fn get_processing_status(

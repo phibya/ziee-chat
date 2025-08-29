@@ -134,4 +134,3 @@ pub async fn delete_rag_repository(repository_id: Uuid) -> Result<(), sqlx::Erro
 
     Ok(())
 }
-

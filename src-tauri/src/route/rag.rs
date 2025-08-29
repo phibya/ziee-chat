@@ -1,9 +1,9 @@
+use crate::api::files::FileOperationSuccessResponse;
 use crate::api::rag::{files, instances};
 use crate::database::models::{
-    RAGInstance, RAGInstanceFilesListResponse, RAGInstanceListResponse, RAGProvider,
-    file::UploadFileResponse,
+    file::UploadFileResponse, RAGInstance, RAGInstanceFilesListResponse, RAGInstanceListResponse,
+    RAGProvider,
 };
-use crate::api::files::FileOperationSuccessResponse;
 use aide::axum::{
     routing::{delete_with, get_with, post_with},
     ApiRouter,
@@ -12,7 +12,7 @@ use axum::{middleware, Json};
 
 pub fn rag_routes() -> ApiRouter {
     ApiRouter::new()
-        // User RAG routes  
+        // User RAG routes
         .nest("/rag", user_rag_routes())
 }
 
@@ -28,7 +28,9 @@ fn user_rag_routes() -> ApiRouter {
                     .tag("rag")
                     .response::<200, Json<Vec<RAGProvider>>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::permissions::rag_instances_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_read_middleware,
+            )),
         )
         // RAG instance management - list all user instances
         .api_route(
@@ -39,7 +41,9 @@ fn user_rag_routes() -> ApiRouter {
                     .tag("rag")
                     .response::<200, Json<RAGInstanceListResponse>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::permissions::rag_instances_read_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_read_middleware,
+            )),
         )
         // RAG instance management - create instance for specific provider
         .api_route(
@@ -50,7 +54,9 @@ fn user_rag_routes() -> ApiRouter {
                     .tag("rag")
                     .response::<201, Json<RAGInstance>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::permissions::rag_instances_create_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_create_middleware,
+            )),
         )
         .api_route(
             "/instances/{instance_id}",
@@ -60,21 +66,27 @@ fn user_rag_routes() -> ApiRouter {
                     .tag("rag")
                     .response::<200, Json<RAGInstance>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::permissions::rag_instances_read_middleware))
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_read_middleware,
+            ))
             .put_with(instances::update_rag_instance_handler, |op| {
                 op.description("Update RAG instance")
                     .id("Rag.updateInstance")
                     .tag("rag")
                     .response::<200, Json<RAGInstance>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::permissions::rag_instances_edit_middleware))
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_edit_middleware,
+            ))
             .delete_with(instances::delete_rag_instance_handler, |op| {
                 op.description("Delete RAG instance")
                     .id("Rag.deleteInstance")
                     .tag("rag")
                     .response::<204, ()>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::permissions::rag_instances_delete_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_delete_middleware,
+            )),
         )
         // .api_route(
         //     "/instances/{instance_id}/status",
@@ -93,14 +105,18 @@ fn user_rag_routes() -> ApiRouter {
                     .tag("rag")
                     .response::<200, Json<RAGInstanceFilesListResponse>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::permissions::rag_files_read_middleware))
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_files_read_middleware,
+            ))
             .post_with(files::upload_rag_file_handler, |op| {
                 op.description("Upload file to RAG instance")
                     .id("Rag.uploadInstanceFile")
                     .tag("rag")
                     .response::<200, Json<UploadFileResponse>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::files_upload_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::files_upload_middleware,
+            )),
         )
         .api_route(
             "/instances/{instance_id}/files/{file_id}",
@@ -110,15 +126,17 @@ fn user_rag_routes() -> ApiRouter {
                     .tag("rag")
                     .response::<200, Json<FileOperationSuccessResponse>>()
             })
-            .layer(middleware::from_fn(crate::api::middleware::files_delete_middleware)),
+            .layer(middleware::from_fn(
+                crate::api::middleware::files_delete_middleware,
+            )),
         )
-        // TODO: Query endpoint - Enable once OperationHandler trait issue is resolved
-        // .api_route(
-        //     "/instances/{instance_id}/query",
-        //     post_with(instances::query_rag_instance, |op| {
-        //         op.description("Query RAG instance")
-        //             .id("Rag.queryInstance")
-        //             .tag("rag")
-        //     }),
-        // )
+    // TODO: Query endpoint - Enable once OperationHandler trait issue is resolved
+    // .api_route(
+    //     "/instances/{instance_id}/query",
+    //     post_with(instances::query_rag_instance, |op| {
+    //         op.description("Query RAG instance")
+    //             .id("Rag.queryInstance")
+    //             .tag("rag")
+    //     }),
+    // )
 }

@@ -16,7 +16,9 @@ pub fn admin_assistant_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<AssistantListResponse>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_admin_read_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_admin_read_middleware,
+            )),
         )
         .api_route(
             "/assistants",
@@ -38,7 +40,9 @@ pub fn admin_assistant_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<Assistant>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_admin_read_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_admin_read_middleware,
+            )),
         )
         .api_route(
             "/assistants/{assistant_id}",
@@ -48,7 +52,9 @@ pub fn admin_assistant_routes() -> ApiRouter {
                     .tag("admin")
                     .response::<200, Json<Assistant>>()
             })
-            .layer(middleware::from_fn(api::middleware::assistants_admin_edit_middleware)),
+            .layer(middleware::from_fn(
+                api::middleware::assistants_admin_edit_middleware,
+            )),
         )
         .api_route(
             "/assistants/{assistant_id}",

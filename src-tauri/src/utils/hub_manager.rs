@@ -61,7 +61,6 @@ impl HubManager {
         Ok(())
     }
 
-
     pub async fn load_hub_data_with_locale(
         &self,
         locale: &str,

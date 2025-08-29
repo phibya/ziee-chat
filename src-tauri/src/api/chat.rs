@@ -315,20 +315,24 @@ async fn stream_ai_response(
     let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
 
     // Create AI provider with model ID for Candle providers
-    let ai_provider =
-        match crate::ai::model_manager::create_ai_provider_with_model_id(&provider, Some(request.model_id)).await {
-            Ok(provider) => provider,
-            Err(e) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: format!("Error creating AI provider: {}", e),
-                        code: ErrorCode::SystemInternalError.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
-                return;
-            }
-        };
+    let ai_provider = match crate::ai::model_manager::create_ai_provider_with_model_id(
+        &provider,
+        Some(request.model_id),
+    )
+    .await
+    {
+        Ok(provider) => provider,
+        Err(e) => {
+            let _ = tx.send(Ok(Event::default().event("error").data(
+                &serde_json::to_string(&StreamErrorData {
+                    error: format!("Error creating AI provider: {}", e),
+                    code: ErrorCode::SystemInternalError.as_str().to_string(),
+                })
+                .unwrap_or_default(),
+            )));
+            return;
+        }
+    };
 
     // Check if provider supports streaming
     if !ai_provider.supports_streaming() {
@@ -578,7 +582,6 @@ pub async fn edit_message_stream(
     ))
 }
 
-
 /// Switch to a different branch for a conversation
 #[debug_handler]
 pub async fn switch_conversation_branch(
@@ -655,7 +658,6 @@ pub async fn search_conversations(
     }
 }
 
-
 /// Get messages for a conversation with specific branch
 #[debug_handler]
 pub async fn get_conversation_messages_by_branch(
@@ -702,7 +704,9 @@ async fn generate_and_update_conversation_title(
         let chat_messages = build_single_user_message(title_prompt);
 
         // Create AI provider instance
-        let ai_provider = crate::ai::model_manager::create_ai_provider_with_model_id(provider, Some(model.id)).await?;
+        let ai_provider =
+            crate::ai::model_manager::create_ai_provider_with_model_id(provider, Some(model.id))
+                .await?;
 
         // For title generation, use specific parameters optimized for titles
         // Don't use assistant parameters as this is an internal system function
