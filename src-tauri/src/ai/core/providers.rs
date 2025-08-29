@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use futures_util::Stream;
+use serde::{Deserialize, Serialize};
 use std::pin::Pin;
 use uuid::Uuid;
 
@@ -28,6 +29,43 @@ pub enum ProviderFileContent {
     ProviderFileId(String), // Use provider's uploaded file ID
     DirectEmbed { data: String, mime_type: String }, // Base64 embed
     ProcessedContent(String), // Pre-processed text (e.g., PDF -> text)
+}
+
+// Embeddings-related data structures
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingsRequest {
+    pub model: String,
+    pub input: EmbeddingsInput,
+    pub encoding_format: Option<String>, // "float" or "base64"
+    pub dimensions: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum EmbeddingsInput {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingsResponse {
+    pub object: String,
+    pub data: Vec<EmbeddingData>,
+    pub model: String,
+    pub usage: EmbeddingsUsage,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingData {
+    pub object: String,
+    pub index: u32,
+    pub embedding: Vec<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingsUsage {
+    pub prompt_tokens: u32,
+    pub total_tokens: u32,
 }
 
 #[async_trait]
@@ -88,5 +126,13 @@ pub trait AIProvider: Send + Sync {
         _request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         Err("HTTP forwarding not supported by this provider".into())
+    }
+
+    /// Generate embeddings for the given texts
+    async fn embeddings(
+        &self,
+        _request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        Err("Embeddings not supported by this provider".into())
     }
 }

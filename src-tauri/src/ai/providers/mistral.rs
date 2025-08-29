@@ -9,8 +9,8 @@ use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
-    ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, EmbeddingsRequest, EmbeddingsResponse,
+    FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
@@ -666,6 +666,30 @@ impl AIProvider for MistralProvider {
             .await?;
 
         Ok(response)
+    }
+
+    async fn embeddings(
+        &self,
+        request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("{}/embeddings", self.base_url);
+        
+        let response = self.client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await?;
+            return Err(format!("HTTP {}: {}", status, error_text).into());
+        }
+
+        let embeddings_response: EmbeddingsResponse = response.json().await?;
+        Ok(embeddings_response)
     }
 }
 

@@ -1,6 +1,6 @@
 use axum::{debug_handler, extract::Multipart, http::StatusCode, response::Json, Extension};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use serde_json;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
@@ -105,15 +105,6 @@ impl ProgressTracker {
             None
         }
     }
-}
-
-#[derive(Serialize)]
-pub struct DownloadProgress {
-    pub phase: String,
-    pub current: u64,
-    pub total: u64,
-    pub message: String,
-    pub model: Option<Model>,
 }
 
 /// Request struct for creating a model with files
@@ -496,24 +487,6 @@ fn is_config_or_tokenizer_file(filename: &str) -> bool {
         || filename_lower.ends_with("spiece.model")
         || filename_lower == "generation_config.json"
 }
-
-#[derive(Debug, serde::Serialize)]
-pub struct UploadFilesResponse {
-    pub session_id: Uuid,
-    pub total_size_bytes: u64,
-    pub main_filename: String,
-    pub provider_id: Uuid,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct ProcessedFile {
-    pub filename: String,
-    pub file_type: String,
-    pub size_bytes: u64,
-    pub validation_issues: Vec<String>,
-    pub is_main_file: bool,
-}
-
 
 #[derive(Deserialize, JsonSchema)]
 pub struct DownloadFromRepositoryRequest {

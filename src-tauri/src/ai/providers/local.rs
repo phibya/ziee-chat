@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
-    StreamingChunk, StreamingResponse, Usage,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, EmbeddingsRequest, EmbeddingsResponse,
+    FileReference, MessageContent, StreamingChunk, StreamingResponse, Usage,
 };
 use crate::ai::file_helpers::{get_file_content_for_local_provider, LocalProviderFileContent};
 use crate::database::models::model::ModelCapabilities;
@@ -428,6 +428,29 @@ impl AIProvider for LocalProvider {
             .await?;
 
         Ok(response)
+    }
+
+    async fn embeddings(
+        &self,
+        request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("{}/embeddings", self.base_url);
+        
+        let response = self.client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await?;
+            return Err(format!("HTTP {}: {}", status, error_text).into());
+        }
+
+        let embeddings_response: EmbeddingsResponse = response.json().await?;
+        Ok(embeddings_response)
     }
 }
 

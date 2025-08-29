@@ -133,4 +133,47 @@ impl RequestRouter {
 
         Ok(response)
     }
+
+    /// Forward embeddings request to appropriate provider
+    pub async fn forward_embeddings_request(
+        &self,
+        mut request: serde_json::Value,
+    ) -> Result<reqwest::Response, ProxyError> {
+        // 1. Extract model identifier and resolve to UUID
+        let (model_id, _) = self.extract_or_default_model_id(&mut request).await?;
+
+        // 2. Log the request
+        let registry = self.registry.read().await;
+        let display_name = registry.get_model_display_name(&model_id).await;
+        log_request("POST", "/embeddings", "proxy", Some(&display_name));
+
+        // 3. Check if model is enabled in proxy
+        if !registry.is_model_enabled(&model_id) {
+            return Err(ProxyError::ModelNotInProxy(model_id));
+        }
+        drop(registry); // Release the lock early
+
+        // 4. Get provider for the model
+        let db_model = crate::database::queries::models::get_model_by_id(model_id)
+            .await
+            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+            .ok_or(ProxyError::ModelNotFound(model_id.to_string()))?;
+
+        let db_provider = crate::database::queries::providers::get_provider_by_id(db_model.provider_id)
+            .await
+            .map_err(|e| ProxyError::DatabaseError(e.to_string()))?
+            .ok_or(ProxyError::ProviderNotFound(db_model.provider_id))?;
+
+        let provider = crate::ai::model_manager::create_ai_provider_with_model_id(&db_provider, Some(model_id))
+            .await
+            .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
+
+        // 5. Forward request using provider's implementation
+        let response = provider
+            .forward_request(request)
+            .await
+            .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
+
+        Ok(response)
+    }
 }

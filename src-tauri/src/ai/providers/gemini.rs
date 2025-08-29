@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, EmbeddingsInput, EmbeddingsRequest,
+    EmbeddingsResponse, EmbeddingData, EmbeddingsUsage, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
@@ -767,6 +768,77 @@ impl AIProvider for GeminiProvider {
             .await?;
 
         Ok(response)
+    }
+
+    async fn embeddings(
+        &self,
+        request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("{}/models/{}:embedText", self.base_url, request.model);
+        
+        let gemini_request = json!({
+            "texts": match &request.input {
+                EmbeddingsInput::Single(text) => vec![text.as_str()],
+                EmbeddingsInput::Multiple(texts) => texts.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+            }
+        });
+        
+        let response = self.client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .query(&[("key", &self.api_key)])
+            .json(&gemini_request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await?;
+            return Err(format!("HTTP {}: {}", status, error_text).into());
+        }
+
+        // Parse Gemini response
+        let gemini_response: serde_json::Value = response.json().await?;
+        
+        // Convert to standard format
+        let embeddings = gemini_response["embeddings"]
+            .as_array()
+            .ok_or("Invalid embeddings response format")?;
+            
+        let data: Result<Vec<EmbeddingData>, Box<dyn std::error::Error + Send + Sync>> = embeddings
+            .iter()
+            .enumerate()
+            .map(|(index, embedding)| {
+                let values = embedding["values"]
+                    .as_array()
+                    .ok_or("Missing embedding values")?;
+                    
+                let embedding_vec: Result<Vec<f32>, _> = values
+                    .iter()
+                    .map(|v| {
+                        v.as_f64()
+                            .ok_or("Invalid embedding value")
+                            .map(|f| f as f32)
+                    })
+                    .collect();
+                    
+                Ok(EmbeddingData {
+                    object: "embedding".to_string(),
+                    index: index as u32,
+                    embedding: embedding_vec?,
+                })
+            })
+            .collect();
+            
+        Ok(EmbeddingsResponse {
+            object: "list".to_string(),
+            data: data?,
+            model: request.model,
+            usage: EmbeddingsUsage {
+                prompt_tokens: 0, // Gemini doesn't provide token counts
+                total_tokens: 0,
+            },
+        })
     }
 }
 

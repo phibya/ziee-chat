@@ -4,8 +4,8 @@ use uuid::Uuid;
 
 use super::openai_compatible::OpenAICompatibleProvider;
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
-    ProviderFileContent, ProxyConfig, StreamingResponse,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, EmbeddingsRequest, EmbeddingsResponse,
+    FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingResponse,
 };
 use crate::ai::file_helpers::load_file_content;
 
@@ -228,6 +228,13 @@ impl AIProvider for GroqProvider {
         request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
         self.inner.forward_request(request).await
+    }
+
+    async fn embeddings(
+        &self,
+        request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        self.inner.embeddings_impl(request).await
     }
 }
 

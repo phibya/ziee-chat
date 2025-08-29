@@ -108,6 +108,7 @@ impl ApiProxyServer {
                 &format!("{}/chat/completions", config.prefix),
                 post(handle_chat_completions),
             )
+            .route(&format!("{}/embeddings", config.prefix), post(handle_embeddings))
             .route(&format!("{}/models", config.prefix), get(handle_models))
             .route(&format!("{}/health", config.prefix), get(handle_health))
             .layer(middleware::from_fn(auth_middleware))
@@ -303,6 +304,59 @@ fn create_error_response(message: &str) -> Response<Body> {
             serde_json::to_string(&error_response).unwrap_or_default(),
         ))
         .unwrap()
+}
+
+async fn handle_embeddings(
+    ConnectInfo(remote_addr): ConnectInfo<SocketAddr>,
+    Extension(router): Extension<Arc<RequestRouter>>,
+    Json(request): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let start_time = std::time::Instant::now();
+    let _client_ip = remote_addr.ip().to_string();
+
+    let result = match router.forward_embeddings_request(request).await {
+        Ok(response) => {
+            // Extract response components
+            let status = response.status();
+            let headers = response.headers().clone();
+
+            // Convert reqwest response body to Axum body stream
+            let stream = response
+                .bytes_stream()
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+
+            // Build Axum response with original headers and status
+            let mut response_builder = Response::builder().status(status);
+
+            // Copy all headers from provider response
+            for (key, value) in headers.iter() {
+                response_builder = response_builder.header(key, value);
+            }
+
+            // Return response with streaming body
+            match response_builder.body(Body::from_stream(stream)) {
+                Ok(response) => {
+                    let duration = start_time.elapsed();
+                    log_response(
+                        "POST",
+                        "/embeddings",
+                        status.as_u16(),
+                        duration.as_millis() as u64,
+                    );
+                    response
+                }
+                Err(_) => create_error_response("Failed to build response"),
+            }
+        }
+        Err(error) => {
+            let duration = start_time.elapsed();
+            tracing::error!("Embeddings proxy request failed: {}", error);
+            log_response("POST", "/embeddings", 502, duration.as_millis() as u64);
+            create_error_response("Embeddings request failed")
+        }
+    };
+
+    result
 }
 
 async fn handle_models(

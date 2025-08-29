@@ -53,12 +53,6 @@ pub struct SwitchBranchRequest {
     pub branch_id: Uuid,
 }
 
-#[derive(Debug, Serialize)]
-pub struct StreamResponse {
-    pub r#type: String,
-    pub data: serde_json::Value,
-}
-
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct OperationSuccessResponse {
     pub success: bool,

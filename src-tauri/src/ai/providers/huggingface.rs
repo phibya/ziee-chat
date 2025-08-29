@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, EmbeddingData, EmbeddingsInput,
+    EmbeddingsRequest, EmbeddingsResponse, EmbeddingsUsage, FileReference, MessageContent,
     ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
 };
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
@@ -754,6 +755,63 @@ impl AIProvider for HuggingFaceProvider {
             .await?;
 
         Ok(response)
+    }
+
+    async fn embeddings(
+        &self,
+        request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("{}/models/{}", self.base_url, request.model);
+        
+        let texts = match &request.input {
+            EmbeddingsInput::Single(text) => vec![text.clone()],
+            EmbeddingsInput::Multiple(texts) => texts.clone(),
+        };
+        
+        let hf_request = json!({
+            "inputs": texts,
+            "options": {
+                "wait_for_model": true
+            }
+        });
+        
+        let response = self.client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .json(&hf_request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await?;
+            return Err(format!("HTTP {}: {}", status, error_text).into());
+        }
+
+        // Parse HuggingFace response - returns array of embeddings
+        let hf_response: Vec<Vec<f32>> = response.json().await?;
+        
+        // Convert to standard format
+        let data: Vec<EmbeddingData> = hf_response
+            .into_iter()
+            .enumerate()
+            .map(|(index, embedding)| EmbeddingData {
+                object: "embedding".to_string(),
+                index: index as u32,
+                embedding,
+            })
+            .collect();
+            
+        Ok(EmbeddingsResponse {
+            object: "list".to_string(),
+            data,
+            model: request.model,
+            usage: EmbeddingsUsage {
+                prompt_tokens: 0, // HuggingFace doesn't provide token counts
+                total_tokens: 0,
+            },
+        })
     }
 }
 

@@ -9,8 +9,9 @@ use uuid::Uuid;
 
 use crate::ai::core::provider_base::build_http_client;
 use crate::ai::core::providers::{
-    AIProvider, ChatRequest, ChatResponse, ContentPart, FileReference, MessageContent,
-    ProviderFileContent, ProxyConfig, StreamingChunk, StreamingResponse, Usage,
+    AIProvider, ChatRequest, ChatResponse, ContentPart, EmbeddingsRequest, EmbeddingsResponse,
+    FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingChunk, 
+    StreamingResponse, Usage,
 };
 use crate::ai::file_helpers::load_file_content;
 
@@ -580,6 +581,43 @@ impl AIProvider for OpenAICompatibleProvider {
         // Send request and return raw response
         let response = req_builder.send().await?;
         Ok(response)
+    }
+
+    async fn embeddings(
+        &self,
+        request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("{}/embeddings", self.base_url);
+        
+        let mut req_builder = self.client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&request);
+
+        // Add authentication if needed
+        if self.should_include_auth() {
+            req_builder = req_builder.header("Authorization", format!("Bearer {}", self.api_key));
+        }
+
+        let response = req_builder.send().await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await?;
+            return Err(format!("HTTP {}: {}", status, error_text).into());
+        }
+
+        let embeddings_response: EmbeddingsResponse = response.json().await?;
+        Ok(embeddings_response)
+    }
+}
+
+impl OpenAICompatibleProvider {
+    pub async fn embeddings_impl(
+        &self,
+        request: EmbeddingsRequest,
+    ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
+        self.embeddings(request).await
     }
 }
 
