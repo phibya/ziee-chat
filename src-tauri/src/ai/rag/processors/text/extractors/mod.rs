@@ -6,6 +6,7 @@ pub mod markdown;
 pub mod office;
 pub mod pdf;
 pub mod plain_text;
+pub mod pptx;
 pub mod spreadsheet;
 
 use crate::ai::rag::RAGResult;
@@ -19,6 +20,7 @@ pub use markdown::MarkdownExtractor;
 pub use office::OfficeExtractor;
 pub use pdf::PdfExtractor;
 pub use plain_text::PlainTextExtractor;
+pub use pptx::PptxExtractor;
 pub use spreadsheet::SpreadsheetExtractor;
 
 /// Main entry point: Convert any file content to Markdown with metadata
@@ -89,11 +91,15 @@ async fn convert_file_to_markdown(file_path: &str, mime_type: &str) -> RAGResult
             SpreadsheetExtractor::new(file_path).extract_to_markdown().await
         },
         
-        // Office document formats
+        // PowerPoint formats (handled by dedicated PPTX extractor)
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation" => { // PPTX
+            PptxExtractor::new(file_path).extract_to_markdown().await
+        },
+        
+        // Office document formats (excluding PPTX)
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | // DOCX
         "application/msword" | // DOC
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation" | // PPTX
-        "application/vnd.ms-powerpoint" | // PPT
+        "application/vnd.ms-powerpoint" | // PPT (legacy format)
         "application/vnd.oasis.opendocument.text" | // ODT
         "application/vnd.oasis.opendocument.presentation" | // ODP
         "application/rtf" | "text/rtf" | // RTF

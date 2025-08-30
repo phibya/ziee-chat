@@ -955,6 +955,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bzip2"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49ecfb22d906f800d4fe833b6282cf4dc1c298f5057ca0b5445e5c209735ca47"
+dependencies = [
+ "bzip2-sys",
+]
+
+[[package]]
 name = "bzip2-sys"
 version = "0.1.13+1.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1452,6 +1461,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
+name = "constant_time_eq"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1825,6 +1840,12 @@ name = "debug_unsafe"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85d3cef41d236720ed453e102153a53e4cc3d2fde848c0078a50cf249e8e3e5b"
+
+[[package]]
+name = "deflate64"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da692b8d1080ea3045efaab14434d40468c3d8657e42abddfffca87b428f4c1b"
 
 [[package]]
 name = "defmac"
@@ -3809,6 +3830,24 @@ dependencies = [
 
 [[package]]
 name = "image"
+version = "0.24.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5690139d2f55868e080017335e4b94cb7414274c74f1669c84fb5feba2c9f69d"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "color_quant",
+ "exr",
+ "gif",
+ "jpeg-decoder",
+ "num-traits",
+ "png",
+ "qoi",
+ "tiff",
+]
+
+[[package]]
+name = "image"
 version = "0.25.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db35664ce6b9810857a38a906215e75a9c879f0696556a39f59c62829710251a"
@@ -4073,6 +4112,9 @@ name = "jpeg-decoder"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00810f1d8b74be64b13dbf3db89ac67740615d6c891f0e7b6179326533011a07"
+dependencies = [
+ "rayon",
+]
 
 [[package]]
 name = "js-sys"
@@ -4459,6 +4501,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 
 [[package]]
+name = "lzma-rs"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "297e814c836ae64db86b36cf2a557ba54368d03f6afcd7d947c266692f71115e"
+dependencies = [
+ "byteorder",
+ "crc",
+]
+
+[[package]]
+name = "lzma-sys"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fda04ab3764e6cde78b9974eec4f779acaba7c4e84b36eca3cf77c581b85d27"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
 name = "mac"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4757,7 +4820,7 @@ dependencies = [
  "hound",
  "html2text",
  "http",
- "image",
+ "image 0.25.6",
  "indexmap 2.11.0",
  "indicatif",
  "interprocess",
@@ -4873,7 +4936,7 @@ dependencies = [
  "data-url",
  "either",
  "futures",
- "image",
+ "image 0.25.6",
  "indexmap 2.11.0",
  "itertools 0.14.0",
  "mistralrs-core",
@@ -4895,7 +4958,7 @@ version = "0.6.0"
 source = "git+https://github.com/EricLBuehler/mistral.rs.git#4b9051043fbc5eecd7afa490dfeb432dca114f78"
 dependencies = [
  "candle-core",
- "image",
+ "image 0.25.6",
  "rayon",
 ]
 
@@ -5913,6 +5976,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pbkdf2"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8ed6a7761f76e3b9f92dfb0a60a6a6477c61024b775147ff0973a02653abaf2"
+dependencies = [
+ "digest",
+ "hmac",
+]
+
+[[package]]
 name = "pdf-extract"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5941,7 +6014,7 @@ dependencies = [
  "chrono",
  "console_error_panic_hook",
  "console_log",
- "image",
+ "image 0.25.6",
  "itertools 0.14.0",
  "js-sys",
  "libloading 0.8.8",
@@ -6329,6 +6402,20 @@ name = "powerfmt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391"
+
+[[package]]
+name = "pptx-to-md"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25f7bef20173da9d560ffb6b67cba2d2b834375d0d262e5aeb86f44e069ae446"
+dependencies = [
+ "base64 0.22.1",
+ "image 0.24.9",
+ "rayon",
+ "roxmltree",
+ "thiserror 2.0.16",
+ "zip 2.4.2",
+]
 
 [[package]]
 name = "ppv-lite86"
@@ -7107,6 +7194,12 @@ dependencies = [
  "untrusted",
  "windows-sys 0.52.0",
 ]
+
+[[package]]
+name = "roxmltree"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rsa"
@@ -11028,6 +11121,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "xz2"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "388c44dc09d76f1536602ead6d325eb532f5c122f17782bd57fb47baeeb767e2"
+dependencies = [
+ "lzma-sys",
+]
+
+[[package]]
 name = "yoke"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11181,6 +11283,20 @@ name = "zeroize"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
+dependencies = [
+ "zeroize_derive",
+]
+
+[[package]]
+name = "zeroize_derive"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
 
 [[package]]
 name = "zerotrie"
@@ -11241,7 +11357,7 @@ dependencies = [
  "git2",
  "hex",
  "http",
- "image",
+ "image 0.25.6",
  "jsonwebtoken",
  "lazy_static",
  "libamdgpu_top",
@@ -11259,6 +11375,7 @@ dependencies = [
  "pdfium-render",
  "portpicker",
  "postgresql_embedded",
+ "pptx-to-md",
  "rand 0.9.2",
  "regex",
  "reqwest",
@@ -11295,16 +11412,16 @@ checksum = "760394e246e4c28189f19d488c058bf16f564016aefac5d32bb1f3b51d5e9261"
 dependencies = [
  "aes",
  "byteorder",
- "bzip2",
- "constant_time_eq",
+ "bzip2 0.4.4",
+ "constant_time_eq 0.1.5",
  "crc32fast",
  "crossbeam-utils",
  "flate2",
  "hmac",
- "pbkdf2",
+ "pbkdf2 0.11.0",
  "sha1",
  "time",
- "zstd",
+ "zstd 0.11.2+zstd.1.5.2",
 ]
 
 [[package]]
@@ -11320,6 +11437,36 @@ dependencies = [
  "indexmap 2.11.0",
  "num_enum",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "zip"
+version = "2.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fabe6324e908f85a1c52063ce7aa26b68dcb7eb6dbc83a2d148403c9bc3eba50"
+dependencies = [
+ "aes",
+ "arbitrary",
+ "bzip2 0.5.2",
+ "constant_time_eq 0.3.1",
+ "crc32fast",
+ "crossbeam-utils",
+ "deflate64",
+ "displaydoc",
+ "flate2",
+ "getrandom 0.3.3",
+ "hmac",
+ "indexmap 2.11.0",
+ "lzma-rs",
+ "memchr",
+ "pbkdf2 0.12.2",
+ "sha1",
+ "thiserror 2.0.16",
+ "time",
+ "xz2",
+ "zeroize",
+ "zopfli",
+ "zstd 0.13.3",
 ]
 
 [[package]]
@@ -11374,7 +11521,16 @@ version = "0.11.2+zstd.1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20cc960326ece64f010d2d2107537f26dc589a6573a316bd5b1dba685fa5fde4"
 dependencies = [
- "zstd-safe",
+ "zstd-safe 5.0.2+zstd.1.5.2",
+]
+
+[[package]]
+name = "zstd"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e91ee311a569c327171651566e07972200e76fcfe2242a4fa446149a3881c08a"
+dependencies = [
+ "zstd-safe 7.2.4",
 ]
 
 [[package]]
@@ -11384,6 +11540,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d2a5585e04f9eea4b2a3d1eca508c4dee9592a89ef6f450c11719da0726f4db"
 dependencies = [
  "libc",
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "7.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f49c4d5f0abb602a93fb8736af2a4f4dd9512e36f7f570d66e65ff867ed3b9d"
+dependencies = [
  "zstd-sys",
 ]
 

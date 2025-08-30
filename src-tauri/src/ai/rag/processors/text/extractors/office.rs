@@ -6,7 +6,7 @@ use crate::utils::pandoc::PandocUtils;
 use async_trait::async_trait;
 use std::process::Command;
 
-/// Office document extractor supporting Word, RTF, and OpenDocument formats
+/// Office document extractor supporting Word, RTF, OpenDocument formats and other documents (excluding PPTX)
 pub struct OfficeExtractor {
     file_path: String,
 }
@@ -32,7 +32,6 @@ impl OfficeExtractor {
             Some("rtf") => vec!["--from", "rtf"],
             Some("odt") => vec!["--from", "odt"],
             Some("odp") => vec!["--from", "odp"],
-            Some("pptx") => vec!["--from", "pptx"],
             Some("epub") => vec!["--from", "epub"],
             Some("fb2") => vec!["--from", "fb2"],
             Some("latex") => vec!["--from", "latex"],
@@ -83,13 +82,11 @@ impl OfficeExtractor {
         if content.starts_with(b"PK\x03\x04") && content.len() > 1000 {
             let content_str = String::from_utf8_lossy(&content[..2000]);
 
-            // Office Open XML formats (documents and presentations only)
+            // Office Open XML formats (documents only)
             if content_str.contains("word/") || content_str.contains("document.xml") {
                 return Some("docx");
             }
-            if content_str.contains("ppt/") || content_str.contains("presentation.xml") {
-                return Some("pptx");
-            }
+            // Note: PPTX detection removed - handled by PptxExtractor
             // Note: XLSX detection removed - handled by SpreadsheetExtractor
 
             // OpenDocument formats (documents and presentations only)
