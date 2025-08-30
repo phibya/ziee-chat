@@ -51,14 +51,7 @@ pub trait RAGEngine: Send + Sync {
     async fn initialize(&self, instance_id: Uuid, settings: serde_json::Value) -> RAGResult<()>;
 
     /// Process a file through the RAG pipeline
-    async fn process_file(
-        &self,
-        instance_id: Uuid,
-        file_id: Uuid,
-        content: String,
-        filename: String,
-        options: ProcessingOptions,
-    ) -> RAGResult<()>;
+    async fn process_file(&self, instance_id: Uuid, file_id: Uuid) -> RAGResult<()>;
 
     /// Query the RAG engine
     async fn query(&self, instance_id: Uuid, query: RAGQuery) -> RAGResult<RAGQueryResponse>;

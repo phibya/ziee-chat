@@ -1,12 +1,9 @@
 // RAG Engine implementations
 
 pub mod settings;
-pub mod simple_graph;
 pub mod simple_vector;
-pub mod simple_vector_modules;
 pub mod traits;
 
-pub use simple_graph::RAGSimpleGraphEngine;
 pub use simple_vector::RAGSimpleVectorEngine;
 pub use traits::{RAGEngine, RAGEngineType};
 
@@ -29,10 +26,9 @@ impl RAGEngineFactory {
                 let engine = RAGSimpleVectorEngine::new(database);
                 Ok(Box::new(engine))
             }
-            RAGEngineType::SimpleGraph => {
-                let engine = RAGSimpleGraphEngine::new(database);
-                Ok(Box::new(engine))
-            }
+            RAGEngineType::SimpleGraph => Err(RAGError::ConfigurationError(
+                "SimpleGraph engine has been removed".to_string(),
+            )),
         }
     }
 
@@ -50,7 +46,7 @@ impl RAGEngineFactory {
 
     /// Get supported engine types
     pub fn supported_engine_types() -> Vec<RAGEngineType> {
-        vec![RAGEngineType::SimpleVector, RAGEngineType::SimpleGraph]
+        vec![RAGEngineType::SimpleVector]
     }
 }
 

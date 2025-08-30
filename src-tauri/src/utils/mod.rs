@@ -11,5 +11,4 @@ pub mod pandoc;
 pub mod password;
 pub mod pdfium;
 pub mod proxy;
-pub mod rag_file_storage;
 pub mod resource_paths;

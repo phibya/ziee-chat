@@ -4,6 +4,8 @@
 pub mod engines;
 pub mod models;
 pub mod processors;
+pub mod rag_file_storage;
+pub mod service;
 pub mod types;
 
 use async_trait::async_trait;
@@ -15,6 +17,7 @@ use uuid::Uuid;
 pub use engines::{RAGEngine, RAGEngineType};
 pub use models::*;
 pub use processors::*;
+pub use service::{RAGService, RAGServiceStatus};
 pub use types::*;
 
 /// Result type for RAG operations

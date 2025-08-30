@@ -20,16 +20,8 @@ pub struct ProcessingResult {
     pub quality_score: f32,
 }
 
-/// Main text processing function that handles extract, normalize, sanitize, validate
-pub async fn process_text(
-    file_path: &str,
-) -> RAGResult<(String, HashMap<String, serde_json::Value>)> {
-    let result = process_text_comprehensive(file_path).await?;
-    Ok((result.content, result.metadata))
-}
-
 /// Comprehensive text processing with full validation and quality metrics
-pub async fn process_text_comprehensive(file_path: &str) -> RAGResult<ProcessingResult> {
+pub async fn extract_text_from_file(file_path: &str) -> RAGResult<ProcessingResult> {
     // Step 1: Extract and convert to markdown
     let (mut content, mut metadata) = extractors::convert_to_markdown(file_path).await?;
 
@@ -40,8 +32,8 @@ pub async fn process_text_comprehensive(file_path: &str) -> RAGResult<Processing
 
     // Initialize processing components with hardcoded best practice configurations
     let normalizer = TextNormalizer::new();
-    let sanitizer = create_best_practice_sanitizer();
-    let validator = create_best_practice_validator();
+    let sanitizer = create_sanitizer();
+    let validator = create_validator();
 
     // Step 2: Normalize text content
     content = normalizer.normalize_for_entity_extraction(&content).await?;
@@ -114,13 +106,13 @@ pub async fn process_text_comprehensive(file_path: &str) -> RAGResult<Processing
 }
 
 /// Create a TextSanitizer with best practice configuration
-fn create_best_practice_sanitizer() -> TextSanitizer {
+fn create_sanitizer() -> TextSanitizer {
     // Use the existing with_default_config method which should have sensible defaults
     TextSanitizer::with_default_config()
 }
 
 /// Create a TextValidator with best practice configuration  
-fn create_best_practice_validator() -> TextValidator {
+fn create_validator() -> TextValidator {
     // Use the existing with_default_config method which should have sensible defaults
     TextValidator::with_default_config()
 }

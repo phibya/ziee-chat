@@ -4,16 +4,17 @@ mod auth;
 mod database;
 mod processing;
 pub mod route;
+pub mod startups;
 pub mod types;
 mod utils;
 
 use crate::api::app::get_http_port;
 use crate::utils::file_storage::FileStorage;
-use crate::utils::hub_manager::{HubManager, HUB_MANAGER};
-use crate::utils::rag_file_storage::RagFileStorage;
+use ai::rag::rag_file_storage::RagFileStorage;
 use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
 use once_cell::sync::Lazy;
 use route::create_rest_router;
+use startups::{cleanup_app_common, initialize_app_common};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -57,107 +58,6 @@ pub static FILE_STORAGE: Lazy<Arc<FileStorage>> =
 // Global RAG_FILE_STORAGE instance
 pub static RAG_FILE_STORAGE: Lazy<Arc<RagFileStorage>> =
     Lazy::new(|| Arc::new(RagFileStorage::new(&get_app_data_dir())));
-
-async fn initialize_app_common() -> Result<(), String> {
-    // Initialize environment variables
-
-    // Clear temp directory on startup
-    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
-        eprintln!("Failed to clear temp directory on startup: {}", e);
-    }
-
-    if let Err(e) = database::initialize_database().await {
-        return Err(format!("Failed to initialize database: {}", e));
-    }
-
-    // Clean up all download instances on startup
-    match database::queries::download_instances::delete_all_downloads().await {
-        Ok(count) => {
-            if count > 0 {
-                println!(
-                    "Cleaned up {} download instances from previous session",
-                    count
-                );
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to clean up download instances: {}", e);
-        }
-    }
-
-    // Initialize file storage
-    if let Err(e) = api::files::initialize_file_storage().await {
-        eprintln!("Failed to initialize file storage: {:?}", e);
-    } else {
-        println!("File storage initialized successfully");
-    }
-
-    // Initialize RAG file storage
-    if let Err(e) = RAG_FILE_STORAGE.initialize().await {
-        eprintln!("Failed to initialize RAG file storage: {:?}", e);
-    } else {
-        println!("RAG file storage initialized successfully");
-    }
-
-    // Initialize hub manager
-    match HubManager::new(get_app_data_dir()) {
-        Ok(hub_manager) => {
-            if let Err(e) = hub_manager.initialize().await {
-                eprintln!("Failed to initialize hub manager: {}", e);
-            } else {
-                println!("Hub manager initialized successfully");
-                // Store hub manager globally
-                let mut global_hub = HUB_MANAGER.lock().await;
-                *global_hub = Some(hub_manager);
-            }
-        }
-        Err(e) => {
-            eprintln!("Failed to create hub manager: {}", e);
-        }
-    }
-
-    // Start auto-unload task for local model management
-    let auto_unload_config = ai::AutoUnloadConfig::default();
-    ai::start_auto_unload_task(auto_unload_config);
-
-    println!("Auto-unload task started for local models");
-
-    // Reconcile model states on startup - check database vs actual processes
-    if let Err(e) = ai::reconcile_model_states().await {
-        eprintln!("Failed to reconcile model states: {}", e);
-        // Don't fail startup, just log the error
-    }
-
-    // Try to autostart the API proxy server if configured
-    if let Err(e) = ai::api_proxy_server::try_autostart_proxy_server().await {
-        eprintln!("Failed to autostart API proxy server: {}", e);
-        // Don't fail startup, just log the error
-    }
-
-    // Try to autostart ngrok tunnel if configured
-    if let Err(e) = api::configuration::try_autostart_ngrok_tunnel().await {
-        eprintln!("Failed to autostart ngrok tunnel: {}", e);
-        // Don't fail startup, just log the error
-    }
-
-    Ok(())
-}
-
-async fn cleanup_app_common() {
-    // Stop all running models first
-    if let Err(e) = ai::shutdown_all_models().await {
-        eprintln!("Failed to shutdown models: {}", e);
-        // Continue with other cleanup even if model shutdown fails
-    }
-
-    // Clear temp directory on shutdown
-    if let Err(e) = utils::model_storage::ModelStorage::clear_temp_directory().await {
-        eprintln!("Failed to clear temp directory on shutdown: {}", e);
-    }
-
-    // Cleanup database
-    database::cleanup_database().await;
-}
 
 pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| get_available_port());
 
