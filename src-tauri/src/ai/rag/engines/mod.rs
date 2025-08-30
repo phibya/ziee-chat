@@ -7,23 +7,40 @@ pub mod traits;
 pub use simple_vector::RAGSimpleVectorEngine;
 pub use traits::{RAGEngine, RAGEngineType};
 
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{rag_file_storage::RagFileStorage, RAGError, RAGResult};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::OnceLock;
 use uuid::Uuid;
+
+/// Global file storage instance
+static GLOBAL_FILE_STORAGE: OnceLock<RagFileStorage> = OnceLock::new();
+
+/// Initialize global file storage
+pub fn initialize_global_file_storage() {
+    let app_data_dir = crate::get_app_data_dir();
+    let file_storage = RagFileStorage::new(&app_data_dir);
+    if GLOBAL_FILE_STORAGE.set(file_storage).is_err() {
+        tracing::warn!("Global file storage was already initialized");
+    }
+}
+
+/// Get global file storage instance
+pub fn get_rag_file_storage() -> &'static RagFileStorage {
+    GLOBAL_FILE_STORAGE.get_or_init(|| {
+        let app_data_dir = crate::get_app_data_dir();
+        RagFileStorage::new(&app_data_dir)
+    })
+}
 
 /// Factory for creating RAG engines
 pub struct RAGEngineFactory;
 
 impl RAGEngineFactory {
     /// Create a new RAG engine based on type
-    pub fn create_engine(
-        engine_type: RAGEngineType,
-        database: Arc<sqlx::PgPool>,
-    ) -> RAGResult<Box<dyn RAGEngine>> {
+    pub fn create_engine(engine_type: RAGEngineType, instance_id: Uuid) -> RAGResult<Box<dyn RAGEngine>> {
         match engine_type {
             RAGEngineType::SimpleVector => {
-                let engine = RAGSimpleVectorEngine::new(database);
+                let engine = RAGSimpleVectorEngine::new(instance_id);
                 Ok(Box::new(engine))
             }
             RAGEngineType::SimpleGraph => Err(RAGError::ConfigurationError(

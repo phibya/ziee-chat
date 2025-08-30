@@ -13,7 +13,6 @@ pub struct TextChunk {
     pub content_hash: String,
     pub token_count: usize,
     pub chunk_index: usize,
-    pub file_id: Uuid,
     pub metadata: HashMap<String, serde_json::Value>,
 }
 

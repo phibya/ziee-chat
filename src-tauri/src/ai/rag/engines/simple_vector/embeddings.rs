@@ -1,6 +1,6 @@
 // Embeddings processing and batch operations
 
-use super::core::RAGSimpleVectorEngine;
+use super::{core::RAGSimpleVectorEngine, queries};
 use crate::ai::rag::{
     types::{EmbeddingVector, TextChunk},
     RAGError, RAGResult,
@@ -9,7 +9,6 @@ use chrono::Utc;
 use futures;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use uuid::Uuid;
 
 impl RAGSimpleVectorEngine {
     pub(super) async fn process_embeddings_in_batches(
@@ -26,7 +25,6 @@ impl RAGSimpleVectorEngine {
             batch_size
         );
 
-        // Split into batches like LightRAG: contents[i:i+batch_size] for i in range(0, len(contents), batch_size)
         let batches: Vec<Vec<String>> = chunks
             .chunks(batch_size)
             .map(|chunk_batch| chunk_batch.iter().map(|c| c.content.clone()).collect())
@@ -80,7 +78,6 @@ impl RAGSimpleVectorEngine {
         // Execute all embedding tasks in parallel using futures::future::join_all (equivalent to asyncio.gather)
         let batch_results = futures::future::join_all(batch_futures).await;
 
-        // Flatten the results like LightRAG: np.concatenate(embeddings_list, axis=0)
         let mut all_embeddings = Vec::with_capacity(total_chunks);
         for result in batch_results {
             let batch_embeddings = result?;
@@ -96,7 +93,7 @@ impl RAGSimpleVectorEngine {
 
     pub(super) async fn store_chunks_with_metadata(
         &self,
-        instance_id: Uuid,
+        file_id: uuid::Uuid,
         chunks: Vec<TextChunk>,
         embeddings: Vec<EmbeddingVector>,
     ) -> RAGResult<()> {
@@ -110,18 +107,18 @@ impl RAGSimpleVectorEngine {
 
         // Create semaphore for parallel processing control
         let semaphore = Arc::new(Semaphore::new(self.max_parallel_insert));
-        let database = self.database.clone();
 
         let chunk_embedding_pairs: Vec<_> =
             chunks.into_iter().zip(embeddings.into_iter()).collect();
 
+        let instance_id = self.instance_id; // Copy the instance_id
+        
         for batch in chunk_embedding_pairs.chunks(self.embedding_batch_size as usize) {
             let permit = semaphore.clone().acquire_owned().await.map_err(|e| {
                 RAGError::ProcessingError(format!("Failed to acquire semaphore: {}", e))
             })?;
 
             let batch_data = batch.to_vec();
-            let database = database.clone();
 
             tokio::spawn(async move {
                 let _permit = permit;
@@ -141,30 +138,16 @@ impl RAGSimpleVectorEngine {
                         serde_json::json!("text-embedding-ada-002"),
                     );
 
-                    let _ = sqlx::query(
-                        r#"
-                        INSERT INTO simple_vector_documents (
-                            rag_instance_id, file_id, chunk_index, content, content_hash,
-                            token_count, embedding, metadata
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                        ON CONFLICT (rag_instance_id, file_id, chunk_index) DO UPDATE SET
-                            content = EXCLUDED.content,
-                            content_hash = EXCLUDED.content_hash,
-                            token_count = EXCLUDED.token_count,
-                            embedding = EXCLUDED.embedding,
-                            metadata = EXCLUDED.metadata,
-                            updated_at = NOW()
-                        "#,
+                    let _ = queries::upsert_vector_document(
+                        instance_id,
+                        file_id,
+                        chunk.chunk_index as i32,
+                        &chunk.content,
+                        &chunk.content_hash,
+                        chunk.token_count as i32,
+                        &embedding.vector,
+                        serde_json::to_value(&enhanced_metadata).unwrap_or_default(),
                     )
-                    .bind(instance_id)
-                    .bind(chunk.file_id)
-                    .bind(chunk.chunk_index as i32)
-                    .bind(&chunk.content)
-                    .bind(&chunk.content_hash)
-                    .bind(chunk.token_count as i32)
-                    .bind(&embedding.vector)
-                    .bind(serde_json::to_value(&enhanced_metadata).unwrap_or_default())
-                    .execute(&*database)
                     .await;
                 }
             });

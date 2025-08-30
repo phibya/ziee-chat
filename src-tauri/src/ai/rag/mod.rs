@@ -77,19 +77,6 @@ pub trait RAGManager: Send + Sync {
 
     /// Query the RAG instance
     async fn query(&self, instance_id: Uuid, query: RAGQuery) -> RAGResult<RAGQueryResponse>;
-
-    /// Get processing status for a file
-    async fn get_processing_status(
-        &self,
-        instance_id: Uuid,
-        file_id: Uuid,
-    ) -> RAGResult<Vec<PipelineStatus>>;
-
-    /// Delete instance data
-    async fn delete_instance_data(&self, instance_id: Uuid) -> RAGResult<()>;
-
-    /// Get instance statistics
-    async fn get_instance_stats(&self, instance_id: Uuid) -> RAGResult<InstanceStats>;
 }
 
 /// Processing options for files

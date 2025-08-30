@@ -21,6 +21,7 @@
     "@tailwindcss/vite": "^4.1.11",
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/plugin-opener": "^2.4.0",
+    "@types/uuid": "^10.0.0",
     "antd": "^5.26.6",
     "dayjs": "^1.11.13",
     "highlight.js": "^11.11.1",

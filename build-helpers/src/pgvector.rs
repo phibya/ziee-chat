@@ -9,7 +9,6 @@ pub fn build(
     target: &str,
     source_path: Option<&Path>,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-
     // Default source path if not provided
     let default_path;
     let pgvector_dir = if let Some(path) = source_path {
@@ -67,7 +66,11 @@ pub fn build(
     if source_library_path.exists() {
         fs::copy(&source_library_path, &target_library_path)?;
     } else {
-        return Err(format!("pgvector library not found after build: {}", source_library_path.display()).into());
+        return Err(format!(
+            "pgvector library not found after build: {}",
+            source_library_path.display()
+        )
+        .into());
     }
 
     // Copy vector.control file to target directory
@@ -110,7 +113,7 @@ fn setup_postgresql_binaries(
     target: &str,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let postgres_dir = pgvector_dir.join("postgresql-17.5.0");
-    
+
     // Skip download if already exists
     if postgres_dir.exists() {
         println!("PostgreSQL binaries already exist at {:?}", postgres_dir);
@@ -121,13 +124,26 @@ fn setup_postgresql_binaries(
 
     // Determine the correct PostgreSQL binary package for the target
     let postgres_package = match target {
-        t if t.contains("aarch64") && t.contains("apple") => "postgresql-17.5.0-aarch64-apple-darwin.tar.gz",
-        t if t.contains("x86_64") && t.contains("apple") => "postgresql-17.5.0-x86_64-apple-darwin.tar.gz",
-        t if t.contains("x86_64") && t.contains("linux") => "postgresql-17.5.0-x86_64-unknown-linux-gnu.tar.gz",
-        t if t.contains("aarch64") && t.contains("linux") => "postgresql-17.5.0-aarch64-unknown-linux-gnu.tar.gz",
-        t if t.contains("x86_64") && t.contains("windows") => "postgresql-17.5.0-x86_64-pc-windows-msvc.zip",
+        t if t.contains("aarch64") && t.contains("apple") => {
+            "postgresql-17.5.0-aarch64-apple-darwin.tar.gz"
+        }
+        t if t.contains("x86_64") && t.contains("apple") => {
+            "postgresql-17.5.0-x86_64-apple-darwin.tar.gz"
+        }
+        t if t.contains("x86_64") && t.contains("linux") => {
+            "postgresql-17.5.0-x86_64-unknown-linux-gnu.tar.gz"
+        }
+        t if t.contains("aarch64") && t.contains("linux") => {
+            "postgresql-17.5.0-aarch64-unknown-linux-gnu.tar.gz"
+        }
+        t if t.contains("x86_64") && t.contains("windows") => {
+            "postgresql-17.5.0-x86_64-pc-windows-msvc.zip"
+        }
         _ => {
-            println!("Warning: Unsupported target platform for PostgreSQL binaries: {}", target);
+            println!(
+                "Warning: Unsupported target platform for PostgreSQL binaries: {}",
+                target
+            );
             return Ok(postgres_dir); // Return empty directory for unsupported platforms
         }
     };
@@ -159,7 +175,6 @@ fn build_pgvector_extension(
     postgres_dir: &Path,
     target: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-
     // Set up environment for PostgreSQL
     let pg_config_path = if target.contains("windows") {
         postgres_dir.join("bin").join("pg_config.exe")
@@ -199,7 +214,7 @@ fn build_pgvector_extension(
     cmd.env("ENABLE_DEBUG", "no");
     cmd.env("DEBUG", "");
     cmd.env("PROFILE", "");
-    
+
     // Get correct SDK path on macOS
     if target.contains("darwin") {
         // Use xcrun to get the correct SDK path
@@ -208,15 +223,18 @@ fn build_pgvector_extension(
             .output()
         {
             if sdk_output.status.success() {
-                let sdk_path = String::from_utf8_lossy(&sdk_output.stdout).trim().to_string();
-                
+                let sdk_path = String::from_utf8_lossy(&sdk_output.stdout)
+                    .trim()
+                    .to_string();
+
                 // Create a wrapper script for pg_config to fix the SDK path
                 let wrapper_dir = pgvector_dir.join("pg_config_wrapper");
                 fs::create_dir_all(&wrapper_dir)?;
                 let wrapper_script = wrapper_dir.join("pg_config");
                 let original_pg_config = pg_config_path.display();
-                
-                let wrapper_content = format!(r#"#!/bin/bash
+
+                let wrapper_content = format!(
+                    r#"#!/bin/bash
 # Wrapper script to fix PostgreSQL SDK path
 case "$1" in
     --cppflags)
@@ -230,10 +248,12 @@ case "$1" in
         "{}" "$@" | sed 's|/Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*\.[0-9]*\.sdk|{}|g'
         ;;
 esac
-"#, sdk_path, original_pg_config, sdk_path, original_pg_config, sdk_path);
+"#,
+                    sdk_path, original_pg_config, sdk_path, original_pg_config, sdk_path
+                );
 
                 fs::write(&wrapper_script, wrapper_content)?;
-                
+
                 // Make the wrapper executable
                 #[cfg(unix)]
                 {
@@ -242,24 +262,31 @@ esac
                     perms.set_mode(0o755);
                     fs::set_permissions(&wrapper_script, perms)?;
                 }
-                
+
                 // Use the wrapper script instead of the original pg_config
                 cmd.env("PG_CONFIG", &wrapper_script);
-                cmd.env("PATH", format!("{}:{}", wrapper_dir.display(), std::env::var("PATH").unwrap_or_default()));
-                
+                cmd.env(
+                    "PATH",
+                    format!(
+                        "{}:{}",
+                        wrapper_dir.display(),
+                        std::env::var("PATH").unwrap_or_default()
+                    ),
+                );
+
                 // Use PostgreSQL's official environment variables to override flags
                 // PG_CPPFLAGS will be prepended to CPPFLAGS (overriding the hardcoded SDK path)
                 cmd.env("PG_CPPFLAGS", format!("-isysroot {}", sdk_path));
                 cmd.env("PG_CFLAGS", format!("-isysroot {}", sdk_path));
                 cmd.env("PG_LDFLAGS", format!("-isysroot {}", sdk_path));
-                
+
                 // Also patch the PostgreSQL Makefile.global to fix hardcoded PG_SYSROOT
-                let makefile_global = pgvector_dir.join("postgresql-17.5.0/lib/pgxs/src/Makefile.global");
+                let makefile_global =
+                    pgvector_dir.join("postgresql-17.5.0/lib/pgxs/src/Makefile.global");
                 if makefile_global.exists() {
                     // Get the current wrong SDK path from pg_config --cppflags
-                    if let Ok(cppflags_output) = Command::new(&pg_config_path)
-                        .arg("--cppflags")
-                        .output()
+                    if let Ok(cppflags_output) =
+                        Command::new(&pg_config_path).arg("--cppflags").output()
                     {
                         if cppflags_output.status.success() {
                             let cppflags_str = String::from_utf8_lossy(&cppflags_output.stdout);
@@ -268,12 +295,12 @@ esac
                                 let remaining = &cppflags_str[start + 10..]; // Skip "-isysroot "
                                 if let Some(end) = remaining.find(" ") {
                                     let wrong_sdk_path = &remaining[..end];
-                                    
+
                                     // Now patch the Makefile.global
                                     let content = fs::read_to_string(&makefile_global)?;
                                     let fixed_content = content.replace(
                                         &format!("PG_SYSROOT = {}", wrong_sdk_path),
-                                        &format!("PG_SYSROOT = {}", sdk_path)
+                                        &format!("PG_SYSROOT = {}", sdk_path),
                                     );
                                     fs::write(&makefile_global, fixed_content)?;
                                 }
@@ -289,9 +316,12 @@ esac
 
     let stderr = String::from_utf8_lossy(&output.stderr);
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     if !output.status.success() {
-        eprintln!("Error: pgvector extension build failed with exit code: {:?}", output.status.code());
+        eprintln!(
+            "Error: pgvector extension build failed with exit code: {:?}",
+            output.status.code()
+        );
         eprintln!("STDOUT: {}", stdout);
         eprintln!("STDERR: {}", stderr);
         return Err("pgvector extension build failed".into());
@@ -305,23 +335,26 @@ fn download_file(url: &str, path: &Path) -> Result<(), Box<dyn std::error::Error
 
     let response = ureq::get(url).call()?;
     let mut file = fs::File::create(path)?;
-    
+
     let mut buffer = Vec::new();
     response.into_reader().read_to_end(&mut buffer)?;
     file.write_all(&buffer)?;
-    
+
     Ok(())
 }
 
 /// Extract tar.gz or zip archive, removing platform-specific top-level directories
-fn extract_archive(archive_path: &Path, extract_to: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn extract_archive(
+    archive_path: &Path,
+    extract_to: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(extract_to)?;
 
     if archive_path.extension().and_then(|s| s.to_str()) == Some("zip") {
         // Extract ZIP file
         let file = fs::File::open(archive_path)?;
         let mut archive = zip::ZipArchive::new(file)?;
-        
+
         // Find the common prefix (platform-specific directory name)
         let mut common_prefix: Option<String> = None;
         for i in 0..archive.len() {
@@ -335,7 +368,7 @@ fn extract_archive(archive_path: &Path, extract_to: &Path) -> Result<(), Box<dyn
                 }
             }
         }
-        
+
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
             let file_path = match file.enclosed_name() {
@@ -349,7 +382,7 @@ fn extract_archive(archive_path: &Path, extract_to: &Path) -> Result<(), Box<dyn
             } else {
                 file_path
             };
-            
+
             let outpath = extract_to.join(relative_path);
 
             if file.name().ends_with('/') {
@@ -377,7 +410,7 @@ fn extract_archive(archive_path: &Path, extract_to: &Path) -> Result<(), Box<dyn
         // Extract tar.gz file to temporary location first
         let temp_dir = extract_to.parent().unwrap().join("temp_postgres_extract");
         fs::create_dir_all(&temp_dir)?;
-        
+
         let tar_gz = fs::File::open(archive_path)?;
         let tar = flate2::read::GzDecoder::new(tar_gz);
         let mut archive = tar::Archive::new(tar);
@@ -415,19 +448,18 @@ fn extract_archive(archive_path: &Path, extract_to: &Path) -> Result<(), Box<dyn
 /// Move contents from source directory to destination directory
 fn move_dir_contents(src: &Path, dst: &Path) -> std::io::Result<()> {
     fs::create_dir_all(dst)?;
-    
+
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let src_path = entry.path();
         let dst_path = dst.join(entry.file_name());
-        
+
         if src_path.is_dir() {
             move_dir_contents(&src_path, &dst_path)?;
         } else {
             fs::copy(&src_path, &dst_path)?;
         }
     }
-    
+
     Ok(())
 }
-

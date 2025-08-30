@@ -1,9 +1,6 @@
 // RAG Engine traits and common types
 
-use crate::ai::rag::{
-    InstanceStats, PipelineStatus, ProcessingOptions, RAGError, RAGQuery, RAGQueryResponse,
-    RAGResult,
-};
+use crate::ai::rag::{ProcessingOptions, RAGError, RAGQuery, RAGQueryResponse, RAGResult};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -47,79 +44,20 @@ pub trait RAGEngine: Send + Sync {
     /// Get the engine type
     fn engine_type(&self) -> RAGEngineType;
 
-    /// Initialize the engine for a specific RAG instance
-    async fn initialize(&self, instance_id: Uuid, settings: serde_json::Value) -> RAGResult<()>;
+    /// Initialize the engine
+    async fn initialize(&self, settings: serde_json::Value) -> RAGResult<()>;
 
     /// Process a file through the RAG pipeline
-    async fn process_file(&self, instance_id: Uuid, file_id: Uuid) -> RAGResult<()>;
+    async fn process_file(&self, file_id: Uuid) -> RAGResult<()>;
 
     /// Query the RAG engine
-    async fn query(&self, instance_id: Uuid, query: RAGQuery) -> RAGResult<RAGQueryResponse>;
-
-    /// Get processing status for files
-    async fn get_processing_status(
-        &self,
-        instance_id: Uuid,
-        file_id: Uuid,
-    ) -> RAGResult<Vec<PipelineStatus>>;
-
-    /// Delete all data for a RAG instance
-    async fn delete_instance_data(&self, instance_id: Uuid) -> RAGResult<()>;
-
-    /// Get instance statistics
-    async fn get_instance_stats(&self, instance_id: Uuid) -> RAGResult<InstanceStats>;
+    async fn query(&self, query: RAGQuery) -> RAGResult<RAGQueryResponse>;
 
     /// Validate engine configuration
     async fn validate_configuration(&self, settings: serde_json::Value) -> RAGResult<()>;
 
     /// Get engine capabilities
     fn get_capabilities(&self) -> crate::ai::rag::engines::EngineCapabilities;
-
-    /// Health check for the engine
-    async fn health_check(&self, instance_id: Uuid) -> RAGResult<EngineHealth>;
-
-    /// Optimize engine data (cleanup, reindex, etc.)
-    async fn optimize(&self, instance_id: Uuid) -> RAGResult<OptimizationResult>;
-}
-
-/// Engine health status
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EngineHealth {
-    pub is_healthy: bool,
-    pub status: EngineStatus,
-    pub messages: Vec<String>,
-    pub metrics: EngineMetrics,
-    pub last_check: chrono::DateTime<chrono::Utc>,
-}
-
-/// Engine status
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum EngineStatus {
-    Healthy,
-    Warning,
-    Error,
-    Unavailable,
-}
-
-/// Engine performance metrics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EngineMetrics {
-    pub query_latency_ms: Option<f64>,
-    pub indexing_throughput: Option<f64>,
-    pub memory_usage_mb: Option<f64>,
-    pub storage_size_mb: Option<f64>,
-    pub error_rate_percentage: Option<f64>,
-}
-
-/// Optimization result
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OptimizationResult {
-    pub success: bool,
-    pub operations_performed: Vec<String>,
-    pub space_freed_mb: f64,
-    pub performance_improvement_percentage: Option<f64>,
-    pub duration_ms: u64,
-    pub next_optimization_recommended: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// File processing context

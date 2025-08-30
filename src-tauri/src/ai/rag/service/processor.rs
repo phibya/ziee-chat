@@ -12,8 +12,9 @@ use tokio::time::{sleep, Duration};
 use uuid::Uuid;
 
 use super::queries::{
-    get_engine_type_for_instance, get_pending_files_for_instance, get_rag_instances_with_pending_files,
-    update_file_status, update_file_status_with_error, update_rag_instance_active_status,
+    get_engine_type_for_instance, get_pending_files_for_instance,
+    get_rag_instances_with_pending_files, update_file_status, update_file_status_with_error,
+    update_rag_instance_active_status,
 };
 
 /// Thread-safe registry to track active RAG instance worker threads
@@ -95,9 +96,7 @@ pub async fn process_pending_files() -> RAGResult<()> {
 
             // Spawn dedicated worker thread for this RAG instance
             tokio::spawn(async move {
-                if let Err(e) =
-                    rag_instance_worker(rag_instance_id, registry_clone).await
-                {
+                if let Err(e) = rag_instance_worker(rag_instance_id, registry_clone).await {
                     tracing::error!(
                         "Worker thread for RAG instance {} failed: {}",
                         rag_instance_id,
@@ -121,10 +120,6 @@ async fn rag_instance_worker(
     rag_instance_id: Uuid,
     registry: Arc<RwLock<HashSet<Uuid>>>,
 ) -> RAGResult<()> {
-    use crate::database::get_database_pool;
-    
-    let database = get_database_pool()
-        .map_err(|e| crate::ai::rag::RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
     tracing::info!(
         "Starting worker thread for RAG instance: {}",
         rag_instance_id
@@ -140,8 +135,7 @@ async fn rag_instance_worker(
                 e
             );
             // Deactivate the RAG instance due to engine type failure
-            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false)
-                .await
+            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false).await
             {
                 tracing::error!("Failed to deactivate RAG instance: {}", update_err);
             }
@@ -151,7 +145,7 @@ async fn rag_instance_worker(
     };
 
     // Create engine for this RAG instance
-    let engine = match RAGEngineFactory::create_engine(engine_type, database.clone()) {
+    let engine = match RAGEngineFactory::create_engine(engine_type, rag_instance_id) {
         Ok(engine) => engine,
         Err(e) => {
             tracing::error!(
@@ -159,8 +153,7 @@ async fn rag_instance_worker(
                 rag_instance_id,
                 e
             );
-            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false)
-                .await
+            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false).await
             {
                 tracing::error!("Failed to deactivate RAG instance: {}", update_err);
             }
@@ -171,7 +164,7 @@ async fn rag_instance_worker(
 
     // Initialize the engine
     if let Err(e) = engine
-        .initialize(rag_instance_id, serde_json::json!({}))
+        .initialize(serde_json::json!({}))
         .await
     {
         tracing::error!(
@@ -179,9 +172,7 @@ async fn rag_instance_worker(
             rag_instance_id,
             e
         );
-        if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false)
-            .await
-        {
+        if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false).await {
             tracing::error!("Failed to deactivate RAG instance: {}", update_err);
         }
         unregister_and_exit(rag_instance_id, &registry).await;
@@ -258,8 +249,7 @@ async fn rag_instance_worker(
                         e
                     );
                     if let Err(update_err) =
-                        update_file_status_with_error(&file.id, "failed", &e.to_string())
-                            .await
+                        update_file_status_with_error(&file.id, "failed", &e.to_string()).await
                     {
                         tracing::error!(
                             "Failed to update error status for {}: {}",
@@ -278,7 +268,6 @@ async fn rag_instance_worker(
     unregister_and_exit(rag_instance_id, &registry).await;
     Ok(())
 }
-
 
 /// Unregister instance from registry and log thread termination
 async fn unregister_and_exit(rag_instance_id: Uuid, registry: &Arc<RwLock<HashSet<Uuid>>>) {
@@ -303,7 +292,7 @@ async fn process_single_file(
     // Note: Content is now extracted from file storage by the engine itself
     // Processing options can be retrieved from database if needed
     engine
-        .process_file(rag_file.rag_instance_id, rag_file.file_id)
+        .process_file(rag_file.file_id)
         .await?;
 
     Ok(())

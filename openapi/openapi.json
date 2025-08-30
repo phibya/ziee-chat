@@ -650,99 +650,6 @@
         }
       }
     },
-    "/api/admin/groups/{group_id}/providers": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Get providers assigned to a group",
-        "operationId": "Admin.getGroupProviders",
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Provider"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/groups/assign-provider": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Assign a provider to a group",
-        "operationId": "Admin.assignProviderToGroup",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssignProviderToGroupRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserGroupProviderResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/groups/{group_id}/providers/{provider_id}": {
-      "delete": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Remove a provider from a group",
-        "operationId": "Admin.removeProviderFromGroup",
-        "responses": {
-          "204": {
-            "description": "no content"
-          }
-        }
-      }
-    },
-    "/api/admin/user-group-provider-relationships": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "description": "List all user group provider relationships",
-        "operationId": "Admin.listUserGroupProviderRelationships",
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserGroupProviderResponse"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/admin/config/user-registration": {
       "get": {
         "tags": [
@@ -2058,130 +1965,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RAGRepositoryConnectionTestResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/user-groups/{group_id}/rag-providers": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Assign RAG provider to user group",
-        "operationId": "Admin.assignRagProviderToGroup",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssignRAGProviderToGroupRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserGroupRAGProviderResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/user-groups/{group_id}/rag-providers/{provider_id}": {
-      "put": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Update RAG provider permissions for user group",
-        "operationId": "Admin.updateGroupRagProviderPermissions",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateGroupRAGProviderRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserGroupRAGProviderResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "admin"
-        ],
-        "description": "Remove RAG provider from user group",
-        "operationId": "Admin.removeRagProviderFromGroup",
-        "responses": {
-          "204": {
-            "description": "no content"
-          }
-        }
-      }
-    },
-    "/api/admin/user-group-rag-providers": {
-      "get": {
-        "tags": [
-          "admin"
-        ],
-        "description": "List all user group RAG provider relationships",
-        "operationId": "Admin.listUserGroupRagProviderRelationships",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int32"
-            },
-            "style": "form"
-          },
-          {
-            "in": "query",
-            "name": "per_page",
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int32"
-            },
-            "style": "form"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UserGroupRAGProviderResponse"
-                  }
                 }
               }
             }
@@ -4175,32 +3958,6 @@
         ],
         "description": "List RAG providers available for creating instances",
         "operationId": "Rag.listCreatableProviders",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int32"
-            },
-            "style": "form"
-          },
-          {
-            "in": "query",
-            "name": "per_page",
-            "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "int32"
-            },
-            "style": "form"
-          }
-        ],
         "responses": {
           "200": {
             "description": "",
@@ -4247,6 +4004,17 @@
                 "null"
               ],
               "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "include_system",
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "style": "form"
           }
@@ -4404,6 +4172,17 @@
               ]
             },
             "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "style": "form"
           }
         ],
         "responses": {
@@ -4412,10 +4191,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RAGInstanceFile"
-                  }
+                  "$ref": "#/components/schemas/RAGInstanceFilesListResponse"
                 }
               }
             }
@@ -4426,13 +4202,14 @@
         "tags": [
           "rag"
         ],
-        "description": "Add files to RAG instance",
-        "operationId": "Rag.addFilesToInstance",
+        "description": "Upload file to RAG instance",
+        "operationId": "Rag.uploadInstanceFile",
         "requestBody": {
+          "description": "multipart form data",
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/AddFilesToRAGInstanceRequest"
+                "type": "array"
               }
             }
           },
@@ -4444,7 +4221,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AddFilesToRAGInstanceResponse"
+                  "$ref": "#/components/schemas/UploadFileResponse"
                 }
               }
             }
@@ -4457,11 +4234,18 @@
         "tags": [
           "rag"
         ],
-        "description": "Remove file from RAG instance",
-        "operationId": "Rag.removeFileFromInstance",
+        "description": "Delete file from RAG instance",
+        "operationId": "Rag.deleteInstanceFile",
         "responses": {
-          "204": {
-            "description": "no content"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileOperationSuccessResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4679,6 +4463,13 @@
               "format": "uuid"
             }
           },
+          "rag_provider_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           "is_protected": {
             "type": "boolean"
           },
@@ -4699,6 +4490,7 @@
           "name",
           "permissions",
           "provider_ids",
+          "rag_provider_ids",
           "is_protected",
           "is_active",
           "created_at",
@@ -5058,6 +4850,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "rag_provider_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         },
         "required": [
@@ -5099,6 +4901,16 @@
               "format": "uuid"
             }
           },
+          "rag_provider_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
           "is_active": {
             "type": [
               "boolean",
@@ -5122,162 +4934,6 @@
         "required": [
           "user_id",
           "group_id"
-        ]
-      },
-      "Provider": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "$ref": "#/components/schemas/ProviderType"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "api_key": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "base_url": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "built_in": {
-            "type": "boolean"
-          },
-          "proxy_settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProxySettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "type",
-          "enabled",
-          "built_in",
-          "created_at",
-          "updated_at"
-        ]
-      },
-      "ProviderType": {
-        "type": "string",
-        "enum": [
-          "local",
-          "openai",
-          "anthropic",
-          "groq",
-          "gemini",
-          "mistral",
-          "deepseek",
-          "huggingface",
-          "custom"
-        ]
-      },
-      "ProxySettings": {
-        "description": "Common proxy settings structure used for both system-wide and provider-specific proxy configuration",
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "default": false
-          },
-          "url": {
-            "type": "string",
-            "default": ""
-          },
-          "username": {
-            "type": "string",
-            "default": ""
-          },
-          "password": {
-            "type": "string",
-            "default": ""
-          },
-          "no_proxy": {
-            "type": "string",
-            "default": ""
-          },
-          "ignore_ssl_certificates": {
-            "type": "boolean",
-            "default": false
-          }
-        }
-      },
-      "AssignProviderToGroupRequest": {
-        "type": "object",
-        "properties": {
-          "group_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "provider_id": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "group_id",
-          "provider_id"
-        ]
-      },
-      "UserGroupProviderResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "group_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "provider_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "assigned_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "provider": {
-            "$ref": "#/components/schemas/Provider"
-          },
-          "group": {
-            "$ref": "#/components/schemas/UserGroup"
-          }
-        },
-        "required": [
-          "id",
-          "group_id",
-          "provider_id",
-          "assigned_at",
-          "provider",
-          "group"
         ]
       },
       "UpdateUserRegistrationRequest": {
@@ -5501,6 +5157,110 @@
           "per_page"
         ]
       },
+      "Provider": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "api_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "base_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "built_in": {
+            "type": "boolean"
+          },
+          "proxy_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProxySettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "enabled",
+          "built_in",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "ProviderType": {
+        "type": "string",
+        "enum": [
+          "local",
+          "openai",
+          "anthropic",
+          "groq",
+          "gemini",
+          "mistral",
+          "deepseek",
+          "huggingface",
+          "custom"
+        ]
+      },
+      "ProxySettings": {
+        "description": "Common proxy settings structure used for both system-wide and provider-specific proxy configuration",
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "url": {
+            "type": "string",
+            "default": ""
+          },
+          "username": {
+            "type": "string",
+            "default": ""
+          },
+          "password": {
+            "type": "string",
+            "default": ""
+          },
+          "no_proxy": {
+            "type": "string",
+            "default": ""
+          },
+          "ignore_ssl_certificates": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
       "CreateProviderRequest": {
         "type": "object",
         "properties": {
@@ -5683,20 +5443,10 @@
           "engine_type": {
             "$ref": "#/components/schemas/EngineType"
           },
-          "engine_settings_mistralrs": {
+          "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/MistralRsSettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "engine_settings_llamacpp": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LlamaCppSettings"
+                "$ref": "#/components/schemas/ModelEngineSettings"
               },
               {
                 "type": "null"
@@ -5767,6 +5517,27 @@
           },
           "code_interpreter": {
             "description": "Code interpreter capability",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "chat": {
+            "description": "Chat capability - can engage in conversational text generation",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "text_embedding": {
+            "description": "Text embedding capability - can generate text embeddings for semantic search",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "image_generator": {
+            "description": "Image generation capability - can generate images from text descriptions",
             "type": [
               "boolean",
               "null"
@@ -5880,6 +5651,34 @@
           "llamacpp",
           "none"
         ]
+      },
+      "ModelEngineSettings": {
+        "description": "Engine-specific settings for model configuration",
+        "type": "object",
+        "properties": {
+          "mistralrs": {
+            "description": "MistralRs-specific settings",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MistralRsSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "llamacpp": {
+            "description": "LlamaCpp-specific settings",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LlamaCppSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
       },
       "MistralRsSettings": {
         "description": "MistralRs-specific settings for individual model performance and batching configuration",
@@ -6628,20 +6427,10 @@
           "engine_type": {
             "$ref": "#/components/schemas/EngineType"
           },
-          "engine_settings_mistralrs": {
+          "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/MistralRsSettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "engine_settings_llamacpp": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LlamaCppSettings"
+                "$ref": "#/components/schemas/ModelEngineSettings"
               },
               {
                 "type": "null"
@@ -6733,20 +6522,10 @@
               }
             ]
           },
-          "engine_settings_mistralrs": {
+          "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/MistralRsSettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "engine_settings_llamacpp": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LlamaCppSettings"
+                "$ref": "#/components/schemas/ModelEngineSettings"
               },
               {
                 "type": "null"
@@ -6833,20 +6612,10 @@
               }
             ]
           },
-          "engine_settings_mistralrs": {
+          "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/MistralRsSettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "engine_settings_llamacpp": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LlamaCppSettings"
+                "$ref": "#/components/schemas/ModelEngineSettings"
               },
               {
                 "type": "null"
@@ -7044,20 +6813,10 @@
               }
             ]
           },
-          "engine_settings_mistralrs": {
+          "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/MistralRsSettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "engine_settings_llamacpp": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LlamaCppSettings"
+                "$ref": "#/components/schemas/ModelEngineSettings"
               },
               {
                 "type": "null"
@@ -7466,8 +7225,9 @@
           "engine_type": {
             "$ref": "#/components/schemas/RAGEngineType"
           },
-          "engine_settings_rag_simple_vector": true,
-          "engine_settings_rag_simple_graph": true,
+          "engine_settings": {
+            "$ref": "#/components/schemas/RagEngineSettings"
+          },
           "embedding_model_id": {
             "type": [
               "string",
@@ -7507,6 +7267,7 @@
           "is_active",
           "is_system",
           "engine_type",
+          "engine_settings",
           "parameters",
           "created_at",
           "updated_at"
@@ -7515,8 +7276,373 @@
       "RAGEngineType": {
         "type": "string",
         "enum": [
-          "rag_simple_vector",
-          "rag_simple_graph"
+          "simple_vector",
+          "simple_graph"
+        ]
+      },
+      "RagEngineSettings": {
+        "description": "Engine-specific settings for RAG instance configuration",
+        "type": "object",
+        "properties": {
+          "simple_vector": {
+            "description": "Simple vector RAG engine settings",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGSimpleVectorEngineSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "simple_graph": {
+            "description": "Simple graph RAG engine settings",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGSimpleGraphEngineSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "RAGSimpleVectorEngineSettings": {
+        "type": "object",
+        "properties": {
+          "indexing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGSimpleVectorIndexingSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "querying": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGSimpleVectorQueryingSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "RAGSimpleVectorIndexingSettings": {
+        "type": "object",
+        "properties": {
+          "chunk_token_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "chunk_overlap_token_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "cosine_better_than_threshold": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          }
+        }
+      },
+      "RAGSimpleVectorQueryingSettings": {
+        "type": "object",
+        "properties": {
+          "top_k": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "chunk_top_k": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "similarity_threshold": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "related_chunk_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "max_total_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "chunk_selection_method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGChunkSelectionMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_prompt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enable_rerank": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "min_rerank_score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          }
+        }
+      },
+      "RAGChunkSelectionMethod": {
+        "type": "string",
+        "enum": [
+          "weight",
+          "vector"
+        ]
+      },
+      "RAGSimpleGraphEngineSettings": {
+        "type": "object",
+        "properties": {
+          "indexing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGSimpleGraphIndexingSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "querying": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGSimpleGraphQueryingSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "RAGSimpleGraphIndexingSettings": {
+        "type": "object",
+        "properties": {
+          "chunk_token_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "chunk_overlap_token_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "entity_extract_max_gleaning": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "force_llm_summary_on_merge": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "max_graph_nodes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "summary_max_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "entity_types": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "extraction_language": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RAGSimpleGraphQueryingSettings": {
+        "type": "object",
+        "properties": {
+          "max_entity_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "max_relation_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "max_total_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "max_graph_nodes_per_query": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "top_k": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "chunk_top_k": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "related_chunk_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "query_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGSimpleGraphQueryMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chunk_selection_method": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGChunkSelectionMethod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_prompt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enable_rerank": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "min_rerank_score": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          }
+        }
+      },
+      "RAGSimpleGraphQueryMode": {
+        "type": "string",
+        "enum": [
+          "local",
+          "global",
+          "hybrid",
+          "naive",
+          "mix",
+          "bypass"
         ]
       },
       "CreateSystemRAGInstanceRequest": {
@@ -7542,7 +7668,10 @@
             "$ref": "#/components/schemas/RAGEngineType"
           },
           "embedding_model_id": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "llm_model_id": {
@@ -7553,14 +7682,22 @@
             "format": "uuid"
           },
           "parameters": true,
-          "engine_settings": true
+          "engine_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RagEngineSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
         },
         "required": [
           "provider_id",
           "name",
           "alias",
-          "engine_type",
-          "embedding_model_id"
+          "engine_type"
         ]
       },
       "UpdateRAGInstanceRequest": {
@@ -7599,7 +7736,16 @@
             "format": "uuid"
           },
           "parameters": true,
-          "engine_settings": true
+          "engine_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RagEngineSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
         }
       },
       "RAGProviderListResponse": {
@@ -7662,6 +7808,9 @@
           "built_in": {
             "type": "boolean"
           },
+          "can_user_create_instance": {
+            "type": "boolean"
+          },
           "proxy_settings": {
             "anyOf": [
               {
@@ -7687,6 +7836,7 @@
           "type",
           "enabled",
           "built_in",
+          "can_user_create_instance",
           "created_at",
           "updated_at"
         ]
@@ -7729,6 +7879,12 @@
               "string",
               "null"
             ]
+          },
+          "can_user_create_instance": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "required": [
@@ -7760,6 +7916,12 @@
           "base_url": {
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "can_user_create_instance": {
+            "type": [
+              "boolean",
               "null"
             ]
           },
@@ -7974,82 +8136,6 @@
           "success",
           "message"
         ]
-      },
-      "AssignRAGProviderToGroupRequest": {
-        "type": "object",
-        "properties": {
-          "group_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "provider_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "can_create_instance": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "group_id",
-          "provider_id",
-          "can_create_instance"
-        ]
-      },
-      "UserGroupRAGProviderResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "group_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "provider_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "can_create_instance": {
-            "type": "boolean"
-          },
-          "assigned_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "provider": {
-            "$ref": "#/components/schemas/RAGProvider"
-          },
-          "group": {
-            "$ref": "#/components/schemas/UserGroup"
-          }
-        },
-        "required": [
-          "id",
-          "group_id",
-          "provider_id",
-          "can_create_instance",
-          "assigned_at",
-          "updated_at",
-          "provider",
-          "group"
-        ]
-      },
-      "UpdateGroupRAGProviderRequest": {
-        "type": "object",
-        "properties": {
-          "can_create_instance": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          }
-        }
       },
       "AssistantListResponse": {
         "type": "object",
@@ -9501,6 +9587,13 @@
             ],
             "format": "uuid"
           },
+          "rag_instance_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
           "thumbnail_count": {
             "type": "integer",
             "format": "int32"
@@ -10066,6 +10159,31 @@
           "per_page"
         ]
       },
+      "RAGInstanceListQuery": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "per_page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "include_system": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateRAGInstanceRequest": {
         "type": "object",
         "properties": {
@@ -10096,7 +10214,10 @@
             "$ref": "#/components/schemas/RAGEngineType"
           },
           "embedding_model_id": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "llm_model_id": {
@@ -10107,14 +10228,22 @@
             "format": "uuid"
           },
           "parameters": true,
-          "engine_settings": true
+          "engine_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RagEngineSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
         },
         "required": [
           "provider_id",
           "name",
           "alias",
-          "engine_type",
-          "embedding_model_id"
+          "engine_type"
         ]
       },
       "RAGInstanceFilesQuery": {
@@ -10143,6 +10272,12 @@
                 "type": "null"
               }
             ]
+          },
+          "search": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -10153,6 +10288,35 @@
           "processing",
           "completed",
           "failed"
+        ]
+      },
+      "RAGInstanceFilesListResponse": {
+        "type": "object",
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RAGInstanceFile"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "per_page": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "files",
+          "total",
+          "page",
+          "per_page"
         ]
       },
       "RAGInstanceFile": {
@@ -10169,6 +10333,9 @@
           "file_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "filename": {
+            "type": "string"
           },
           "processing_status": {
             "$ref": "#/components/schemas/RAGProcessingStatus"
@@ -10200,62 +10367,11 @@
           "id",
           "rag_instance_id",
           "file_id",
+          "filename",
           "processing_status",
           "rag_metadata",
           "created_at",
           "updated_at"
-        ]
-      },
-      "AddFilesToRAGInstanceRequest": {
-        "type": "object",
-        "properties": {
-          "file_ids": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        },
-        "required": [
-          "file_ids"
-        ]
-      },
-      "AddFilesToRAGInstanceResponse": {
-        "type": "object",
-        "properties": {
-          "added_files": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RAGInstanceFile"
-            }
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RAGFileError"
-            }
-          }
-        },
-        "required": [
-          "added_files",
-          "errors"
-        ]
-      },
-      "RAGFileError": {
-        "type": "object",
-        "properties": {
-          "file_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "error": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "file_id",
-          "error"
         ]
       }
     }

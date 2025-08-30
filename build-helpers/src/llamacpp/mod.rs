@@ -10,7 +10,6 @@ use crate::llamacpp::backend::{get_multi_backend_config, BackendConfig, BackendT
 use crate::llamacpp::config::BuildConfig;
 use crate::llamacpp::platform::get_platform_config;
 
-
 /// Get comprehensive backend configuration for the target platform
 fn get_comprehensive_backend_config(
     target: &str,

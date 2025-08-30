@@ -26,9 +26,7 @@ pub async fn get_rag_instances_with_pending_files() -> RAGResult<Vec<Uuid>> {
 }
 
 /// Get engine type for a specific RAG instance
-pub async fn get_engine_type_for_instance(
-    rag_instance_id: Uuid,
-) -> RAGResult<RAGEngineType> {
+pub async fn get_engine_type_for_instance(rag_instance_id: Uuid) -> RAGResult<RAGEngineType> {
     let database = get_database_pool()
         .map_err(|e| RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
     // Query the rag_instances table to get engine_type
@@ -73,10 +71,7 @@ pub async fn get_engine_type_for_instance(
 }
 
 /// Update file processing status
-pub async fn update_file_status(
-    rag_file_id: &Uuid,
-    status: &str,
-) -> RAGResult<()> {
+pub async fn update_file_status(rag_file_id: &Uuid, status: &str) -> RAGResult<()> {
     let database = get_database_pool()
         .map_err(|e| RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
     sqlx::query(
@@ -155,7 +150,7 @@ pub async fn update_rag_instance_active_status(
 ) -> RAGResult<()> {
     let database = get_database_pool()
         .map_err(|e| RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
-    
+
     let affected_rows = sqlx::query(
         r#"
         UPDATE rag_instances 

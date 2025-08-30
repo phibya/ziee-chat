@@ -149,55 +149,6 @@ function detectQuerySchemaType(queryParams: Parameter[]): string | null {
     return 'PaginationQuery'
   }
 
-  // Detect conversation pagination pattern
-  if (
-    paramNames.length === 3 &&
-    paramNames.includes('page') &&
-    paramNames.includes('per_page') &&
-    paramNames.includes('project_id')
-  ) {
-    return 'ConversationPaginationQuery'
-  }
-
-  // Detect download pagination pattern
-  if (
-    paramNames.length === 3 &&
-    paramNames.includes('page') &&
-    paramNames.includes('per_page') &&
-    paramNames.includes('status')
-  ) {
-    return 'DownloadPaginationQuery'
-  }
-
-  // Detect project list query pattern
-  if (
-    paramNames.length === 3 &&
-    paramNames.includes('page') &&
-    paramNames.includes('per_page') &&
-    paramNames.includes('search')
-  ) {
-    return 'ProjectListQuery'
-  }
-
-  // Note: FileListParams pattern is same as ProjectListQuery,
-  // will be handled by the previous case
-
-  // Detect hub query params pattern
-  if (paramNames.length === 1 && paramNames.includes('lang')) {
-    return 'HubQueryParams'
-  }
-
-  // Detect search query pattern
-  if (
-    paramNames.length === 4 &&
-    paramNames.includes('q') &&
-    paramNames.includes('page') &&
-    paramNames.includes('per_page') &&
-    paramNames.includes('project_id')
-  ) {
-    return 'SearchQuery'
-  }
-
   return null
 }
 
