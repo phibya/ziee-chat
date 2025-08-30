@@ -75,6 +75,7 @@ fn main() {
 
     // === PostgreSQL Setup ===
     env::set_var("POSTGRESQL_VERSION", "17.5.0");
+    println!("cargo:rustc-env=POSTGRESQL_VERSION={}", "17.5.0");
 
     // Get the output directory and build profile
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -265,11 +266,11 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
         sqlx::migrate!("./migrations").run(&pool).await?;
 
         // Set DATABASE_URL environment variable for SQLx macros
-        env::set_var("DATABASE_URL", database_url);
+        println!("cargo:rustc-env=DATABASE_URL={}", database_url);
 
         // Keep database running for the duration of the build
-        // It will be cleaned up when the build process ends
-        let _ = postgresql; // Keep it alive, let it drop naturally after build
+        // We need to leak the PostgreSQL instance to keep it alive during compilation
+        std::mem::forget(postgresql);
 
         Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     })?;
