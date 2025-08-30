@@ -32,11 +32,11 @@ pub async fn assign_provider_to_group(
         })?;
 
     // Check if the relationship already exists
-    let existing_relationship: Option<(Uuid,)> = sqlx::query_as(
+    let existing_relationship = sqlx::query!(
         "SELECT id FROM user_group_providers WHERE group_id = $1 AND provider_id = $2",
+        request.group_id,
+        request.provider_id
     )
-    .bind(request.group_id)
-    .bind(request.provider_id)
     .fetch_optional(pool)
     .await?;
 
@@ -49,14 +49,15 @@ pub async fn assign_provider_to_group(
     }
 
     let relationship_id = Uuid::new_v4();
-    let relationship_row: UserGroupProvider = sqlx::query_as(
+    let relationship_row = sqlx::query_as!(
+        UserGroupProvider,
         "INSERT INTO user_group_providers (id, group_id, provider_id) 
          VALUES ($1, $2, $3) 
          RETURNING id, group_id, provider_id, assigned_at",
+        relationship_id,
+        request.group_id,
+        request.provider_id
     )
-    .bind(relationship_id)
-    .bind(request.group_id)
-    .bind(request.provider_id)
     .fetch_one(pool)
     .await?;
 
@@ -78,12 +79,12 @@ pub async fn remove_provider_from_group(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query(
+    let result = sqlx::query!(
         "DELETE FROM user_group_providers 
          WHERE group_id = $1 AND provider_id = $2",
+        group_id,
+        provider_id
     )
-    .bind(group_id)
-    .bind(provider_id)
     .execute(pool)
     .await?;
 
@@ -95,13 +96,14 @@ pub async fn get_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>, sql
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> =
-        sqlx::query_as("SELECT provider_id FROM user_group_providers WHERE group_id = $1")
-            .bind(group_id)
-            .fetch_all(pool)
-            .await?;
+    let provider_ids = sqlx::query!(
+        "SELECT provider_id FROM user_group_providers WHERE group_id = $1",
+        group_id
+    )
+    .fetch_all(pool)
+    .await?;
 
-    Ok(provider_ids.into_iter().map(|(id,)| id).collect())
+    Ok(provider_ids.into_iter().map(|row| row.provider_id).collect())
 }
 
 /// Get all user groups that have access to a model provider
@@ -109,15 +111,16 @@ pub async fn get_groups_for_provider(provider_id: Uuid) -> Result<Vec<UserGroup>
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let group_ids: Vec<(Uuid,)> =
-        sqlx::query_as("SELECT group_id FROM user_group_providers WHERE provider_id = $1")
-            .bind(provider_id)
-            .fetch_all(pool)
-            .await?;
+    let group_ids = sqlx::query!(
+        "SELECT group_id FROM user_group_providers WHERE provider_id = $1",
+        provider_id
+    )
+    .fetch_all(pool)
+    .await?;
 
     let mut groups = Vec::new();
-    for (group_id,) in group_ids {
-        if let Some(group) = get_user_group_by_id(group_id).await? {
+    for row in group_ids {
+        if let Some(group) = get_user_group_by_id(row.group_id).await? {
             groups.push(group);
         }
     }
@@ -140,20 +143,20 @@ pub async fn get_providers_for_user(user_id: Uuid) -> Result<Vec<Provider>, sqlx
     }
 
     // User doesn't have read permission, return only providers assigned to their groups
-    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
+    let provider_ids = sqlx::query!(
         "SELECT DISTINCT ugmp.provider_id 
          FROM user_group_providers ugmp
          JOIN user_group_memberships ugm ON ugmp.group_id = ugm.group_id
          JOIN user_groups ug ON ugm.group_id = ug.id
          WHERE ugm.user_id = $1 AND ug.is_active = true",
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await?;
 
     let mut providers = Vec::new();
-    for (provider_id,) in provider_ids {
-        if let Some(provider) = get_provider_by_id(provider_id).await? {
+    for row in provider_ids {
+        if let Some(provider) = get_provider_by_id(row.provider_id).await? {
             providers.push(provider);
         }
     }
@@ -167,8 +170,8 @@ async fn check_user_providers_read_permission(user_id: Uuid) -> Result<bool, sql
     let pool = pool.as_ref();
 
     // Check if user belongs to any active group with config::providers::read permission
-    let has_permission: Option<(bool,)> = sqlx::query_as(
-        "SELECT true 
+    let has_permission = sqlx::query!(
+        "SELECT true as has_perm
          FROM user_group_memberships ugm
          JOIN user_groups ug ON ugm.group_id = ug.id
          WHERE ugm.user_id = $1 
@@ -179,11 +182,11 @@ async fn check_user_providers_read_permission(user_id: Uuid) -> Result<bool, sql
              ug.permissions @> $4::jsonb
          )
          LIMIT 1",
+        user_id,
+        serde_json::json!(["config::providers::read"]),
+        serde_json::json!(["config::providers::*"]),
+        serde_json::json!(["*"])
     )
-    .bind(user_id)
-    .bind(serde_json::json!(["config::providers::read"]))
-    .bind(serde_json::json!(["config::providers::*"]))
-    .bind(serde_json::json!(["*"]))
     .fetch_optional(pool)
     .await?;
 
@@ -195,14 +198,15 @@ async fn get_all_providers() -> Result<Vec<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> =
-        sqlx::query_as("SELECT id FROM providers ORDER BY built_in DESC, created_at ASC")
-            .fetch_all(pool)
-            .await?;
+    let provider_ids = sqlx::query!(
+        "SELECT id FROM providers ORDER BY built_in DESC, created_at ASC"
+    )
+    .fetch_all(pool)
+    .await?;
 
     let mut providers = Vec::new();
-    for (provider_id,) in provider_ids {
-        if let Some(provider) = get_provider_by_id(provider_id).await? {
+    for row in provider_ids {
+        if let Some(provider) = get_provider_by_id(row.id).await? {
             providers.push(provider);
         }
     }

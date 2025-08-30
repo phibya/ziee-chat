@@ -2,8 +2,48 @@ use crate::database::get_database_pool;
 use crate::database::models::*;
 use crate::database::queries::user_group_providers::get_provider_ids_for_group;
 use crate::database::queries::user_group_rag_providers::get_rag_provider_ids_for_group;
-use sqlx::Row;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
+
+// Temporary struct that matches the exact database schema for SQLx macros
+#[derive(Debug)]
+struct UserGroupRow {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub permissions: Option<serde_json::Value>,
+    pub is_protected: Option<bool>,
+    pub is_active: Option<bool>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl UserGroupRow {
+    fn into_user_group(self) -> UserGroup {
+        let permissions = if let Some(perms_json) = self.permissions {
+            if perms_json.is_null() {
+                Vec::new()
+            } else {
+                serde_json::from_value(perms_json).unwrap_or_default()
+            }
+        } else {
+            Vec::new()
+        };
+
+        UserGroup {
+            id: self.id,
+            name: self.name,
+            description: self.description,
+            permissions,
+            provider_ids: Vec::new(),
+            rag_provider_ids: Vec::new(),
+            is_protected: self.is_protected.unwrap_or(false),
+            is_active: self.is_active.unwrap_or(true),
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        }
+    }
+}
 
 // User Group CRUD operations
 pub async fn create_user_group(
@@ -16,18 +56,21 @@ pub async fn create_user_group(
     let permissions_json =
         serde_json::to_value(&permissions).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
 
-    let mut group = sqlx::query_as::<_, UserGroup>(
+    let group_row = sqlx::query_as!(
+        UserGroupRow,
         r#"
         INSERT INTO user_groups (name, description, permissions)
         VALUES ($1, $2, $3)
         RETURNING id, name, description, permissions, is_protected, is_active, created_at, updated_at
         "#,
+        name,
+        description,
+        permissions_json
     )
-    .bind(&name)
-    .bind(&description)
-    .bind(&permissions_json)
     .fetch_one(&*pool)
     .await?;
+
+    let mut group = group_row.into_user_group();
 
     let provider_ids = get_provider_ids_for_group(group.id)
         .await
@@ -45,10 +88,18 @@ pub async fn create_user_group(
 pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let mut group = sqlx::query_as::<_, UserGroup>("SELECT * FROM user_groups WHERE id = $1")
-        .bind(group_id)
-        .fetch_optional(&*pool)
-        .await?;
+    let group_row = sqlx::query_as!(
+        UserGroupRow,
+        "SELECT id, name, description, permissions, is_protected, is_active, created_at, updated_at FROM user_groups WHERE id = $1",
+        group_id
+    )
+    .fetch_optional(&*pool)
+    .await?;
+
+    let mut group = match group_row {
+        Some(row) => Some(row.into_user_group()),
+        None => return Ok(None),
+    };
 
     if let Some(ref mut group) = group {
         let provider_ids = get_provider_ids_for_group(group.id)
@@ -72,19 +123,24 @@ pub async fn list_user_groups(
     let offset = (page - 1) * per_page;
 
     // Get total count
-    let total_row = sqlx::query("SELECT COUNT(*) as count FROM user_groups")
-        .fetch_one(&*pool)
-        .await?;
-    let total: i64 = total_row.get("count");
+    let total_row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM user_groups"
+    )
+    .fetch_one(&*pool)
+    .await?;
+    let total: i64 = total_row.count.unwrap_or(0);
 
     // Get groups
-    let mut groups = sqlx::query_as::<_, UserGroup>(
-        "SELECT * FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+    let group_rows = sqlx::query_as!(
+        UserGroupRow,
+        "SELECT id, name, description, permissions, is_protected, is_active, created_at, updated_at FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        per_page as i64,
+        offset as i64
     )
-    .bind(per_page)
-    .bind(offset)
     .fetch_all(&*pool)
     .await?;
+
+    let mut groups: Vec<UserGroup> = group_rows.into_iter().map(|row| row.into_user_group()).collect();
 
     // Load provider_ids and rag_provider_ids for each group
     for group in &mut groups {
@@ -127,61 +183,55 @@ pub async fn update_user_group(
         }
     }
 
-    let mut query = String::from("UPDATE user_groups SET");
-    let mut updates = Vec::new();
-    let mut param_index = 1;
-
-    if name.is_some() {
-        updates.push(format!(" name = ${}", param_index));
-        param_index += 1;
-    }
-
-    if description.is_some() {
-        updates.push(format!(" description = ${}", param_index));
-        param_index += 1;
-    }
-
-    if permissions.is_some() {
-        updates.push(format!(" permissions = ${}", param_index));
-        param_index += 1;
-    }
-
-    if is_active.is_some() {
-        updates.push(format!(" is_active = ${}", param_index));
-        param_index += 1;
-    }
-
     // If no updates are provided, return the existing group
-    if updates.is_empty() {
+    if name.is_none() && description.is_none() && permissions.is_none() && is_active.is_none() {
         return get_user_group_by_id(group_id).await;
     }
 
-    // Always update the updated_at field
-    updates.push(" updated_at = CURRENT_TIMESTAMP".to_string());
-
-    query.push_str(&updates.join(","));
-    query.push_str(&format!(" WHERE id = ${} RETURNING *", param_index));
-
-    let mut sql_query = sqlx::query_as::<_, UserGroup>(&query);
-
-    if let Some(name) = name {
-        sql_query = sql_query.bind(name);
+    // Update individual fields with separate queries
+    if let Some(name) = name.clone() {
+        sqlx::query!(
+            "UPDATE user_groups SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            name,
+            group_id
+        )
+        .execute(&*pool)
+        .await?;
     }
-    if let Some(description) = description {
-        sql_query = sql_query.bind(description);
+
+    if let Some(description) = description.clone() {
+        sqlx::query!(
+            "UPDATE user_groups SET description = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            description,
+            group_id
+        )
+        .execute(&*pool)
+        .await?;
     }
-    if let Some(permissions) = permissions {
+
+    if let Some(permissions) = permissions.clone() {
         let permissions_json =
             serde_json::to_value(&permissions).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
-        sql_query = sql_query.bind(permissions_json);
+        sqlx::query!(
+            "UPDATE user_groups SET permissions = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            permissions_json,
+            group_id
+        )
+        .execute(&*pool)
+        .await?;
     }
+
     if let Some(is_active) = is_active {
-        sql_query = sql_query.bind(is_active);
+        sqlx::query!(
+            "UPDATE user_groups SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            is_active,
+            group_id
+        )
+        .execute(&*pool)
+        .await?;
     }
 
-    sql_query = sql_query.bind(group_id);
-
-    let mut group = sql_query.fetch_optional(&*pool).await?;
+    let mut group = get_user_group_by_id(group_id).await?;
 
     if let Some(ref mut group) = group {
         let provider_ids = get_provider_ids_for_group(group.id)
@@ -208,10 +258,12 @@ pub async fn delete_user_group(group_id: Uuid) -> Result<bool, sqlx::Error> {
         }
     }
 
-    let result = sqlx::query("DELETE FROM user_groups WHERE id = $1")
-        .bind(group_id)
-        .execute(&*pool)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM user_groups WHERE id = $1",
+        group_id
+    )
+    .execute(&*pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -224,12 +276,12 @@ pub async fn assign_user_to_group(
 ) -> Result<(), sqlx::Error> {
     let pool = get_database_pool()?;
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO user_group_memberships (user_id, group_id, assigned_by) VALUES ($1, $2, $3)",
+        user_id,
+        group_id,
+        assigned_by
     )
-    .bind(user_id)
-    .bind(group_id)
-    .bind(assigned_by)
     .execute(&*pool)
     .await?;
 
@@ -240,25 +292,27 @@ pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<boo
     let pool = get_database_pool()?;
 
     // Check if user is protected
-    let user_protected: Option<(bool,)> =
-        sqlx::query_as("SELECT is_protected FROM users WHERE id = $1")
-            .bind(user_id)
-            .fetch_optional(&*pool)
-            .await?;
+    let user_protected = sqlx::query!(
+        "SELECT is_protected FROM users WHERE id = $1",
+        user_id
+    )
+    .fetch_optional(&*pool)
+    .await?;
 
-    if let Some((is_protected,)) = user_protected {
-        if is_protected {
+    if let Some(row) = user_protected {
+        if row.is_protected {
             // Protected users cannot be removed from groups
             return Err(sqlx::Error::RowNotFound);
         }
     }
 
-    let result =
-        sqlx::query("DELETE FROM user_group_memberships WHERE user_id = $1 AND group_id = $2")
-            .bind(user_id)
-            .bind(group_id)
-            .execute(&*pool)
-            .await?;
+    let result = sqlx::query!(
+        "DELETE FROM user_group_memberships WHERE user_id = $1 AND group_id = $2",
+        user_id,
+        group_id
+    )
+    .execute(&*pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -266,17 +320,21 @@ pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<boo
 pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let groups = sqlx::query_as::<_, UserGroup>(
+    let group_rows = sqlx::query_as!(
+        UserGroupRow,
         r#"
-        SELECT ug.* FROM user_groups ug
+        SELECT ug.id, ug.name, ug.description, ug.permissions, ug.is_protected, ug.is_active, ug.created_at, ug.updated_at 
+        FROM user_groups ug
         JOIN user_group_memberships ugm ON ug.id = ugm.group_id
         WHERE ugm.user_id = $1 AND ug.is_active = TRUE
         ORDER BY ug.name
         "#,
+        user_id
     )
-    .bind(user_id)
     .fetch_all(&*pool)
     .await?;
+
+    let groups: Vec<UserGroup> = group_rows.into_iter().map(|row| row.into_user_group()).collect();
 
     // Note: provider_ids are left empty as they are loaded separately when needed
 
@@ -287,22 +345,26 @@ pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Erro
 pub async fn get_admin_group_id() -> Result<Option<Uuid>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let row = sqlx::query("SELECT id FROM user_groups WHERE name = 'admin'")
-        .fetch_optional(&*pool)
-        .await?;
+    let row = sqlx::query!(
+        "SELECT id FROM user_groups WHERE name = 'admin'"
+    )
+    .fetch_optional(&*pool)
+    .await?;
 
-    Ok(row.map(|r| r.get("id")))
+    Ok(row.map(|r| r.id))
 }
 
 // Helper function to get user group ID
 pub async fn get_user_group_id() -> Result<Option<Uuid>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let row = sqlx::query("SELECT id FROM user_groups WHERE name = 'user'")
-        .fetch_optional(&*pool)
-        .await?;
+    let row = sqlx::query!(
+        "SELECT id FROM user_groups WHERE name = 'user'"
+    )
+    .fetch_optional(&*pool)
+    .await?;
 
-    Ok(row.map(|r| r.get("id")))
+    Ok(row.map(|r| r.id))
 }
 
 // Function to assign user to admin group (for root/admin users)
@@ -310,11 +372,11 @@ pub async fn assign_user_to_admin_group(user_id: Uuid) -> Result<(), sqlx::Error
     if let Some(admin_group_id) = get_admin_group_id().await? {
         // Check if user is already in admin group
         let pool = get_database_pool()?;
-        let existing = sqlx::query(
+        let existing = sqlx::query!(
             "SELECT id FROM user_group_memberships WHERE user_id = $1 AND group_id = $2",
+            user_id,
+            admin_group_id
         )
-        .bind(user_id)
-        .bind(admin_group_id)
         .fetch_optional(&*pool)
         .await?;
 
@@ -330,11 +392,11 @@ pub async fn assign_user_to_default_group(user_id: Uuid) -> Result<(), sqlx::Err
     if let Some(user_group_id) = get_user_group_id().await? {
         // Check if user is already in user group
         let pool = get_database_pool()?;
-        let existing = sqlx::query(
+        let existing = sqlx::query!(
             "SELECT id FROM user_group_memberships WHERE user_id = $1 AND group_id = $2",
+            user_id,
+            user_group_id
         )
-        .bind(user_id)
-        .bind(user_group_id)
         .fetch_optional(&*pool)
         .await?;
 
@@ -354,27 +416,27 @@ pub async fn get_group_members(
     let offset = (page - 1) * per_page;
 
     // Get total count
-    let total_row =
-        sqlx::query("SELECT COUNT(*) as count FROM user_group_memberships WHERE group_id = $1")
-            .bind(group_id)
-            .fetch_one(&*pool)
-            .await?;
-    let total: i64 = total_row.get("count");
+    let total_row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM user_group_memberships WHERE group_id = $1",
+        group_id
+    )
+    .fetch_one(&*pool)
+    .await?;
+    let total: i64 = total_row.count.unwrap_or(0);
 
     // Get user IDs
-    let rows = sqlx::query(
-        "SELECT user_id FROM user_group_memberships WHERE group_id = $1 ORDER BY assigned_at DESC LIMIT $2 OFFSET $3"
+    let rows = sqlx::query!(
+        "SELECT user_id FROM user_group_memberships WHERE group_id = $1 ORDER BY assigned_at DESC LIMIT $2 OFFSET $3",
+        group_id,
+        per_page as i64,
+        offset as i64
     )
-    .bind(group_id)
-    .bind(per_page)
-    .bind(offset)
     .fetch_all(&*pool)
     .await?;
 
     let mut users = Vec::new();
     for row in rows {
-        let user_id: Uuid = row.get("user_id");
-        if let Some(user) = crate::database::queries::users::get_user_by_id(user_id).await? {
+        if let Some(user) = crate::database::queries::users::get_user_by_id(row.user_id).await? {
             users.push(user);
         }
     }

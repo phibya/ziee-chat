@@ -34,11 +34,11 @@ pub async fn assign_rag_provider_to_group(
         })?;
 
     // Check if the relationship already exists
-    let existing_relationship: Option<(Uuid,)> = sqlx::query_as(
+    let existing_relationship = sqlx::query!(
         "SELECT id FROM user_group_rag_providers WHERE group_id = $1 AND provider_id = $2",
+        request.group_id,
+        request.provider_id
     )
-    .bind(request.group_id)
-    .bind(request.provider_id)
     .fetch_optional(pool)
     .await?;
 
@@ -51,14 +51,15 @@ pub async fn assign_rag_provider_to_group(
     }
 
     let relationship_id = Uuid::new_v4();
-    let relationship_row: UserGroupRAGProvider = sqlx::query_as(
+    let relationship_row = sqlx::query_as!(
+        UserGroupRAGProvider,
         "INSERT INTO user_group_rag_providers (id, group_id, provider_id) 
          VALUES ($1, $2, $3) 
          RETURNING id, group_id, provider_id, assigned_at, updated_at",
+        relationship_id,
+        request.group_id,
+        request.provider_id
     )
-    .bind(relationship_id)
-    .bind(request.group_id)
-    .bind(request.provider_id)
     .fetch_one(pool)
     .await?;
 
@@ -81,12 +82,12 @@ pub async fn remove_rag_provider_from_group(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query(
+    let result = sqlx::query!(
         "DELETE FROM user_group_rag_providers 
          WHERE group_id = $1 AND provider_id = $2",
+        group_id,
+        provider_id
     )
-    .bind(group_id)
-    .bind(provider_id)
     .execute(pool)
     .await?;
 
@@ -101,7 +102,7 @@ pub async fn get_creatable_rag_providers_for_user(
     let pool = pool.as_ref();
 
     // Get RAG provider IDs that the user can access and that allow user instance creation
-    let provider_ids: Vec<(Uuid,)> = sqlx::query_as(
+    let provider_ids = sqlx::query!(
         "SELECT DISTINCT ugrp.provider_id 
          FROM user_group_rag_providers ugrp
          JOIN user_group_memberships ugm ON ugrp.group_id = ugm.group_id
@@ -110,14 +111,14 @@ pub async fn get_creatable_rag_providers_for_user(
          WHERE ugm.user_id = $1 
          AND ug.is_active = true
          AND rp.can_user_create_instance = true",
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await?;
 
     let mut providers = Vec::new();
-    for (provider_id,) in provider_ids {
-        if let Some(provider) = get_rag_provider_by_id(provider_id).await? {
+    for row in provider_ids {
+        if let Some(provider) = get_rag_provider_by_id(row.provider_id).await? {
             providers.push(provider);
         }
     }
@@ -134,8 +135,8 @@ pub async fn can_user_create_rag_instance(
     let pool = pool.as_ref();
 
     // Check if user belongs to any active group assigned to this provider and the provider allows user instance creation
-    let has_permission: Option<(bool,)> = sqlx::query_as(
-        "SELECT true 
+    let has_permission = sqlx::query!(
+        "SELECT true as has_perm
          FROM user_group_memberships ugm
          JOIN user_groups ug ON ugm.group_id = ug.id
          JOIN user_group_rag_providers ugrp ON ug.id = ugrp.group_id
@@ -145,9 +146,9 @@ pub async fn can_user_create_rag_instance(
          AND ug.is_active = true
          AND rp.can_user_create_instance = true
          LIMIT 1",
+        user_id,
+        provider_id
     )
-    .bind(user_id)
-    .bind(provider_id)
     .fetch_optional(pool)
     .await?;
 
@@ -159,11 +160,12 @@ pub async fn get_rag_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>,
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids: Vec<(Uuid,)> =
-        sqlx::query_as("SELECT provider_id FROM user_group_rag_providers WHERE group_id = $1")
-            .bind(group_id)
-            .fetch_all(pool)
-            .await?;
+    let provider_ids = sqlx::query!(
+        "SELECT provider_id FROM user_group_rag_providers WHERE group_id = $1",
+        group_id
+    )
+    .fetch_all(pool)
+    .await?;
 
-    Ok(provider_ids.into_iter().map(|(id,)| id).collect())
+    Ok(provider_ids.into_iter().map(|row| row.provider_id).collect())
 }
