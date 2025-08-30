@@ -262,8 +262,10 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
         // Test connection
         sqlx::query("SELECT 1").execute(&pool).await?;
 
-        // Run migrations
-        sqlx::migrate!("./migrations").run(&pool).await?;
+        // Run migrations from source directory  
+        let migrations_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
+        let migrator = sqlx::migrate::Migrator::new(migrations_path).await?;
+        migrator.run(&pool).await?;
 
         // Set DATABASE_URL environment variable for SQLx macros
         println!("cargo:rustc-env=DATABASE_URL={}", database_url);
