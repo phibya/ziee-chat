@@ -16,7 +16,7 @@ use crate::database::{
     models::{ResetPasswordRequest, UpdateUserRequest},
     queries::users,
 };
-use crate::types::PaginationQuery;
+use crate::api::types::PaginationQuery;
 use crate::utils::password;
 
 #[derive(Deserialize, JsonSchema)]

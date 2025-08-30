@@ -2,68 +2,22 @@ pub mod ai;
 mod api;
 mod auth;
 mod database;
+pub mod global;
 mod processing;
 pub mod route;
 pub mod startups;
-pub mod types;
 mod utils;
 
-use crate::api::app::get_http_port;
-use crate::utils::file_storage::FileStorage;
-use ai::rag::rag_file_storage::RagFileStorage;
+use crate::global::{get_app_data_dir, set_app_data_dir, is_desktop_app, get_http_port};
 use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
-use once_cell::sync::Lazy;
 use route::create_rest_router;
 use startups::{cleanup_app_common, initialize_app_common};
 use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use tauri::{webview::WebviewWindowBuilder, Manager};
 use tauri_plugin_decorum::WebviewWindowExt;
 use tokio::signal;
 use tower_http::cors::CorsLayer;
 
-pub static APP_NAME: Lazy<String> =
-    Lazy::new(|| std::env::var("APP_NAME").unwrap_or_else(|_| "ziee".to_string()));
-pub static APP_DATA_DIR: Lazy<Mutex<PathBuf>> = Lazy::new(|| {
-    let default_path = std::env::var("APP_DATA_DIR")
-        .unwrap_or_else(|_| {
-            // {homedir}/.ziee
-            let home_dir = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-            home_dir
-                .join(".ziee")
-                .to_str()
-                .unwrap_or_default()
-                .to_string()
-        })
-        .parse()
-        .unwrap();
-    Mutex::new(default_path)
-});
-
-pub fn set_app_data_dir(path: PathBuf) {
-    if let Ok(mut app_data_dir) = APP_DATA_DIR.lock() {
-        *app_data_dir = path;
-    }
-}
-
-pub fn get_app_data_dir() -> PathBuf {
-    APP_DATA_DIR.lock().unwrap().clone()
-}
-
-// Global FILE_STORAGE instance
-pub static FILE_STORAGE: Lazy<Arc<FileStorage>> =
-    Lazy::new(|| Arc::new(FileStorage::new(&get_app_data_dir())));
-
-// Global RAG_FILE_STORAGE instance
-pub static RAG_FILE_STORAGE: Lazy<Arc<RagFileStorage>> =
-    Lazy::new(|| Arc::new(RagFileStorage::new(&get_app_data_dir())));
-
-pub static HTTP_PORT: Lazy<u16> = Lazy::new(|| get_available_port());
-
-pub fn is_desktop_app() -> bool {
-    std::env::var("HEADLESS").unwrap_or_default() != "true"
-}
 
 pub fn run() {
     let port = get_http_port();
@@ -391,22 +345,6 @@ async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http:
     }
 }
 
-pub fn get_available_port() -> u16 {
-    // Try PORT environment variable first
-    if let Ok(port_str) = std::env::var("PORT") {
-        if let Ok(port) = port_str.parse::<u16>() {
-            return port;
-        }
-    }
-
-    // Try default port 1430
-    if std::net::TcpListener::bind("127.0.0.1:1430").is_ok() {
-        return 1430;
-    }
-
-    // Use portpicker to find a random available port
-    portpicker::pick_unused_port().unwrap_or(3000)
-}
 
 async fn shutdown_signal() {
     let ctrl_c = async {

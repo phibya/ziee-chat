@@ -25,7 +25,7 @@ use crate::database::{
     },
 };
 use crate::utils::file_storage::{extract_extension, get_mime_type_from_extension};
-use crate::RAG_FILE_STORAGE;
+use crate::global::RAG_FILE_STORAGE;
 
 /// List files in RAG instance
 #[debug_handler]

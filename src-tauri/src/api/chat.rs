@@ -27,7 +27,7 @@ use crate::database::{
         models::{get_model_by_id, get_provider_by_model_id},
     },
 };
-use crate::types::ConversationPaginationQuery;
+use crate::api::types::ConversationPaginationQuery;
 use crate::utils::chat::{build_chat_messages, build_single_user_message};
 use schemars::JsonSchema;
 

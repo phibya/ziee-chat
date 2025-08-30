@@ -514,7 +514,7 @@ pub async fn start_ngrok_tunnel(
     }
 
     // Get the HTTP port from the global config
-    let local_port = *crate::HTTP_PORT;
+    let local_port = *crate::global::HTTP_PORT;
 
     // Create and start ngrok service
     let mut ngrok_service = NgrokService::new(settings.api_key.clone());

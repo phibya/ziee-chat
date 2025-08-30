@@ -20,7 +20,7 @@ use crate::{
     database::{models::file::*, queries::files},
     processing::ProcessingManager,
     utils::file_storage::{extract_extension, get_mime_type_from_extension},
-    FILE_STORAGE,
+    global::FILE_STORAGE,
 };
 
 // Initialize global processing manager

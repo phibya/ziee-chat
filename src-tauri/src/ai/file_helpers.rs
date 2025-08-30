@@ -1,7 +1,7 @@
 use crate::ai::core::providers::FileReference;
 use crate::database::queries::files::*;
 use crate::utils::file_storage::extract_extension;
-use crate::FILE_STORAGE;
+use crate::global::FILE_STORAGE;
 use base64::Engine;
 use std::collections::HashMap;
 use uuid::Uuid;

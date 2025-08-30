@@ -15,7 +15,7 @@ use crate::database::{
     },
     queries::{user_group_providers, user_group_rag_providers, user_groups},
 };
-use crate::types::PaginationQuery;
+use crate::api::types::PaginationQuery;
 
 // Create user group
 #[debug_handler]

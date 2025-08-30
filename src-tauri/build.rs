@@ -1,5 +1,6 @@
 use std::env;
 use std::path::Path;
+use std::net::{SocketAddr, TcpListener};
 // use std::process::Command;
 //
 // fn generate_openapi_spec(target_dir: &Path) {
@@ -149,6 +150,16 @@ fn main() {
         build_helpers::pdfium::setup_pdfium_env(&target, path, &pdfium_dir);
     }
 
+    // === SQLx Database Setup ===
+    if env::var("SQLX_OFFLINE").is_err() {
+        println!("cargo:rerun-if-changed=migrations");
+        if let Err(e) = setup_build_database(&target_dir) {
+            println!("cargo:warning=Failed to setup build database for SQLx macros: {}", e);
+            println!("cargo:warning=SQLx macros will use offline mode");
+            env::set_var("SQLX_OFFLINE", "true");
+        }
+    }
+
     // Also run the default Tauri build script
     tauri_build::build();
 
@@ -160,4 +171,332 @@ fn main() {
     // // === Generate TypeScript endpoint definitions ===
     // println!("cargo:rerun-if-changed=../openapi/generate-endpoints.ts");
     // generate_typescript_endpoints();
+}
+
+/// Check if a port is available by trying to bind to it
+fn is_port_available(port: u16) -> bool {
+    match TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], port))) {
+        Ok(listener) => {
+            drop(listener);
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+/// Setup temporary PostgreSQL instance for SQLx macro support during build
+fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use postgresql_embedded::{PostgreSQL, Settings, VersionReq};
+
+    // Create build database directory
+    let build_db_dir = target_dir.join("build-postgres");
+    std::fs::create_dir_all(&build_db_dir)?;
+
+    // Find available port for build database (54321 as preferred, fallback to others)
+    let build_port = if is_port_available(54321) {
+        54321
+    } else {
+        // Try range 54322-54399
+        (54322..=54399)
+            .find(|&port| is_port_available(port))
+            .or_else(|| portpicker::pick_unused_port())
+            .ok_or("No available ports found for build database")?
+    };
+
+    // Configure PostgreSQL settings for build
+    let mut settings = Settings::default();
+    settings.version = VersionReq::parse("=17.5.0")?;
+    settings.temporary = false; // Keep it around for the build
+    settings.installation_dir = build_db_dir.join("postgres");
+    settings.data_dir = build_db_dir.join("data");
+    settings.username = "postgres".to_string();
+    settings.password = "build_password".to_string(); // Simple password for build
+    settings.port = build_port;
+    settings.host = "127.0.0.1".to_string();
+
+    // Create installation directory
+    std::fs::create_dir_all(&settings.installation_dir)?;
+    
+    // Remove existing data directory and recreate it for fresh data
+    if settings.data_dir.exists() {
+        std::fs::remove_dir_all(&settings.data_dir)?;
+    }
+    std::fs::create_dir_all(&settings.data_dir)?;
+
+    // Set timezone to UTC
+    settings.configuration.insert("timezone".to_string(), "UTC".to_string());
+    settings.configuration.insert("log_timezone".to_string(), "UTC".to_string());
+
+    // Create PostgreSQL instance
+    let mut postgresql = PostgreSQL::new(settings);
+
+    // Setup and start PostgreSQL
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(async {
+
+        match postgresql.setup().await {
+            Ok(()) => {},
+            Err(e) => {
+                println!("cargo:warning=PostgreSQL setup failed: {}", e);
+                return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
+            }
+        }
+
+        // Install extensions if needed
+        if let Err(e) = install_build_extensions(&postgresql).await {
+            println!("cargo:warning=Extension installation failed: {}", e);
+            return Err(e);
+        }
+        
+        postgresql.start().await?;
+
+        let database_url = postgresql.settings().url("postgres");
+
+        // Connect to database and run migrations
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&database_url)
+            .await?;
+
+        // Test connection
+        sqlx::query("SELECT 1").execute(&pool).await?;
+
+        // Run migrations
+        sqlx::migrate!("./migrations").run(&pool).await?;
+
+        // Set DATABASE_URL environment variable for SQLx macros
+        env::set_var("DATABASE_URL", database_url);
+
+        // Keep database running for the duration of the build
+        // It will be cleaned up when the build process ends
+        let _ = postgresql; // Keep it alive, let it drop naturally after build
+
+        Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
+    })?;
+    Ok(())
+}
+
+/// Install extensions for build database
+async fn install_build_extensions(
+    postgresql: &postgresql_embedded::PostgreSQL,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Install pgvector extension
+    install_build_pgvector_extension(postgresql).await?;
+    
+    // Install Apache AGE extension
+    install_build_apache_age_extension(postgresql).await?;
+    
+    Ok(())
+}
+
+/// Install pgvector extension for build database
+async fn install_build_pgvector_extension(
+    postgresql: &postgresql_embedded::PostgreSQL,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use std::path::PathBuf;
+
+    // Check if already installed
+    if is_build_pgvector_installed(postgresql).await? {
+        return Ok(());
+    }
+
+    // Find the built pgvector library
+    let library_name = if cfg!(target_os = "windows") {
+        "vector.dll"
+    } else if cfg!(target_os = "macos") {
+        "vector.dylib"
+    } else {
+        "vector.so"
+    };
+
+    // Look for pgvector in the target directory (built by build-helpers)
+    let target_dir = PathBuf::from("target");
+    let pgvector_build_dir = target_dir.join("pgvector");
+    let built_library = pgvector_build_dir.join(library_name);
+    
+    if !built_library.exists() {
+        return Ok(());
+    }
+    
+    install_pgvector_from_built_library(postgresql, &built_library).await?;
+    Ok(())
+}
+
+/// Install Apache AGE extension for build database
+async fn install_build_apache_age_extension(
+    postgresql: &postgresql_embedded::PostgreSQL,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use std::path::PathBuf;
+
+    // Check if already installed
+    if is_build_apache_age_installed(postgresql).await? {
+        return Ok(());
+    }
+
+    // Find the built Apache AGE library
+    let library_name = if cfg!(target_os = "windows") {
+        "age.dll"
+    } else if cfg!(target_os = "macos") {
+        "age.dylib"
+    } else {
+        "age.so"
+    };
+
+    // Look for apache-age in the target directory (built by build-helpers)
+    let target_dir = PathBuf::from("target");
+    let apache_age_build_dir = target_dir.join("apache-age");
+    let built_library = apache_age_build_dir.join(library_name);
+    
+    if !built_library.exists() {
+        return Ok(());
+    }
+    
+    install_apache_age_from_built_library(postgresql, &built_library).await?;
+    Ok(())
+}
+
+/// Check if pgvector extension is installed for build
+async fn is_build_pgvector_installed(
+    postgresql: &postgresql_embedded::PostgreSQL,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let lib_dir = postgresql.settings().installation_dir.join("lib");
+    let library_file = if cfg!(target_os = "windows") {
+        "vector.dll"
+    } else if cfg!(target_os = "macos") {
+        "vector.dylib"
+    } else {
+        "vector.so"
+    };
+    Ok(lib_dir.join(library_file).exists())
+}
+
+/// Check if Apache AGE extension is installed for build
+async fn is_build_apache_age_installed(
+    postgresql: &postgresql_embedded::PostgreSQL,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    let lib_dir = postgresql.settings().installation_dir.join("lib");
+    let library_file = if cfg!(target_os = "windows") {
+        "age.dll"
+    } else if cfg!(target_os = "macos") {
+        "age.dylib"
+    } else {
+        "age.so"
+    };
+    Ok(lib_dir.join(library_file).exists())
+}
+
+/// Install pgvector from built library for build database
+async fn install_pgvector_from_built_library(
+    postgresql: &postgresql_embedded::PostgreSQL,
+    built_library: &Path,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let pg_dir = postgresql.settings().installation_dir.clone();
+    let lib_dir = pg_dir.join("lib");
+    let share_dir = pg_dir.join("share");
+    let extension_dir = share_dir.join("extension");
+
+    // Ensure directories exist
+    std::fs::create_dir_all(&lib_dir)?;
+    std::fs::create_dir_all(&extension_dir)?;
+
+    // Copy the built library
+    let target_library = if cfg!(target_os = "windows") {
+        lib_dir.join("vector.dll")
+    } else if cfg!(target_os = "macos") {
+        lib_dir.join("vector.dylib")
+    } else {
+        lib_dir.join("vector.so")
+    };
+
+    std::fs::copy(built_library, &target_library)?;
+
+    // Get pgvector build directory for SQL and control files
+    let pgvector_build_dir = built_library.parent().unwrap();
+
+    // Copy SQL extension files from build directory
+    let source_sql_dir = pgvector_build_dir.join("sql");
+    if source_sql_dir.exists() {
+        for entry in std::fs::read_dir(&source_sql_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "sql") {
+                let target_path = extension_dir.join(path.file_name().unwrap());
+                std::fs::copy(&path, &target_path)?;
+            }
+        }
+    }
+
+    // Copy the control file from build directory
+    let source_control = pgvector_build_dir.join("vector.control");
+    if source_control.exists() {
+        let target_control = extension_dir.join("vector.control");
+        std::fs::copy(&source_control, &target_control)?;
+    }
+
+    Ok(())
+}
+
+/// Install Apache AGE from built library for build database
+async fn install_apache_age_from_built_library(
+    postgresql: &postgresql_embedded::PostgreSQL,
+    built_library: &Path,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let pg_dir = postgresql.settings().installation_dir.clone();
+    let lib_dir = pg_dir.join("lib");
+    let share_dir = pg_dir.join("share");
+    let extension_dir = share_dir.join("extension");
+
+    // Ensure directories exist
+    std::fs::create_dir_all(&lib_dir)?;
+    std::fs::create_dir_all(&extension_dir)?;
+
+    // Copy the built library
+    let target_library = if cfg!(target_os = "windows") {
+        lib_dir.join("age.dll")
+    } else if cfg!(target_os = "macos") {
+        lib_dir.join("age.dylib")
+    } else {
+        lib_dir.join("age.so")
+    };
+
+    std::fs::copy(built_library, &target_library)?;
+
+    // Get Apache AGE build directory for SQL and control files
+    let apache_age_build_dir = built_library.parent().unwrap();
+
+    // Copy SQL extension files from build directory
+    let source_sql_dir = apache_age_build_dir.join("sql");
+    if source_sql_dir.exists() {
+        for entry in std::fs::read_dir(&source_sql_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().map_or(false, |ext| ext == "sql") {
+                let target_path = extension_dir.join(path.file_name().unwrap());
+                std::fs::copy(&path, &target_path)?;
+            }
+        }
+    }
+
+    // Copy upgrade SQL files (age--*.sql pattern)
+    for entry in std::fs::read_dir(apache_age_build_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(file_name) = path.file_name().and_then(|name| name.to_str()) {
+                if file_name.starts_with("age--") && file_name.ends_with(".sql") {
+                    let target_path = extension_dir.join(path.file_name().unwrap());
+                    std::fs::copy(&path, &target_path)?;
+                }
+            }
+        }
+    }
+
+    // Copy the control file from build directory
+    let source_control = apache_age_build_dir.join("age.control");
+    if source_control.exists() {
+        let target_control = extension_dir.join("age.control");
+        std::fs::copy(&source_control, &target_control)?;
+    }
+
+    Ok(())
 }

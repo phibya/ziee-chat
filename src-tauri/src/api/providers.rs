@@ -15,7 +15,7 @@ use crate::database::{
     },
     queries::{models, providers, user_group_providers},
 };
-use crate::types::PaginationQuery;
+use crate::api::types::PaginationQuery;
 
 // Base function for listing providers with filtering
 async fn list_providers_base(

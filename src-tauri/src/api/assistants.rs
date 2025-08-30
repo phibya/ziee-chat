@@ -12,7 +12,7 @@ use crate::database::{
     models::{Assistant, AssistantListResponse, CreateAssistantRequest, UpdateAssistantRequest},
     queries::assistants,
 };
-use crate::types::PaginationQuery;
+use crate::api::types::PaginationQuery;
 
 /// Create a new assistant
 pub async fn create_assistant(

@@ -22,3 +22,4 @@ pub mod repositories;
 pub mod user;
 pub mod user_groups;
 pub mod user_settings;
+pub mod types;

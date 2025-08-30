@@ -326,7 +326,7 @@ pub async fn delete_rag_instance(instance_id: Uuid) -> Result<bool, sqlx::Error>
 
     if deleted {
         // Clean up file system
-        if let Err(e) = crate::RAG_FILE_STORAGE
+        if let Err(e) = crate::global::RAG_FILE_STORAGE
             .delete_instance_files(instance_id)
             .await
         {

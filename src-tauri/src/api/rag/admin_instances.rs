@@ -20,7 +20,7 @@ use crate::database::{
         list_system_rag_instances, update_rag_instance,
     },
 };
-use crate::types::PaginationQuery;
+use crate::api::types::PaginationQuery;
 
 /// Create system RAG instance (admin only)
 #[debug_handler]

@@ -15,7 +15,7 @@ use crate::database::{
     },
     queries::repositories,
 };
-use crate::types::PaginationQuery;
+use crate::api::types::PaginationQuery;
 
 // Repository endpoints
 #[debug_handler]

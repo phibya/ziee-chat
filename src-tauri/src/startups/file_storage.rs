@@ -1,4 +1,4 @@
-use crate::{api, utils, RAG_FILE_STORAGE};
+use crate::{api, utils, global::RAG_FILE_STORAGE};
 
 /// Initialize file storage systems
 pub async fn initialize_file_storage() -> Result<(), String> {

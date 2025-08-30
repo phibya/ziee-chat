@@ -172,13 +172,14 @@ async fn try_initialize_database_once(
         postgresql.settings().port
     );
 
+    postgresql.setup().await?;
+
     // Install pgvector extension if needed
     install_pgvector_extension(&postgresql).await?;
 
     // Install Apache AGE extension if needed
     install_apache_age_extension(&postgresql).await?;
 
-    postgresql.setup().await?;
     println!("Starting embedded PostgreSQL...");
     postgresql.start().await?;
 
