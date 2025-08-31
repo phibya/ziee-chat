@@ -24,8 +24,8 @@ use crate::database::{
         rag_instances::validate_rag_instance_access,
     },
 };
-use crate::utils::file_storage::{extract_extension, get_mime_type_from_extension};
 use crate::global::RAG_FILE_STORAGE;
+use crate::utils::file_storage::{extract_extension, get_mime_type_from_extension};
 
 /// List files in RAG instance
 #[debug_handler]
@@ -181,7 +181,7 @@ async fn process_rag_file_upload(
         file_size: file_size as i64,
         mime_type,
         checksum: Some(checksum),
-        project_id: None, // RAG files don't belong to projects
+        project_id: None,   // RAG files don't belong to projects
         thumbnail_count: 0, // No processing for RAG files
         page_count: 0,
         processing_metadata: serde_json::json!({}),

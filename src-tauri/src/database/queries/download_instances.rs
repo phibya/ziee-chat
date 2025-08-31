@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::database::{
     models::{
         CreateDownloadInstanceRequest, DownloadInstance, DownloadInstanceListResponse,
-        DownloadPhase, DownloadProgressData, DownloadStatus, UpdateDownloadProgressRequest,
-        UpdateDownloadStatusRequest, DownloadRequestData,
+        DownloadPhase, DownloadProgressData, DownloadRequestData, DownloadStatus,
+        UpdateDownloadProgressRequest, UpdateDownloadStatusRequest,
     },
     queries::get_database_pool,
 };
@@ -279,12 +279,9 @@ pub async fn delete_download_instance(download_id: Uuid) -> Result<bool, sqlx::E
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query!(
-        "DELETE FROM download_instances WHERE id = $1",
-        download_id
-    )
-    .execute(pool)
-    .await?;
+    let result = sqlx::query!("DELETE FROM download_instances WHERE id = $1", download_id)
+        .execute(pool)
+        .await?;
 
     Ok(result.rows_affected() > 0)
 }

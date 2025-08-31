@@ -37,7 +37,10 @@ pub struct RAGEngineFactory;
 
 impl RAGEngineFactory {
     /// Create a new RAG engine based on type
-    pub fn create_engine(engine_type: RAGEngineType, instance_id: Uuid) -> RAGResult<Box<dyn RAGEngine>> {
+    pub fn create_engine(
+        engine_type: RAGEngineType,
+        instance_id: Uuid,
+    ) -> RAGResult<Box<dyn RAGEngine>> {
         match engine_type {
             RAGEngineType::SimpleVector => {
                 let engine = RAGSimpleVectorEngine::new(instance_id);

@@ -163,10 +163,7 @@ async fn rag_instance_worker(
     };
 
     // Initialize the engine
-    if let Err(e) = engine
-        .initialize(serde_json::json!({}))
-        .await
-    {
+    if let Err(e) = engine.initialize(serde_json::json!({})).await {
         tracing::error!(
             "Failed to initialize engine for RAG instance {}: {}",
             rag_instance_id,
@@ -291,9 +288,7 @@ async fn process_single_file(
     // Process the file with the RAG engine
     // Note: Content is now extracted from file storage by the engine itself
     // Processing options can be retrieved from database if needed
-    engine
-        .process_file(rag_file.file_id)
-        .await?;
+    engine.process_file(rag_file.file_id).await?;
 
     Ok(())
 }

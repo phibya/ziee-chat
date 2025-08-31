@@ -1,6 +1,6 @@
 use std::env;
-use std::path::Path;
 use std::net::{SocketAddr, TcpListener};
+use std::path::Path;
 // use std::process::Command;
 //
 // fn generate_openapi_spec(target_dir: &Path) {
@@ -155,7 +155,10 @@ fn main() {
     if env::var("SQLX_OFFLINE").is_err() {
         println!("cargo:rerun-if-changed=migrations");
         if let Err(e) = setup_build_database(&target_dir) {
-            println!("cargo:warning=Failed to setup build database for SQLx macros: {}", e);
+            println!(
+                "cargo:warning=Failed to setup build database for SQLx macros: {}",
+                e
+            );
             println!("cargo:warning=SQLx macros will use offline mode");
             env::set_var("SQLX_OFFLINE", "true");
         }
@@ -217,7 +220,7 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
 
     // Create installation directory
     std::fs::create_dir_all(&settings.installation_dir)?;
-    
+
     // Remove existing data directory and recreate it for fresh data
     if settings.data_dir.exists() {
         std::fs::remove_dir_all(&settings.data_dir)?;
@@ -225,8 +228,12 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
     std::fs::create_dir_all(&settings.data_dir)?;
 
     // Set timezone to UTC
-    settings.configuration.insert("timezone".to_string(), "UTC".to_string());
-    settings.configuration.insert("log_timezone".to_string(), "UTC".to_string());
+    settings
+        .configuration
+        .insert("timezone".to_string(), "UTC".to_string());
+    settings
+        .configuration
+        .insert("log_timezone".to_string(), "UTC".to_string());
 
     // Create PostgreSQL instance
     let mut postgresql = PostgreSQL::new(settings);
@@ -234,9 +241,8 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
     // Setup and start PostgreSQL
     let rt = tokio::runtime::Runtime::new()?;
     rt.block_on(async {
-
         match postgresql.setup().await {
-            Ok(()) => {},
+            Ok(()) => {}
             Err(e) => {
                 println!("cargo:warning=PostgreSQL setup failed: {}", e);
                 return Err(Box::new(e) as Box<dyn std::error::Error + Send + Sync>);
@@ -248,7 +254,7 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
             println!("cargo:warning=Extension installation failed: {}", e);
             return Err(e);
         }
-        
+
         postgresql.start().await?;
 
         let database_url = postgresql.settings().url("postgres");
@@ -262,7 +268,7 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
         // Test connection
         sqlx::query("SELECT 1").execute(&pool).await?;
 
-        // Run migrations from source directory  
+        // Run migrations from source directory
         let migrations_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
         let migrator = sqlx::migrate::Migrator::new(migrations_path).await?;
         migrator.run(&pool).await?;
@@ -285,10 +291,10 @@ async fn install_build_extensions(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Install pgvector extension
     install_build_pgvector_extension(postgresql).await?;
-    
+
     // Install Apache AGE extension
     install_build_apache_age_extension(postgresql).await?;
-    
+
     Ok(())
 }
 
@@ -316,11 +322,11 @@ async fn install_build_pgvector_extension(
     let target_dir = PathBuf::from("target");
     let pgvector_build_dir = target_dir.join("pgvector");
     let built_library = pgvector_build_dir.join(library_name);
-    
+
     if !built_library.exists() {
         return Ok(());
     }
-    
+
     install_pgvector_from_built_library(postgresql, &built_library).await?;
     Ok(())
 }
@@ -349,11 +355,11 @@ async fn install_build_apache_age_extension(
     let target_dir = PathBuf::from("target");
     let apache_age_build_dir = target_dir.join("apache-age");
     let built_library = apache_age_build_dir.join(library_name);
-    
+
     if !built_library.exists() {
         return Ok(());
     }
-    
+
     install_apache_age_from_built_library(postgresql, &built_library).await?;
     Ok(())
 }

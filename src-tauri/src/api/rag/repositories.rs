@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
+use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{
         CreateRAGRepositoryRequest, RAGRepository, RAGRepositoryConnectionTestResponse,
@@ -15,7 +16,6 @@ use crate::database::{
     },
     queries::rag_repositories,
 };
-use crate::api::types::PaginationQuery;
 
 // RAG Repository endpoints
 #[debug_handler]

@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
+use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{
         AssignProviderToGroupRequest, AssignRAGProviderToGroupRequest, AssignUserToGroupRequest,
@@ -15,7 +16,6 @@ use crate::database::{
     },
     queries::{user_group_providers, user_group_rag_providers, user_groups},
 };
-use crate::api::types::PaginationQuery;
 
 // Create user group
 #[debug_handler]

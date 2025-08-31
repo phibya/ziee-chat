@@ -36,13 +36,9 @@ pub async fn get_file_by_id(file_id: Uuid) -> Result<Option<File>, sqlx::Error> 
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let file = sqlx::query_as!(
-        File,
-        "SELECT * FROM files WHERE id = $1",
-        file_id
-    )
-    .fetch_optional(pool)
-    .await?;
+    let file = sqlx::query_as!(File, "SELECT * FROM files WHERE id = $1", file_id)
+        .fetch_optional(pool)
+        .await?;
 
     Ok(file)
 }

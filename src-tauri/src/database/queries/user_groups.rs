@@ -84,11 +84,9 @@ pub async fn list_user_groups(
     let offset = (page - 1) * per_page;
 
     // Get total count
-    let total_row = sqlx::query!(
-        "SELECT COUNT(*) as count FROM user_groups"
-    )
-    .fetch_one(&*pool)
-    .await?;
+    let total_row = sqlx::query!("SELECT COUNT(*) as count FROM user_groups")
+        .fetch_one(&*pool)
+        .await?;
     let total: i64 = total_row.count.unwrap_or(0);
 
     // Get groups
@@ -222,12 +220,9 @@ pub async fn delete_user_group(group_id: Uuid) -> Result<bool, sqlx::Error> {
         }
     }
 
-    let result = sqlx::query!(
-        "DELETE FROM user_groups WHERE id = $1",
-        group_id
-    )
-    .execute(&*pool)
-    .await?;
+    let result = sqlx::query!("DELETE FROM user_groups WHERE id = $1", group_id)
+        .execute(&*pool)
+        .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -256,12 +251,9 @@ pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<boo
     let pool = get_database_pool()?;
 
     // Check if user is protected
-    let user_protected = sqlx::query!(
-        "SELECT is_protected FROM users WHERE id = $1",
-        user_id
-    )
-    .fetch_optional(&*pool)
-    .await?;
+    let user_protected = sqlx::query!("SELECT is_protected FROM users WHERE id = $1", user_id)
+        .fetch_optional(&*pool)
+        .await?;
 
     if let Some(row) = user_protected {
         if row.is_protected {
@@ -311,11 +303,9 @@ pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Erro
 pub async fn get_admin_group_id() -> Result<Option<Uuid>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let row = sqlx::query!(
-        "SELECT id FROM user_groups WHERE name = 'admin'"
-    )
-    .fetch_optional(&*pool)
-    .await?;
+    let row = sqlx::query!("SELECT id FROM user_groups WHERE name = 'admin'")
+        .fetch_optional(&*pool)
+        .await?;
 
     Ok(row.map(|r| r.id))
 }
@@ -324,11 +314,9 @@ pub async fn get_admin_group_id() -> Result<Option<Uuid>, sqlx::Error> {
 pub async fn get_user_group_id() -> Result<Option<Uuid>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let row = sqlx::query!(
-        "SELECT id FROM user_groups WHERE name = 'user'"
-    )
-    .fetch_optional(&*pool)
-    .await?;
+    let row = sqlx::query!("SELECT id FROM user_groups WHERE name = 'user'")
+        .fetch_optional(&*pool)
+        .await?;
 
     Ok(row.map(|r| r.id))
 }

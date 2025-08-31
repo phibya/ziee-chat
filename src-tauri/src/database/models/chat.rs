@@ -2,7 +2,6 @@ use crate::database::models::File;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 // Main unified structures
@@ -19,22 +18,6 @@ pub struct Conversation {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for Conversation {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Conversation {
-            id: row.try_get("id")?,
-            user_id: row.try_get("user_id")?,
-            title: row.try_get("title")?,
-            project_id: row.try_get("project_id")?,
-            assistant_id: row.try_get("assistant_id")?,
-            model_id: row.try_get("model_id")?,
-            active_branch_id: row.try_get("active_branch_id")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Message {
     pub id: Uuid,
@@ -49,39 +32,12 @@ pub struct Message {
     pub files: Vec<File>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for Message {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Message {
-            id: row.try_get("id")?,
-            conversation_id: row.try_get("conversation_id")?,
-            role: row.try_get("role")?,
-            content: row.try_get("content")?,
-            originated_from_id: row.try_get("originated_from_id")?,
-            edit_count: row.try_get("edit_count")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-            metadata: None, // This is loaded separately via joins when needed
-            files: vec![],  // This is loaded separately via joins when needed
-        })
-    }
-}
-
 // Branch structure for proper branching system
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Branch {
     pub id: Uuid,
     pub conversation_id: Uuid,
     pub created_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for Branch {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Branch {
-            id: row.try_get("id")?,
-            conversation_id: row.try_get("conversation_id")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
 }
 
 // MessageBranch model that includes is_clone information from branch_messages
@@ -93,17 +49,6 @@ pub struct MessageBranch {
     pub is_clone: bool,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for MessageBranch {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(MessageBranch {
-            id: row.try_get("id")?,
-            conversation_id: row.try_get("conversation_id")?,
-            created_at: row.try_get("created_at")?,
-            is_clone: row.try_get("is_clone")?,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct MessageMetadata {
     pub id: Uuid,
@@ -113,7 +58,6 @@ pub struct MessageMetadata {
     pub created_at: DateTime<Utc>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConversationMetadata {
     pub id: Uuid,
@@ -121,18 +65,6 @@ pub struct ConversationMetadata {
     pub key: String,
     pub value: serde_json::Value,
     pub created_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for ConversationMetadata {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(ConversationMetadata {
-            id: row.try_get("id")?,
-            conversation_id: row.try_get("conversation_id")?,
-            key: row.try_get("key")?,
-            value: row.try_get("value")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -197,23 +129,6 @@ pub struct ConversationSummary {
     pub updated_at: DateTime<Utc>,
     pub last_message: Option<String>,
     pub message_count: i64,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for ConversationSummary {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(ConversationSummary {
-            id: row.try_get("id")?,
-            title: row.try_get("title")?,
-            user_id: row.try_get("user_id")?,
-            project_id: row.try_get("project_id")?,
-            assistant_id: row.try_get("assistant_id")?,
-            model_id: row.try_get("model_id")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-            last_message: row.try_get("last_message")?,
-            message_count: row.try_get("message_count")?,
-        })
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

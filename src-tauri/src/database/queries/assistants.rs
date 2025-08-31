@@ -121,7 +121,10 @@ pub async fn list_assistants(
 
     // Get total count
     let total: i64 = if admin_view {
-        sqlx::query_scalar!("SELECT COUNT(*) FROM assistants WHERE is_template = true").fetch_one(pool).await?.unwrap_or(0)
+        sqlx::query_scalar!("SELECT COUNT(*) FROM assistants WHERE is_template = true")
+            .fetch_one(pool)
+            .await?
+            .unwrap_or(0)
     } else {
         sqlx::query_scalar!("SELECT COUNT(*) FROM assistants WHERE is_active = true AND ((is_template = true) OR created_by = $1)", requesting_user_id)
             .fetch_one(pool)
@@ -130,32 +133,36 @@ pub async fn list_assistants(
 
     // Get assistants
     let assistant_rows: Vec<Assistant> = if admin_view {
-        sqlx::query_as!(Assistant, 
+        sqlx::query_as!(
+            Assistant,
             r#"SELECT id, name, description, instructions,
             parameters as "parameters?: ModelParameters",
             created_by, is_template, is_default, is_active, created_at, updated_at 
              FROM assistants 
              WHERE is_template = true 
              ORDER BY created_at DESC 
-             LIMIT $1 OFFSET $2"#, 
-            per_page as i64, 
-            offset as i64)
-            .fetch_all(pool)
-            .await?
+             LIMIT $1 OFFSET $2"#,
+            per_page as i64,
+            offset as i64
+        )
+        .fetch_all(pool)
+        .await?
     } else {
-        sqlx::query_as!(Assistant, 
+        sqlx::query_as!(
+            Assistant,
             r#"SELECT id, name, description, instructions,
             parameters as "parameters?: ModelParameters",
             created_by, is_template, is_default, is_active, created_at, updated_at 
              FROM assistants 
              WHERE is_active = true AND ((is_template = true) OR created_by = $3)
              ORDER BY created_at DESC 
-             LIMIT $1 OFFSET $2"#, 
-            per_page as i64, 
-            offset as i64, 
-            requesting_user_id)
-            .fetch_all(pool)
-            .await?
+             LIMIT $1 OFFSET $2"#,
+            per_page as i64,
+            offset as i64,
+            requesting_user_id
+        )
+        .fetch_all(pool)
+        .await?
     };
 
     let assistants = assistant_rows;
@@ -220,9 +227,14 @@ pub async fn update_assistant(
     }
 
     // If no updates are provided, return the existing assistant
-    if request.name.is_none() && request.description.is_none() && request.instructions.is_none() 
-        && request.parameters.is_none() && request.is_template.is_none() && request.is_default.is_none() 
-        && request.is_active.is_none() {
+    if request.name.is_none()
+        && request.description.is_none()
+        && request.instructions.is_none()
+        && request.parameters.is_none()
+        && request.is_template.is_none()
+        && request.is_default.is_none()
+        && request.is_active.is_none()
+    {
         tx.rollback().await?;
         return Ok(Some(current_assistant));
     }
@@ -230,9 +242,13 @@ pub async fn update_assistant(
     // Update individual fields with separate queries
     if let Some(name) = &request.name {
         if is_admin {
-            sqlx::query!("UPDATE assistants SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", name, assistant_id)
-                .execute(&mut *tx)
-                .await?;
+            sqlx::query!(
+                "UPDATE assistants SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+                name,
+                assistant_id
+            )
+            .execute(&mut *tx)
+            .await?;
         } else {
             sqlx::query!("UPDATE assistants SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND created_by = $3", name, assistant_id, requesting_user_id)
                 .execute(&mut *tx)
@@ -359,9 +375,13 @@ pub async fn delete_assistant(
             .execute(pool)
             .await?
     } else {
-        sqlx::query!("DELETE FROM assistants WHERE id = $1 AND created_by = $2", assistant_id, requesting_user_id)
-            .execute(pool)
-            .await?
+        sqlx::query!(
+            "DELETE FROM assistants WHERE id = $1 AND created_by = $2",
+            assistant_id,
+            requesting_user_id
+        )
+        .execute(pool)
+        .await?
     };
 
     Ok(result.rows_affected() > 0)

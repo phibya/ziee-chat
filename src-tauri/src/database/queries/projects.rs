@@ -65,7 +65,7 @@ pub async fn list_projects(
     // Replace dynamic queries with static ones
     let (projects, total) = if let Some(search_term) = search {
         let search_pattern = format!("%{}%", search_term);
-        
+
         // Get total count with search
         let total = sqlx::query_scalar!(
             "SELECT COUNT(*) FROM projects p WHERE p.user_id = $1 AND (p.name ILIKE $2 OR p.description ILIKE $2 OR p.instruction ILIKE $2)",

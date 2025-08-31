@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
+use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{
         CreateRepositoryRequest, Repository, RepositoryListResponse,
@@ -15,7 +16,6 @@ use crate::database::{
     },
     queries::repositories,
 };
-use crate::api::types::PaginationQuery;
 
 // Repository endpoints
 #[debug_handler]

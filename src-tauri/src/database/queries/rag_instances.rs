@@ -1,9 +1,8 @@
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGInstance, RAGEngineSettings,
-        RAGEngineType,
-        RAGInstanceListResponse, UpdateRAGInstanceRequest,
+        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGEngineSettings, RAGEngineType,
+        RAGInstance, RAGInstanceListResponse, UpdateRAGInstanceRequest,
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
 };
@@ -54,7 +53,7 @@ pub async fn create_user_rag_instance(
         &request.name,
         &request.alias,
         request.description.as_deref(),
-        true, // enabled = true by default
+        true,  // enabled = true by default
         false, // is_active = false by default
         false, // is_system = false for user instances
         engine_type_str,
@@ -103,9 +102,9 @@ pub async fn create_system_rag_instance(
         &request.name,
         &request.alias,
         request.description.as_deref(),
-        true, // enabled = true by default
+        true,  // enabled = true by default
         false, // is_active = false by default
-        true, // is_system = true for system instances
+        true,  // is_system = true for system instances
         engine_type_str,
         &engine_settings_json,
         request.embedding_model_id,
@@ -276,12 +275,11 @@ pub async fn list_system_rag_instances(
     let offset = (page - 1) * per_page;
 
     // Get total count of system instances
-    let total_count = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM rag_instances WHERE is_system = true"
-    )
-    .fetch_one(pool)
-    .await?
-    .unwrap_or(0);
+    let total_count =
+        sqlx::query_scalar!("SELECT COUNT(*) FROM rag_instances WHERE is_system = true")
+            .fetch_one(pool)
+            .await?
+            .unwrap_or(0);
 
     // Get system instances with pagination
     let instances = sqlx::query_as!(
@@ -327,45 +325,73 @@ pub async fn update_rag_instance(
 
     // Replace COALESCE with separate conditional updates
     if let Some(name) = &request.name {
-        sqlx::query!("UPDATE rag_instances SET name = $1, updated_at = NOW() WHERE id = $2", name, instance_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_instances SET name = $1, updated_at = NOW() WHERE id = $2",
+            name,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(description) = &request.description {
-        sqlx::query!("UPDATE rag_instances SET description = $1, updated_at = NOW() WHERE id = $2", description, instance_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_instances SET description = $1, updated_at = NOW() WHERE id = $2",
+            description,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(enabled) = request.enabled {
-        sqlx::query!("UPDATE rag_instances SET enabled = $1, updated_at = NOW() WHERE id = $2", enabled, instance_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_instances SET enabled = $1, updated_at = NOW() WHERE id = $2",
+            enabled,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(embedding_model_id) = request.embedding_model_id {
-        sqlx::query!("UPDATE rag_instances SET embedding_model_id = $1, updated_at = NOW() WHERE id = $2", embedding_model_id, instance_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_instances SET embedding_model_id = $1, updated_at = NOW() WHERE id = $2",
+            embedding_model_id,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(llm_model_id) = request.llm_model_id {
-        sqlx::query!("UPDATE rag_instances SET llm_model_id = $1, updated_at = NOW() WHERE id = $2", llm_model_id, instance_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_instances SET llm_model_id = $1, updated_at = NOW() WHERE id = $2",
+            llm_model_id,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(parameters) = &request.parameters {
-        sqlx::query!("UPDATE rag_instances SET parameters = $1, updated_at = NOW() WHERE id = $2", parameters, instance_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_instances SET parameters = $1, updated_at = NOW() WHERE id = $2",
+            parameters,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(engine_settings) = &engine_settings_update {
-        sqlx::query!("UPDATE rag_instances SET engine_settings = $1, updated_at = NOW() WHERE id = $2", engine_settings, instance_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_instances SET engine_settings = $1, updated_at = NOW() WHERE id = $2",
+            engine_settings,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     // Return the updated instance

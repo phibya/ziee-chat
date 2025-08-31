@@ -206,7 +206,7 @@ export interface CreateRAGInstanceRequest {
   embedding_model_id?: string
   llm_model_id?: string
   parameters?: any
-  engine_settings?: RagEngineSettings
+  engine_settings?: RAGEngineSettings
 }
 
 export interface CreateRAGProviderRequest {
@@ -245,7 +245,7 @@ export interface CreateSystemRAGInstanceRequest {
   embedding_model_id?: string
   llm_model_id?: string
   parameters?: any
-  engine_settings?: RagEngineSettings
+  engine_settings?: RAGEngineSettings
 }
 
 export interface CreateTrustedHostRequest {
@@ -398,7 +398,6 @@ export interface File {
   mime_type?: string
   checksum?: string
   project_id?: string
-  rag_instance_id?: string
   thumbnail_count: number
   page_count: number
   processing_metadata: any
@@ -662,7 +661,6 @@ export interface Model {
   engine_settings?: ModelEngineSettings
   file_format: FileFormat
   source?: SourceInfo
-  files?: ModelFileInfo[]
 }
 
 export interface ModelCapabilities {
@@ -678,13 +676,6 @@ export interface ModelCapabilities {
 export interface ModelEngineSettings {
   mistralrs?: MistralRsSettings
   llamacpp?: LlamaCppSettings
-}
-
-export interface ModelFileInfo {
-  filename: string
-  file_size_bytes: number
-  file_type: string
-  uploaded_at: string
 }
 
 export interface ModelParameters {
@@ -924,6 +915,11 @@ export interface ProxySettingsResponse {
 
 export type RAGChunkSelectionMethod = 'weight' | 'vector'
 
+export interface RAGEngineSettings {
+  simple_vector?: RAGSimpleVectorEngineSettings
+  simple_graph?: RAGSimpleGraphEngineSettings
+}
+
 export type RAGEngineType = 'simple_vector' | 'simple_graph'
 
 export interface RAGInstance {
@@ -938,7 +934,7 @@ export interface RAGInstance {
   is_active: boolean
   is_system: boolean
   engine_type: RAGEngineType
-  engine_settings: RagEngineSettings
+  engine_settings: RAGEngineSettings
   embedding_model_id?: string
   llm_model_id?: string
   age_graph_name?: string
@@ -1094,11 +1090,6 @@ export interface RAGSimpleVectorQueryingSettings {
   min_rerank_score?: number
 }
 
-export interface RagEngineSettings {
-  simple_vector?: RAGSimpleVectorEngineSettings
-  simple_graph?: RAGSimpleGraphEngineSettings
-}
-
 export interface Repository {
   id: string
   name: string
@@ -1249,7 +1240,7 @@ export interface UpdateRAGInstanceRequest {
   embedding_model_id?: string
   llm_model_id?: string
   parameters?: any
-  engine_settings?: RagEngineSettings
+  engine_settings?: RAGEngineSettings
 }
 
 export interface UpdateRAGProviderRequest {

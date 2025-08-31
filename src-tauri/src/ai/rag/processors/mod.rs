@@ -3,6 +3,4 @@
 pub mod chunk;
 pub mod text;
 
-pub use chunk::{
-    ChunkSelector, TokenBasedChunker,
-};
+pub use chunk::{ChunkSelector, TokenBasedChunker};

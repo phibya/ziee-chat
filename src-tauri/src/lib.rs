@@ -8,7 +8,7 @@ pub mod route;
 pub mod startups;
 mod utils;
 
-use crate::global::{get_app_data_dir, set_app_data_dir, is_desktop_app, get_http_port};
+use crate::global::{get_app_data_dir, get_http_port, is_desktop_app, set_app_data_dir};
 use axum::{body::Body, extract::DefaultBodyLimit, http::Request, response::Response, Router};
 use route::create_rest_router;
 use startups::{cleanup_app_common, initialize_app_common};
@@ -17,7 +17,6 @@ use tauri::{webview::WebviewWindowBuilder, Manager};
 use tauri_plugin_decorum::WebviewWindowExt;
 use tokio::signal;
 use tower_http::cors::CorsLayer;
-
 
 pub fn run() {
     let port = get_http_port();
@@ -344,7 +343,6 @@ async fn proxy_to_vite(req: Request<Body>) -> Result<Response<Body>, axum::http:
         Err(_) => Err(axum::http::StatusCode::BAD_GATEWAY),
     }
 }
-
 
 async fn shutdown_signal() {
     let ctrl_c = async {

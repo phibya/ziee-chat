@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use super::{model::DeviceType, proxy::ProxySettings};
@@ -64,38 +63,6 @@ pub struct Provider {
     pub proxy_settings: Option<ProxySettings>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for Provider {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        let proxy_settings_json: serde_json::Value = row.try_get("proxy_settings")?;
-        let proxy_settings = if proxy_settings_json.is_null() {
-            None
-        } else {
-            Some(serde_json::from_value(proxy_settings_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
-                    index: "proxy_settings".into(),
-                    source: Box::new(e),
-                }
-            })?)
-        };
-
-        let provider_type_str: String = row.try_get("provider_type")?;
-        let provider_type = ProviderType::from_str(&provider_type_str);
-
-        Ok(Provider {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-            provider_type,
-            enabled: row.try_get("enabled")?,
-            api_key: row.try_get("api_key")?,
-            base_url: row.try_get("base_url")?,
-            built_in: row.try_get("built_in")?,
-            proxy_settings,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

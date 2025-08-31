@@ -1,19 +1,15 @@
 // Core RAGSimpleVectorEngine struct and basic methods
 
 use super::queries;
+use crate::ai::rag::engines::get_rag_file_storage;
 use crate::ai::rag::{
     engines::traits::{RAGEngine, RAGEngineType},
-    processors::{
-        chunk::TokenBasedChunker,
-        text,
-    },
+    processors::{chunk::TokenBasedChunker, text},
     PipelineStage, ProcessingStatus, RAGError, RAGQuery, RAGQueryResponse, RAGResult,
 };
-use crate::ai::rag::engines::get_rag_file_storage;
 use async_trait::async_trait;
 use std::sync::Arc;
 use uuid::Uuid;
-
 
 /// Simple Vector RAG Engine
 pub struct RAGSimpleVectorEngine {
@@ -25,7 +21,6 @@ pub struct RAGSimpleVectorEngine {
     pub(super) embedding_batch_size: u32,
     pub(super) embedding_model: String,
 }
-
 
 impl RAGSimpleVectorEngine {
     pub fn new(instance_id: Uuid) -> Self {
@@ -101,8 +96,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
             .and_then(|ext| ext.to_str())
             .unwrap_or("txt");
 
-        let file_path = get_rag_file_storage()
-            .get_file_path(self.instance_id, file_id, extension);
+        let file_path = get_rag_file_storage().get_file_path(self.instance_id, file_id, extension);
 
         if !file_path.exists() {
             return Err(RAGError::NotFound(format!(
@@ -175,13 +169,9 @@ impl RAGEngine for RAGSimpleVectorEngine {
         .await?;
 
         let chunker = TokenBasedChunker::new();
-        let raw_chunks = chunker
-            .chunk(&content, None, None, false, 0.7)
-            .await?;
+        let raw_chunks = chunker.chunk(&content, None, None, false, 0.7).await?;
 
-        let optimized_chunks = chunker
-            .process_chunks(raw_chunks)
-            .await?;
+        let optimized_chunks = chunker.process_chunks(raw_chunks).await?;
 
         tracing::info!(
             "Advanced processing completed: {} optimized chunks selected via chunking service",
@@ -273,14 +263,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         // For simple vector engine, initialization is minimal
         // We might create indices or validate configuration here
 
-        // Check if vector extension is available
-        let result = queries::check_vector_extension_available().await?;
-
-        if !result {
-            return Err(RAGError::ConfigurationError(
-                "PostgreSQL vector extension is not installed".to_string(),
-            ));
-        }
+        // Vector extension is always available
 
         Ok(())
     }
@@ -293,14 +276,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
     }
 
     async fn validate_configuration(&self, _settings: serde_json::Value) -> RAGResult<()> {
-        // Validate vector extension availability
-        let result = queries::check_vector_extension_available().await?;
-
-        if !result {
-            return Err(RAGError::ConfigurationError(
-                "PostgreSQL vector extension is required but not installed".to_string(),
-            ));
-        }
+        // Vector extension is always available
 
         Ok(())
     }

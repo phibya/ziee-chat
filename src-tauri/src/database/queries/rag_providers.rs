@@ -3,7 +3,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse, UpdateRAGProviderRequest, RAGProviderType, proxy::ProxySettings
+        proxy::ProxySettings, CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse,
+        RAGProviderType, UpdateRAGProviderRequest,
     },
 };
 
@@ -112,27 +113,43 @@ pub async fn update_rag_provider(
 
     // Replace COALESCE with separate conditional updates
     if let Some(name) = &request.name {
-        sqlx::query!("UPDATE rag_providers SET name = $1, updated_at = NOW() WHERE id = $2", name, provider_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_providers SET name = $1, updated_at = NOW() WHERE id = $2",
+            name,
+            provider_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(enabled) = request.enabled {
-        sqlx::query!("UPDATE rag_providers SET enabled = $1, updated_at = NOW() WHERE id = $2", enabled, provider_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_providers SET enabled = $1, updated_at = NOW() WHERE id = $2",
+            enabled,
+            provider_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(api_key) = &request.api_key {
-        sqlx::query!("UPDATE rag_providers SET api_key = $1, updated_at = NOW() WHERE id = $2", api_key, provider_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_providers SET api_key = $1, updated_at = NOW() WHERE id = $2",
+            api_key,
+            provider_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(base_url) = &request.base_url {
-        sqlx::query!("UPDATE rag_providers SET base_url = $1, updated_at = NOW() WHERE id = $2", base_url, provider_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_providers SET base_url = $1, updated_at = NOW() WHERE id = $2",
+            base_url,
+            provider_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(can_user_create_instance) = request.can_user_create_instance {
@@ -143,9 +160,13 @@ pub async fn update_rag_provider(
 
     if let Some(proxy_settings) = request.proxy_settings {
         let proxy_json = serde_json::to_value(proxy_settings).unwrap_or(serde_json::Value::Null);
-        sqlx::query!("UPDATE rag_providers SET proxy_settings = $1, updated_at = NOW() WHERE id = $2", proxy_json, provider_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_providers SET proxy_settings = $1, updated_at = NOW() WHERE id = $2",
+            proxy_json,
+            provider_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     // Return the updated provider

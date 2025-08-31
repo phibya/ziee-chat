@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::api::types::PaginationQuery;
 use crate::api::{
     errors::{ApiResult, AppError},
     middleware::AuthenticatedUser,
@@ -16,7 +17,6 @@ use crate::database::{
     models::{ResetPasswordRequest, UpdateUserRequest},
     queries::users,
 };
-use crate::api::types::PaginationQuery;
 use crate::utils::password;
 
 #[derive(Deserialize, JsonSchema)]

@@ -102,45 +102,73 @@ pub async fn update_rag_repository(
 
     // Replace COALESCE with separate conditional updates
     if let Some(name) = &request.name {
-        sqlx::query!("UPDATE rag_repositories SET name = $1, updated_at = NOW() WHERE id = $2", name, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_repositories SET name = $1, updated_at = NOW() WHERE id = $2",
+            name,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(description) = &request.description {
-        sqlx::query!("UPDATE rag_repositories SET description = $1, updated_at = NOW() WHERE id = $2", description, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_repositories SET description = $1, updated_at = NOW() WHERE id = $2",
+            description,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(url) = &request.url {
-        sqlx::query!("UPDATE rag_repositories SET url = $1, updated_at = NOW() WHERE id = $2", url, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_repositories SET url = $1, updated_at = NOW() WHERE id = $2",
+            url,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(enabled) = request.enabled {
-        sqlx::query!("UPDATE rag_repositories SET enabled = $1, updated_at = NOW() WHERE id = $2", enabled, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_repositories SET enabled = $1, updated_at = NOW() WHERE id = $2",
+            enabled,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(requires_auth) = request.requires_auth {
-        sqlx::query!("UPDATE rag_repositories SET requires_auth = $1, updated_at = NOW() WHERE id = $2", requires_auth, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_repositories SET requires_auth = $1, updated_at = NOW() WHERE id = $2",
+            requires_auth,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(auth_token) = &request.auth_token {
-        sqlx::query!("UPDATE rag_repositories SET auth_token = $1, updated_at = NOW() WHERE id = $2", auth_token, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_repositories SET auth_token = $1, updated_at = NOW() WHERE id = $2",
+            auth_token,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(priority) = request.priority {
-        sqlx::query!("UPDATE rag_repositories SET priority = $1, updated_at = NOW() WHERE id = $2", priority, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE rag_repositories SET priority = $1, updated_at = NOW() WHERE id = $2",
+            priority,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     // Return the updated repository

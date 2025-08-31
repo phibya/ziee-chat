@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use super::model::ModelParameters;

@@ -103,7 +103,10 @@ pub async fn get_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>, sql
     .fetch_all(pool)
     .await?;
 
-    Ok(provider_ids.into_iter().map(|row| row.provider_id).collect())
+    Ok(provider_ids
+        .into_iter()
+        .map(|row| row.provider_id)
+        .collect())
 }
 
 /// Get all user groups that have access to a model provider
@@ -198,11 +201,10 @@ async fn get_all_providers() -> Result<Vec<Provider>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_ids = sqlx::query!(
-        "SELECT id FROM providers ORDER BY built_in DESC, created_at ASC"
-    )
-    .fetch_all(pool)
-    .await?;
+    let provider_ids =
+        sqlx::query!("SELECT id FROM providers ORDER BY built_in DESC, created_at ASC")
+            .fetch_all(pool)
+            .await?;
 
     let mut providers = Vec::new();
     for row in provider_ids {

@@ -1,8 +1,8 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
     Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, EditMessageResponse, File, Message, MessageBranch, MessageMetadata, SaveMessageRequest,
-    UpdateConversationRequest,
+    EditMessageRequest, EditMessageResponse, File, Message, MessageBranch, MessageMetadata,
+    SaveMessageRequest, UpdateConversationRequest,
 };
 use sqlx::Error;
 use std::collections::HashMap;
@@ -108,8 +108,14 @@ pub async fn create_conversation(
             created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
-        conversation_id, user_id, &request.title, request.project_id, 
-        request.assistant_id, request.model_id, now, now
+        conversation_id,
+        user_id,
+        &request.title,
+        request.project_id,
+        request.assistant_id,
+        request.model_id,
+        now,
+        now
     )
     .execute(&mut *tx)
     .await?;
@@ -120,7 +126,8 @@ pub async fn create_conversation(
     // 3. Update the conversation to set the active branch
     sqlx::query!(
         "UPDATE conversations SET active_branch_id = $1 WHERE id = $2",
-        main_branch.id, conversation_id
+        main_branch.id,
+        conversation_id
     )
     .execute(&mut *tx)
     .await?;
@@ -185,17 +192,20 @@ pub async fn list_conversations(
     let total: i64 = if let Some(proj_id) = project_id {
         sqlx::query_scalar!(
             "SELECT COUNT(*) FROM conversations WHERE user_id = $1 AND project_id = $2",
-            user_id, proj_id
+            user_id,
+            proj_id
         )
         .fetch_one(pool)
-        .await?.unwrap_or(0)
+        .await?
+        .unwrap_or(0)
     } else {
         sqlx::query_scalar!(
             "SELECT COUNT(*) FROM conversations WHERE user_id = $1 AND project_id IS NULL",
             user_id
         )
         .fetch_one(pool)
-        .await?.unwrap_or(0)
+        .await?
+        .unwrap_or(0)
     };
 
     println!(
@@ -225,7 +235,10 @@ pub async fn list_conversations(
         ORDER BY c.updated_at DESC
         LIMIT $3 OFFSET $4
         "#,
-            user_id, proj_id, per_page as i64, offset as i64
+            user_id,
+            proj_id,
+            per_page as i64,
+            offset as i64
         )
         .fetch_all(pool)
         .await?
@@ -250,7 +263,9 @@ pub async fn list_conversations(
         ORDER BY c.updated_at DESC
         LIMIT $2 OFFSET $3
         "#,
-            user_id, per_page as i64, offset as i64
+            user_id,
+            per_page as i64,
+            offset as i64
         )
         .fetch_all(pool)
         .await?
@@ -277,11 +292,14 @@ pub async fn update_conversation(
 
     // Execute separate updates for each provided field
     let mut transaction = pool.begin().await?;
-    
+
     if let Some(title) = &request.title {
         sqlx::query!(
             "UPDATE conversations SET title = $1, updated_at = $2 WHERE id = $3 AND user_id = $4",
-            title, now, conversation_id, user_id
+            title,
+            now,
+            conversation_id,
+            user_id
         )
         .execute(&mut *transaction)
         .await?;
@@ -341,7 +359,8 @@ pub async fn delete_conversation(conversation_id: Uuid, user_id: Uuid) -> Result
     // Delete the conversation
     let result = sqlx::query!(
         "DELETE FROM conversations WHERE id = $1 AND user_id = $2",
-        conversation_id, user_id
+        conversation_id,
+        user_id
     )
     .execute(pool)
     .await?;
@@ -376,7 +395,8 @@ pub async fn save_message(
                 WHERE b.id = $1 AND c.user_id = $2
                 LIMIT 1
                 "#,
-                branch_id, user_id
+                branch_id,
+                user_id
             )
             .fetch_optional(pool)
             .await?;
@@ -414,8 +434,14 @@ pub async fn save_message(
             created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
-        message_id, request.conversation_id, &request.role, &request.content,
-        message_id, 0, now, now
+        message_id,
+        request.conversation_id,
+        &request.role,
+        &request.content,
+        message_id,
+        0,
+        now,
+        now
     )
     .execute(&mut *tx)
     .await?;
@@ -427,7 +453,10 @@ pub async fn save_message(
             branch_id, message_id, created_at, is_clone
         ) VALUES ($1, $2, $3, $4)
         "#,
-        target_branch_id, message_id, now, false
+        target_branch_id,
+        message_id,
+        now,
+        false
     )
     .execute(&mut *tx)
     .await?;
@@ -440,7 +469,9 @@ pub async fn save_message(
                 INSERT INTO messages_files (message_id, file_id, created_at)
                 VALUES ($1, $2, $3)
                 "#,
-                message_id, file_id, now
+                message_id,
+                file_id,
+                now
             )
             .execute(&mut *tx)
             .await?;
@@ -673,7 +704,9 @@ pub async fn edit_message(
             WHERE branch_id = $2
             AND created_at < $3
             "#,
-            new_branch.id, current_branch, original_created_at
+            new_branch.id,
+            current_branch,
+            original_created_at
         )
         .execute(&mut *tx)
         .await?;
@@ -692,8 +725,14 @@ pub async fn edit_message(
             created_at, updated_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         "#,
-        new_message_id, conversation_id, &role, &request.content,
-        originated_from_id, edit_count, now, now
+        new_message_id,
+        conversation_id,
+        &role,
+        &request.content,
+        originated_from_id,
+        edit_count,
+        now,
+        now
     )
     .execute(&mut *tx)
     .await?;
@@ -705,7 +744,10 @@ pub async fn edit_message(
         INSERT INTO branch_messages (branch_id, message_id, created_at, is_clone)
         VALUES ($1, $2, $3, $4)
         "#,
-        new_branch.id, new_message_id, now, false
+        new_branch.id,
+        new_message_id,
+        now,
+        false
     )
     .execute(&mut *tx)
     .await?;
@@ -718,7 +760,9 @@ pub async fn edit_message(
                 INSERT INTO messages_files (message_id, file_id, created_at)
                 VALUES ($1, $2, $3)
                 "#,
-                new_message_id, file_id, now
+                new_message_id,
+                file_id,
+                now
             )
             .execute(&mut *tx)
             .await?;
@@ -728,7 +772,8 @@ pub async fn edit_message(
     // 5. Set the new branch as the active branch for the conversation
     sqlx::query!(
         "UPDATE conversations SET active_branch_id = $1 WHERE id = $2",
-        new_branch.id, conversation_id
+        new_branch.id,
+        conversation_id
     )
     .execute(&mut *tx)
     .await?;
@@ -820,10 +865,13 @@ pub async fn search_conversations(
         AND c.project_id = $2
         AND (c.title ILIKE $3 OR m.content ILIKE $3)
         "#,
-            user_id, proj_id, &search_pattern
+            user_id,
+            proj_id,
+            &search_pattern
         )
         .fetch_one(pool)
-        .await?.unwrap_or(0)
+        .await?
+        .unwrap_or(0)
     } else {
         sqlx::query_scalar!(
             r#"
@@ -834,10 +882,12 @@ pub async fn search_conversations(
         AND c.project_id IS NULL
         AND (c.title ILIKE $2 OR m.content ILIKE $2)
         "#,
-            user_id, &search_pattern
+            user_id,
+            &search_pattern
         )
         .fetch_one(pool)
-        .await?.unwrap_or(0)
+        .await?
+        .unwrap_or(0)
     };
 
     // Get conversations that match search with last message info
@@ -865,7 +915,11 @@ pub async fn search_conversations(
         ORDER BY c.id, c.updated_at DESC
         LIMIT $4 OFFSET $5
         "#,
-            user_id, proj_id, &search_pattern, per_page as i64, offset as i64
+            user_id,
+            proj_id,
+            &search_pattern,
+            per_page as i64,
+            offset as i64
         )
         .fetch_all(pool)
         .await?
@@ -893,7 +947,10 @@ pub async fn search_conversations(
         ORDER BY c.id, c.updated_at DESC
         LIMIT $3 OFFSET $4
         "#,
-            user_id, &search_pattern, per_page as i64, offset as i64
+            user_id,
+            &search_pattern,
+            per_page as i64,
+            offset as i64
         )
         .fetch_all(pool)
         .await?
@@ -992,7 +1049,8 @@ pub async fn get_message_branches(
           AND bm.is_clone = false
         ORDER BY b.created_at ASC
         "#,
-        message_id, user_id
+        message_id,
+        user_id
     )
     .fetch_all(pool)
     .await?;
@@ -1028,7 +1086,8 @@ pub async fn switch_conversation_branch(
         FROM branches 
         WHERE id = $1 AND conversation_id = $2
         "#,
-        branch_id, conversation_id
+        branch_id,
+        conversation_id
     )
     .fetch_optional(pool)
     .await?;
@@ -1044,7 +1103,9 @@ pub async fn switch_conversation_branch(
         SET active_branch_id = $1, updated_at = CURRENT_TIMESTAMP
         WHERE id = $2 AND user_id = $3
         "#,
-        branch_id, conversation_id, user_id
+        branch_id,
+        conversation_id,
+        user_id
     )
     .execute(pool)
     .await?;

@@ -22,7 +22,7 @@ pub async fn list_rag_instance_files(
         // Both status filter and search
         (Some(status), Some(search_term)) => {
             let search_pattern = format!("%{}%", search_term);
-            
+
             // Get total count with both filters
             let total = sqlx::query_scalar!(
                 "SELECT COUNT(*) FROM rag_instance_files rif
@@ -58,7 +58,7 @@ pub async fn list_rag_instance_files(
             .await?;
 
             (files, total)
-        },
+        }
         // Only status filter
         (Some(status), None) => {
             // Get total count with status filter
@@ -93,11 +93,11 @@ pub async fn list_rag_instance_files(
             .await?;
 
             (files, total)
-        },
+        }
         // Only search filter
         (None, Some(search_term)) => {
             let search_pattern = format!("%{}%", search_term);
-            
+
             // Get total count with search filter
             let total = sqlx::query_scalar!(
                 "SELECT COUNT(*) FROM rag_instance_files rif
@@ -131,7 +131,7 @@ pub async fn list_rag_instance_files(
             .await?;
 
             (files, total)
-        },
+        }
         // No filters
         (None, None) => {
             // Get total count without filters

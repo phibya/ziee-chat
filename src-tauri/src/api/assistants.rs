@@ -8,11 +8,11 @@ use uuid::Uuid;
 
 use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
+use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{Assistant, AssistantListResponse, CreateAssistantRequest, UpdateAssistantRequest},
     queries::assistants,
 };
-use crate::api::types::PaginationQuery;
 
 /// Create a new assistant
 pub async fn create_assistant(

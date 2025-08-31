@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
+use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{
         AvailableDevicesResponse, CreateProviderRequest, Provider, ProviderListResponse,
@@ -15,7 +16,6 @@ use crate::database::{
     },
     queries::{models, providers, user_group_providers},
 };
-use crate::api::types::PaginationQuery;
 
 // Base function for listing providers with filtering
 async fn list_providers_base(

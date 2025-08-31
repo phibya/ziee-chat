@@ -119,12 +119,9 @@ pub async fn get_user_by_id(user_id: Uuid) -> Result<Option<User>, sqlx::Error> 
 // Get user by email
 pub async fn get_user_by_email(email: &str) -> Result<Option<User>, sqlx::Error> {
     let pool = get_database_pool()?;
-    let email_row = sqlx::query!(
-        "SELECT user_id FROM user_emails WHERE address = $1",
-        email
-    )
-    .fetch_optional(&*pool)
-    .await?;
+    let email_row = sqlx::query!("SELECT user_id FROM user_emails WHERE address = $1", email)
+        .fetch_optional(&*pool)
+        .await?;
 
     let Some(email_row) = email_row else {
         return Ok(None);
@@ -136,12 +133,9 @@ pub async fn get_user_by_email(email: &str) -> Result<Option<User>, sqlx::Error>
 // Get user by username
 pub async fn get_user_by_username(username: &str) -> Result<Option<User>, sqlx::Error> {
     let pool = get_database_pool()?;
-    let user_row = sqlx::query!(
-        "SELECT id FROM users WHERE username = $1",
-        username
-    )
-    .fetch_optional(&*pool)
-    .await?;
+    let user_row = sqlx::query!("SELECT id FROM users WHERE username = $1", username)
+        .fetch_optional(&*pool)
+        .await?;
 
     let Some(user_row) = user_row else {
         return Ok(None);
@@ -188,12 +182,9 @@ pub async fn add_login_token(
 // Remove login token
 pub async fn remove_login_token(token: &str) -> Result<(), sqlx::Error> {
     let pool = get_database_pool()?;
-    sqlx::query!(
-        "DELETE FROM user_login_tokens WHERE token = $1",
-        token
-    )
-    .execute(&*pool)
-    .await?;
+    sqlx::query!("DELETE FROM user_login_tokens WHERE token = $1", token)
+        .execute(&*pool)
+        .await?;
 
     Ok(())
 }
@@ -206,11 +197,9 @@ pub async fn list_users(page: i32, per_page: i32) -> Result<UserListResponse, sq
     let offset = (page - 1) * per_page;
 
     // Get total count
-    let total_row = sqlx::query!(
-        "SELECT COUNT(*) as count FROM users"
-    )
-    .fetch_one(&*pool)
-    .await?;
+    let total_row = sqlx::query!("SELECT COUNT(*) as count FROM users")
+        .fetch_one(&*pool)
+        .await?;
     let total: i64 = total_row.count.unwrap_or(0);
 
     // Get users
@@ -261,7 +250,7 @@ pub async fn update_user(
 
     if let Some(is_active) = is_active {
         sqlx::query!(
-            "UPDATE users SET is_active = $1 WHERE id = $2", 
+            "UPDATE users SET is_active = $1 WHERE id = $2",
             is_active,
             user_id
         )
@@ -335,12 +324,9 @@ pub async fn delete_user(user_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
 
     // Check if user is protected
-    let is_protected = sqlx::query_scalar!(
-        "SELECT is_protected FROM users WHERE id = $1",
-        user_id
-    )
-    .fetch_optional(&*pool)
-    .await?;
+    let is_protected = sqlx::query_scalar!("SELECT is_protected FROM users WHERE id = $1", user_id)
+        .fetch_optional(&*pool)
+        .await?;
 
     if is_protected == Some(true) {
         // Cannot delete protected users
@@ -368,11 +354,9 @@ pub async fn create_user_with_password_service(
     let mut tx = pool.begin().await?;
 
     // Check if this is the first user in the system
-    let user_count = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM users"
-    )
-    .fetch_one(&mut *tx)
-    .await?;
+    let user_count = sqlx::query_scalar!("SELECT COUNT(*) FROM users")
+        .fetch_one(&mut *tx)
+        .await?;
     let is_first_user = user_count.unwrap_or(0) == 0;
 
     // Insert user

@@ -3,7 +3,6 @@ use crate::api::engines::EngineType;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 /// Source information for download tracking
@@ -142,57 +141,6 @@ pub struct DownloadInstance {
     pub model_id: Option<Uuid>, // Filled when download completes
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for DownloadInstance {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        // Parse request_data JSON
-        let request_data_json: serde_json::Value = row.try_get("request_data")?;
-        let request_data =
-            serde_json::from_value(request_data_json).map_err(|e| sqlx::Error::ColumnDecode {
-                index: "request_data".into(),
-                source: Box::new(e),
-            })?;
-
-        // Parse status string
-        let status_str: String = row.try_get("status")?;
-        let status =
-            DownloadStatus::from_str(&status_str).ok_or_else(|| sqlx::Error::ColumnDecode {
-                index: "status".into(),
-                source: Box::new(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("Invalid download status: {}", status_str),
-                )),
-            })?;
-
-        // Parse progress_data JSON
-        let progress_data_json: serde_json::Value = row.try_get("progress_data")?;
-        let progress_data = if progress_data_json.is_null() {
-            None
-        } else {
-            Some(serde_json::from_value(progress_data_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
-                    index: "progress_data".into(),
-                    source: Box::new(e),
-                }
-            })?)
-        };
-
-        Ok(DownloadInstance {
-            id: row.try_get("id")?,
-            provider_id: row.try_get("provider_id")?,
-            repository_id: row.try_get("repository_id")?,
-            request_data,
-            status,
-            progress_data,
-            error_message: row.try_get("error_message")?,
-            started_at: row.try_get("started_at")?,
-            completed_at: row.try_get("completed_at")?,
-            model_id: row.try_get("model_id")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
 }
 
 /// Request to create a new download instance

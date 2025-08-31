@@ -63,8 +63,12 @@ pub async fn update_provider(
     let pool = pool.as_ref();
 
     // If no updates provided, return existing record
-    if request.name.is_none() && request.enabled.is_none() && request.api_key.is_none() 
-        && request.base_url.is_none() && request.proxy_settings.is_none() {
+    if request.name.is_none()
+        && request.enabled.is_none()
+        && request.api_key.is_none()
+        && request.base_url.is_none()
+        && request.proxy_settings.is_none()
+    {
         return get_provider_by_id(provider_id).await;
     }
 
@@ -128,24 +132,18 @@ pub async fn delete_provider(provider_id: Uuid) -> Result<Result<bool, String>, 
     let pool = pool.as_ref();
 
     // First check if provider exists and if it's built-in
-    let provider_row = sqlx::query!(
-        "SELECT built_in FROM providers WHERE id = $1",
-        provider_id
-    )
-    .fetch_optional(pool)
-    .await?;
+    let provider_row = sqlx::query!("SELECT built_in FROM providers WHERE id = $1", provider_id)
+        .fetch_optional(pool)
+        .await?;
 
     match provider_row {
         Some(row) => {
             if row.built_in {
                 Ok(Err("Cannot delete built-in model provider".to_string()))
             } else {
-                let result = sqlx::query!(
-                    "DELETE FROM providers WHERE id = $1",
-                    provider_id
-                )
-                .execute(pool)
-                .await?;
+                let result = sqlx::query!("DELETE FROM providers WHERE id = $1", provider_id)
+                    .execute(pool)
+                    .await?;
                 Ok(Ok(result.rows_affected() > 0))
             }
         }

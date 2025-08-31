@@ -3,7 +3,6 @@
 use crate::database::models::RAGEngineSettings;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 /// RAG provider model
@@ -19,23 +18,6 @@ pub struct RagProvider {
     pub proxy_settings: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for RagProvider {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(RagProvider {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-            provider_type: row.try_get("provider_type")?,
-            enabled: row.try_get("enabled")?,
-            api_key: row.try_get("api_key")?,
-            base_url: row.try_get("base_url")?,
-            built_in: row.try_get("built_in")?,
-            proxy_settings: row.try_get("proxy_settings")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
 }
 
 /// RAG instance model
@@ -59,34 +41,6 @@ pub struct RagInstance {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
-
-impl FromRow<'_, sqlx::postgres::PgRow> for RagInstance {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(RagInstance {
-            id: row.try_get("id")?,
-            provider_id: row.try_get("provider_id")?,
-            user_id: row.try_get("user_id")?,
-            project_id: row.try_get("project_id")?,
-            name: row.try_get("name")?,
-            alias: row.try_get("alias")?,
-            description: row.try_get("description")?,
-            enabled: row.try_get("enabled")?,
-            is_active: row.try_get("is_active")?,
-            engine_type: row.try_get("engine_type")?,
-            engine_settings: row
-                .try_get::<serde_json::Value, _>("engine_settings")
-                .map(|v| serde_json::from_value(v).unwrap_or_default())
-                .unwrap_or_default(),
-            embedding_model_id: row.try_get("embedding_model_id")?,
-            llm_model_id: row.try_get("llm_model_id")?,
-            age_graph_name: row.try_get("age_graph_name")?,
-            parameters: row.try_get("parameters")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 /// RAG instance file model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RagInstanceFile {
@@ -100,23 +54,6 @@ pub struct RagInstanceFile {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
-
-impl FromRow<'_, sqlx::postgres::PgRow> for RagInstanceFile {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(RagInstanceFile {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            file_id: row.try_get("file_id")?,
-            processing_status: row.try_get("processing_status")?,
-            processed_at: row.try_get("processed_at")?,
-            processing_error: row.try_get("processing_error")?,
-            rag_metadata: row.try_get("rag_metadata")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 /// Simple vector document model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimpleVectorDocument {
@@ -133,27 +70,6 @@ pub struct SimpleVectorDocument {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for SimpleVectorDocument {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        // Handle HALFVEC/VECTOR type conversion - pgvector automatically handles both
-        let embedding: Option<Vec<f32>> = row.try_get::<Option<Vec<f32>>, _>("embedding")?;
-
-        Ok(SimpleVectorDocument {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            file_id: row.try_get("file_id")?,
-            chunk_index: row.try_get("chunk_index")?,
-            content: row.try_get("content")?,
-            content_hash: row.try_get("content_hash")?,
-            token_count: row.try_get("token_count")?,
-            embedding,
-            metadata: row.try_get("metadata")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 /// Simple graph entity model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimpleGraphEntity {
@@ -166,22 +82,6 @@ pub struct SimpleGraphEntity {
     pub extraction_metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for SimpleGraphEntity {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(SimpleGraphEntity {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            name: row.try_get("name")?,
-            entity_type: row.try_get("entity_type")?,
-            description: row.try_get("description")?,
-            importance_score: row.try_get("importance_score")?,
-            extraction_metadata: row.try_get("extraction_metadata")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
 }
 
 /// Simple graph relationship model
@@ -197,23 +97,6 @@ pub struct SimpleGraphRelationship {
     pub extraction_metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for SimpleGraphRelationship {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(SimpleGraphRelationship {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            source_entity_id: row.try_get("source_entity_id")?,
-            target_entity_id: row.try_get("target_entity_id")?,
-            relationship_type: row.try_get("relationship_type")?,
-            description: row.try_get("description")?,
-            weight: row.try_get("weight")?,
-            extraction_metadata: row.try_get("extraction_metadata")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
 }
 
 /// Simple graph chunk model
@@ -233,25 +116,6 @@ pub struct SimpleGraphChunk {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for SimpleGraphChunk {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(SimpleGraphChunk {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            file_id: row.try_get("file_id")?,
-            chunk_index: row.try_get("chunk_index")?,
-            content: row.try_get("content")?,
-            content_hash: row.try_get("content_hash")?,
-            token_count: row.try_get("token_count")?,
-            entities: row.try_get("entities")?,
-            relationships: row.try_get("relationships")?,
-            metadata: row.try_get("metadata")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 /// Simple graph community model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimpleGraphCommunity {
@@ -264,22 +128,6 @@ pub struct SimpleGraphCommunity {
     pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for SimpleGraphCommunity {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(SimpleGraphCommunity {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            community_id: row.try_get("community_id")?,
-            entity_ids: row.try_get("entity_ids")?,
-            summary: row.try_get("summary")?,
-            importance_score: row.try_get("importance_score")?,
-            metadata: row.try_get("metadata")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
 }
 
 /// RAG processing pipeline model
@@ -299,25 +147,6 @@ pub struct RagProcessingPipeline {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for RagProcessingPipeline {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(RagProcessingPipeline {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            file_id: row.try_get("file_id")?,
-            pipeline_stage: row.try_get("pipeline_stage")?,
-            status: row.try_get("status")?,
-            progress_percentage: row.try_get("progress_percentage")?,
-            error_message: row.try_get("error_message")?,
-            metadata: row.try_get("metadata")?,
-            started_at: row.try_get("started_at")?,
-            completed_at: row.try_get("completed_at")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 /// Apache AGE graph model
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgeGraph {
@@ -330,22 +159,6 @@ pub struct AgeGraph {
     pub last_updated: DateTime<Utc>,
     pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for AgeGraph {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(AgeGraph {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            graph_name: row.try_get("graph_name")?,
-            status: row.try_get("status")?,
-            node_count: row.try_get("node_count")?,
-            edge_count: row.try_get("edge_count")?,
-            last_updated: row.try_get("last_updated")?,
-            metadata: row.try_get("metadata")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
 }
 
 /// Apache AGE query cache model
@@ -361,23 +174,6 @@ pub struct AgeQueryCache {
     pub last_accessed: DateTime<Utc>,
     pub expires_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for AgeQueryCache {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(AgeQueryCache {
-            id: row.try_get("id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
-            query_hash: row.try_get("query_hash")?,
-            query_type: row.try_get("query_type")?,
-            query_params: row.try_get("query_params")?,
-            result_data: row.try_get("result_data")?,
-            hit_count: row.try_get("hit_count")?,
-            last_accessed: row.try_get("last_accessed")?,
-            expires_at: row.try_get("expires_at")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
 }
 
 /// Helper structures for API responses

@@ -1,25 +1,25 @@
 use axum::{
-  debug_handler,
-  extract::{Path, Query},
-  http::StatusCode,
-  Extension, Json,
+    debug_handler,
+    extract::{Path, Query},
+    http::StatusCode,
+    Extension, Json,
 };
 use uuid::Uuid;
 
-use crate::{
-  api::{
-    errors::{ApiResult, AppError},
-    middleware::AuthenticatedUser,
-  },
-  database::{
-    models::{
-      CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse,
-      UpdateRAGProviderRequest,
-    },
-    queries::rag_providers,
-  },
-};
 use crate::api::types::PaginationQuery;
+use crate::{
+    api::{
+        errors::{ApiResult, AppError},
+        middleware::AuthenticatedUser,
+    },
+    database::{
+        models::{
+            CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse,
+            UpdateRAGProviderRequest,
+        },
+        queries::rag_providers,
+    },
+};
 // =============================================================================
 // ADMIN ENDPOINTS - Full provider management
 // =============================================================================

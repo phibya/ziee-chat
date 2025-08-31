@@ -66,12 +66,9 @@ pub async fn delete_user_setting(user_id: &Uuid, key: &str) -> Result<bool, sqlx
 
 pub async fn delete_all_user_settings(user_id: &Uuid) -> Result<u64, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    let result = sqlx::query!(
-        "DELETE FROM user_settings WHERE user_id = $1",
-        user_id
-    )
-    .execute(pool.as_ref())
-    .await?;
+    let result = sqlx::query!("DELETE FROM user_settings WHERE user_id = $1", user_id)
+        .execute(pool.as_ref())
+        .await?;
 
     Ok(result.rows_affected())
 }

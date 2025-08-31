@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 // Main Project structure
@@ -15,22 +14,6 @@ pub struct Project {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
-
-impl FromRow<'_, sqlx::postgres::PgRow> for Project {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Project {
-            id: row.try_get("id")?,
-            user_id: row.try_get("user_id")?,
-            name: row.try_get("name")?,
-            description: row.try_get("description")?,
-            instruction: row.try_get("instruction")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
-// ProjectConversation struct removed - using conversations.project_id field instead
 
 // Request/Response structures
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

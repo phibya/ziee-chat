@@ -6,6 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
+use crate::api::types::PaginationQuery;
 use crate::api::{
     errors::{ApiResult, AppError},
     middleware::auth::AuthenticatedUser,
@@ -20,7 +21,6 @@ use crate::database::{
         list_system_rag_instances, update_rag_instance,
     },
 };
-use crate::api::types::PaginationQuery;
 
 /// Create system RAG instance (admin only)
 #[debug_handler]

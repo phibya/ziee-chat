@@ -1,10 +1,7 @@
 // Chunking implementation - combined from chunk module
 // Contains types and token-based chunker implementation
 
-use crate::ai::rag::{
-    types::TextChunk,
-    RAGResult,
-};
+use crate::ai::rag::{types::TextChunk, RAGResult};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -99,12 +96,14 @@ impl TokenBasedChunker {
             let split_chunks = self
                 .recursive_split_chunk(&sanitized_content, max_token_size * 4)
                 .await?;
-            
+
             let mut all_chunks = Vec::new();
             for chunk_content in split_chunks.iter() {
                 // Process each split chunk directly without recursion
-                let chunk_chunks = self.chunk_content_direct(chunk_content, max_token_size, overlap_token_size).await?;
-                
+                let chunk_chunks = self
+                    .chunk_content_direct(chunk_content, max_token_size, overlap_token_size)
+                    .await?;
+
                 for mut chunk in chunk_chunks.into_iter() {
                     chunk.chunk_index = all_chunks.len();
                     all_chunks.push(chunk);
@@ -114,7 +113,8 @@ impl TokenBasedChunker {
         }
 
         // Use the direct chunking method
-        self.chunk_content_direct(&sanitized_content, max_token_size, overlap_token_size).await
+        self.chunk_content_direct(&sanitized_content, max_token_size, overlap_token_size)
+            .await
     }
 
     /// Direct chunking method without recursion
@@ -130,18 +130,18 @@ impl TokenBasedChunker {
         // Convert content to "tokens" (simplified - should use real tokenizer)
         let words: Vec<&str> = content.split_whitespace().collect();
         let tokens_per_word = 0.75; // Rough approximation
-        
+
         let mut start_word = 0;
         while start_word < words.len() {
             // Calculate end word based on token estimation
             let mut end_word = start_word;
             let mut current_tokens = 0.0;
-            
+
             while end_word < words.len() && current_tokens < max_token_size as f64 {
                 current_tokens += words[end_word].len() as f64 * tokens_per_word;
                 end_word += 1;
             }
-            
+
             if end_word <= start_word {
                 end_word = start_word + 1; // Ensure progress
             }
@@ -164,12 +164,15 @@ impl TokenBasedChunker {
             }
 
             // Move start position forward, accounting for overlap
-            let overlap_words = self.calculate_overlap_words(&words[start_word..end_word], overlap_token_size);
+            let overlap_words =
+                self.calculate_overlap_words(&words[start_word..end_word], overlap_token_size);
             let next_start = end_word.saturating_sub(overlap_words);
-            
+
             // Ensure we make progress even with overlap
             if next_start <= start_word && overlap_words > 0 {
-                start_word = end_word.saturating_sub(overlap_words / 2).max(start_word + 1);
+                start_word = end_word
+                    .saturating_sub(overlap_words / 2)
+                    .max(start_word + 1);
             } else {
                 start_word = next_start.max(start_word + 1);
             }
@@ -270,7 +273,7 @@ impl TokenBasedChunker {
         let tokens_per_word = 0.75;
         let target_overlap_words = (overlap_tokens as f64 / tokens_per_word) as usize;
         let overlap_words = target_overlap_words.min(words.len() / 2).max(1);
-        
+
         let start_idx = words.len().saturating_sub(overlap_words);
         words[start_idx..].join(" ")
     }
@@ -285,11 +288,11 @@ impl TokenBasedChunker {
         // Multi-language word counting using Unicode word boundaries
         // This regex matches word characters in any language/script
         let word_count = self.count_words_multilingual(text);
-        
+
         // Token estimation based on word count with language-aware multipliers
         // Different languages have different token-to-word ratios
         let token_multiplier = self.get_token_multiplier_for_text(text);
-        
+
         ((word_count as f64 * token_multiplier).ceil() as usize).max(1)
     }
 
@@ -380,11 +383,7 @@ impl TokenBasedChunker {
     }
 
     /// Recursive split for oversized chunks using sentence and paragraph boundaries
-    fn recursive_split_chunk_sync(
-        &self,
-        content: &str,
-        max_size: usize,
-    ) -> Vec<String> {
+    fn recursive_split_chunk_sync(&self, content: &str, max_size: usize) -> Vec<String> {
         let mut chunks = Vec::new();
 
         // If content fits, return it as-is
@@ -394,8 +393,11 @@ impl TokenBasedChunker {
         }
 
         // Try splitting by double newlines (paragraphs) first
-        let paragraphs: Vec<&str> = content.split("\n\n").filter(|p| !p.trim().is_empty()).collect();
-        
+        let paragraphs: Vec<&str> = content
+            .split("\n\n")
+            .filter(|p| !p.trim().is_empty())
+            .collect();
+
         if paragraphs.len() > 1 {
             for paragraph in paragraphs {
                 let sub_chunks = self.recursive_split_chunk_sync(paragraph, max_size);
@@ -455,10 +457,11 @@ impl TokenBasedChunker {
                                 chunks.push(word_chunk.trim().to_string());
                                 word_chunk = String::new();
                             }
-                            
+
                             // Handle extremely long words by character splitting
                             if word.len() > max_size {
-                                for char_chunk in word.chars().collect::<Vec<_>>().chunks(max_size) {
+                                for char_chunk in word.chars().collect::<Vec<_>>().chunks(max_size)
+                                {
                                     let chunk_str: String = char_chunk.iter().collect();
                                     chunks.push(chunk_str);
                                 }
@@ -509,7 +512,7 @@ impl TokenBasedChunker {
     }
 
     /// Simple chunk processing - applies basic quality filtering only
-    /// 
+    ///
     /// This is for document processing time, not query time.
     /// Vector similarity selection happens in the RAG engine during queries.
     pub async fn process_chunks(&self, chunks: Vec<TextChunk>) -> RAGResult<Vec<TextChunk>> {
@@ -523,13 +526,14 @@ impl TokenBasedChunker {
         let mut processed_chunks = Vec::new();
 
         if self.chunk_selector.importance_weighting {
-            tracing::debug!("Applying quality threshold filtering: {}", self.chunk_selector.quality_threshold);
-            
+            tracing::debug!(
+                "Applying quality threshold filtering: {}",
+                self.chunk_selector.quality_threshold
+            );
+
             for chunk in chunks {
-                let quality_score = self
-                    .calculate_chunk_quality(&chunk.content)
-                    .await?;
-                    
+                let quality_score = self.calculate_chunk_quality(&chunk.content).await?;
+
                 if quality_score >= self.chunk_selector.quality_threshold {
                     processed_chunks.push(chunk);
                 } else {

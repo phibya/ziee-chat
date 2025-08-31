@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::ai::core::ChatRequest;
 use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
+use crate::api::types::ConversationPaginationQuery;
 use crate::database::models::EditMessageRequest;
 use crate::database::{
     models::{
@@ -27,7 +28,6 @@ use crate::database::{
         models::{get_model_by_id, get_provider_by_model_id},
     },
 };
-use crate::api::types::ConversationPaginationQuery;
 use crate::utils::chat::{build_chat_messages, build_single_user_message};
 use schemars::JsonSchema;
 

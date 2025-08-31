@@ -167,5 +167,8 @@ pub async fn get_rag_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>,
     .fetch_all(pool)
     .await?;
 
-    Ok(provider_ids.into_iter().map(|row| row.provider_id).collect())
+    Ok(provider_ids
+        .into_iter()
+        .map(|row| row.provider_id)
+        .collect())
 }

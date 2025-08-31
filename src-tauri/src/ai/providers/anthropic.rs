@@ -14,8 +14,8 @@ use crate::ai::core::providers::{
 };
 use crate::ai::file_helpers::{add_provider_mapping_to_file_ref, load_file_content};
 use crate::database::queries::files::{create_provider_file_mapping, get_provider_file_mapping};
-use crate::utils::file_storage::extract_extension;
 use crate::global::FILE_STORAGE;
+use crate::utils::file_storage::extract_extension;
 
 #[derive(Debug, Clone)]
 pub struct AnthropicProvider {

@@ -67,7 +67,7 @@ impl RAGSimpleVectorQueryingSettings {
     }
 
     pub fn chunk_top_k(&self) -> usize {
-        self.chunk_top_k.unwrap_or(20)  as usize // DEFAULT_CHUNK_TOP_K
+        self.chunk_top_k.unwrap_or(20) as usize // DEFAULT_CHUNK_TOP_K
     }
 
     pub fn similarity_threshold(&self) -> f32 {
@@ -75,11 +75,11 @@ impl RAGSimpleVectorQueryingSettings {
     }
 
     pub fn related_chunk_number(&self) -> usize {
-        self.related_chunk_number.unwrap_or(5)  as usize // DEFAULT_RELATED_CHUNK_NUMBER
+        self.related_chunk_number.unwrap_or(5) as usize // DEFAULT_RELATED_CHUNK_NUMBER
     }
 
     pub fn max_total_tokens(&self) -> usize {
-        self.max_total_tokens.unwrap_or(30000)  as usize // DEFAULT_MAX_TOTAL_TOKENS
+        self.max_total_tokens.unwrap_or(30000) as usize // DEFAULT_MAX_TOTAL_TOKENS
     }
 
     pub fn chunk_selection_method(&self) -> RAGChunkSelectionMethod {
@@ -150,23 +150,23 @@ impl RAGSimpleGraphIndexingSettings {
     }
 
     pub fn chunk_overlap_token_size(&self) -> usize {
-        self.chunk_overlap_token_size.unwrap_or(100)  as usize // CHUNK_OVERLAP_SIZE
+        self.chunk_overlap_token_size.unwrap_or(100) as usize // CHUNK_OVERLAP_SIZE
     }
 
     pub fn entity_extract_max_gleaning(&self) -> usize {
-        self.entity_extract_max_gleaning.unwrap_or(1)  as usize // DEFAULT_MAX_GLEANING
+        self.entity_extract_max_gleaning.unwrap_or(1) as usize // DEFAULT_MAX_GLEANING
     }
 
     pub fn force_llm_summary_on_merge(&self) -> usize {
-        self.force_llm_summary_on_merge.unwrap_or(4)  as usize // DEFAULT_FORCE_LLM_SUMMARY_ON_MERGE
+        self.force_llm_summary_on_merge.unwrap_or(4) as usize // DEFAULT_FORCE_LLM_SUMMARY_ON_MERGE
     }
 
     pub fn max_graph_nodes(&self) -> usize {
-        self.max_graph_nodes.unwrap_or(1000)  as usize // DEFAULT_MAX_GRAPH_NODES
+        self.max_graph_nodes.unwrap_or(1000) as usize // DEFAULT_MAX_GRAPH_NODES
     }
 
     pub fn summary_max_tokens(&self) -> usize {
-        self.summary_max_tokens.unwrap_or(30000)  as usize // DEFAULT_SUMMARY_MAX_TOKENS
+        self.summary_max_tokens.unwrap_or(30000) as usize // DEFAULT_SUMMARY_MAX_TOKENS
     }
 
     pub fn entity_types(&self) -> Vec<String> {

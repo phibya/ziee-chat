@@ -112,7 +112,7 @@ impl RAGSimpleVectorEngine {
             chunks.into_iter().zip(embeddings.into_iter()).collect();
 
         let instance_id = self.instance_id; // Copy the instance_id
-        
+
         for batch in chunk_embedding_pairs.chunks(self.embedding_batch_size as usize) {
             let permit = semaphore.clone().acquire_owned().await.map_err(|e| {
                 RAGError::ProcessingError(format!("Failed to acquire semaphore: {}", e))

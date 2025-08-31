@@ -18,9 +18,9 @@ use crate::{
         middleware::AuthenticatedUser,
     },
     database::{models::file::*, queries::files},
+    global::FILE_STORAGE,
     processing::ProcessingManager,
     utils::file_storage::{extract_extension, get_mime_type_from_extension},
-    global::FILE_STORAGE,
 };
 
 // Initialize global processing manager

@@ -2,12 +2,16 @@ use chrono::Utc;
 use uuid::Uuid;
 
 #[allow(dead_code)]
+use crate::api::engines::EngineType;
+#[allow(dead_code)]
 use crate::database::{
     get_database_pool,
-    models::{CreateModelRequest, Model, ModelFile, Provider, UpdateModelRequest, ModelCapabilities, ModelParameters, ModelEngineSettings, FileFormat, SourceInfo, provider::ProviderType, proxy::ProxySettings},
+    models::{
+        provider::ProviderType, proxy::ProxySettings, CreateModelRequest, FileFormat, Model,
+        ModelCapabilities, ModelEngineSettings, ModelFile, ModelParameters, Provider, SourceInfo,
+        UpdateModelRequest,
+    },
 };
-#[allow(dead_code)]
-use crate::api::engines::EngineType;
 
 pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -86,9 +90,16 @@ pub async fn update_model(
     let pool = pool.as_ref();
 
     // If no updates provided, return existing record
-    if request.name.is_none() && request.alias.is_none() && request.description.is_none() 
-        && request.enabled.is_none() && request.is_active.is_none() && request.capabilities.is_none()
-        && request.parameters.is_none() && request.engine_type.is_none() && request.engine_settings.is_none() {
+    if request.name.is_none()
+        && request.alias.is_none()
+        && request.description.is_none()
+        && request.enabled.is_none()
+        && request.is_active.is_none()
+        && request.capabilities.is_none()
+        && request.parameters.is_none()
+        && request.engine_type.is_none()
+        && request.engine_settings.is_none()
+    {
         return get_model_by_id(model_id).await;
     }
 
@@ -191,12 +202,9 @@ pub async fn delete_model(model_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query!(
-        "DELETE FROM models WHERE id = $1",
-        model_id
-    )
-    .execute(pool)
-    .await?;
+    let result = sqlx::query!("DELETE FROM models WHERE id = $1", model_id)
+        .execute(pool)
+        .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -366,7 +374,6 @@ pub async fn create_model_file(
 
     Ok(file)
 }
-
 
 /// Update model runtime information (PID and port)
 pub async fn update_model_runtime_info(

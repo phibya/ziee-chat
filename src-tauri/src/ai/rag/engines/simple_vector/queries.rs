@@ -3,6 +3,7 @@
 use crate::ai::rag::{PipelineStage, ProcessingStatus, RAGError, RAGResult};
 use crate::database::get_database_pool;
 use uuid::Uuid;
+use pgvector::HalfVector;
 
 /// Update pipeline status for a file in a RAG instance
 pub async fn update_pipeline_status(
@@ -35,7 +36,7 @@ pub async fn update_pipeline_status(
         ProcessingStatus::Failed(_) => "failed",
     };
 
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO rag_processing_pipeline (
             rag_instance_id, file_id, pipeline_stage, status, progress_percentage,
@@ -50,16 +51,16 @@ pub async fn update_pipeline_status(
             completed_at = EXCLUDED.completed_at,
             updated_at = NOW()
         "#,
+        instance_id,
+        file_id,
+        stage.to_string(),
+        status_str,
+        progress as i32,
+        error_message,
+        started_at,
+        completed_at,
+        serde_json::Value::Null
     )
-    .bind(instance_id)
-    .bind(file_id)
-    .bind(stage.to_string())
-    .bind(status_str)
-    .bind(progress as i32)
-    .bind(error_message)
-    .bind(started_at)
-    .bind(completed_at)
-    .bind(serde_json::Value::Null)
     .execute(&*database)
     .await
     .map_err(|e| RAGError::DatabaseError(e.to_string()))?;
@@ -72,30 +73,18 @@ pub async fn get_filename_from_db(file_id: Uuid) -> RAGResult<String> {
     let database = get_database_pool()
         .map_err(|e| RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
 
-    let filename = sqlx::query_scalar::<_, String>("SELECT file_name FROM files WHERE id = $1")
-        .bind(file_id)
-        .fetch_optional(&*database)
-        .await
-        .map_err(|e| RAGError::DatabaseError(e.to_string()))?
-        .ok_or_else(|| RAGError::NotFound(format!("Filename not found for file {}", file_id)))?;
+    let filename = sqlx::query_scalar!(
+        "SELECT filename FROM files WHERE id = $1",
+        file_id
+    )
+    .fetch_optional(&*database)
+    .await
+    .map_err(|e| RAGError::DatabaseError(e.to_string()))?
+    .ok_or_else(|| RAGError::NotFound(format!("Filename not found for file {}", file_id)))?;
 
     Ok(filename)
 }
 
-/// Check if vector extension is available
-pub async fn check_vector_extension_available() -> RAGResult<bool> {
-    let database = get_database_pool()
-        .map_err(|e| RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
-
-    let result = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector')",
-    )
-    .fetch_one(&*database)
-    .await
-    .map_err(|e| RAGError::DatabaseError(e.to_string()))?;
-
-    Ok(result)
-}
 
 /// Insert or update vector document
 pub async fn upsert_vector_document(
@@ -111,7 +100,9 @@ pub async fn upsert_vector_document(
     let database = get_database_pool()
         .map_err(|e| RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
 
-    sqlx::query(
+    let embedding = HalfVector::from_f32_slice(embedding);
+
+    sqlx::query!(
         r#"
         INSERT INTO simple_vector_documents (
             rag_instance_id, file_id, chunk_index, content, content_hash,
@@ -125,15 +116,15 @@ pub async fn upsert_vector_document(
             metadata = EXCLUDED.metadata,
             updated_at = NOW()
         "#,
+        instance_id,
+        file_id,
+        chunk_index,
+        content,
+        content_hash,
+        token_count,
+        embedding as HalfVector,
+        metadata
     )
-    .bind(instance_id)
-    .bind(file_id)
-    .bind(chunk_index)
-    .bind(content)
-    .bind(content_hash)
-    .bind(token_count)
-    .bind(embedding)
-    .bind(metadata)
     .execute(&*database)
     .await
     .map_err(|e| RAGError::DatabaseError(e.to_string()))?;

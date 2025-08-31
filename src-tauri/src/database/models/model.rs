@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use super::download_instance::SourceInfo;
@@ -785,114 +784,6 @@ pub struct Model {
     pub source: Option<SourceInfo>, // Source information for tracking download origin
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for Model {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        // Parse capabilities JSON
-        let capabilities_json: serde_json::Value = row.try_get("capabilities")?;
-        let capabilities = if capabilities_json.is_null() {
-            None
-        } else {
-            Some(serde_json::from_value(capabilities_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
-                    index: "capabilities".into(),
-                    source: Box::new(e),
-                }
-            })?)
-        };
-
-        // Parse parameters JSON
-        let parameters_json: serde_json::Value = row.try_get("parameters")?;
-        let parameters = if parameters_json.is_null() {
-            None
-        } else {
-            Some(serde_json::from_value(parameters_json).map_err(|e| {
-                sqlx::Error::ColumnDecode {
-                    index: "parameters".into(),
-                    source: Box::new(e),
-                }
-            })?)
-        };
-
-        // Parse engine settings from the new consolidated column
-        let engine_settings_json: Option<serde_json::Value> = row.try_get("engine_settings")?;
-        let engine_settings = if let Some(json_val) = engine_settings_json {
-            if json_val.is_object() && json_val.as_object().unwrap().is_empty() {
-                None
-            } else {
-                Some(
-                    serde_json::from_value(json_val).map_err(|e| sqlx::Error::ColumnDecode {
-                        index: "engine_settings".into(),
-                        source: Box::new(e),
-                    })?,
-                )
-            }
-        } else {
-            None
-        };
-
-        // Parse validation_issues JSON
-        let validation_issues_json: Option<serde_json::Value> = row.try_get("validation_issues")?;
-        let validation_issues =
-            validation_issues_json.and_then(|v| serde_json::from_value::<Vec<String>>(v).ok());
-
-        // Parse source JSON
-        let source_json: Option<serde_json::Value> = row.try_get("source")?;
-        let source = if let Some(source_val) = source_json {
-            if source_val.is_null() {
-                None
-            } else {
-                Some(
-                    serde_json::from_value(source_val).map_err(|e| sqlx::Error::ColumnDecode {
-                        index: "source".into(),
-                        source: Box::new(e),
-                    })?,
-                )
-            }
-        } else {
-            None
-        };
-
-        Ok(Model {
-            id: row.try_get("id")?,
-            provider_id: row.try_get("provider_id")?,
-            name: row.try_get("name")?,
-            alias: row.try_get("alias")?,
-            description: row.try_get("description")?,
-            enabled: row.try_get("enabled")?,
-            is_deprecated: row.try_get("is_deprecated")?,
-            is_active: row.try_get("is_active")?,
-            capabilities,
-            parameters,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-            file_size_bytes: row.try_get("file_size_bytes")?,
-            validation_status: row.try_get("validation_status")?,
-            validation_issues,
-            port: row.try_get("port")?,
-            pid: row.try_get("pid")?,
-            engine_type: {
-                let engine_type_str: String = row.try_get("engine_type")?;
-                EngineType::from_str(&engine_type_str).ok_or_else(|| sqlx::Error::ColumnDecode {
-                    index: "engine_type".to_string(),
-                    source: Box::new(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("Invalid engine type: {}", engine_type_str),
-                    )),
-                })?
-            },
-            engine_settings,
-            file_format: {
-                let file_format_str: String = row.try_get("file_format")?;
-                FileFormat::from_str(&file_format_str).ok_or_else(|| sqlx::Error::ColumnDecode {
-                    index: "file_format".to_string(),
-                    source: format!("Invalid file format: {}", file_format_str).into(),
-                })?
-            }, // Convert string to enum
-            source,
-        })
-    }
-}
-
 // Request/Response structures for models
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateModelRequest {
@@ -924,7 +815,7 @@ pub struct UpdateModelRequest {
 }
 
 // Model file tracking for uploaded files
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ModelFile {
     pub id: Uuid,
     pub model_id: Uuid,
@@ -956,7 +847,6 @@ impl Model {
             .to_string_lossy()
             .to_string()
     }
-
 
     /// Get the MistralRs settings, or return default settings if none are set
     pub fn get_mistralrs_settings(&self) -> MistralRsSettings {

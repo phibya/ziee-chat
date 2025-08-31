@@ -79,21 +79,33 @@ pub async fn update_repository(
 
     // Replace COALESCE with separate conditional updates
     if let Some(name) = &request.name {
-        sqlx::query!("UPDATE repositories SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", name, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE repositories SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            name,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(url) = &request.url {
-        sqlx::query!("UPDATE repositories SET url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", url, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE repositories SET url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            url,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(auth_type) = &request.auth_type {
-        sqlx::query!("UPDATE repositories SET auth_type = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", auth_type, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE repositories SET auth_type = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            auth_type,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     if let Some(auth_config) = &request.auth_config {
@@ -104,9 +116,13 @@ pub async fn update_repository(
     }
 
     if let Some(enabled) = request.enabled {
-        sqlx::query!("UPDATE repositories SET enabled = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", enabled, repository_id)
-            .execute(pool)
-            .await?;
+        sqlx::query!(
+            "UPDATE repositories SET enabled = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2",
+            enabled,
+            repository_id
+        )
+        .execute(pool)
+        .await?;
     }
 
     // Return the updated repository
@@ -130,9 +146,12 @@ pub async fn delete_repository(repository_id: Uuid) -> Result<Result<bool, Strin
     let pool = pool.as_ref();
 
     // First check if repository exists and if it's built-in
-    let built_in_result = sqlx::query_scalar!("SELECT built_in FROM repositories WHERE id = $1", repository_id)
-        .fetch_optional(pool)
-        .await?;
+    let built_in_result = sqlx::query_scalar!(
+        "SELECT built_in FROM repositories WHERE id = $1",
+        repository_id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     match built_in_result {
         Some(built_in) => {

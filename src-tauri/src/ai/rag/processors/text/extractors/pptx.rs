@@ -3,7 +3,7 @@
 use super::base::TextExtractor;
 use crate::ai::rag::{RAGError, RAGResult};
 use async_trait::async_trait;
-use pptx_to_md::{PptxContainer, ParserConfig, ImageHandlingMode};
+use pptx_to_md::{ImageHandlingMode, ParserConfig, PptxContainer};
 use std::path::Path;
 
 /// PowerPoint PPTX extractor using pptx-to-md crate
@@ -31,9 +31,9 @@ impl PptxExtractor {
             .image_handling_mode(ImageHandlingMode::InMarkdown)
             .include_slide_comment(true)
             .build();
-        
+
         let path = Path::new(&self.file_path);
-        
+
         // Open PPTX container and parse slides
         match PptxContainer::open(path, config) {
             Ok(mut container) => {
@@ -41,7 +41,7 @@ impl PptxExtractor {
                 match container.parse_all() {
                     Ok(slides) => {
                         let mut all_content = String::new();
-                        
+
                         // Convert each slide to markdown
                         for slide in slides {
                             if let Some(md_content) = slide.convert_to_md() {
@@ -49,38 +49,34 @@ impl PptxExtractor {
                                 all_content.push_str("\n\n---\n\n");
                             }
                         }
-                        
+
                         if all_content.trim().is_empty() {
                             return Err(RAGError::TextExtractionError(
                                 "No content extracted from PPTX file".to_string(),
                             ));
                         }
-                        
+
                         // Clean up trailing separator
                         let cleaned_content = all_content.trim_end_matches("\n\n---\n\n");
                         Ok(cleaned_content.to_string())
                     }
-                    Err(e) => {
-                        Err(RAGError::TextExtractionError(format!(
-                            "Failed to parse PPTX slides: {:?}",
-                            e
-                        )))
-                    }
+                    Err(e) => Err(RAGError::TextExtractionError(format!(
+                        "Failed to parse PPTX slides: {:?}",
+                        e
+                    ))),
                 }
             }
-            Err(e) => {
-                Err(RAGError::TextExtractionError(format!(
-                    "Failed to open PPTX container: {:?}",
-                    e
-                )))
-            }
+            Err(e) => Err(RAGError::TextExtractionError(format!(
+                "Failed to open PPTX container: {:?}",
+                e
+            ))),
         }
     }
 
     /// Validate that this is a PPTX file
     fn validate_pptx_file(&self) -> RAGResult<()> {
         let path = Path::new(&self.file_path);
-        
+
         // Check file extension
         match path.extension().and_then(|ext| ext.to_str()) {
             Some(ext) if ext.to_lowercase() == "pptx" => Ok(()),
@@ -118,32 +114,32 @@ impl PptxExtractor {
     fn clean_pptx_markdown(&self, content: &str) -> String {
         // Remove excessive whitespace and normalize line endings
         let mut cleaned = content.trim().to_string();
-        
+
         // Normalize line endings to Unix style
         cleaned = cleaned.replace("\r\n", "\n").replace('\r', "\n");
-        
+
         // Remove multiple consecutive blank lines (more than 2)
         while cleaned.contains("\n\n\n\n") {
             cleaned = cleaned.replace("\n\n\n\n", "\n\n\n");
         }
-        
+
         // Ensure proper spacing around headings
         cleaned = regex::Regex::new(r"\n(#{1,6})")
             .unwrap()
             .replace_all(&cleaned, "\n\n$1")
             .to_string();
-            
+
         cleaned = regex::Regex::new(r"(#{1,6}[^\n]+)\n([^\n#])")
             .unwrap()
             .replace_all(&cleaned, "$1\n\n$2")
             .to_string();
-        
+
         // Clean up any remaining excessive whitespace
         cleaned = regex::Regex::new(r"[ \t]+")
             .unwrap()
             .replace_all(&cleaned, " ")
             .to_string();
-            
+
         cleaned.trim().to_string()
     }
 }
