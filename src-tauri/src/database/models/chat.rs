@@ -104,7 +104,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for MessageBranch {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct MessageMetadata {
     pub id: Uuid,
     pub message_id: Uuid,
@@ -113,17 +113,6 @@ pub struct MessageMetadata {
     pub created_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for MessageMetadata {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(MessageMetadata {
-            id: row.try_get("id")?,
-            message_id: row.try_get("message_id")?,
-            key: row.try_get("key")?,
-            value: row.try_get("value")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConversationMetadata {

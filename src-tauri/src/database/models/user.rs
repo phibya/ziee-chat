@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 // Base User structure (for direct DB operations without aggregations)
@@ -17,21 +16,6 @@ pub struct UserBase {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for UserBase {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(UserBase {
-            id: row.try_get("id")?,
-            username: row.try_get("username")?,
-            created_at: row.try_get("created_at")?,
-            profile: row.try_get("profile")?,
-            is_active: row.try_get("is_active")?,
-            is_protected: row.try_get("is_protected")?,
-            last_login_at: row.try_get("last_login_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserService {
     pub id: Uuid,
@@ -39,18 +23,6 @@ pub struct UserService {
     pub service_name: String,
     pub service_data: serde_json::Value,
     pub created_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for UserService {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(UserService {
-            id: row.try_get("id")?,
-            user_id: row.try_get("user_id")?,
-            service_name: row.try_get("service_name")?,
-            service_data: row.try_get("service_data")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,19 +35,6 @@ pub struct UserLoginToken {
     pub created_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for UserLoginToken {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(UserLoginToken {
-            id: row.try_get("id")?,
-            user_id: row.try_get("user_id")?,
-            token: row.try_get("token")?,
-            when_created: row.try_get("when_created")?,
-            expires_at: row.try_get("expires_at")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserGroupMembership {
     pub id: Uuid,
@@ -85,18 +44,6 @@ pub struct UserGroupMembership {
     pub assigned_by: Option<Uuid>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for UserGroupMembership {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(UserGroupMembership {
-            id: row.try_get("id")?,
-            user_id: row.try_get("user_id")?,
-            group_id: row.try_get("group_id")?,
-            assigned_at: row.try_get("assigned_at")?,
-            assigned_by: row.try_get("assigned_by")?,
-        })
-    }
-}
-
 // User group model provider relationship
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserGroupProvider {
@@ -104,17 +51,6 @@ pub struct UserGroupProvider {
     pub group_id: Uuid,
     pub provider_id: Uuid,
     pub assigned_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for UserGroupProvider {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(UserGroupProvider {
-            id: row.try_get("id")?,
-            group_id: row.try_get("group_id")?,
-            provider_id: row.try_get("provider_id")?,
-            assigned_at: row.try_get("assigned_at")?,
-        })
-    }
 }
 
 // Meteor-like User structure (for API responses)
@@ -148,33 +84,6 @@ pub struct UserGroup {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for UserGroup {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        let permissions_json: serde_json::Value = row.try_get("permissions")?;
-        let permissions = if permissions_json.is_null() {
-            Vec::new()
-        } else {
-            serde_json::from_value(permissions_json).map_err(|e| sqlx::Error::ColumnDecode {
-                index: "permissions".into(),
-                source: Box::new(e),
-            })?
-        };
-
-        Ok(UserGroup {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-            description: row.try_get("description")?,
-            permissions,
-            provider_ids: Vec::new(),     // Loaded separately via joins
-            rag_provider_ids: Vec::new(), // Loaded separately via joins
-            is_protected: row.try_get("is_protected")?,
-            is_active: row.try_get("is_active")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
-
 // Email structure for the emails array
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserEmail {
@@ -183,18 +92,6 @@ pub struct UserEmail {
     pub address: String,
     pub verified: bool,
     pub created_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for UserEmail {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(UserEmail {
-            id: row.try_get("id")?,
-            user_id: row.try_get("user_id")?,
-            address: row.try_get("address")?,
-            verified: row.try_get("verified")?,
-            created_at: row.try_get("created_at")?,
-        })
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -217,19 +114,6 @@ pub struct UserSetting {
     pub value: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-impl FromRow<'_, sqlx::postgres::PgRow> for UserSetting {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        Ok(UserSetting {
-            id: row.try_get("id")?,
-            user_id: row.try_get("user_id")?,
-            key: row.try_get("key")?,
-            value: row.try_get("value")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
 }
 
 // Helper structures for API requests

@@ -8,7 +8,7 @@ use super::download_instance::SourceInfo;
 use crate::api::engines::EngineType;
 
 /// Device types for ML model inference
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum DeviceType {
     /// CPU-only inference
@@ -61,7 +61,7 @@ impl std::fmt::Display for DeviceType {
 }
 
 /// MistralRS command types for different model formats and use cases
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, sqlx::Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum MistralRsCommand {
     /// Plain model format (safetensors/pytorch)
@@ -114,7 +114,7 @@ impl std::fmt::Display for MistralRsCommand {
 }
 
 /// File format types for local models
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum FileFormat {
     Safetensors,
@@ -148,7 +148,7 @@ impl std::fmt::Display for FileFormat {
 }
 
 /// Model capabilities configuration
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default, sqlx::Type)]
 pub struct ModelCapabilities {
     /// Vision capability - can process images
     pub vision: Option<bool>,
@@ -174,17 +174,17 @@ impl ModelCapabilities {
 }
 
 /// Model parameters for inference configuration
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default, sqlx::Type)]
 pub struct ModelParameters {
     // Context and generation parameters
     /// Context size for the model
-    pub max_tokens: Option<u32>,
+    pub max_tokens: Option<i32>,
 
     // Sampling parameters
     /// Temperature for randomness (0.0-2.0)
     pub temperature: Option<f32>,
     /// Top-K sampling parameter
-    pub top_k: Option<u32>,
+    pub top_k: Option<i32>,
     /// Top-P (nucleus) sampling parameter (0.0-1.0)
     pub top_p: Option<f32>,
     /// Min-P sampling parameter (0.0-1.0)
@@ -192,7 +192,7 @@ pub struct ModelParameters {
 
     // Repetition control
     /// Number of last tokens to consider for repetition penalty
-    pub repeat_last_n: Option<u32>,
+    pub repeat_last_n: Option<i32>,
     /// Repetition penalty (1.0 = no penalty)
     pub repeat_penalty: Option<f32>,
     /// Presence penalty for new tokens
@@ -304,7 +304,7 @@ impl ModelParameters {
 }
 
 /// MistralRs-specific settings for individual model performance and batching configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Type)]
 pub struct MistralRsSettings {
     // Core model configuration
     /// Model command type for MistralRS engine
@@ -334,9 +334,9 @@ pub struct MistralRsSettings {
 
     // Sequence and memory management
     /// Maximum running sequences at any time (--max-seqs)
-    pub max_seqs: Option<usize>,
+    pub max_seqs: Option<i64>,
     /// Maximum sequence length (--max-seq-len)
-    pub max_seq_len: Option<usize>,
+    pub max_seq_len: Option<i64>,
     /// Use no KV cache (--no-kv-cache)
     pub no_kv_cache: Option<bool>,
     /// Truncate sequences that exceed max length (--truncate-sequence)
@@ -344,13 +344,13 @@ pub struct MistralRsSettings {
 
     // PagedAttention configuration
     /// GPU memory for KV cache in MBs (--pa-gpu-mem)
-    pub paged_attn_gpu_mem: Option<usize>,
+    pub paged_attn_gpu_mem: Option<i64>,
     /// GPU memory usage percentage 0-1 (--pa-gpu-mem-usage)
     pub paged_attn_gpu_mem_usage: Option<f32>,
     /// Total context length for KV cache (--pa-ctxt-len)
-    pub paged_ctxt_len: Option<usize>,
+    pub paged_ctxt_len: Option<i64>,
     /// PagedAttention block size (--pa-blk-size)
-    pub paged_attn_block_size: Option<usize>,
+    pub paged_attn_block_size: Option<i64>,
     /// Disable PagedAttention on CUDA (--no-paged-attn)
     pub no_paged_attn: Option<bool>,
     /// Enable PagedAttention on Metal (--paged-attn)
@@ -364,9 +364,9 @@ pub struct MistralRsSettings {
 
     // Performance optimization
     /// Number of prefix caches to hold (--prefix-cache-n)
-    pub prefix_cache_n: Option<usize>,
+    pub prefix_cache_n: Option<i64>,
     /// Prompt batching chunk size (--prompt-batchsize)
-    pub prompt_chunksize: Option<usize>,
+    pub prompt_chunksize: Option<i64>,
 
     // Model configuration
     /// Model data type: auto, f16, f32, bf16 (--dtype)
@@ -376,15 +376,15 @@ pub struct MistralRsSettings {
 
     // Reproducibility
     /// Seed for reproducible generation (--seed)
-    pub seed: Option<u64>,
+    pub seed: Option<i64>,
 
     // Vision model parameters
     /// Maximum edge length for image resizing (--max-edge)
-    pub max_edge: Option<usize>,
+    pub max_edge: Option<i64>,
     /// Maximum number of images (--max-num-images)
-    pub max_num_images: Option<usize>,
+    pub max_num_images: Option<i64>,
     /// Maximum image edge length (--max-image-length)
-    pub max_image_length: Option<usize>,
+    pub max_image_length: Option<i64>,
 
     // Server configuration
     /// Server IP address to serve on
@@ -411,7 +411,7 @@ pub struct MistralRsSettings {
 // Default value functions for MistralRsSettings - all fields are optional
 
 /// LlamaCpp-specific settings for llama-server configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Type)]
 pub struct LlamaCppSettings {
     /// Device type (cpu, cuda, metal, etc.)
     pub device_type: Option<DeviceType>,
@@ -458,9 +458,9 @@ pub struct LlamaCppSettings {
 
     // Model Configuration (equivalent to MistralRs Model Config)
     /// RoPE base frequency (--rope-freq-base)
-    pub rope_freq_base: Option<f64>,
+    pub rope_freq_base: Option<f32>,
     /// RoPE frequency scaling (--rope-freq-scale)
-    pub rope_freq_scale: Option<f64>,
+    pub rope_freq_scale: Option<f32>,
     /// RoPE scaling method: none/linear/yarn (--rope-scaling)
     pub rope_scaling: Option<String>,
     /// KV cache data type for K (--cache-type-k)
@@ -751,7 +751,7 @@ impl MistralRsSettings {
 }
 
 /// Engine-specific settings for model configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Type)]
 pub struct ModelEngineSettings {
     /// MistralRs-specific settings
     pub mistralrs: Option<MistralRsSettings>,
@@ -783,7 +783,6 @@ pub struct Model {
     pub engine_settings: Option<ModelEngineSettings>, // Engine-specific settings
     pub file_format: FileFormat, // Model file format: safetensors, gguf, pytorch, etc. - REQUIRED
     pub source: Option<SourceInfo>, // Source information for tracking download origin
-    pub files: Option<Vec<ModelFileInfo>>,
 }
 
 impl FromRow<'_, sqlx::postgres::PgRow> for Model {
@@ -890,7 +889,6 @@ impl FromRow<'_, sqlx::postgres::PgRow> for Model {
                 })?
             }, // Convert string to enum
             source,
-            files: None, // Files need to be loaded separately
         })
     }
 }
@@ -959,21 +957,6 @@ impl Model {
             .to_string()
     }
 
-    /// Set files from ModelFileDb structs
-    pub fn with_files(mut self, files: Option<Vec<ModelFile>>) -> Self {
-        self.files = files.map(|files| {
-            files
-                .into_iter()
-                .map(|f| ModelFileInfo {
-                    filename: f.filename,
-                    file_size_bytes: f.file_size_bytes,
-                    file_type: f.file_type,
-                    uploaded_at: f.uploaded_at,
-                })
-                .collect()
-        });
-        self
-    }
 
     /// Get the MistralRs settings, or return default settings if none are set
     pub fn get_mistralrs_settings(&self) -> MistralRsSettings {

@@ -181,9 +181,8 @@ async fn process_rag_file_upload(
         file_size: file_size as i64,
         mime_type,
         checksum: Some(checksum),
-        project_id: None,                   // RAG files don't belong to projects
-        rag_instance_id: Some(instance_id), // Associate with RAG instance
-        thumbnail_count: 0,                 // No processing for RAG files
+        project_id: None, // RAG files don't belong to projects
+        thumbnail_count: 0, // No processing for RAG files
         page_count: 0,
         processing_metadata: serde_json::json!({}),
     };

@@ -1,32 +1,31 @@
 use crate::database::{get_database_pool, models::file::*};
-use sqlx::Row;
 use uuid::Uuid;
 
 pub async fn create_file(data: FileCreateData) -> Result<File, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let file = sqlx::query_as::<_, File>(
+    let file = sqlx::query_as!(
+        File,
         r#"
         INSERT INTO files (
             id, user_id, filename, file_size, mime_type, 
-            checksum, project_id, rag_instance_id, thumbnail_count, page_count, processing_metadata
+            checksum, project_id, thumbnail_count, page_count, processing_metadata
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
         "#,
+        data.id,
+        data.user_id,
+        data.filename,
+        data.file_size,
+        data.mime_type,
+        data.checksum,
+        data.project_id,
+        data.thumbnail_count,
+        data.page_count,
+        data.processing_metadata
     )
-    .bind(data.id)
-    .bind(data.user_id)
-    .bind(data.filename)
-    .bind(data.file_size)
-    .bind(data.mime_type)
-    .bind(data.checksum)
-    .bind(data.project_id)
-    .bind(data.rag_instance_id)
-    .bind(data.thumbnail_count)
-    .bind(data.page_count)
-    .bind(data.processing_metadata)
     .fetch_one(pool)
     .await?;
 
@@ -37,10 +36,13 @@ pub async fn get_file_by_id(file_id: Uuid) -> Result<Option<File>, sqlx::Error> 
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let file = sqlx::query_as::<_, File>("SELECT * FROM files WHERE id = $1")
-        .bind(file_id)
-        .fetch_optional(pool)
-        .await?;
+    let file = sqlx::query_as!(
+        File,
+        "SELECT * FROM files WHERE id = $1",
+        file_id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     Ok(file)
 }
@@ -52,11 +54,14 @@ pub async fn get_file_by_id_and_user(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let file = sqlx::query_as::<_, File>("SELECT * FROM files WHERE id = $1 AND user_id = $2")
-        .bind(file_id)
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?;
+    let file = sqlx::query_as!(
+        File,
+        "SELECT * FROM files WHERE id = $1 AND user_id = $2",
+        file_id,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     Ok(file)
 }
@@ -72,29 +77,31 @@ pub async fn get_files_by_project(
 
     let offset = (page - 1) * per_page;
 
-    let files = sqlx::query_as::<_, File>(
+    let files = sqlx::query_as!(
+        File,
         r#"
         SELECT * FROM files 
         WHERE project_id = $1 AND user_id = $2
         ORDER BY created_at DESC
         LIMIT $3 OFFSET $4
         "#,
+        project_id,
+        user_id,
+        per_page as i64,
+        offset as i64
     )
-    .bind(project_id)
-    .bind(user_id)
-    .bind(per_page as i64)
-    .bind(offset as i64)
     .fetch_all(pool)
     .await?;
 
-    let total_row =
-        sqlx::query("SELECT COUNT(*) as count FROM files WHERE project_id = $1 AND user_id = $2")
-            .bind(project_id)
-            .bind(user_id)
-            .fetch_one(pool)
-            .await?;
+    let total_row = sqlx::query!(
+        "SELECT COUNT(*) as count FROM files WHERE project_id = $1 AND user_id = $2",
+        project_id,
+        user_id
+    )
+    .fetch_one(pool)
+    .await?;
 
-    let total: i64 = total_row.get("count");
+    let total: i64 = total_row.count.unwrap_or(0);
 
     Ok((files, total))
 }
@@ -106,16 +113,17 @@ pub async fn get_files_by_message(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let files = sqlx::query_as::<_, File>(
+    let files = sqlx::query_as!(
+        File,
         r#"
         SELECT f.* FROM files f
         INNER JOIN messages_files mf ON f.id = mf.file_id
         WHERE mf.message_id = $1 AND f.user_id = $2
         ORDER BY mf.created_at ASC
         "#,
+        message_id,
+        user_id
     )
-    .bind(message_id)
-    .bind(user_id)
     .fetch_all(pool)
     .await?;
 
@@ -133,11 +141,13 @@ pub async fn delete_file(file_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Err
         ));
     }
 
-    let result = sqlx::query("DELETE FROM files WHERE id = $1 AND user_id = $2")
-        .bind(file_id)
-        .bind(user_id)
-        .execute(pool)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM files WHERE id = $1 AND user_id = $2",
+        file_id,
+        user_id
+    )
+    .execute(pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -151,11 +161,13 @@ pub async fn delete_message_file_relationship(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query("DELETE FROM messages_files WHERE message_id = $1 AND file_id = $2")
-        .bind(message_id)
-        .bind(file_id)
-        .execute(pool)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM messages_files WHERE message_id = $1 AND file_id = $2",
+        message_id,
+        file_id
+    )
+    .execute(pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -164,12 +176,14 @@ pub async fn check_file_has_message_associations(file_id: Uuid) -> Result<bool, 
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let row = sqlx::query("SELECT COUNT(*) as count FROM messages_files WHERE file_id = $1")
-        .bind(file_id)
-        .fetch_one(pool)
-        .await?;
+    let result = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM messages_files WHERE file_id = $1",
+        file_id
+    )
+    .fetch_one(pool)
+    .await?;
 
-    let count: i64 = row.get("count");
+    let count = result.unwrap_or(0);
     Ok(count > 0)
 }
 
@@ -177,13 +191,14 @@ pub async fn check_file_has_project_association(file_id: Uuid) -> Result<bool, s
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let row =
-        sqlx::query("SELECT COUNT(*) as count FROM files WHERE id = $1 AND project_id IS NOT NULL")
-            .bind(file_id)
-            .fetch_one(pool)
-            .await?;
+    let result = sqlx::query_scalar!(
+        "SELECT COUNT(*) FROM files WHERE id = $1 AND project_id IS NOT NULL",
+        file_id
+    )
+    .fetch_one(pool)
+    .await?;
 
-    let count: i64 = row.get("count");
+    let count = result.unwrap_or(0);
     Ok(count > 0)
 }
 
@@ -197,7 +212,8 @@ pub async fn create_provider_file_mapping(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_file = sqlx::query_as::<_, ProviderFile>(
+    let provider_file = sqlx::query_as!(
+        ProviderFile,
         r#"
         INSERT INTO provider_files (file_id, provider_id, provider_file_id, provider_metadata)
         VALUES ($1, $2, $3, $4)
@@ -206,11 +222,11 @@ pub async fn create_provider_file_mapping(
             provider_metadata = EXCLUDED.provider_metadata
         RETURNING *
         "#,
+        file_id,
+        provider_id,
+        provider_file_id,
+        provider_metadata
     )
-    .bind(file_id)
-    .bind(provider_id)
-    .bind(provider_file_id)
-    .bind(provider_metadata)
     .fetch_one(pool)
     .await?;
 
@@ -224,11 +240,12 @@ pub async fn get_provider_file_mapping(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_file = sqlx::query_as::<_, ProviderFile>(
+    let provider_file = sqlx::query_as!(
+        ProviderFile,
         "SELECT * FROM provider_files WHERE file_id = $1 AND provider_id = $2",
+        file_id,
+        provider_id
     )
-    .bind(file_id)
-    .bind(provider_id)
     .fetch_optional(pool)
     .await?;
 
@@ -241,11 +258,13 @@ pub async fn get_provider_file_mappings_by_file(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider_files =
-        sqlx::query_as::<_, ProviderFile>("SELECT * FROM provider_files WHERE file_id = $1")
-            .bind(file_id)
-            .fetch_all(pool)
-            .await?;
+    let provider_files = sqlx::query_as!(
+        ProviderFile,
+        "SELECT * FROM provider_files WHERE file_id = $1",
+        file_id
+    )
+    .fetch_all(pool)
+    .await?;
 
     Ok(provider_files)
 }

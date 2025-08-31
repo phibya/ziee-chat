@@ -137,7 +137,7 @@ pub async fn get_proxy_server_status(
 
     Ok(ApiProxyServerStatus {
         running,
-        active_models,
+        active_models: active_models as i32,
         server_url,
     })
 }

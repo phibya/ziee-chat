@@ -5,7 +5,7 @@ use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 // Main File structure
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct File {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -14,7 +14,6 @@ pub struct File {
     pub mime_type: Option<String>,
     pub checksum: Option<String>,
     pub project_id: Option<Uuid>,
-    pub rag_instance_id: Option<Uuid>,
     pub thumbnail_count: i32,
     pub page_count: i32,
     pub processing_metadata: serde_json::Value,
@@ -32,7 +31,6 @@ impl FromRow<'_, sqlx::postgres::PgRow> for File {
             mime_type: row.try_get("mime_type")?,
             checksum: row.try_get("checksum")?,
             project_id: row.try_get("project_id")?,
-            rag_instance_id: row.try_get("rag_instance_id")?,
             thumbnail_count: row.try_get("thumbnail_count")?,
             page_count: row.try_get("page_count")?,
             processing_metadata: row.try_get("processing_metadata")?,
@@ -132,7 +130,6 @@ pub struct FileCreateData {
     pub mime_type: Option<String>,
     pub checksum: Option<String>,
     pub project_id: Option<Uuid>,
-    pub rag_instance_id: Option<Uuid>,
     pub thumbnail_count: i32,
     pub page_count: i32,
     pub processing_metadata: serde_json::Value,

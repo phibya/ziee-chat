@@ -780,7 +780,7 @@ fn merge_parameters(
     assistant_params: &Option<crate::database::models::ModelParameters>,
 ) -> (
     Option<f32>, // temperature
-    Option<u32>, // max_tokens
+    Option<i32>, // max_tokens
     Option<f32>, // top_p
     Option<f32>, // frequency_penalty
     Option<f32>, // presence_penalty

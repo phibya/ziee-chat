@@ -311,7 +311,7 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
         .map_err(AppError::database_error)?;
 
     // Return the created model with files
-    let model = model_queries::get_model_with_files(&model_id)
+    let model = model_queries::get_model_by_id(model_id)
         .await
         .map_err(|e| AppError::internal_error(&e.to_string()))?
         .ok_or_else(|| AppError::not_found("Model"))?;

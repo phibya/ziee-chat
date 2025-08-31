@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Common proxy settings structure used for both system-wide and provider-specific proxy configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Type)]
 pub struct ProxySettings {
     #[serde(default)]
     pub enabled: bool,

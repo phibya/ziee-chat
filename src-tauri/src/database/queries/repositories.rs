@@ -2,19 +2,22 @@ use uuid::Uuid;
 
 use crate::database::{
     get_database_pool,
-    models::{CreateRepositoryRequest, Repository, UpdateRepositoryRequest},
+    models::{CreateRepositoryRequest, Repository, RepositoryAuthConfig, UpdateRepositoryRequest},
 };
 
 pub async fn get_repository_by_id(repository_id: Uuid) -> Result<Option<Repository>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let repository_row: Option<Repository> = sqlx::query_as(
-        "SELECT id, name, url, auth_type, auth_config, enabled, built_in, created_at, updated_at
+    let repository_row = sqlx::query_as!(
+        Repository,
+        r#"SELECT id, name, url, auth_type, 
+                 auth_config as "auth_config?: RepositoryAuthConfig", 
+                 enabled, built_in, created_at, updated_at
          FROM repositories 
-         WHERE id = $1",
+         WHERE id = $1"#,
+        repository_id
     )
-    .bind(repository_id)
     .fetch_optional(pool)
     .await?;
 
@@ -25,10 +28,13 @@ pub async fn list_repositories() -> Result<Vec<Repository>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let repositories: Vec<Repository> = sqlx::query_as(
-        "SELECT id, name, url, auth_type, auth_config, enabled, built_in, created_at, updated_at
+    let repositories = sqlx::query_as!(
+        Repository,
+        r#"SELECT id, name, url, auth_type, 
+                 auth_config as "auth_config?: RepositoryAuthConfig", 
+                 enabled, built_in, created_at, updated_at
          FROM repositories 
-         ORDER BY built_in DESC, name ASC",
+         ORDER BY built_in DESC, name ASC"#
     )
     .fetch_all(pool)
     .await?;
@@ -43,18 +49,21 @@ pub async fn create_repository(
     let pool = pool.as_ref();
     let repository_id = Uuid::new_v4();
 
-    let repository_row: Repository = sqlx::query_as(
-        "INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
+    let repository_row = sqlx::query_as!(
+        Repository,
+        r#"INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
          VALUES ($1, $2, $3, $4, $5, $6, $7) 
-         RETURNING id, name, url, auth_type, auth_config, enabled, built_in, created_at, updated_at"
+         RETURNING id, name, url, auth_type, 
+                   auth_config as "auth_config?: RepositoryAuthConfig", 
+                   enabled, built_in, created_at, updated_at"#,
+        repository_id,
+        &request.name,
+        &request.url,
+        &request.auth_type,
+        serde_json::to_value(&request.auth_config).unwrap_or(serde_json::json!({})),
+        request.enabled.unwrap_or(true),
+        false
     )
-    .bind(repository_id)
-    .bind(&request.name)
-    .bind(&request.url)
-    .bind(&request.auth_type)
-    .bind(serde_json::to_value(&request.auth_config).unwrap_or(serde_json::json!({})))
-    .bind(request.enabled.unwrap_or(true))
-    .bind(false) // Custom repositories are never built-in
     .fetch_one(pool)
     .await?;
 
@@ -68,23 +77,48 @@ pub async fn update_repository(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let repository_row: Option<Repository> = sqlx::query_as(
-        "UPDATE repositories
-         SET name = COALESCE($2, name),
-             url = COALESCE($3, url),
-             auth_type = COALESCE($4, auth_type),
-             auth_config = COALESCE($5, auth_config),
-             enabled = COALESCE($6, enabled),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1 
-         RETURNING id, name, url, auth_type, auth_config, enabled, built_in, created_at, updated_at"
+    // Replace COALESCE with separate conditional updates
+    if let Some(name) = &request.name {
+        sqlx::query!("UPDATE repositories SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", name, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(url) = &request.url {
+        sqlx::query!("UPDATE repositories SET url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", url, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(auth_type) = &request.auth_type {
+        sqlx::query!("UPDATE repositories SET auth_type = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", auth_type, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(auth_config) = &request.auth_config {
+        let auth_config_json = serde_json::to_value(auth_config).unwrap_or(serde_json::json!({}));
+        sqlx::query!("UPDATE repositories SET auth_config = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", auth_config_json, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(enabled) = request.enabled {
+        sqlx::query!("UPDATE repositories SET enabled = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2", enabled, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    // Return the updated repository
+    let repository_row = sqlx::query_as!(
+        Repository,
+        r#"SELECT id, name, url, auth_type, 
+                 auth_config as "auth_config?: RepositoryAuthConfig", 
+                 enabled, built_in, created_at, updated_at
+         FROM repositories 
+         WHERE id = $1"#,
+        repository_id
     )
-    .bind(repository_id)
-    .bind(&request.name)
-    .bind(&request.url)
-    .bind(&request.auth_type)
-    .bind(serde_json::to_value(&request.auth_config).unwrap_or(serde_json::json!({})))
-    .bind(request.enabled)
     .fetch_optional(pool)
     .await?;
 
@@ -96,19 +130,16 @@ pub async fn delete_repository(repository_id: Uuid) -> Result<Result<bool, Strin
     let pool = pool.as_ref();
 
     // First check if repository exists and if it's built-in
-    let repository_row: Option<(bool,)> =
-        sqlx::query_as("SELECT built_in FROM repositories WHERE id = $1")
-            .bind(repository_id)
-            .fetch_optional(pool)
-            .await?;
+    let built_in_result = sqlx::query_scalar!("SELECT built_in FROM repositories WHERE id = $1", repository_id)
+        .fetch_optional(pool)
+        .await?;
 
-    match repository_row {
-        Some((built_in,)) => {
+    match built_in_result {
+        Some(built_in) => {
             if built_in {
                 Ok(Err("Cannot delete built-in repository".to_string()))
             } else {
-                let result = sqlx::query("DELETE FROM repositories WHERE id = $1")
-                    .bind(repository_id)
+                let result = sqlx::query!("DELETE FROM repositories WHERE id = $1", repository_id)
                     .execute(pool)
                     .await?;
                 Ok(Ok(result.rows_affected() > 0))
@@ -116,73 +147,4 @@ pub async fn delete_repository(repository_id: Uuid) -> Result<Result<bool, Strin
         }
         None => Ok(Ok(false)), // Repository not found
     }
-}
-
-// Create default built-in repositories if they don't exist
-pub async fn create_default_repositories() -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    // Check if Hugging Face repository already exists
-    let hf_exists: Option<(Uuid,)> = sqlx::query_as(
-        "SELECT id FROM repositories WHERE name = 'Hugging Face Hub' AND built_in = true",
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if hf_exists.is_none() {
-        // Create Hugging Face built-in repository
-        let huggingface_id = Uuid::new_v4();
-        let auth_config = serde_json::json!({
-            "api_key": "",
-            "auth_test_api_endpoint": "https://huggingface.co/api/whoami"
-        });
-
-        sqlx::query(
-            "INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (name) DO NOTHING",
-        )
-        .bind(huggingface_id)
-        .bind("Hugging Face Hub")
-        .bind("https://huggingface.co")
-        .bind("api_key")
-        .bind(&auth_config)
-        .bind(true)
-        .bind(true)
-        .execute(pool)
-        .await?;
-    }
-
-    // Check if GitHub repository already exists
-    let gh_exists: Option<(Uuid,)> =
-        sqlx::query_as("SELECT id FROM repositories WHERE name = 'GitHub' AND built_in = true")
-            .fetch_optional(pool)
-            .await?;
-
-    if gh_exists.is_none() {
-        // Create GitHub built-in repository
-        let github_id = Uuid::new_v4();
-        let auth_config = serde_json::json!({
-            "token": "",
-            "auth_test_api_endpoint": "https://api.github.com/user"
-        });
-
-        sqlx::query(
-            "INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (name) DO NOTHING",
-        )
-        .bind(github_id)
-        .bind("GitHub")
-        .bind("https://api.github.com")
-        .bind("bearer_token")
-        .bind(&auth_config)
-        .bind(true)
-        .bind(true)
-        .execute(pool)
-        .await?;
-    }
-
-    Ok(())
 }

@@ -1,10 +1,11 @@
 use uuid::Uuid;
 
+#[allow(dead_code)]
 use crate::database::{
     models::{
         CreateDownloadInstanceRequest, DownloadInstance, DownloadInstanceListResponse,
         DownloadPhase, DownloadProgressData, DownloadStatus, UpdateDownloadProgressRequest,
-        UpdateDownloadStatusRequest,
+        UpdateDownloadStatusRequest, DownloadRequestData,
     },
     queries::get_database_pool,
 };
@@ -16,13 +17,19 @@ pub async fn get_download_instance_by_id(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let download_row: Option<DownloadInstance> = sqlx::query_as(
-        "SELECT id, provider_id, repository_id, request_data, status, progress_data, 
-         error_message, started_at, completed_at, model_id, created_at, updated_at
+    let download_row: Option<DownloadInstance> = sqlx::query_as!(
+        DownloadInstance,
+        r#"SELECT id, provider_id, repository_id, 
+                request_data as "request_data: DownloadRequestData", 
+                status as "status: DownloadStatus", 
+                progress_data as "progress_data?: DownloadProgressData", 
+                error_message, started_at, 
+                completed_at, model_id, 
+                created_at, updated_at
          FROM download_instances 
-         WHERE id = $1",
+         WHERE id = $1"#,
+        download_id
     )
-    .bind(download_id)
     .fetch_optional(pool)
     .await?;
 
@@ -39,54 +46,60 @@ pub async fn get_download_instances(
     let pool = pool.as_ref();
     let offset = (page - 1) * per_page;
 
-    // Build the query with optional status filter
-    let mut query = String::from(
-        "SELECT id, provider_id, repository_id, request_data, status, progress_data, 
-         error_message, started_at, completed_at, model_id, created_at, updated_at
-         FROM download_instances 
-         WHERE 1=1",
-    );
-
-    if status_filter.is_some() {
-        query.push_str(" AND status = $3");
-    }
-
-    query.push_str(" ORDER BY created_at DESC LIMIT $1 OFFSET $2");
-
     // Execute query based on whether we have a status filter
     let downloads: Vec<DownloadInstance> = if let Some(ref status) = status_filter {
-        sqlx::query_as(&query)
-            .bind(per_page as i64)
-            .bind(offset as i64)
-            .bind(status.as_str())
-            .fetch_all(pool)
-            .await?
+        sqlx::query_as!(
+            DownloadInstance,
+            r#"SELECT id, provider_id, repository_id, 
+                     request_data as "request_data: DownloadRequestData", 
+                     status as "status: DownloadStatus", 
+                     progress_data as "progress_data?: DownloadProgressData", 
+                     error_message, started_at, completed_at, model_id, created_at, updated_at
+             FROM download_instances 
+             WHERE status = $3
+             ORDER BY created_at DESC LIMIT $1 OFFSET $2"#,
+            per_page as i64,
+            offset as i64,
+            status.as_str()
+        )
+        .fetch_all(pool)
+        .await?
     } else {
-        sqlx::query_as(&query)
-            .bind(per_page as i64)
-            .bind(offset as i64)
-            .fetch_all(pool)
-            .await?
+        sqlx::query_as!(
+            DownloadInstance,
+            r#"SELECT id, provider_id, repository_id, 
+                     request_data as "request_data: DownloadRequestData", 
+                     status as "status: DownloadStatus", 
+                     progress_data as "progress_data?: DownloadProgressData", 
+                     error_message, started_at, completed_at, model_id, created_at, updated_at
+             FROM download_instances 
+             ORDER BY created_at DESC LIMIT $1 OFFSET $2"#,
+            per_page as i64,
+            offset as i64
+        )
+        .fetch_all(pool)
+        .await?
     };
 
     // Count total records
-    let mut count_query = String::from("SELECT COUNT(*) FROM download_instances WHERE 1=1");
-    if status_filter.is_some() {
-        count_query.push_str(" AND status = $1");
-    }
-
-    let total: (i64,) = if let Some(ref status) = status_filter {
-        sqlx::query_as(&count_query)
-            .bind(status.as_str())
+    let total: i64 = if let Some(ref status) = status_filter {
+        sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM download_instances WHERE status = $1",
+            status.as_str()
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0)
+    } else {
+        sqlx::query_scalar!("SELECT COUNT(*) FROM download_instances")
             .fetch_one(pool)
             .await?
-    } else {
-        sqlx::query_as(&count_query).fetch_one(pool).await?
+            .unwrap_or(0)
     };
 
     Ok(DownloadInstanceListResponse {
         downloads,
-        total: total.0,
+        total,
         page,
         per_page,
     })
@@ -100,21 +113,21 @@ pub async fn create_download_instance(
     let pool = pool.as_ref();
     let download_id = Uuid::new_v4();
 
-    let download_row: DownloadInstance = sqlx::query_as(
-        "INSERT INTO download_instances (id, provider_id, repository_id, request_data, status, progress_data)
+    let download_row: DownloadInstance = sqlx::query_as!(
+        DownloadInstance,
+        r#"INSERT INTO download_instances (id, provider_id, repository_id, request_data, status, progress_data)
          VALUES ($1, $2, $3, $4, $5, $6) 
-         RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
-         error_message, started_at, completed_at, model_id, created_at, updated_at",
-    )
-    .bind(download_id)
-    .bind(request.provider_id)
-    .bind(request.repository_id)
-    .bind(
+         RETURNING id, provider_id, repository_id, 
+                   request_data as "request_data: DownloadRequestData", 
+                   status as "status: DownloadStatus", 
+                   progress_data as "progress_data?: DownloadProgressData", 
+                   error_message, started_at, completed_at, model_id, created_at, updated_at"#,
+        download_id,
+        request.provider_id,
+        request.repository_id,
         serde_json::to_value(&request.request_data)
             .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
-    )
-    .bind(DownloadStatus::Pending.as_str())
-    .bind(
+        DownloadStatus::Pending.as_str(),
         serde_json::to_value(&DownloadProgressData {
             phase: DownloadPhase::Created,
             current: 0,
@@ -140,36 +153,40 @@ pub async fn update_download_progress(
     let pool = pool.as_ref();
 
     let download_row: Option<DownloadInstance> = if let Some(status) = request.status {
-        sqlx::query_as(
-            "UPDATE download_instances
+        sqlx::query_as!(
+            DownloadInstance,
+            r#"UPDATE download_instances
              SET progress_data = $2,
                  status = $3,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1 
-             RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
-             error_message, started_at, completed_at, model_id, created_at, updated_at",
-        )
-        .bind(download_id)
-        .bind(
+             RETURNING id, provider_id, repository_id, 
+                       request_data as "request_data: DownloadRequestData", 
+                       status as "status: DownloadStatus", 
+                       progress_data as "progress_data?: DownloadProgressData", 
+                       error_message, started_at, completed_at, model_id, created_at, updated_at"#,
+            download_id,
             serde_json::to_value(&request.progress_data)
                 .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
+            status.as_str()
         )
-        .bind(status.as_str())
         .fetch_optional(pool)
         .await?
     } else {
-        sqlx::query_as(
-            "UPDATE download_instances
+        sqlx::query_as!(
+            DownloadInstance,
+            r#"UPDATE download_instances
              SET progress_data = $2,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1 
-             RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
-             error_message, started_at, completed_at, model_id, created_at, updated_at",
-        )
-        .bind(download_id)
-        .bind(
+             RETURNING id, provider_id, repository_id, 
+                       request_data as "request_data: DownloadRequestData", 
+                       status as "status: DownloadStatus", 
+                       progress_data as "progress_data?: DownloadProgressData", 
+                       error_message, started_at, completed_at, model_id, created_at, updated_at"#,
+            download_id,
             serde_json::to_value(&request.progress_data)
-                .map_err(|e| sqlx::Error::Encode(Box::new(e)))?,
+                .map_err(|e| sqlx::Error::Encode(Box::new(e)))?
         )
         .fetch_optional(pool)
         .await?
@@ -189,54 +206,66 @@ pub async fn update_download_status(
     // Build update query based on status
     let download_row: Option<DownloadInstance> = match request.status {
         DownloadStatus::Completed => {
-            sqlx::query_as(
-                "UPDATE download_instances
+            sqlx::query_as!(
+                DownloadInstance,
+                r#"UPDATE download_instances
                  SET status = $2,
                      error_message = $3,
                      model_id = $4,
                      completed_at = CURRENT_TIMESTAMP,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
-                 RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
-                 error_message, started_at, completed_at, model_id, created_at, updated_at",
+                 RETURNING id, provider_id, repository_id, 
+                           request_data as "request_data: DownloadRequestData", 
+                           status as "status: DownloadStatus", 
+                           progress_data as "progress_data?: DownloadProgressData", 
+                           error_message, started_at, completed_at, model_id, created_at, updated_at"#,
+                download_id,
+                request.status.as_str(),
+                request.error_message,
+                request.model_id
             )
-            .bind(download_id)
-            .bind(request.status.as_str())
-            .bind(request.error_message)
-            .bind(request.model_id)
             .fetch_optional(pool)
             .await?
         }
         DownloadStatus::Failed | DownloadStatus::Cancelled => {
-            sqlx::query_as(
-                "UPDATE download_instances
+            sqlx::query_as!(
+                DownloadInstance,
+                r#"UPDATE download_instances
                  SET status = $2,
                      error_message = $3,
                      completed_at = CURRENT_TIMESTAMP,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
-                 RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
-                 error_message, started_at, completed_at, model_id, created_at, updated_at",
+                 RETURNING id, provider_id, repository_id, 
+                           request_data as "request_data: DownloadRequestData", 
+                           status as "status: DownloadStatus", 
+                           progress_data as "progress_data?: DownloadProgressData", 
+                           error_message, started_at, completed_at, model_id, created_at, updated_at"#,
+                download_id,
+                request.status.as_str(),
+                request.error_message
             )
-            .bind(download_id)
-            .bind(request.status.as_str())
-            .bind(request.error_message)
             .fetch_optional(pool)
             .await?
         }
         _ => {
-            sqlx::query_as(
-                "UPDATE download_instances
+            sqlx::query_as!(
+                DownloadInstance,
+                r#"UPDATE download_instances
                  SET status = $2,
                      error_message = $3,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
-                 RETURNING id, provider_id, repository_id, request_data, status, progress_data, 
-                 error_message, started_at, completed_at, model_id, created_at, updated_at",
+                 RETURNING id, provider_id, repository_id, 
+                           request_data as "request_data: DownloadRequestData", 
+                           status as "status: DownloadStatus", 
+                           progress_data as "progress_data?: DownloadProgressData", 
+                           error_message, started_at, completed_at, model_id, created_at, updated_at"#,
+                download_id,
+                request.status.as_str(),
+                request.error_message
             )
-            .bind(download_id)
-            .bind(request.status.as_str())
-            .bind(request.error_message)
             .fetch_optional(pool)
             .await?
         }
@@ -250,10 +279,12 @@ pub async fn delete_download_instance(download_id: Uuid) -> Result<bool, sqlx::E
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query("DELETE FROM download_instances WHERE id = $1")
-        .bind(download_id)
-        .execute(pool)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM download_instances WHERE id = $1",
+        download_id
+    )
+    .execute(pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -263,12 +294,16 @@ pub async fn get_all_active_downloads() -> Result<Vec<DownloadInstance>, sqlx::E
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let downloads: Vec<DownloadInstance> = sqlx::query_as(
-        "SELECT id, provider_id, repository_id, request_data, status, progress_data, 
-         error_message, started_at, completed_at, model_id, created_at, updated_at
+    let downloads: Vec<DownloadInstance> = sqlx::query_as!(
+        DownloadInstance,
+        r#"SELECT id, provider_id, repository_id, 
+                 request_data as "request_data: DownloadRequestData", 
+                 status as "status: DownloadStatus", 
+                 progress_data as "progress_data?: DownloadProgressData", 
+                 error_message, started_at, completed_at, model_id, created_at, updated_at
          FROM download_instances 
          WHERE status IN ('pending', 'downloading', 'failed', 'cancelled')
-         ORDER BY created_at ASC",
+         ORDER BY created_at ASC"#
     )
     .fetch_all(pool)
     .await?;
@@ -281,7 +316,7 @@ pub async fn delete_all_downloads() -> Result<u64, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query("DELETE FROM download_instances")
+    let result = sqlx::query!("DELETE FROM download_instances")
         .execute(pool)
         .await?;
 

@@ -1,26 +1,36 @@
 use chrono::Utc;
-use sqlx::Row;
 use uuid::Uuid;
 
+#[allow(dead_code)]
 use crate::database::{
     get_database_pool,
-    models::{CreateModelRequest, Model, ModelFile, Provider, UpdateModelRequest},
+    models::{CreateModelRequest, Model, ModelFile, Provider, UpdateModelRequest, ModelCapabilities, ModelParameters, ModelEngineSettings, FileFormat, SourceInfo, provider::ProviderType, proxy::ProxySettings},
 };
+#[allow(dead_code)]
+use crate::api::engines::EngineType;
 
 pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_rows: Vec<Model> = sqlx::query_as(
-        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
-                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings,
-                file_format, source
+    let model_rows: Vec<Model> = sqlx::query_as!(
+        Model,
+        r#"SELECT id, provider_id, name, alias, description,
+                enabled, is_deprecated, is_active,
+                capabilities as "capabilities?: ModelCapabilities",
+                parameters as "parameters?: ModelParameters",
+                created_at, updated_at, 
+                file_size_bytes, validation_status,
+                validation_issues as "validation_issues?: Vec<String>", 
+                port, pid, engine_type as "engine_type: EngineType",
+                engine_settings as "engine_settings?: ModelEngineSettings",
+                file_format as "file_format: FileFormat",
+                source as "source?: SourceInfo"
          FROM models 
          WHERE provider_id = $1 
-         ORDER BY created_at ASC",
+         ORDER BY created_at ASC"#,
+        provider_id
     )
-    .bind(provider_id)
     .fetch_all(pool)
     .await?;
 
@@ -35,24 +45,34 @@ pub async fn create_model(
     let pool = pool.as_ref();
     let model_id = Uuid::new_v4();
 
-    let model_row: Model = sqlx::query_as::<_, Model>(
-    "INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings, file_format, source)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings, file_format, source"
-  )
-    .bind(model_id)
-    .bind(provider_id)
-    .bind(&request.name)
-    .bind(&request.alias)
-    .bind(&request.description)
-    .bind(request.enabled.unwrap_or(true))
-    .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})))
-    .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})))
-    .bind(request.engine_type.as_str())
-    .bind(request.engine_settings.as_ref().map(|s| serde_json::to_value(s).unwrap()))
-    .bind(request.file_format.as_str())
-    .bind(request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null))
-      .fetch_one(pool)
+    let model_row: Model = sqlx::query_as!(
+        Model,
+        r#"INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings, file_format, source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+                   capabilities as "capabilities?: ModelCapabilities", 
+                   parameters as "parameters?: ModelParameters", 
+                   created_at, updated_at, file_size_bytes, validation_status, 
+                   validation_issues as "validation_issues?: Vec<String>", 
+                   port, pid, 
+                   engine_type as "engine_type: EngineType", 
+                   engine_settings as "engine_settings?: ModelEngineSettings", 
+                   file_format as "file_format: FileFormat", 
+                   source as "source?: SourceInfo""#,
+        model_id,
+        provider_id,
+        &request.name,
+        &request.alias,
+        request.description.as_deref(),
+        request.enabled.unwrap_or(true),
+        request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})),
+        request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()).unwrap_or_else(|| serde_json::json!({})),
+        request.engine_type.as_str(),
+        request.engine_settings.as_ref().map(|s| serde_json::to_value(s).unwrap()),
+        request.file_format.as_str(),
+        request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null)
+    )
+    .fetch_one(pool)
     .await?;
 
     Ok(model_row)
@@ -65,45 +85,118 @@ pub async fn update_model(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_row: Option<Model> = sqlx::query_as::<_, Model>(
-    "UPDATE models
-         SET name = COALESCE($2, name),
-             alias = COALESCE($3, alias),
-             description = COALESCE($4, description),
-             enabled = COALESCE($5, enabled),
-             is_active = COALESCE($6, is_active),
-             capabilities = COALESCE($7, capabilities),
-             parameters = COALESCE($8, parameters),
-             engine_type = COALESCE($9, engine_type),
-             engine_settings = COALESCE($10, engine_settings),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, validation_issues, port, pid, engine_type, engine_settings, file_format, source"
-  )
-    .bind(model_id)
-    .bind(&request.name)
-    .bind(&request.alias)
-    .bind(&request.description)
-    .bind(request.enabled)
-    .bind(request.is_active)
-    .bind(request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()))
-    .bind(request.parameters.as_ref().map(|p| serde_json::to_value(p).unwrap()))
-    .bind(request.engine_type.as_ref().map(|et| et.as_str()))
-    .bind(request.engine_settings.as_ref().map(|s| serde_json::to_value(s).unwrap()))
-    .fetch_optional(pool)
-    .await?;
+    // If no updates provided, return existing record
+    if request.name.is_none() && request.alias.is_none() && request.description.is_none() 
+        && request.enabled.is_none() && request.is_active.is_none() && request.capabilities.is_none()
+        && request.parameters.is_none() && request.engine_type.is_none() && request.engine_settings.is_none() {
+        return get_model_by_id(model_id).await;
+    }
 
-    Ok(model_row)
+    // Separate query for each optional field
+    if let Some(name) = &request.name {
+        sqlx::query!(
+            "UPDATE models SET name = $1, updated_at = NOW() WHERE id = $2",
+            name,
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(alias) = &request.alias {
+        sqlx::query!(
+            "UPDATE models SET alias = $1, updated_at = NOW() WHERE id = $2",
+            alias,
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(description) = &request.description {
+        sqlx::query!(
+            "UPDATE models SET description = $1, updated_at = NOW() WHERE id = $2",
+            Some(description),
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(enabled) = request.enabled {
+        sqlx::query!(
+            "UPDATE models SET enabled = $1, updated_at = NOW() WHERE id = $2",
+            enabled,
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(is_active) = request.is_active {
+        sqlx::query!(
+            "UPDATE models SET is_active = $1, updated_at = NOW() WHERE id = $2",
+            is_active,
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(capabilities) = &request.capabilities {
+        sqlx::query!(
+            "UPDATE models SET capabilities = $1, updated_at = NOW() WHERE id = $2",
+            serde_json::to_value(capabilities).unwrap(),
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(parameters) = &request.parameters {
+        sqlx::query!(
+            "UPDATE models SET parameters = $1, updated_at = NOW() WHERE id = $2",
+            serde_json::to_value(parameters).unwrap(),
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(engine_type) = &request.engine_type {
+        sqlx::query!(
+            "UPDATE models SET engine_type = $1, updated_at = NOW() WHERE id = $2",
+            engine_type.as_str(),
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(engine_settings) = &request.engine_settings {
+        sqlx::query!(
+            "UPDATE models SET engine_settings = $1, updated_at = NOW() WHERE id = $2",
+            serde_json::to_value(engine_settings).unwrap(),
+            model_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    // Return updated record
+    get_model_by_id(model_id).await
 }
 
 pub async fn delete_model(model_id: Uuid) -> Result<bool, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let result = sqlx::query("DELETE FROM models WHERE id = $1")
-        .bind(model_id)
-        .execute(pool)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM models WHERE id = $1",
+        model_id
+    )
+    .execute(pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -112,15 +205,22 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let model_row: Option<Model> = sqlx::query_as::<_, Model>(
-        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
-                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings,
-                file_format, source
+    let model_row: Option<Model> = sqlx::query_as!(
+        Model,
+        r#"SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+                capabilities as "capabilities?: ModelCapabilities", 
+                parameters as "parameters?: ModelParameters", 
+                created_at, updated_at, file_size_bytes, validation_status, 
+                validation_issues as "validation_issues?: Vec<String>", 
+                port, pid, 
+                engine_type as "engine_type: EngineType", 
+                engine_settings as "engine_settings?: ModelEngineSettings",
+                file_format as "file_format: FileFormat", 
+                source as "source?: SourceInfo"
          FROM models 
-         WHERE id = $1",
+         WHERE id = $1"#,
+        model_id
     )
-    .bind(model_id)
     .fetch_optional(pool)
     .await?;
 
@@ -136,7 +236,8 @@ pub async fn create_local_model(
     let pool = pool.as_ref();
     let now = Utc::now();
 
-    let model: Model = sqlx::query_as(
+    let model: Model = sqlx::query_as!(
+        Model,
         r#"
         INSERT INTO models (
             id, provider_id, name, alias, description, 
@@ -146,46 +247,47 @@ pub async fn create_local_model(
             engine_type, engine_settings,
             file_format, source, created_at, updated_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
         ) RETURNING id, provider_id, name, alias, description, 
                    file_size_bytes, enabled, 
-                   is_deprecated, is_active, capabilities, parameters, 
-                   validation_status, validation_issues, 
-                   engine_type, engine_settings, 
-                   file_format, source, port, pid, created_at, updated_at
+                   is_deprecated, is_active, 
+                   capabilities as "capabilities?: ModelCapabilities", 
+                   parameters as "parameters?: ModelParameters", 
+                   validation_status, 
+                   validation_issues as "validation_issues?: Vec<String>", 
+                   engine_type as "engine_type: EngineType", 
+                   engine_settings as "engine_settings?: ModelEngineSettings", 
+                   file_format as "file_format: FileFormat", 
+                   source as "source?: SourceInfo", 
+                   port, pid, created_at, updated_at
         "#,
-    )
-    .bind(*model_id)
-    .bind(&request.provider_id)
-    .bind(&request.name)
-    .bind(&request.alias)
-    .bind(&request.description)
-    .bind(0i64)
-    .bind(request.enabled.unwrap_or(false))
-    .bind(false)
-    .bind(false)
-    .bind(
+        *model_id,
+        &request.provider_id,
+        &request.name,
+        &request.alias,
+        request.description.as_deref(),
+        0i64,
+        request.enabled.unwrap_or(false),
+        false,
+        false,
         request
             .capabilities
             .as_ref()
             .map(|c| serde_json::to_value(c).unwrap())
             .unwrap_or_else(|| serde_json::json!({})),
-    )
-    .bind(serde_json::json!({}))
-    .bind("pending")
-    .bind(request.engine_type.as_str())
-    .bind(serde_json::json!({}))
-    .bind(serde_json::json!({}))
-    .bind(request.file_format.as_str())
-    .bind(
+        serde_json::json!({}),
+        "pending",
+        request.engine_type.as_str(),
+        serde_json::json!({}),
+        request.file_format.as_str(),
         request
             .source
             .as_ref()
             .map(|s| serde_json::to_value(s).unwrap())
             .unwrap_or(serde_json::Value::Null),
+        now,
+        now
     )
-    .bind(now)
-    .bind(now)
     .fetch_one(pool)
     .await?;
 
@@ -205,7 +307,7 @@ pub async fn update_model_validation(
         .map(|issues| serde_json::to_value(issues).unwrap_or(serde_json::Value::Null))
         .unwrap_or(serde_json::Value::Null);
 
-    sqlx::query(
+    sqlx::query!(
         r#"
         UPDATE models 
         SET validation_status = $1, 
@@ -214,12 +316,12 @@ pub async fn update_model_validation(
             updated_at = $4
         WHERE id = $5
         "#,
+        validation_status,
+        issues_json,
+        file_size_bytes,
+        Utc::now(),
+        model_id
     )
-    .bind(validation_status)
-    .bind(issues_json)
-    .bind(file_size_bytes)
-    .bind(Utc::now())
-    .bind(model_id)
     .execute(pool)
     .await?;
 
@@ -239,7 +341,8 @@ pub async fn create_model_file(
     let file_id = Uuid::new_v4();
     let now = Utc::now();
 
-    let file = sqlx::query_as::<_, ModelFile>(
+    let file = sqlx::query_as!(
+        ModelFile,
         r#"
         INSERT INTO model_files (
             id, model_id, filename, file_path, file_size_bytes, 
@@ -249,48 +352,21 @@ pub async fn create_model_file(
         ) RETURNING id, model_id, filename, file_path, file_size_bytes, 
                    file_type, upload_status, uploaded_at
         "#,
+        file_id,
+        model_id,
+        filename,
+        file_path,
+        file_size_bytes,
+        file_type,
+        "completed",
+        now
     )
-    .bind(file_id)
-    .bind(model_id)
-    .bind(filename)
-    .bind(file_path)
-    .bind(file_size_bytes)
-    .bind(file_type)
-    .bind("completed")
-    .bind(now)
     .fetch_one(pool)
     .await?;
 
     Ok(file)
 }
 
-/// Get files for a model
-pub async fn get_model_files(model_id: &Uuid) -> Result<Vec<ModelFile>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-    let files = sqlx::query_as::<_, ModelFile>(
-        "SELECT id, model_id, filename, file_path, file_size_bytes, 
-                file_type, upload_status, uploaded_at
-         FROM model_files WHERE model_id = $1 ORDER BY uploaded_at ASC",
-    )
-    .bind(model_id)
-    .fetch_all(pool)
-    .await?;
-
-    Ok(files)
-}
-
-/// Get all models with their files for full response
-pub async fn get_model_with_files(model_id: &Uuid) -> Result<Option<Model>, sqlx::Error> {
-    let model = get_model_by_id(*model_id).await?;
-
-    if let Some(model) = model {
-        let files = get_model_files(model_id).await?;
-        Ok(Some(model.with_files(Some(files))))
-    } else {
-        Ok(None)
-    }
-}
 
 /// Update model runtime information (PID and port)
 pub async fn update_model_runtime_info(
@@ -301,18 +377,18 @@ pub async fn update_model_runtime_info(
 ) -> Result<(), sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    sqlx::query(
+    sqlx::query!(
         r#"
         UPDATE models 
         SET pid = $2, port = $3, is_active = $4, updated_at = $5
         WHERE id = $1
         "#,
+        model_id,
+        pid,
+        port,
+        is_active,
+        Utc::now()
     )
-    .bind(model_id)
-    .bind(pid)
-    .bind(port)
-    .bind(is_active)
-    .bind(Utc::now())
     .execute(pool)
     .await?;
 
@@ -323,22 +399,19 @@ pub async fn update_model_runtime_info(
 pub async fn get_model_runtime_info(model_id: &Uuid) -> Result<Option<(i32, i32)>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
-    let row = sqlx::query(
+    let result = sqlx::query!(
         r#"
         SELECT pid, port
         FROM models
         WHERE id = $1
         "#,
+        model_id
     )
-    .bind(model_id)
     .fetch_optional(pool)
     .await?;
 
-    if let Some(row) = row {
-        if let (Some(pid), Some(port)) = (
-            row.get::<Option<i32>, _>("pid"),
-            row.get::<Option<i32>, _>("port"),
-        ) {
+    if let Some(row) = result {
+        if let (Some(pid), Some(port)) = (row.pid, row.port) {
             return Ok(Some((pid, port)));
         }
     }
@@ -351,16 +424,21 @@ pub async fn get_provider_by_model_id(model_id: Uuid) -> Result<Option<Provider>
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let provider: Option<Provider> = sqlx::query_as(
+    let provider: Option<Provider> = sqlx::query_as!(
+        Provider,
         r#"
-        SELECT p.id, p.name, p.provider_type, p.enabled, p.api_key, p.base_url, 
-               p.built_in, p.proxy_settings, p.created_at, p.updated_at
+        SELECT p.id, p.name, 
+               p.provider_type as "provider_type: ProviderType", 
+               p.enabled, p.api_key, p.base_url, 
+               p.built_in, 
+               p.proxy_settings as "proxy_settings?: ProxySettings", 
+               p.created_at, p.updated_at
         FROM providers p
         INNER JOIN models m ON p.id = m.provider_id
         WHERE m.id = $1
         "#,
+        model_id
     )
-    .bind(model_id)
     .fetch_optional(pool)
     .await?;
 
@@ -372,17 +450,24 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let models: Vec<Model> = sqlx::query_as::<_, Model>(
-        "SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
-                capabilities, parameters, created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues, port, pid, engine_type, engine_settings,
-                file_format, source
+    let models: Vec<Model> = sqlx::query_as!(
+        Model,
+        r#"SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+                capabilities as "capabilities?: ModelCapabilities", 
+                parameters as "parameters?: ModelParameters", 
+                created_at, updated_at, file_size_bytes, validation_status, 
+                validation_issues as "validation_issues?: Vec<String>", 
+                port, pid, 
+                engine_type as "engine_type: EngineType", 
+                engine_settings as "engine_settings?: ModelEngineSettings",
+                file_format as "file_format: FileFormat", 
+                source as "source?: SourceInfo"
          FROM models 
          WHERE is_active = true 
          AND provider_id IN (
              SELECT id FROM providers WHERE provider_type = 'local'
          )
-         ORDER BY created_at ASC",
+         ORDER BY created_at ASC"#
     )
     .fetch_all(pool)
     .await?;

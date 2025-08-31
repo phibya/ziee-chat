@@ -405,7 +405,7 @@ impl MistralProvider {
 
             // Use context_window to optimize max_tokens
             let optimized_max_tokens = self.optimize_max_tokens_for_context_window(
-                params.max_tokens,
+                params.max_tokens.map(|t| t as u32),
                 model_config.context_window,
             );
             payload["max_tokens"] = json!(optimized_max_tokens);

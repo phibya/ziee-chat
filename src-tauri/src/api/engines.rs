@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum EngineType {
     Mistralrs,

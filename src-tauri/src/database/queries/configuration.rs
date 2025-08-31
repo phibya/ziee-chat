@@ -16,10 +16,11 @@ pub struct NgrokSettings {
 
 pub async fn get_configuration(key: &str) -> Result<Option<Configuration>, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    sqlx::query_as::<_, Configuration>(
-        "SELECT id, key, value, description, created_at, updated_at FROM configurations WHERE key = $1"
+    sqlx::query_as!(
+        Configuration,
+        "SELECT id, key, value, description, created_at, updated_at FROM configurations WHERE key = $1",
+        key
     )
-    .bind(key)
     .fetch_optional(pool.as_ref())
     .await
 }
@@ -30,7 +31,8 @@ pub async fn set_configuration(
     description: Option<&str>,
 ) -> Result<Configuration, sqlx::Error> {
     let pool = crate::database::get_database_pool()?;
-    sqlx::query_as::<_, Configuration>(
+    sqlx::query_as!(
+        Configuration,
         r#"
         INSERT INTO configurations (key, value, description, updated_at)
         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
@@ -40,10 +42,10 @@ pub async fn set_configuration(
             updated_at = CURRENT_TIMESTAMP
         RETURNING id, key, value, description, created_at, updated_at
         "#,
+        key,
+        value,
+        description
     )
-    .bind(key)
-    .bind(value)
-    .bind(description)
     .fetch_one(pool.as_ref())
     .await
 }

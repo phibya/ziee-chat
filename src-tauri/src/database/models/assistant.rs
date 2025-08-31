@@ -21,39 +21,6 @@ pub struct Assistant {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FromRow<'_, sqlx::postgres::PgRow> for Assistant {
-    fn from_row(row: &sqlx::postgres::PgRow) -> Result<Self, sqlx::Error> {
-        // Parse parameters JSON to ModelParameters
-        let parameters_json: serde_json::Value = row.try_get("parameters")?;
-        let parameters = if parameters_json.is_null() {
-            None
-        } else {
-            // Deserialize JSON to ModelParameters
-            match serde_json::from_value::<ModelParameters>(parameters_json) {
-                Ok(params) => Some(params),
-                Err(e) => {
-                    eprintln!("Warning: Failed to parse assistant parameters: {}. Using default parameters.", e);
-                    // Fallback to default parameters if parsing fails
-                    Some(ModelParameters::default())
-                }
-            }
-        };
-
-        Ok(Assistant {
-            id: row.try_get("id")?,
-            name: row.try_get("name")?,
-            description: row.try_get("description")?,
-            instructions: row.try_get("instructions")?,
-            parameters,
-            created_by: row.try_get("created_by")?,
-            is_template: row.try_get("is_template")?,
-            is_default: row.try_get("is_default")?,
-            is_active: row.try_get("is_active")?,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
-        })
-    }
-}
 // Request/Response structures for assistants
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateAssistantRequest {

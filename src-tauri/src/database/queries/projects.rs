@@ -13,18 +13,19 @@ pub async fn create_project(
 ) -> Result<Project, sqlx::Error> {
     let id = Uuid::new_v4();
 
-    let project = sqlx::query_as::<_, Project>(
+    let project = sqlx::query_as!(
+        Project,
         r#"
         INSERT INTO projects (id, user_id, name, description, instruction)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, user_id, name, description, instruction, created_at, updated_at, 0 as conversation_count
+        RETURNING id, user_id, name, description, instruction, created_at, updated_at
         "#,
+        id,
+        user_id,
+        &request.name,
+        request.description.as_deref(),
+        request.instruction.as_deref()
     )
-    .bind(id)
-    .bind(user_id)
-    .bind(&request.name)
-    .bind(&request.description)
-    .bind(&request.instruction)
     .fetch_one(pool)
     .await?;
 
@@ -36,18 +37,16 @@ pub async fn get_project_by_id(
     project_id: Uuid,
     user_id: Uuid,
 ) -> Result<Option<Project>, sqlx::Error> {
-    let project = sqlx::query_as::<_, Project>(
+    let project = sqlx::query_as!(
+        Project,
         r#"
-        SELECT p.id, p.user_id, p.name, p.description, p.instruction, p.created_at, p.updated_at,
-               COALESCE(COUNT(c.id), 0) as conversation_count
+        SELECT p.id, p.user_id, p.name, p.description, p.instruction, p.created_at, p.updated_at
         FROM projects p
-        LEFT JOIN conversations c ON p.id = c.project_id
         WHERE p.id = $1 AND p.user_id = $2
-        GROUP BY p.id, p.user_id, p.name, p.description, p.instruction, p.created_at, p.updated_at
         "#,
+        project_id,
+        user_id
     )
-    .bind(project_id)
-    .bind(user_id)
     .fetch_optional(pool)
     .await?;
 
@@ -63,61 +62,67 @@ pub async fn list_projects(
 ) -> Result<ProjectListResponse, sqlx::Error> {
     let offset = (page - 1) * per_page;
 
-    let (where_clause, search_param) = if let Some(search_term) = search {
-        (
-            "WHERE p.user_id = $1 AND (p.name ILIKE $4 OR p.description ILIKE $4 OR p.instruction ILIKE $4)",
-            Some(format!("%{}%", search_term)),
+    // Replace dynamic queries with static ones
+    let (projects, total) = if let Some(search_term) = search {
+        let search_pattern = format!("%{}%", search_term);
+        
+        // Get total count with search
+        let total = sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM projects p WHERE p.user_id = $1 AND (p.name ILIKE $2 OR p.description ILIKE $2 OR p.instruction ILIKE $2)",
+            user_id,
+            search_pattern
         )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0);
+
+        // Get projects with search
+        let projects = sqlx::query_as!(
+            Project,
+            r#"
+            SELECT p.id, p.user_id, p.name, p.description, p.instruction, p.created_at, p.updated_at
+            FROM projects p
+            WHERE p.user_id = $1 AND (p.name ILIKE $4 OR p.description ILIKE $4 OR p.instruction ILIKE $4)
+            ORDER BY p.updated_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+            user_id,
+            per_page as i64,
+            offset as i64,
+            search_pattern
+        )
+        .fetch_all(pool)
+        .await?;
+
+        (projects, total)
     } else {
-        ("WHERE p.user_id = $1", None)
-    };
+        // Get total count without search
+        let total = sqlx::query_scalar!(
+            "SELECT COUNT(*) FROM projects p WHERE p.user_id = $1",
+            user_id
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0);
 
-    // Get total count
-    let total_query = format!("SELECT COUNT(*) FROM projects p {}", where_clause);
+        // Get projects without search
+        let projects = sqlx::query_as!(
+            Project,
+            r#"
+            SELECT p.id, p.user_id, p.name, p.description, p.instruction, p.created_at, p.updated_at
+            FROM projects p
+            WHERE p.user_id = $1
+            ORDER BY p.updated_at DESC
+            LIMIT $2 OFFSET $3
+            "#,
+            user_id,
+            per_page as i64,
+            offset as i64
+        )
+        .fetch_all(pool)
+        .await?;
 
-    let total: i64 = if let Some(ref search_param) = search_param {
-        sqlx::query_scalar::<_, i64>(&total_query)
-            .bind(user_id)
-            .bind(search_param)
-            .fetch_one(pool)
-            .await?
-    } else {
-        sqlx::query_scalar::<_, i64>(&total_query)
-            .bind(user_id)
-            .fetch_one(pool)
-            .await?
-    };
-
-    // Get projects with conversation counts
-    let projects_query = format!(
-        r#"
-        SELECT p.id, p.user_id, p.name, p.description, p.instruction, p.created_at, p.updated_at,
-               COALESCE(COUNT(c.id), 0) as conversation_count
-        FROM projects p
-        LEFT JOIN conversations c ON p.id = c.project_id
-        {}
-        GROUP BY p.id, p.user_id, p.name, p.description, p.instruction, p.created_at, p.updated_at
-        ORDER BY p.updated_at DESC
-        LIMIT $2 OFFSET $3
-        "#,
-        where_clause
-    );
-
-    let projects = if let Some(ref search_param) = search_param {
-        sqlx::query_as::<_, Project>(&projects_query)
-            .bind(user_id)
-            .bind(per_page)
-            .bind(offset)
-            .bind(search_param)
-            .fetch_all(pool)
-            .await?
-    } else {
-        sqlx::query_as::<_, Project>(&projects_query)
-            .bind(user_id)
-            .bind(per_page)
-            .bind(offset)
-            .fetch_all(pool)
-            .await?
+        (projects, total)
     };
 
     Ok(ProjectListResponse {
@@ -155,18 +160,18 @@ pub async fn update_project(
             .as_ref()
             .or(current.instruction.as_ref());
 
-        sqlx::query(
+        sqlx::query!(
             r#"
             UPDATE projects 
             SET name = $1, description = $2, instruction = $3, updated_at = NOW()
             WHERE id = $4 AND user_id = $5
             "#,
+            name,
+            description,
+            instruction,
+            project_id,
+            user_id
         )
-        .bind(name)
-        .bind(description)
-        .bind(instruction)
-        .bind(project_id)
-        .bind(user_id)
         .execute(pool)
         .await?;
     }
@@ -180,11 +185,13 @@ pub async fn delete_project(
     project_id: Uuid,
     user_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query("DELETE FROM projects WHERE id = $1 AND user_id = $2")
-        .bind(project_id)
-        .bind(user_id)
-        .execute(pool)
-        .await?;
+    let result = sqlx::query!(
+        "DELETE FROM projects WHERE id = $1 AND user_id = $2",
+        project_id,
+        user_id
+    )
+    .execute(pool)
+    .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -200,16 +207,17 @@ pub async fn list_project_conversations(
         return Ok(None);
     }
 
-    let conversations = sqlx::query_as::<_, crate::database::models::chat::Conversation>(
+    let conversations = sqlx::query_as!(
+        crate::database::models::chat::Conversation,
         r#"
         SELECT id, user_id, title, project_id, assistant_id, model_id, active_branch_id, created_at, updated_at
         FROM conversations
         WHERE project_id = $1 AND user_id = $2
         ORDER BY updated_at DESC
         "#,
+        project_id,
+        user_id
     )
-    .bind(project_id)
-    .bind(user_id)
     .fetch_all(pool)
     .await?;
 

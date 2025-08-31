@@ -15,12 +15,13 @@ pub async fn get_rag_repository_by_id(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let repository_row: Option<RAGRepository> = sqlx::query_as(
-        "SELECT id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at
+    let repository_row = sqlx::query_as!(
+        RAGRepository,
+        r#"SELECT id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at
          FROM rag_repositories 
-         WHERE id = $1"
+         WHERE id = $1"#,
+        repository_id
     )
-    .bind(repository_id)
     .fetch_optional(pool)
     .await?;
 
@@ -39,25 +40,27 @@ pub async fn list_rag_repositories(
     let offset = (page - 1) * per_page;
 
     // Get total count
-    let total_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rag_repositories")
+    let total_count = sqlx::query_scalar!("SELECT COUNT(*) FROM rag_repositories")
         .fetch_one(pool)
-        .await?;
+        .await?
+        .unwrap_or(0);
 
     // Get repositories with pagination, ordered by priority and name
-    let repositories: Vec<RAGRepository> = sqlx::query_as(
-        "SELECT id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at
+    let repositories = sqlx::query_as!(
+        RAGRepository,
+        r#"SELECT id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at
          FROM rag_repositories 
          ORDER BY priority DESC, name ASC 
-         LIMIT $1 OFFSET $2"
+         LIMIT $1 OFFSET $2"#,
+        per_page as i64,
+        offset as i64
     )
-    .bind(per_page)
-    .bind(offset)
     .fetch_all(pool)
     .await?;
 
     Ok(RAGRepositoryListResponse {
         repositories,
-        total: total_count.0,
+        total: total_count,
         page,
         per_page,
     })
@@ -70,19 +73,20 @@ pub async fn create_rag_repository(
     let pool = pool.as_ref();
     let repository_id = Uuid::new_v4();
 
-    let repository_row: RAGRepository = sqlx::query_as(
-        "INSERT INTO rag_repositories (id, name, description, url, enabled, requires_auth, auth_token, priority)
+    let repository_row = sqlx::query_as!(
+        RAGRepository,
+        r#"INSERT INTO rag_repositories (id, name, description, url, enabled, requires_auth, auth_token, priority)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-         RETURNING id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at"
+         RETURNING id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at"#,
+        repository_id,
+        &request.name,
+        request.description.as_deref(),
+        &request.url,
+        request.enabled.unwrap_or(true),
+        request.requires_auth.unwrap_or(false),
+        request.auth_token.as_deref(),
+        request.priority.unwrap_or(0)
     )
-    .bind(repository_id)
-    .bind(&request.name)
-    .bind(&request.description)
-    .bind(&request.url)
-    .bind(request.enabled.unwrap_or(true))
-    .bind(request.requires_auth.unwrap_or(false))
-    .bind(&request.auth_token)
-    .bind(request.priority.unwrap_or(0))
     .fetch_one(pool)
     .await?;
 
@@ -96,27 +100,57 @@ pub async fn update_rag_repository(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    let repository_row: RAGRepository = sqlx::query_as(
-        "UPDATE rag_repositories 
-         SET name = COALESCE($2, name),
-             description = COALESCE($3, description),
-             url = COALESCE($4, url),
-             enabled = COALESCE($5, enabled),
-             requires_auth = COALESCE($6, requires_auth),
-             auth_token = COALESCE($7, auth_token),
-             priority = COALESCE($8, priority),
-             updated_at = NOW()
-         WHERE id = $1
-         RETURNING id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at"
+    // Replace COALESCE with separate conditional updates
+    if let Some(name) = &request.name {
+        sqlx::query!("UPDATE rag_repositories SET name = $1, updated_at = NOW() WHERE id = $2", name, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(description) = &request.description {
+        sqlx::query!("UPDATE rag_repositories SET description = $1, updated_at = NOW() WHERE id = $2", description, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(url) = &request.url {
+        sqlx::query!("UPDATE rag_repositories SET url = $1, updated_at = NOW() WHERE id = $2", url, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(enabled) = request.enabled {
+        sqlx::query!("UPDATE rag_repositories SET enabled = $1, updated_at = NOW() WHERE id = $2", enabled, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(requires_auth) = request.requires_auth {
+        sqlx::query!("UPDATE rag_repositories SET requires_auth = $1, updated_at = NOW() WHERE id = $2", requires_auth, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(auth_token) = &request.auth_token {
+        sqlx::query!("UPDATE rag_repositories SET auth_token = $1, updated_at = NOW() WHERE id = $2", auth_token, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    if let Some(priority) = request.priority {
+        sqlx::query!("UPDATE rag_repositories SET priority = $1, updated_at = NOW() WHERE id = $2", priority, repository_id)
+            .execute(pool)
+            .await?;
+    }
+
+    // Return the updated repository
+    let repository_row = sqlx::query_as!(
+        RAGRepository,
+        r#"SELECT id, name, description, url, enabled, requires_auth, auth_token, priority, created_at, updated_at
+         FROM rag_repositories 
+         WHERE id = $1"#,
+        repository_id
     )
-    .bind(repository_id)
-    .bind(&request.name)
-    .bind(&request.description)
-    .bind(&request.url)
-    .bind(request.enabled)
-    .bind(request.requires_auth)
-    .bind(&request.auth_token)
-    .bind(request.priority)
     .fetch_one(pool)
     .await?;
 
@@ -127,8 +161,7 @@ pub async fn delete_rag_repository(repository_id: Uuid) -> Result<(), sqlx::Erro
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    sqlx::query("DELETE FROM rag_repositories WHERE id = $1")
-        .bind(repository_id)
+    sqlx::query!("DELETE FROM rag_repositories WHERE id = $1", repository_id)
         .execute(pool)
         .await?;
 

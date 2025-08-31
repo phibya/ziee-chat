@@ -6,8 +6,8 @@ use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 /// Engine-specific settings for RAG instance configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema)]
-pub struct RagEngineSettings {
+#[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Decode)]
+pub struct RAGEngineSettings {
     /// Simple vector RAG engine settings
     pub simple_vector: Option<RAGSimpleVectorEngineSettings>,
     /// Simple graph RAG engine settings  
@@ -27,7 +27,7 @@ pub struct RAGInstance {
     pub is_active: bool,
     pub is_system: bool,
     pub engine_type: RAGEngineType,
-    pub engine_settings: RagEngineSettings,
+    pub engine_settings: RAGEngineSettings,
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub age_graph_name: Option<String>,
@@ -67,7 +67,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGInstance {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGEngineType {
     #[serde(rename = "simple_vector")]
@@ -104,7 +104,7 @@ pub struct CreateRAGInstanceRequest {
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,
-    pub engine_settings: Option<RagEngineSettings>,
+    pub engine_settings: Option<RAGEngineSettings>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -117,7 +117,7 @@ pub struct CreateSystemRAGInstanceRequest {
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,
-    pub engine_settings: Option<RagEngineSettings>,
+    pub engine_settings: Option<RAGEngineSettings>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -128,7 +128,7 @@ pub struct UpdateRAGInstanceRequest {
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,
-    pub engine_settings: Option<RagEngineSettings>,
+    pub engine_settings: Option<RAGEngineSettings>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -174,7 +174,7 @@ impl FromRow<'_, sqlx::postgres::PgRow> for RAGInstanceFile {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum RAGProcessingStatus {
     Pending,

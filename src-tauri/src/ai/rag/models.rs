@@ -1,6 +1,6 @@
 // Database models for RAG functionality
 
-use crate::database::models::RagEngineSettings;
+use crate::database::models::RAGEngineSettings;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Row};
@@ -51,7 +51,7 @@ pub struct RagInstance {
     pub enabled: bool,
     pub is_active: bool,
     pub engine_type: String,
-    pub engine_settings: RagEngineSettings,
+    pub engine_settings: RAGEngineSettings,
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub age_graph_name: Option<String>,

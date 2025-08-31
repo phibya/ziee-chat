@@ -476,7 +476,7 @@ impl HuggingFaceProvider {
 
             // Use context_window and model_type to optimize max_tokens
             let optimized_max_tokens =
-                self.optimize_max_tokens_for_model(params.max_tokens, &model_config);
+                self.optimize_max_tokens_for_model(params.max_tokens.map(|t| t as u32), &model_config);
             payload["max_tokens"] = json!(optimized_max_tokens);
 
             if let Some(top_p) = params.top_p {

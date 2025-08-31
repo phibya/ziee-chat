@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::database::models::*;
-use crate::database::queries::repositories;
 use crate::database::queries::users;
 use crate::utils::password;
 
@@ -210,11 +209,6 @@ impl AuthService {
         // Mark app as initialized for desktop apps
         if let Err(e) = crate::database::queries::configuration::mark_app_initialized().await {
             eprintln!("Warning: Failed to mark app as initialized: {}", e);
-        }
-
-        // Create default repositories
-        if let Err(e) = repositories::create_default_repositories().await {
-            eprintln!("Warning: Failed to create default repositories: {}", e);
         }
 
         Ok(user)

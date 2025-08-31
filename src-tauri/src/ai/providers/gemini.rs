@@ -437,7 +437,7 @@ impl GeminiProvider {
             "contents": contents,
             "generationConfig": GeminiGenerationConfig {
                 temperature: params.and_then(|p| p.temperature).map(|t| t as f64),
-                max_output_tokens: params.and_then(|p| p.max_tokens),
+                max_output_tokens: params.and_then(|p| p.max_tokens.map(|t| t as u32)),
                 top_p: params.and_then(|p| p.top_p).map(|t| t as f64),
                 stop_sequences: params.and_then(|p| p.stop.clone()),
             }

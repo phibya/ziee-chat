@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::{model::DeviceType, proxy::ProxySettings};
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderType {
     Local,

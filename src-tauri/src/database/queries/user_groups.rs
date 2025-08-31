@@ -2,48 +2,7 @@ use crate::database::get_database_pool;
 use crate::database::models::*;
 use crate::database::queries::user_group_providers::get_provider_ids_for_group;
 use crate::database::queries::user_group_rag_providers::get_rag_provider_ids_for_group;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
-
-// Temporary struct that matches the exact database schema for SQLx macros
-#[derive(Debug)]
-struct UserGroupRow {
-    pub id: Uuid,
-    pub name: String,
-    pub description: Option<String>,
-    pub permissions: Option<serde_json::Value>,
-    pub is_protected: Option<bool>,
-    pub is_active: Option<bool>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-impl UserGroupRow {
-    fn into_user_group(self) -> UserGroup {
-        let permissions = if let Some(perms_json) = self.permissions {
-            if perms_json.is_null() {
-                Vec::new()
-            } else {
-                serde_json::from_value(perms_json).unwrap_or_default()
-            }
-        } else {
-            Vec::new()
-        };
-
-        UserGroup {
-            id: self.id,
-            name: self.name,
-            description: self.description,
-            permissions,
-            provider_ids: Vec::new(),
-            rag_provider_ids: Vec::new(),
-            is_protected: self.is_protected.unwrap_or(false),
-            is_active: self.is_active.unwrap_or(true),
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-        }
-    }
-}
 
 // User Group CRUD operations
 pub async fn create_user_group(
@@ -56,12 +15,16 @@ pub async fn create_user_group(
     let permissions_json =
         serde_json::to_value(&permissions).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
 
-    let group_row = sqlx::query_as!(
-        UserGroupRow,
+    let mut group = sqlx::query_as!(
+        UserGroup,
         r#"
         INSERT INTO user_groups (name, description, permissions)
         VALUES ($1, $2, $3)
-        RETURNING id, name, description, permissions, is_protected, is_active, created_at, updated_at
+        RETURNING id, name, description,
+        permissions as "permissions: Vec<String>",
+        '[]'::jsonb as "provider_ids!: Vec<Uuid>",
+        '[]'::jsonb as "rag_provider_ids!: Vec<Uuid>",
+        is_protected, is_active, created_at, updated_at
         "#,
         name,
         description,
@@ -69,8 +32,6 @@ pub async fn create_user_group(
     )
     .fetch_one(&*pool)
     .await?;
-
-    let mut group = group_row.into_user_group();
 
     let provider_ids = get_provider_ids_for_group(group.id)
         .await
@@ -88,18 +49,18 @@ pub async fn create_user_group(
 pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let group_row = sqlx::query_as!(
-        UserGroupRow,
-        "SELECT id, name, description, permissions, is_protected, is_active, created_at, updated_at FROM user_groups WHERE id = $1",
+    let mut group = sqlx::query_as!(
+        UserGroup,
+        r#"SELECT id, name, description, 
+        permissions as "permissions: Vec<String>", 
+        '[]'::jsonb as "provider_ids!: Vec<Uuid>",
+        '[]'::jsonb as "rag_provider_ids!: Vec<Uuid>",
+        is_protected, is_active, created_at, updated_at 
+        FROM user_groups WHERE id = $1"#,
         group_id
     )
     .fetch_optional(&*pool)
     .await?;
-
-    let mut group = match group_row {
-        Some(row) => Some(row.into_user_group()),
-        None => return Ok(None),
-    };
 
     if let Some(ref mut group) = group {
         let provider_ids = get_provider_ids_for_group(group.id)
@@ -131,16 +92,19 @@ pub async fn list_user_groups(
     let total: i64 = total_row.count.unwrap_or(0);
 
     // Get groups
-    let group_rows = sqlx::query_as!(
-        UserGroupRow,
-        "SELECT id, name, description, permissions, is_protected, is_active, created_at, updated_at FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+    let mut groups = sqlx::query_as!(
+        UserGroup,
+        r#"SELECT id, name, description, 
+        permissions as "permissions: Vec<String>", 
+        '[]'::jsonb as "provider_ids!: Vec<Uuid>",
+        '[]'::jsonb as "rag_provider_ids!: Vec<Uuid>",
+        is_protected, is_active, created_at, updated_at 
+        FROM user_groups ORDER BY created_at DESC LIMIT $1 OFFSET $2"#,
         per_page as i64,
         offset as i64
     )
     .fetch_all(&*pool)
     .await?;
-
-    let mut groups: Vec<UserGroup> = group_rows.into_iter().map(|row| row.into_user_group()).collect();
 
     // Load provider_ids and rag_provider_ids for each group
     for group in &mut groups {
@@ -320,10 +284,14 @@ pub async fn remove_user_from_group(user_id: Uuid, group_id: Uuid) -> Result<boo
 pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let group_rows = sqlx::query_as!(
-        UserGroupRow,
+    let groups = sqlx::query_as!(
+        UserGroup,
         r#"
-        SELECT ug.id, ug.name, ug.description, ug.permissions, ug.is_protected, ug.is_active, ug.created_at, ug.updated_at 
+        SELECT ug.id, ug.name, ug.description, 
+        ug.permissions as "permissions: Vec<String>", 
+        '[]'::jsonb as "provider_ids!: Vec<Uuid>",
+        '[]'::jsonb as "rag_provider_ids!: Vec<Uuid>",
+        ug.is_protected, ug.is_active, ug.created_at, ug.updated_at 
         FROM user_groups ug
         JOIN user_group_memberships ugm ON ug.id = ugm.group_id
         WHERE ugm.user_id = $1 AND ug.is_active = TRUE
@@ -333,8 +301,6 @@ pub async fn get_user_groups(user_id: Uuid) -> Result<Vec<UserGroup>, sqlx::Erro
     )
     .fetch_all(&*pool)
     .await?;
-
-    let groups: Vec<UserGroup> = group_rows.into_iter().map(|row| row.into_user_group()).collect();
 
     // Note: provider_ids are left empty as they are loaded separately when needed
 

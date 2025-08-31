@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::proxy::ProxySettings;
 use super::user::UserGroup;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum RAGProviderType {
     Local,

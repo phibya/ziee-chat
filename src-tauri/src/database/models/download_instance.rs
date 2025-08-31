@@ -7,7 +7,7 @@ use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 /// Source information for download tracking
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct SourceInfo {
     /// Type of download source: "manual" or "hub"
     pub r#type: String,
@@ -16,7 +16,7 @@ pub struct SourceInfo {
 }
 
 /// Download phase enum
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadPhase {
     Created,
@@ -32,7 +32,7 @@ pub enum DownloadPhase {
 }
 
 /// Progress data for download tracking
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct DownloadProgressData {
     /// Current download phase
     pub phase: DownloadPhase,
@@ -62,7 +62,7 @@ impl Default for DownloadProgressData {
 }
 
 /// Request data for initiating a download
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct DownloadRequestData {
     /// Model name or ID from the repository
     pub model_name: String,
@@ -94,7 +94,7 @@ pub struct DownloadRequestData {
 }
 
 /// Download instance status enum
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum DownloadStatus {
     Pending,
