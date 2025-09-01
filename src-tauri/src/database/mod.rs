@@ -9,6 +9,8 @@ use tokio::sync::OnceCell;
 
 pub mod models;
 pub mod queries;
+pub mod macros;
+pub mod types;
 
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();
 static POSTGRESQL_INSTANCE: OnceCell<Arc<Mutex<PostgreSQL>>> = OnceCell::const_new();

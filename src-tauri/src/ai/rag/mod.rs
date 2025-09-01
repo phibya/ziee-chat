@@ -7,6 +7,7 @@ pub mod processors;
 pub mod rag_file_storage;
 pub mod service;
 pub mod types;
+pub mod utils;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -120,9 +121,20 @@ pub enum EntityExtractionMode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessingStatus {
     Pending,
-    InProgress { stage: String, progress: f32 },
+    InProgress,
     Completed,
     Failed(String),
+}
+
+impl ProcessingStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ProcessingStatus::Pending => "pending",
+            ProcessingStatus::InProgress => "processing",
+            ProcessingStatus::Completed => "completed",
+            ProcessingStatus::Failed(_) => "failed",
+        }
+    }
 }
 
 /// Pipeline stage status
@@ -133,7 +145,6 @@ pub struct PipelineStatus {
     pub started_at: Option<chrono::DateTime<chrono::Utc>>,
     pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
     pub error_message: Option<String>,
-    pub progress_percentage: u8,
     pub metadata: HashMap<String, serde_json::Value>,
 }
 

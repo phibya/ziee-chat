@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::database::macros::make_transparent;
 
 // Base User structure (for direct DB operations without aggregations)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -69,15 +70,18 @@ pub struct User {
     pub groups: Vec<UserGroup>,
 }
 
+make_transparent!(
+    #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+    pub struct UserGroupPermissions(Vec<String>)
+);
+
 // User group structure for API responses
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UserGroup {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
-    pub permissions: Vec<String>,
-    pub provider_ids: Vec<Uuid>,
-    pub rag_provider_ids: Vec<Uuid>,
+    pub permissions: UserGroupPermissions,
     pub is_protected: bool,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,

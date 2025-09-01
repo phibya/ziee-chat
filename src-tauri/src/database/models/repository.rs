@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::database::macros::impl_json_option_from;
+use crate::database::types::JsonOption;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RepositoryAuthConfig {
@@ -12,13 +14,16 @@ pub struct RepositoryAuthConfig {
     pub auth_test_api_endpoint: Option<String>,
 }
 
+// Implement JSON conversion for RepositoryAuthConfig
+impl_json_option_from!(RepositoryAuthConfig);
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Repository {
     pub id: Uuid,
     pub name: String,
     pub url: String,
     pub auth_type: String, // none, api_key, basic_auth, bearer_token
-    pub auth_config: Option<RepositoryAuthConfig>,
+    pub auth_config: JsonOption<RepositoryAuthConfig>,
     pub enabled: bool,
     pub built_in: bool, // true for built-in repositories like Hugging Face
     pub created_at: DateTime<Utc>,

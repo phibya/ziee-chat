@@ -13,7 +13,7 @@ use validation::TextValidator;
 
 /// Comprehensive text processing result
 #[derive(Debug, Clone)]
-pub struct ProcessingResult {
+pub struct TextProcessingResult {
     pub content: String,
     pub metadata: HashMap<String, serde_json::Value>,
     pub validation_result: ValidationResult,
@@ -21,7 +21,7 @@ pub struct ProcessingResult {
 }
 
 /// Comprehensive text processing with full validation and quality metrics
-pub async fn extract_text_from_file(file_path: &str) -> RAGResult<ProcessingResult> {
+pub async fn extract_text_from_file(file_path: &str) -> RAGResult<TextProcessingResult> {
     // Step 1: Extract and convert to markdown
     let (mut content, mut metadata) = extractors::convert_to_markdown(file_path).await?;
 
@@ -97,7 +97,7 @@ pub async fn extract_text_from_file(file_path: &str) -> RAGResult<ProcessingResu
         combined_validation.add_suggestion(suggestion);
     }
 
-    Ok(ProcessingResult {
+    Ok(TextProcessingResult {
         content,
         metadata,
         validation_result: combined_validation,

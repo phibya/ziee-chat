@@ -1,5 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use crate::database::macros::impl_json_option_from;
 
 /// Common proxy settings structure used for both system-wide and provider-specific proxy configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Type)]
@@ -43,3 +44,6 @@ impl From<&crate::api::configuration::TestProxyConnectionRequest> for ProxySetti
         }
     }
 }
+
+// Implement JSON conversion for ProxySettings
+impl_json_option_from!(ProxySettings);

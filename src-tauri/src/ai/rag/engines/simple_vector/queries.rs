@@ -2,8 +2,8 @@
 
 use crate::ai::rag::{PipelineStage, ProcessingStatus, RAGError, RAGResult};
 use crate::database::get_database_pool;
-use uuid::Uuid;
 use pgvector::HalfVector;
+use uuid::Uuid;
 
 /// Update pipeline status for a file in a RAG instance
 pub async fn update_pipeline_status(
@@ -11,7 +11,6 @@ pub async fn update_pipeline_status(
     file_id: Uuid,
     stage: PipelineStage,
     status: ProcessingStatus,
-    progress: u8,
     error_message: Option<String>,
 ) -> RAGResult<()> {
     let database = get_database_pool()
@@ -29,23 +28,16 @@ pub async fn update_pipeline_status(
         None
     };
 
-    let status_str = match status {
-        ProcessingStatus::Pending => "pending",
-        ProcessingStatus::InProgress { .. } => "processing",
-        ProcessingStatus::Completed => "completed",
-        ProcessingStatus::Failed(_) => "failed",
-    };
-
+    let status_str = status.as_str();
     sqlx::query!(
         r#"
         INSERT INTO rag_processing_pipeline (
-            rag_instance_id, file_id, pipeline_stage, status, progress_percentage,
+            rag_instance_id, file_id, pipeline_stage, status,
             error_message, started_at, completed_at, metadata
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (rag_instance_id, file_id, pipeline_stage)
         DO UPDATE SET
             status = EXCLUDED.status,
-            progress_percentage = EXCLUDED.progress_percentage,
             error_message = EXCLUDED.error_message,
             started_at = COALESCE(rag_processing_pipeline.started_at, EXCLUDED.started_at),
             completed_at = EXCLUDED.completed_at,
@@ -55,7 +47,6 @@ pub async fn update_pipeline_status(
         file_id,
         stage.to_string(),
         status_str,
-        progress as i32,
         error_message,
         started_at,
         completed_at,
@@ -73,18 +64,14 @@ pub async fn get_filename_from_db(file_id: Uuid) -> RAGResult<String> {
     let database = get_database_pool()
         .map_err(|e| RAGError::DatabaseError(format!("Failed to get database pool: {}", e)))?;
 
-    let filename = sqlx::query_scalar!(
-        "SELECT filename FROM files WHERE id = $1",
-        file_id
-    )
-    .fetch_optional(&*database)
-    .await
-    .map_err(|e| RAGError::DatabaseError(e.to_string()))?
-    .ok_or_else(|| RAGError::NotFound(format!("Filename not found for file {}", file_id)))?;
+    let filename = sqlx::query_scalar!("SELECT filename FROM files WHERE id = $1", file_id)
+        .fetch_optional(&*database)
+        .await
+        .map_err(|e| RAGError::DatabaseError(e.to_string()))?
+        .ok_or_else(|| RAGError::NotFound(format!("Filename not found for file {}", file_id)))?;
 
     Ok(filename)
 }
-
 
 /// Insert or update vector document
 pub async fn upsert_vector_document(

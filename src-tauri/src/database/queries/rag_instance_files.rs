@@ -40,7 +40,7 @@ pub async fn list_rag_instance_files(
             let files = sqlx::query_as!(
                 RAGInstanceFile,
                 r#"SELECT rif.id, rif.rag_instance_id, rif.file_id, f.filename, 
-                         rif.processing_status as "processing_status: RAGProcessingStatus", 
+                         rif.processing_status, 
                          rif.processed_at, rif.processing_error, rif.rag_metadata, 
                          rif.created_at, rif.updated_at
                  FROM rag_instance_files rif
@@ -76,7 +76,7 @@ pub async fn list_rag_instance_files(
             let files = sqlx::query_as!(
                 RAGInstanceFile,
                 r#"SELECT rif.id, rif.rag_instance_id, rif.file_id, f.filename, 
-                         rif.processing_status as "processing_status: RAGProcessingStatus", 
+                         rif.processing_status, 
                          rif.processed_at, rif.processing_error, rif.rag_metadata, 
                          rif.created_at, rif.updated_at
                  FROM rag_instance_files rif
@@ -114,7 +114,7 @@ pub async fn list_rag_instance_files(
             let files = sqlx::query_as!(
                 RAGInstanceFile,
                 r#"SELECT rif.id, rif.rag_instance_id, rif.file_id, f.filename, 
-                         rif.processing_status as "processing_status: RAGProcessingStatus", 
+                         rif.processing_status, 
                          rif.processed_at, rif.processing_error, rif.rag_metadata, 
                          rif.created_at, rif.updated_at
                  FROM rag_instance_files rif
@@ -147,7 +147,7 @@ pub async fn list_rag_instance_files(
             let files = sqlx::query_as!(
                 RAGInstanceFile,
                 r#"SELECT rif.id, rif.rag_instance_id, rif.file_id, f.filename, 
-                         rif.processing_status as "processing_status: RAGProcessingStatus", 
+                         rif.processing_status, 
                          rif.processed_at, rif.processing_error, rif.rag_metadata, 
                          rif.created_at, rif.updated_at
                  FROM rag_instance_files rif
@@ -203,7 +203,7 @@ pub async fn add_file_to_rag_instance(
     let rag_file = sqlx::query_as!(
         RAGInstanceFile,
         r#"SELECT rif.id, rif.rag_instance_id, rif.file_id, f.filename, 
-                 rif.processing_status as "processing_status: RAGProcessingStatus", 
+                 rif.processing_status, 
                  rif.processed_at, rif.processing_error, rif.rag_metadata, 
                  rif.created_at, rif.updated_at
          FROM rag_instance_files rif

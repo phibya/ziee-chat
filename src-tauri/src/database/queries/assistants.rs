@@ -42,7 +42,7 @@ pub async fn create_assistant(
         r#"INSERT INTO assistants (id, name, description, instructions, parameters, created_by, is_template, is_default) 
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
          RETURNING id, name, description, instructions,
-         parameters as "parameters?: ModelParameters",
+         parameters,
          created_by, is_template, is_default, is_active, created_at, updated_at"#,
         assistant_id,
         &request.name,
@@ -73,7 +73,7 @@ pub async fn get_assistant_by_id(
     let assistant_row = sqlx::query_as!(
         Assistant,
         r#"SELECT id, name, description, instructions,
-        parameters as "parameters?: ModelParameters",
+        parameters,
         created_by, is_template, is_default, is_active, created_at, updated_at
         FROM assistants
         WHERE id = $1 AND is_active = true AND (is_template = true OR created_by = $2)"#,
@@ -97,28 +97,6 @@ pub async fn list_assistants(
     let pool = pool.as_ref();
     let offset = (page - 1) * per_page;
 
-    let (_query, _count_query) = if admin_view {
-        // Admin can see only template assistants (created by admin)
-        (
-            "SELECT id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at 
-             FROM assistants 
-             WHERE is_template = true 
-             ORDER BY created_at DESC 
-             LIMIT $1 OFFSET $2",
-            "SELECT COUNT(*) FROM assistants WHERE is_template = true"
-        )
-    } else {
-        // Regular users can see active template assistants and their own assistants
-        (
-            "SELECT id, name, description, instructions, parameters, created_by, is_template, is_default, is_active, created_at, updated_at 
-             FROM assistants 
-             WHERE is_active = true AND ((is_template = true) OR created_by = $3)
-             ORDER BY created_at DESC 
-             LIMIT $1 OFFSET $2",
-            "SELECT COUNT(*) FROM assistants WHERE is_active = true AND ((is_template = true) OR created_by = $1)"
-        )
-    };
-
     // Get total count
     let total: i64 = if admin_view {
         sqlx::query_scalar!("SELECT COUNT(*) FROM assistants WHERE is_template = true")
@@ -136,7 +114,7 @@ pub async fn list_assistants(
         sqlx::query_as!(
             Assistant,
             r#"SELECT id, name, description, instructions,
-            parameters as "parameters?: ModelParameters",
+            parameters,
             created_by, is_template, is_default, is_active, created_at, updated_at 
              FROM assistants 
              WHERE is_template = true 
@@ -151,7 +129,7 @@ pub async fn list_assistants(
         sqlx::query_as!(
             Assistant,
             r#"SELECT id, name, description, instructions,
-            parameters as "parameters?: ModelParameters",
+            parameters,
             created_by, is_template, is_default, is_active, created_at, updated_at 
              FROM assistants 
              WHERE is_active = true AND ((is_template = true) OR created_by = $3)
@@ -192,7 +170,7 @@ pub async fn update_assistant(
     let current_assistant = sqlx::query_as!(
         Assistant,
         r#"SELECT id, name, description, instructions,
-        parameters as "parameters?: ModelParameters",
+        parameters,
         created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants WHERE id = $1"#,
         assistant_id
@@ -334,7 +312,7 @@ pub async fn update_assistant(
         sqlx::query_as!(
             Assistant,
             r#"SELECT id, name, description, instructions,
-            parameters as "parameters?: ModelParameters",
+            parameters,
             created_by, is_template, is_default, is_active, created_at, updated_at 
              FROM assistants WHERE id = $1"#,
             assistant_id
@@ -345,7 +323,7 @@ pub async fn update_assistant(
         sqlx::query_as!(
             Assistant,
             r#"SELECT id, name, description, instructions,
-            parameters as "parameters?: ModelParameters",
+            parameters,
             created_by, is_template, is_default, is_active, created_at, updated_at 
              FROM assistants WHERE id = $1 AND created_by = $2"#,
             assistant_id,
@@ -395,7 +373,7 @@ pub async fn get_default_assistants() -> Result<Vec<Assistant>, sqlx::Error> {
     let assistant_rows = sqlx::query_as!(
         Assistant,
         r#"SELECT id, name, description, instructions,
-        parameters as "parameters?: ModelParameters",
+        parameters,
         created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants 
          WHERE is_template = true AND is_default = true AND is_active = true"#
@@ -420,7 +398,7 @@ pub async fn clone_assistant_for_user(
     let template = sqlx::query_as!(
         Assistant,
         r#"SELECT id, name, description, instructions,
-        parameters as "parameters?: ModelParameters",
+        parameters,
         created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants 
          WHERE id = $1 AND is_template = true AND is_active = true"#,
@@ -438,7 +416,7 @@ pub async fn clone_assistant_for_user(
         r#"INSERT INTO assistants (id, name, description, instructions, parameters, created_by, is_template, is_default, is_active) 
          VALUES ($1, $2, $3, $4, $5, $6, false, false, true) 
          RETURNING id, name, description, instructions,
-         parameters as "parameters?: ModelParameters",
+         parameters,
          created_by, is_template, is_default, is_active, created_at, updated_at"#,
         assistant_id,
         &template.name,
@@ -461,7 +439,7 @@ pub async fn get_default_assistant() -> Result<Option<Assistant>, sqlx::Error> {
     let assistant_row = sqlx::query_as!(
         Assistant,
         r#"SELECT id, name, description, instructions,
-        parameters as "parameters?: ModelParameters",
+        parameters,
         created_by, is_template, is_default, is_active, created_at, updated_at 
          FROM assistants 
          WHERE name = 'Default Assistant' AND is_template = true AND is_active = true 

@@ -1,4 +1,5 @@
 use crate::ai::rag::engines::settings::*;
+use crate::database::macros::impl_string_to_enum;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,13 @@ pub struct RAGEngineSettings {
     pub simple_vector: Option<RAGSimpleVectorEngineSettings>,
     /// Simple graph RAG engine settings  
     pub simple_graph: Option<RAGSimpleGraphEngineSettings>,
+}
+
+// Implement JSON conversion for RAGEngineSettings
+impl From<serde_json::Value> for RAGEngineSettings {
+    fn from(value: serde_json::Value) -> Self {
+        serde_json::from_value(value).unwrap_or_default()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -51,7 +59,18 @@ impl RAGEngineType {
             RAGEngineType::RagSimpleGraph => "simple_graph",
         }
     }
+    
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "simple_vector" => Some(RAGEngineType::RagSimpleVector),
+            "simple_graph" => Some(RAGEngineType::RagSimpleGraph),
+            _ => None,
+        }
+    }
 }
+
+// Implement string to enum conversion for RAGEngineType
+impl_string_to_enum!(RAGEngineType);
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateRAGInstanceRequest {
@@ -132,7 +151,20 @@ impl RAGProcessingStatus {
             RAGProcessingStatus::Failed => "failed",
         }
     }
+    
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "pending" => Some(RAGProcessingStatus::Pending),
+            "processing" => Some(RAGProcessingStatus::Processing),
+            "completed" => Some(RAGProcessingStatus::Completed),
+            "failed" => Some(RAGProcessingStatus::Failed),
+            _ => None,
+        }
+    }
 }
+
+// Implement string to enum conversion for RAGProcessingStatus
+impl_string_to_enum!(RAGProcessingStatus);
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AddFilesToRAGInstanceRequest {

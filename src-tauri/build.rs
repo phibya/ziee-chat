@@ -1,71 +1,9 @@
 use std::env;
+use std::fs;
 use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
-// use std::process::Command;
-//
-// fn generate_openapi_spec(target_dir: &Path) {
-//     println!("Generating OpenAPI specification...");
-//
-//     // Get the build profile (debug or release)
-//     let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
-//
-//     // Run the generate-openapi binary from the correct profile directory
-//     let binary_path = target_dir.join(&profile).join("generate-openapi");
-//
-//     // Check if the binary exists
-//     if !binary_path.exists() {
-//         eprintln!("Warning: generate-openapi binary not found at {}. Run 'cargo build --bin generate-openapi' first.", binary_path.display());
-//         return;
-//     }
-//
-//     let exec_result = Command::new(&binary_path).current_dir(".").status();
-//
-//     match exec_result {
-//         Ok(status) if status.success() => {
-//             println!("OpenAPI specification generated successfully");
-//         }
-//         Ok(status) => {
-//             eprintln!(
-//                 "Warning: generate-openapi binary failed (exit code: {})",
-//                 status
-//             );
-//         }
-//         Err(e) => {
-//             eprintln!("Warning: Failed to execute generate-openapi binary: {}", e);
-//         }
-//     }
-// }
-//
-// fn generate_typescript_endpoints() {
-//     println!("Generating TypeScript endpoint definitions...");
-//
-//     // Change to the openapi directory to run the TypeScript generation script
-//     let openapi_dir = Path::new("../openapi");
-//
-//     let exec_result = Command::new("npx")
-//         .arg("tsx")
-//         .arg("generate-endpoints.ts")
-//         .current_dir(openapi_dir)
-//         .status();
-//
-//     match exec_result {
-//         Ok(status) if status.success() => {
-//             println!("TypeScript endpoints generated successfully");
-//         }
-//         Ok(status) => {
-//             eprintln!(
-//                 "Warning: TypeScript endpoint generation failed (exit code: {})",
-//                 status
-//             );
-//         }
-//         Err(e) => {
-//             eprintln!(
-//                 "Warning: Failed to execute TypeScript endpoint generation: {}",
-//                 e
-//             );
-//         }
-//     }
-// }
+use std::process::Command;
+use std::thread;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -155,12 +93,7 @@ fn main() {
     if env::var("SQLX_OFFLINE").is_err() {
         println!("cargo:rerun-if-changed=migrations");
         if let Err(e) = setup_build_database(&target_dir) {
-            println!(
-                "cargo:warning=Failed to setup build database for SQLx macros: {}",
-                e
-            );
-            println!("cargo:warning=SQLx macros will use offline mode");
-            env::set_var("SQLX_OFFLINE", "true");
+            panic!("Failed to setup build database for SQLx macros: {}", e);
         }
     }
 
@@ -223,6 +156,34 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
 
     // Remove existing data directory and recreate it for fresh data
     if settings.data_dir.exists() {
+        // Check if postmaster.pid exists and kill the process if it does
+        let postmaster_pid_path = settings.data_dir.join("postmaster.pid");
+        if postmaster_pid_path.exists() {
+            if let Ok(pid_content) = fs::read_to_string(&postmaster_pid_path) {
+                // First line contains the PID
+                if let Some(first_line) = pid_content.lines().next() {
+                    if let Ok(pid) = first_line.trim().parse::<i32>() {
+                        // Try to kill the process cross-platform
+                        #[cfg(windows)]
+                        let _ = Command::new("taskkill")
+                            .arg("/F")
+                            .arg("/PID")
+                            .arg(pid.to_string())
+                            .status();
+                        
+                        #[cfg(not(windows))]
+                        let _ = Command::new("kill")
+                            .arg("-TERM")
+                            .arg(pid.to_string())
+                            .status();
+                        
+                        // Give it a moment to shut down gracefully
+                        thread::sleep(std::time::Duration::from_millis(500));
+                    }
+                }
+            }
+        }
+        
         std::fs::remove_dir_all(&settings.data_dir)?;
     }
     std::fs::create_dir_all(&settings.data_dir)?;
@@ -234,6 +195,7 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
     settings
         .configuration
         .insert("log_timezone".to_string(), "UTC".to_string());
+
 
     // Create PostgreSQL instance
     let mut postgresql = PostgreSQL::new(settings);
@@ -279,7 +241,6 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
         // Keep database running for the duration of the build
         // We need to leak the PostgreSQL instance to keep it alive during compilation
         std::mem::forget(postgresql);
-
         Ok::<(), Box<dyn std::error::Error + Send + Sync>>(())
     })?;
     Ok(())

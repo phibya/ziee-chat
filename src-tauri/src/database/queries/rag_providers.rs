@@ -3,8 +3,8 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        proxy::ProxySettings, CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse,
-        RAGProviderType, UpdateRAGProviderRequest,
+        CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse,
+        UpdateRAGProviderRequest,
     },
 };
 
@@ -16,9 +16,9 @@ pub async fn get_rag_provider_by_id(provider_id: Uuid) -> Result<Option<RAGProvi
     let provider_row = sqlx::query_as!(
         RAGProvider,
         r#"SELECT id, name, 
-                 provider_type as "provider_type: RAGProviderType",
+                 provider_type,
                  enabled, api_key, base_url, built_in, can_user_create_instance, 
-                 proxy_settings as "proxy_settings?: ProxySettings",
+                 proxy_settings,
                  created_at, updated_at
          FROM rag_providers 
          WHERE id = $1"#,
@@ -51,9 +51,9 @@ pub async fn list_rag_providers(
     let providers = sqlx::query_as!(
         RAGProvider,
         r#"SELECT id, name, 
-                 provider_type as "provider_type: RAGProviderType", 
+                 provider_type, 
                  enabled, api_key, base_url, built_in, can_user_create_instance, 
-                 proxy_settings as "proxy_settings?: ProxySettings", 
+                 proxy_settings, 
                  created_at, updated_at
          FROM rag_providers 
          ORDER BY created_at DESC 
@@ -84,9 +84,9 @@ pub async fn create_rag_provider(
         r#"INSERT INTO rag_providers (id, name, provider_type, enabled, api_key, base_url, built_in, can_user_create_instance, proxy_settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
          RETURNING id, name, 
-                   provider_type as "provider_type: RAGProviderType", 
+                   provider_type, 
                    enabled, api_key, base_url, built_in, can_user_create_instance, 
-                   proxy_settings as "proxy_settings?: ProxySettings", 
+                   proxy_settings, 
                    created_at, updated_at"#,
         provider_id,
         &request.name,
@@ -173,9 +173,9 @@ pub async fn update_rag_provider(
     let provider_row = sqlx::query_as!(
         RAGProvider,
         r#"SELECT id, name, 
-                 provider_type as "provider_type: RAGProviderType", 
+                 provider_type, 
                  enabled, api_key, base_url, built_in, can_user_create_instance, 
-                 proxy_settings as "proxy_settings?: ProxySettings", 
+                 proxy_settings, 
                  created_at, updated_at
          FROM rag_providers 
          WHERE id = $1"#,

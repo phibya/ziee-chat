@@ -12,9 +12,9 @@ pub async fn get_provider_by_id(provider_id: Uuid) -> Result<Option<Provider>, s
     let provider_row: Option<Provider> = sqlx::query_as!(
         Provider,
         r#"SELECT id, name, 
-                 provider_type as "provider_type: crate::database::models::provider::ProviderType", 
+                 provider_type, 
                  enabled, api_key, base_url, built_in, 
-                 proxy_settings as "proxy_settings?: crate::database::models::proxy::ProxySettings", 
+                 proxy_settings, 
                  created_at, updated_at
          FROM providers 
          WHERE id = $1"#,
@@ -36,9 +36,9 @@ pub async fn create_provider(request: CreateProviderRequest) -> Result<Provider,
         r#"INSERT INTO providers (id, name, provider_type, enabled, api_key, base_url, built_in, proxy_settings)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
          RETURNING id, name, 
-                   provider_type as "provider_type: crate::database::models::provider::ProviderType", 
+                   provider_type, 
                    enabled, api_key, base_url, built_in, 
-                   proxy_settings as "proxy_settings?: crate::database::models::proxy::ProxySettings", 
+                   proxy_settings, 
                    created_at, updated_at"#,
         provider_id,
         &request.name,

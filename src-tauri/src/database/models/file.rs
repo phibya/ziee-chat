@@ -3,6 +3,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::database::macros::impl_json_option_from;
+
+// Implement JSON conversion for Vec<File>
+impl_json_option_from!(Vec<File>);
+
 // Main File structure
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct File {

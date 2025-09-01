@@ -236,7 +236,7 @@ pub async fn update_repository(
                     || auth_config.api_key.as_ref().unwrap().trim().is_empty()
                 {
                     // Check if current repository has api_key
-                    if let Some(current_auth) = &current_repository.auth_config {
+                    if let Some(current_auth) = &*current_repository.auth_config {
                         if current_auth.api_key.is_none()
                             || current_auth.api_key.as_ref().unwrap().trim().is_empty()
                         {

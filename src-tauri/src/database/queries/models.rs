@@ -2,14 +2,13 @@ use chrono::Utc;
 use uuid::Uuid;
 
 #[allow(dead_code)]
-use crate::api::engines::EngineType;
-#[allow(dead_code)]
 use crate::database::{
     get_database_pool,
     models::{
-        provider::ProviderType, proxy::ProxySettings, CreateModelRequest, FileFormat, Model,
-        ModelCapabilities, ModelEngineSettings, ModelFile, ModelParameters, Provider, SourceInfo,
+        CreateModelRequest, Model,
+        ModelFile, Provider,
         UpdateModelRequest,
+        ProviderType
     },
 };
 
@@ -21,15 +20,15 @@ pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, 
         Model,
         r#"SELECT id, provider_id, name, alias, description,
                 enabled, is_deprecated, is_active,
-                capabilities as "capabilities?: ModelCapabilities",
-                parameters as "parameters?: ModelParameters",
+                capabilities,
+                parameters,
                 created_at, updated_at, 
                 file_size_bytes, validation_status,
-                validation_issues as "validation_issues?: Vec<String>", 
-                port, pid, engine_type as "engine_type: EngineType",
-                engine_settings as "engine_settings?: ModelEngineSettings",
-                file_format as "file_format: FileFormat",
-                source as "source?: SourceInfo"
+                validation_issues, 
+                port, pid, engine_type,
+                engine_settings,
+                file_format,
+                source
          FROM models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC"#,
@@ -54,15 +53,15 @@ pub async fn create_model(
         r#"INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings, file_format, source)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
          RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
-                   capabilities as "capabilities?: ModelCapabilities", 
-                   parameters as "parameters?: ModelParameters", 
+                   capabilities, 
+                   parameters, 
                    created_at, updated_at, file_size_bytes, validation_status, 
-                   validation_issues as "validation_issues?: Vec<String>", 
+                   validation_issues, 
                    port, pid, 
-                   engine_type as "engine_type: EngineType", 
-                   engine_settings as "engine_settings?: ModelEngineSettings", 
-                   file_format as "file_format: FileFormat", 
-                   source as "source?: SourceInfo""#,
+                   engine_type, 
+                   engine_settings, 
+                   file_format, 
+                   source"#,
         model_id,
         provider_id,
         &request.name,
@@ -216,15 +215,15 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     let model_row: Option<Model> = sqlx::query_as!(
         Model,
         r#"SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
-                capabilities as "capabilities?: ModelCapabilities", 
-                parameters as "parameters?: ModelParameters", 
+                capabilities, 
+                parameters,
                 created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues as "validation_issues?: Vec<String>", 
+                validation_issues, 
                 port, pid, 
-                engine_type as "engine_type: EngineType", 
-                engine_settings as "engine_settings?: ModelEngineSettings",
-                file_format as "file_format: FileFormat", 
-                source as "source?: SourceInfo"
+                engine_type, 
+                engine_settings,
+                file_format, 
+                source
          FROM models 
          WHERE id = $1"#,
         model_id
@@ -259,14 +258,14 @@ pub async fn create_local_model(
         ) RETURNING id, provider_id, name, alias, description, 
                    file_size_bytes, enabled, 
                    is_deprecated, is_active, 
-                   capabilities as "capabilities?: ModelCapabilities", 
-                   parameters as "parameters?: ModelParameters", 
+                   capabilities, 
+                   parameters, 
                    validation_status, 
-                   validation_issues as "validation_issues?: Vec<String>", 
-                   engine_type as "engine_type: EngineType", 
-                   engine_settings as "engine_settings?: ModelEngineSettings", 
-                   file_format as "file_format: FileFormat", 
-                   source as "source?: SourceInfo", 
+                   validation_issues, 
+                   engine_type, 
+                   engine_settings, 
+                   file_format, 
+                   source, 
                    port, pid, created_at, updated_at
         "#,
         *model_id,
@@ -435,10 +434,10 @@ pub async fn get_provider_by_model_id(model_id: Uuid) -> Result<Option<Provider>
         Provider,
         r#"
         SELECT p.id, p.name, 
-               p.provider_type as "provider_type: ProviderType", 
+               p.provider_type, 
                p.enabled, p.api_key, p.base_url, 
                p.built_in, 
-               p.proxy_settings as "proxy_settings?: ProxySettings", 
+               p.proxy_settings, 
                p.created_at, p.updated_at
         FROM providers p
         INNER JOIN models m ON p.id = m.provider_id
@@ -460,21 +459,22 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
     let models: Vec<Model> = sqlx::query_as!(
         Model,
         r#"SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
-                capabilities as "capabilities?: ModelCapabilities", 
-                parameters as "parameters?: ModelParameters", 
+                capabilities, 
+                parameters, 
                 created_at, updated_at, file_size_bytes, validation_status, 
-                validation_issues as "validation_issues?: Vec<String>", 
+                validation_issues, 
                 port, pid, 
-                engine_type as "engine_type: EngineType", 
-                engine_settings as "engine_settings?: ModelEngineSettings",
-                file_format as "file_format: FileFormat", 
-                source as "source?: SourceInfo"
+                engine_type, 
+                engine_settings,
+                file_format, 
+                source
          FROM models 
          WHERE is_active = true 
          AND provider_id IN (
-             SELECT id FROM providers WHERE provider_type = 'local'
+             SELECT id FROM providers WHERE provider_type = $1
          )
-         ORDER BY created_at ASC"#
+         ORDER BY created_at ASC"#,
+        ProviderType::Local.as_str()
     )
     .fetch_all(pool)
     .await?;

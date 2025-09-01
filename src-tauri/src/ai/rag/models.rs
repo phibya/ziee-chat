@@ -138,7 +138,6 @@ pub struct RagProcessingPipeline {
     pub file_id: Uuid,
     pub pipeline_stage: String,
     pub status: String,
-    pub progress_percentage: i32,
     pub error_message: Option<String>,
     pub metadata: serde_json::Value,
     pub started_at: Option<DateTime<Utc>>,

@@ -139,7 +139,7 @@ impl LocalProvider {
     /// Fetch model capabilities from database using model_id
     async fn get_model_capabilities(&self, model_id: Uuid) -> Option<ModelCapabilities> {
         match get_model_by_id(model_id).await {
-            Ok(Some(model)) => model.capabilities,
+            Ok(Some(model)) => model.capabilities.into_option(),
             Ok(None) => {
                 eprintln!("Model not found in database: {}", model_id);
                 None

@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::database::{
     models::{
         CreateDownloadInstanceRequest, DownloadInstance, DownloadInstanceListResponse,
-        DownloadPhase, DownloadProgressData, DownloadRequestData, DownloadStatus,
+        DownloadPhase, DownloadProgressData, DownloadStatus,
         UpdateDownloadProgressRequest, UpdateDownloadStatusRequest,
     },
     queries::get_database_pool,
@@ -20,9 +20,9 @@ pub async fn get_download_instance_by_id(
     let download_row: Option<DownloadInstance> = sqlx::query_as!(
         DownloadInstance,
         r#"SELECT id, provider_id, repository_id, 
-                request_data as "request_data: DownloadRequestData", 
-                status as "status: DownloadStatus", 
-                progress_data as "progress_data?: DownloadProgressData", 
+                request_data, 
+                status, 
+                progress_data, 
                 error_message, started_at, 
                 completed_at, model_id, 
                 created_at, updated_at
@@ -51,9 +51,9 @@ pub async fn get_download_instances(
         sqlx::query_as!(
             DownloadInstance,
             r#"SELECT id, provider_id, repository_id, 
-                     request_data as "request_data: DownloadRequestData", 
-                     status as "status: DownloadStatus", 
-                     progress_data as "progress_data?: DownloadProgressData", 
+                     request_data, 
+                     status, 
+                     progress_data, 
                      error_message, started_at, completed_at, model_id, created_at, updated_at
              FROM download_instances 
              WHERE status = $3
@@ -68,9 +68,9 @@ pub async fn get_download_instances(
         sqlx::query_as!(
             DownloadInstance,
             r#"SELECT id, provider_id, repository_id, 
-                     request_data as "request_data: DownloadRequestData", 
-                     status as "status: DownloadStatus", 
-                     progress_data as "progress_data?: DownloadProgressData", 
+                     request_data, 
+                     status, 
+                     progress_data, 
                      error_message, started_at, completed_at, model_id, created_at, updated_at
              FROM download_instances 
              ORDER BY created_at DESC LIMIT $1 OFFSET $2"#,
@@ -118,9 +118,9 @@ pub async fn create_download_instance(
         r#"INSERT INTO download_instances (id, provider_id, repository_id, request_data, status, progress_data)
          VALUES ($1, $2, $3, $4, $5, $6) 
          RETURNING id, provider_id, repository_id, 
-                   request_data as "request_data: DownloadRequestData", 
-                   status as "status: DownloadStatus", 
-                   progress_data as "progress_data?: DownloadProgressData", 
+                   request_data, 
+                   status, 
+                   progress_data, 
                    error_message, started_at, completed_at, model_id, created_at, updated_at"#,
         download_id,
         request.provider_id,
@@ -161,9 +161,9 @@ pub async fn update_download_progress(
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1 
              RETURNING id, provider_id, repository_id, 
-                       request_data as "request_data: DownloadRequestData", 
-                       status as "status: DownloadStatus", 
-                       progress_data as "progress_data?: DownloadProgressData", 
+                       request_data, 
+                       status, 
+                       progress_data, 
                        error_message, started_at, completed_at, model_id, created_at, updated_at"#,
             download_id,
             serde_json::to_value(&request.progress_data)
@@ -180,9 +180,9 @@ pub async fn update_download_progress(
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = $1 
              RETURNING id, provider_id, repository_id, 
-                       request_data as "request_data: DownloadRequestData", 
-                       status as "status: DownloadStatus", 
-                       progress_data as "progress_data?: DownloadProgressData", 
+                       request_data, 
+                       status, 
+                       progress_data, 
                        error_message, started_at, completed_at, model_id, created_at, updated_at"#,
             download_id,
             serde_json::to_value(&request.progress_data)
@@ -216,9 +216,9 @@ pub async fn update_download_status(
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
                  RETURNING id, provider_id, repository_id, 
-                           request_data as "request_data: DownloadRequestData", 
-                           status as "status: DownloadStatus", 
-                           progress_data as "progress_data?: DownloadProgressData", 
+                           request_data, 
+                           status, 
+                           progress_data, 
                            error_message, started_at, completed_at, model_id, created_at, updated_at"#,
                 download_id,
                 request.status.as_str(),
@@ -238,9 +238,9 @@ pub async fn update_download_status(
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
                  RETURNING id, provider_id, repository_id, 
-                           request_data as "request_data: DownloadRequestData", 
-                           status as "status: DownloadStatus", 
-                           progress_data as "progress_data?: DownloadProgressData", 
+                           request_data, 
+                           status, 
+                           progress_data, 
                            error_message, started_at, completed_at, model_id, created_at, updated_at"#,
                 download_id,
                 request.status.as_str(),
@@ -258,9 +258,9 @@ pub async fn update_download_status(
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $1 
                  RETURNING id, provider_id, repository_id, 
-                           request_data as "request_data: DownloadRequestData", 
-                           status as "status: DownloadStatus", 
-                           progress_data as "progress_data?: DownloadProgressData", 
+                           request_data, 
+                           status, 
+                           progress_data, 
                            error_message, started_at, completed_at, model_id, created_at, updated_at"#,
                 download_id,
                 request.status.as_str(),
@@ -294,9 +294,9 @@ pub async fn get_all_active_downloads() -> Result<Vec<DownloadInstance>, sqlx::E
     let downloads: Vec<DownloadInstance> = sqlx::query_as!(
         DownloadInstance,
         r#"SELECT id, provider_id, repository_id, 
-                 request_data as "request_data: DownloadRequestData", 
-                 status as "status: DownloadStatus", 
-                 progress_data as "progress_data?: DownloadProgressData", 
+                 request_data, 
+                 status, 
+                 progress_data, 
                  error_message, started_at, completed_at, model_id, created_at, updated_at
          FROM download_instances 
          WHERE status IN ('pending', 'downloading', 'failed', 'cancelled')

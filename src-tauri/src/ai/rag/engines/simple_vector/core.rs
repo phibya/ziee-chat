@@ -8,31 +8,26 @@ use crate::ai::rag::{
     PipelineStage, ProcessingStatus, RAGError, RAGQuery, RAGQueryResponse, RAGResult,
 };
 use async_trait::async_trait;
-use std::sync::Arc;
 use uuid::Uuid;
 
 /// Simple Vector RAG Engine
 pub struct RAGSimpleVectorEngine {
     // === INSTANCE ===
     pub(super) instance_id: Uuid,
-
-    // === PROCESSING CONTROL ===
-    pub(super) max_parallel_insert: usize,
-    pub(super) embedding_batch_size: u32,
-    pub(super) embedding_model: String,
+    pub(super) instance_info: crate::ai::rag::types::RAGInstanceInfo,
 }
 
 impl RAGSimpleVectorEngine {
-    pub fn new(instance_id: Uuid) -> Self {
-        Self {
+    pub async fn new(instance_id: Uuid) -> Result<Self, RAGError> {
+        let instance_info = crate::ai::rag::utils::get_rag_instance_info(instance_id)
+            .await
+            .map_err(|e| RAGError::ConfigurationError(format!("Failed to get RAG instance info: {}", e)))?;
+        
+        Ok(Self {
             // === INSTANCE ===
             instance_id,
-
-            // === PROCESSING CONTROL ===
-            max_parallel_insert: 10,
-            embedding_batch_size: 32,
-            embedding_model: "text-embedding-ada-002".to_string(),
-        }
+            instance_info,
+        })
     }
 
     pub(super) async fn update_pipeline_status(
@@ -40,7 +35,6 @@ impl RAGSimpleVectorEngine {
         file_id: Uuid,
         stage: PipelineStage,
         status: ProcessingStatus,
-        progress: u8,
         error_message: Option<String>,
     ) -> RAGResult<()> {
         queries::update_pipeline_status(
@@ -48,7 +42,6 @@ impl RAGSimpleVectorEngine {
             file_id,
             stage,
             status,
-            progress,
             error_message,
         )
         .await
@@ -81,11 +74,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         self.update_pipeline_status(
             file_id,
             PipelineStage::TextExtraction,
-            ProcessingStatus::InProgress {
-                stage: "getting_file_path".to_string(),
-                progress: 0.0,
-            },
-            0,
+            ProcessingStatus::InProgress,
             None,
         )
         .await?;
@@ -109,11 +98,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         self.update_pipeline_status(
             file_id,
             PipelineStage::TextExtraction,
-            ProcessingStatus::InProgress {
-                stage: "text_extraction".to_string(),
-                progress: 50.0,
-            },
-            50,
+            ProcessingStatus::InProgress,
             None,
         )
         .await?;
@@ -135,22 +120,10 @@ impl RAGEngine for RAGSimpleVectorEngine {
             quality_score
         );
 
-        // Create temporary AI provider for embedding processing
-        let ai_provider: Arc<dyn crate::ai::core::AIProvider> = Arc::new(
-            crate::ai::providers::openai::OpenAIProvider::new(
-                "dummy_key".to_string(),
-                None,
-                None,
-                uuid::Uuid::new_v4(),
-            )
-            .unwrap(),
-        );
-
         self.update_pipeline_status(
             file_id,
             PipelineStage::TextExtraction,
             ProcessingStatus::Completed,
-            100,
             None,
         )
         .await?;
@@ -159,11 +132,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         self.update_pipeline_status(
             file_id,
             PipelineStage::Chunking,
-            ProcessingStatus::InProgress {
-                stage: "advanced_chunking".to_string(),
-                progress: 0.0,
-            },
-            0,
+            ProcessingStatus::InProgress,
             None,
         )
         .await?;
@@ -182,7 +151,6 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Chunking,
             ProcessingStatus::Completed,
-            100,
             None,
         )
         .await?;
@@ -191,24 +159,19 @@ impl RAGEngine for RAGSimpleVectorEngine {
         self.update_pipeline_status(
             file_id,
             PipelineStage::Embedding,
-            ProcessingStatus::InProgress {
-                stage: "batch_embedding".to_string(),
-                progress: 0.0,
-            },
-            0,
+            ProcessingStatus::InProgress,
             None,
         )
         .await?;
 
         let embeddings = self
-            .process_embeddings_in_batches(&optimized_chunks, &ai_provider)
+            .process_embeddings_in_batches(&optimized_chunks)
             .await?;
 
         self.update_pipeline_status(
             file_id,
             PipelineStage::Embedding,
             ProcessingStatus::Completed,
-            100,
             None,
         )
         .await?;
@@ -217,11 +180,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         self.update_pipeline_status(
             file_id,
             PipelineStage::Indexing,
-            ProcessingStatus::InProgress {
-                stage: "advanced_storage".to_string(),
-                progress: 0.0,
-            },
-            0,
+            ProcessingStatus::InProgress,
             None,
         )
         .await?;
@@ -233,7 +192,6 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Indexing,
             ProcessingStatus::Completed,
-            100,
             None,
         )
         .await?;
@@ -243,7 +201,6 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Completed,
             ProcessingStatus::Completed,
-            100,
             None,
         )
         .await?;

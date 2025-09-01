@@ -5,6 +5,8 @@ use uuid::Uuid;
 
 use super::download_instance::SourceInfo;
 use crate::api::engines::EngineType;
+use crate::database::macros::{impl_json_option_from, impl_string_to_enum};
+use crate::database::types::JsonOption;
 
 /// Device types for ML model inference
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, sqlx::Type)]
@@ -146,6 +148,9 @@ impl std::fmt::Display for FileFormat {
     }
 }
 
+// Implement string to enum conversion for SQLx
+impl_string_to_enum!(FileFormat);
+
 /// Model capabilities configuration
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default, sqlx::Type)]
 pub struct ModelCapabilities {
@@ -164,6 +169,8 @@ pub struct ModelCapabilities {
     /// Image generation capability - can generate images from text descriptions
     pub image_generator: Option<bool>,
 }
+
+impl_json_option_from!(ModelCapabilities);
 
 impl ModelCapabilities {
     /// Create new capabilities with all disabled
@@ -205,6 +212,7 @@ pub struct ModelParameters {
     /// Stop sequences to terminate generation
     pub stop: Option<Vec<String>>,
 }
+impl_json_option_from!(ModelParameters);
 
 impl ModelParameters {
     /// Create new parameters with default values
@@ -754,9 +762,14 @@ impl MistralRsSettings {
 pub struct ModelEngineSettings {
     /// MistralRs-specific settings
     pub mistralrs: Option<MistralRsSettings>,
-    /// LlamaCpp-specific settings  
+    /// LlamaCpp-specific settings
     pub llamacpp: Option<LlamaCppSettings>,
 }
+
+impl_json_option_from!(ModelEngineSettings);
+
+// Implement JSON conversion for Vec<String> in JsonOption fields
+impl_json_option_from!(Vec<String>);
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Model {
@@ -768,20 +781,20 @@ pub struct Model {
     pub enabled: bool,
     pub is_deprecated: bool,
     pub is_active: bool,
-    pub capabilities: Option<ModelCapabilities>,
-    pub parameters: Option<ModelParameters>,
+    pub capabilities: JsonOption<ModelCapabilities>,
+    pub parameters: JsonOption<ModelParameters>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     // Additional fields for Candle models (None for other providers)
     pub file_size_bytes: Option<i64>,
     pub validation_status: Option<String>,
-    pub validation_issues: Option<Vec<String>>,
+    pub validation_issues: JsonOption<Vec<String>>,
     pub port: Option<i32>, // Port number where the model server is running
     pub pid: Option<i32>,  // Process ID of the running model server
     pub engine_type: EngineType, // Engine type: Mistralrs | Llamacpp | None - REQUIRED
-    pub engine_settings: Option<ModelEngineSettings>, // Engine-specific settings
+    pub engine_settings: JsonOption<ModelEngineSettings>, // Engine-specific settings
     pub file_format: FileFormat, // Model file format: safetensors, gguf, pytorch, etc. - REQUIRED
-    pub source: Option<SourceInfo>, // Source information for tracking download origin
+    pub source: JsonOption<SourceInfo>, // Source information for tracking download origin
 }
 
 // Request/Response structures for models

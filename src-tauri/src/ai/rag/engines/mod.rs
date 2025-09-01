@@ -37,13 +37,13 @@ pub struct RAGEngineFactory;
 
 impl RAGEngineFactory {
     /// Create a new RAG engine based on type
-    pub fn create_engine(
+    pub async fn create_engine(
         engine_type: RAGEngineType,
         instance_id: Uuid,
     ) -> RAGResult<Box<dyn RAGEngine>> {
         match engine_type {
             RAGEngineType::SimpleVector => {
-                let engine = RAGSimpleVectorEngine::new(instance_id);
+                let engine = RAGSimpleVectorEngine::new(instance_id).await?;
                 Ok(Box::new(engine))
             }
             RAGEngineType::SimpleGraph => Err(RAGError::ConfigurationError(

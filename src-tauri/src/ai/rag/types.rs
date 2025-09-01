@@ -4,6 +4,28 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
+use std::sync::Arc;
+use crate::ai::core::AIProvider;
+use crate::database::models::{Provider, Model, rag_instance::RAGInstance};
+
+/// A model with its corresponding AI provider
+pub struct RAGModel {
+    pub model: Model,
+    pub ai_provider: Arc<dyn AIProvider>,
+}
+
+/// Collection of models for a RAG instance
+pub struct RAGModels {
+    pub embedding_model: RAGModel,
+    pub llm_model: Option<RAGModel>,
+}
+
+/// Complete RAG instance information including provider and models
+pub struct RAGInstanceInfo {
+    pub instance: RAGInstance,
+    pub provider: Provider,
+    pub models: RAGModels,
+}
 
 /// Text chunk with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -145,7 +145,7 @@ async fn rag_instance_worker(
     };
 
     // Create engine for this RAG instance
-    let engine = match RAGEngineFactory::create_engine(engine_type, rag_instance_id) {
+    let engine = match RAGEngineFactory::create_engine(engine_type, rag_instance_id).await {
         Ok(engine) => engine,
         Err(e) => {
             tracing::error!(

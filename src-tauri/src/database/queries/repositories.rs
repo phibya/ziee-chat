@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::database::{
     get_database_pool,
-    models::{CreateRepositoryRequest, Repository, RepositoryAuthConfig, UpdateRepositoryRequest},
+    models::{CreateRepositoryRequest, Repository, UpdateRepositoryRequest},
 };
 
 pub async fn get_repository_by_id(repository_id: Uuid) -> Result<Option<Repository>, sqlx::Error> {
@@ -12,7 +12,7 @@ pub async fn get_repository_by_id(repository_id: Uuid) -> Result<Option<Reposito
     let repository_row = sqlx::query_as!(
         Repository,
         r#"SELECT id, name, url, auth_type, 
-                 auth_config as "auth_config?: RepositoryAuthConfig", 
+                 auth_config, 
                  enabled, built_in, created_at, updated_at
          FROM repositories 
          WHERE id = $1"#,
@@ -31,7 +31,7 @@ pub async fn list_repositories() -> Result<Vec<Repository>, sqlx::Error> {
     let repositories = sqlx::query_as!(
         Repository,
         r#"SELECT id, name, url, auth_type, 
-                 auth_config as "auth_config?: RepositoryAuthConfig", 
+                 auth_config, 
                  enabled, built_in, created_at, updated_at
          FROM repositories 
          ORDER BY built_in DESC, name ASC"#
@@ -54,7 +54,7 @@ pub async fn create_repository(
         r#"INSERT INTO repositories (id, name, url, auth_type, auth_config, enabled, built_in)
          VALUES ($1, $2, $3, $4, $5, $6, $7) 
          RETURNING id, name, url, auth_type, 
-                   auth_config as "auth_config?: RepositoryAuthConfig", 
+                   auth_config, 
                    enabled, built_in, created_at, updated_at"#,
         repository_id,
         &request.name,
@@ -129,7 +129,7 @@ pub async fn update_repository(
     let repository_row = sqlx::query_as!(
         Repository,
         r#"SELECT id, name, url, auth_type, 
-                 auth_config as "auth_config?: RepositoryAuthConfig", 
+                 auth_config, 
                  enabled, built_in, created_at, updated_at
          FROM repositories 
          WHERE id = $1"#,

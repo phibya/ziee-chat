@@ -13,6 +13,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::ai::core::ChatRequest;
+use crate::database::types::JsonOption;
 use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::api::types::ConversationPaginationQuery;
@@ -307,7 +308,7 @@ async fn stream_ai_response(
     {
         assistant.parameters.clone()
     } else {
-        None
+        JsonOption::default()
     };
 
     // Check if this is a new conversation (count messages before moving them)

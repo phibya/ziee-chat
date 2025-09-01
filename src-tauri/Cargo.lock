@@ -8439,6 +8439,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sqlx-transparent-json-decode"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5752459afe4dc59d389a63eaf10f9bf365b8da626b2cb9a82dd74b68457536c4"
+dependencies = [
+ "serde_json",
+ "sqlx",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11427,11 +11437,13 @@ dependencies = [
  "rand 0.9.2",
  "regex",
  "reqwest",
+ "rustls",
  "schemars 0.9.0",
  "serde",
  "serde_json",
  "sha2",
  "sqlx",
+ "sqlx-transparent-json-decode",
  "sysinfo 0.37.0",
  "tauri",
  "tauri-build",

@@ -1,8 +1,10 @@
 use crate::database::models::File;
+use crate::database::macros::{impl_json_option_from, make_transparent};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::database::types::JsonOption;
 
 // Main unified structures
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -18,6 +20,11 @@ pub struct Conversation {
     pub updated_at: DateTime<Utc>,
 }
 
+make_transparent!(
+    #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+    pub struct MessageFiles(Vec<File>)
+);
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Message {
     pub id: Uuid,
@@ -28,8 +35,8 @@ pub struct Message {
     pub edit_count: i32,          // Number of times this message lineage has been edited
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub metadata: Option<Vec<MessageMetadata>>,
-    pub files: Vec<File>,
+    pub metadata: JsonOption<Vec<MessageMetadata>>,
+    pub files: MessageFiles,
 }
 
 // Branch structure for proper branching system
@@ -57,6 +64,9 @@ pub struct MessageMetadata {
     pub value: serde_json::Value,
     pub created_at: DateTime<Utc>,
 }
+
+// Implement JSON conversion for Vec<MessageMetadata>
+impl_json_option_from!(Vec<MessageMetadata>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConversationMetadata {

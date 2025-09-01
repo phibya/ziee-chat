@@ -14,9 +14,15 @@ impl RAGSimpleVectorEngine {
     pub(super) async fn process_embeddings_in_batches(
         &self,
         chunks: &[TextChunk],
-        ai_provider: &Arc<dyn crate::ai::core::AIProvider>,
     ) -> RAGResult<Vec<EmbeddingVector>> {
-        let batch_size = self.embedding_batch_size as usize;
+        // Get engine settings for batch size
+        let engine_settings = crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
+        let vector_settings = engine_settings.simple_vector
+            .as_ref()
+            .ok_or_else(|| RAGError::ConfigurationError("SimpleVector engine settings not found".to_string()))?;
+        let indexing_settings = vector_settings.indexing();
+        
+        let batch_size = indexing_settings.embedding_batch_size();
         let total_chunks = chunks.len();
 
         tracing::info!(
@@ -25,17 +31,20 @@ impl RAGSimpleVectorEngine {
             batch_size
         );
 
+        // Get AI provider from rag_instance_info (already created)
+        let ai_provider = self.instance_info.models.embedding_model.ai_provider.clone();
+
         let batches: Vec<Vec<String>> = chunks
             .chunks(batch_size)
             .map(|chunk_batch| chunk_batch.iter().map(|c| c.content.clone()).collect())
             .collect();
 
         // Create embedding tasks for each batch using AI provider directly
-        let embedding_model = self.embedding_model.clone();
+        let embedding_model_name = &self.instance_info.models.embedding_model.model.name;
         let mut batch_futures = Vec::new();
         for batch in batches {
             let ai_provider = ai_provider.clone();
-            let model_name = embedding_model.clone();
+            let model_name = embedding_model_name.to_string();
 
             let future = async move {
                 // Create embeddings request using AI provider's standard format
@@ -105,15 +114,22 @@ impl RAGSimpleVectorEngine {
 
         tracing::info!("Storing {} chunks with advanced metadata", chunks.len());
 
+        // Get engine settings for parallel processing control
+        let engine_settings = crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
+        let vector_settings = engine_settings.simple_vector
+            .as_ref()
+            .ok_or_else(|| RAGError::ConfigurationError("SimpleVector engine settings not found".to_string()))?;
+        let indexing_settings = vector_settings.indexing();
+
         // Create semaphore for parallel processing control
-        let semaphore = Arc::new(Semaphore::new(self.max_parallel_insert));
+        let semaphore = Arc::new(Semaphore::new(indexing_settings.max_parallel_insert()));
 
         let chunk_embedding_pairs: Vec<_> =
             chunks.into_iter().zip(embeddings.into_iter()).collect();
 
         let instance_id = self.instance_id; // Copy the instance_id
 
-        for batch in chunk_embedding_pairs.chunks(self.embedding_batch_size as usize) {
+        for batch in chunk_embedding_pairs.chunks(indexing_settings.embedding_batch_size()) {
             let permit = semaphore.clone().acquire_owned().await.map_err(|e| {
                 RAGError::ProcessingError(format!("Failed to acquire semaphore: {}", e))
             })?;
@@ -135,7 +151,7 @@ impl RAGSimpleVectorEngine {
                     );
                     enhanced_metadata.insert(
                         "embedding_model".to_string(),
-                        serde_json::json!("text-embedding-ada-002"),
+                        serde_json::json!(embedding.model_name),
                     );
 
                     let _ = queries::upsert_vector_document(

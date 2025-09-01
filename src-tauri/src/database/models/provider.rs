@@ -3,6 +3,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::database::macros::impl_string_to_enum;
+use crate::database::types::JsonOption;
 use super::{model::DeviceType, proxy::ProxySettings};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
@@ -20,18 +22,18 @@ pub enum ProviderType {
 }
 
 impl ProviderType {
-    pub fn from_str(s: &str) -> ProviderType {
+    pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "local" => ProviderType::Local,
-            "openai" => ProviderType::OpenAI,
-            "anthropic" => ProviderType::Anthropic,
-            "groq" => ProviderType::Groq,
-            "gemini" => ProviderType::Gemini,
-            "mistral" => ProviderType::Mistral,
-            "deepseek" => ProviderType::DeepSeek,
-            "huggingface" => ProviderType::Huggingface,
-            "custom" => ProviderType::Custom,
-            _ => ProviderType::Custom, // fallback to custom for unknown types
+            "local" => Some(ProviderType::Local),
+            "openai" => Some(ProviderType::OpenAI),
+            "anthropic" => Some(ProviderType::Anthropic),
+            "groq" => Some(ProviderType::Groq),
+            "gemini" => Some(ProviderType::Gemini),
+            "mistral" => Some(ProviderType::Mistral),
+            "deepseek" => Some(ProviderType::DeepSeek),
+            "huggingface" => Some(ProviderType::Huggingface),
+            "custom" => Some(ProviderType::Custom),
+            _ => Some(ProviderType::Custom), // fallback to custom for unknown types
         }
     }
 
@@ -50,6 +52,9 @@ impl ProviderType {
     }
 }
 
+// Implement string to enum conversion for SQLx
+impl_string_to_enum!(ProviderType);
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Provider {
     pub id: Uuid,
@@ -60,7 +65,7 @@ pub struct Provider {
     pub api_key: Option<String>,
     pub base_url: Option<String>,
     pub built_in: bool,
-    pub proxy_settings: Option<ProxySettings>,
+    pub proxy_settings: JsonOption<ProxySettings>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

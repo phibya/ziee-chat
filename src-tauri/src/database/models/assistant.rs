@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
+use crate::database::types::JsonOption;
 use super::model::ModelParameters;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -11,7 +11,7 @@ pub struct Assistant {
     pub name: String,
     pub description: Option<String>,
     pub instructions: Option<String>,
-    pub parameters: Option<ModelParameters>,
+    pub parameters: JsonOption<ModelParameters>,
     pub created_by: Option<Uuid>,
     pub is_template: bool,
     pub is_default: bool,

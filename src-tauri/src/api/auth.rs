@@ -19,6 +19,7 @@ static AUTH_SERVICE: Lazy<AuthService> = Lazy::new(|| AuthService::default());
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct InitResponse {
     pub needs_setup: bool,
+    pub allow_registration: bool,
     pub is_desktop: bool,
     pub token: Option<String>, //if desktop app, include token for auto-login
 }
@@ -90,6 +91,10 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
         Err(_) => true,
     };
 
+    let allow_registration = crate::database::queries::configuration::is_user_registration_enabled()
+        .await
+        .unwrap_or(true);
+
     if is_desktop_app() {
         if needs_setup {
             match create_root_user().await {
@@ -98,6 +103,7 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
                         StatusCode::OK,
                         Json(InitResponse {
                             needs_setup: false,
+                            allow_registration,
                             is_desktop: true,
                             token: Some(token),
                         }),
@@ -115,6 +121,7 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
                 StatusCode::OK,
                 Json(InitResponse {
                     needs_setup: false,
+                    allow_registration,
                     is_desktop: true,
                     token: None,
                 }),
@@ -126,6 +133,7 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
         StatusCode::OK,
         Json(InitResponse {
             needs_setup,
+            allow_registration,
             is_desktop: false,
             token: None, // No token for web app setup
         }),

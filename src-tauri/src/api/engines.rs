@@ -1,5 +1,6 @@
 use crate::ai::engines::{LlamaCppEngine, LocalEngine, MistralRsEngine};
 use crate::api::errors::ApiResult;
+use crate::database::macros::impl_string_to_enum;
 use axum::{debug_handler, http::StatusCode, response::Json};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -31,6 +32,9 @@ impl EngineType {
         }
     }
 }
+
+// Implement string to enum conversion for SQLx
+impl_string_to_enum!(EngineType);
 
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct EngineInfo {

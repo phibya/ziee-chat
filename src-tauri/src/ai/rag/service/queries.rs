@@ -1,6 +1,6 @@
 // Database queries for RAG service
 
-use crate::ai::rag::{engines::RAGEngineType, models::RagInstanceFile, RAGError, RAGResult};
+use crate::ai::rag::{engines::RAGEngineType, models::RagInstanceFile, RAGError, RAGResult, ProcessingStatus};
 use crate::database::get_database_pool;
 use uuid::Uuid;
 
@@ -13,10 +13,11 @@ pub async fn get_rag_instances_with_pending_files() -> RAGResult<Vec<Uuid>> {
         SELECT DISTINCT rif.rag_instance_id 
         FROM rag_instance_files rif
         JOIN rag_instances ri ON rif.rag_instance_id = ri.id
-        WHERE rif.processing_status = 'pending' 
+        WHERE rif.processing_status = $1
         AND ri.is_active = true
         ORDER BY rif.rag_instance_id
         "#,
+         ProcessingStatus::Pending.as_str()
     )
     .fetch_all(&*database)
     .await
@@ -79,13 +80,14 @@ pub async fn update_file_status(rag_file_id: &Uuid, status: &str) -> RAGResult<(
         r#"
         UPDATE rag_instance_files 
         SET processing_status = $1, 
-            processed_at = CASE WHEN $2 = 'completed' THEN NOW() ELSE processed_at END,
+            processed_at = CASE WHEN $2 = $4 THEN NOW() ELSE processed_at END,
             updated_at = NOW()
         WHERE id = $3
         "#,
         status,
         status,
-        rag_file_id
+        rag_file_id,
+        ProcessingStatus::Completed.as_str()
     )
     .execute(&*database)
     .await
@@ -133,11 +135,12 @@ pub async fn get_pending_files_for_instance(
         SELECT id, rag_instance_id, file_id, processing_status, processed_at, 
                processing_error, rag_metadata, created_at, updated_at
         FROM rag_instance_files 
-        WHERE processing_status = 'pending' AND rag_instance_id = $1
+        WHERE processing_status = $2 AND rag_instance_id = $1
         ORDER BY created_at ASC
         LIMIT 5
         "#,
-        rag_instance_id
+        rag_instance_id,
+        ProcessingStatus::Pending.as_str()
     )
     .fetch_all(&*database)
     .await

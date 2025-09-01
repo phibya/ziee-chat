@@ -1,5 +1,7 @@
 use super::model::{ModelCapabilities, ModelEngineSettings, ModelParameters};
 use crate::api::engines::EngineType;
+use crate::database::macros::{impl_json_option_from, impl_string_to_enum};
+use crate::database::types::JsonOption;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -13,6 +15,37 @@ pub struct SourceInfo {
     /// Model ID from hub (for hub downloads) or null for manual downloads
     pub id: Option<String>,
 }
+
+impl_json_option_from!(SourceInfo);
+
+// Implement JSON conversion for main types
+// DownloadRequestData is required, so we need From<JsonValue>
+impl From<serde_json::Value> for DownloadRequestData {
+    fn from(value: serde_json::Value) -> Self {
+        serde_json::from_value(value).unwrap_or_else(|_| DownloadRequestData {
+            model_name: String::new(),
+            revision: None,
+            files: None,
+            quantization: None,
+            repository_path: None,
+            alias: None,
+            description: None,
+            file_format: None,
+            main_filename: None,
+            capabilities: None,
+            parameters: None,
+            engine_type: None,
+            engine_settings: None,
+            source: None,
+        })
+    }
+}
+
+// DownloadProgressData is optional, so use JsonOption
+impl_json_option_from!(DownloadProgressData);
+
+// Implement string to enum conversion for DownloadStatus
+impl_string_to_enum!(DownloadStatus);
 
 /// Download phase enum
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, sqlx::Type)]
@@ -134,7 +167,7 @@ pub struct DownloadInstance {
     pub repository_id: Uuid,
     pub request_data: DownloadRequestData,
     pub status: DownloadStatus,
-    pub progress_data: Option<DownloadProgressData>,
+    pub progress_data: JsonOption<DownloadProgressData>,
     pub error_message: Option<String>,
     pub started_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,

@@ -1,9 +1,10 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
     Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, EditMessageResponse, File, Message, MessageBranch, MessageMetadata,
+    EditMessageRequest, EditMessageResponse, Message, MessageBranch,
     SaveMessageRequest, UpdateConversationRequest,
 };
+use crate::database::types::JsonOption;
 use sqlx::Error;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -510,8 +511,8 @@ pub async fn save_message(
         edit_count: 0,
         created_at: now,
         updated_at: now,
-        metadata: None,
-        files,
+        metadata: JsonOption::default(),
+        files: files.into(),
     })
 }
 
@@ -541,8 +542,8 @@ pub async fn get_conversation_messages(
             m.id, m.conversation_id, m.role, m.content,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at,
-            '[]'::jsonb as "metadata!: Vec<MessageMetadata>",
-            '[]'::jsonb as "files!: Vec<File>"
+            '[]'::json as "metadata",
+            '[]'::json as "files!"
         FROM messages m
         INNER JOIN branch_messages bm ON m.id = bm.message_id
         WHERE bm.branch_id = $1
@@ -560,7 +561,7 @@ pub async fn get_conversation_messages(
     // Attach files to messages
     for message in &mut messages {
         if let Some(files) = files_by_message.get(&message.id) {
-            message.files = files.clone();
+            message.files = files.clone().into();
         }
     }
 
@@ -604,8 +605,8 @@ pub async fn get_conversation_messages_by_branch(
             m.id, m.conversation_id, m.role, m.content,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at,
-            '[]'::jsonb as "metadata!: Vec<MessageMetadata>",
-            '[]'::jsonb as "files!: Vec<File>"
+            '[]'::json as "metadata",
+            '[]'::json as "files!"
         FROM messages m
         INNER JOIN branch_messages bm ON m.id = bm.message_id
         WHERE bm.branch_id = $1
@@ -623,7 +624,7 @@ pub async fn get_conversation_messages_by_branch(
     // Attach files to messages
     for message in &mut messages {
         if let Some(files) = files_by_message.get(&message.id) {
-            message.files = files.clone();
+            message.files = files.clone().into();
         }
     }
 
@@ -830,8 +831,8 @@ pub async fn edit_message(
         edit_count: edit_count + 1, // Incremented count
         created_at: original_created_at,
         updated_at: now,
-        metadata: None,
-        files,
+        metadata: JsonOption::default(),
+        files: files.into(),
     };
 
     Ok(Some(EditMessageResponse {

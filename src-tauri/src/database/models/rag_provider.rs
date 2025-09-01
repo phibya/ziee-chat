@@ -3,6 +3,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::database::macros::impl_string_to_enum;
+use crate::database::types::JsonOption;
 use super::proxy::ProxySettings;
 use super::user::UserGroup;
 
@@ -18,6 +20,36 @@ pub enum RAGProviderType {
     Custom,
 }
 
+impl RAGProviderType {
+    // pub fn as_str(&self) -> &'static str {
+    //     match self {
+    //         RAGProviderType::Local => "local",
+    //         RAGProviderType::LightRAG => "lightrag",
+    //         RAGProviderType::RAGStack => "ragstack",
+    //         RAGProviderType::Chroma => "chroma",
+    //         RAGProviderType::Weaviate => "weaviate",
+    //         RAGProviderType::Pinecone => "pinecone",
+    //         RAGProviderType::Custom => "custom",
+    //     }
+    // }
+    
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "local" => Some(RAGProviderType::Local),
+            "lightrag" => Some(RAGProviderType::LightRAG),
+            "ragstack" => Some(RAGProviderType::RAGStack),
+            "chroma" => Some(RAGProviderType::Chroma),
+            "weaviate" => Some(RAGProviderType::Weaviate),
+            "pinecone" => Some(RAGProviderType::Pinecone),
+            "custom" => Some(RAGProviderType::Custom),
+            _ => None,
+        }
+    }
+}
+
+// Implement string to enum conversion for RAGProviderType
+impl_string_to_enum!(RAGProviderType);
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGProvider {
     pub id: Uuid,
@@ -29,7 +61,7 @@ pub struct RAGProvider {
     pub base_url: Option<String>,
     pub built_in: bool,
     pub can_user_create_instance: bool,
-    pub proxy_settings: Option<ProxySettings>,
+    pub proxy_settings: JsonOption<ProxySettings>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

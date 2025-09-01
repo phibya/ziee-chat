@@ -915,7 +915,7 @@ pub async fn initiate_repository_download(
             .as_ref()
             .and_then(|config| config.token.clone()),
         "basic_auth" => {
-            if let Some(config) = &repository.auth_config {
+            if let Some(config) = &*repository.auth_config {
                 if let (Some(username), Some(password)) = (&config.username, &config.password) {
                     Some(format!("{}:{}", username, password))
                 } else {

@@ -1,7 +1,7 @@
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGEngineSettings, RAGEngineType,
+        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest,
         RAGInstance, RAGInstanceListResponse, UpdateRAGInstanceRequest,
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
@@ -42,8 +42,8 @@ pub async fn create_user_rag_instance(
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, provider_id, user_id, project_id, name, alias, description, 
                   enabled, is_active, is_system, 
-                  engine_type as "engine_type: RAGEngineType",
-                  engine_settings as "engine_settings: RAGEngineSettings",
+                  engine_type,
+                  engine_settings,
                   embedding_model_id, llm_model_id, age_graph_name, parameters, 
                   created_at, updated_at"#,
         instance_id,
@@ -91,8 +91,8 @@ pub async fn create_system_rag_instance(
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, provider_id, user_id, project_id, name, alias, description, 
                   enabled, is_active, is_system, 
-                  engine_type as "engine_type: RAGEngineType", 
-                  engine_settings as "engine_settings: RAGEngineSettings",
+                  engine_type, 
+                  engine_settings,
                   embedding_model_id, llm_model_id, age_graph_name, parameters, 
                   created_at, updated_at"#,
         instance_id,
@@ -140,8 +140,8 @@ pub async fn get_rag_instance(
             RAGInstance,
             r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
                     enabled, is_active, is_system, 
-                    engine_type as "engine_type: RAGEngineType", 
-                    engine_settings as "engine_settings: RAGEngineSettings",
+                    engine_type, 
+                    engine_settings,
                     embedding_model_id, llm_model_id, age_graph_name, parameters, 
                     created_at, updated_at
              FROM rag_instances 
@@ -156,8 +156,8 @@ pub async fn get_rag_instance(
             RAGInstance,
             r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
                     enabled, is_active, is_system, 
-                    engine_type as "engine_type: RAGEngineType", 
-                    engine_settings as "engine_settings: RAGEngineSettings",
+                    engine_type, 
+                    engine_settings,
                     embedding_model_id, llm_model_id, age_graph_name, parameters, 
                     created_at, updated_at
              FROM rag_instances 
@@ -204,8 +204,8 @@ pub async fn list_user_rag_instances(
             RAGInstance,
             r#"SELECT DISTINCT ri.id, ri.provider_id, ri.user_id, ri.project_id, ri.name, ri.alias, ri.description, 
                     ri.enabled, ri.is_active, ri.is_system, 
-                    ri.engine_type as "engine_type: RAGEngineType", 
-                    ri.engine_settings as "engine_settings: RAGEngineSettings",
+                    ri.engine_type, 
+                    ri.engine_settings,
                     ri.embedding_model_id, ri.llm_model_id, ri.age_graph_name, ri.parameters, 
                     ri.created_at, ri.updated_at
              FROM rag_instances ri
@@ -238,8 +238,8 @@ pub async fn list_user_rag_instances(
             RAGInstance,
             r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
                     enabled, is_active, is_system, 
-                    engine_type as "engine_type: RAGEngineType", 
-                    engine_settings as "engine_settings: RAGEngineSettings",
+                    engine_type, 
+                    engine_settings,
                     embedding_model_id, llm_model_id, age_graph_name, parameters, 
                     created_at, updated_at
              FROM rag_instances 
@@ -286,8 +286,8 @@ pub async fn list_system_rag_instances(
         RAGInstance,
         r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
                 enabled, is_active, is_system, 
-                engine_type as "engine_type: RAGEngineType", 
-                engine_settings as "engine_settings: RAGEngineSettings",
+                engine_type, 
+                engine_settings,
                 embedding_model_id, llm_model_id, age_graph_name, parameters, 
                 created_at, updated_at
          FROM rag_instances 
@@ -399,8 +399,8 @@ pub async fn update_rag_instance(
         RAGInstance,
         r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
                   enabled, is_active, is_system, 
-                  engine_type as "engine_type: RAGEngineType", 
-                  engine_settings as "engine_settings: RAGEngineSettings",
+                  engine_type, 
+                  engine_settings,
                   embedding_model_id, llm_model_id, age_graph_name, parameters, 
                   created_at, updated_at
          FROM rag_instances 
@@ -510,4 +510,25 @@ pub async fn validate_rag_instance_access(
     } else {
         Ok(false)
     }
+}
+
+/// Get RAG instance by ID without user permission checking (for internal use)
+pub async fn get_rag_instance_by_id(instance_id: Uuid) -> Result<Option<RAGInstance>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let instance = sqlx::query_as!(
+        RAGInstance,
+        r#"SELECT id, provider_id, user_id, project_id, name, alias, description, enabled, is_active, is_system,
+                engine_type, 
+                engine_settings,
+                embedding_model_id, llm_model_id, age_graph_name, parameters, 
+                created_at, updated_at
+         FROM rag_instances WHERE id = $1"#,
+        instance_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(instance)
 }
