@@ -427,7 +427,6 @@ CREATE TABLE rag_instances (
     -- Model references (using existing models)
     embedding_model_id UUID REFERENCES models(id),
     llm_model_id UUID REFERENCES models(id),
-    
     -- Apache AGE graph name (for graph engine instances)
     age_graph_name VARCHAR(255),
     

@@ -4,7 +4,10 @@ use uuid::Uuid;
 #[allow(dead_code)]
 use crate::database::{
     get_database_pool,
-    models::{CreateModelRequest, Model, ModelFile, Provider, ProviderType, UpdateModelRequest},
+    models::{
+        CreateModelRequest, Model, ModelFile, Provider, ProviderType, SourceInfo,
+        UpdateModelRequest,
+    },
 };
 
 pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {
@@ -68,7 +71,10 @@ pub async fn create_model(
         request.engine_type.as_str(),
         request.engine_settings.as_ref().map(|s| serde_json::to_value(s).unwrap()),
         request.file_format.as_str(),
-        request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::Value::Null)
+        request.source.as_ref().map(|s| serde_json::to_value(s).unwrap()).unwrap_or(serde_json::json!(SourceInfo{
+            r#type: "manual".to_string(),
+            id: None,
+        }))
     )
     .fetch_one(pool)
     .await?;
