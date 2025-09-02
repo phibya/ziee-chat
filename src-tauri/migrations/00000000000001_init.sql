@@ -274,7 +274,7 @@ CREATE TABLE conversations (
                                assistant_id UUID REFERENCES assistants(id),
                                model_id UUID REFERENCES models(id),
                                project_id UUID REFERENCES projects(id) ON DELETE SET NULL,
-                               active_branch_id UUID NOT NULL, -- Will be set after branches table is created
+                               active_branch_id UUID, -- Will be set after branches table is created
                                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
                                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );

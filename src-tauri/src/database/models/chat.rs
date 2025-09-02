@@ -15,7 +15,7 @@ pub struct Conversation {
     pub project_id: Option<Uuid>,
     pub assistant_id: Option<Uuid>,
     pub model_id: Option<Uuid>,
-    pub active_branch_id: Uuid,
+    pub active_branch_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

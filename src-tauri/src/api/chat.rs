@@ -430,7 +430,7 @@ async fn stream_ai_response(
                 file_ids: None, // Assistant messages don't have file attachments
             };
 
-            match chat::save_message(assistant_message_req, user_id, Some(active_branch_id)).await {
+            match chat::save_message(assistant_message_req, user_id, active_branch_id).await {
                 Ok(assistant_message) => {
                     // Register model access for auto-unload tracking on successful completion
                     crate::ai::register_model_access(&request.model_id).await;

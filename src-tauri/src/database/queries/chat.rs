@@ -145,7 +145,7 @@ pub async fn create_conversation(
         project_id: request.project_id,
         assistant_id: Some(request.assistant_id),
         model_id: Some(request.model_id),
-        active_branch_id: main_branch.id,
+        active_branch_id: Some(main_branch.id),
         created_at: now,
         updated_at: now,
     })
@@ -222,7 +222,7 @@ pub async fn list_conversations(
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
-            m.content as last_message,
+            COALESCE(m.content, '') as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as "message_count!"
         FROM conversations c
         LEFT JOIN (
@@ -250,7 +250,7 @@ pub async fn list_conversations(
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
-            m.content as last_message,
+            COALESCE(m.content, '') as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as "message_count!"
         FROM conversations c
         LEFT JOIN (
@@ -416,7 +416,7 @@ pub async fn save_message(
                 };
 
             // Use the active branch
-            conversation.active_branch_id
+            conversation.active_branch_id.ok_or(Error::RowNotFound)?
         }
     };
 
