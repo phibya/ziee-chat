@@ -9,6 +9,7 @@ interface AuthState {
   user?: User | null
   token?: string | null
   isAuthenticated: boolean
+  allowRegistration: boolean
   isLoading: boolean
   needsSetup: boolean
   isDesktop: boolean
@@ -19,6 +20,7 @@ const defaultState: AuthState = {
   user: null,
   token: null,
   isAuthenticated: false,
+  allowRegistration: false,
   isLoading: false,
   needsSetup: false,
   isDesktop: false,
@@ -179,12 +181,12 @@ export const auth = async () => {
       return
     }
 
-    // For web apps, keep existing flow unchanged
     const response = await ApiClient.Auth.init()
 
     useAuthStore.setState({
       needsSetup: response.needs_setup,
       isDesktop: response.is_desktop,
+      allowRegistration: response.allow_registration,
     })
 
     if (response.token) {

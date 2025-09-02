@@ -12,7 +12,7 @@ use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{
         AssignProviderToGroupRequest, AssignRAGProviderToGroupRequest, AssignUserToGroupRequest,
-        CreateUserGroupRequest, UpdateUserGroupRequest,
+        CreateUserGroupRequest, UpdateUserGroupRequest, ProviderListResponse, RAGProviderListResponse,
     },
     queries::{user_group_providers, user_group_rag_providers, user_groups},
 };
@@ -311,4 +311,84 @@ pub async fn get_group_members(
             ))
         }
     }
+}
+
+// Get providers assigned to a group
+#[debug_handler]
+pub async fn get_group_providers(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(group_id): Path<Uuid>,
+    Query(params): Query<PaginationQuery>,
+) -> ApiResult<Json<ProviderListResponse>> {
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20);
+
+    let providers = match user_group_providers::get_providers_for_group(group_id).await {
+        Ok(providers) => providers,
+        Err(e) => {
+            eprintln!("Failed to get providers for group {}: {}", group_id, e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get group providers"),
+            ));
+        }
+    };
+
+    // Apply pagination
+    let total = providers.len() as i64;
+    let start = ((page - 1) * per_page) as usize;
+    let end = (start + per_page as usize).min(providers.len());
+
+    let paginated_providers = if start < providers.len() {
+        providers[start..end].to_vec()
+    } else {
+        Vec::new()
+    };
+
+    Ok((StatusCode::OK, Json(ProviderListResponse {
+        providers: paginated_providers,
+        total,
+        page,
+        per_page,
+    })))
+}
+
+// Get RAG providers assigned to a group
+#[debug_handler]
+pub async fn get_group_rag_providers(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(group_id): Path<Uuid>,
+    Query(params): Query<PaginationQuery>,
+) -> ApiResult<Json<RAGProviderListResponse>> {
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(20);
+
+    let providers = match user_group_rag_providers::get_rag_providers_for_group(group_id).await {
+        Ok(providers) => providers,
+        Err(e) => {
+            eprintln!("Failed to get RAG providers for group {}: {}", group_id, e);
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get group RAG providers"),
+            ));
+        }
+    };
+
+    // Apply pagination
+    let total = providers.len() as i64;
+    let start = ((page - 1) * per_page) as usize;
+    let end = (start + per_page as usize).min(providers.len());
+
+    let paginated_providers = if start < providers.len() {
+        providers[start..end].to_vec()
+    } else {
+        Vec::new()
+    };
+
+    Ok((StatusCode::OK, Json(RAGProviderListResponse {
+        providers: paginated_providers,
+        total,
+        page,
+        per_page,
+    })))
 }

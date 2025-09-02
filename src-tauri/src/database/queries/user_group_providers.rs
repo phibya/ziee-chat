@@ -215,3 +215,27 @@ async fn get_all_providers() -> Result<Vec<Provider>, sqlx::Error> {
 
     Ok(providers)
 }
+
+/// Get all providers assigned to a user group
+pub async fn get_providers_for_group(group_id: Uuid) -> Result<Vec<Provider>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let providers = sqlx::query_as!(
+        Provider,
+        r#"SELECT p.id, p.name, 
+                 p.provider_type, 
+                 p.enabled, p.api_key, p.base_url, p.built_in, 
+                 p.proxy_settings, 
+                 p.created_at, p.updated_at
+         FROM providers p
+         INNER JOIN user_group_providers ugp ON p.id = ugp.provider_id
+         WHERE ugp.group_id = $1
+         ORDER BY p.built_in DESC, p.created_at ASC"#,
+        group_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(providers)
+}

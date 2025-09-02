@@ -519,6 +519,7 @@ export interface HubVersionResponse {
 
 export interface InitResponse {
   needs_setup: boolean
+  allow_registration: boolean
   is_desktop: boolean
   token?: string
 }
@@ -579,7 +580,7 @@ export interface Message {
   created_at: string
   updated_at: string
   metadata?: MessageMetadata[]
-  files: File[]
+  files: MessageFiles
 }
 
 export interface MessageBranch {
@@ -588,6 +589,8 @@ export interface MessageBranch {
   created_at: string
   is_clone: boolean
 }
+
+export type MessageFiles = File[]
 
 export interface MessageMetadata {
   id: string
@@ -1076,6 +1079,8 @@ export interface RAGSimpleVectorIndexingSettings {
   chunk_token_size?: number
   chunk_overlap_token_size?: number
   cosine_better_than_threshold?: number
+  max_parallel_insert?: number
+  embedding_batch_size?: number
 }
 
 export interface RAGSimpleVectorQueryingSettings {
@@ -1335,9 +1340,7 @@ export interface UserGroup {
   description?: string
   id: string
   name: string
-  permissions: string[]
-  provider_ids: string[]
-  rag_provider_ids: string[]
+  permissions: UserGroupPermissions
   is_protected: boolean
   is_active: boolean
   created_at: string
@@ -1350,6 +1353,8 @@ export interface UserGroupListResponse {
   page: number
   per_page: number
 }
+
+export type UserGroupPermissions = string[]
 
 export interface UserHello {
   name: string
@@ -1432,6 +1437,8 @@ export const ApiEndpoints = {
   'Admin.getDownload': 'GET /api/admin/downloads/{download_id}',
   'Admin.getGroup': 'GET /api/admin/groups/{group_id}',
   'Admin.getGroupMembers': 'GET /api/admin/groups/{group_id}/members',
+  'Admin.getGroupProviders': 'GET /api/admin/groups/{group_id}/providers',
+  'Admin.getGroupRagProviders': 'GET /api/admin/groups/{group_id}/rag_providers',
   'Admin.getHardwareInfo': 'GET /api/admin/hardware',
   'Admin.getModel': 'GET /api/admin/models/{model_id}',
   'Admin.getNgrokSettings': 'GET /api/admin/config/ngrok',
@@ -1596,6 +1603,8 @@ export type ApiEndpointParameters = {
   'Admin.getDownload': { download_id: string }
   'Admin.getGroup': { group_id: string }
   'Admin.getGroupMembers': { group_id: string } & PaginationQuery
+  'Admin.getGroupProviders': { group_id: string } & PaginationQuery
+  'Admin.getGroupRagProviders': { group_id: string } & PaginationQuery
   'Admin.getHardwareInfo': void
   'Admin.getModel': { model_id: string }
   'Admin.getNgrokSettings': void
@@ -1760,6 +1769,8 @@ export type ApiEndpointResponses = {
   'Admin.getDownload': DownloadInstance
   'Admin.getGroup': UserGroup
   'Admin.getGroupMembers': UserListResponse
+  'Admin.getGroupProviders': ProviderListResponse
+  'Admin.getGroupRagProviders': RAGProviderListResponse
   'Admin.getHardwareInfo': HardwareInfoResponse
   'Admin.getModel': Model
   'Admin.getNgrokSettings': NgrokSettingsResponse

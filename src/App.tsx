@@ -13,7 +13,7 @@ import {
   ExistingChatInterface,
   NewChatInterface,
 } from './components/Pages/Chat'
-import { ChatHistoryPage } from './components/Pages/ChatHistoryPage'
+import { ChatHistoryPage } from './components/Pages/Chat/ChatHistoryPage.tsx'
 import { HubPage } from './components/Pages/Hub/HubPage'
 import { AssistantsPage } from './components/Pages/Assistants'
 import { SettingsPage } from './components/Pages/SettingsPage'

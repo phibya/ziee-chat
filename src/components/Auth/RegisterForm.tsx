@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { Alert, Button, Card, Form, Input, Typography } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons'
 import {
   clearAuthenticationError,
-  loadSystemUserRegistrationSettings,
   registerNewUser,
   setupInitialAdminUser,
   Stores,
@@ -24,30 +23,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
 }) => {
   const { t } = useTranslation()
   const [form] = Form.useForm()
-  const [checkingRegistration, setCheckingRegistration] = useState(false)
-  const { isLoading, error, isDesktop } = Stores.Auth
-
-  // Get registration status from admin users store
-  const registrationEnabled = Stores.AdminUsers.userRegistrationEnabled
-
-  // Check registration status for web app (except for setup mode)
-  useEffect(() => {
-    if (!isSetup && !isDesktop) {
-      const checkRegistrationStatus = async () => {
-        setCheckingRegistration(true)
-        try {
-          await loadSystemUserRegistrationSettings()
-        } catch {
-          // If we can't check status, registration status will remain default
-          console.warn('Failed to load registration status')
-        } finally {
-          setCheckingRegistration(false)
-        }
-      }
-
-      checkRegistrationStatus()
-    }
-  }, [isSetup, isDesktop, loadSystemUserRegistrationSettings])
+  const { isLoading, error, isDesktop, allowRegistration } = Stores.Auth
 
   const onFinish = async (values: CreateUserRequest) => {
     try {
@@ -66,19 +42,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const title = isSetup ? 'Setup Admin Account' : 'Create Account'
   const submitText = isSetup ? 'Setup App' : 'Sign Up'
 
-  // Show loading state while checking registration status
-  if (checkingRegistration) {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <div className="text-center p-4">
-          <Text type="secondary">Checking registration status...</Text>
-        </div>
-      </Card>
-    )
-  }
-
   // Show disabled message if registration is not enabled
-  if (!isSetup && !isDesktop && !registrationEnabled) {
+  if (!isSetup && !isDesktop && !allowRegistration) {
     return (
       <Card className="w-full max-w-md mx-auto">
         <div className="text-center">

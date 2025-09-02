@@ -171,25 +171,35 @@ export const ProjectsPage: React.FC = () => {
           </div>
         )}
         {/* Projects Grid */}
-        <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-          <div className={'h-full flex flex-col overflow-y-auto'}>
-            <div className="max-w-4xl flex flex-wrap gap-3 pt-3 w-full self-center px-3">
-              {getFilteredAndSortedProjects().map(project => (
-                <div className={'min-w-70 flex-1'}>
-                  <ProjectCard project={project} />
+        {(() => {
+          const filteredProjects = getFilteredAndSortedProjects()
+          
+          if (filteredProjects.length === 0) {
+            return null
+          }
+          
+          return (
+            <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
+              <div className={'h-full flex flex-col overflow-y-auto'}>
+                <div className="max-w-4xl flex flex-wrap gap-3 pt-3 w-full self-center px-3">
+                  {filteredProjects.map(project => (
+                    <div key={project.id} className={'min-w-70 flex-1'}>
+                      <ProjectCard project={project} />
+                    </div>
+                  ))}
+                  {/* Placeholder divs for grid layout */}
+                  <div className={'min-w-70 flex-1'}></div>
+                  <div className={'min-w-70 flex-1'}></div>
+                  <div className={'min-w-70 flex-1'}></div>
                 </div>
-              ))}
-              {/* Placeholder divs for grid layout */}
-              <div className={'min-w-70 flex-1'}></div>
-              <div className={'min-w-70 flex-1'}></div>
-              <div className={'min-w-70 flex-1'}></div>
+              </div>
             </div>
-          </div>
-        </div>
+          )
+        })()}
 
         {/* Empty State */}
         {!loading && getFilteredAndSortedProjects().length === 0 && (
-          <div className="text-center py-12">
+          <div className="text-center py-12 m-auto">
             <FolderOutlined className="text-6xl mb-4" />
             <Title level={3} type="secondary">
               {searchQuery ? 'No projects found' : 'No projects yet'}
@@ -200,13 +210,15 @@ export const ProjectsPage: React.FC = () => {
                 : 'Create your first project to get started'}
             </Text>
             {!searchQuery && (
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => openProjectDrawer()}
-              >
-                Create project
-              </Button>
+              <PermissionGuard permissions={[Permission.ProjectsCreate]}>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => openProjectDrawer()}
+                >
+                  Create Project
+                </Button>
+              </PermissionGuard>
             )}
           </div>
         )}

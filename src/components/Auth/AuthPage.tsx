@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Layout, Spin, Typography } from 'antd'
-import { loadSystemUserRegistrationSettings, Stores } from '../../store'
+import { Layout, Typography } from 'antd'
+import { Stores } from '../../store'
 import { LoginForm } from './LoginForm'
 import { RegisterForm } from './RegisterForm'
 
@@ -11,31 +11,8 @@ type AuthMode = 'login' | 'register' | 'setup'
 
 export const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login')
-  const { isLoading, needsSetup, isDesktop, isAuthenticated } = Stores.Auth
-
-  // Get registration status from admin users store
-  const registrationEnabled = Stores.AdminUsers.userRegistrationEnabled
-
-  const [checkingRegistration, setCheckingRegistration] = useState(false)
-
-  // Check registration status for web app
-  useEffect(() => {
-    const checkRegistrationStatus = async () => {
-      if (!needsSetup && !isDesktop) {
-        setCheckingRegistration(true)
-        try {
-          await loadSystemUserRegistrationSettings()
-        } catch {
-          // If we can't check status, registration status will remain default
-          console.warn('Failed to load registration status')
-        } finally {
-          setCheckingRegistration(false)
-        }
-      }
-    }
-
-    checkRegistrationStatus()
-  }, [needsSetup, isDesktop, loadSystemUserRegistrationSettings])
+  const { needsSetup, isDesktop, isAuthenticated, allowRegistration } =
+    Stores.Auth
 
   useEffect(() => {
     if (needsSetup) {
@@ -48,7 +25,7 @@ export const AuthPage: React.FC = () => {
   }, [needsSetup, isDesktop])
 
   const handleSwitchToRegister = () => {
-    if (!registrationEnabled) {
+    if (!allowRegistration) {
       return // Don't allow switching if registration is disabled
     }
     setMode('register')
@@ -57,16 +34,6 @@ export const AuthPage: React.FC = () => {
   // Don't render anything if already authenticated
   if (isAuthenticated) {
     return null
-  }
-
-  if (isLoading || checkingRegistration) {
-    return (
-      <Layout className="min-h-screen">
-        <Content className="flex items-center justify-center">
-          <Spin size="large" />
-        </Content>
-      </Layout>
-    )
   }
 
   return (
@@ -82,12 +49,12 @@ export const AuthPage: React.FC = () => {
           {mode === 'login' && (
             <LoginForm
               onSwitchToRegister={
-                registrationEnabled ? handleSwitchToRegister : undefined
+                allowRegistration ? handleSwitchToRegister : undefined
               }
             />
           )}
 
-          {mode === 'register' && registrationEnabled && (
+          {mode === 'register' && allowRegistration && (
             <RegisterForm onSwitchToLogin={() => setMode('login')} />
           )}
         </div>

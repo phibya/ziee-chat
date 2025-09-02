@@ -172,3 +172,27 @@ pub async fn get_rag_provider_ids_for_group(group_id: Uuid) -> Result<Vec<Uuid>,
         .map(|row| row.provider_id)
         .collect())
 }
+
+/// Get all RAG providers assigned to a user group
+pub async fn get_rag_providers_for_group(group_id: Uuid) -> Result<Vec<RAGProvider>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let providers = sqlx::query_as!(
+        RAGProvider,
+        r#"SELECT rp.id, rp.name, 
+                 rp.provider_type,
+                 rp.enabled, rp.api_key, rp.base_url, rp.built_in, rp.can_user_create_instance, 
+                 rp.proxy_settings,
+                 rp.created_at, rp.updated_at
+         FROM rag_providers rp
+         INNER JOIN user_group_rag_providers ugrp ON rp.id = ugrp.provider_id
+         WHERE ugrp.group_id = $1
+         ORDER BY rp.built_in DESC, rp.created_at ASC"#,
+        group_id
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(providers)
+}
