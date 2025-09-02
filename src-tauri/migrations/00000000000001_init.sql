@@ -421,7 +421,7 @@ CREATE TABLE rag_instances (
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     
     -- Engine configuration (following model pattern)
-    engine_type VARCHAR(50) NOT NULL CHECK (engine_type IN ('rag_simple_vector', 'rag_simple_graph')),
+    engine_type VARCHAR(50) NOT NULL CHECK (engine_type IN ('simple_vector', 'simple_graph')),
     engine_settings JSONB DEFAULT '{}' NOT NULL, -- Consolidated engine settings
     
     -- Model references (using existing models)
