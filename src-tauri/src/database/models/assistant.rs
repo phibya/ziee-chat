@@ -1,9 +1,9 @@
+use super::model::ModelParameters;
+use crate::database::types::JsonOption;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::database::types::JsonOption;
-use super::model::ModelParameters;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct Assistant {

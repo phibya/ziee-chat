@@ -3,10 +3,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::database::macros::impl_string_to_enum;
-use crate::database::types::JsonOption;
 use super::proxy::ProxySettings;
 use super::user::UserGroup;
+use crate::database::macros::impl_string_to_enum;
+use crate::database::types::JsonOption;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
@@ -32,7 +32,7 @@ impl RAGProviderType {
     //         RAGProviderType::Custom => "custom",
     //     }
     // }
-    
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "local" => Some(RAGProviderType::Local),

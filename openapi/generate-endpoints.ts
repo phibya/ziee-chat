@@ -292,7 +292,30 @@ function getTypeFromSchema(
   }
 
   if (isSchemaReference(schema)) {
-    return extractSchemaName(schema.$ref)
+    const typeName = extractSchemaName(schema.$ref)
+    
+    // Handle JsonOption_for_ types - extract the actual type
+    if (typeName.startsWith('JsonOption_for_')) {
+      const actualType = typeName.replace('JsonOption_for_', '')
+      
+      // Convert specific patterns to proper TypeScript types
+      if (actualType === 'Array_of_File') {
+        return 'File[]'
+      } else if (actualType === 'Array_of_MessageMetadata') {
+        return 'MessageMetadata[]'
+      } else if (actualType === 'Array_of_string') {
+        return 'string[]'
+      } else if (actualType.startsWith('Array_of_')) {
+        // Generic array pattern: Array_of_TypeName -> TypeName[]
+        const itemType = actualType.replace('Array_of_', '')
+        return `${itemType}[]`
+      } else {
+        // Single type: JsonOption_for_TypeName -> TypeName
+        return actualType
+      }
+    }
+    
+    return typeName
   }
 
   // Handle anyOf patterns (union types with schema references)
@@ -421,6 +444,11 @@ function generateSchemaInterface(
     return `export type ${name} = ${extractSchemaName(schema.$ref)}`
   }
 
+  // Skip JsonOption_for_ types since we convert them inline
+  if (name.startsWith('JsonOption_for_')) {
+    return ''
+  }
+
   // Special handling for Permission type - convert to enum
   if (name === 'Permission' && schema.enum && Array.isArray(schema.enum)) {
     return generatePermissionEnum(schema.enum)
@@ -432,26 +460,40 @@ function generateSchemaInterface(
     for (const [propName, propSchema] of Object.entries(schema.properties)) {
       let isOptional = !schema.required?.includes(propName)
 
-      // Check if property is nullable (has null in union type or anyOf with null)
-      const isNullableUnion =
-        Array.isArray(propSchema.type) && propSchema.type.includes('null')
-      const isNullableAnyOf =
-        propSchema.anyOf &&
-        Array.isArray(propSchema.anyOf) &&
-        propSchema.anyOf.some((subSchema: any) => subSchema.type === 'null')
-      const isNullableAllOf =
-        propSchema.allOf &&
-        Array.isArray(propSchema.allOf) &&
-        propSchema.allOf.some((subSchema: any) => subSchema.type === 'null')
-      const isNullable = isNullableUnion || isNullableAnyOf || isNullableAllOf
+      // Check if this property references a JsonOption_for_ type
+      let propType: string
+      if (isSchemaReference(propSchema)) {
+        const refTypeName = extractSchemaName(propSchema.$ref)
+        if (refTypeName.startsWith('JsonOption_for_')) {
+          // This property uses a JsonOption type, so make it optional and get the actual type
+          isOptional = true
+          propType = getTypeFromSchema(propSchema, true) // This will handle the conversion
+        } else {
+          propType = getTypeFromSchema(propSchema)
+        }
+      } else {
+        // Check if property is nullable (has null in union type or anyOf with null)
+        const isNullableUnion =
+          Array.isArray(propSchema.type) && propSchema.type.includes('null')
+        const isNullableAnyOf =
+          propSchema.anyOf &&
+          Array.isArray(propSchema.anyOf) &&
+          propSchema.anyOf.some((subSchema: any) => subSchema.type === 'null')
+        const isNullableAllOf =
+          propSchema.allOf &&
+          Array.isArray(propSchema.allOf) &&
+          propSchema.allOf.some((subSchema: any) => subSchema.type === 'null')
+        const isNullable = isNullableUnion || isNullableAnyOf || isNullableAllOf
 
-      // If property is nullable, make it optional and exclude null from type
-      if (isNullable) {
-        isOptional = true
+        // If property is nullable, make it optional and exclude null from type
+        if (isNullable) {
+          isOptional = true
+        }
+
+        propType = getTypeFromSchema(propSchema, isNullable)
       }
 
       const optionalMarker = isOptional ? '?' : ''
-      const propType = getTypeFromSchema(propSchema, isNullable)
       properties.push(`  ${propName}${optionalMarker}: ${propType}`)
     }
 
@@ -516,7 +558,11 @@ function generateAllSchemas(schemas: Record<string, SchemaDefinition>): string {
 
     const schema = schemas[schemaName]
     const interfaceDefinition = generateSchemaInterface(schemaName, schema)
-    interfaces.push(interfaceDefinition)
+    
+    // Only add non-empty interface definitions
+    if (interfaceDefinition.trim()) {
+      interfaces.push(interfaceDefinition)
+    }
   }
 
   return interfaces.join('\n\n')

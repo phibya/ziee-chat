@@ -1,8 +1,8 @@
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest,
-        RAGInstance, RAGInstanceListResponse, UpdateRAGInstanceRequest,
+        CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGInstance,
+        RAGInstanceListResponse, UpdateRAGInstanceRequest,
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
 };

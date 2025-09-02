@@ -7,9 +7,9 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::OnceCell;
 
+pub mod macros;
 pub mod models;
 pub mod queries;
-pub mod macros;
 pub mod types;
 
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();

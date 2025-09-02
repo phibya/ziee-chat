@@ -16,12 +16,13 @@ impl RAGSimpleVectorEngine {
         chunks: &[TextChunk],
     ) -> RAGResult<Vec<EmbeddingVector>> {
         // Get engine settings for batch size
-        let engine_settings = crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
-        let vector_settings = engine_settings.simple_vector
-            .as_ref()
-            .ok_or_else(|| RAGError::ConfigurationError("SimpleVector engine settings not found".to_string()))?;
+        let engine_settings =
+            crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
+        let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
+            RAGError::ConfigurationError("SimpleVector engine settings not found".to_string())
+        })?;
         let indexing_settings = vector_settings.indexing();
-        
+
         let batch_size = indexing_settings.embedding_batch_size();
         let total_chunks = chunks.len();
 
@@ -32,7 +33,12 @@ impl RAGSimpleVectorEngine {
         );
 
         // Get AI provider from rag_instance_info (already created)
-        let ai_provider = self.instance_info.models.embedding_model.ai_provider.clone();
+        let ai_provider = self
+            .instance_info
+            .models
+            .embedding_model
+            .ai_provider
+            .clone();
 
         let batches: Vec<Vec<String>> = chunks
             .chunks(batch_size)
@@ -115,10 +121,11 @@ impl RAGSimpleVectorEngine {
         tracing::info!("Storing {} chunks with advanced metadata", chunks.len());
 
         // Get engine settings for parallel processing control
-        let engine_settings = crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
-        let vector_settings = engine_settings.simple_vector
-            .as_ref()
-            .ok_or_else(|| RAGError::ConfigurationError("SimpleVector engine settings not found".to_string()))?;
+        let engine_settings =
+            crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
+        let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
+            RAGError::ConfigurationError("SimpleVector engine settings not found".to_string())
+        })?;
         let indexing_settings = vector_settings.indexing();
 
         // Create semaphore for parallel processing control

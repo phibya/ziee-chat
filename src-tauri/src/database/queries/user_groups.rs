@@ -13,7 +13,7 @@ pub async fn create_user_group(
     let permissions_json =
         serde_json::to_value(&permissions).map_err(|e| sqlx::Error::Encode(Box::new(e)))?;
 
-    let  group = sqlx::query_as!(
+    let group = sqlx::query_as!(
         UserGroup,
         r#"
         INSERT INTO user_groups (name, description, permissions)
@@ -29,14 +29,13 @@ pub async fn create_user_group(
     .fetch_one(&*pool)
     .await?;
 
-
     Ok(group)
 }
 
 pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
 
-    let  group = sqlx::query_as!(
+    let group = sqlx::query_as!(
         UserGroup,
         r#"SELECT id, name, description, 
         permissions,
@@ -46,8 +45,6 @@ pub async fn get_user_group_by_id(group_id: Uuid) -> Result<Option<UserGroup>, s
     )
     .fetch_optional(&*pool)
     .await?;
-
-
 
     Ok(group)
 }
@@ -78,7 +75,6 @@ pub async fn list_user_groups(
     .fetch_all(&*pool)
     .await?;
 
-
     Ok(UserGroupListResponse {
         groups,
         total,
@@ -95,18 +91,6 @@ pub async fn update_user_group(
     is_active: Option<bool>,
 ) -> Result<Option<UserGroup>, sqlx::Error> {
     let pool = get_database_pool()?;
-
-    // Check if this is a protected group and apply restrictions
-    let existing_group = get_user_group_by_id(group_id).await?;
-    if let Some(group) = &existing_group {
-        if group.is_protected {
-            // For protected groups, only allow editing description
-            // Name, permissions, and is_active cannot be changed
-            if name.is_some() || permissions.is_some() || is_active.is_some() {
-                return Err(sqlx::Error::RowNotFound);
-            }
-        }
-    }
 
     // If no updates are provided, return the existing group
     if name.is_none() && description.is_none() && permissions.is_none() && is_active.is_none() {
@@ -157,7 +141,6 @@ pub async fn update_user_group(
     }
 
     let group = get_user_group_by_id(group_id).await?;
-
 
     Ok(group)
 }

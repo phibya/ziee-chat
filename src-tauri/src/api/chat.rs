@@ -13,11 +13,11 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
 use crate::ai::core::ChatRequest;
-use crate::database::types::JsonOption;
 use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::api::types::ConversationPaginationQuery;
 use crate::database::models::EditMessageRequest;
+use crate::database::types::JsonOption;
 use crate::database::{
     models::{
         Conversation, ConversationListResponse, CreateConversationRequest, Message,

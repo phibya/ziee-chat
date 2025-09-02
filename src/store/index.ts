@@ -58,6 +58,8 @@ export {
   clearAdminUserGroupsStoreError,
   createNewUserGroup,
   deleteUserGroup,
+  getGroupProviders,
+  getGroupRagProviders,
   loadUserGroups,
   loadUserGroupMembers,
   removeUserFromUserGroup,

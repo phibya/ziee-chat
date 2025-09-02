@@ -1,6 +1,6 @@
+use crate::database::macros::make_transparent;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::database::macros::make_transparent;
 
 // Custom wrapper for optional JSON fields that handles null values properly
 make_transparent!(
@@ -13,12 +13,12 @@ impl<T> JsonOption<T> {
     pub fn into_option(self) -> Option<T> {
         self.0
     }
-    
+
     /// Convert &JsonOption<T> to Option<&T>
     pub fn as_option(&self) -> Option<&T> {
         self.0.as_ref()
     }
-    
+
     /// Convert &JsonOption<T> to Option<T> by cloning
     pub fn to_option(&self) -> Option<T>
     where

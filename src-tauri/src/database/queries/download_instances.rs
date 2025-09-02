@@ -4,8 +4,8 @@ use uuid::Uuid;
 use crate::database::{
     models::{
         CreateDownloadInstanceRequest, DownloadInstance, DownloadInstanceListResponse,
-        DownloadPhase, DownloadProgressData, DownloadStatus,
-        UpdateDownloadProgressRequest, UpdateDownloadStatusRequest,
+        DownloadPhase, DownloadProgressData, DownloadStatus, UpdateDownloadProgressRequest,
+        UpdateDownloadStatusRequest,
     },
     queries::get_database_pool,
 };

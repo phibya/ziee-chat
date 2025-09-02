@@ -650,6 +650,100 @@
         }
       }
     },
+    "/api/admin/groups/{group_id}/providers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "description": "Get providers assigned to a user group",
+        "operationId": "Admin.getGroupProviders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/rag_providers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "description": "Get RAG providers assigned to a user group",
+        "operationId": "Admin.getGroupRagProviders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          },
+          {
+            "in": "query",
+            "name": "per_page",
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32"
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGProviderListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/config/user-registration": {
       "get": {
         "tags": [
@@ -4259,6 +4353,9 @@
           "needs_setup": {
             "type": "boolean"
           },
+          "allow_registration": {
+            "type": "boolean"
+          },
           "is_desktop": {
             "type": "boolean"
           },
@@ -4271,6 +4368,7 @@
         },
         "required": [
           "needs_setup",
+          "allow_registration",
           "is_desktop"
         ]
       },
@@ -4451,24 +4549,7 @@
             "type": "string"
           },
           "permissions": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "provider_ids": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "rag_provider_ids": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            }
+            "$ref": "#/components/schemas/UserGroupPermissions"
           },
           "is_protected": {
             "type": "boolean"
@@ -4489,13 +4570,17 @@
           "id",
           "name",
           "permissions",
-          "provider_ids",
-          "rag_provider_ids",
           "is_protected",
           "is_active",
           "created_at",
           "updated_at"
         ]
+      },
+      "UserGroupPermissions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       },
       "LoginRequest": {
         "type": "object",
@@ -4936,6 +5021,242 @@
           "group_id"
         ]
       },
+      "ProviderListResponse": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Provider"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "per_page": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "providers",
+          "total",
+          "page",
+          "per_page"
+        ]
+      },
+      "Provider": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "api_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "base_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "built_in": {
+            "type": "boolean"
+          },
+          "proxy_settings": {
+            "$ref": "#/components/schemas/JsonOption_for_ProxySettings"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "enabled",
+          "built_in",
+          "proxy_settings",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "ProviderType": {
+        "type": "string",
+        "enum": [
+          "local",
+          "openai",
+          "anthropic",
+          "groq",
+          "gemini",
+          "mistral",
+          "deepseek",
+          "huggingface",
+          "custom"
+        ]
+      },
+      "JsonOption_for_ProxySettings": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ProxySettings"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "ProxySettings": {
+        "description": "Common proxy settings structure used for both system-wide and provider-specific proxy configuration",
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "url": {
+            "type": "string",
+            "default": ""
+          },
+          "username": {
+            "type": "string",
+            "default": ""
+          },
+          "password": {
+            "type": "string",
+            "default": ""
+          },
+          "no_proxy": {
+            "type": "string",
+            "default": ""
+          },
+          "ignore_ssl_certificates": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "RAGProviderListResponse": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RAGProvider"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "per_page": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "providers",
+          "total",
+          "page",
+          "per_page"
+        ]
+      },
+      "RAGProvider": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/RAGProviderType"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "api_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "base_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "built_in": {
+            "type": "boolean"
+          },
+          "can_user_create_instance": {
+            "type": "boolean"
+          },
+          "proxy_settings": {
+            "$ref": "#/components/schemas/JsonOption_for_ProxySettings"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "enabled",
+          "built_in",
+          "can_user_create_instance",
+          "proxy_settings",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "RAGProviderType": {
+        "type": "string",
+        "enum": [
+          "local",
+          "lightrag",
+          "ragstack",
+          "chroma",
+          "weaviate",
+          "pinecone",
+          "custom"
+        ]
+      },
       "UpdateUserRegistrationRequest": {
         "type": "object",
         "properties": {
@@ -5128,139 +5449,6 @@
           "new_password"
         ]
       },
-      "ProviderListResponse": {
-        "type": "object",
-        "properties": {
-          "providers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Provider"
-            }
-          },
-          "total": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "page": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "per_page": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "required": [
-          "providers",
-          "total",
-          "page",
-          "per_page"
-        ]
-      },
-      "Provider": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "$ref": "#/components/schemas/ProviderType"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "api_key": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "base_url": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "built_in": {
-            "type": "boolean"
-          },
-          "proxy_settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProxySettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "type",
-          "enabled",
-          "built_in",
-          "created_at",
-          "updated_at"
-        ]
-      },
-      "ProviderType": {
-        "type": "string",
-        "enum": [
-          "local",
-          "openai",
-          "anthropic",
-          "groq",
-          "gemini",
-          "mistral",
-          "deepseek",
-          "huggingface",
-          "custom"
-        ]
-      },
-      "ProxySettings": {
-        "description": "Common proxy settings structure used for both system-wide and provider-specific proxy configuration",
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "default": false
-          },
-          "url": {
-            "type": "string",
-            "default": ""
-          },
-          "username": {
-            "type": "string",
-            "default": ""
-          },
-          "password": {
-            "type": "string",
-            "default": ""
-          },
-          "no_proxy": {
-            "type": "string",
-            "default": ""
-          },
-          "ignore_ssl_certificates": {
-            "type": "boolean",
-            "default": false
-          }
-        }
-      },
       "CreateProviderRequest": {
         "type": "object",
         "properties": {
@@ -5377,24 +5565,10 @@
             "type": "boolean"
           },
           "capabilities": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelCapabilities"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/JsonOption_for_ModelCapabilities"
           },
           "parameters": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelParameters"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/JsonOption_for_ModelParameters"
           },
           "created_at": {
             "type": "string",
@@ -5418,13 +5592,7 @@
             ]
           },
           "validation_issues": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
+            "$ref": "#/components/schemas/JsonOption_for_Array_of_string"
           },
           "port": {
             "type": [
@@ -5444,36 +5612,13 @@
             "$ref": "#/components/schemas/EngineType"
           },
           "engine_settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelEngineSettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/JsonOption_for_ModelEngineSettings"
           },
           "file_format": {
             "$ref": "#/components/schemas/FileFormat"
           },
           "source": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SourceInfo"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "files": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/ModelFileInfo"
-            }
+            "$ref": "#/components/schemas/JsonOption_for_SourceInfo"
           }
         },
         "required": [
@@ -5484,10 +5629,25 @@
           "enabled",
           "is_deprecated",
           "is_active",
+          "capabilities",
+          "parameters",
           "created_at",
           "updated_at",
+          "validation_issues",
           "engine_type",
-          "file_format"
+          "engine_settings",
+          "file_format",
+          "source"
+        ]
+      },
+      "JsonOption_for_ModelCapabilities": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ModelCapabilities"
+          },
+          {
+            "type": "null"
+          }
         ]
       },
       "ModelCapabilities": {
@@ -5545,6 +5705,16 @@
           }
         }
       },
+      "JsonOption_for_ModelParameters": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ModelParameters"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "ModelParameters": {
         "description": "Model parameters for inference configuration",
         "type": "object",
@@ -5555,8 +5725,7 @@
               "integer",
               "null"
             ],
-            "format": "uint32",
-            "minimum": 0
+            "format": "int32"
           },
           "temperature": {
             "description": "Temperature for randomness (0.0-2.0)",
@@ -5572,8 +5741,7 @@
               "integer",
               "null"
             ],
-            "format": "uint32",
-            "minimum": 0
+            "format": "int32"
           },
           "top_p": {
             "description": "Top-P (nucleus) sampling parameter (0.0-1.0)",
@@ -5597,8 +5765,7 @@
               "integer",
               "null"
             ],
-            "format": "uint32",
-            "minimum": 0
+            "format": "int32"
           },
           "repeat_penalty": {
             "description": "Repetition penalty (1.0 = no penalty)",
@@ -5644,12 +5811,31 @@
           }
         }
       },
+      "JsonOption_for_Array_of_string": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "type": "string"
+        }
+      },
       "EngineType": {
         "type": "string",
         "enum": [
           "mistralrs",
           "llamacpp",
           "none"
+        ]
+      },
+      "JsonOption_for_ModelEngineSettings": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ModelEngineSettings"
+          },
+          {
+            "type": "null"
+          }
         ]
       },
       "ModelEngineSettings": {
@@ -5775,8 +5961,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "max_seq_len": {
             "description": "Maximum sequence length (--max-seq-len)",
@@ -5784,8 +5969,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "no_kv_cache": {
             "description": "Use no KV cache (--no-kv-cache)",
@@ -5807,8 +5991,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "paged_attn_gpu_mem_usage": {
             "description": "GPU memory usage percentage 0-1 (--pa-gpu-mem-usage)",
@@ -5824,8 +6007,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "paged_attn_block_size": {
             "description": "PagedAttention block size (--pa-blk-size)",
@@ -5833,8 +6015,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "no_paged_attn": {
             "description": "Disable PagedAttention on CUDA (--no-paged-attn)",
@@ -5870,8 +6051,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "prompt_chunksize": {
             "description": "Prompt batching chunk size (--prompt-batchsize)",
@@ -5879,8 +6059,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "dtype": {
             "description": "Model data type: auto, f16, f32, bf16 (--dtype)",
@@ -5902,8 +6081,7 @@
               "integer",
               "null"
             ],
-            "format": "uint64",
-            "minimum": 0
+            "format": "int64"
           },
           "max_edge": {
             "description": "Maximum edge length for image resizing (--max-edge)",
@@ -5911,8 +6089,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "max_num_images": {
             "description": "Maximum number of images (--max-num-images)",
@@ -5920,8 +6097,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "max_image_length": {
             "description": "Maximum image edge length (--max-image-length)",
@@ -5929,8 +6105,7 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int64"
           },
           "serve_ip": {
             "description": "Server IP address to serve on",
@@ -6215,7 +6390,7 @@
               "number",
               "null"
             ],
-            "format": "double"
+            "format": "float"
           },
           "rope_freq_scale": {
             "description": "RoPE frequency scaling (--rope-freq-scale)",
@@ -6223,7 +6398,7 @@
               "number",
               "null"
             ],
-            "format": "double"
+            "format": "float"
           },
           "rope_scaling": {
             "description": "RoPE scaling method: none/linear/yarn (--rope-scaling)",
@@ -6272,6 +6447,16 @@
           "gguf"
         ]
       },
+      "JsonOption_for_SourceInfo": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/SourceInfo"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "SourceInfo": {
         "description": "Source information for download tracking",
         "type": "object",
@@ -6290,31 +6475,6 @@
         },
         "required": [
           "type"
-        ]
-      },
-      "ModelFileInfo": {
-        "type": "object",
-        "properties": {
-          "filename": {
-            "type": "string"
-          },
-          "file_size_bytes": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "file_type": {
-            "type": "string"
-          },
-          "uploaded_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "filename",
-          "file_size_bytes",
-          "file_type",
-          "uploaded_at"
         ]
       },
       "AvailableDevicesResponse": {
@@ -6660,14 +6820,7 @@
             "$ref": "#/components/schemas/DownloadStatus"
           },
           "progress_data": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DownloadProgressData"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/JsonOption_for_DownloadProgressData"
           },
           "error_message": {
             "type": [
@@ -6708,6 +6861,7 @@
           "repository_id",
           "request_data",
           "status",
+          "progress_data",
           "started_at",
           "created_at",
           "updated_at"
@@ -6850,6 +7004,16 @@
           "cancelled"
         ]
       },
+      "JsonOption_for_DownloadProgressData": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DownloadProgressData"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "DownloadProgressData": {
         "description": "Progress data for download tracking",
         "type": "object",
@@ -6958,14 +7122,7 @@
             "type": "string"
           },
           "auth_config": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RepositoryAuthConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/JsonOption_for_RepositoryAuthConfig"
           },
           "enabled": {
             "type": "boolean"
@@ -6987,10 +7144,21 @@
           "name",
           "url",
           "auth_type",
+          "auth_config",
           "enabled",
           "built_in",
           "created_at",
           "updated_at"
+        ]
+      },
+      "JsonOption_for_RepositoryAuthConfig": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/RepositoryAuthConfig"
+          },
+          {
+            "type": "null"
+          }
         ]
       },
       "RepositoryAuthConfig": {
@@ -7226,7 +7394,7 @@
             "$ref": "#/components/schemas/RAGEngineType"
           },
           "engine_settings": {
-            "$ref": "#/components/schemas/RagEngineSettings"
+            "$ref": "#/components/schemas/RAGEngineSettings"
           },
           "embedding_model_id": {
             "type": [
@@ -7280,7 +7448,7 @@
           "simple_graph"
         ]
       },
-      "RagEngineSettings": {
+      "RAGEngineSettings": {
         "description": "Engine-specific settings for RAG instance configuration",
         "type": "object",
         "properties": {
@@ -7341,16 +7509,14 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "chunk_overlap_token_size": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "cosine_better_than_threshold": {
             "type": [
@@ -7358,6 +7524,20 @@
               "null"
             ],
             "format": "float"
+          },
+          "max_parallel_insert": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "embedding_batch_size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -7369,16 +7549,14 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "chunk_top_k": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "similarity_threshold": {
             "type": [
@@ -7392,16 +7570,14 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "max_total_tokens": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "chunk_selection_method": {
             "anyOf": [
@@ -7474,48 +7650,42 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "chunk_overlap_token_size": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "entity_extract_max_gleaning": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "force_llm_summary_on_merge": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "max_graph_nodes": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "summary_max_tokens": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "entity_types": {
             "type": [
@@ -7542,56 +7712,49 @@
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "max_relation_tokens": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "max_total_tokens": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "max_graph_nodes_per_query": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "top_k": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "chunk_top_k": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "related_chunk_number": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "query_mode": {
             "anyOf": [
@@ -7685,7 +7848,7 @@
           "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/RagEngineSettings"
+                "$ref": "#/components/schemas/RAGEngineSettings"
               },
               {
                 "type": "null"
@@ -7739,7 +7902,7 @@
           "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/RagEngineSettings"
+                "$ref": "#/components/schemas/RAGEngineSettings"
               },
               {
                 "type": "null"
@@ -7747,111 +7910,6 @@
             ]
           }
         }
-      },
-      "RAGProviderListResponse": {
-        "type": "object",
-        "properties": {
-          "providers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RAGProvider"
-            }
-          },
-          "total": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "page": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "per_page": {
-            "type": "integer",
-            "format": "int32"
-          }
-        },
-        "required": [
-          "providers",
-          "total",
-          "page",
-          "per_page"
-        ]
-      },
-      "RAGProvider": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "$ref": "#/components/schemas/RAGProviderType"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "api_key": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "base_url": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "built_in": {
-            "type": "boolean"
-          },
-          "can_user_create_instance": {
-            "type": "boolean"
-          },
-          "proxy_settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProxySettings"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "type",
-          "enabled",
-          "built_in",
-          "can_user_create_instance",
-          "created_at",
-          "updated_at"
-        ]
-      },
-      "RAGProviderType": {
-        "type": "string",
-        "enum": [
-          "local",
-          "lightrag",
-          "ragstack",
-          "chroma",
-          "weaviate",
-          "pinecone",
-          "custom"
-        ]
       },
       "CreateRAGProviderRequest": {
         "type": "object",
@@ -8189,14 +8247,7 @@
             ]
           },
           "parameters": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelParameters"
-              },
-              {
-                "type": "null"
-              }
-            ]
+            "$ref": "#/components/schemas/JsonOption_for_ModelParameters"
           },
           "created_by": {
             "type": [
@@ -8226,6 +8277,7 @@
         "required": [
           "id",
           "name",
+          "parameters",
           "is_template",
           "is_default",
           "is_active",
@@ -9045,8 +9097,7 @@
           },
           "active_models": {
             "type": "integer",
-            "format": "uint",
-            "minimum": 0
+            "format": "int32"
           },
           "server_url": {
             "type": [
@@ -9495,19 +9546,10 @@
             "format": "date-time"
           },
           "metadata": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/MessageMetadata"
-            }
+            "$ref": "#/components/schemas/JsonOption_for_Array_of_MessageMetadata"
           },
           "files": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/File"
-            }
+            "$ref": "#/components/schemas/MessageFiles"
           }
         },
         "required": [
@@ -9519,8 +9561,18 @@
           "edit_count",
           "created_at",
           "updated_at",
+          "metadata",
           "files"
         ]
+      },
+      "JsonOption_for_Array_of_MessageMetadata": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "$ref": "#/components/schemas/MessageMetadata"
+        }
       },
       "MessageMetadata": {
         "type": "object",
@@ -9549,6 +9601,12 @@
           "value",
           "created_at"
         ]
+      },
+      "MessageFiles": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/File"
+        }
       },
       "File": {
         "type": "object",
@@ -9581,13 +9639,6 @@
             ]
           },
           "project_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "uuid"
-          },
-          "rag_instance_id": {
             "type": [
               "string",
               "null"
@@ -10231,7 +10282,7 @@
           "engine_settings": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/RagEngineSettings"
+                "$ref": "#/components/schemas/RAGEngineSettings"
               },
               {
                 "type": "null"

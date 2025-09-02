@@ -21,7 +21,6 @@ import {
   Popconfirm,
   Select,
   Spin,
-  Switch,
   Tag,
   Typography,
 } from 'antd'
@@ -32,19 +31,20 @@ import {
   clearSystemAdminError,
   createNewUserGroup,
   deleteUserGroup,
+  getGroupProviders,
+  getGroupRagProviders,
   loadAllModelProviders,
   loadAllRAGProviders,
   loadUserGroupMembers,
   loadUserGroups,
   Stores,
-  updateUserGroup,
 } from '../../../../store'
 import {
   CreateUserGroupRequest,
-  UpdateUserGroupRequest,
   UserGroup,
 } from '../../../../types'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
+import { EditUserGroupDrawer } from './EditUserGroupDrawer.tsx'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -70,7 +70,10 @@ export function UserGroupsSettings() {
   const [membersDrawerVisible, setMembersDrawerVisible] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null)
   const [createForm] = Form.useForm()
-  const [editForm] = Form.useForm()
+  
+  // Store providers for each group
+  const [groupProviders, setGroupProviders] = useState<Record<string, any[]>>({})
+  const [groupRagProviders, setGroupRagProviders] = useState<Record<string, any[]>>({})
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
@@ -90,6 +93,36 @@ export function UserGroupsSettings() {
       clearSystemAdminError()
     }
   }, [error, message])
+
+  // Load providers for all groups when groups are loaded
+  useEffect(() => {
+    const loadGroupProviders = async () => {
+      if (groups.length > 0) {
+        const providersMap: Record<string, any[]> = {}
+        const ragProvidersMap: Record<string, any[]> = {}
+        
+        for (const group of groups) {
+          try {
+            const [providersResponse, ragProvidersResponse] = await Promise.all([
+              getGroupProviders(group.id),
+              getGroupRagProviders(group.id)
+            ])
+            providersMap[group.id] = providersResponse.providers
+            ragProvidersMap[group.id] = ragProvidersResponse.providers
+          } catch (error) {
+            console.error(`Failed to load providers for group ${group.id}:`, error)
+            providersMap[group.id] = []
+            ragProvidersMap[group.id] = []
+          }
+        }
+        
+        setGroupProviders(providersMap)
+        setGroupRagProviders(ragProvidersMap)
+      }
+    }
+    
+    loadGroupProviders()
+  }, [groups])
 
   const handleCreateGroup = async (values: any) => {
     // Check if user is trying to assign model providers but doesn't have permission
@@ -118,32 +151,36 @@ export function UserGroupsSettings() {
     }
   }
 
-  const handleEditGroup = async (values: any) => {
-    if (!selectedGroup) return
-
-    try {
-      const updateData: { group_id: string } & UpdateUserGroupRequest = {
-        group_id: selectedGroup.id,
-        name: selectedGroup.is_protected ? undefined : values.name,
-        description: values.description,
-        permissions: selectedGroup.is_protected
-          ? undefined
-          : values.permissions
-            ? JSON.parse(values.permissions)
-            : undefined,
-        provider_ids: values.provider_ids || [],
-        rag_provider_ids: values.rag_provider_ids || [],
-        is_active: selectedGroup.is_protected ? undefined : values.is_active,
+  const handleEditSuccess = () => {
+    setEditModalVisible(false)
+    setSelectedGroup(null)
+    // Reload providers for the group list
+    const loadGroupProviders = async () => {
+      if (groups.length > 0) {
+        const providersMap: Record<string, any[]> = {}
+        const ragProvidersMap: Record<string, any[]> = {}
+        
+        for (const group of groups) {
+          try {
+            const [providersResponse, ragProvidersResponse] = await Promise.all([
+              getGroupProviders(group.id),
+              getGroupRagProviders(group.id)
+            ])
+            providersMap[group.id] = providersResponse.providers
+            ragProvidersMap[group.id] = ragProvidersResponse.providers
+          } catch (error) {
+            console.error(`Failed to load providers for group ${group.id}:`, error)
+            providersMap[group.id] = []
+            ragProvidersMap[group.id] = []
+          }
+        }
+        
+        setGroupProviders(providersMap)
+        setGroupRagProviders(ragProvidersMap)
       }
-      await updateUserGroup(selectedGroup.id, updateData)
-      message.success('User group updated successfully')
-      setEditModalVisible(false)
-      setSelectedGroup(null)
-      editForm.resetFields()
-    } catch (error) {
-      console.error('Failed to update user group:', error)
-      // Error is handled by the store
     }
+    
+    loadGroupProviders()
   }
 
   const handleDeleteGroup = async (groupId: string) => {
@@ -170,14 +207,6 @@ export function UserGroupsSettings() {
 
   const openEditModal = (group: UserGroup) => {
     setSelectedGroup(group)
-    editForm.setFieldsValue({
-      name: group.name,
-      description: group.description,
-      permissions: JSON.stringify(group.permissions, null, 2),
-      provider_ids: group.provider_ids || [],
-      rag_provider_ids: group.rag_provider_ids || [],
-      is_active: group.is_active,
-    })
     setEditModalVisible(true)
   }
 
@@ -311,48 +340,42 @@ export function UserGroupsSettings() {
                         <Descriptions.Item label="Created">
                           {new Date(group.created_at).toLocaleDateString()}
                         </Descriptions.Item>
-                        {group.provider_ids &&
-                          group.provider_ids.length > 0 && (
+                        {groupProviders[group.id] &&
+                          groupProviders[group.id].length > 0 && (
                             <Descriptions.Item
                               label="Model Providers"
                               span={{ xs: 1, sm: 2, md: 3 }}
                             >
                               <Flex wrap className="gap-1">
-                                {group.provider_ids.map(providerId => {
-                                  const provider = providers.find(
-                                    p => p.id === providerId,
-                                  )
+                                {groupProviders[group.id].map((provider: any) => {
                                   return (
                                     <Tag
-                                      key={providerId}
+                                      key={provider.id}
                                       color="blue"
                                       className="text-xs"
                                     >
-                                      {provider?.name || providerId}
+                                      {provider.name}
                                     </Tag>
                                   )
                                 })}
                               </Flex>
                             </Descriptions.Item>
                           )}
-                        {group.rag_provider_ids &&
-                          group.rag_provider_ids.length > 0 && (
+                        {groupRagProviders[group.id] &&
+                          groupRagProviders[group.id].length > 0 && (
                             <Descriptions.Item
                               label="RAG Providers"
                               span={{ xs: 1, sm: 2, md: 3 }}
                             >
                               <Flex wrap className="gap-1">
-                                {group.rag_provider_ids.map(providerId => {
-                                  const provider = ragProviders.find(
-                                    p => p.id === providerId,
-                                  )
+                                {groupRagProviders[group.id].map((provider: any) => {
                                   return (
                                     <Tag
-                                      key={providerId}
+                                      key={provider.id}
                                       color="green"
                                       className="text-xs"
                                     >
-                                      {provider?.name || providerId}
+                                      {provider.name}
                                     </Tag>
                                   )
                                 })}
@@ -500,137 +523,16 @@ export function UserGroupsSettings() {
           </Form>
         </Drawer>
 
-        {/* Edit Group Modal */}
-        <Drawer
-          title="Edit User Group"
+        {/* Edit Group Drawer */}
+        <EditUserGroupDrawer
+          group={selectedGroup}
           open={editModalVisible}
           onClose={() => {
             setEditModalVisible(false)
             setSelectedGroup(null)
-            editForm.resetFields()
           }}
-          footer={null}
-          width={600}
-          maskClosable={false}
-        >
-          <Form form={editForm} layout="vertical" onFinish={handleEditGroup}>
-            <Form.Item
-              name="name"
-              label="Group Name"
-              tooltip={
-                selectedGroup?.is_protected
-                  ? 'Protected groups cannot have their name changed'
-                  : undefined
-              }
-              rules={[{ required: true, message: 'Please enter group name' }]}
-            >
-              <Input
-                placeholder="Enter group name"
-                disabled={selectedGroup?.is_protected}
-              />
-            </Form.Item>
-            <Form.Item name="description" label="Description">
-              <TextArea rows={3} placeholder="Enter group description" />
-            </Form.Item>
-            <Form.Item
-              name="permissions"
-              label="Permissions (JSON)"
-              tooltip={
-                selectedGroup?.is_protected
-                  ? 'Protected groups cannot have their permissions modified'
-                  : undefined
-              }
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (!value) return Promise.resolve()
-                    try {
-                      JSON.parse(value)
-                      return Promise.resolve()
-                    } catch {
-                      return Promise.reject('Invalid JSON format')
-                    }
-                  },
-                },
-              ]}
-            >
-              <TextArea rows={6} disabled={selectedGroup?.is_protected} />
-            </Form.Item>
-
-            <Form.Item
-              name="provider_ids"
-              label="Model Providers"
-              tooltip="Select which model providers this group can access"
-            >
-              <Select
-                mode="multiple"
-                placeholder="Select model providers"
-                options={providers.map(provider => ({
-                  value: provider.id,
-                  label: provider.name,
-                  disabled: !provider.enabled,
-                }))}
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="rag_provider_ids"
-              label="RAG Providers"
-              tooltip="Select which RAG providers this group can access"
-            >
-              <Select
-                mode="multiple"
-                placeholder="Select RAG providers"
-                options={ragProviders.map(provider => ({
-                  value: provider.id,
-                  label: provider.name,
-                  disabled: !provider.enabled,
-                }))}
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '')
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="is_active"
-              label="Active"
-              valuePropName="checked"
-              tooltip={
-                selectedGroup?.is_protected
-                  ? 'Protected groups cannot have their active status changed'
-                  : undefined
-              }
-            >
-              <Switch disabled={selectedGroup?.is_protected} />
-            </Form.Item>
-            <Form.Item className="mb-0">
-              <Flex className="gap-2">
-                <Button type="primary" htmlType="submit">
-                  Update Group
-                </Button>
-                <Button
-                  onClick={() => {
-                    setEditModalVisible(false)
-                    setSelectedGroup(null)
-                    editForm.resetFields()
-                  }}
-                >
-                  Cancel
-                </Button>
-              </Flex>
-            </Form.Item>
-          </Form>
-        </Drawer>
+          onSuccess={handleEditSuccess}
+        />
 
         {/* Group Members Drawer */}
         <Drawer

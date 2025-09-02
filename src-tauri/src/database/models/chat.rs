@@ -1,10 +1,10 @@
-use crate::database::models::File;
 use crate::database::macros::{impl_json_option_from, make_transparent};
+use crate::database::models::File;
+use crate::database::types::JsonOption;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::database::types::JsonOption;
 
 // Main unified structures
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

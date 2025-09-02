@@ -12,7 +12,8 @@ use crate::api::types::PaginationQuery;
 use crate::database::{
     models::{
         AssignProviderToGroupRequest, AssignRAGProviderToGroupRequest, AssignUserToGroupRequest,
-        CreateUserGroupRequest, UpdateUserGroupRequest, ProviderListResponse, RAGProviderListResponse,
+        CreateUserGroupRequest, ProviderListResponse, RAGProviderListResponse,
+        UpdateUserGroupRequest,
     },
     queries::{user_group_providers, user_group_rag_providers, user_groups},
 };
@@ -345,12 +346,15 @@ pub async fn get_group_providers(
         Vec::new()
     };
 
-    Ok((StatusCode::OK, Json(ProviderListResponse {
-        providers: paginated_providers,
-        total,
-        page,
-        per_page,
-    })))
+    Ok((
+        StatusCode::OK,
+        Json(ProviderListResponse {
+            providers: paginated_providers,
+            total,
+            page,
+            per_page,
+        }),
+    ))
 }
 
 // Get RAG providers assigned to a group
@@ -385,10 +389,13 @@ pub async fn get_group_rag_providers(
         Vec::new()
     };
 
-    Ok((StatusCode::OK, Json(RAGProviderListResponse {
-        providers: paginated_providers,
-        total,
-        page,
-        per_page,
-    })))
+    Ok((
+        StatusCode::OK,
+        Json(RAGProviderListResponse {
+            providers: paginated_providers,
+            total,
+            page,
+            per_page,
+        }),
+    ))
 }

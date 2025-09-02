@@ -1,8 +1,8 @@
+use crate::database::macros::make_transparent;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::database::macros::make_transparent;
 
 // Base User structure (for direct DB operations without aggregations)
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -297,3 +297,38 @@ export const removeUserFromUserGroup = async (
 export const clearAdminUserGroupsStoreError = (): void => {
   useAdminUserGroupsStore.setState({ error: null })
 }
+
+// Group Provider functions
+export const getGroupProviders = async (
+  groupId: string,
+  page?: number,
+  pageSize?: number,
+): Promise<any> => {
+  try {
+    const response = await ApiClient.Admin.getGroupProviders({
+      group_id: groupId,
+      page: page || 1,
+      per_page: pageSize || 20,
+    })
+    return response
+  } catch (error) {
+    throw error
+  }
+}
+
+export const getGroupRagProviders = async (
+  groupId: string,
+  page?: number,
+  pageSize?: number,
+): Promise<any> => {
+  try {
+    const response = await ApiClient.Admin.getGroupRagProviders({
+      group_id: groupId,
+      page: page || 1,
+      per_page: pageSize || 20,
+    })
+    return response
+  } catch (error) {
+    throw error
+  }
+}

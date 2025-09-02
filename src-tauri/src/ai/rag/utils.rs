@@ -1,9 +1,9 @@
 // Utility functions for RAG operations
 
+use crate::ai::rag::types::{RAGInstanceInfo, RAGModel, RAGModels};
+use crate::database::models::rag_instance::{RAGEngineSettings, RAGInstance};
+use crate::database::queries::{models, providers, rag_instances};
 use uuid::Uuid;
-use crate::database::models::rag_instance::{RAGInstance, RAGEngineSettings};
-use crate::database::queries::{rag_instances, providers, models};
-use crate::ai::rag::types::{RAGModel, RAGModels, RAGInstanceInfo};
 
 /// Get AI provider, models, and RAG engine settings using rag_instance_id
 pub async fn get_rag_instance_info(
@@ -22,9 +22,10 @@ pub async fn get_rag_instance_info(
         .ok_or("Provider not found")?;
 
     // 3. Create embedding model with AI provider (required)
-    let embedding_model_id = instance.embedding_model_id
+    let embedding_model_id = instance
+        .embedding_model_id
         .ok_or("Embedding model ID not configured for this RAG instance")?;
-    
+
     let embedding_model = models::get_model_by_id(embedding_model_id)
         .await
         .map_err(|e| format!("Failed to get embedding model: {}", e))?
@@ -99,21 +100,20 @@ pub async fn create_llm_provider(
         .ok_or("Provider not found")?;
 
     // Get LLM model (required)
-    let llm_model_id = instance.llm_model_id
+    let llm_model_id = instance
+        .llm_model_id
         .ok_or("LLM model ID not configured for this RAG instance")?;
-    
+
     let llm_model = models::get_model_by_id(llm_model_id)
         .await
         .map_err(|e| format!("Failed to get LLM model: {}", e))?
         .ok_or("LLM model not found")?;
 
     // Create AI provider with LLM model
-    let ai_provider = crate::ai::model_manager::create_ai_provider_with_model_id(
-        &provider,
-        Some(llm_model_id),
-    )
-    .await
-    .map_err(|e| format!("Failed to create AI provider: {}", e))?;
+    let ai_provider =
+        crate::ai::model_manager::create_ai_provider_with_model_id(&provider, Some(llm_model_id))
+            .await
+            .map_err(|e| format!("Failed to create AI provider: {}", e))?;
 
     Ok(RAGModel {
         model: llm_model,
@@ -139,9 +139,10 @@ pub async fn create_embedding_provider(
         .ok_or("Provider not found")?;
 
     // Get embedding model (required)
-    let embedding_model_id = instance.embedding_model_id
+    let embedding_model_id = instance
+        .embedding_model_id
         .ok_or("Embedding model ID not configured for this RAG instance")?;
-    
+
     let embedding_model = models::get_model_by_id(embedding_model_id)
         .await
         .map_err(|e| format!("Failed to get embedding model: {}", e))?

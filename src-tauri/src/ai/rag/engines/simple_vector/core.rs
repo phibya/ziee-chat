@@ -21,8 +21,10 @@ impl RAGSimpleVectorEngine {
     pub async fn new(instance_id: Uuid) -> Result<Self, RAGError> {
         let instance_info = crate::ai::rag::utils::get_rag_instance_info(instance_id)
             .await
-            .map_err(|e| RAGError::ConfigurationError(format!("Failed to get RAG instance info: {}", e)))?;
-        
+            .map_err(|e| {
+                RAGError::ConfigurationError(format!("Failed to get RAG instance info: {}", e))
+            })?;
+
         Ok(Self {
             // === INSTANCE ===
             instance_id,
@@ -37,14 +39,8 @@ impl RAGSimpleVectorEngine {
         status: ProcessingStatus,
         error_message: Option<String>,
     ) -> RAGResult<()> {
-        queries::update_pipeline_status(
-            self.instance_id,
-            file_id,
-            stage,
-            status,
-            error_message,
-        )
-        .await
+        queries::update_pipeline_status(self.instance_id, file_id, stage, status, error_message)
+            .await
     }
 
     /// Get filename from the files table

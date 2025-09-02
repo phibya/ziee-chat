@@ -3,8 +3,7 @@ use uuid::Uuid;
 use crate::database::{
     get_database_pool,
     models::{
-        CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse,
-        UpdateRAGProviderRequest,
+        CreateRAGProviderRequest, RAGProvider, RAGProviderListResponse, UpdateRAGProviderRequest,
     },
 };
 

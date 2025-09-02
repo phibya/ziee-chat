@@ -1,5 +1,8 @@
 use crate::api;
-use crate::database::models::{UserGroup, UserGroupListResponse, UserListResponse, ProviderListResponse, RAGProviderListResponse};
+use crate::database::models::{
+    ProviderListResponse, RAGProviderListResponse, UserGroup, UserGroupListResponse,
+    UserListResponse,
+};
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,

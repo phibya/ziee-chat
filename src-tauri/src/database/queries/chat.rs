@@ -1,8 +1,8 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
     Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, EditMessageResponse, Message, MessageBranch,
-    SaveMessageRequest, UpdateConversationRequest,
+    EditMessageRequest, EditMessageResponse, Message, MessageBranch, SaveMessageRequest,
+    UpdateConversationRequest,
 };
 use crate::database::types::JsonOption;
 use sqlx::Error;

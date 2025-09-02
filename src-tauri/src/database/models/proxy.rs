@@ -1,6 +1,6 @@
+use crate::database::macros::impl_json_option_from;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::database::macros::impl_json_option_from;
 
 /// Common proxy settings structure used for both system-wide and provider-specific proxy configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Type)]

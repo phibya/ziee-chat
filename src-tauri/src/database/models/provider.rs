@@ -3,9 +3,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::{model::DeviceType, proxy::ProxySettings};
 use crate::database::macros::impl_string_to_enum;
 use crate::database::types::JsonOption;
-use super::{model::DeviceType, proxy::ProxySettings};
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "lowercase")]

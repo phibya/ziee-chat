@@ -170,20 +170,20 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
                             .arg("/PID")
                             .arg(pid.to_string())
                             .status();
-                        
+
                         #[cfg(not(windows))]
                         let _ = Command::new("kill")
                             .arg("-TERM")
                             .arg(pid.to_string())
                             .status();
-                        
+
                         // Give it a moment to shut down gracefully
                         thread::sleep(std::time::Duration::from_millis(500));
                     }
                 }
             }
         }
-        
+
         std::fs::remove_dir_all(&settings.data_dir)?;
     }
     std::fs::create_dir_all(&settings.data_dir)?;
@@ -195,7 +195,6 @@ fn setup_build_database(target_dir: &Path) -> Result<(), Box<dyn std::error::Err
     settings
         .configuration
         .insert("log_timezone".to_string(), "UTC".to_string());
-
 
     // Create PostgreSQL instance
     let mut postgresql = PostgreSQL::new(settings);

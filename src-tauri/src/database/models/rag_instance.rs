@@ -59,7 +59,7 @@ impl RAGEngineType {
             RAGEngineType::RagSimpleGraph => "simple_graph",
         }
     }
-    
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "simple_vector" => Some(RAGEngineType::RagSimpleVector),
@@ -151,7 +151,7 @@ impl RAGProcessingStatus {
             RAGProcessingStatus::Failed => "failed",
         }
     }
-    
+
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "pending" => Some(RAGProcessingStatus::Pending),

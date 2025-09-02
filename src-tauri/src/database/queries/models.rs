@@ -4,12 +4,7 @@ use uuid::Uuid;
 #[allow(dead_code)]
 use crate::database::{
     get_database_pool,
-    models::{
-        CreateModelRequest, Model,
-        ModelFile, Provider,
-        UpdateModelRequest,
-        ProviderType
-    },
+    models::{CreateModelRequest, Model, ModelFile, Provider, ProviderType, UpdateModelRequest},
 };
 
 pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, sqlx::Error> {

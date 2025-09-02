@@ -91,9 +91,10 @@ pub async fn check_init_status() -> ApiResult<Json<InitResponse>> {
         Err(_) => true,
     };
 
-    let allow_registration = crate::database::queries::configuration::is_user_registration_enabled()
-        .await
-        .unwrap_or(true);
+    let allow_registration =
+        crate::database::queries::configuration::is_user_registration_enabled()
+            .await
+            .unwrap_or(true);
 
     if is_desktop_app() {
         if needs_setup {

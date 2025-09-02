@@ -67,7 +67,7 @@ macro_rules! make_transparent {
                 value: sqlx::postgres::PgValueRef<'_>,
             ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
                 let json_value = sqlx::types::Json::<serde_json::Value>::decode(value)?;
-                
+
                 match json_value.0 {
                     serde_json::Value::Null => Ok($name(None)),
                     other => {
@@ -125,19 +125,19 @@ macro_rules! make_transparent {
     };
 }
 
-
 /// Implement From<Option<JsonValue>> for JsonOption<T> for specific types
 /// Usage: impl_json_option_from!(ModelParameters);
 macro_rules! impl_json_option_from {
     ($concrete_type:ty) => {
-        impl From<Option<serde_json::Value>> for crate::database::types::JsonOption<$concrete_type> {
+        impl From<Option<serde_json::Value>>
+            for crate::database::types::JsonOption<$concrete_type>
+        {
             fn from(value: Option<serde_json::Value>) -> Self {
                 crate::database::types::JsonOption::from_json_option(value)
             }
         }
     };
 }
-
 
 /// Implement From<String> for enums that have from_str() method
 /// Usage: impl_string_to_enum!(EngineType);
@@ -147,21 +147,29 @@ macro_rules! impl_string_to_enum {
         impl From<String> for $enum_type {
             fn from(s: String) -> Self {
                 Self::from_str(&s).unwrap_or_else(|| {
-                    panic!("Invalid enum value '{}' for type {}", s, std::any::type_name::<$enum_type>())
+                    panic!(
+                        "Invalid enum value '{}' for type {}",
+                        s,
+                        std::any::type_name::<$enum_type>()
+                    )
                 })
             }
         }
-        
+
         impl From<&str> for $enum_type {
             fn from(s: &str) -> Self {
                 Self::from_str(s).unwrap_or_else(|| {
-                    panic!("Invalid enum value '{}' for type {}", s, std::any::type_name::<$enum_type>())
+                    panic!(
+                        "Invalid enum value '{}' for type {}",
+                        s,
+                        std::any::type_name::<$enum_type>()
+                    )
                 })
             }
         }
     };
 }
 
-pub(crate) use make_transparent;
 pub(crate) use impl_json_option_from;
 pub(crate) use impl_string_to_enum;
+pub(crate) use make_transparent;

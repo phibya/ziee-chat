@@ -1,12 +1,12 @@
 // RAG-specific type definitions and utilities
 
+use crate::ai::core::AIProvider;
+use crate::database::models::{rag_instance::RAGInstance, Model, Provider};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use uuid::Uuid;
 use std::sync::Arc;
-use crate::ai::core::AIProvider;
-use crate::database::models::{Provider, Model, rag_instance::RAGInstance};
+use uuid::Uuid;
 
 /// A model with its corresponding AI provider
 pub struct RAGModel {

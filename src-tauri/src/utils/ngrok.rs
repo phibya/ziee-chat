@@ -37,7 +37,7 @@ impl NgrokService {
         // Ensure rustls crypto provider is installed before any TLS operations
         // This fixes "Could not automatically determine the process-level CryptoProvider" error
         let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
-        
+
         Self {
             session: None,
             tunnel_task: None,

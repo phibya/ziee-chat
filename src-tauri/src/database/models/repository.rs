@@ -1,9 +1,9 @@
+use crate::database::macros::impl_json_option_from;
+use crate::database::types::JsonOption;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::database::macros::impl_json_option_from;
-use crate::database::types::JsonOption;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RepositoryAuthConfig {

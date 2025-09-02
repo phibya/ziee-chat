@@ -1,6 +1,8 @@
 // Database queries for RAG service
 
-use crate::ai::rag::{engines::RAGEngineType, models::RagInstanceFile, RAGError, RAGResult, ProcessingStatus};
+use crate::ai::rag::{
+    engines::RAGEngineType, models::RagInstanceFile, ProcessingStatus, RAGError, RAGResult,
+};
 use crate::database::get_database_pool;
 use uuid::Uuid;
 
@@ -17,7 +19,7 @@ pub async fn get_rag_instances_with_pending_files() -> RAGResult<Vec<Uuid>> {
         AND ri.is_active = true
         ORDER BY rif.rag_instance_id
         "#,
-         ProcessingStatus::Pending.as_str()
+        ProcessingStatus::Pending.as_str()
     )
     .fetch_all(&*database)
     .await
