@@ -1,7 +1,7 @@
 // Plain text extractor with Markdown-first approach
 
 use super::base::TextExtractor;
-use crate::ai::rag::RAGResult;
+use crate::ai::rag::{RAGResult, RAGErrorCode, RAGIndexingErrorCode};
 use async_trait::async_trait;
 
 /// Enhanced plain text extractor with Markdown conversion and metadata extraction
@@ -106,7 +106,8 @@ impl PlainTextExtractor {
     async fn extract_raw_text(&self) -> RAGResult<String> {
         // Read file content
         let content = std::fs::read(&self.file_path).map_err(|e| {
-            crate::ai::rag::RAGError::TextExtractionError(format!("Failed to read file: {}", e))
+            tracing::error!("Failed to read file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
 
         // Always decode as UTF-8 with lossy conversion (no cleaning here)

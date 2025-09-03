@@ -1,6 +1,6 @@
 use super::model::{ModelCapabilities, ModelEngineSettings, ModelParameters};
 use crate::api::engines::EngineType;
-use crate::database::macros::{impl_json_option_from, impl_string_to_enum};
+use crate::database::macros::{impl_json_from, impl_json_option_from, impl_string_to_enum};
 use crate::database::types::JsonOption;
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
@@ -18,28 +18,8 @@ pub struct SourceInfo {
 
 impl_json_option_from!(SourceInfo);
 
-// Implement JSON conversion for main types
-// DownloadRequestData is required, so we need From<JsonValue>
-impl From<serde_json::Value> for DownloadRequestData {
-    fn from(value: serde_json::Value) -> Self {
-        serde_json::from_value(value).unwrap_or_else(|_| DownloadRequestData {
-            model_name: String::new(),
-            revision: None,
-            files: None,
-            quantization: None,
-            repository_path: None,
-            alias: None,
-            description: None,
-            file_format: None,
-            main_filename: None,
-            capabilities: None,
-            parameters: None,
-            engine_type: None,
-            engine_settings: None,
-            source: None,
-        })
-    }
-}
+// Implement JSON conversion for main types using macro
+impl_json_from!(DownloadRequestData);
 
 // DownloadProgressData is optional, so use JsonOption
 impl_json_option_from!(DownloadProgressData);
@@ -94,7 +74,7 @@ impl Default for DownloadProgressData {
 }
 
 /// Request data for initiating a download
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type, Default)]
 pub struct DownloadRequestData {
     /// Model name or ID from the repository
     pub model_name: String,

@@ -1,7 +1,7 @@
 // HTML text extractor using Pandoc for reliable conversion
 
 use super::base::TextExtractor;
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
 use crate::utils::pandoc::PandocUtils;
 use async_trait::async_trait;
 use std::process::Command;
@@ -20,9 +20,8 @@ impl HtmlExtractor {
     /// Extract text from HTML using Pandoc
     async fn extract_with_pandoc(&self, to_format: &str) -> RAGResult<String> {
         let pandoc_path = Self::get_pandoc_path().ok_or_else(|| {
-            RAGError::TextExtractionError(
-                "Pandoc not found. HTML extraction requires Pandoc.".to_string(),
-            )
+            tracing::error!("Pandoc not found. HTML extraction requires Pandoc for file: {}", self.file_path);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
 
         // Use Pandoc to convert HTML to desired format
@@ -42,18 +41,20 @@ impl HtmlExtractor {
 
         let output = cmd
             .output()
-            .map_err(|e| RAGError::ProcessingError(format!("Failed to run Pandoc: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to run Pandoc for HTML file {}: {}", self.file_path, e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+            })?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(RAGError::TextExtractionError(format!(
-                "Pandoc conversion failed: {}",
-                error_msg
-            )));
+            tracing::error!("Pandoc conversion failed for HTML file {}: {}", self.file_path, error_msg);
+            return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed));
         }
 
         let converted_content = String::from_utf8(output.stdout).map_err(|e| {
-            RAGError::TextExtractionError(format!("Invalid UTF-8 from Pandoc: {}", e))
+            tracing::error!("Invalid UTF-8 output from Pandoc for HTML file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
 
         Ok(converted_content)

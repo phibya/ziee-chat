@@ -5,7 +5,7 @@ use crate::database::models::{
     RAGProvider,
 };
 use aide::axum::{
-    routing::{delete_with, get_with, post_with},
+    routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,
 };
 use axum::{middleware, Json};
@@ -86,6 +86,18 @@ fn user_rag_routes() -> ApiRouter {
             })
             .layer(middleware::from_fn(
                 crate::api::middleware::permissions::rag_instances_delete_middleware,
+            )),
+        )
+        .api_route(
+            "/instances/{instance_id}/toggle-activate",
+            put_with(instances::toggle_rag_instance_activate_handler, |op| {
+                op.description("Toggle RAG instance activate status")
+                    .id("Rag.toggleInstanceActivate")
+                    .tag("rag")
+                    .response::<200, Json<RAGInstance>>()
+            })
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_edit_middleware,
             )),
         )
         // .api_route(

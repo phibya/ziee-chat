@@ -1,5 +1,5 @@
 use crate::ai::rag::engines::settings::*;
-use crate::database::macros::impl_string_to_enum;
+use crate::database::macros::{impl_json_from, impl_string_to_enum};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -14,12 +14,8 @@ pub struct RAGEngineSettings {
     pub simple_graph: Option<RAGSimpleGraphEngineSettings>,
 }
 
-// Implement JSON conversion for RAGEngineSettings
-impl From<serde_json::Value> for RAGEngineSettings {
-    fn from(value: serde_json::Value) -> Self {
-        serde_json::from_value(value).unwrap_or_default()
-    }
-}
+// Implement JSON conversion for RAGEngineSettings using macro
+impl_json_from!(RAGEngineSettings);
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RAGInstance {
@@ -33,6 +29,8 @@ pub struct RAGInstance {
     pub enabled: bool,
     pub is_active: bool,
     pub is_system: bool,
+    pub status: RAGInstanceStatus,
+    pub error_code: RAGInstanceErrorCode,
     pub engine_type: RAGEngineType,
     pub engine_settings: RAGEngineSettings,
     pub embedding_model_id: Option<Uuid>,
@@ -42,6 +40,7 @@ pub struct RAGInstance {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
@@ -71,6 +70,103 @@ impl RAGEngineType {
 
 // Implement string to enum conversion for RAGEngineType
 impl_string_to_enum!(RAGEngineType);
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RAGInstanceStatus {
+    None,
+    Indexing,
+    Finished,
+    Error,
+}
+
+impl RAGInstanceStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RAGInstanceStatus::None => "none",
+            RAGInstanceStatus::Indexing => "indexing",
+            RAGInstanceStatus::Finished => "finished",
+            RAGInstanceStatus::Error => "error",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "none" => Some(RAGInstanceStatus::None),
+            "indexing" => Some(RAGInstanceStatus::Indexing),
+            "finished" => Some(RAGInstanceStatus::Finished),
+            "error" => Some(RAGInstanceStatus::Error),
+            _ => None,
+        }
+    }
+}
+
+// Implement string to enum conversion for RAGInstanceStatus
+impl_string_to_enum!(RAGInstanceStatus);
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RAGInstanceErrorCode {
+    None,
+    EmbeddingModelNotConfig,
+    EmbeddingModelNotFound,
+    LlmModelNotConfig,
+    LlmModelNotFound,
+    ProviderConnectionFailed,
+    ProviderNotFound,
+    RagInstanceNotFound,
+    IndexingFailed,
+    FileProcessingFailed,
+    DatabaseError,
+    ConfigurationError,
+}
+
+impl RAGInstanceErrorCode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RAGInstanceErrorCode::None => "none",
+            RAGInstanceErrorCode::EmbeddingModelNotConfig => "embedding_model_not_config",
+            RAGInstanceErrorCode::EmbeddingModelNotFound => "embedding_model_not_found",
+            RAGInstanceErrorCode::LlmModelNotConfig => "llm_model_not_config",
+            RAGInstanceErrorCode::LlmModelNotFound => "llm_model_not_found",
+            RAGInstanceErrorCode::ProviderConnectionFailed => "provider_connection_failed",
+            RAGInstanceErrorCode::ProviderNotFound => "provider_not_found",
+            RAGInstanceErrorCode::RagInstanceNotFound => "rag_instance_not_found",
+            RAGInstanceErrorCode::IndexingFailed => "indexing_failed",
+            RAGInstanceErrorCode::FileProcessingFailed => "file_processing_failed",
+            RAGInstanceErrorCode::DatabaseError => "database_error",
+            RAGInstanceErrorCode::ConfigurationError => "configuration_error",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "none" => Some(RAGInstanceErrorCode::None),
+            "embedding_model_not_config" => Some(RAGInstanceErrorCode::EmbeddingModelNotConfig),
+            "embedding_model_not_found" => Some(RAGInstanceErrorCode::EmbeddingModelNotFound),
+            "llm_model_not_config" => Some(RAGInstanceErrorCode::LlmModelNotConfig),
+            "llm_model_not_found" => Some(RAGInstanceErrorCode::LlmModelNotFound),
+            "provider_connection_failed" => Some(RAGInstanceErrorCode::ProviderConnectionFailed),
+            "provider_not_found" => Some(RAGInstanceErrorCode::ProviderNotFound),
+            "rag_instance_not_found" => Some(RAGInstanceErrorCode::RagInstanceNotFound),
+            "indexing_failed" => Some(RAGInstanceErrorCode::IndexingFailed),
+            "file_processing_failed" => Some(RAGInstanceErrorCode::FileProcessingFailed),
+            "database_error" => Some(RAGInstanceErrorCode::DatabaseError),
+            "configuration_error" => Some(RAGInstanceErrorCode::ConfigurationError),
+            _ => None,
+        }
+    }
+}
+
+// Implement string to enum conversion for RAGInstanceErrorCode
+impl_string_to_enum!(RAGInstanceErrorCode);
+
+// Implement Display for RAGInstanceErrorCode
+impl std::fmt::Display for RAGInstanceErrorCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CreateRAGInstanceRequest {
@@ -104,6 +200,7 @@ pub struct UpdateRAGInstanceRequest {
     pub name: Option<String>,
     pub description: Option<String>,
     pub enabled: Option<bool>,
+    pub is_active: Option<bool>,
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,

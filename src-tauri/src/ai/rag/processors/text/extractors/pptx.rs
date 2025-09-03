@@ -1,7 +1,7 @@
 // PowerPoint PPTX extractor using pptx-to-md crate
 
 use super::base::TextExtractor;
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
 use async_trait::async_trait;
 use pptx_to_md::{ImageHandlingMode, ParserConfig, PptxContainer};
 use std::path::Path;
@@ -17,10 +17,8 @@ impl PptxExtractor {
         // Verify file exists and is readable
         let path = Path::new(&self.file_path);
         if !path.exists() {
-            return Err(RAGError::TextExtractionError(format!(
-                "PPTX file not found: {}",
-                self.file_path
-            )));
+            tracing::error!("PPTX file does not exist: {}", self.file_path);
+            return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed));
         }
 
         // Use the pptx-to-md crate with correct API based on examples
@@ -51,25 +49,24 @@ impl PptxExtractor {
                         }
 
                         if all_content.trim().is_empty() {
-                            return Err(RAGError::TextExtractionError(
-                                "No content extracted from PPTX file".to_string(),
-                            ));
+                            tracing::error!("No extractable content found in PPTX file: {}", self.file_path);
+                            return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed));
                         }
 
                         // Clean up trailing separator
                         let cleaned_content = all_content.trim_end_matches("\n\n---\n\n");
                         Ok(cleaned_content.to_string())
                     }
-                    Err(e) => Err(RAGError::TextExtractionError(format!(
-                        "Failed to parse PPTX slides: {:?}",
-                        e
-                    ))),
+                    Err(e) => {
+                        tracing::error!("Failed to parse PPTX slides for file {}: {}", self.file_path, e);
+                        Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed))
+                    }
                 }
             }
-            Err(e) => Err(RAGError::TextExtractionError(format!(
-                "Failed to open PPTX container: {:?}",
-                e
-            ))),
+            Err(e) => {
+                tracing::error!("Failed to open PPTX container for file {}: {}", self.file_path, e);
+                Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed))
+            }
         }
     }
 
@@ -80,9 +77,10 @@ impl PptxExtractor {
         // Check file extension
         match path.extension().and_then(|ext| ext.to_str()) {
             Some(ext) if ext.to_lowercase() == "pptx" => Ok(()),
-            _ => Err(RAGError::TextExtractionError(
-                "File does not have .pptx extension".to_string(),
-            )),
+            _ => {
+                tracing::error!("Invalid PPTX file extension for file: {}", self.file_path);
+                Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed))
+            }
         }
     }
 }

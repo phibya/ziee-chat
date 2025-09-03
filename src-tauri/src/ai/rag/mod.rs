@@ -11,8 +11,12 @@ pub mod utils;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use std::collections::HashMap;
 use uuid::Uuid;
+
+// Import RAGInstanceErrorCode from database models
+use crate::database::models::rag_instance::RAGInstanceErrorCode;
 
 // Re-export commonly used types
 pub use engines::{RAGEngine, RAGEngineType};
@@ -21,46 +25,185 @@ pub use processors::*;
 pub use service::{RAGService, RAGServiceStatus};
 pub use types::*;
 
-/// Result type for RAG operations
-pub type RAGResult<T> = Result<T, RAGError>;
-
-/// Error types for RAG operations
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum RAGError {
-    DatabaseError(String),
-    EmbeddingError(String),
-    LLMError(String),
-    TextExtractionError(String),
-    ChunkingError(String),
-    EntityExtractionError(String),
-    GraphError(String),
-    ConfigurationError(String),
-    ProcessingError(String),
-    ValidationError(String),
-    NotFound(String),
-    PermissionDenied(String),
+/// Indexing error codes for file processing operations
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum RAGIndexingErrorCode {
+    None,
+    TextExtractionFailed,
+    UnsupportedFileFormat,
+    FileReadError,
+    ChunkingFailed,
+    EmbeddingGenerationFailed,
+    EmbeddingModelUnavailable,
+    IndexStorageFailed,
+    ContentValidationFailed,
+    FileTooLarge,
+    ProcessingTimeout,
+    ProcessingError,
+    DatabaseError,
 }
 
-impl std::fmt::Display for RAGError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl RAGIndexingErrorCode {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            RAGError::DatabaseError(msg) => write!(f, "Database error: {}", msg),
-            RAGError::EmbeddingError(msg) => write!(f, "Embedding error: {}", msg),
-            RAGError::LLMError(msg) => write!(f, "LLM error: {}", msg),
-            RAGError::TextExtractionError(msg) => write!(f, "Text extraction error: {}", msg),
-            RAGError::ChunkingError(msg) => write!(f, "Chunking error: {}", msg),
-            RAGError::EntityExtractionError(msg) => write!(f, "Entity extraction error: {}", msg),
-            RAGError::GraphError(msg) => write!(f, "Graph error: {}", msg),
-            RAGError::ConfigurationError(msg) => write!(f, "Configuration error: {}", msg),
-            RAGError::ProcessingError(msg) => write!(f, "Processing error: {}", msg),
-            RAGError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
-            RAGError::NotFound(msg) => write!(f, "Not found: {}", msg),
-            RAGError::PermissionDenied(msg) => write!(f, "Permission denied: {}", msg),
+            RAGIndexingErrorCode::None => "none",
+            RAGIndexingErrorCode::TextExtractionFailed => "text_extraction_failed",
+            RAGIndexingErrorCode::UnsupportedFileFormat => "unsupported_file_format",
+            RAGIndexingErrorCode::FileReadError => "file_read_error",
+            RAGIndexingErrorCode::ChunkingFailed => "chunking_failed",
+            RAGIndexingErrorCode::EmbeddingGenerationFailed => "embedding_generation_failed",
+            RAGIndexingErrorCode::EmbeddingModelUnavailable => "embedding_model_unavailable",
+            RAGIndexingErrorCode::IndexStorageFailed => "index_storage_failed",
+            RAGIndexingErrorCode::ContentValidationFailed => "content_validation_failed",
+            RAGIndexingErrorCode::FileTooLarge => "file_too_large",
+            RAGIndexingErrorCode::ProcessingTimeout => "processing_timeout",
+            RAGIndexingErrorCode::ProcessingError => "processing_error",
+            RAGIndexingErrorCode::DatabaseError => "database_error",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "none" => Some(RAGIndexingErrorCode::None),
+            "text_extraction_failed" => Some(RAGIndexingErrorCode::TextExtractionFailed),
+            "unsupported_file_format" => Some(RAGIndexingErrorCode::UnsupportedFileFormat),
+            "file_read_error" => Some(RAGIndexingErrorCode::FileReadError),
+            "chunking_failed" => Some(RAGIndexingErrorCode::ChunkingFailed),
+            "embedding_generation_failed" => Some(RAGIndexingErrorCode::EmbeddingGenerationFailed),
+            "embedding_model_unavailable" => Some(RAGIndexingErrorCode::EmbeddingModelUnavailable),
+            "index_storage_failed" => Some(RAGIndexingErrorCode::IndexStorageFailed),
+            "content_validation_failed" => Some(RAGIndexingErrorCode::ContentValidationFailed),
+            "file_too_large" => Some(RAGIndexingErrorCode::FileTooLarge),
+            "processing_timeout" => Some(RAGIndexingErrorCode::ProcessingTimeout),
+            "processing_error" => Some(RAGIndexingErrorCode::ProcessingError),
+            "database_error" => Some(RAGIndexingErrorCode::DatabaseError),
+            _ => None,
         }
     }
 }
 
-impl std::error::Error for RAGError {}
+impl std::fmt::Display for RAGIndexingErrorCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Querying error codes for chat/search operations  
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum RAGQueryingErrorCode {
+    None,
+    InvalidQuery,
+    SearchIndexUnavailable,
+    EmbeddingGenerationFailed,
+    SimilaritySearchFailed,
+    ResultProcessingFailed,
+    LlmModelUnavailable,
+    LlmGenerationFailed,
+    QueryTimeout,
+    RateLimitExceeded,
+    InsufficientContext,
+}
+
+impl RAGQueryingErrorCode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RAGQueryingErrorCode::None => "none",
+            RAGQueryingErrorCode::InvalidQuery => "invalid_query",
+            RAGQueryingErrorCode::SearchIndexUnavailable => "search_index_unavailable",
+            RAGQueryingErrorCode::EmbeddingGenerationFailed => "embedding_generation_failed",
+            RAGQueryingErrorCode::SimilaritySearchFailed => "similarity_search_failed",
+            RAGQueryingErrorCode::ResultProcessingFailed => "result_processing_failed",
+            RAGQueryingErrorCode::LlmModelUnavailable => "llm_model_unavailable",
+            RAGQueryingErrorCode::LlmGenerationFailed => "llm_generation_failed",
+            RAGQueryingErrorCode::QueryTimeout => "query_timeout",
+            RAGQueryingErrorCode::RateLimitExceeded => "rate_limit_exceeded",
+            RAGQueryingErrorCode::InsufficientContext => "insufficient_context",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "none" => Some(RAGQueryingErrorCode::None),
+            "invalid_query" => Some(RAGQueryingErrorCode::InvalidQuery),
+            "search_index_unavailable" => Some(RAGQueryingErrorCode::SearchIndexUnavailable),
+            "embedding_generation_failed" => Some(RAGQueryingErrorCode::EmbeddingGenerationFailed),
+            "similarity_search_failed" => Some(RAGQueryingErrorCode::SimilaritySearchFailed),
+            "result_processing_failed" => Some(RAGQueryingErrorCode::ResultProcessingFailed),
+            "llm_model_unavailable" => Some(RAGQueryingErrorCode::LlmModelUnavailable),
+            "llm_generation_failed" => Some(RAGQueryingErrorCode::LlmGenerationFailed),
+            "query_timeout" => Some(RAGQueryingErrorCode::QueryTimeout),
+            "rate_limit_exceeded" => Some(RAGQueryingErrorCode::RateLimitExceeded),
+            "insufficient_context" => Some(RAGQueryingErrorCode::InsufficientContext),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for RAGQueryingErrorCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+/// Unified error code type for all RAG operations
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub enum RAGErrorCode {
+    Instance(RAGInstanceErrorCode),
+    Indexing(RAGIndexingErrorCode),
+    Querying(RAGQueryingErrorCode),
+}
+
+impl RAGErrorCode {
+    /// Helper to extract instance error for database storage
+    pub fn into_instance_error(self) -> Option<RAGInstanceErrorCode> {
+        match self {
+            RAGErrorCode::Instance(error) => Some(error),
+            _ => None,
+        }
+    }
+    
+    /// Helper to extract indexing error for file-level storage (future)
+    pub fn into_indexing_error(self) -> Option<RAGIndexingErrorCode> {
+        match self {
+            RAGErrorCode::Indexing(error) => Some(error),
+            _ => None,
+        }
+    }
+    
+    /// Helper to extract querying error for client responses
+    pub fn into_querying_error(self) -> Option<RAGQueryingErrorCode> {
+        match self {
+            RAGErrorCode::Querying(error) => Some(error),
+            _ => None,
+        }
+    }
+    
+    /// Get error context as string
+    pub fn context(&self) -> &'static str {
+        match self {
+            RAGErrorCode::Instance(_) => "instance",
+            RAGErrorCode::Indexing(_) => "indexing",
+            RAGErrorCode::Querying(_) => "querying",
+        }
+    }
+}
+
+impl std::fmt::Display for RAGErrorCode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RAGErrorCode::Instance(error) => write!(f, "Instance error: {}", error),
+            RAGErrorCode::Indexing(error) => write!(f, "Indexing error: {}", error),
+            RAGErrorCode::Querying(error) => write!(f, "Querying error: {}", error),
+        }
+    }
+}
+
+impl std::error::Error for RAGErrorCode {}
+
+/// Result type for RAG operations
+pub type RAGResult<T> = Result<T, RAGErrorCode>;
 
 /// Main RAG manager trait
 #[async_trait]

@@ -1,6 +1,6 @@
 // Base traits and structures for text extractors
 
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -50,9 +50,9 @@ impl std::fmt::Display for ExtractionError {
 
 impl std::error::Error for ExtractionError {}
 
-impl From<ExtractionError> for RAGError {
-    fn from(err: ExtractionError) -> Self {
-        RAGError::TextExtractionError(err.to_string())
+impl From<ExtractionError> for RAGErrorCode {
+    fn from(_err: ExtractionError) -> Self {
+        RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
     }
 }
 

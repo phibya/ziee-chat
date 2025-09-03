@@ -9,7 +9,7 @@ pub mod plain_text;
 pub mod pptx;
 pub mod spreadsheet;
 
-use crate::ai::rag::RAGResult;
+use crate::ai::rag::{RAGResult, RAGErrorCode, RAGIndexingErrorCode};
 pub use base::TextExtractor;
 use std::collections::HashMap;
 use std::path::Path;
@@ -29,7 +29,8 @@ pub async fn convert_to_markdown(
 ) -> RAGResult<(String, HashMap<String, serde_json::Value>)> {
     // Read file content for encoding detection and metadata
     let content = std::fs::read(file_path).map_err(|e| {
-        crate::ai::rag::RAGError::TextExtractionError(format!("Failed to read file: {}", e))
+        tracing::error!("Failed to read file {}: {}", file_path, e);
+        RAGErrorCode::Indexing(RAGIndexingErrorCode::FileReadError)
     })?;
 
     // Detect MIME type from file extension
@@ -114,10 +115,7 @@ async fn convert_file_to_markdown(file_path: &str, mime_type: &str) -> RAGResult
         },
         
         _ => {
-            Err(crate::ai::rag::RAGError::TextExtractionError(format!(
-                "Unsupported file type: {}",
-                mime_type
-            )))
+            Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::UnsupportedFileFormat))
         }
     }
 }

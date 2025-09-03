@@ -1,6 +1,6 @@
 // Text normalization functionality for entities and relationships
 
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
 use regex::Regex;
 use unicode_normalization::{char::canonical_combining_class, UnicodeNormalization};
 
@@ -145,18 +145,27 @@ impl TextNormalizer {
 
         // Use regex to remove spaces between Chinese characters
         let chinese_space_regex = Regex::new(r"(?<=[\u4e00-\u9fa5])\s+(?=[\u4e00-\u9fa5])")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create Chinese space regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         name = chinese_space_regex.replace_all(&name, "").to_string();
 
         // Remove spaces between Chinese and English/numbers/symbols
         let chinese_en_regex =
             Regex::new(r"(?<=[\u4e00-\u9fa5])\s+(?=[a-zA-Z0-9\(\)\[\]@#$%!&\*\-=+_])")
-                .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+                .map_err(|e| {
+                    tracing::error!("Failed to create Chinese-English regex: {}", e);
+                    RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+                })?;
         name = chinese_en_regex.replace_all(&name, "").to_string();
 
         let en_chinese_regex =
             Regex::new(r"(?<=[a-zA-Z0-9\(\)\[\]@#$%!&\*\-=+_])\s+(?=[\u4e00-\u9fa5])")
-                .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+                .map_err(|e| {
+                    tracing::error!("Failed to create English-Chinese regex: {}", e);
+                    RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+                })?;
         name = en_chinese_regex.replace_all(&name, "").to_string();
 
         // Remove English quotation marks from the beginning and end
@@ -177,11 +186,17 @@ impl TextNormalizer {
 
             // Remove English quotes in and around chinese
             let quote_chinese_regex = Regex::new(r#"['"]+(?=[\u4e00-\u9fa5])"#)
-                .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+                .map_err(|e| {
+                    tracing::error!("Failed to create quote-Chinese regex: {}", e);
+                    RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+                })?;
             name = quote_chinese_regex.replace_all(&name, "").to_string();
 
             let chinese_quote_regex = Regex::new(r#"(?<=[\u4e00-\u9fa5])['"]+"#)
-                .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+                .map_err(|e| {
+                    tracing::error!("Failed to create Chinese-quote regex: {}", e);
+                    RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+                })?;
             name = chinese_quote_regex.replace_all(&name, "").to_string();
         }
 
@@ -211,7 +226,10 @@ impl TextNormalizer {
 
         // Handle Chinese spacing issues
         let chinese_space_regex = Regex::new(r"([\u4e00-\u9fa5])\s+([\u4e00-\u9fa5])")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create Chinese space normalization regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         normalized = chinese_space_regex
             .replace_all(&normalized, "$1$2")
             .to_string();
@@ -228,7 +246,10 @@ impl TextNormalizer {
 
         // Remove extra whitespace
         let whitespace_regex = Regex::new(r"\s+")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create whitespace regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         normalized = whitespace_regex.replace_all(&normalized, " ").to_string();
 
         // Normalize quotes and punctuation
@@ -248,32 +269,50 @@ impl TextNormalizer {
 
         // Remove headers
         let header_regex = Regex::new(r"^#+\s*")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create header regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         cleaned = header_regex.replace_all(&cleaned, "").to_string();
 
         // Remove emphasis (bold/italic)
         let emphasis_regex = Regex::new(r"\*{1,2}([^*]+)\*{1,2}")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create emphasis regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         cleaned = emphasis_regex.replace_all(&cleaned, "$1").to_string();
 
         let underscore_emphasis_regex = Regex::new(r"_{1,2}([^_]+)_{1,2}")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create underscore emphasis regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         cleaned = underscore_emphasis_regex
             .replace_all(&cleaned, "$1")
             .to_string();
 
         // Remove code blocks and inline code
         let code_block_regex = Regex::new(r"```[\s\S]*?```")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create code block regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         cleaned = code_block_regex.replace_all(&cleaned, "").to_string();
 
         let inline_code_regex = Regex::new(r"`([^`]+)`")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create inline code regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         cleaned = inline_code_regex.replace_all(&cleaned, "$1").to_string();
 
         // Remove links but keep the text
         let link_regex = Regex::new(r"\[([^\]]*)\]\([^)]*\)")
-            .map_err(|e| RAGError::ProcessingError(format!("Regex error: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to create link regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
         cleaned = link_regex.replace_all(&cleaned, "$1").to_string();
 
         Ok(cleaned)

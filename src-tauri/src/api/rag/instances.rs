@@ -188,6 +188,80 @@ pub async fn delete_rag_instance_handler(
     }
 }
 
+/// Toggle RAG instance activate status
+#[debug_handler]
+pub async fn toggle_rag_instance_activate_handler(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(instance_id): Path<Uuid>,
+) -> ApiResult<Json<RAGInstance>> {
+    // Check if user has edit access to this instance
+    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, true)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::from(e),
+            )
+        })?;
+    if !has_access {
+        return Err((
+            axum::http::StatusCode::FORBIDDEN,
+            AppError::forbidden("Access denied"),
+        ));
+    }
+
+    // Get current instance to determine current active status
+    use crate::database::queries::rag_instances::get_rag_instance_by_id;
+    let current_instance = get_rag_instance_by_id(instance_id)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::from(e),
+            )
+        })?;
+
+    let current_instance = match current_instance {
+        Some(instance) => instance,
+        None => {
+            return Err((
+                axum::http::StatusCode::NOT_FOUND,
+                AppError::not_found("RAG instance"),
+            ))
+        }
+    };
+
+    // Toggle the is_active status
+    let new_is_active = !current_instance.is_active;
+    let update_request = UpdateRAGInstanceRequest {
+        name: None,
+        description: None,
+        enabled: None,
+        is_active: Some(new_is_active),
+        embedding_model_id: None,
+        llm_model_id: None,
+        parameters: None,
+        engine_settings: None,
+    };
+
+    let instance = update_rag_instance(instance_id, update_request)
+        .await
+        .map_err(|e| {
+            (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::from(e),
+            )
+        })?;
+
+    match instance {
+        Some(instance) => Ok((axum::http::StatusCode::OK, Json(instance))),
+        None => Err((
+            axum::http::StatusCode::NOT_FOUND,
+            AppError::not_found("RAG instance"),
+        )),
+    }
+}
+
 /// List available RAG providers for creating instances
 #[debug_handler]
 pub async fn list_creatable_rag_providers_handler(

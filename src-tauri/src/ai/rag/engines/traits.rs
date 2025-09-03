@@ -1,6 +1,6 @@
 // RAG Engine traits and common types
 
-use crate::ai::rag::{ProcessingOptions, RAGError, RAGQuery, RAGQueryResponse, RAGResult};
+use crate::ai::rag::{ProcessingOptions, RAGErrorCode, RAGQuery, RAGQueryResponse, RAGResult, RAGInstanceErrorCode};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -24,16 +24,13 @@ impl std::fmt::Display for RAGEngineType {
 }
 
 impl std::str::FromStr for RAGEngineType {
-    type Err = RAGError;
+    type Err = RAGErrorCode;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "simple_vector" => Ok(RAGEngineType::SimpleVector),
             "simple_graph" => Ok(RAGEngineType::SimpleGraph),
-            _ => Err(RAGError::ConfigurationError(format!(
-                "Invalid engine type: {}",
-                s
-            ))),
+            _ => Err(RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)),
         }
     }
 }

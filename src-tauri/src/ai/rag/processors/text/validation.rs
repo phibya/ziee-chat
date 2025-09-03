@@ -1,6 +1,6 @@
 // Text content validation functionality with hardcoded best practice settings
 
-use crate::ai::rag::{types::ValidationResult, RAGError, RAGResult};
+use crate::ai::rag::{types::ValidationResult, RAGErrorCode, RAGResult, RAGIndexingErrorCode};
 
 /// Text content validator for quality assessment and integrity checks
 /// Uses hardcoded best practice configurations for optimal performance
@@ -73,9 +73,8 @@ impl TextValidator {
             let byte_count = validated.len();
 
             if char_count == 0 || byte_count == 0 {
-                return Err(RAGError::ProcessingError(
-                    "Empty content after validation".to_string(),
-                ));
+                tracing::error!("Content validation failed: char_count={}, byte_count={}", char_count, byte_count);
+                return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError));
             }
 
             // Check for excessive replacement characters

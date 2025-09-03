@@ -170,6 +170,21 @@ macro_rules! impl_string_to_enum {
     };
 }
 
+/// Implement From<serde_json::Value> for types that implement Default and DeserializeOwned
+/// Usage: impl_json_from!(MyStruct);
+/// This allows automatic JSON value conversion with fallback to default
+macro_rules! impl_json_from {
+    ($struct_type:ty) => {
+        impl From<serde_json::Value> for $struct_type {
+            fn from(value: serde_json::Value) -> Self {
+                serde_json::from_value(value).unwrap_or_default()
+            }
+        }
+    };
+}
+
+
+pub(crate) use impl_json_from;
 pub(crate) use impl_json_option_from;
 pub(crate) use impl_string_to_enum;
 pub(crate) use make_transparent;

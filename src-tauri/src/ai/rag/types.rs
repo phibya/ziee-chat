@@ -1,7 +1,7 @@
 // RAG-specific type definitions and utilities
 
 use crate::ai::core::AIProvider;
-use crate::database::models::{rag_instance::RAGInstance, Model, Provider};
+use crate::database::models::{rag_instance::RAGInstance, Model, RAGProvider};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -23,7 +23,7 @@ pub struct RAGModels {
 /// Complete RAG instance information including provider and models
 pub struct RAGInstanceInfo {
     pub instance: RAGInstance,
-    pub provider: Provider,
+    pub provider: RAGProvider,
     pub models: RAGModels,
 }
 

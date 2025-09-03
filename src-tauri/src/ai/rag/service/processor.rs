@@ -17,6 +17,8 @@ use super::queries::{
     update_rag_instance_active_status,
 };
 
+// Removed map_rag_error_to_error_code function - now errors are returned directly as appropriate error codes
+
 /// Thread-safe registry to track active RAG instance worker threads
 pub struct InstanceThreadRegistry {
     active_instances: Arc<RwLock<HashSet<Uuid>>>,
@@ -134,10 +136,15 @@ async fn rag_instance_worker(
                 rag_instance_id,
                 e
             );
-            // Deactivate the RAG instance due to engine type failure
-            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false).await
-            {
-                tracing::error!("Failed to deactivate RAG instance: {}", update_err);
+            // Deactivate the RAG instance due to engine type failure (only for instance errors)
+            if let Some(instance_error) = e.clone().into_instance_error() {
+                if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false, Some(instance_error)).await
+                {
+                    tracing::error!("Failed to deactivate RAG instance: {}", update_err);
+                }
+            } else {
+                // For non-instance errors, just log (don't deactivate the instance)
+                tracing::error!("Non-instance error (instance remains active): {}", e);
             }
             unregister_and_exit(rag_instance_id, &registry).await;
             return Err(e);
@@ -153,9 +160,14 @@ async fn rag_instance_worker(
                 rag_instance_id,
                 e
             );
-            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false).await
-            {
-                tracing::error!("Failed to deactivate RAG instance: {}", update_err);
+            if let Some(instance_error) = e.clone().into_instance_error() {
+                if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false, Some(instance_error)).await
+                {
+                    tracing::error!("Failed to deactivate RAG instance: {}", update_err);
+                }
+            } else {
+                // For non-instance errors, just log (don't deactivate the instance)
+                tracing::error!("Non-instance error (instance remains active): {}", e);
             }
             unregister_and_exit(rag_instance_id, &registry).await;
             return Err(e);
@@ -169,8 +181,13 @@ async fn rag_instance_worker(
             rag_instance_id,
             e
         );
-        if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false).await {
-            tracing::error!("Failed to deactivate RAG instance: {}", update_err);
+        if let Some(instance_error) = e.clone().into_instance_error() {
+            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false, Some(instance_error)).await {
+                tracing::error!("Failed to deactivate RAG instance: {}", update_err);
+            }
+        } else {
+            // For non-instance errors, just log (don't deactivate the instance)
+            tracing::error!("Non-instance error (instance remains active): {}", e);
         }
         unregister_and_exit(rag_instance_id, &registry).await;
         return Err(e);

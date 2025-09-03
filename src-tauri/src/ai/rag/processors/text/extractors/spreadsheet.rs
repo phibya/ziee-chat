@@ -1,7 +1,7 @@
 // Spreadsheet extractor with enhanced CSV/Excel/ODS support
 
 use super::base::{ExtractionError, TextExtractor};
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
 use async_trait::async_trait;
 
 /// Enhanced spreadsheet extractor supporting CSV, Excel, and OpenDocument formats
@@ -13,7 +13,8 @@ impl SpreadsheetExtractor {
     /// Extract text from CSV content and convert to Markdown table
     async fn extract_csv_to_markdown(&self) -> RAGResult<String> {
         let content = std::fs::read(&self.file_path).map_err(|e| {
-            crate::ai::rag::RAGError::TextExtractionError(format!("Failed to read file: {}", e))
+            tracing::error!("Failed to read CSV file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
         let csv_content = super::decode_text_content(&content)?;
 
@@ -131,7 +132,8 @@ impl SpreadsheetExtractor {
     /// Extract text from Excel files using calamine and convert to Markdown
     async fn extract_excel_to_markdown(&self, is_xlsx: bool) -> RAGResult<String> {
         let content = std::fs::read(&self.file_path).map_err(|e| {
-            crate::ai::rag::RAGError::TextExtractionError(format!("Failed to read file: {}", e))
+            tracing::error!("Failed to read Excel file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
         let content_vec = content.to_vec();
 
@@ -152,8 +154,14 @@ impl SpreadsheetExtractor {
             }
         })
         .await
-        .map_err(|e| RAGError::ProcessingError(format!("Task join error: {}", e)))?
-        .map_err(|e| RAGError::TextExtractionError(e))?;
+        .map_err(|e| {
+            tracing::error!("Failed to execute Excel extraction task for file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+        })?
+        .map_err(|e| {
+            tracing::error!("Excel extraction failed for file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+        })?;
 
         Ok(result)
     }
@@ -347,7 +355,8 @@ impl SpreadsheetExtractor {
     /// Extract text from OpenDocument Spreadsheet and convert to Markdown
     async fn extract_ods_to_markdown(&self) -> RAGResult<String> {
         let content = std::fs::read(&self.file_path).map_err(|e| {
-            crate::ai::rag::RAGError::TextExtractionError(format!("Failed to read file: {}", e))
+            tracing::error!("Failed to read ODS file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
         let content_vec = content.to_vec();
 
@@ -362,8 +371,14 @@ impl SpreadsheetExtractor {
             Self::extract_from_ods_workbook_to_markdown(&mut workbook)
         })
         .await
-        .map_err(|e| RAGError::ProcessingError(format!("Task join error: {}", e)))?
-        .map_err(|e| RAGError::TextExtractionError(e))?;
+        .map_err(|e| {
+            tracing::error!("Failed to execute ODS extraction task for file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+        })?
+        .map_err(|e| {
+            tracing::error!("ODS extraction failed for file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+        })?;
 
         Ok(result)
     }
@@ -417,7 +432,8 @@ impl TextExtractor for SpreadsheetExtractor {
     async fn extract_to_markdown(&self) -> RAGResult<String> {
         // Always convert to Markdown first (unified approach)
         let content = std::fs::read(&self.file_path).map_err(|e| {
-            crate::ai::rag::RAGError::TextExtractionError(format!("Failed to read file: {}", e))
+            tracing::error!("Failed to read spreadsheet file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
         let format = self.detect_format_from_content(&content);
 

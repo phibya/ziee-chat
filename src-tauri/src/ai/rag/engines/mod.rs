@@ -7,7 +7,7 @@ pub mod traits;
 pub use simple_vector::RAGSimpleVectorEngine;
 pub use traits::{RAGEngine, RAGEngineType};
 
-use crate::ai::rag::{rag_file_storage::RagFileStorage, RAGError, RAGResult};
+use crate::ai::rag::{rag_file_storage::RagFileStorage, RAGErrorCode, RAGResult, RAGInstanceErrorCode};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 use uuid::Uuid;
@@ -46,9 +46,7 @@ impl RAGEngineFactory {
                 let engine = RAGSimpleVectorEngine::new(instance_id).await?;
                 Ok(Box::new(engine))
             }
-            RAGEngineType::SimpleGraph => Err(RAGError::ConfigurationError(
-                "SimpleGraph engine has been removed".to_string(),
-            )),
+            RAGEngineType::SimpleGraph => Err(RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)),
         }
     }
 
@@ -57,10 +55,7 @@ impl RAGEngineFactory {
         match engine_type {
             "simple_vector" => Ok(RAGEngineType::SimpleVector),
             "simple_graph" => Ok(RAGEngineType::SimpleGraph),
-            _ => Err(RAGError::ConfigurationError(format!(
-                "Unknown engine type: {}",
-                engine_type
-            ))),
+            _ => Err(RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)),
         }
     }
 

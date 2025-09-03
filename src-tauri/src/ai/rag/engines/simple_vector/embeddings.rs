@@ -3,7 +3,7 @@
 use super::{core::RAGSimpleVectorEngine, queries};
 use crate::ai::rag::{
     types::{EmbeddingVector, TextChunk},
-    RAGError, RAGResult,
+    RAGErrorCode, RAGResult, RAGInstanceErrorCode, RAGIndexingErrorCode,
 };
 use chrono::Utc;
 use futures;
@@ -19,7 +19,8 @@ impl RAGSimpleVectorEngine {
         let engine_settings =
             crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
         let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
-            RAGError::ConfigurationError("SimpleVector engine settings not found".to_string())
+            tracing::error!("SimpleVector engine settings not found for instance {}", self.instance_id);
+            RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)
         })?;
         let indexing_settings = vector_settings.indexing();
 
@@ -66,7 +67,8 @@ impl RAGSimpleVectorEngine {
                     .embeddings(embedding_request)
                     .await
                     .map_err(|e| {
-                        RAGError::EmbeddingError(format!("AI provider embeddings error: {}", e))
+                        tracing::error!("AI provider embeddings error: {}", e);
+                        RAGErrorCode::Indexing(RAGIndexingErrorCode::EmbeddingGenerationFailed)
                     })?;
 
                 // Convert to EmbeddingVector format
@@ -113,9 +115,12 @@ impl RAGSimpleVectorEngine {
         embeddings: Vec<EmbeddingVector>,
     ) -> RAGResult<()> {
         if chunks.len() != embeddings.len() {
-            return Err(RAGError::ProcessingError(
-                "Mismatch between chunks and embeddings count".to_string(),
-            ));
+            tracing::error!(
+                "Mismatch between chunks and embeddings count: {} vs {}",
+                chunks.len(),
+                embeddings.len()
+            );
+            return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError));
         }
 
         tracing::info!("Storing {} chunks with advanced metadata", chunks.len());
@@ -124,7 +129,8 @@ impl RAGSimpleVectorEngine {
         let engine_settings =
             crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
         let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
-            RAGError::ConfigurationError("SimpleVector engine settings not found".to_string())
+            tracing::error!("SimpleVector engine settings not found for instance {}", self.instance_id);
+            RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)
         })?;
         let indexing_settings = vector_settings.indexing();
 
@@ -138,7 +144,8 @@ impl RAGSimpleVectorEngine {
 
         for batch in chunk_embedding_pairs.chunks(indexing_settings.embedding_batch_size()) {
             let permit = semaphore.clone().acquire_owned().await.map_err(|e| {
-                RAGError::ProcessingError(format!("Failed to acquire semaphore: {}", e))
+                tracing::error!("Failed to acquire semaphore: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
             })?;
 
             let batch_data = batch.to_vec();

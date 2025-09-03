@@ -1,6 +1,6 @@
 // Core RAG Service for managing RAG engine lifecycle
 
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{RAGErrorCode, RAGResult, RAGInstanceErrorCode};
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::{sleep, Duration};
@@ -26,9 +26,7 @@ impl RAGService {
     pub async fn start(&self) -> RAGResult<()> {
         let mut is_running = self.is_running.write().await;
         if *is_running {
-            return Err(RAGError::ConfigurationError(
-                "RAG service is already running".to_string(),
-            ));
+            return Err(RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError));
         }
 
         // Create shutdown channel
@@ -69,9 +67,7 @@ impl RAGService {
     pub async fn stop(&self) -> RAGResult<()> {
         let mut is_running = self.is_running.write().await;
         if !*is_running {
-            return Err(RAGError::ConfigurationError(
-                "RAG service is not running".to_string(),
-            ));
+            return Err(RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError));
         }
 
         // Send shutdown signal to background thread

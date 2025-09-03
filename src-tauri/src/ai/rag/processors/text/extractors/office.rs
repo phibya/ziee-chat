@@ -1,7 +1,7 @@
 // Office document extractor with Pandoc integration
 
 use super::base::TextExtractor;
-use crate::ai::rag::{RAGError, RAGResult};
+use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
 use crate::utils::pandoc::PandocUtils;
 use async_trait::async_trait;
 use std::process::Command;
@@ -20,9 +20,8 @@ impl OfficeExtractor {
     /// Extract text from office documents using Pandoc
     async fn extract_with_pandoc(&self, format_hint: Option<&str>) -> RAGResult<String> {
         let pandoc_path = Self::get_pandoc_path().ok_or_else(|| {
-            RAGError::TextExtractionError(
-                "Pandoc not found. Office document extraction requires Pandoc.".to_string(),
-            )
+            tracing::error!("Pandoc not found. Office document extraction requires Pandoc for file: {}", self.file_path);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
 
         // Determine input format arguments based on format hint or MIME type
@@ -59,18 +58,20 @@ impl OfficeExtractor {
 
         let output = cmd
             .output()
-            .map_err(|e| RAGError::ProcessingError(format!("Failed to run Pandoc: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to run Pandoc for Office document {}: {}", self.file_path, e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+            })?;
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(RAGError::TextExtractionError(format!(
-                "Pandoc conversion failed: {}",
-                error_msg
-            )));
+            tracing::error!("Pandoc conversion failed for Office document {}: {}", self.file_path, error_msg);
+            return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed));
         }
 
         let markdown_content = String::from_utf8(output.stdout).map_err(|e| {
-            RAGError::TextExtractionError(format!("Invalid UTF-8 from Pandoc: {}", e))
+            tracing::error!("Invalid UTF-8 output from Pandoc for Office document {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
 
         Ok(markdown_content)
@@ -168,7 +169,10 @@ impl TextExtractor for OfficeExtractor {
     async fn extract_to_markdown(&self) -> RAGResult<String> {
         // Always convert to Markdown first (unified approach)
         let content = std::fs::read(&self.file_path)
-            .map_err(|e| RAGError::TextExtractionError(format!("Failed to read file: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to read Office document {}: {}", self.file_path, e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+            })?;
         let format_hint = self.detect_format_from_content(&content);
         self.extract_with_pandoc(format_hint).await
     }

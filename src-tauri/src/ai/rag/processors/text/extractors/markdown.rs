@@ -1,7 +1,7 @@
 // Markdown text extractor with enhanced parsing and structure preservation
 
 use super::base::TextExtractor;
-use crate::ai::rag::RAGResult;
+use crate::ai::rag::{RAGResult, RAGErrorCode, RAGIndexingErrorCode};
 use async_trait::async_trait;
 
 /// Enhanced Markdown text extractor with structure preservation options
@@ -13,7 +13,8 @@ impl MarkdownExtractor {
     /// Extract Markdown with minimal cleanup (preserve original format)
     async fn extract_clean_markdown(&self) -> RAGResult<String> {
         let content = std::fs::read(&self.file_path).map_err(|e| {
-            crate::ai::rag::RAGError::TextExtractionError(format!("Failed to read file: {}", e))
+            tracing::error!("Failed to read Markdown file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?;
 
         let markdown_content = super::decode_text_content(&content)?;

@@ -5,7 +5,7 @@ use crate::ai::rag::engines::get_rag_file_storage;
 use crate::ai::rag::{
     engines::traits::{RAGEngine, RAGEngineType},
     processors::{chunk::TokenBasedChunker, text},
-    PipelineStage, ProcessingStatus, RAGError, RAGQuery, RAGQueryResponse, RAGResult,
+    PipelineStage, ProcessingStatus, RAGErrorCode, RAGQuery, RAGQueryResponse, RAGResult, RAGInstanceErrorCode, RAGIndexingErrorCode, RAGQueryingErrorCode,
 };
 use async_trait::async_trait;
 use uuid::Uuid;
@@ -18,11 +18,12 @@ pub struct RAGSimpleVectorEngine {
 }
 
 impl RAGSimpleVectorEngine {
-    pub async fn new(instance_id: Uuid) -> Result<Self, RAGError> {
+    pub async fn new(instance_id: Uuid) -> RAGResult<Self> {
         let instance_info = crate::ai::rag::utils::get_rag_instance_info(instance_id)
             .await
             .map_err(|e| {
-                RAGError::ConfigurationError(format!("Failed to get RAG instance info: {}", e))
+                tracing::error!("Failed to get RAG instance info: {}", e);
+                RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)
             })?;
 
         Ok(Self {
@@ -84,10 +85,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         let file_path = get_rag_file_storage().get_file_path(self.instance_id, file_id, extension);
 
         if !file_path.exists() {
-            return Err(RAGError::NotFound(format!(
-                "File not found at path: {:?}",
-                file_path
-            )));
+            return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::FileReadError));
         }
 
         // Step 2: Extract text content using text processor
@@ -101,7 +99,8 @@ impl RAGEngine for RAGSimpleVectorEngine {
 
         let processing_result =
             text::extract_text_from_file(file_path.to_str().ok_or_else(|| {
-                RAGError::ProcessingError("Invalid file path encoding".to_string())
+                tracing::error!("Invalid file path encoding for file: {:?}", file_path);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
             })?)
             .await?;
 
@@ -223,9 +222,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
 
     async fn query(&self, _query: RAGQuery) -> RAGResult<RAGQueryResponse> {
         // Query functionality removed - this engine is for indexing only
-        Err(RAGError::ProcessingError(
-            "Query functionality not implemented in indexing-only engine".to_string(),
-        ))
+        Err(RAGErrorCode::Querying(RAGQueryingErrorCode::InvalidQuery))
     }
 
     async fn validate_configuration(&self, _settings: serde_json::Value) -> RAGResult<()> {

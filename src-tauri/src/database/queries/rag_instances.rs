@@ -41,7 +41,7 @@ pub async fn create_user_rag_instance(
             engine_settings, embedding_model_id, llm_model_id, parameters
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, provider_id, user_id, project_id, name, alias, description, 
-                  enabled, is_active, is_system, 
+                  enabled, is_active, is_system, status, error_code,
                   engine_type,
                   engine_settings,
                   embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -90,7 +90,7 @@ pub async fn create_system_rag_instance(
             engine_settings, embedding_model_id, llm_model_id, parameters
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING id, provider_id, user_id, project_id, name, alias, description, 
-                  enabled, is_active, is_system, 
+                  enabled, is_active, is_system, status, error_code,
                   engine_type, 
                   engine_settings,
                   embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -139,7 +139,7 @@ pub async fn get_rag_instance(
         sqlx::query_as!(
             RAGInstance,
             r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
-                    enabled, is_active, is_system, 
+                    enabled, is_active, is_system, status, error_code,
                     engine_type, 
                     engine_settings,
                     embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -155,7 +155,7 @@ pub async fn get_rag_instance(
         sqlx::query_as!(
             RAGInstance,
             r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
-                    enabled, is_active, is_system, 
+                    enabled, is_active, is_system, status, error_code,
                     engine_type, 
                     engine_settings,
                     embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -203,7 +203,7 @@ pub async fn list_user_rag_instances(
         let instances = sqlx::query_as!(
             RAGInstance,
             r#"SELECT DISTINCT ri.id, ri.provider_id, ri.user_id, ri.project_id, ri.name, ri.alias, ri.description, 
-                    ri.enabled, ri.is_active, ri.is_system, 
+                    ri.enabled, ri.is_active, ri.is_system, ri.status, ri.error_code,
                     ri.engine_type, 
                     ri.engine_settings,
                     ri.embedding_model_id, ri.llm_model_id, ri.age_graph_name, ri.parameters, 
@@ -237,7 +237,7 @@ pub async fn list_user_rag_instances(
         let instances = sqlx::query_as!(
             RAGInstance,
             r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
-                    enabled, is_active, is_system, 
+                    enabled, is_active, is_system, status, error_code,
                     engine_type, 
                     engine_settings,
                     embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -285,7 +285,7 @@ pub async fn list_system_rag_instances(
     let instances = sqlx::query_as!(
         RAGInstance,
         r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
-                enabled, is_active, is_system, 
+                enabled, is_active, is_system, status, error_code,
                 engine_type, 
                 engine_settings,
                 embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -354,6 +354,16 @@ pub async fn update_rag_instance(
         .await?;
     }
 
+    if let Some(is_active) = request.is_active {
+        sqlx::query!(
+            "UPDATE rag_instances SET is_active = $1, updated_at = NOW() WHERE id = $2",
+            is_active,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
     if let Some(embedding_model_id) = request.embedding_model_id {
         sqlx::query!(
             "UPDATE rag_instances SET embedding_model_id = $1, updated_at = NOW() WHERE id = $2",
@@ -398,7 +408,7 @@ pub async fn update_rag_instance(
     let instance = sqlx::query_as!(
         RAGInstance,
         r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
-                  enabled, is_active, is_system, 
+                  enabled, is_active, is_system, status, error_code,
                   engine_type, 
                   engine_settings,
                   embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -519,7 +529,7 @@ pub async fn get_rag_instance_by_id(instance_id: Uuid) -> Result<Option<RAGInsta
 
     let instance = sqlx::query_as!(
         RAGInstance,
-        r#"SELECT id, provider_id, user_id, project_id, name, alias, description, enabled, is_active, is_system,
+        r#"SELECT id, provider_id, user_id, project_id, name, alias, description, enabled, is_active, is_system, status, error_code,
                 engine_type, 
                 engine_settings,
                 embedding_model_id, llm_model_id, age_graph_name, parameters, 
