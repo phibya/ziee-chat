@@ -49,7 +49,6 @@ export const RagsPage: React.FC = () => {
     }
   }, [error, message])
 
-
   // Get filtered and sorted RAG instances
   const getFilteredAndSortedInstances = () => {
     let filteredInstances = ragInstances
@@ -185,17 +184,17 @@ export const RagsPage: React.FC = () => {
         )}
         {/* RAG Instances Grid */}
         {(() => {
-          const { userInstances, systemInstances, allInstances } = getInstancesByType()
-          
+          const { userInstances, systemInstances, allInstances } =
+            getInstancesByType()
+
           if (allInstances.length === 0) {
             return null
           }
-          
+
           return (
             <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
               <div className={'h-full flex flex-col overflow-y-auto'}>
                 <div className="max-w-4xl flex flex-col gap-4 pt-3 w-full self-center px-3">
-                  
                   {/* Personal Instances Section */}
                   {userInstances.length > 0 && (
                     <div>
@@ -217,7 +216,7 @@ export const RagsPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* System Instances Section */}
                   {systemInstances.length > 0 && (
                     <div>

@@ -39,10 +39,7 @@ import {
   loadUserGroups,
   Stores,
 } from '../../../../store'
-import {
-  CreateUserGroupRequest,
-  UserGroup,
-} from '../../../../types'
+import { CreateUserGroupRequest, UserGroup } from '../../../../types'
 import { SettingsPageContainer } from '../common/SettingsPageContainer.tsx'
 import { EditUserGroupDrawer } from './EditUserGroupDrawer.tsx'
 
@@ -70,10 +67,14 @@ export function UserGroupsSettings() {
   const [membersDrawerVisible, setMembersDrawerVisible] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<UserGroup | null>(null)
   const [createForm] = Form.useForm()
-  
+
   // Store providers for each group
-  const [groupProviders, setGroupProviders] = useState<Record<string, any[]>>({})
-  const [groupRagProviders, setGroupRagProviders] = useState<Record<string, any[]>>({})
+  const [groupProviders, setGroupProviders] = useState<Record<string, any[]>>(
+    {},
+  )
+  const [groupRagProviders, setGroupRagProviders] = useState<
+    Record<string, any[]>
+  >({})
 
   // Redirect if desktop app or insufficient permissions
   useEffect(() => {
@@ -100,27 +101,29 @@ export function UserGroupsSettings() {
       if (groups.length > 0) {
         const providersMap: Record<string, any[]> = {}
         const ragProvidersMap: Record<string, any[]> = {}
-        
+
         for (const group of groups) {
           try {
-            const [providersResponse, ragProvidersResponse] = await Promise.all([
-              getGroupProviders(group.id),
-              getGroupRagProviders(group.id)
-            ])
+            const [providersResponse, ragProvidersResponse] = await Promise.all(
+              [getGroupProviders(group.id), getGroupRagProviders(group.id)],
+            )
             providersMap[group.id] = providersResponse.providers
             ragProvidersMap[group.id] = ragProvidersResponse.providers
           } catch (error) {
-            console.error(`Failed to load providers for group ${group.id}:`, error)
+            console.error(
+              `Failed to load providers for group ${group.id}:`,
+              error,
+            )
             providersMap[group.id] = []
             ragProvidersMap[group.id] = []
           }
         }
-        
+
         setGroupProviders(providersMap)
         setGroupRagProviders(ragProvidersMap)
       }
     }
-    
+
     loadGroupProviders()
   }, [groups])
 
@@ -159,27 +162,29 @@ export function UserGroupsSettings() {
       if (groups.length > 0) {
         const providersMap: Record<string, any[]> = {}
         const ragProvidersMap: Record<string, any[]> = {}
-        
+
         for (const group of groups) {
           try {
-            const [providersResponse, ragProvidersResponse] = await Promise.all([
-              getGroupProviders(group.id),
-              getGroupRagProviders(group.id)
-            ])
+            const [providersResponse, ragProvidersResponse] = await Promise.all(
+              [getGroupProviders(group.id), getGroupRagProviders(group.id)],
+            )
             providersMap[group.id] = providersResponse.providers
             ragProvidersMap[group.id] = ragProvidersResponse.providers
           } catch (error) {
-            console.error(`Failed to load providers for group ${group.id}:`, error)
+            console.error(
+              `Failed to load providers for group ${group.id}:`,
+              error,
+            )
             providersMap[group.id] = []
             ragProvidersMap[group.id] = []
           }
         }
-        
+
         setGroupProviders(providersMap)
         setGroupRagProviders(ragProvidersMap)
       }
     }
-    
+
     loadGroupProviders()
   }
 
@@ -347,17 +352,19 @@ export function UserGroupsSettings() {
                               span={{ xs: 1, sm: 2, md: 3 }}
                             >
                               <Flex wrap className="gap-1">
-                                {groupProviders[group.id].map((provider: any) => {
-                                  return (
-                                    <Tag
-                                      key={provider.id}
-                                      color="blue"
-                                      className="text-xs"
-                                    >
-                                      {provider.name}
-                                    </Tag>
-                                  )
-                                })}
+                                {groupProviders[group.id].map(
+                                  (provider: any) => {
+                                    return (
+                                      <Tag
+                                        key={provider.id}
+                                        color="blue"
+                                        className="text-xs"
+                                      >
+                                        {provider.name}
+                                      </Tag>
+                                    )
+                                  },
+                                )}
                               </Flex>
                             </Descriptions.Item>
                           )}
@@ -368,17 +375,19 @@ export function UserGroupsSettings() {
                               span={{ xs: 1, sm: 2, md: 3 }}
                             >
                               <Flex wrap className="gap-1">
-                                {groupRagProviders[group.id].map((provider: any) => {
-                                  return (
-                                    <Tag
-                                      key={provider.id}
-                                      color="green"
-                                      className="text-xs"
-                                    >
-                                      {provider.name}
-                                    </Tag>
-                                  )
-                                })}
+                                {groupRagProviders[group.id].map(
+                                  (provider: any) => {
+                                    return (
+                                      <Tag
+                                        key={provider.id}
+                                        color="green"
+                                        className="text-xs"
+                                      >
+                                        {provider.name}
+                                      </Tag>
+                                    )
+                                  },
+                                )}
                               </Flex>
                             </Descriptions.Item>
                           )}

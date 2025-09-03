@@ -9,11 +9,14 @@ import {
   Typography,
   Input,
   Space,
+  Switch,
+  App,
 } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useRAGInstanceStore } from '../../../store/ragInstance'
+import { toggleRAGInstanceActivate } from '../../../store/rag'
 import {
   useUserProvidersStore,
   loadUserProviders,
@@ -28,7 +31,9 @@ const { Text } = Typography
 
 export const RagInstanceInfoCard: React.FC = () => {
   const { ragInstanceId } = useParams<{ ragInstanceId: string }>()
+  const { message } = App.useApp()
   const [form] = Form.useForm()
+  const [activationForm] = Form.useForm()
   const [configurationVisible, setConfigurationVisible] = useState(false)
   const [updatingInstance, setUpdatingInstance] = useState(false)
   const engineType = Form.useWatch('engine_type', form)
@@ -66,8 +71,13 @@ export const RagInstanceInfoCard: React.FC = () => {
         llm_model_id: ragInstance.llm_model_id,
         engine_settings: ragInstance.engine_settings,
       })
+
+      // Initialize activation form separately
+      activationForm.setFieldsValue({
+        is_active: ragInstance.is_active,
+      })
     }
-  }, [ragInstance, form])
+  }, [ragInstance, form, activationForm])
 
   // Handle configuration form submission
   const handleConfigurationSubmit = async (values: any) => {
@@ -111,6 +121,28 @@ export const RagInstanceInfoCard: React.FC = () => {
     }
   }
 
+  // Handle activation toggle
+  const handleActivationToggle = async (checked: boolean) => {
+    if (!ragInstance || !ragInstanceId) return
+
+    const previousValue = ragInstance.is_active
+
+    try {
+      // Update activation form immediately for UI feedback
+      activationForm.setFieldValue('is_active', checked)
+
+      await toggleRAGInstanceActivate(ragInstanceId)
+      message.success(
+        `RAG instance ${previousValue ? 'deactivated' : 'activated'} successfully`,
+      )
+    } catch (error) {
+      console.error('Failed to toggle activation:', error)
+      message.error('Failed to toggle activation status')
+      // Revert the activation form value on error
+      activationForm.setFieldValue('is_active', previousValue)
+    }
+  }
+
   // Get available models grouped by provider, filtered by capability
   const getAvailableModels = (capability?: 'text_embedding' | 'chat') => {
     const options: Array<{
@@ -149,7 +181,9 @@ export const RagInstanceInfoCard: React.FC = () => {
     <Card
       title={
         <Flex className="items-center justify-between">
-          <Text strong>Instance Information</Text>
+          <Typography.Title level={5} className={'!m-0 !pt-[2px]'}>
+            Instance Information
+          </Typography.Title>
           <PermissionGuard
             permissions={[Permission.RagInstancesEdit]}
             type="disabled"
@@ -172,9 +206,16 @@ export const RagInstanceInfoCard: React.FC = () => {
         </div>
         <div className={'flex items-center justify-between'}>
           <Text type="secondary">Status:</Text>
-          <Tag color={ragInstance?.is_active ? 'green' : 'red'}>
-            {ragInstance?.is_active ? 'Active' : 'Inactive'}
-          </Tag>
+          <PermissionGuard
+            permissions={[Permission.RagInstancesEdit]}
+            type="disabled"
+          >
+            <Form form={activationForm}>
+              <Form.Item name="is_active" className="mb-0">
+                <Switch onChange={handleActivationToggle} />
+              </Form.Item>
+            </Form>
+          </PermissionGuard>
         </div>
         {ragInstance?.embedding_model_id && (
           <div className={'flex items-center justify-between'}>

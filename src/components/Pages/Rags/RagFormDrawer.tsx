@@ -88,13 +88,19 @@ export const RagFormDrawer: React.FC = () => {
       open={open}
       onClose={closeRAGInstanceDrawer}
       footer={[
-        <Button key="cancel" onClick={closeRAGInstanceDrawer} disabled={loading}>
+        <Button
+          key="cancel"
+          onClick={closeRAGInstanceDrawer}
+          disabled={loading}
+        >
           Cancel
         </Button>,
         <PermissionGuard
           permissions={[
             editingInstance
-              ? (isSystemInstance ? Permission.RagAdminInstancesEdit : Permission.RagInstancesEdit)
+              ? isSystemInstance
+                ? Permission.RagAdminInstancesEdit
+                : Permission.RagInstancesEdit
               : Permission.RagInstancesCreate,
           ]}
           type={'disabled'}
@@ -112,24 +118,23 @@ export const RagFormDrawer: React.FC = () => {
       width={400}
       maskClosable={false}
     >
-      
       <PermissionGuard
         permissions={[
-          editingInstance 
-            ? (isSystemInstance ? Permission.RagAdminInstancesEdit : Permission.RagInstancesEdit)
+          editingInstance
+            ? isSystemInstance
+              ? Permission.RagAdminInstancesEdit
+              : Permission.RagInstancesEdit
             : Permission.RagInstancesCreate,
         ]}
         type={'disabled'}
       >
-        <Form 
-          form={form} 
-          onFinish={handleSubmit} 
-          layout="vertical"
-        >
+        <Form form={form} onFinish={handleSubmit} layout="vertical">
           <Form.Item
             name="name"
             label="Instance Name"
-            rules={[{ required: true, message: 'Please enter an instance name' }]}
+            rules={[
+              { required: true, message: 'Please enter an instance name' },
+            ]}
           >
             <Input placeholder="Enter instance name" />
           </Form.Item>
@@ -146,8 +151,8 @@ export const RagFormDrawer: React.FC = () => {
             >
               <Select placeholder="Select a RAG provider">
                 {creatableProviders.map(provider => (
-                  <Select.Option 
-                    key={provider.id} 
+                  <Select.Option
+                    key={provider.id}
                     value={provider.id}
                     disabled={!provider.enabled}
                   >

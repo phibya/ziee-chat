@@ -114,7 +114,7 @@ export const createChatStore = (conversation: string | Conversation) => {
         activeBranchId:
           typeof conversation === 'string'
             ? null
-            : conversation.active_branch_id,
+            : conversation.active_branch_id || null,
         loading: false,
         sending: false,
         loadingBranches: false,
@@ -196,6 +196,10 @@ export const createChatStore = (conversation: string | Conversation) => {
             set({ loading: !get().messages.length, error: null })
 
             const targetBranchId = branchId || conversation.active_branch_id
+            if (!targetBranchId) {
+              throw new Error('No branch ID available')
+            }
+
             const cacheKey = `${conversationId}:${targetBranchId}`
 
             // Cache current branch messages before switching

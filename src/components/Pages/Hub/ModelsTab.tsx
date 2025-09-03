@@ -65,8 +65,10 @@ export function ModelsTab() {
       capabilities.push({ key: 'code_interpreter', label: 'Code Interpreter' })
     if (hasAudio) capabilities.push({ key: 'audio', label: 'Audio' })
     if (hasChat) capabilities.push({ key: 'chat', label: 'Chat' })
-    if (hasTextEmbedding) capabilities.push({ key: 'text_embedding', label: 'Text Embedding' })
-    if (hasImageGenerator) capabilities.push({ key: 'image_generator', label: 'Image Generator' })
+    if (hasTextEmbedding)
+      capabilities.push({ key: 'text_embedding', label: 'Text Embedding' })
+    if (hasImageGenerator)
+      capabilities.push({ key: 'image_generator', label: 'Image Generator' })
 
     return capabilities
   }, [models])

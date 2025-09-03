@@ -113,7 +113,7 @@ export interface Conversation {
   project_id?: string
   assistant_id?: string
   model_id?: string
-  active_branch_id: string
+  active_branch_id?: string
   created_at: string
   updated_at: string
 }
@@ -936,6 +936,8 @@ export interface RAGInstance {
   enabled: boolean
   is_active: boolean
   is_system: boolean
+  status: RAGInstanceStatus
+  error_code: RAGInstanceErrorCode
   engine_type: RAGEngineType
   engine_settings: RAGEngineSettings
   embedding_model_id?: string
@@ -945,6 +947,8 @@ export interface RAGInstance {
   created_at: string
   updated_at: string
 }
+
+export type RAGInstanceErrorCode = 'none' | 'embedding_model_not_config' | 'llm_model_not_config' | 'provider_connection_failed' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
 
 export interface RAGInstanceFile {
   id: string
@@ -985,6 +989,8 @@ export interface RAGInstanceListResponse {
   page: number
   per_page: number
 }
+
+export type RAGInstanceStatus = 'none' | 'indexing' | 'finished' | 'error'
 
 export type RAGProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -1242,6 +1248,7 @@ export interface UpdateRAGInstanceRequest {
   description?: string
   name?: string
   enabled?: boolean
+  is_active?: boolean
   embedding_model_id?: string
   llm_model_id?: string
   parameters?: any
@@ -1555,6 +1562,7 @@ export const ApiEndpoints = {
   'Rag.listCreatableProviders': 'GET /api/rag/providers',
   'Rag.listInstanceFiles': 'GET /api/rag/instances/{instance_id}/files',
   'Rag.listInstances': 'GET /api/rag/instances',
+  'Rag.toggleInstanceActivate': 'PUT /api/rag/instances/{instance_id}/toggle-activate',
   'Rag.updateInstance': 'PUT /api/rag/instances/{instance_id}',
   'Rag.uploadInstanceFile': 'POST /api/rag/instances/{instance_id}/files',
   'User.greet': 'POST /api/user/greet',
@@ -1721,6 +1729,7 @@ export type ApiEndpointParameters = {
   'Rag.listCreatableProviders': void
   'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; status_filter?: RAGProcessingStatus; search?: string }
   'Rag.listInstances': { page?: number; per_page?: number; include_system?: boolean }
+  'Rag.toggleInstanceActivate': { instance_id: string }
   'Rag.updateInstance': { instance_id: string } & UpdateRAGInstanceRequest
   'Rag.uploadInstanceFile': { instance_id: string } & FormData
   'User.greet': UserHello
@@ -1887,6 +1896,7 @@ export type ApiEndpointResponses = {
   'Rag.listCreatableProviders': RAGProvider[]
   'Rag.listInstanceFiles': RAGInstanceFilesListResponse
   'Rag.listInstances': RAGInstanceListResponse
+  'Rag.toggleInstanceActivate': RAGInstance
   'Rag.updateInstance': RAGInstance
   'Rag.uploadInstanceFile': UploadFileResponse
   'User.greet': string

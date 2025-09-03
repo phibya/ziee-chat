@@ -200,15 +200,15 @@ export const AssistantsPage: React.FC = () => {
             {searchInputComponent}
           </div>
         )}
-        
+
         {/* Assistants Grid */}
         {(() => {
           const filteredAssistants = getFilteredAndSortedAssistants()
-          
+
           if (filteredAssistants.length === 0) {
             return null
           }
-          
+
           return (
             <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
               <div className={'h-full flex flex-col overflow-y-auto'}>

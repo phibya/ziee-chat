@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import { RAGInstance, RAGInstanceFile, RAGInstanceFilesListResponse, UpdateRAGInstanceRequest } from '../types/api'
+import {
+  RAGInstance,
+  RAGInstanceFile,
+  RAGInstanceFilesListResponse,
+  UpdateRAGInstanceRequest,
+} from '../types/api'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'
 import { StoreApi, UseBoundStore } from 'zustand/index'
 import { useEffect, useMemo, useRef } from 'react'
@@ -54,7 +59,9 @@ export interface RAGInstanceState {
 
   // Actions
   loadRAGInstance: () => Promise<void>
-  updateRAGInstance: (data: UpdateRAGInstanceRequest) => Promise<RAGInstance | undefined>
+  updateRAGInstance: (
+    data: UpdateRAGInstanceRequest,
+  ) => Promise<RAGInstance | undefined>
   loadFiles: (page?: number, search?: string) => Promise<void>
   nextPage: () => Promise<void>
   previousPage: () => Promise<void>
@@ -192,14 +199,16 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
             set({ filesLoading: true, filesError: null })
 
             const currentPage = page || state.currentPage
-            const searchQuery = search !== undefined ? search : state.searchQuery
+            const searchQuery =
+              search !== undefined ? search : state.searchQuery
 
-            const response: RAGInstanceFilesListResponse = await ApiClient.Rag.listInstanceFiles({
-              instance_id: ragInstanceId,
-              page: currentPage,
-              per_page: state.filesPerPage,
-              search: searchQuery || undefined,
-            })
+            const response: RAGInstanceFilesListResponse =
+              await ApiClient.Rag.listInstanceFiles({
+                instance_id: ragInstanceId,
+                page: currentPage,
+                per_page: state.filesPerPage,
+                search: searchQuery || undefined,
+              })
 
             set({
               files: response.files || [],
@@ -346,7 +355,10 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
                 // The backend should have created the RAGInstanceFile entry
                 // We'll reload the files list to get the proper RAGInstanceFile data
                 // For now, just track that upload was successful
-                console.log('File uploaded successfully:', response.file.filename)
+                console.log(
+                  'File uploaded successfully:',
+                  response.file.filename,
+                )
               } catch (fileError) {
                 // Mark this file as failed
                 set(state => ({
@@ -462,15 +474,18 @@ export const createRAGInstanceStore = (ragInstance: string | RAGInstance) => {
 export const toggleFileSelection = (instanceId: string, fileId: string) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
-  
+
   const selected = store.__state.selectedFiles
-  const newSelected = selected.includes(fileId) 
+  const newSelected = selected.includes(fileId)
     ? selected.filter((id: string) => id !== fileId)
     : [...selected, fileId]
   store.__setState({ selectedFiles: newSelected })
 }
 
-export const selectAllVisibleFiles = (instanceId: string, fileIds: string[]) => {
+export const selectAllVisibleFiles = (
+  instanceId: string,
+  fileIds: string[],
+) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
   store.__setState({ selectedFiles: fileIds })
@@ -482,30 +497,37 @@ export const clearFileSelection = (instanceId: string) => {
   store.__setState({ selectedFiles: [] })
 }
 
-export const bulkDeleteFiles = async (instanceId: string, fileIds: string[]) => {
+export const bulkDeleteFiles = async (
+  instanceId: string,
+  fileIds: string[],
+) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
-  
+
   try {
     store.__setState({ bulkOperationInProgress: true })
 
     // Delete files sequentially using existing single delete API
-    const deletePromises = fileIds.map(fileId => 
-      ApiClient.Rag.deleteInstanceFile({ instance_id: instanceId, file_id: fileId })
+    const deletePromises = fileIds.map(fileId =>
+      ApiClient.Rag.deleteInstanceFile({
+        instance_id: instanceId,
+        file_id: fileId,
+      }),
     )
 
     await Promise.all(deletePromises)
 
     // Remove deleted files from local state
     const currentFiles = store.__state.files
-    const remainingFiles = currentFiles.filter((file: RAGInstanceFile) => !fileIds.includes(file.file_id))
-    
+    const remainingFiles = currentFiles.filter(
+      (file: RAGInstanceFile) => !fileIds.includes(file.file_id),
+    )
+
     store.__setState({
       files: remainingFiles,
       selectedFiles: [],
       bulkOperationInProgress: false,
     })
-
   } catch (error) {
     store.__setState({ bulkOperationInProgress: false })
     throw error
@@ -515,7 +537,7 @@ export const bulkDeleteFiles = async (instanceId: string, fileIds: string[]) => 
 export const searchFiles = async (instanceId: string, query: string) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
-  
+
   // Reset to page 1 when searching
   await store.__state.loadFiles(1, query)
 }
@@ -523,28 +545,28 @@ export const searchFiles = async (instanceId: string, query: string) => {
 export const changePage = async (instanceId: string, page: number) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
-  
+
   await store.__state.goToPage(page)
 }
 
 export const nextPage = async (instanceId: string) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
-  
+
   await store.__state.nextPage()
 }
 
 export const previousPage = async (instanceId: string) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
-  
+
   await store.__state.previousPage()
 }
 
 export const changePageSize = async (instanceId: string, pageSize: number) => {
   const store = RAGInstanceStoreMap.get(instanceId)
   if (!store) return
-  
+
   await store.__state.changePageSize(pageSize)
 }
 

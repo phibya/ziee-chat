@@ -29,7 +29,7 @@ export function EditUserGroupDrawer({
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [loadingProviders, setLoadingProviders] = useState(false)
-  
+
   const { providers } = Stores.AdminProviders
   const { providers: ragProviders } = Stores.AdminRAGProviders
   const { updating } = Stores.AdminUserGroups
@@ -43,12 +43,14 @@ export function EditUserGroupDrawer({
           // Fetch providers for this group
           const [providersResponse, ragProvidersResponse] = await Promise.all([
             getGroupProviders(group.id),
-            getGroupRagProviders(group.id)
+            getGroupRagProviders(group.id),
           ])
-          
+
           const providerIds = providersResponse.providers.map((p: any) => p.id)
-          const ragProviderIds = ragProvidersResponse.providers.map((p: any) => p.id)
-          
+          const ragProviderIds = ragProvidersResponse.providers.map(
+            (p: any) => p.id,
+          )
+
           form.setFieldsValue({
             name: group.name,
             description: group.description,
@@ -95,7 +97,9 @@ export function EditUserGroupDrawer({
           throw new Error('Permissions must be an array')
         }
       } catch (error) {
-        message.error('Invalid permissions format. Please enter a valid JSON array.')
+        message.error(
+          'Invalid permissions format. Please enter a valid JSON array.',
+        )
         return
       }
 
@@ -175,10 +179,7 @@ export function EditUserGroupDrawer({
             },
           ]}
         >
-          <TextArea
-            placeholder='["permission1", "permission2"]'
-            rows={4}
-          />
+          <TextArea placeholder='["permission1", "permission2"]' rows={4} />
         </Form.Item>
 
         <Form.Item name="provider_ids" label="Model Providers">

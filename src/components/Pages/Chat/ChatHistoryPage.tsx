@@ -8,7 +8,11 @@ import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { Permission } from '../../../types'
-import { SearchOutlined, MessageOutlined, PlusOutlined } from '@ant-design/icons'
+import {
+  SearchOutlined,
+  MessageOutlined,
+  PlusOutlined,
+} from '@ant-design/icons'
 import { useChatHistoryStore } from '../../../store'
 
 const { Title, Text } = Typography
@@ -19,7 +23,7 @@ export const ChatHistoryPage: React.FC = () => {
   const searchBoxContainerRef = useRef<HTMLDivElement>(null)
   const pageMinSize = useMainContentMinSize()
   const [isSearchBoxVisible, setIsSearchBoxVisible] = useState(false)
-  
+
   // Chat history store for empty state detection
   const { conversations, loading } = useChatHistoryStore()
 
@@ -55,7 +59,7 @@ export const ChatHistoryPage: React.FC = () => {
             <div ref={searchBoxContainerRef} />
           </div>
         )}
-        
+
         {/* Show ConversationHistory if there are conversations or loading */}
         {(conversations.length > 0 || loading) && (
           <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">

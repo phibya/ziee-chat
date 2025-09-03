@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import type { 
-  RAGInstance, 
+import type {
+  RAGInstance,
   RAGProvider,
-  UpdateRAGInstanceRequest 
+  UpdateRAGInstanceRequest,
 } from '../types/api'
 
 interface RagState {
@@ -46,10 +46,12 @@ export const useRAGStore = create<RagState>()(
 // Store methods - defined OUTSIDE the store definition
 
 // RAG list actions
-export const loadAllUserRAGInstances = async (includeSystem?: boolean): Promise<void> => {
+export const loadAllUserRAGInstances = async (
+  includeSystem?: boolean,
+): Promise<void> => {
   const state = useRAGStore.getState()
   const shouldIncludeSystem = includeSystem ?? state.includeSystemInstances
-  
+
   if (state.loading) {
     return
   }
@@ -58,7 +60,7 @@ export const loadAllUserRAGInstances = async (includeSystem?: boolean): Promise<
 
     const [instancesResponse, providersResponse] = await Promise.all([
       ApiClient.Rag.listInstances({ include_system: shouldIncludeSystem }),
-      ApiClient.Rag.listCreatableProviders()
+      ApiClient.Rag.listCreatableProviders(),
     ])
 
     useRAGStore.setState({
@@ -70,7 +72,8 @@ export const loadAllUserRAGInstances = async (includeSystem?: boolean): Promise<
     })
   } catch (error) {
     useRAGStore.setState({
-      error: error instanceof Error ? error.message : 'Failed to load RAG instances',
+      error:
+        error instanceof Error ? error.message : 'Failed to load RAG instances',
       loading: false,
     })
     throw error
@@ -81,13 +84,13 @@ export const loadAllUserRAGInstances = async (includeSystem?: boolean): Promise<
 export const toggleSystemInstances = async (): Promise<void> => {
   const currentState = useRAGStore.getState()
   const newIncludeSystem = !currentState.includeSystemInstances
-  
+
   // Reset state and reload with new setting
-  useRAGStore.setState({ 
+  useRAGStore.setState({
     isInitialized: false,
-    includeSystemInstances: newIncludeSystem 
+    includeSystemInstances: newIncludeSystem,
   })
-  
+
   await loadAllUserRAGInstances(newIncludeSystem)
 }
 
@@ -111,7 +114,10 @@ export const createRAGInstance = async (data: {
     return ragInstance
   } catch (error) {
     useRAGStore.setState({
-      error: error instanceof Error ? error.message : 'Failed to create RAG instance',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to create RAG instance',
       creating: false,
     })
     throw error
@@ -131,14 +137,19 @@ export const updateRAGInstanceInList = async (
     })
 
     useRAGStore.setState(state => ({
-      ragInstances: state.ragInstances.map(r => (r.id === id ? ragInstance : r)),
+      ragInstances: state.ragInstances.map(r =>
+        r.id === id ? ragInstance : r,
+      ),
       updating: false,
     }))
 
     return ragInstance
   } catch (error) {
     useRAGStore.setState({
-      error: error instanceof Error ? error.message : 'Failed to update RAG instance',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to update RAG instance',
       updating: false,
     })
     throw error
@@ -157,8 +168,41 @@ export const deleteRAGInstance = async (id: string): Promise<void> => {
     }))
   } catch (error) {
     useRAGStore.setState({
-      error: error instanceof Error ? error.message : 'Failed to delete RAG instance',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete RAG instance',
       deleting: false,
+    })
+    throw error
+  }
+}
+
+export const toggleRAGInstanceActivate = async (
+  id: string,
+): Promise<RAGInstance> => {
+  try {
+    useRAGStore.setState({ updating: true, error: null })
+
+    const ragInstance = await ApiClient.Rag.toggleInstanceActivate({
+      instance_id: id,
+    })
+
+    useRAGStore.setState(state => ({
+      ragInstances: state.ragInstances.map(r =>
+        r.id === id ? ragInstance : r,
+      ),
+      updating: false,
+    }))
+
+    return ragInstance
+  } catch (error) {
+    useRAGStore.setState({
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to toggle RAG instance activate status',
+      updating: false,
     })
     throw error
   }
@@ -184,12 +228,16 @@ export const resetRAGStore = (): void => {
 }
 
 // Helper/utility functions
-export const searchRAGInstances = (instances: RAGInstance[], query: string): RAGInstance[] => {
+export const searchRAGInstances = (
+  instances: RAGInstance[],
+  query: string,
+): RAGInstance[] => {
   if (!query.trim()) return instances
 
   const searchTerm = query.toLowerCase()
-  return instances.filter(instance =>
-    instance.name.toLowerCase().includes(searchTerm) ||
-    instance.description?.toLowerCase().includes(searchTerm)
+  return instances.filter(
+    instance =>
+      instance.name.toLowerCase().includes(searchTerm) ||
+      instance.description?.toLowerCase().includes(searchTerm),
   )
 }

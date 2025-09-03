@@ -39,7 +39,6 @@ export function RagCard({ ragInstance }: RagCardProps) {
     }
   }
 
-
   return (
     <Card
       className={`cursor-pointer relative group hover:!shadow-md transition-shadow h-full ${
@@ -86,8 +85,12 @@ export function RagCard({ ragInstance }: RagCardProps) {
         </div>
 
         {/* Show actions based on permissions - both personal instances and system instances with admin permission */}
-        <PermissionGuard 
-          permissions={isSystemInstance ? [Permission.RagAdminInstancesEdit] : [Permission.RagInstancesEdit]}
+        <PermissionGuard
+          permissions={
+            isSystemInstance
+              ? [Permission.RagAdminInstancesEdit]
+              : [Permission.RagInstancesEdit]
+          }
           type="hidden"
         >
           <div className="absolute top-2 right-2">
