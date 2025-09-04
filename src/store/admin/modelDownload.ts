@@ -144,82 +144,68 @@ export const subscribeToDownloadProgress = async (): Promise<void> => {
     })
 
     await ApiClient.Admin.subscribeDownloadProgress(undefined, {
-      SSE: (event: string, data: any) => {
-        try {
-          switch (event) {
-            case 'update':
-              if (data.downloads) {
-                // Update downloads in store with progress updates
-                const currentDownloads =
-                  useModelDownloadStore.getState().downloads
-                const updatedDownloads = [...currentDownloads]
+      SSE: {
+        connected: data => {
+          console.log(
+            'Download progress monitoring connected:',
+            data?.message || 'Connected',
+          )
+        },
+        update: data => {
+          // Update downloads in store with progress updates
+          const currentDownloads = useModelDownloadStore.getState().downloads
+          const updatedDownloads = [...currentDownloads]
 
-                data.downloads.forEach(
-                  (progressUpdate: DownloadProgressUpdate) => {
-                    const existingIndex = updatedDownloads.findIndex(
-                      download => download.id === progressUpdate.id,
-                    )
-                    if (existingIndex !== -1) {
-                      // Merge progress update with existing download instance
-                      updatedDownloads[existingIndex] = {
-                        ...updatedDownloads[existingIndex],
-                        status: progressUpdate.status as any,
-                        progress_data: {
-                          phase: progressUpdate.phase || '',
-                          current: progressUpdate.current || 0,
-                          total: progressUpdate.total || 0,
-                          message: progressUpdate.message || '',
-                          speed_bps: progressUpdate.speed_bps || 0,
-                          eta_seconds: progressUpdate.eta_seconds || 0,
-                        },
-                        error_message: progressUpdate.error_message,
-                        updated_at: new Date().toISOString(),
-                      }
-                    }
-                  },
-                )
-
-                // Filter out cancelled and completed downloads before updating state
-                const filteredDownloads = updatedDownloads.filter(
-                  download =>
-                    download.status !== 'cancelled' &&
-                    download.status !== 'completed',
-                )
-
-                useModelDownloadStore.setState({
-                  downloads: filteredDownloads,
-                })
+          data.forEach((progressUpdate: DownloadProgressUpdate) => {
+            const existingIndex = updatedDownloads.findIndex(
+              download => download.id === progressUpdate.id,
+            )
+            if (existingIndex !== -1) {
+              // Merge progress update with existing download instance
+              updatedDownloads[existingIndex] = {
+                ...updatedDownloads[existingIndex],
+                status: progressUpdate.status as any,
+                progress_data: {
+                  phase: progressUpdate.phase || '',
+                  current: progressUpdate.current || 0,
+                  total: progressUpdate.total || 0,
+                  message: progressUpdate.message || '',
+                  speed_bps: progressUpdate.speed_bps || 0,
+                  eta_seconds: progressUpdate.eta_seconds || 0,
+                },
+                error_message: progressUpdate.error_message,
+                updated_at: new Date().toISOString(),
               }
-              break
+            }
+          })
 
-            case 'complete':
-              console.log('Downloads complete:', data.message)
-              // Close the connection as no more downloads are active
-              disconnectSSE()
-              loadExistingDownloads()
-              break
+          // Filter out cancelled and completed downloads before updating state
+          const filteredDownloads = updatedDownloads.filter(
+            download =>
+              download.status !== 'cancelled' &&
+              download.status !== 'completed',
+          )
 
-            case 'error':
-              console.error('Download subscription error:', data.error)
-              useModelDownloadStore.setState({
-                sseError: data.error,
-                sseConnected: false,
-              })
-              break
-
-            default:
-              console.log('Unknown SSE event:', event, data)
-          }
-        } catch (error) {
-          console.error('Failed to handle SSE event:', error)
           useModelDownloadStore.setState({
-            sseError:
-              error instanceof Error
-                ? error.message
-                : 'Failed to handle SSE event',
+            downloads: filteredDownloads,
+          })
+        },
+        complete: data => {
+          console.log('Downloads complete:', data)
+          // Close the connection as no more downloads are active
+          disconnectSSE()
+          loadExistingDownloads()
+        },
+        error: data => {
+          console.error('Download subscription error:', data)
+          useModelDownloadStore.setState({
+            sseError: data,
             sseConnected: false,
           })
-        }
+        },
+        default: (event, data) => {
+          console.log('Unknown download progress SSE event:', event, data)
+        },
       },
     })
   } catch (error) {

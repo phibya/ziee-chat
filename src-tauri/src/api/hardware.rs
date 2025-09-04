@@ -13,6 +13,21 @@ use uuid::Uuid;
 
 use crate::api::{errors::ApiResult, middleware::AuthenticatedUser};
 
+// SSE event data structures
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct SSEHardwareUsageConnectedData {
+    pub message: String,
+}
+
+// SSE event types for hardware usage monitoring
+crate::sse_event_enum! {
+    #[derive(Debug, Clone, Serialize, JsonSchema)]
+    pub enum SSEHardwareUsageEvent {
+        Connected(SSEHardwareUsageConnectedData),
+        Update(HardwareUsageUpdate),
+    }
+}
+
 // Hardware information structures
 #[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct OperatingSystemInfo {
@@ -183,9 +198,11 @@ pub async fn subscribe_hardware_usage(
     }
 
     // Send initial connection event
-    let _ = tx.send(Ok(Event::default()
-        .event("connected")
-        .data("{\"message\":\"Hardware monitoring connected\"}")));
+    let connected_event = SSEHardwareUsageEvent::Connected(SSEHardwareUsageConnectedData {
+        message: "Hardware monitoring connected".to_string(),
+    });
+
+    let _ = tx.send(Ok(connected_event.into()));
 
     // Start monitoring if not already active
     start_hardware_monitoring().await;
@@ -303,15 +320,8 @@ async fn broadcast_usage_update(usage_update: HardwareUsageUpdate) {
         return;
     }
 
-    let json_data = match serde_json::to_string(&usage_update) {
-        Ok(data) => data,
-        Err(e) => {
-            eprintln!("Failed to serialize hardware usage update: {}", e);
-            return;
-        }
-    };
-
-    let event = Event::default().event("update").data(json_data);
+    let update_event = SSEHardwareUsageEvent::Update(usage_update);
+    let event: Event = update_event.into();
 
     // Send to all clients and remove disconnected ones
     let mut disconnected_clients = Vec::new();

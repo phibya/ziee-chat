@@ -138,7 +138,9 @@ async fn rag_instance_worker(
             );
             // Deactivate the RAG instance due to engine type failure (only for instance errors)
             if let Some(instance_error) = e.clone().into_instance_error() {
-                if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false, Some(instance_error)).await
+                if let Err(update_err) =
+                    update_rag_instance_active_status(rag_instance_id, false, Some(instance_error))
+                        .await
                 {
                     tracing::error!("Failed to deactivate RAG instance: {}", update_err);
                 }
@@ -161,7 +163,9 @@ async fn rag_instance_worker(
                 e
             );
             if let Some(instance_error) = e.clone().into_instance_error() {
-                if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false, Some(instance_error)).await
+                if let Err(update_err) =
+                    update_rag_instance_active_status(rag_instance_id, false, Some(instance_error))
+                        .await
                 {
                     tracing::error!("Failed to deactivate RAG instance: {}", update_err);
                 }
@@ -182,7 +186,10 @@ async fn rag_instance_worker(
             e
         );
         if let Some(instance_error) = e.clone().into_instance_error() {
-            if let Err(update_err) = update_rag_instance_active_status(rag_instance_id, false, Some(instance_error)).await {
+            if let Err(update_err) =
+                update_rag_instance_active_status(rag_instance_id, false, Some(instance_error))
+                    .await
+            {
                 tracing::error!("Failed to deactivate RAG instance: {}", update_err);
             }
         } else {

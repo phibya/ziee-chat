@@ -1,7 +1,7 @@
 // Spreadsheet extractor with enhanced CSV/Excel/ODS support
 
 use super::base::{ExtractionError, TextExtractor};
-use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
+use crate::ai::rag::{RAGErrorCode, RAGIndexingErrorCode, RAGResult};
 use async_trait::async_trait;
 
 /// Enhanced spreadsheet extractor supporting CSV, Excel, and OpenDocument formats
@@ -155,7 +155,11 @@ impl SpreadsheetExtractor {
         })
         .await
         .map_err(|e| {
-            tracing::error!("Failed to execute Excel extraction task for file {}: {}", self.file_path, e);
+            tracing::error!(
+                "Failed to execute Excel extraction task for file {}: {}",
+                self.file_path,
+                e
+            );
             RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?
         .map_err(|e| {
@@ -372,7 +376,11 @@ impl SpreadsheetExtractor {
         })
         .await
         .map_err(|e| {
-            tracing::error!("Failed to execute ODS extraction task for file {}: {}", self.file_path, e);
+            tracing::error!(
+                "Failed to execute ODS extraction task for file {}: {}",
+                self.file_path,
+                e
+            );
             RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
         })?
         .map_err(|e| {

@@ -71,7 +71,7 @@ impl<T> From<EnumOption<T>> for Option<T> {
 
 impl<T> std::ops::Deref for EnumOption<T> {
     type Target = Option<T>;
-    
+
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -89,4 +89,3 @@ impl<T> Default for EnumOption<T> {
         Self(None)
     }
 }
-

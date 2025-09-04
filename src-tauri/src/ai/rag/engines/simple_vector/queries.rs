@@ -1,6 +1,8 @@
 // Database queries for Simple Vector RAG Engine
 
-use crate::ai::rag::{PipelineStage, ProcessingStatus, RAGErrorCode, RAGResult, RAGInstanceErrorCode};
+use crate::ai::rag::{
+    PipelineStage, ProcessingStatus, RAGErrorCode, RAGInstanceErrorCode, RAGResult,
+};
 use crate::database::get_database_pool;
 use pgvector::HalfVector;
 use uuid::Uuid;
@@ -13,11 +15,13 @@ pub async fn update_pipeline_status(
     status: ProcessingStatus,
     error_message: Option<String>,
 ) -> RAGResult<()> {
-    let database = get_database_pool()
-        .map_err(|e| {
-            tracing::error!("Failed to get database pool for pipeline status update: {}", e);
-            RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
-        })?;
+    let database = get_database_pool().map_err(|e| {
+        tracing::error!(
+            "Failed to get database pool for pipeline status update: {}",
+            e
+        );
+        RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
+    })?;
 
     let started_at = if matches!(status, ProcessingStatus::InProgress { .. }) {
         Some(chrono::Utc::now())
@@ -58,7 +62,11 @@ pub async fn update_pipeline_status(
     .execute(&*database)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to execute pipeline status update for file {}: {}", file_id, e);
+        tracing::error!(
+            "Failed to execute pipeline status update for file {}: {}",
+            file_id,
+            e
+        );
         RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
     })?;
 
@@ -67,17 +75,20 @@ pub async fn update_pipeline_status(
 
 /// Get filename from the files table
 pub async fn get_filename_from_db(file_id: Uuid) -> RAGResult<String> {
-    let database = get_database_pool()
-        .map_err(|e| {
-            tracing::error!("Failed to get database pool for filename lookup: {}", e);
-            RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
-        })?;
+    let database = get_database_pool().map_err(|e| {
+        tracing::error!("Failed to get database pool for filename lookup: {}", e);
+        RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
+    })?;
 
     let filename = sqlx::query_scalar!("SELECT filename FROM files WHERE id = $1", file_id)
         .fetch_optional(&*database)
         .await
         .map_err(|e| {
-            tracing::error!("Failed to fetch filename from database for file {}: {}", file_id, e);
+            tracing::error!(
+                "Failed to fetch filename from database for file {}: {}",
+                file_id,
+                e
+            );
             RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
         })?
         .ok_or_else(|| RAGErrorCode::Instance(RAGInstanceErrorCode::RagInstanceNotFound))?;
@@ -96,11 +107,13 @@ pub async fn upsert_vector_document(
     embedding: &[f32],
     metadata: serde_json::Value,
 ) -> RAGResult<()> {
-    let database = get_database_pool()
-        .map_err(|e| {
-            tracing::error!("Failed to get database pool for vector document upsert: {}", e);
-            RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
-        })?;
+    let database = get_database_pool().map_err(|e| {
+        tracing::error!(
+            "Failed to get database pool for vector document upsert: {}",
+            e
+        );
+        RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
+    })?;
 
     let embedding = HalfVector::from_f32_slice(embedding);
 
@@ -130,7 +143,11 @@ pub async fn upsert_vector_document(
     .execute(&*database)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to upsert vector document for instance {}: {}", instance_id, e);
+        tracing::error!(
+            "Failed to upsert vector document for instance {}: {}",
+            instance_id,
+            e
+        );
         RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
     })?;
 

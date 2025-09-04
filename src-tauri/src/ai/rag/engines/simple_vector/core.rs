@@ -5,7 +5,8 @@ use crate::ai::rag::engines::get_rag_file_storage;
 use crate::ai::rag::{
     engines::traits::{RAGEngine, RAGEngineType},
     processors::{chunk::TokenBasedChunker, text},
-    PipelineStage, ProcessingStatus, RAGErrorCode, RAGQuery, RAGQueryResponse, RAGResult, RAGInstanceErrorCode, RAGIndexingErrorCode, RAGQueryingErrorCode,
+    PipelineStage, ProcessingStatus, RAGErrorCode, RAGIndexingErrorCode, RAGInstanceErrorCode,
+    RAGQuery, RAGQueryResponse, RAGQueryingErrorCode, RAGResult,
 };
 use async_trait::async_trait;
 use uuid::Uuid;

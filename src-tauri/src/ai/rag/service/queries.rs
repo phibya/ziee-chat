@@ -3,8 +3,8 @@
 use crate::ai::rag::{
     engines::RAGEngineType, models::RagInstanceFile, ProcessingStatus, RAGErrorCode, RAGResult,
 };
-use crate::database::models::rag_instance::RAGInstanceErrorCode;
 use crate::database::get_database_pool;
+use crate::database::models::rag_instance::RAGInstanceErrorCode;
 use uuid::Uuid;
 
 /// Get unique RAG instance IDs that have pending files and are active
@@ -41,9 +41,7 @@ pub async fn get_engine_type_for_instance(rag_instance_id: Uuid) -> RAGResult<RA
     .fetch_optional(&*database)
     .await
     .map_err(|_| RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError))?
-    .ok_or_else(|| {
-        RAGErrorCode::Instance(RAGInstanceErrorCode::RagInstanceNotFound)
-    })?;
+    .ok_or_else(|| RAGErrorCode::Instance(RAGInstanceErrorCode::RagInstanceNotFound))?;
 
     // Convert string to RAGEngineType
     let engine_type = match engine_type_str.as_str() {
@@ -159,7 +157,7 @@ pub async fn update_rag_instance_active_status(
         .map_err(|_| RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError))?;
 
     let error_code_str = error_code.map(|ec| ec.as_str()).unwrap_or("none");
-    
+
     let affected_rows = sqlx::query!(
         r#"
         UPDATE rag_instances 
@@ -175,7 +173,9 @@ pub async fn update_rag_instance_active_status(
     .map_err(|_| RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError))?;
 
     if affected_rows.rows_affected() == 0 {
-        return Err(RAGErrorCode::Instance(RAGInstanceErrorCode::RagInstanceNotFound));
+        return Err(RAGErrorCode::Instance(
+            RAGInstanceErrorCode::RagInstanceNotFound,
+        ));
     }
 
     tracing::info!(

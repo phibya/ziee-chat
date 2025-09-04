@@ -1,6 +1,6 @@
 // Text sanitization functionality with hardcoded best practice settings
 
-use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
+use crate::ai::rag::{RAGErrorCode, RAGIndexingErrorCode, RAGResult};
 use regex::Regex;
 
 /// Text sanitization service for cleaning and processing text content
@@ -90,11 +90,10 @@ impl TextSanitizer {
 
         // Additional cleanup: remove null bytes and other control characters that might cause issues
         // (but preserve common whitespace like \t, \n, \r)
-        let control_char_regex = Regex::new(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]")
-            .map_err(|e| {
-                tracing::error!("Failed to create control character regex: {}", e);
-                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
-            })?;
+        let control_char_regex = Regex::new(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]").map_err(|e| {
+            tracing::error!("Failed to create control character regex: {}", e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+        })?;
         sanitized = control_char_regex
             .replace_all(&sanitized, replacement_char)
             .to_string();
@@ -143,11 +142,10 @@ impl TextSanitizer {
 
         if self.normalize_whitespace {
             // Normalize whitespace - replace multiple spaces, tabs, newlines with single space
-            let whitespace_regex = Regex::new(r"\s+")
-                .map_err(|e| {
-                    tracing::error!("Failed to create whitespace normalization regex: {}", e);
-                    RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
-                })?;
+            let whitespace_regex = Regex::new(r"\s+").map_err(|e| {
+                tracing::error!("Failed to create whitespace normalization regex: {}", e);
+                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
+            })?;
             normalized = whitespace_regex.replace_all(&normalized, " ").to_string();
             normalized = normalized.trim().to_string();
         }

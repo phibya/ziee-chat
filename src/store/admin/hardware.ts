@@ -116,66 +116,34 @@ export const subscribeToHardwareUsage = async (): Promise<void> => {
     })
 
     await ApiClient.Admin.subscribeHardwareUsage(undefined, {
-      SSE: (event: string, data: any) => {
-        try {
-          switch (event) {
-            case '__init':
-              // Store the AbortController for later use
-              if (data?.abortController) {
-                sseAbortController = data.abortController
-                console.log('Hardware SSE AbortController initialized')
-                // Set connected status once AbortController is ready
-                useHardwareStore.setState({
-                  sseConnected: true,
-                })
-              }
-              break
-
-            case 'update':
-              if (data) {
-                // Update current usage data
-                useHardwareStore.setState({
-                  currentUsage: data as HardwareUsageUpdate,
-                  usageLoading: false,
-                  usageError: null,
-                })
-              }
-              break
-
-            case 'connected':
-              console.log(
-                'Hardware usage monitoring connected:',
-                data?.message || 'Connected',
-              )
-              useHardwareStore.setState({
-                usageLoading: false,
-                sseError: null,
-              })
-              break
-
-            case 'error':
-              console.error('Hardware usage subscription error:', data?.error)
-              useHardwareStore.setState({
-                sseError: data?.error || 'Hardware monitoring error',
-                sseConnected: false,
-                usageLoading: false,
-              })
-              break
-
-            default:
-              console.log('Unknown hardware SSE event:', event, data)
-          }
-        } catch (error) {
-          console.error('Failed to handle hardware SSE event:', error)
+      SSE: {
+        __init: data => {
+          sseAbortController = data.abortController
+          console.log('Hardware SSE AbortController initialized')
           useHardwareStore.setState({
-            sseError:
-              error instanceof Error
-                ? error.message
-                : 'Failed to handle SSE event',
-            sseConnected: false,
-            usageLoading: false,
+            sseConnected: true,
           })
-        }
+        },
+        connected: data => {
+          console.log(
+            'Hardware usage monitoring connected:',
+            data.message || 'Connected',
+          )
+          useHardwareStore.setState({
+            usageLoading: false,
+            sseError: null,
+          })
+        },
+        update: data => {
+          useHardwareStore.setState({
+            currentUsage: data,
+            usageLoading: false,
+            usageError: null,
+          })
+        },
+        default: (event, data) => {
+          console.log('Unknown hardware SSE event:', event, data)
+        },
       },
     })
   } catch (error) {

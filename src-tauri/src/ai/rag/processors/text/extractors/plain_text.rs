@@ -1,7 +1,7 @@
 // Plain text extractor with Markdown-first approach
 
 use super::base::TextExtractor;
-use crate::ai::rag::{RAGResult, RAGErrorCode, RAGIndexingErrorCode};
+use crate::ai::rag::{RAGErrorCode, RAGIndexingErrorCode, RAGResult};
 use async_trait::async_trait;
 
 /// Enhanced plain text extractor with Markdown conversion and metadata extraction

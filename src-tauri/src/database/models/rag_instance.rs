@@ -41,7 +41,6 @@ pub struct RAGInstance {
     pub updated_at: DateTime<Utc>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGEngineType {

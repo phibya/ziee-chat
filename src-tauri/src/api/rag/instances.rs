@@ -212,14 +212,12 @@ pub async fn toggle_rag_instance_activate_handler(
 
     // Get current instance to determine current active status
     use crate::database::queries::rag_instances::get_rag_instance_by_id;
-    let current_instance = get_rag_instance_by_id(instance_id)
-        .await
-        .map_err(|e| {
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                AppError::from(e),
-            )
-        })?;
+    let current_instance = get_rag_instance_by_id(instance_id).await.map_err(|e| {
+        (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::from(e),
+        )
+    })?;
 
     let current_instance = match current_instance {
         Some(instance) => instance,

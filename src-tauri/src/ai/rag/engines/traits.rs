@@ -1,6 +1,8 @@
 // RAG Engine traits and common types
 
-use crate::ai::rag::{ProcessingOptions, RAGErrorCode, RAGQuery, RAGQueryResponse, RAGResult, RAGInstanceErrorCode};
+use crate::ai::rag::{
+    ProcessingOptions, RAGErrorCode, RAGInstanceErrorCode, RAGQuery, RAGQueryResponse, RAGResult,
+};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -30,7 +32,9 @@ impl std::str::FromStr for RAGEngineType {
         match s {
             "simple_vector" => Ok(RAGEngineType::SimpleVector),
             "simple_graph" => Ok(RAGEngineType::SimpleGraph),
-            _ => Err(RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)),
+            _ => Err(RAGErrorCode::Instance(
+                RAGInstanceErrorCode::ConfigurationError,
+            )),
         }
     }
 }

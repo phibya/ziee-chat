@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::chat::OperationSuccessResponse;
+use crate::api::chat::{OperationSuccessResponse, SSEChatStreamEvent};
 use crate::database::models::{Conversation, ConversationListResponse, Message, MessageBranch};
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
@@ -65,7 +65,7 @@ pub fn chat_routes() -> ApiRouter {
                 op.description("Send message with streaming response")
                     .id("Chat.sendMessageStream")
                     .tag("chat")
-                    .response::<204, ()>()
+                    .response::<200, Json<SSEChatStreamEvent>>()
                 // SSE streams don't need explicit response type
             })
             .layer(middleware::from_fn(api::middleware::chat_stream_middleware)),
@@ -76,7 +76,7 @@ pub fn chat_routes() -> ApiRouter {
                 op.description("Edit message with streaming response")
                     .id("Chat.editMessageStream")
                     .tag("chat")
-                    .response::<204, ()>()
+                    .response::<200, Json<SSEChatStreamEvent>>()
                 // SSE streams don't need explicit response type
             })
             .layer(middleware::from_fn(api::middleware::chat_stream_middleware)),

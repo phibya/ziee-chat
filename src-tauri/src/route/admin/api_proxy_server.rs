@@ -179,7 +179,7 @@ pub fn admin_api_proxy_server_routes() -> ApiRouter {
                 op.description("Subscribe to API proxy server logs stream")
                     .id("Admin.subscribeApiProxyServerLogs")
                     .tag("admin")
-                    .response::<204, ()>()
+                    .response::<200, Json<SSEProxyLogsEvent>>()
                 // SSE streams don't need response type specification in aide
             })
             .layer(middleware::from_fn(

@@ -1,7 +1,7 @@
 // Markdown text extractor with enhanced parsing and structure preservation
 
 use super::base::TextExtractor;
-use crate::ai::rag::{RAGResult, RAGErrorCode, RAGIndexingErrorCode};
+use crate::ai::rag::{RAGErrorCode, RAGIndexingErrorCode, RAGResult};
 use async_trait::async_trait;
 
 /// Enhanced Markdown text extractor with structure preservation options

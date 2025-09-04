@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { ApiEndpointUrl, ParameterByUrl, ResponseByUrl } from '../types'
+import type { SSECallback } from './sse-types'
+import { createSSEHandler } from './sse-types'
 
 // Import getAuthToken function (avoiding circular import)
 export const getAuthToken = () => {
@@ -56,13 +58,23 @@ export const callAsync = async <U extends ApiEndpointUrl>(
   endpointUrl: U,
   params: ParameterByUrl<U>,
   callbacks?: {
-    SSE?: (event: string, data: any) => void
+    SSE?: SSECallback<ResponseByUrl<U>>
     fileUploadProgress?: FileUploadProgressCallback
   },
 ): Promise<ResponseByUrl<U>> => {
   let bUrl = await getBaseUrl()
 
-  const { SSE: sseCallbacks, fileUploadProgress } = callbacks || {}
+  let { SSE: sseCallbacks, fileUploadProgress } = callbacks || {}
+
+  // If SSE is an object (handlers), wrap it with createSSEHandler
+  let sseFunction: ((event: string, data: any) => void) | undefined = undefined
+  if (sseCallbacks) {
+    if (typeof sseCallbacks === 'function') {
+      sseFunction = sseCallbacks as (event: string, data: any) => void
+    } else {
+      sseFunction = createSSEHandler(sseCallbacks as any)
+    }
+  }
 
   try {
     // Check if params is FormData for file uploads
@@ -294,7 +306,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       })
     } else {
       // Create AbortController for SSE stream management if SSE callbacks are provided
-      abortController = sseCallbacks ? new AbortController() : undefined
+      abortController = sseFunction ? new AbortController() : undefined
 
       // Use fetch for non-FormData requests or when no progress tracking is needed
       response = await fetch(`${bUrl}${endpointPath}`, {
@@ -305,14 +317,14 @@ export const callAsync = async <U extends ApiEndpointUrl>(
       })
 
       // Send initial __init event with abortController for SSE streams
-      if (abortController && sseCallbacks) {
-        sseCallbacks('__init', { abortController })
+      if (abortController && sseFunction) {
+        sseFunction('__init' as any, { abortController })
       }
     }
 
     // Handle SSE streaming if callbacks are provided and response is text/event-stream
     if (
-      sseCallbacks &&
+      sseFunction &&
       response.headers.get('Content-Type')?.includes('text/event-stream')
     ) {
       if (!response.ok) {
@@ -365,7 +377,7 @@ export const callAsync = async <U extends ApiEndpointUrl>(
                 //do nothing, keep as string
               }
 
-              sseCallbacks?.(currentEvent, parsed)
+              sseFunction?.(currentEvent as any, parsed as any)
             }
           }
         }

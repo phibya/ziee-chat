@@ -17,10 +17,34 @@ use crate::api::errors::{ApiResult, AppError};
 use crate::api::middleware::AuthenticatedUser;
 use crate::database::models::api_proxy_server_model::*;
 use crate::database::queries::api_proxy_server_models;
+use schemars::JsonSchema;
+use serde::Serialize;
 
 // SSE log streaming types
 type ClientId = Uuid;
 type LogSender = mpsc::UnboundedSender<Result<Event, axum::Error>>;
+
+// SSE connected data for proxy logs
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct SSEProxyLogsConnectedData {
+    pub message: Option<String>,
+}
+
+// SSE log update data
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct SSEProxyLogsUpdateData {
+    pub lines: Vec<String>,
+    pub timestamp: String,
+}
+
+// SSE event types for proxy logs streaming
+crate::sse_event_enum! {
+    #[derive(Debug, Clone, Serialize, JsonSchema)]
+    pub enum SSEProxyLogsEvent {
+        Connected(SSEProxyLogsConnectedData),
+        LogUpdate(SSEProxyLogsUpdateData),
+    }
+}
 
 lazy_static! {
     static ref LOG_SSE_CLIENTS: Mutex<HashMap<ClientId, LogSender>> = Mutex::new(HashMap::new());
@@ -350,9 +374,10 @@ pub async fn subscribe_proxy_logs(
     }
 
     // Send initial connection event
-    let _ = tx.send(Ok(Event::default()
-        .event("connected")
-        .data("{\"message\":\"API Proxy log monitoring connected\"}")));
+    let connected_event = SSEProxyLogsEvent::Connected(SSEProxyLogsConnectedData {
+        message: Some("API Proxy log monitoring connected".to_string()),
+    });
+    let _ = tx.send(Ok(connected_event.into()));
 
     // Start log monitoring if not already active
     start_log_monitoring().await;
@@ -459,14 +484,11 @@ async fn broadcast_log_update(new_lines: &[String]) {
         clients_guard.clone()
     };
 
-    let log_data = serde_json::json!({
-        "lines": new_lines,
-        "timestamp": chrono::Utc::now().to_rfc3339()
+    let log_update_event = SSEProxyLogsEvent::LogUpdate(SSEProxyLogsUpdateData {
+        lines: new_lines.to_vec(),
+        timestamp: chrono::Utc::now().to_rfc3339(),
     });
-
-    let event = Event::default()
-        .event("log_update")
-        .data(log_data.to_string());
+    let event: Event = log_update_event.into();
 
     // Send to all clients and remove disconnected ones
     let mut disconnected_clients = Vec::new();

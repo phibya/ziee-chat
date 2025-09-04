@@ -1,5 +1,6 @@
 use crate::api::hardware::{
     get_hardware_info, subscribe_hardware_usage, HardwareInfoResponse, HardwareUsageUpdate,
+    SSEHardwareUsageEvent,
 };
 use crate::route::helper::types;
 use aide::axum::{routing::get_with, ApiRouter};
@@ -25,7 +26,7 @@ pub fn hardware_routes() -> ApiRouter {
                 op.description("Subscribe to hardware usage stream via SSE")
                     .id("Admin.subscribeHardwareUsage")
                     .tag("admin")
-                    .response::<204, ()>()
+                    .response::<200, Json<SSEHardwareUsageEvent>>()
             })
             .layer(middleware::from_fn(
                 crate::api::middleware::hardware_monitor_middleware,

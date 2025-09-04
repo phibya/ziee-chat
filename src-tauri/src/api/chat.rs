@@ -60,13 +60,13 @@ pub struct OperationSuccessResponse {
     pub message: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct StreamChunkData {
     pub delta: String,
     pub message_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct StreamCompleteData {
     pub message_id: String,
     pub conversation_id: String,
@@ -78,10 +78,30 @@ pub struct StreamCompleteData {
     pub total_tokens: Option<i32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, JsonSchema)]
 pub struct StreamErrorData {
     pub error: String,
     pub code: String,
+}
+
+// SSE connected data for chat streaming
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct SSEChatStreamConnectedData {
+    pub message: Option<String>,
+}
+
+// SSE event types for chat streaming
+crate::sse_event_enum! {
+    #[derive(Debug, Clone, Serialize, JsonSchema)]
+    pub enum SSEChatStreamEvent {
+        Connected(SSEChatStreamConnectedData),
+        Start(String),
+        Chunk(StreamChunkData),
+        Complete(StreamCompleteData),
+        Error(StreamErrorData),
+        EditedMessage(Message),
+        CreatedBranch(crate::database::models::MessageBranch),
+    }
 }
 
 /// Create a new conversation
@@ -198,23 +218,19 @@ async fn stream_ai_response(
         match chat::get_conversation_by_id(request.conversation_id, user_id).await {
             Ok(Some(conversation)) => conversation.active_branch_id,
             Ok(None) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: "Conversation not found".to_string(),
-                        code: ErrorCode::ResourceNotFound.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
+                let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                    error: "Conversation not found".to_string(),
+                    code: ErrorCode::ResourceNotFound.as_str().to_string(),
+                });
+                let _ = tx.send(Ok(error_event.into()));
                 return;
             }
             Err(e) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: format!("Error getting conversation: {}", e),
-                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
+                let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                    error: format!("Error getting conversation: {}", e),
+                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                });
+                let _ = tx.send(Ok(error_event.into()));
                 return;
             }
         };
@@ -226,36 +242,30 @@ async fn stream_ai_response(
             provider
         }
         Ok(None) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: "Model or provider not found".to_string(),
-                    code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: "Model or provider not found".to_string(),
+                code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
             return;
         }
         Err(e) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: format!("Error getting model provider: {}", e),
-                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: format!("Error getting model provider: {}", e),
+                code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
             return;
         }
     };
 
     // Check if provider is enabled
     if !provider.enabled {
-        let _ = tx.send(Ok(Event::default().event("error").data(
-            &serde_json::to_string(&StreamErrorData {
-                error: "Provider is disabled".to_string(),
-                code: ErrorCode::ResourceProviderDisabled.as_str().to_string(),
-            })
-            .unwrap_or_default(),
-        )));
+        let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+            error: "Provider is disabled".to_string(),
+            code: ErrorCode::ResourceProviderDisabled.as_str().to_string(),
+        });
+        let _ = tx.send(Ok(error_event.into()));
         return;
     }
 
@@ -266,23 +276,19 @@ async fn stream_ai_response(
             model
         }
         Ok(None) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: "Model not found".to_string(),
-                    code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: "Model not found".to_string(),
+                code: ErrorCode::ResourceModelNotFound.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
             return;
         }
         Err(e) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: format!("Error getting model: {}", e),
-                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: format!("Error getting model: {}", e),
+                code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
             return;
         }
     };
@@ -291,13 +297,11 @@ async fn stream_ai_response(
     let messages = match build_chat_messages(&request, user_id).await {
         Ok(messages) => messages,
         Err(e) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: format!("Error building chat messages: {}", e),
-                    code: ErrorCode::SystemInternalError.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: format!("Error building chat messages: {}", e),
+                code: ErrorCode::SystemInternalError.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
             return;
         }
     };
@@ -324,26 +328,22 @@ async fn stream_ai_response(
     {
         Ok(provider) => provider,
         Err(e) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: format!("Error creating AI provider: {}", e),
-                    code: ErrorCode::SystemInternalError.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: format!("Error creating AI provider: {}", e),
+                code: ErrorCode::SystemInternalError.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
             return;
         }
     };
 
     // Check if provider supports streaming
     if !ai_provider.supports_streaming() {
-        let _ = tx.send(Ok(Event::default().event("error").data(
-            &serde_json::to_string(&StreamErrorData {
-                error: "Provider does not support streaming responses".to_string(),
-                code: ErrorCode::SystemInternalError.as_str().to_string(),
-            })
-            .unwrap_or_default(),
-        )));
+        let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+            error: "Provider does not support streaming responses".to_string(),
+            code: ErrorCode::SystemInternalError.as_str().to_string(),
+        });
+        let _ = tx.send(Ok(error_event.into()));
         return;
     }
 
@@ -394,13 +394,11 @@ async fn stream_ai_response(
                             full_content.push_str(&content);
 
                             // Send chunk to client
-                            let _ = tx.send(Ok(Event::default().event("chunk").data(
-                                &serde_json::to_string(&StreamChunkData {
-                                    delta: content,
-                                    message_id: None,
-                                })
-                                .unwrap_or_default(),
-                            )));
+                            let chunk_event = SSEChatStreamEvent::Chunk(StreamChunkData {
+                                delta: content,
+                                message_id: None,
+                            });
+                            let _ = tx.send(Ok(chunk_event.into()));
                         }
 
                         // Check if streaming is complete
@@ -409,13 +407,11 @@ async fn stream_ai_response(
                         }
                     }
                     Err(e) => {
-                        let _ = tx.send(Ok(Event::default().event("error").data(
-                            &serde_json::to_string(&StreamErrorData {
-                                error: format!("Streaming error: {}", e),
-                                code: ErrorCode::SystemStreamingError.as_str().to_string(),
-                            })
-                            .unwrap_or_default(),
-                        )));
+                        let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                            error: format!("Streaming error: {}", e),
+                            code: ErrorCode::SystemStreamingError.as_str().to_string(),
+                        });
+                        let _ = tx.send(Ok(error_event.into()));
                         return;
                     }
                 }
@@ -436,39 +432,33 @@ async fn stream_ai_response(
                     crate::ai::register_model_access(&request.model_id).await;
 
                     // Send completion event
-                    let _ = tx.send(Ok(Event::default().event("complete").data(
-                        &serde_json::to_string(&StreamCompleteData {
-                            message_id: assistant_message.id.to_string(),
-                            conversation_id: request.conversation_id.to_string(),
-                            role: assistant_message.role.clone(),
-                            originated_from_id: assistant_message.originated_from_id.to_string(),
-                            edit_count: assistant_message.edit_count,
-                            created_at: assistant_message.created_at.to_rfc3339(),
-                            updated_at: assistant_message.updated_at.to_rfc3339(),
-                            total_tokens: None, // Token usage not available in streaming mode
-                        })
-                        .unwrap_or_default(),
-                    )));
+                    let complete_event = SSEChatStreamEvent::Complete(StreamCompleteData {
+                        message_id: assistant_message.id.to_string(),
+                        conversation_id: request.conversation_id.to_string(),
+                        role: assistant_message.role.clone(),
+                        originated_from_id: assistant_message.originated_from_id.to_string(),
+                        edit_count: assistant_message.edit_count,
+                        created_at: assistant_message.created_at.to_rfc3339(),
+                        updated_at: assistant_message.updated_at.to_rfc3339(),
+                        total_tokens: None, // Token usage not available in streaming mode
+                    });
+                    let _ = tx.send(Ok(complete_event.into()));
                 }
                 Err(e) => {
-                    let _ = tx.send(Ok(Event::default().event("error").data(
-                        &serde_json::to_string(&StreamErrorData {
-                            error: format!("Error saving assistant message: {}", e),
-                            code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                        })
-                        .unwrap_or_default(),
-                    )));
+                    let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                        error: format!("Error saving assistant message: {}", e),
+                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                    });
+                    let _ = tx.send(Ok(error_event.into()));
                 }
             }
         }
         Err(e) => {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: format!("Error calling AI provider: {}", e),
-                    code: ErrorCode::SystemExternalServiceError.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: format!("Error calling AI provider: {}", e),
+                code: ErrorCode::SystemExternalServiceError.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
         }
     }
 }
@@ -484,8 +474,15 @@ pub async fn send_message_stream(
 
     // Spawn a task to handle the async AI interaction
     tokio::spawn(async move {
-        // Send initial event
-        let _ = tx.send(Ok(Event::default().data("start")));
+        // Send initial connected event
+        let connected_event = SSEChatStreamEvent::Connected(SSEChatStreamConnectedData {
+            message: Some("Connected to chat stream".to_string()),
+        });
+        let _ = tx.send(Ok(connected_event.into()));
+
+        // Send start event
+        let start_event = SSEChatStreamEvent::Start("Chat stream started".to_string());
+        let _ = tx.send(Ok(start_event.into()));
 
         // First save the user message
         let user_message_req = SaveMessageRequest {
@@ -497,13 +494,11 @@ pub async fn send_message_stream(
         };
 
         if let Err(e) = chat::save_message(user_message_req, auth_user.user.id, None).await {
-            let _ = tx.send(Ok(Event::default().event("error").data(
-                &serde_json::to_string(&StreamErrorData {
-                    error: format!("Error saving user message: {}", e),
-                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                })
-                .unwrap_or_default(),
-            )));
+            let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                error: format!("Error saving user message: {}", e),
+                code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+            });
+            let _ = tx.send(Ok(error_event.into()));
             return;
         }
 
@@ -531,8 +526,16 @@ pub async fn edit_message_stream(
 
     // Spawn a task to handle the async message editing and AI interaction
     tokio::spawn(async move {
-        // Send initial event
-        let _ = tx.send(Ok(Event::default().data("start")));
+        // Send initial connected event
+        let connected_event = SSEChatStreamEvent::Connected(SSEChatStreamConnectedData {
+            message: Some("Connected to edit stream".to_string()),
+        });
+        let _ = tx.send(Ok(connected_event.into()));
+
+        // Send start event
+        let start_event = SSEChatStreamEvent::Start("Edit stream started".to_string());
+        let _ = tx.send(Ok(start_event.into()));
+
         let edit_message = EditMessageRequest {
             content: request.content.clone(),
             file_ids: request.file_ids.clone(),
@@ -542,32 +545,26 @@ pub async fn edit_message_stream(
         match chat::edit_message(message_id, edit_message, auth_user.user.id).await {
             Ok(Some(edit_response)) => {
                 // send the edited message as a data event
-                let _ = tx.send(Ok(Event::default().event("edited-message").data(
-                    &serde_json::to_string(&edit_response.message).unwrap_or_default(),
-                )));
+                let edited_message_event = SSEChatStreamEvent::EditedMessage(edit_response.message);
+                let _ = tx.send(Ok(edited_message_event.into()));
                 //send the created branch as a data event
-                let _ = tx.send(Ok(Event::default().event("created-branch").data(
-                    &serde_json::to_string(&edit_response.branch).unwrap_or_default(),
-                )));
+                let created_branch_event = SSEChatStreamEvent::CreatedBranch(edit_response.branch);
+                let _ = tx.send(Ok(created_branch_event.into()));
             }
             Ok(None) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: "Message not found".to_string(),
-                        code: ErrorCode::ResourceNotFound.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
+                let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                    error: "Message not found".to_string(),
+                    code: ErrorCode::ResourceNotFound.as_str().to_string(),
+                });
+                let _ = tx.send(Ok(error_event.into()));
                 return;
             }
             Err(e) => {
-                let _ = tx.send(Ok(Event::default().event("error").data(
-                    &serde_json::to_string(&StreamErrorData {
-                        error: format!("Error editing message: {}", e),
-                        code: ErrorCode::SystemDatabaseError.as_str().to_string(),
-                    })
-                    .unwrap_or_default(),
-                )));
+                let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                    error: format!("Error editing message: {}", e),
+                    code: ErrorCode::SystemDatabaseError.as_str().to_string(),
+                });
+                let _ = tx.send(Ok(error_event.into()));
                 return;
             }
         }

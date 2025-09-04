@@ -1,6 +1,6 @@
 // Base traits and structures for text extractors
 
-use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
+use crate::ai::rag::{RAGErrorCode, RAGIndexingErrorCode, RAGResult};
 use async_trait::async_trait;
 use std::collections::HashMap;
 

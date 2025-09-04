@@ -948,7 +948,7 @@ export interface RAGInstance {
   updated_at: string
 }
 
-export type RAGInstanceErrorCode = 'none' | 'embedding_model_not_config' | 'llm_model_not_config' | 'provider_connection_failed' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
+export type RAGInstanceErrorCode = 'none' | 'embedding_model_not_config' | 'embedding_model_not_found' | 'llm_model_not_config' | 'llm_model_not_found' | 'provider_connection_failed' | 'provider_not_found' | 'rag_instance_not_found' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
 
 export interface RAGInstanceFile {
   id: string
@@ -1133,6 +1133,54 @@ export interface ResetPasswordRequest {
   new_password: string
 }
 
+export interface SSEChatStreamConnectedData {
+  message?: string
+}
+
+export type SSEChatStreamEvent = {
+  connected: SSEChatStreamConnectedData
+  start: string
+  chunk: StreamChunkData
+  complete: StreamCompleteData
+  error: StreamErrorData
+  editedMessage: Message
+  createdBranch: MessageBranch
+}
+
+export interface SSEDownloadProgressConnectedData {
+  message?: string
+}
+
+export type SSEDownloadProgressEvent = {
+  connected: SSEDownloadProgressConnectedData
+  update: DownloadProgressUpdate[]
+  complete: string
+  error: string
+}
+
+export interface SSEHardwareUsageConnectedData {
+  message: string
+}
+
+export type SSEHardwareUsageEvent = {
+  connected: SSEHardwareUsageConnectedData
+  update: HardwareUsageUpdate
+}
+
+export interface SSEProxyLogsConnectedData {
+  message?: string
+}
+
+export type SSEProxyLogsEvent = {
+  connected: SSEProxyLogsConnectedData
+  logUpdate: SSEProxyLogsUpdateData
+}
+
+export interface SSEProxyLogsUpdateData {
+  lines: string[]
+  timestamp: string
+}
+
 export interface SearchQuery {
   q: string
   page?: number
@@ -1143,6 +1191,27 @@ export interface SearchQuery {
 export interface SourceInfo {
   type: string
   id?: string
+}
+
+export interface StreamChunkData {
+  delta: string
+  message_id?: string
+}
+
+export interface StreamCompleteData {
+  message_id: string
+  conversation_id: string
+  role: string
+  originated_from_id: string
+  edit_count: number
+  created_at: string
+  updated_at: string
+  total_tokens?: number
+}
+
+export interface StreamErrorData {
+  error: string
+  code: string
 }
 
 export interface SwitchBranchRequest {
@@ -1818,9 +1887,9 @@ export type ApiEndpointResponses = {
   'Admin.stopApiProxyServer': void
   'Admin.stopModel': void
   'Admin.stopNgrokTunnel': NgrokStatusResponse
-  'Admin.subscribeApiProxyServerLogs': void
-  'Admin.subscribeDownloadProgress': void
-  'Admin.subscribeHardwareUsage': void
+  'Admin.subscribeApiProxyServerLogs': SSEProxyLogsEvent
+  'Admin.subscribeDownloadProgress': SSEDownloadProgressEvent
+  'Admin.subscribeHardwareUsage': SSEHardwareUsageEvent
   'Admin.testRAGRepositoryConnection': RAGRepositoryConnectionTestResponse
   'Admin.testRagProvider': void
   'Admin.testRepositoryConnection': TestRepositoryConnectionResponse
@@ -1856,13 +1925,13 @@ export type ApiEndpointResponses = {
   'Auth.setup': AuthResponse
   'Chat.createConversation': Conversation
   'Chat.deleteConversation': void
-  'Chat.editMessageStream': void
+  'Chat.editMessageStream': SSEChatStreamEvent
   'Chat.getConversation': Conversation
   'Chat.getConversationMessagesByBranch': Message[]
   'Chat.getMessageBranches': MessageBranch[]
   'Chat.listConversations': ConversationListResponse
   'Chat.searchConversations': ConversationListResponse
-  'Chat.sendMessageStream': void
+  'Chat.sendMessageStream': SSEChatStreamEvent
   'Chat.switchConversationBranch': OperationSuccessResponse
   'Chat.updateConversation': Conversation
   'Config.getDefaultLanguage': DefaultLanguageResponse

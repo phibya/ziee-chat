@@ -9,7 +9,7 @@ pub mod plain_text;
 pub mod pptx;
 pub mod spreadsheet;
 
-use crate::ai::rag::{RAGResult, RAGErrorCode, RAGIndexingErrorCode};
+use crate::ai::rag::{RAGErrorCode, RAGIndexingErrorCode, RAGResult};
 pub use base::TextExtractor;
 use std::collections::HashMap;
 use std::path::Path;

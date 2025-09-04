@@ -326,19 +326,25 @@ export const createChatStore = (conversation: string | Conversation) => {
                 file_ids: params.fileIds,
               },
               {
-                SSE: (event: string, data: any) => {
-                  if (
-                    event === 'message' ||
-                    event === 'data' ||
-                    event === 'chunk'
-                  ) {
+                SSE: {
+                  connected: data => {
+                    console.log(
+                      'Chat stream connected:',
+                      data?.message || 'Connected',
+                    )
+                  },
+                  start: data => {
+                    console.log('Chat stream started:', data)
+                  },
+                  chunk: data => {
                     // Handle streaming data events
                     if (data.delta) {
                       set(state => ({
                         streamingMessage: state.streamingMessage + data.delta,
                       }))
                     }
-                  } else if (event === 'complete') {
+                  },
+                  complete: data => {
                     // Handle completion events
                     set(state => {
                       const finalMessage = {
@@ -362,7 +368,8 @@ export const createChatStore = (conversation: string | Conversation) => {
                         messages: newMessages,
                       }
                     })
-                  } else if (event === 'error') {
+                  },
+                  error: data => {
                     set({
                       error: data.error,
                       sending: false,
@@ -370,10 +377,10 @@ export const createChatStore = (conversation: string | Conversation) => {
                       streamingMessage: '',
                     })
                     console.error('Streaming error:', data)
-                  } else {
-                    // Log unknown event types for debugging
-                    console.log('Unknown SSE event type in chat:', event, data)
-                  }
+                  },
+                  default: (event, data) => {
+                    console.log('Unknown chat stream SSE event:', event, data)
+                  },
                 },
               },
             )
@@ -460,8 +467,17 @@ export const createChatStore = (conversation: string | Conversation) => {
                 file_ids: params.fileIds,
               },
               {
-                SSE: (event: string, data: any) => {
-                  if (event === 'edited-message') {
+                SSE: {
+                  connected: data => {
+                    console.log(
+                      'Chat edit stream connected:',
+                      data?.message || 'Connected',
+                    )
+                  },
+                  start: data => {
+                    console.log('Chat edit stream started:', data)
+                  },
+                  editedMessage: data => {
                     let editedMessage = data as Message
                     // find the message.id === messageId and replace it with editedMessage
                     set(state => ({
@@ -472,20 +488,23 @@ export const createChatStore = (conversation: string | Conversation) => {
                     removeMessageBranchStoreByOriginatedId(
                       editedMessage.originated_from_id,
                     )
-                  } else if (event === 'created-branch') {
+                  },
+                  createdBranch: data => {
                     // Handle branch creation events
                     const newBranch = data as MessageBranch
                     set({
                       activeBranchId: newBranch.id,
                     })
-                  } else if (event === 'chunk') {
+                  },
+                  chunk: data => {
                     // Handle streaming data events
                     if (data.delta) {
                       set(state => ({
                         streamingMessage: state.streamingMessage + data.delta,
                       }))
                     }
-                  } else if (event === 'complete') {
+                  },
+                  complete: data => {
                     // Handle completion events
                     set(state => ({
                       isStreaming: false,
@@ -503,7 +522,8 @@ export const createChatStore = (conversation: string | Conversation) => {
                         },
                       ],
                     }))
-                  } else if (event === 'error') {
+                  },
+                  error: _data => {
                     set({
                       error: 'Edit streaming failed',
                       sending: false,
@@ -514,14 +534,14 @@ export const createChatStore = (conversation: string | Conversation) => {
                         (msg: Message) => msg.id !== 'streaming-temp',
                       ),
                     })
-                  } else {
-                    // Log unknown event types for debugging
+                  },
+                  default: (event, data) => {
                     console.log(
-                      'Unknown SSE event type in edit chat:',
+                      'Unknown chat edit stream SSE event:',
                       event,
                       data,
                     )
-                  }
+                  },
                 },
               },
             )

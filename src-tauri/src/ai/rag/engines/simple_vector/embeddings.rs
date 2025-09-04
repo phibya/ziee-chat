@@ -3,7 +3,7 @@
 use super::{core::RAGSimpleVectorEngine, queries};
 use crate::ai::rag::{
     types::{EmbeddingVector, TextChunk},
-    RAGErrorCode, RAGResult, RAGInstanceErrorCode, RAGIndexingErrorCode,
+    RAGErrorCode, RAGIndexingErrorCode, RAGInstanceErrorCode, RAGResult,
 };
 use chrono::Utc;
 use futures;
@@ -19,7 +19,10 @@ impl RAGSimpleVectorEngine {
         let engine_settings =
             crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
         let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
-            tracing::error!("SimpleVector engine settings not found for instance {}", self.instance_id);
+            tracing::error!(
+                "SimpleVector engine settings not found for instance {}",
+                self.instance_id
+            );
             RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)
         })?;
         let indexing_settings = vector_settings.indexing();
@@ -120,7 +123,9 @@ impl RAGSimpleVectorEngine {
                 chunks.len(),
                 embeddings.len()
             );
-            return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError));
+            return Err(RAGErrorCode::Indexing(
+                RAGIndexingErrorCode::ProcessingError,
+            ));
         }
 
         tracing::info!("Storing {} chunks with advanced metadata", chunks.len());
@@ -129,7 +134,10 @@ impl RAGSimpleVectorEngine {
         let engine_settings =
             crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
         let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
-            tracing::error!("SimpleVector engine settings not found for instance {}", self.instance_id);
+            tracing::error!(
+                "SimpleVector engine settings not found for instance {}",
+                self.instance_id
+            );
             RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)
         })?;
         let indexing_settings = vector_settings.indexing();

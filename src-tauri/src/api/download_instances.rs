@@ -271,18 +271,21 @@ impl From<&DownloadInstance> for DownloadProgressUpdate {
     }
 }
 
-// SSE event types for download progress
+// SSE connected data for download progress
 #[derive(Debug, Clone, Serialize, JsonSchema)]
-#[serde(tag = "type")]
-pub enum DownloadProgressEvent {
-    #[serde(rename = "update")]
-    Update {
-        downloads: Vec<DownloadProgressUpdate>,
-    },
-    #[serde(rename = "complete")]
-    Complete { message: String },
-    #[serde(rename = "error")]
-    Error { error: String },
+pub struct SSEDownloadProgressConnectedData {
+    pub message: Option<String>,
+}
+
+// SSE event types for download progress
+crate::sse_event_enum! {
+    #[derive(Debug, Clone, Serialize, JsonSchema)]
+    pub enum SSEDownloadProgressEvent {
+        Connected(SSEDownloadProgressConnectedData),
+        Update(Vec<DownloadProgressUpdate>),
+        Complete(String),
+        Error(String),
+    }
 }
 
 /// Subscribe to all active download progress updates via SSE
@@ -298,6 +301,14 @@ pub async fn subscribe_download_progress(
     let stream = async_stream::stream! {
         let mut last_downloads_state: Option<String>;
 
+        // Send initial connected event
+        let connected_event = SSEDownloadProgressEvent::Connected(
+            SSEDownloadProgressConnectedData {
+                message: Some("Connected to download progress stream".to_string()),
+            }
+        );
+        yield Ok(connected_event.into());
+
         // Send initial update immediately
         let downloads = download_instances::get_all_active_downloads().await;
 
@@ -305,32 +316,27 @@ pub async fn subscribe_download_progress(
             Ok(downloads) => {
                 if downloads.is_empty() {
                     // No active downloads, send complete event and close
-                    yield Ok(Event::default()
-                        .event("complete")
-                        .data(serde_json::to_string(&DownloadProgressEvent::Complete {
-                            message: "No active downloads".to_string(),
-                        }).unwrap_or_default()));
+                    let complete_event = SSEDownloadProgressEvent::Complete(
+                        "No active downloads".to_string()
+                    );
+                    yield Ok(complete_event.into());
                     return;
                 } else {
                     let progress_updates: Vec<DownloadProgressUpdate> = downloads.iter().map(DownloadProgressUpdate::from).collect();
 
-                    let downloads_json = serde_json::to_string(&DownloadProgressEvent::Update {
-                        downloads: progress_updates,
-                    }).unwrap_or_default();
+                    let update_event = SSEDownloadProgressEvent::Update(progress_updates);
+                    let downloads_json = update_event.data().unwrap_or_default();
 
                     last_downloads_state = Some(downloads_json.clone());
 
-                    yield Ok(Event::default()
-                        .event("update")
-                        .data(downloads_json));
+                    yield Ok(update_event.into());
                 }
             }
             Err(e) => {
-                yield Ok(Event::default()
-                    .event("error")
-                    .data(serde_json::to_string(&DownloadProgressEvent::Error {
-                        error: format!("Failed to get downloads: {}", e),
-                    }).unwrap_or_default()));
+                let error_event = SSEDownloadProgressEvent::Error(
+                    format!("Failed to get downloads: {}", e)
+                );
+                yield Ok(error_event.into());
                 return;
             }
         }
@@ -343,35 +349,30 @@ pub async fn subscribe_download_progress(
                 Ok(downloads) => {
                     if downloads.is_empty() {
                         // No more active downloads, send complete event and close
-                        yield Ok(Event::default()
-                            .event("complete")
-                            .data(serde_json::to_string(&DownloadProgressEvent::Complete {
-                                message: "All downloads completed".to_string(),
-                            }).unwrap_or_default()));
+                        let complete_event = SSEDownloadProgressEvent::Complete(
+                            "All downloads completed".to_string()
+                        );
+                        yield Ok(complete_event.into());
                         break;
                     } else {
                         let progress_updates: Vec<DownloadProgressUpdate> = downloads.iter().map(DownloadProgressUpdate::from).collect();
 
-                        let downloads_json = serde_json::to_string(&DownloadProgressEvent::Update {
-                            downloads: progress_updates,
-                        }).unwrap_or_default();
+                        let update_event = SSEDownloadProgressEvent::Update(progress_updates);
+                        let downloads_json = update_event.data().unwrap_or_default();
 
                         // Only send update if state has changed
                         if last_downloads_state.as_ref() != Some(&downloads_json) {
                             last_downloads_state = Some(downloads_json.clone());
 
-                            yield Ok(Event::default()
-                                .event("update")
-                                .data(downloads_json));
+                            yield Ok(update_event.into());
                         }
                     }
                 }
                 Err(e) => {
-                    yield Ok(Event::default()
-                        .event("error")
-                        .data(serde_json::to_string(&DownloadProgressEvent::Error {
-                            error: format!("Failed to get downloads: {}", e),
-                        }).unwrap_or_default()));
+                    let error_event = SSEDownloadProgressEvent::Error(
+                        format!("Failed to get downloads: {}", e)
+                    );
+                    yield Ok(error_event.into());
                     break;
                 }
             }

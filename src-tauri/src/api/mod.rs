@@ -11,6 +11,7 @@ pub mod errors;
 pub mod files;
 pub mod hardware;
 pub mod hub;
+pub mod macros;
 pub mod middleware;
 pub mod model_uploads;
 pub mod models;

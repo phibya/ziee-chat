@@ -1,7 +1,7 @@
 // PDF text extractor with enhanced text extraction and cleaning
 
 use super::base::TextExtractor;
-use crate::ai::rag::{RAGErrorCode, RAGResult, RAGIndexingErrorCode};
+use crate::ai::rag::{RAGErrorCode, RAGIndexingErrorCode, RAGResult};
 use async_trait::async_trait;
 
 /// Enhanced PDF text extractor with advanced text cleaning
@@ -13,11 +13,10 @@ impl PdfExtractor {
     /// Extract text using pdf-extract library with enhanced cleaning and Markdown conversion
     async fn extract_pdf_to_markdown(&self) -> RAGResult<String> {
         // Read PDF file
-        let content = std::fs::read(&self.file_path)
-            .map_err(|e| {
-                tracing::error!("Failed to read PDF file {}: {}", self.file_path, e);
-                RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
-            })?;
+        let content = std::fs::read(&self.file_path).map_err(|e| {
+            tracing::error!("Failed to read PDF file {}: {}", self.file_path, e);
+            RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
+        })?;
 
         // Extract text from PDF bytes using pdf-extract in blocking thread
         let pdf_bytes = content.to_vec();
@@ -25,7 +24,11 @@ impl PdfExtractor {
             tokio::task::spawn_blocking(move || pdf_extract::extract_text_from_mem(&pdf_bytes))
                 .await
                 .map_err(|e| {
-                    tracing::error!("Failed to join PDF extraction task for {}: {}", self.file_path, e);
+                    tracing::error!(
+                        "Failed to join PDF extraction task for {}: {}",
+                        self.file_path,
+                        e
+                    );
                     RAGErrorCode::Indexing(RAGIndexingErrorCode::TextExtractionFailed)
                 })?
                 .map_err(|e| {

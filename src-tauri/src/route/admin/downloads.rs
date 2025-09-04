@@ -1,5 +1,5 @@
 use crate::api;
-use crate::api::download_instances::DownloadProgressUpdate;
+use crate::api::download_instances::{DownloadProgressUpdate, SSEDownloadProgressEvent};
 use crate::database::models::{DownloadInstance, DownloadInstanceListResponse};
 use crate::route::helper::types;
 use aide::axum::{
@@ -65,7 +65,7 @@ pub fn admin_download_routes() -> ApiRouter {
                 op.description("Subscribe to download progress updates via SSE")
                     .id("Admin.subscribeDownloadProgress")
                     .tag("admin")
-                    .response::<204, ()>()
+                    .response::<200, Json<SSEDownloadProgressEvent>>()
             })
             .layer(middleware::from_fn(
                 api::middleware::model_downloads_read_middleware,

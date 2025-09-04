@@ -183,7 +183,6 @@ macro_rules! impl_json_from {
     };
 }
 
-
 pub(crate) use impl_json_from;
 pub(crate) use impl_json_option_from;
 pub(crate) use impl_string_to_enum;

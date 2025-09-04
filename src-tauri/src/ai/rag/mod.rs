@@ -10,8 +10,8 @@ pub mod types;
 pub mod utils;
 
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -163,7 +163,7 @@ impl RAGErrorCode {
             _ => None,
         }
     }
-    
+
     /// Helper to extract indexing error for file-level storage (future)
     pub fn into_indexing_error(self) -> Option<RAGIndexingErrorCode> {
         match self {
@@ -171,7 +171,7 @@ impl RAGErrorCode {
             _ => None,
         }
     }
-    
+
     /// Helper to extract querying error for client responses
     pub fn into_querying_error(self) -> Option<RAGQueryingErrorCode> {
         match self {
@@ -179,7 +179,7 @@ impl RAGErrorCode {
             _ => None,
         }
     }
-    
+
     /// Get error context as string
     pub fn context(&self) -> &'static str {
         match self {
