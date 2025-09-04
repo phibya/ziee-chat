@@ -2,7 +2,7 @@ use crate::database::{
     get_database_pool,
     models::{
         CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGInstance,
-        RAGInstanceListResponse, UpdateRAGInstanceRequest,
+        RAGInstanceListResponse, UpdateRAGInstanceRequest, RAGInstanceErrorCode,
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
 };
@@ -541,4 +541,164 @@ pub async fn get_rag_instance_by_id(instance_id: Uuid) -> Result<Option<RAGInsta
     .await?;
 
     Ok(instance)
+}
+
+/// Get RAG instance status with file statistics for streaming
+/// Returns None if no changes since the provided timestamp
+pub async fn get_rag_instance_status_with_stats(
+    instance_id: Uuid,
+    since: Option<chrono::DateTime<chrono::Utc>>,
+) -> Result<Option<RAGInstanceWithStats>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    // Check if instance has been updated since timestamp
+    if let Some(since_time) = since {
+        let has_updates = sqlx::query_scalar!(
+            "SELECT true FROM rag_instances 
+             WHERE id = $1 AND updated_at > $2",
+            instance_id,
+            since_time
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        if has_updates.is_none() {
+            return Ok(None);
+        }
+    }
+
+    let result = sqlx::query!(
+        r#"SELECT 
+            ri.id, ri.name, ri.enabled, ri.is_active, ri.error_code, ri.updated_at,
+            COALESCE(file_stats.total_files, 0) as total_files,
+            COALESCE(file_stats.processed_files, 0) as processed_files,
+            COALESCE(file_stats.failed_files, 0) as failed_files,
+            COALESCE(file_stats.processing_files, 0) as processing_files
+         FROM rag_instances ri
+         LEFT JOIN (
+            SELECT 
+                rag_instance_id,
+                COUNT(*) as total_files,
+                COUNT(CASE WHEN processing_status = 'completed' THEN 1 END) as processed_files,
+                COUNT(CASE WHEN processing_status = 'failed' THEN 1 END) as failed_files,
+                COUNT(CASE WHEN processing_status = 'processing' THEN 1 END) as processing_files
+            FROM rag_instance_files 
+            WHERE rag_instance_id = $1
+            GROUP BY rag_instance_id
+         ) file_stats ON ri.id = file_stats.rag_instance_id
+         WHERE ri.id = $1"#,
+        instance_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(row) = result {
+        Ok(Some(RAGInstanceWithStats {
+            id: row.id,
+            name: row.name,
+            enabled: row.enabled,
+            is_active: row.is_active,
+            error_code: row.error_code.into(),
+            total_files: row.total_files.unwrap_or(0),
+            processed_files: row.processed_files.unwrap_or(0),
+            failed_files: row.failed_files.unwrap_or(0),
+            processing_files: row.processing_files.unwrap_or(0),
+            updated_at: row.updated_at,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Get file processing status details for a RAG instance
+/// Returns only files that have been updated since the provided timestamp
+pub async fn get_instance_file_processing_details(
+    instance_id: Uuid,
+    since: Option<chrono::DateTime<chrono::Utc>>,
+) -> Result<Vec<RAGFileProcessingDetail>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    if let Some(since_time) = since {
+        let files = sqlx::query!(
+            r#"SELECT 
+                rif.file_id, f.filename, rif.processing_status, 
+                rif.processing_error, rif.created_at as processing_started_at
+             FROM rag_instance_files rif
+             JOIN files f ON rif.file_id = f.id
+             WHERE rif.rag_instance_id = $1 AND rif.updated_at > $2
+             ORDER BY rif.updated_at DESC"#,
+            instance_id,
+            since_time
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let results = files
+            .into_iter()
+            .map(|row| RAGFileProcessingDetail {
+                file_id: row.file_id,
+                filename: row.filename,
+                processing_status: row.processing_status,
+                current_stage: None, // Not tracked yet
+                processing_error: row.processing_error,
+                processing_started_at: Some(row.processing_started_at),
+            })
+            .collect();
+
+        Ok(results)
+    } else {
+        let files = sqlx::query!(
+            r#"SELECT 
+                rif.file_id, f.filename, rif.processing_status, 
+                rif.processing_error, rif.created_at as processing_started_at
+             FROM rag_instance_files rif
+             JOIN files f ON rif.file_id = f.id
+             WHERE rif.rag_instance_id = $1
+             ORDER BY rif.updated_at DESC"#,
+            instance_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let results = files
+            .into_iter()
+            .map(|row| RAGFileProcessingDetail {
+                file_id: row.file_id,
+                filename: row.filename,
+                processing_status: row.processing_status,
+                current_stage: None, // Not tracked yet
+                processing_error: row.processing_error,
+                processing_started_at: Some(row.processing_started_at),
+            })
+            .collect();
+
+        Ok(results)
+    }
+}
+
+// Supporting structs for status queries
+#[derive(Debug, Clone)]
+pub struct RAGInstanceWithStats {
+    pub id: Uuid,
+    pub name: String,
+    pub enabled: bool,
+    pub is_active: bool,
+    pub error_code: RAGInstanceErrorCode,
+    pub total_files: i64,
+    pub processed_files: i64,
+    pub failed_files: i64,
+    pub processing_files: i64,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RAGFileProcessingDetail {
+    pub file_id: Uuid,
+    pub filename: String,
+    pub processing_status: String,
+    pub current_stage: Option<String>,
+    pub processing_error: Option<String>,
+    pub processing_started_at: Option<chrono::DateTime<chrono::Utc>>,
 }

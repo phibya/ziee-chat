@@ -4,6 +4,7 @@ use crate::database::models::{
     file::UploadFileResponse, RAGInstance, RAGInstanceFilesListResponse, RAGInstanceListResponse,
     RAGProvider,
 };
+use crate::api::rag::instances::SSERAGStatusEvent;
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,
@@ -98,6 +99,19 @@ fn user_rag_routes() -> ApiRouter {
             })
             .layer(middleware::from_fn(
                 crate::api::middleware::permissions::rag_instances_edit_middleware,
+            )),
+        )
+        // RAG instance status streaming
+        .api_route(
+            "/instances/{instance_id}/status/stream",
+            get_with(instances::subscribe_rag_instance_status, |op| {
+                op.description("Subscribe to RAG instance status stream via SSE")
+                    .id("Rag.subscribeInstanceStatus")
+                    .tag("rag")
+                    .response::<200, Json<SSERAGStatusEvent>>()
+            })
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_read_middleware,
             )),
         )
         // .api_route(

@@ -39,7 +39,7 @@ import { debounce } from '../../../utils/debounce.ts'
 
 const { Text } = Typography
 
-export const RagDocumentsCard: React.FC = () => {
+export const RagDocumentsTab: React.FC = () => {
   const { message, modal } = App.useApp()
   const { ragInstanceId } = useParams<{ ragInstanceId: string }>()
   const { token } = theme.useToken()
@@ -220,6 +220,7 @@ export const RagDocumentsCard: React.FC = () => {
               icon={<PlusOutlined />}
               onClick={handleAddFilesClick}
               loading={uploading}
+              className={'!z-2'}
             />
           </PermissionGuard>
         </div>

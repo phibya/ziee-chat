@@ -3,7 +3,7 @@ import React from 'react'
 
 const { Text } = Typography
 
-export const RagQueryCard: React.FC = () => {
+export const RagQueryTab: React.FC = () => {
   return (
     <Card title="Query Interface">
       <div className="text-center">

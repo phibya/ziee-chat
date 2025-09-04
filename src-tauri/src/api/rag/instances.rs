@@ -2,10 +2,13 @@ use axum::{
     debug_handler,
     extract::{Path, Query},
     http::StatusCode,
+    response::sse::{Event, KeepAlive, Sse},
     Extension, Json,
 };
+use futures::Stream;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use uuid::Uuid;
 
 use crate::api::{
@@ -15,16 +18,73 @@ use crate::api::{
 use crate::database::{
     models::{
         CreateRAGInstanceRequest, RAGInstance, RAGInstanceListResponse, RAGProvider,
-        UpdateRAGInstanceRequest,
+        UpdateRAGInstanceRequest, RAGInstanceErrorCode,
     },
     queries::{
         rag_instances::{
             create_user_rag_instance, delete_rag_instance, get_rag_instance,
+            get_instance_file_processing_details, get_rag_instance_status_with_stats,
             list_user_rag_instances, update_rag_instance, validate_rag_instance_access,
         },
         user_group_rag_providers::get_creatable_rag_providers_for_user,
     },
 };
+
+// SSE event data structures for RAG status streaming
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct SSERAGInstanceStatusConnectedData {
+    pub instance_id: String,
+}
+
+
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct SSERAGInstanceStatusErrorData {
+    pub instance_id: String,
+    pub error: String,
+}
+
+// SSE event enum for RAG status streaming
+crate::sse_event_enum! {
+    #[derive(Debug, Clone, Serialize, JsonSchema)]
+    pub enum SSERAGStatusEvent {
+        Connected(SSERAGInstanceStatusConnectedData),
+        Update(SSERAGInstanceStatusUpdateData),
+        Error(SSERAGInstanceStatusErrorData),
+    }
+}
+
+// Supporting data structures
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct RAGFileProcessingStatus {
+    pub file_id: String,
+    pub filename: String,
+    pub status: String,
+    pub stage: Option<String>,
+    pub error_message: Option<String>,
+    pub started_at: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RAGStatusStreamQuery {
+    /// Include file-level details (default: true)
+    pub include_files: Option<bool>,
+}
+
+// Status update structure for internal logic
+#[derive(Debug, Clone, Serialize, JsonSchema)]
+pub struct SSERAGInstanceStatusUpdateData {
+    pub instance_id: String,
+    pub name: String,
+    pub is_active: bool,
+    pub enabled: bool,
+    pub error_code: RAGInstanceErrorCode,
+    pub total_files: i64,
+    pub processed_files: i64,
+    pub failed_files: i64,
+    pub processing_files: i64,
+    pub current_files_processing: Vec<RAGFileProcessingStatus>,
+    pub updated_at: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RAGInstanceListQuery {
@@ -274,4 +334,134 @@ pub async fn list_creatable_rag_providers_handler(
             )
         })?;
     Ok((axum::http::StatusCode::OK, Json(providers)))
+}
+
+/// Subscribe to RAG instance status stream via SSE
+#[debug_handler]
+pub async fn subscribe_rag_instance_status(
+    Path(instance_id): Path<Uuid>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Query(params): Query<RAGStatusStreamQuery>,
+) -> ApiResult<Sse<impl Stream<Item = Result<Event, axum::Error>>>> {
+    // Permission check - user must have access to this RAG instance
+    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::from(e),
+            )
+        })?;
+    if !has_access {
+        return Err((
+            StatusCode::FORBIDDEN,
+            AppError::forbidden("Access denied"),
+        ));
+    }
+
+    let include_files = params.include_files.unwrap_or(true);
+    let mut interval = tokio::time::interval(Duration::from_secs(3));
+
+    let stream = async_stream::stream! {
+        let mut last_updated_at: Option<chrono::DateTime<chrono::Utc>> = None;
+
+        // Send initial connected event immediately
+        let connected_event = SSERAGStatusEvent::Connected(SSERAGInstanceStatusConnectedData {
+            instance_id: instance_id.to_string(),
+        });
+        yield Ok(connected_event.into());
+
+        // Poll for updates using timestamp-based filtering
+        while let Ok(_) = tokio::time::timeout(Duration::from_secs(5), interval.tick()).await {
+            match get_rag_instance_status_update(instance_id, include_files, last_updated_at).await {
+                Ok(Some(status)) => {
+                    // Update timestamp for next query
+                    if let Ok(updated_at) = chrono::DateTime::parse_from_rfc3339(&status.updated_at) {
+                        last_updated_at = Some(updated_at.with_timezone(&chrono::Utc));
+                    }
+
+                    let update_event = SSERAGStatusEvent::Update(status);
+
+                    yield Ok(update_event.into());
+                }
+                Ok(None) => {
+                    // No changes - connection is still alive (keep-alive handles this)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to get RAG instance updates: {}", e);
+                    yield Ok(SSERAGStatusEvent::Error(SSERAGInstanceStatusErrorData {
+                        instance_id: instance_id.to_string(),
+                        error: format!("Monitoring error: {}", e),
+                    }).into());
+                    break;
+                }
+            }
+        }
+    };
+
+    Ok((
+        StatusCode::OK,
+        Sse::new(stream).keep_alive(
+            KeepAlive::new()
+                .interval(Duration::from_secs(15))
+                .text("keep-alive"),
+        ),
+    ))
+}
+
+/// Get RAG instance status update for streaming
+async fn get_rag_instance_status_update(
+    instance_id: Uuid,
+    include_files: bool,
+    since: Option<chrono::DateTime<chrono::Utc>>,
+) -> Result<Option<SSERAGInstanceStatusUpdateData>, String> {
+    // Get instance with stats, filtered by timestamp if provided
+    let instance = get_rag_instance_status_with_stats(instance_id, since)
+        .await
+        .map_err(|e| format!("Database error: {}", e))?;
+
+    let instance = match instance {
+        Some(inst) => inst,
+        None => {
+            // If since is provided and no instance found, it means no changes
+            if since.is_some() {
+                return Ok(None);
+            } else {
+                return Err("Instance not found".to_string());
+            }
+        }
+    };
+
+    // Get current processing files if requested (also filtered by timestamp)
+    let current_files = if include_files {
+        get_instance_file_processing_details(instance_id, since)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?
+            .into_iter()
+            .map(|f| RAGFileProcessingStatus {
+                file_id: f.file_id.to_string(),
+                filename: f.filename,
+                status: f.processing_status,
+                stage: f.current_stage,
+                error_message: f.processing_error,
+                started_at: f.processing_started_at.map(|dt| dt.to_rfc3339()),
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    Ok(Some(SSERAGInstanceStatusUpdateData {
+        instance_id: instance.id.to_string(),
+        name: instance.name,
+        is_active: instance.is_active,
+        enabled: instance.enabled,
+        error_code: instance.error_code,
+        total_files: instance.total_files,
+        processed_files: instance.processed_files,
+        failed_files: instance.failed_files,
+        processing_files: instance.processing_files,
+        current_files_processing: current_files,
+        updated_at: instance.updated_at.to_rfc3339(),
+    }))
 }

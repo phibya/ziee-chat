@@ -1,18 +1,15 @@
 import {
   Button,
   Card,
-  Flex,
   Form,
   Select,
   Divider,
   Tag,
   Typography,
   Input,
-  Space,
   Switch,
   App,
 } from 'antd'
-import { SettingOutlined } from '@ant-design/icons'
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useRAGInstanceStore } from '../../../store/ragInstance'
@@ -26,15 +23,15 @@ import { Permission, UpdateRAGInstanceRequest } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { RagSimpleVectorEngineSettings } from './RagSimpleVectorEngineSettings.tsx'
 import { RagSimpleGraphEngineSettings } from './RagSimpleGraphEngineSettings.tsx'
+import { RagInstanceStatus } from './RagInstanceStatus.tsx'
 
 const { Text } = Typography
 
-export const RagInstanceInfoCard: React.FC = () => {
+export const RagInstanceSettingsTab: React.FC = () => {
   const { ragInstanceId } = useParams<{ ragInstanceId: string }>()
   const { message } = App.useApp()
   const [form] = Form.useForm()
   const [activationForm] = Form.useForm()
-  const [configurationVisible, setConfigurationVisible] = useState(false)
   const [updatingInstance, setUpdatingInstance] = useState(false)
   const engineType = Form.useWatch('engine_type', form)
 
@@ -63,8 +60,6 @@ export const RagInstanceInfoCard: React.FC = () => {
   useEffect(() => {
     if (ragInstance) {
       form.setFieldsValue({
-        name: ragInstance.name,
-        description: ragInstance.description,
         enabled: ragInstance.enabled,
         engine_type: ragInstance.engine_type,
         embedding_model_id: ragInstance.embedding_model_id,
@@ -79,6 +74,15 @@ export const RagInstanceInfoCard: React.FC = () => {
     }
   }, [ragInstance, form, activationForm])
 
+  useEffect(() => {
+    // Sync activation form if ragInstance.is_active changes externally
+    if (ragInstance) {
+      activationForm.setFieldsValue({
+        is_active: ragInstance.is_active,
+      })
+    }
+  }, [ragInstance?.is_active])
+
   // Handle configuration form submission
   const handleConfigurationSubmit = async (values: any) => {
     if (!ragInstance) return
@@ -87,11 +91,6 @@ export const RagInstanceInfoCard: React.FC = () => {
       setUpdatingInstance(true)
 
       const updateData: UpdateRAGInstanceRequest = {
-        name: values.name !== ragInstance.name ? values.name : undefined,
-        description:
-          values.description !== ragInstance.description
-            ? values.description
-            : undefined,
         enabled:
           values.enabled !== ragInstance.enabled ? values.enabled : undefined,
         embedding_model_id:
@@ -113,7 +112,6 @@ export const RagInstanceInfoCard: React.FC = () => {
       })
 
       await updateRAGInstance(updateData)
-      setConfigurationVisible(false)
     } catch (error) {
       console.error('Failed to update RAG instance:', error)
     } finally {
@@ -132,6 +130,7 @@ export const RagInstanceInfoCard: React.FC = () => {
       activationForm.setFieldValue('is_active', checked)
 
       await toggleRAGInstanceActivate(ragInstanceId)
+
       message.success(
         `RAG instance ${previousValue ? 'deactivated' : 'activated'} successfully`,
       )
@@ -178,89 +177,62 @@ export const RagInstanceInfoCard: React.FC = () => {
   }
 
   return (
-    <Card
-      title={
-        <Flex className="items-center justify-between">
+    <div className="flex flex-col gap-3">
+      {/* Real-time Status Card */}
+      <RagInstanceStatus />
+
+      {/* Instance Information Card */}
+      <Card
+        title={
           <Typography.Title level={5} className={'!m-0 !pt-[2px]'}>
-            Instance Information
+            Instance Configuration
           </Typography.Title>
-          <PermissionGuard
-            permissions={[Permission.RagInstancesEdit]}
-            type="disabled"
-          >
-            <Button
-              type={configurationVisible ? 'primary' : 'text'}
-              icon={<SettingOutlined />}
-              onClick={() => setConfigurationVisible(!configurationVisible)}
-            />
-          </PermissionGuard>
-        </Flex>
-      }
-    >
-      <div className="flex flex-col gap-2">
-        <div className={'flex items-center justify-between'}>
-          <Text type="secondary">Engine Type:</Text>
-          <Tag color="blue">
-            {ragInstance?.engine_type === 'simple_vector' ? 'Vector' : 'Graph'}
-          </Tag>
-        </div>
-        <div className={'flex items-center justify-between'}>
-          <Text type="secondary">Status:</Text>
-          <PermissionGuard
-            permissions={[Permission.RagInstancesEdit]}
-            type="disabled"
-          >
-            <Form form={activationForm}>
-              <Form.Item name="is_active" className="mb-0">
-                <Switch onChange={handleActivationToggle} />
-              </Form.Item>
-            </Form>
-          </PermissionGuard>
-        </div>
-        {ragInstance?.embedding_model_id && (
+        }
+      >
+        <div className="flex flex-col gap-2">
           <div className={'flex items-center justify-between'}>
-            <Text type="secondary">Embedding Model:</Text>
-            <Text style={{ fontSize: '12px' }}>
-              {ragInstance.embedding_model_id.substring(0, 20)}...
-            </Text>
-          </div>
-        )}
-        {ragInstance?.llm_model_id && (
-          <div className={'flex items-center justify-between'}>
-            <Text type="secondary">LLM Model:</Text>
-            <Text style={{ fontSize: '12px' }}>
-              {ragInstance.llm_model_id.substring(0, 20)}...
-            </Text>
-          </div>
-        )}
-      </div>
-
-      {/* RAG Configuration Form */}
-      {configurationVisible && (
-        <div className="mt-4">
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleConfigurationSubmit}
-            disabled={updatingInstance}
-          >
-            <Form.Item
-              label="Instance Name"
-              name="name"
-              rules={[
-                { required: true, message: 'Please enter instance name' },
-              ]}
+            <Text type="secondary">Active:</Text>
+            <PermissionGuard
+              permissions={[Permission.RagInstancesEdit]}
+              type="disabled"
             >
-              <Input placeholder="Enter instance name" />
-            </Form.Item>
+              <Form form={activationForm}>
+                <Form.Item name="is_active" className="mb-0">
+                  <Switch onChange={handleActivationToggle} />
+                </Form.Item>
+              </Form>
+            </PermissionGuard>
+          </div>
+          {ragInstance?.embedding_model_id && (
+            <div className={'flex items-center justify-between'}>
+              <Text type="secondary">Embedding Model:</Text>
+              <Text style={{ fontSize: '12px' }}>
+                {ragInstance.embedding_model_id.substring(0, 20)}...
+              </Text>
+            </div>
+          )}
+          {ragInstance?.llm_model_id && (
+            <div className={'flex items-center justify-between'}>
+              <Text type="secondary">LLM Model:</Text>
+              <Text style={{ fontSize: '12px' }}>
+                {ragInstance.llm_model_id.substring(0, 20)}...
+              </Text>
+            </div>
+          )}
+        </div>
 
-            <Form.Item label="Description" name="description">
-              <Input.TextArea
-                placeholder="Enter instance description"
-                rows={2}
-              />
-            </Form.Item>
-
+        {/* RAG Configuration Form */}
+        <div className="mt-4">
+          <PermissionGuard
+            permissions={[Permission.RagInstancesEdit]}
+            type="disabled"
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleConfigurationSubmit}
+              disabled={updatingInstance}
+            >
             <Form.Item
               label="Engine Type"
               name="engine_type"
@@ -345,22 +317,18 @@ export const RagInstanceInfoCard: React.FC = () => {
             </div>
 
             <Form.Item className="mb-0 !mt-3">
-              <Space>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={updatingInstance}
-                >
-                  Save
-                </Button>
-                <Button onClick={() => setConfigurationVisible(false)}>
-                  Cancel
-                </Button>
-              </Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={updatingInstance}
+              >
+                Save
+              </Button>
             </Form.Item>
           </Form>
+          </PermissionGuard>
         </div>
-      )}
-    </Card>
+      </Card>
+    </div>
   )
 }

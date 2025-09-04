@@ -25,18 +25,13 @@ export type SSEHandlers<T extends Record<string, any>> = {
 }
 
 // Unified SSE callback type that supports both function and object formats
-export type SSECallback<T> = 
-  | (<E extends SSEEventKey<T>>(
-      event: E,
-      data: SSEEventData<T, E>,
-    ) => void)
+export type SSECallback<T> =
+  | (<E extends SSEEventKey<T>>(event: E, data: SSEEventData<T, E>) => void)
   | ((event: string, data: any) => void)
-  | (T extends Record<string, any>
-      ? Partial<SSEHandlers<T>>
-      : never)
+  | (T extends Record<string, any> ? Partial<SSEHandlers<T>> : never)
 
 export function createSSEHandler<T extends Record<string, any>>(
-  handlers: SSEHandlers<T>
+  handlers: SSEHandlers<T>,
 ) {
   return (event: SSEEventKey<T>, data: any) => {
     if (event === '__init' && handlers.__init) {

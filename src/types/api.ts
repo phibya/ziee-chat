@@ -925,6 +925,15 @@ export interface RAGEngineSettings {
 
 export type RAGEngineType = 'simple_vector' | 'simple_graph'
 
+export interface RAGFileProcessingStatus {
+  file_id: string
+  filename: string
+  status: string
+  stage?: string
+  error_message?: string
+  started_at?: string
+}
+
 export interface RAGInstance {
   description?: string
   id: string
@@ -1101,6 +1110,10 @@ export interface RAGSimpleVectorQueryingSettings {
   min_rerank_score?: number
 }
 
+export interface RAGStatusStreamQuery {
+  include_files?: boolean
+}
+
 export interface Repository {
   id: string
   name: string
@@ -1179,6 +1192,35 @@ export type SSEProxyLogsEvent = {
 export interface SSEProxyLogsUpdateData {
   lines: string[]
   timestamp: string
+}
+
+export interface SSERAGInstanceStatusConnectedData {
+  instance_id: string
+}
+
+export interface SSERAGInstanceStatusErrorData {
+  instance_id: string
+  error: string
+}
+
+export interface SSERAGInstanceStatusUpdateData {
+  instance_id: string
+  name: string
+  is_active: boolean
+  enabled: boolean
+  error_code: RAGInstanceErrorCode
+  total_files: number
+  processed_files: number
+  failed_files: number
+  processing_files: number
+  current_files_processing: RAGFileProcessingStatus[]
+  updated_at: string
+}
+
+export type SSERAGStatusEvent = {
+  connected: SSERAGInstanceStatusConnectedData
+  update: SSERAGInstanceStatusUpdateData
+  error: SSERAGInstanceStatusErrorData
 }
 
 export interface SearchQuery {
@@ -1631,6 +1673,7 @@ export const ApiEndpoints = {
   'Rag.listCreatableProviders': 'GET /api/rag/providers',
   'Rag.listInstanceFiles': 'GET /api/rag/instances/{instance_id}/files',
   'Rag.listInstances': 'GET /api/rag/instances',
+  'Rag.subscribeInstanceStatus': 'GET /api/rag/instances/{instance_id}/status/stream',
   'Rag.toggleInstanceActivate': 'PUT /api/rag/instances/{instance_id}/toggle-activate',
   'Rag.updateInstance': 'PUT /api/rag/instances/{instance_id}',
   'Rag.uploadInstanceFile': 'POST /api/rag/instances/{instance_id}/files',
@@ -1798,6 +1841,7 @@ export type ApiEndpointParameters = {
   'Rag.listCreatableProviders': void
   'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; status_filter?: RAGProcessingStatus; search?: string }
   'Rag.listInstances': { page?: number; per_page?: number; include_system?: boolean }
+  'Rag.subscribeInstanceStatus': { instance_id: string; include_files?: boolean }
   'Rag.toggleInstanceActivate': { instance_id: string }
   'Rag.updateInstance': { instance_id: string } & UpdateRAGInstanceRequest
   'Rag.uploadInstanceFile': { instance_id: string } & FormData
@@ -1965,6 +2009,7 @@ export type ApiEndpointResponses = {
   'Rag.listCreatableProviders': RAGProvider[]
   'Rag.listInstanceFiles': RAGInstanceFilesListResponse
   'Rag.listInstances': RAGInstanceListResponse
+  'Rag.subscribeInstanceStatus': SSERAGStatusEvent
   'Rag.toggleInstanceActivate': RAGInstance
   'Rag.updateInstance': RAGInstance
   'Rag.uploadInstanceFile': UploadFileResponse

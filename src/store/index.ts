@@ -14,6 +14,7 @@ import { useModelDownloadStore } from './admin/modelDownload.ts'
 import { useProjectsStore } from './projects'
 // import { useProjectStore } from './project' // Imported via export below
 import { useRAGStore } from './rag'
+import { useRAGStatusStore } from './ragStatus'
 import { useRAGInstanceDrawerStore } from './ui/ragDrawers'
 import { useAdminProvidersStore } from './admin/providers.ts'
 import { useUserProvidersStore } from './providers.ts'
@@ -294,6 +295,13 @@ export {
   createRAGInstanceStore,
   useRAGInstanceStore,
 } from './ragInstance'
+// RAG Status store
+export {
+  subscribeToRAGStatus,
+  disconnectRAGStatus,
+  clearRAGStatusError,
+  useRAGStatusStore,
+} from './ragStatus'
 
 // RAG UI stores
 export {
@@ -449,6 +457,7 @@ export const Stores = {
   ModelDownload: createStoreProxy(useModelDownloadStore),
   Projects: createStoreProxy(useProjectsStore),
   RAG: createStoreProxy(useRAGStore),
+  RAGStatus: createStoreProxy(useRAGStatusStore),
   Providers: createStoreProxy(useUserProvidersStore),
   AdminProviders: createStoreProxy(useAdminProvidersStore),
   AdminModels: createStoreProxy(useAdminProvidersStore), // Legacy compatibility

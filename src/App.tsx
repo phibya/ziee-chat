@@ -145,6 +145,16 @@ function App() {
                       }
                     />
                     <Route
+                      path="/rags/:ragInstanceId/:tab"
+                      element={
+                        <PagePermissionGuard403
+                          permissions={[Permission.RagInstancesRead]}
+                        >
+                          <RagDetailsPage />
+                        </PagePermissionGuard403>
+                      }
+                    />
+                    <Route
                       path="/hub/:activeTab?"
                       element={
                         <PagePermissionGuard403
