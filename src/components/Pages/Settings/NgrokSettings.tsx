@@ -21,7 +21,6 @@ import { SettingsPageContainer } from './common/SettingsPageContainer'
 import { isTauriView } from '../../../api/core'
 import { Stores } from '../../../store'
 import {
-  loadNgrokSettings,
   refreshNgrokStatus,
   startNgrokTunnel,
   stopNgrokTunnel,
@@ -54,9 +53,6 @@ export function NgrokSettings() {
 
   // Load data on mount
   useEffect(() => {
-    loadNgrokSettings()
-    refreshNgrokStatus()
-
     // Refresh status every 10 seconds when tunnel is active
     const interval = setInterval(() => {
       if (ngrokStatus?.tunnel_active) {

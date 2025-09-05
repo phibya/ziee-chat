@@ -24,6 +24,7 @@ type ExtractZustandState<T> = T extends UseBoundStore<infer Store>
 export const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
   useStore: T,
 ): Readonly<ExtractZustandState<T>> => {
+  const propInitCheck = new Map<string | symbol, boolean>()
   return new Proxy({} as Readonly<ExtractZustandState<T>>, {
     get: (_, prop) => {
       if (prop === '__state') {
@@ -32,6 +33,16 @@ export const createStoreProxy = <T extends UseBoundStore<StoreApi<any>>>(
       if (prop === '__setState') {
         return useStore.setState.bind(useStore)
       }
+
+      const isInit = propInitCheck.get(prop) || false
+      if (!isInit) {
+        let state = useStore.getState()
+        if (state.__init__ && typeof state.__init__[prop] === 'function') {
+          state.__init__[prop]()
+        }
+        propInitCheck.set(prop, true)
+      }
+
       return useStore(
         useShallow((state: ExtractZustandState<T>) => (state as any)[prop]),
       )

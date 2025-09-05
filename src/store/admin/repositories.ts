@@ -22,6 +22,10 @@ interface AdminRepositoriesState {
 
   // Error state
   error: string | null
+
+  __init__: {
+    repositories: () => Promise<void>
+  }
 }
 
 export const useAdminRepositoriesStore = create<AdminRepositoriesState>()(
@@ -36,6 +40,9 @@ export const useAdminRepositoriesStore = create<AdminRepositoriesState>()(
       deleting: false,
       testing: false,
       error: null,
+      __init__: {
+        repositories: async () => loadAllAdminModelRepositories(),
+      },
     }),
   ),
 )

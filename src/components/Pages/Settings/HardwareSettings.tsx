@@ -13,7 +13,6 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   disconnectHardwareUsage,
-  loadHardwareInfo,
   Stores,
   subscribeToHardwareUsage,
 } from '../../../store'
@@ -45,8 +44,6 @@ export function HardwareSettings() {
 
   // Initialize hardware monitoring on component mount (without auto-connecting)
   useEffect(() => {
-    // Only load static hardware info, don't auto-connect to SSE
-    loadHardwareInfo().catch(console.error)
     if (hasPermission([Permission.HardwareMonitor])) {
       subscribeToHardwareUsage().catch(console.error)
 

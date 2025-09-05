@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   clearProvidersError,
-  loadAllModelProviders,
   openAddProviderDrawer,
   Stores,
 } from '../../../../store'
@@ -43,10 +42,6 @@ export function ProvidersSettings() {
   const { providers, loading, error } = Stores.AdminProviders
 
   const currentProvider = providers.find(p => p.id === providerId)
-
-  useEffect(() => {
-    loadAllModelProviders()
-  }, [])
 
   // Show errors
   useEffect(() => {

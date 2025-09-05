@@ -4,6 +4,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct HubModelQuantizationOption {
+    pub name: String,
+    pub main_filename: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct HubModel {
     pub id: String,
     pub name: String,
@@ -20,7 +26,7 @@ pub struct HubModel {
     pub public: bool,
     pub popularity_score: Option<f32>,
     pub license: Option<String>,
-    pub quantization_options: Option<Vec<String>>,
+    pub quantization_options: Option<Vec<HubModelQuantizationOption>>,
     pub context_length: Option<u32>,
     pub language_support: Option<Vec<String>>,
     pub recommended_engine: Option<EngineType>,

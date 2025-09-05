@@ -15,6 +15,9 @@ interface UserProvidersState {
 
   // Error state
   error: string | null
+  __init__: {
+    providers: () => Promise<void>
+  }
 }
 
 export const useUserProvidersStore = create<UserProvidersState>()(
@@ -27,6 +30,9 @@ export const useUserProvidersStore = create<UserProvidersState>()(
       loading: false,
       loadingModels: {},
       error: null,
+      __init__: {
+        providers: () => loadUserProvidersWithAllModels(),
+      },
     }),
   ),
 )

@@ -502,11 +502,16 @@ export interface HubModel {
   public: boolean
   popularity_score?: number
   license?: string
-  quantization_options?: string[]
+  quantization_options?: HubModelQuantizationOption[]
   context_length?: number
   language_support?: string[]
   recommended_engine?: EngineType
   recommended_engine_settings?: any
+}
+
+export interface HubModelQuantizationOption {
+  name: string
+  main_filename: string
 }
 
 export interface HubQueryParams {

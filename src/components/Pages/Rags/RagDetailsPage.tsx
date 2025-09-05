@@ -1,4 +1,13 @@
-import { App, Button, Flex, Result, Segmented, theme, Typography } from 'antd'
+import {
+  App,
+  Button,
+  Dropdown,
+  Flex,
+  Result,
+  Segmented,
+  theme,
+  Typography,
+} from 'antd'
 import React, { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { openRAGInstanceDrawer, useRAGInstanceStore } from '../../../store'
@@ -6,6 +15,7 @@ import { RagFormDrawer } from './RagFormDrawer.tsx'
 import { RagQueryTab } from './RagQueryTab.tsx'
 import { RagInstanceSettingsTab } from './RagInstanceSettingsTab.tsx'
 import { RagDocumentsTab } from './RagDocumentsTab.tsx'
+import { RagStatusTab } from './RagStatusTab.tsx'
 import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
 import { IoIosArrowForward } from 'react-icons/io'
@@ -17,7 +27,10 @@ import {
   FileOutlined,
   SearchOutlined,
   SettingOutlined,
+  DashboardOutlined,
+  DownOutlined,
 } from '@ant-design/icons'
+import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 
 export const RagDetailsPage: React.FC = () => {
   const { message } = App.useApp()
@@ -27,9 +40,57 @@ export const RagDetailsPage: React.FC = () => {
   }>()
   const navigate = useNavigate()
   const { token } = theme.useToken()
+  const mainContentMinSize = useMainContentMinSize()
 
   // Set default tab if none specified
   const activeTab = tab || 'query'
+
+  // Tab options
+  const tabOptions = [
+    {
+      value: 'query',
+      label: (
+        <Flex align="center" gap={4}>
+          <SearchOutlined />
+          Query
+        </Flex>
+      ),
+      key: 'query',
+    },
+    {
+      value: 'documents',
+      label: (
+        <Flex align="center" gap={4}>
+          <FileOutlined />
+          Documents
+        </Flex>
+      ),
+      key: 'documents',
+    },
+    {
+      value: 'status',
+      label: (
+        <Flex align="center" gap={4}>
+          <DashboardOutlined />
+          Status
+        </Flex>
+      ),
+      key: 'status',
+    },
+    {
+      value: 'settings',
+      label: (
+        <Flex align="center" gap={4}>
+          <SettingOutlined />
+          Settings
+        </Flex>
+      ),
+      key: 'settings',
+    },
+  ]
+
+  // Get current tab label for dropdown
+  const currentTabOption = tabOptions.find(option => option.value === activeTab)
 
   // RAG instance store
   const { ragInstance, loading, error, clearError } =
@@ -125,60 +186,57 @@ export const RagDetailsPage: React.FC = () => {
         <div className="w-full flex-1 p-3 max-w-4xl mx-auto">
           <div className="flex flex-col gap-3">
             <div className={'h-full flex items-center justify-center'}>
-              <Segmented
-                value={activeTab}
-                onChange={(value: string) => {
-                  navigate(`/rags/${ragInstance?.id}/${value}`)
-                }}
-                className={`
-                [&_.ant-segmented-item-label]:!px-4
-                [&_.ant-segmented-item-label]:!py-1
-                w-auto`}
-                style={{
-                  backgroundColor: token.colorBgMask,
-                }}
-                shape="round"
-                options={
-                  [
-                    {
-                      value: 'query',
-                      label: (
-                        <Flex align="center" gap={4}>
-                          <SearchOutlined />
-                          Query
-                        </Flex>
-                      ),
+              {mainContentMinSize.xxs ? (
+                <Dropdown
+                  className={'w-full'}
+                  menu={{
+                    items: tabOptions,
+                    onClick: ({ key }) => {
+                      navigate(`/rags/${ragInstance?.id}/${key}`)
                     },
-                    {
-                      value: 'documents',
-                      label: (
-                        <Flex align="center" gap={4}>
-                          <FileOutlined />
-                          Documents
-                        </Flex>
-                      ),
-                    },
-                    {
-                      value: 'settings',
-                      label: (
-                        <Flex align="center" gap={4}>
-                          <SettingOutlined />
-                          Settings
-                        </Flex>
-                      ),
-                    },
-                  ].filter(e => !!e) as {
-                    value: string
-                    label: React.ReactNode
-                  }[]
-                }
-              />
+                  }}
+                >
+                  <Button>
+                    <div className={'flex items-center w-full'}>
+                      <div
+                        className={'flex-1 flex items-center justify-center'}
+                      >
+                        {' '}
+                        {currentTabOption?.label}
+                      </div>
+                      <div>
+                        <DownOutlined />
+                      </div>
+                    </div>
+                  </Button>
+                </Dropdown>
+              ) : (
+                <Segmented
+                  value={activeTab}
+                  onChange={(value: string) => {
+                    navigate(`/rags/${ragInstance?.id}/${value}`)
+                  }}
+                  className={`
+                  [&_.ant-segmented-item-label]:!px-4
+                  [&_.ant-segmented-item-label]:!py-1
+                  w-auto`}
+                  style={{
+                    backgroundColor: token.colorBgMask,
+                  }}
+                  shape="round"
+                  options={tabOptions.map(option => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                />
+              )}
             </div>
 
             {/* Render cards based on active tab */}
             {activeTab === 'query' && <RagQueryTab />}
-            {activeTab === 'settings' && <RagInstanceSettingsTab />}
             {activeTab === 'documents' && <RagDocumentsTab />}
+            {activeTab === 'status' && <RagStatusTab />}
+            {activeTab === 'settings' && <RagInstanceSettingsTab />}
           </div>
         </div>
       </div>

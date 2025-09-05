@@ -3,7 +3,6 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   clearSystemAdminError,
-  loadSystemProxySettings,
   Stores,
   updateSystemProxySettings,
 } from '../../../store'
@@ -18,10 +17,6 @@ export function HttpsProxySettings() {
   // Admin proxy settings store
   const { proxySettings, loadingProxySettings, error } =
     Stores.AdminProxySettings
-
-  useEffect(() => {
-    loadSystemProxySettings()
-  }, [])
 
   // Show errors from store
   useEffect(() => {

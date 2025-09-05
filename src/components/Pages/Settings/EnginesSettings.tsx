@@ -1,19 +1,12 @@
-import { useEffect } from 'react'
 import { Alert, Card, Descriptions, Flex, Tag, Typography } from 'antd'
 import { LinkOutlined } from '@ant-design/icons'
-import { initializeEngines, Stores } from '../../../store'
+import { Stores } from '../../../store'
 import { SettingsPageContainer } from './common/SettingsPageContainer.tsx'
 
 const { Text, Link } = Typography
 
 export function EnginesSettings() {
-  const { engines, loading, error, initialized } = Stores.AdminEngines
-
-  useEffect(() => {
-    if (!initialized) {
-      initializeEngines().catch(console.error)
-    }
-  }, [initialized])
+  const { engines, loading, error } = Stores.AdminEngines
 
   const getEngineLink = (engineType: string) => {
     switch (engineType) {

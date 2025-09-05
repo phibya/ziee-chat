@@ -34,6 +34,9 @@ interface AdminProvidersState {
   // Error states
   error: string | null
   modelError: Record<string, string> // Track errors for specific providers
+  __init__: {
+    providers: () => Promise<void>
+  }
 }
 
 export const useAdminProvidersStore = create<AdminProvidersState>()(
@@ -50,6 +53,9 @@ export const useAdminProvidersStore = create<AdminProvidersState>()(
       modelOperations: {},
       error: null,
       modelError: {},
+      __init__: {
+        providers: async () => loadAllModelProviders(),
+      },
     }),
   ),
 )

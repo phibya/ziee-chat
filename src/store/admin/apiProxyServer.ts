@@ -11,6 +11,7 @@ import type {
   UpdateApiProxyServerModelRequest,
   UpdateTrustedHostRequest,
 } from '../../types'
+import { loadAllModelProviders } from './providers.ts'
 
 interface ApiProxyServerState {
   config: ApiProxyServerConfig | null
@@ -23,10 +24,16 @@ interface ApiProxyServerState {
   loadingHosts: boolean
   error: string | null
   initialized: boolean
+  __init__: {
+    models: () => Promise<void>
+    status?: () => Promise<void>
+    config?: () => Promise<void>
+    trustedHosts?: () => Promise<void>
+  }
 }
 
 export const useApiProxyServerStore = create<ApiProxyServerState>()(
-  subscribeWithSelector((_set, _get) => ({
+  subscribeWithSelector<ApiProxyServerState>((_set, _get) => ({
     config: null,
     status: null,
     models: [],
@@ -37,6 +44,12 @@ export const useApiProxyServerStore = create<ApiProxyServerState>()(
     loadingHosts: false,
     error: null,
     initialized: false,
+    __init__: {
+      models: async () => loadAllModelProviders(),
+      status: async () => loadApiProxyServerStatus(),
+      config: async () => loadApiProxyServerConfig(),
+      trustedHosts: async () => loadApiProxyServerTrustedHosts(),
+    },
   })),
 )
 
@@ -321,66 +334,6 @@ export const removeTrustedHostFromApiProxyServer = async (hostId: string) => {
     })
   } catch (error) {
     console.error('Failed to remove trusted host from API proxy server:', error)
-    throw error
-  }
-}
-
-// Initialize all data
-export const initializeApiProxyServerData = async () => {
-  const state = useApiProxyServerStore.getState()
-  if (state.initialized) {
-    return
-  }
-
-  try {
-    await Promise.all([
-      loadApiProxyServerConfig(),
-      loadApiProxyServerStatus(),
-      loadApiProxyServerModels(),
-      loadApiProxyServerTrustedHosts(),
-    ])
-
-    useApiProxyServerStore.setState({
-      initialized: true,
-      error: null,
-    })
-  } catch (error) {
-    console.error('Failed to initialize API proxy server data:', error)
-    useApiProxyServerStore.setState({
-      initialized: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    })
-    throw error
-  }
-}
-
-// Refresh all data - bypasses loading state checks to force refresh
-export const refreshApiProxyServerData = async () => {
-  try {
-    // Reset loading states and force reload
-    useApiProxyServerStore.setState({
-      loadingConfig: false,
-      loadingStatus: false,
-      loadingModels: false,
-      loadingHosts: false,
-    })
-
-    await Promise.all([
-      loadApiProxyServerConfig(),
-      loadApiProxyServerStatus(),
-      loadApiProxyServerModels(),
-      loadApiProxyServerTrustedHosts(),
-    ])
-
-    useApiProxyServerStore.setState({
-      initialized: true,
-      error: null,
-    })
-  } catch (error) {
-    console.error('Failed to refresh API proxy server data:', error)
-    useApiProxyServerStore.setState({
-      error: error instanceof Error ? error.message : 'Unknown error',
-    })
     throw error
   }
 }

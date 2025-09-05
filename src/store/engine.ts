@@ -8,14 +8,20 @@ interface EngineState {
   loading: boolean
   error: string | null
   initialized: boolean
+  __init__: {
+    engines: () => Promise<void>
+  }
 }
 
 export const useEngineStore = create<EngineState>()(
-  subscribeWithSelector((_set, _get) => ({
+  subscribeWithSelector<EngineState>((_set, _get) => ({
     engines: [],
     loading: false,
     error: null,
     initialized: false,
+    __init__: {
+      engines: () => initializeEngines(),
+    },
   })),
 )
 

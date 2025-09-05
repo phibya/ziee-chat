@@ -66,6 +66,7 @@ interface SchemaDefinition extends SchemaType {
   required?: string[]
   anyOf?: (SchemaReference | SchemaType)[]
   allOf?: (SchemaReference | SchemaType)[]
+  oneOf?: (SchemaReference | SchemaType)[]
   enum?: any[]
 }
 
@@ -449,6 +450,11 @@ function generateSchemaInterface(
     return ''
   }
 
+  // Special handling for SSE event types with oneOf pattern
+  if (name.startsWith('SSE') && schema.oneOf && Array.isArray(schema.oneOf)) {
+    return generateSSEEventType(name, schema.oneOf)
+  }
+
   // Special handling for Permission type - convert to enum
   if (name === 'Permission' && schema.enum && Array.isArray(schema.enum)) {
     return generatePermissionEnum(schema.enum)
@@ -508,6 +514,34 @@ ${properties.join('\n')}
     const baseType = getTypeFromSchema(schema)
     return `export type ${name} = ${baseType}`
   }
+}
+
+function generateSSEEventType(name: string, oneOfVariants: (SchemaReference | SchemaType)[]): string {
+  const eventTypes: string[] = []
+
+  for (const variant of oneOfVariants) {
+    if (variant.type === 'object' && variant.properties) {
+      // Extract the event name and data type from the variant
+      const eventNames = Object.keys(variant.properties)
+      if (eventNames.length === 1) {
+        const eventName = eventNames[0]
+        const eventDataSchema = variant.properties[eventName]
+        
+        let dataType = 'any'
+        if (isSchemaReference(eventDataSchema)) {
+          dataType = extractSchemaName(eventDataSchema.$ref)
+        } else {
+          dataType = getTypeFromSchema(eventDataSchema)
+        }
+        
+        eventTypes.push(`  ${eventName}: ${dataType}`)
+      }
+    }
+  }
+
+  return `export type ${name} = {
+${eventTypes.join('\n')}
+}`
 }
 
 function generatePermissionEnum(enumValues: any[]): string {

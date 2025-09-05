@@ -19,6 +19,10 @@ interface AdminAssistantsState {
 
   // Error state
   error: string | null
+
+  __init__: {
+    assistants: () => Promise<void>
+  }
 }
 
 export const useAdminAssistantsStore = create<AdminAssistantsState>()(
@@ -35,6 +39,9 @@ export const useAdminAssistantsStore = create<AdminAssistantsState>()(
       updating: false,
       deleting: false,
       error: null,
+      __init__: {
+        assistants: () => loadAdministratorAssistants(),
+      },
     }),
   ),
 )

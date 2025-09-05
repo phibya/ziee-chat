@@ -9,6 +9,7 @@ import {
   Collapse,
   Switch,
 } from 'antd'
+import { useAvailableModels } from './hooks/useAvailableModels'
 
 const { Text } = Typography
 const { Panel } = Collapse
@@ -22,6 +23,7 @@ const getFieldName = (section: 'indexing' | 'querying', field: string) => [
 ]
 
 export const RagSimpleVectorEngineSettings: React.FC = () => {
+  const { getAvailableModels } = useAvailableModels()
   return (
     <div>
       <Collapse defaultActiveKey={['indexing', 'querying']}>
@@ -30,6 +32,58 @@ export const RagSimpleVectorEngineSettings: React.FC = () => {
             <Text type="secondary" className="text-xs block mb-4">
               Changes to indexing settings require reprocessing of documents
             </Text>
+
+            <Form.Item label="Embedding Model" name="embedding_model_id">
+              <Select
+                placeholder="Select embedding model"
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  if (!option) return false
+                  if ('options' in option && Array.isArray(option.options)) {
+                    // This is a group option - search in children
+                    return option.options.some((child: any) =>
+                      child?.label
+                        ?.toLowerCase()
+                        .includes(input.toLowerCase()),
+                    )
+                  }
+                  // This is a regular option
+                  return (option.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }}
+                options={getAvailableModels('text_embedding')}
+              />
+            </Form.Item>
+
+            <Form.Item label="LLM Model" name="llm_model_id">
+              <Select
+                placeholder="Select LLM model"
+                allowClear
+                showSearch
+                filterOption={(input, option) => {
+                  if (!option) return false
+                  if ('options' in option && Array.isArray(option.options)) {
+                    // This is a group option - search in children
+                    return option.options.some((child: any) =>
+                      child?.label
+                        ?.toLowerCase()
+                        .includes(input.toLowerCase()),
+                    )
+                  }
+                  // This is a regular option
+                  return (option.label ?? '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }}
+                options={getAvailableModels('chat')}
+              />
+            </Form.Item>
+
+            <Divider orientation="left" orientationMargin="0">
+              <Text type="secondary">Chunking Configuration</Text>
+            </Divider>
 
             <Form.Item
               label="Chunk Token Size"

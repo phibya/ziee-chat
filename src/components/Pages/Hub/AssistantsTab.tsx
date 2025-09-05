@@ -1,14 +1,11 @@
 import { ClearOutlined, SearchOutlined } from '@ant-design/icons'
 import { App, Button, Flex, Input, Select, Spin, Typography } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
-import {
-  searchAssistants,
-  useHubStore,
-  loadHubAssistants,
-} from '../../../store/hub'
+import { useMemo, useState } from 'react'
+import { searchAssistants, loadHubAssistants } from '../../../store/hub'
 import { AssistantCard } from './AssistantCard'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { VscFilter } from 'react-icons/vsc'
+import { Stores } from '../../../store'
 
 const { Text } = Typography
 
@@ -19,20 +16,12 @@ export function AssistantsTab() {
     assistantsInitialized,
     assistantsLoading,
     assistantsError,
-  } = useHubStore()
+  } = Stores.Hub
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('popular')
   const mainContentMinSize = useMainContentMinSize()
   const [showFilters, setShowFilters] = useState(false)
-
-  useEffect(() => {
-    // Load assistants - function handles its own initialization checks
-    loadHubAssistants().catch(err => {
-      console.error('Failed to load hub assistants:', err)
-      message.error('Failed to load hub assistants')
-    })
-  }, [message])
 
   const clearAllFilters = () => {
     setSearchTerm('')

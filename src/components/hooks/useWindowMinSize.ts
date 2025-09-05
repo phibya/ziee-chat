@@ -2,10 +2,19 @@ import { useEffect, useState } from 'react'
 import { useWindowSize } from 'react-use'
 import { useLayoutUIStore } from '../../store'
 
-export type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
+export type Breakpoint =
+  | 'xxs'
+  | 'xs'
+  | 'sm'
+  | 'md'
+  | 'lg'
+  | 'xl'
+  | '2xl'
+  | '3xl'
 
 const breakpointValues: Record<Breakpoint, number> = {
-  xs: 0,
+  xxs: 0,
+  xs: 480,
   sm: 640,
   md: 768,
   lg: 1024,
@@ -15,6 +24,7 @@ const breakpointValues: Record<Breakpoint, number> = {
 }
 
 export type MinSize = {
+  xxs: boolean
   xs: boolean
   sm: boolean
   md: boolean
@@ -28,6 +38,7 @@ export const useWindowMinSize = (): MinSize => {
   const { width } = useWindowSize()
 
   return {
+    xxs: width <= breakpointValues.xs,
     xs: width <= breakpointValues.sm,
     sm: width <= breakpointValues.md,
     md: width <= breakpointValues.lg,
@@ -39,6 +50,7 @@ export const useWindowMinSize = (): MinSize => {
 }
 
 const calculateMinSize = (width: number): MinSize => ({
+  xxs: width <= breakpointValues.xs,
   xs: width <= breakpointValues.sm,
   sm: width <= breakpointValues.md,
   md: width <= breakpointValues.lg,

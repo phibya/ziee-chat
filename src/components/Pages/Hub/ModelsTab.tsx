@@ -1,12 +1,9 @@
 import { ClearOutlined, SearchOutlined } from '@ant-design/icons'
 import { App, Button, Flex, Input, Select, Spin, Typography } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
-import { searchModels, useHubStore, loadHubModels } from '../../../store/hub'
+import { useMemo, useState } from 'react'
+import { searchModels, loadHubModels } from '../../../store/hub'
 import { ModelCard } from './ModelCard'
-import {
-  loadAllAdminModelRepositories,
-  loadAllModelProviders,
-} from '../../../store'
+import { Stores } from '../../../store'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { VscFilter } from 'react-icons/vsc'
 
@@ -14,25 +11,13 @@ const { Text } = Typography
 
 export function ModelsTab() {
   const { message } = App.useApp()
-  const { models, modelsInitialized, modelsLoading, modelsError } =
-    useHubStore()
+  const { models, modelsInitialized, modelsLoading, modelsError } = Stores.Hub
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('popular')
   const mainContentMinSize = useMainContentMinSize()
   const [showFilters, setShowFilters] = useState(false)
-
-  useEffect(() => {
-    loadAllAdminModelRepositories()
-    loadAllModelProviders()
-
-    // Load models - function handles its own initialization checks
-    loadHubModels().catch(err => {
-      console.error('Failed to load hub models:', err)
-      message.error('Failed to load hub models')
-    })
-  }, [message])
 
   const clearAllFilters = () => {
     setSearchTerm('')

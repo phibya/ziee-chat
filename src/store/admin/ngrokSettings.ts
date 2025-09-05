@@ -16,6 +16,9 @@ interface AdminNgrokSettingsState {
   settingsInitialized: boolean
   statusInitialized: boolean
   error: string | null
+  __init__: {
+    ngrokSettings: () => Promise<void>
+  }
 }
 
 export const useAdminNgrokSettingsStore = create<AdminNgrokSettingsState>()(
@@ -28,6 +31,12 @@ export const useAdminNgrokSettingsStore = create<AdminNgrokSettingsState>()(
       settingsInitialized: false,
       statusInitialized: false,
       error: null,
+      __init__: {
+        ngrokSettings: async () => {
+          loadNgrokSettings()
+          refreshNgrokStatus()
+        },
+      },
     }),
   ),
 )

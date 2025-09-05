@@ -326,8 +326,6 @@ export {
   addTrustedHostToApiProxyServer,
   updateApiProxyServerTrustedHost,
   removeTrustedHostFromApiProxyServer,
-  initializeApiProxyServerData,
-  refreshApiProxyServerData,
   useApiProxyServerStore,
 } from './admin/apiProxyServer.ts'
 // Admin API Proxy Log Monitor store

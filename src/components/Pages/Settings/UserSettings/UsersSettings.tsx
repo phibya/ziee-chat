@@ -34,7 +34,6 @@ import {
   clearAdminUserGroupsStoreError,
   clearAdminUsersStoreError,
   loadSystemUsers,
-  loadUserGroups,
   removeUserFromUserGroup,
   resetSystemUserPassword,
   Stores,
@@ -75,17 +74,6 @@ export function UsersSettings() {
   const [editForm] = Form.useForm()
   const [passwordForm] = Form.useForm()
   const [assignGroupForm] = Form.useForm()
-
-  // Redirect if desktop app or insufficient permissions
-  useEffect(() => {
-    if (isTauriView) {
-      message.warning('User management is not available in desktop mode')
-      return
-    }
-
-    loadSystemUsers(1, 10)
-    loadUserGroups()
-  }, [])
 
   // Show errors
   useEffect(() => {

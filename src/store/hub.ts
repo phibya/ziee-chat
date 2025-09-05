@@ -3,6 +3,8 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
 import type { HubAssistant, HubModel } from '../types'
 import i18n from '../i18n'
+import { loadAllAdminModelRepositories } from './admin/repositories.ts'
+import { loadAllModelProviders } from './admin/providers.ts'
 
 interface HubState {
   models: HubModel[]
@@ -17,6 +19,10 @@ interface HubState {
   assistantsLoading: boolean
   modelsError: string | null
   assistantsError: string | null
+  __init__: {
+    models: () => Promise<void>
+    assistants: () => Promise<void>
+  }
 }
 
 export const useHubStore = create<HubState>()(
@@ -33,6 +39,14 @@ export const useHubStore = create<HubState>()(
     assistantsLoading: false as boolean,
     modelsError: null as string | null,
     assistantsError: null as string | null,
+    __init__: {
+      models: async () => {
+        loadAllModelProviders()
+        loadAllAdminModelRepositories()
+        loadHubModels()
+      },
+      assistants: () => loadHubAssistants(),
+    },
   })),
 )
 

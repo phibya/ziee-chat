@@ -1,8 +1,7 @@
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { App, Button, Checkbox, Form, Input, Select } from 'antd'
 import { Drawer } from '../../../../common/Drawer.tsx'
-import { loadAllModelProviders, Stores } from '../../../../../store'
+import { Stores } from '../../../../../store'
 import { addModelToApiProxyServer } from '../../../../../store/admin/apiProxyServer'
 
 interface AddModelDrawerProps {
@@ -18,13 +17,6 @@ export function AddModelDrawer({ open, onClose }: AddModelDrawerProps) {
   // Get store data
   const { models } = Stores.AdminApiProxyServer
   const allProviders = Stores.AdminProviders.providers || []
-
-  // Load model providers when drawer opens
-  useEffect(() => {
-    if (open) {
-      loadAllModelProviders()
-    }
-  }, [open])
 
   // Construct select options directly from providers
   const selectOptions = allProviders

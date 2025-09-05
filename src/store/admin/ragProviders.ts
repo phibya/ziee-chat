@@ -30,6 +30,10 @@ interface AdminRAGProvidersState {
   // Error states
   error: string | null
   instanceError: Record<string, string>
+
+  __init__: {
+    providers: () => Promise<void>
+  }
 }
 
 export const useAdminRAGProvidersStore = create<AdminRAGProvidersState>()(
@@ -46,6 +50,9 @@ export const useAdminRAGProvidersStore = create<AdminRAGProvidersState>()(
       instanceOperations: {},
       error: null,
       instanceError: {},
+      __init__: {
+        providers: async () => loadAllRAGProviders(),
+      },
     }),
   ),
 )

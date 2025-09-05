@@ -31,6 +31,10 @@ interface AdminUserGroupsState {
 
   // Error state
   error: string | null
+
+  __init__: {
+    groups: () => Promise<void>
+  }
 }
 
 export const useAdminUserGroupsStore = create<AdminUserGroupsState>()(
@@ -51,6 +55,9 @@ export const useAdminUserGroupsStore = create<AdminUserGroupsState>()(
       updating: false,
       deleting: false,
       error: null,
+      __init__: {
+        groups: async () => loadUserGroups(),
+      },
     }),
   ),
 )
@@ -303,32 +310,22 @@ export const getGroupProviders = async (
   groupId: string,
   page?: number,
   pageSize?: number,
-): Promise<any> => {
-  try {
-    const response = await ApiClient.Admin.getGroupProviders({
-      group_id: groupId,
-      page: page || 1,
-      per_page: pageSize || 20,
-    })
-    return response
-  } catch (error) {
-    throw error
-  }
+) => {
+  return await ApiClient.Admin.getGroupProviders({
+    group_id: groupId,
+    page: page || 1,
+    per_page: pageSize || 20,
+  })
 }
 
 export const getGroupRagProviders = async (
   groupId: string,
   page?: number,
   pageSize?: number,
-): Promise<any> => {
-  try {
-    const response = await ApiClient.Admin.getGroupRagProviders({
-      group_id: groupId,
-      page: page || 1,
-      per_page: pageSize || 20,
-    })
-    return response
-  } catch (error) {
-    throw error
-  }
+) => {
+  return await ApiClient.Admin.getGroupRagProviders({
+    group_id: groupId,
+    page: page || 1,
+    per_page: pageSize || 20,
+  })
 }

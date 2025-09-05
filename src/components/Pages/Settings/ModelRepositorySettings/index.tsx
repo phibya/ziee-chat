@@ -14,11 +14,9 @@ import {
   Switch,
   Typography,
 } from 'antd'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   deleteAdminModelRepository,
-  loadAllAdminModelRepositories,
   Stores,
   updateAdminModelRepository,
 } from '../../../../store'
@@ -35,13 +33,6 @@ export function ModelRepositorySettings() {
 
   // Use repository store
   const { repositories, testing } = Stores.AdminRepositories
-
-  // Load repositories when component mounts
-  useEffect(() => {
-    loadAllAdminModelRepositories().catch((error: any) => {
-      console.error('Failed to load repositories:', error)
-    })
-  }, [])
 
   const testRepositoryConnection = async (repository: Repository) => {
     // Validate required fields based on auth type

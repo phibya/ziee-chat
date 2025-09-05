@@ -22,6 +22,10 @@ interface HardwareState {
   // SSE connection state
   sseConnected: boolean
   sseError: string | null
+
+  __init__: {
+    hardwareInfo: () => Promise<void>
+  }
 }
 
 export const useHardwareStore = create<HardwareState>()(
@@ -41,6 +45,10 @@ export const useHardwareStore = create<HardwareState>()(
       // SSE connection state
       sseConnected: false,
       sseError: null,
+
+      __init__: {
+        hardwareInfo: () => loadHardwareInfo(),
+      },
     }),
   ),
 )

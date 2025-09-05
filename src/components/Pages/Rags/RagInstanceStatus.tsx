@@ -1,13 +1,4 @@
-import {
-  Button,
-  Card,
-  Divider,
-  Tag,
-  Typography,
-  Progress,
-  Spin,
-  App,
-} from 'antd'
+import { Button, Card, Tag, Typography, Progress, Spin, App } from 'antd'
 import React, { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import {

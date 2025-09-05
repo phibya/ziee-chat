@@ -183,8 +183,8 @@ export function ModelDetailsDrawer({
               <Title level={5}>Quantization Options</Title>
               <Flex wrap className="gap-1">
                 {model.quantization_options.map(option => (
-                  <Tag key={option} color="gold">
-                    {option}
+                  <Tag key={option.name} color="gold">
+                    {option.name}
                   </Tag>
                 ))}
               </Flex>

@@ -24,6 +24,9 @@ interface AdminUsersState {
 
   // Error state
   error: string | null
+  __init__: {
+    users: () => Promise<void>
+  }
 }
 
 export const useAdminUsersStore = create<AdminUsersState>()(
@@ -43,6 +46,11 @@ export const useAdminUsersStore = create<AdminUsersState>()(
       updating: false,
       deleting: false,
       error: null,
+      __init__: {
+        users: async () => {
+          loadSystemUsers()
+        },
+      },
     }),
   ),
 )

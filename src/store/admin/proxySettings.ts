@@ -15,6 +15,10 @@ interface AdminProxySettingsState {
 
   // Error state
   error: string | null
+
+  __init__: {
+    proxySettings: () => Promise<void>
+  }
 }
 
 export const useAdminProxySettingsStore = create<AdminProxySettingsState>()(
@@ -27,6 +31,9 @@ export const useAdminProxySettingsStore = create<AdminProxySettingsState>()(
       updating: false,
       isInitialized: false,
       error: null,
+      __init__: {
+        proxySettings: () => loadSystemProxySettings(),
+      },
     }),
   ),
 )

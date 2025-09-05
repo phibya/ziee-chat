@@ -33,13 +33,7 @@ export function HubPage() {
   const { token } = theme.useToken()
 
   // Hub store state
-  const {
-    models,
-    assistants,
-    modelsLoading,
-    assistantsLoading,
-    lastActiveTab,
-  } = Stores.Hub
+  const { modelsLoading, assistantsLoading, lastActiveTab } = Stores.Hub
 
   // Valid tab names
   const validTabs = ['models', 'assistants']
@@ -131,7 +125,7 @@ export function HubPage() {
                       label: (
                         <Flex align="center" gap={4}>
                           <AppstoreOutlined />
-                          Models ({models.length})
+                          Models
                         </Flex>
                       ),
                     },
@@ -140,7 +134,7 @@ export function HubPage() {
                       label: (
                         <Flex align="center" gap={4}>
                           <RobotOutlined />
-                          Assistants ({assistants.length})
+                          Assistants
                         </Flex>
                       ),
                     },
@@ -165,7 +159,7 @@ export function HubPage() {
                       label: (
                         <Flex className={'gap-2'}>
                           <AppstoreOutlined />
-                          Models ({models.length})
+                          Models
                         </Flex>
                       ),
                     },
@@ -174,7 +168,7 @@ export function HubPage() {
                       label: (
                         <Flex className={'gap-2'}>
                           <RobotOutlined />
-                          Assistants ({assistants.length})
+                          Assistants
                         </Flex>
                       ),
                     },

@@ -14,7 +14,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   clearRAGProvidersError,
-  loadAllRAGProviders,
   openAddRAGProviderDrawer,
   Stores,
 } from '../../../../store'
@@ -40,10 +39,6 @@ export function RAGProvidersSettings() {
   const { providers, loading, error } = Stores.AdminRAGProviders
 
   const currentProvider = providers.find(p => p.id === providerId)
-
-  useEffect(() => {
-    loadAllRAGProviders()
-  }, [])
 
   // Show errors
   useEffect(() => {

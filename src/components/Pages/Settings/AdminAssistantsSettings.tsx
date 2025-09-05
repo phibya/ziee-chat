@@ -48,10 +48,6 @@ export const AdminAssistantsSettings: React.FC = () => {
     error,
   } = Stores.AdminAssistants
 
-  useEffect(() => {
-    loadSystemAdminAssistants(1, 10)
-  }, [])
-
   // Show errors
   useEffect(() => {
     if (error) {

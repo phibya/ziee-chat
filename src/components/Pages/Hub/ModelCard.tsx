@@ -14,7 +14,7 @@ import { App, Button, Card, Flex, Select, Tag, Typography } from 'antd'
 import { useState } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { isTauriView } from '../../../api/core.ts'
-import type { HubModel } from '../../../types'
+import type { HubModel, HubModelQuantizationOption } from '../../../types'
 import { Provider } from '../../../types'
 import { Stores } from '../../../store'
 import { adminRepositoryHasCredentials } from '../../../store/admin/repositories.ts'
@@ -85,6 +85,90 @@ export function ModelCard({ model }: ModelCardProps) {
     }
 
     let provider: Provider | undefined = localProviders[0]
+    let selectedFilename = model.main_filename
+    let selectedQuantization: HubModelQuantizationOption | undefined = undefined
+
+    // Handle quantization options selection
+    if (model.quantization_options && model.quantization_options.length > 1) {
+      selectedQuantization = model.quantization_options[0]
+
+      await new Promise<void>(resolve => {
+        let m = modal.info({
+          icon: null,
+          footer: null,
+          title: 'Select Quantization',
+          closable: false,
+          onCancel: () => {
+            selectedQuantization = undefined
+            resolve()
+          },
+          content: (
+            <div className="flex flex-col gap-2">
+              <Text>
+                Multiple quantization options available. Please select one:
+              </Text>
+              <Select
+                options={model.quantization_options!.map(option => ({
+                  label: (
+                    <div className="flex flex-col">
+                      <Text strong>{option.name.toUpperCase()}</Text>
+                      <Text type="secondary" className="text-xs">
+                        Main file: {option.main_filename}
+                      </Text>
+                    </div>
+                  ),
+                  value: option.name,
+                }))}
+                defaultValue={model.quantization_options![0].name}
+                onChange={value => {
+                  selectedQuantization = model.quantization_options!.find(
+                    opt => opt.name === value,
+                  )
+                }}
+                placeholder="Select quantization"
+                optionRender={option => option.label}
+                labelRender={props => (
+                  <Text strong>{props.value?.toString().toUpperCase()}</Text>
+                )}
+              />
+              <Flex className={'gap-2 w-full justify-end'}>
+                <Button
+                  onClick={() => {
+                    selectedQuantization = undefined
+                    m.destroy()
+                    resolve()
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    resolve()
+                    m.destroy()
+                  }}
+                >
+                  Continue
+                </Button>
+              </Flex>
+            </div>
+          ),
+        })
+      })
+
+      if (!selectedQuantization) {
+        return
+      }
+
+      selectedFilename = selectedQuantization.main_filename
+    } else if (
+      model.quantization_options &&
+      model.quantization_options.length === 1
+    ) {
+      // If only one quantization option, use it
+      selectedQuantization = model.quantization_options[0]
+      selectedFilename = model.quantization_options[0].main_filename
+    }
 
     if (localProviders.length > 1) {
       await new Promise<void>(resolve => {
@@ -152,14 +236,18 @@ export function ModelCard({ model }: ModelCardProps) {
         .replace(/\s+/g, '-')}-${Date.now().toString(36)}`
 
       // Prepare download request
+      const alias = selectedQuantization 
+        ? `${model.alias} (${selectedQuantization.name.toUpperCase()})`
+        : model.alias
+
       const downloadRequest = {
         provider_id: provider.id,
         repository_id: repo.id,
         repository_path: model.repository_path,
-        main_filename: model.main_filename,
+        main_filename: selectedFilename,
         repository_branch: 'main', // Default branch
         name: modelName,
-        alias: model.alias,
+        alias: alias,
         description:
           model.description || `Downloaded from ${model.repository_url}`,
         file_format: model.file_format,

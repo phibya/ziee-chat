@@ -2317,8 +2317,15 @@
         "description": "Subscribe to download progress updates via SSE",
         "operationId": "Admin.subscribeDownloadProgress",
         "responses": {
-          "204": {
-            "description": "no content"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSEDownloadProgressEvent"
+                }
+              }
+            }
           }
         }
       }
@@ -2393,8 +2400,15 @@
         "description": "Subscribe to hardware usage stream via SSE",
         "operationId": "Admin.subscribeHardwareUsage",
         "responses": {
-          "204": {
-            "description": "no content"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSEHardwareUsageEvent"
+                }
+              }
+            }
           }
         }
       }
@@ -2743,8 +2757,15 @@
         "description": "Subscribe to API proxy server logs stream",
         "operationId": "Admin.subscribeApiProxyServerLogs",
         "responses": {
-          "204": {
-            "description": "no content"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSEProxyLogsEvent"
+                }
+              }
+            }
           }
         }
       }
@@ -3281,8 +3302,15 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "no content"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSEChatStreamEvent"
+                }
+              }
+            }
           }
         }
       }
@@ -3305,8 +3333,15 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "no content"
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSEChatStreamEvent"
+                }
+              }
+            }
           }
         }
       }
@@ -4216,6 +4251,63 @@
         "responses": {
           "204": {
             "description": "no content"
+          }
+        }
+      }
+    },
+    "/api/rag/instances/{instance_id}/toggle-activate": {
+      "put": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Toggle RAG instance activate status",
+        "operationId": "Rag.toggleInstanceActivate",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGInstance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rag/instances/{instance_id}/status/stream": {
+      "get": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Subscribe to RAG instance status stream via SSE",
+        "operationId": "Rag.subscribeInstanceStatus",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_files",
+            "description": "Include file-level details (default: true)",
+            "schema": {
+              "description": "Include file-level details (default: true)",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "style": "form"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SSERAGStatusEvent"
+                }
+              }
+            }
           }
         }
       }
@@ -7390,6 +7482,12 @@
           "is_system": {
             "type": "boolean"
           },
+          "status": {
+            "$ref": "#/components/schemas/RAGInstanceStatus"
+          },
+          "error_code": {
+            "$ref": "#/components/schemas/RAGInstanceErrorCode"
+          },
           "engine_type": {
             "$ref": "#/components/schemas/RAGEngineType"
           },
@@ -7434,11 +7532,39 @@
           "enabled",
           "is_active",
           "is_system",
+          "status",
+          "error_code",
           "engine_type",
           "engine_settings",
           "parameters",
           "created_at",
           "updated_at"
+        ]
+      },
+      "RAGInstanceStatus": {
+        "type": "string",
+        "enum": [
+          "none",
+          "indexing",
+          "finished",
+          "error"
+        ]
+      },
+      "RAGInstanceErrorCode": {
+        "type": "string",
+        "enum": [
+          "none",
+          "embedding_model_not_config",
+          "embedding_model_not_found",
+          "llm_model_not_config",
+          "llm_model_not_found",
+          "provider_connection_failed",
+          "provider_not_found",
+          "rag_instance_not_found",
+          "indexing_failed",
+          "file_processing_failed",
+          "database_error",
+          "configuration_error"
         ]
       },
       "RAGEngineType": {
@@ -7879,6 +8005,12 @@
             ]
           },
           "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "is_active": {
             "type": [
               "boolean",
               "null"
@@ -8436,6 +8568,72 @@
           "per_page"
         ]
       },
+      "SSEDownloadProgressEvent": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "connected": {
+                "$ref": "#/components/schemas/SSEDownloadProgressConnectedData"
+              }
+            },
+            "required": [
+              "connected"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "update": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DownloadProgressUpdate"
+                }
+              }
+            },
+            "required": [
+              "update"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "complete": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "complete"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "error": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "error"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SSEDownloadProgressConnectedData": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "DownloadProgressUpdate": {
         "type": "object",
         "properties": {
@@ -8721,6 +8919,45 @@
           "cuda_support",
           "metal_support",
           "opencl_support"
+        ]
+      },
+      "SSEHardwareUsageEvent": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "connected": {
+                "$ref": "#/components/schemas/SSEHardwareUsageConnectedData"
+              }
+            },
+            "required": [
+              "connected"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "update": {
+                "$ref": "#/components/schemas/HardwareUsageUpdate"
+              }
+            },
+            "required": [
+              "update"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SSEHardwareUsageConnectedData": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
         ]
       },
       "HardwareUsageUpdate": {
@@ -9111,6 +9348,63 @@
           "active_models"
         ]
       },
+      "SSEProxyLogsEvent": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "connected": {
+                "$ref": "#/components/schemas/SSEProxyLogsConnectedData"
+              }
+            },
+            "required": [
+              "connected"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "logUpdate": {
+                "$ref": "#/components/schemas/SSEProxyLogsUpdateData"
+              }
+            },
+            "required": [
+              "logUpdate"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SSEProxyLogsConnectedData": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SSEProxyLogsUpdateData": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lines",
+          "timestamp"
+        ]
+      },
       "UserHello": {
         "type": "object",
         "properties": {
@@ -9377,7 +9671,10 @@
             "format": "uuid"
           },
           "active_branch_id": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "created_at": {
@@ -9393,7 +9690,6 @@
           "id",
           "user_id",
           "title",
-          "active_branch_id",
           "created_at",
           "updated_at"
         ]
@@ -9459,57 +9755,178 @@
           "assistant_id"
         ]
       },
-      "MessageBranch": {
+      "SSEChatStreamEvent": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "connected": {
+                "$ref": "#/components/schemas/SSEChatStreamConnectedData"
+              }
+            },
+            "required": [
+              "connected"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "start"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "chunk": {
+                "$ref": "#/components/schemas/StreamChunkData"
+              }
+            },
+            "required": [
+              "chunk"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "complete": {
+                "$ref": "#/components/schemas/StreamCompleteData"
+              }
+            },
+            "required": [
+              "complete"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "error": {
+                "$ref": "#/components/schemas/StreamErrorData"
+              }
+            },
+            "required": [
+              "error"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "editedMessage": {
+                "$ref": "#/components/schemas/Message"
+              }
+            },
+            "required": [
+              "editedMessage"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "createdBranch": {
+                "$ref": "#/components/schemas/MessageBranch"
+              }
+            },
+            "required": [
+              "createdBranch"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SSEChatStreamConnectedData": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StreamChunkData": {
+        "type": "object",
+        "properties": {
+          "delta": {
+            "type": "string"
+          },
+          "message_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "delta"
+        ]
+      },
+      "StreamCompleteData": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
           },
           "conversation_id": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "originated_from_id": {
+            "type": "string"
+          },
+          "edit_count": {
+            "type": "integer",
+            "format": "int32"
           },
           "created_at": {
-            "type": "string",
-            "format": "date-time"
+            "type": "string"
           },
-          "is_clone": {
-            "type": "boolean"
+          "updated_at": {
+            "type": "string"
+          },
+          "total_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           }
         },
         "required": [
-          "id",
+          "message_id",
           "conversation_id",
+          "role",
+          "originated_from_id",
+          "edit_count",
           "created_at",
-          "is_clone"
+          "updated_at"
         ]
       },
-      "SwitchBranchRequest": {
+      "StreamErrorData": {
         "type": "object",
         "properties": {
-          "branch_id": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "branch_id"
-        ]
-      },
-      "OperationSuccessResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean"
+          "error": {
+            "type": "string"
           },
-          "message": {
+          "code": {
             "type": "string"
           }
         },
         "required": [
-          "success",
-          "message"
+          "error",
+          "code"
         ]
       },
       "Message": {
@@ -9673,6 +10090,59 @@
           "processing_metadata",
           "created_at",
           "updated_at"
+        ]
+      },
+      "MessageBranch": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "is_clone": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "conversation_id",
+          "created_at",
+          "is_clone"
+        ]
+      },
+      "SwitchBranchRequest": {
+        "type": "object",
+        "properties": {
+          "branch_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "branch_id"
+        ]
+      },
+      "OperationSuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "message"
         ]
       },
       "SearchQuery": {
@@ -9951,7 +10421,7 @@
               "null"
             ],
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/HubModelQuantizationOption"
             }
           },
           "context_length": {
@@ -9994,6 +10464,21 @@
           "size_gb",
           "tags",
           "public"
+        ]
+      },
+      "HubModelQuantizationOption": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "main_filename": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "main_filename"
         ]
       },
       "HubAssistant": {
@@ -10295,6 +10780,179 @@
           "name",
           "alias",
           "engine_type"
+        ]
+      },
+      "RAGStatusStreamQuery": {
+        "type": "object",
+        "properties": {
+          "include_files": {
+            "description": "Include file-level details (default: true)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "SSERAGStatusEvent": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "connected": {
+                "$ref": "#/components/schemas/SSERAGInstanceStatusConnectedData"
+              }
+            },
+            "required": [
+              "connected"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "update": {
+                "$ref": "#/components/schemas/SSERAGInstanceStatusUpdateData"
+              }
+            },
+            "required": [
+              "update"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "error": {
+                "$ref": "#/components/schemas/SSERAGInstanceStatusErrorData"
+              }
+            },
+            "required": [
+              "error"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SSERAGInstanceStatusConnectedData": {
+        "type": "object",
+        "properties": {
+          "instance_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instance_id"
+        ]
+      },
+      "SSERAGInstanceStatusUpdateData": {
+        "type": "object",
+        "properties": {
+          "instance_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "error_code": {
+            "$ref": "#/components/schemas/RAGInstanceErrorCode"
+          },
+          "total_files": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "processed_files": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "failed_files": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "processing_files": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "current_files_processing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RAGFileProcessingStatus"
+            }
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instance_id",
+          "name",
+          "is_active",
+          "enabled",
+          "error_code",
+          "total_files",
+          "processed_files",
+          "failed_files",
+          "processing_files",
+          "current_files_processing",
+          "updated_at"
+        ]
+      },
+      "RAGFileProcessingStatus": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "stage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error_message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "started_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "file_id",
+          "filename",
+          "status"
+        ]
+      },
+      "SSERAGInstanceStatusErrorData": {
+        "type": "object",
+        "properties": {
+          "instance_id": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "instance_id",
+          "error"
         ]
       },
       "RAGInstanceFilesQuery": {
