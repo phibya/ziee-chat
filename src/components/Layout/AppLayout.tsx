@@ -1,10 +1,17 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { LeftSidebar } from './LeftSidebar'
-import { Stores, setSidebarCollapsed, setMainContentWidth } from '../../store'
+import {
+  setMainContentWidth,
+  setSidebarCollapsed,
+  Stores,
+  useUserAppearanceTheme,
+} from '../../store'
 import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
-import { isDesktopApp } from '../../api/core.ts'
+import { isTauriView } from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
+import tinycolor from 'tinycolor2'
+import { resolveSystemTheme } from '../providers/resolveTheme.ts'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -130,27 +137,25 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [])
 
+  const appTheme = useUserAppearanceTheme()
+  const systemTheme = resolveSystemTheme()
+
   useEffect(() => {
     //set root document background color based on theme
     const root = document.documentElement
-    if (isDesktopApp) {
-      root.style.backgroundColor = 'transparent'
-    } else {
-      root.style.backgroundColor = token.colorBgLayout
-      // set theme in meta tag as well
-      const metaThemeColor = document.querySelector(
-        'meta[name="theme-color"]',
-      ) as HTMLMetaElement
-      if (metaThemeColor) {
-        metaThemeColor.content = token.colorBgLayout
+    const isUsingSystemTheme = appTheme === 'system' || appTheme === systemTheme
+    if (isTauriView) {
+      if (isUsingSystemTheme) {
+        root.style.backgroundColor = 'transparent'
       } else {
-        const newMetaThemeColor = document.createElement('meta')
-        newMetaThemeColor.name = 'theme-color'
-        newMetaThemeColor.content = token.colorBgLayout
-        document.head.appendChild(newMetaThemeColor)
+        root.style.backgroundColor = tinycolor(token.colorBgContainer)
+          .setAlpha(appTheme === 'light' ? 0.9 : 0.9)
+          .toRgbString()
       }
+    } else {
+      root.style.backgroundColor = token.colorBgContainer
     }
-  }, [token.colorBgLayout])
+  }, [appTheme, systemTheme, token.colorBgContainer])
 
   // Visual viewport listener for mobile keyboard adjustments
   useEffect(() => {
@@ -194,10 +199,28 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div
       className="h-full w-screen flex overflow-hidden"
       style={{
-        backgroundColor: isDesktopApp ? 'transparent' : token.colorBgLayout,
+        backgroundColor: isTauriView ? 'transparent' : token.colorBgContainer,
       }}
     >
       {/* Sidebar - Always visible, width controlled by container */}
+      {/* Mask for Left Sidebar */}
+      {windowMinSize.xs && (
+        <div
+          className={
+            'fixed h-full w-full transition-all z-3 pointer-events-none'
+          }
+          style={{
+            backgroundColor: tinycolor(token.colorBgContainer)
+              .setAlpha(isSidebarCollapsed ? 0 : 0.7)
+              .toRgbString(),
+            pointerEvents: isSidebarCollapsed ? 'none' : 'auto',
+          }}
+          onClick={toggleSidebar}
+          onMouseDown={toggleSidebar}
+          onTouchStart={toggleSidebar}
+        />
+      )}
+
       <div
         ref={sidebarRef}
         className="absolute h-full z-1"
@@ -207,11 +230,16 @@ export function AppLayout({ children }: AppLayoutProps) {
             ? {
                 zIndex: 3,
                 position: 'fixed',
-                background: token.colorBgContainer,
+                // background: token.colorBgContainer,
+                backdropFilter: 'blur(8px)',
                 transform: isSidebarCollapsed
                   ? 'translateX(-100%)'
                   : 'translateX(0)',
-                width: '100%',
+                width: 250,
+                maxWidth: 'calc(100vw - 24px)',
+                borderRight: `1px solid ${token.colorBorderSecondary}`,
+                borderRadius: 12,
+                boxShadow: 'rgba(0, 0, 0, 0.075) 0px 2px 16px 0px',
               }
             : {}),
         }}
@@ -222,7 +250,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div
         className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
         style={{
-          left: isDesktopApp && !isFullscreen ? 78 : 12,
+          left: isTauriView && !isFullscreen ? 78 : 12,
           top: 0,
         }}
       >
@@ -280,7 +308,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </div>
         {!isSidebarCollapsed && (
           <div
-            className="absolute top-0 left-0 w-1 h-full cursor-col-resize"
+            className="absolute top-0 left-0 w-1 h-full cursor-col-resize z-3"
             onMouseDown={handleMouseDown}
           />
         )}

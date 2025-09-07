@@ -16,9 +16,7 @@
     "core:window:allow-set-size",
     "core:window:allow-set-focus",
     "core:window:allow-is-maximized",
-    "core:window:allow-start-dragging",
     "core:window:allow-toggle-maximize",
-    "core:webview:allow-create-webview-window",
-    "decorum:allow-show-snap-overlay"
+    "core:webview:allow-create-webview-window"
   ]
 }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import { AuthGuard } from './components/Auth'
-import { ThemeProvider } from './components/Providers/ThemeProvider'
+import { ThemeProvider } from './components/providers/ThemeProvider'
 import { AppLayout } from './components/Layout/AppLayout'
 import { App as AntdApp } from 'antd'
 import { useTranslation } from 'react-i18next'
