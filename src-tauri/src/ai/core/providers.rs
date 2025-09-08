@@ -136,4 +136,25 @@ pub trait AIProvider: Send + Sync {
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
         Err("Embeddings not supported by this provider".into())
     }
+
+    /// Get the embedding dimension for this provider's embedding model
+    /// Returns None if embeddings are not supported or dimension cannot be determined
+    async fn get_embedding_dimension(&self, model_name: &str) -> Option<u32> {
+        // Create a test embedding request to determine dimension
+        let test_request = EmbeddingsRequest {
+            model_id: Uuid::nil(), // Not used by most providers
+            model_name: model_name.to_string(),
+            input: EmbeddingsInput::Single("test".to_string()),
+            encoding_format: None,
+            dimensions: None,
+        };
+        
+        // Try to get embeddings and return the dimension
+        match self.embeddings(test_request).await {
+            Ok(response) if !response.data.is_empty() => {
+                Some(response.data[0].embedding.len() as u32)
+            }
+            _ => None,
+        }
+    }
 }

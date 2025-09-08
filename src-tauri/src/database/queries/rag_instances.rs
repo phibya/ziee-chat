@@ -3,6 +3,7 @@ use crate::database::{
     models::{
         CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGInstance,
         RAGInstanceListResponse, UpdateRAGInstanceRequest, RAGInstanceErrorCode,
+        RAGProcessingStatus,
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
 };
@@ -65,6 +66,11 @@ pub async fn create_user_rag_instance(
     .fetch_one(pool)
     .await?;
 
+    // Reset instance state to ensure clean starting point
+    if let Err(e) = reset_rag_instance_state(instance_id).await {
+        tracing::warn!("Failed to reset state for new RAG instance {}: {}", instance_id, e);
+    }
+
     Ok(instance)
 }
 
@@ -113,6 +119,11 @@ pub async fn create_system_rag_instance(
     )
     .fetch_one(pool)
     .await?;
+
+    // Reset instance state to ensure clean starting point
+    if let Err(e) = reset_rag_instance_state(instance_id).await {
+        tracing::warn!("Failed to reset state for new system RAG instance {}: {}", instance_id, e);
+    }
 
     Ok(instance)
 }
@@ -316,6 +327,42 @@ pub async fn update_rag_instance(
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
+    // Get current instance to check for changes that require state reset
+    let current_instance = get_rag_instance_by_id(instance_id).await?;
+    let should_reset_state = if let Some(current) = &current_instance {
+        // Check if engine type is changing
+        let engine_type_changed = request.engine_type.as_ref()
+            .map(|new_type| new_type != &current.engine_type)
+            .unwrap_or(false);
+        
+        // Check if engine settings are changing
+        let engine_settings_changed = request.engine_settings.as_ref()
+            .map(|new_settings| {
+                let new_json = serde_json::to_value(new_settings).unwrap_or_else(|_| serde_json::json!({}));
+                let current_json = serde_json::to_value(&current.engine_settings).unwrap_or_else(|_| serde_json::json!({}));
+                new_json != current_json
+            })
+            .unwrap_or(false);
+
+        // Check if embedding model is changing
+        let embedding_model_changed = match (&request.embedding_model_id, &current.embedding_model_id) {
+            (Some(new_id), Some(current_id)) => new_id != current_id,
+            (Some(_), None) | (None, Some(_)) => true,
+            (None, None) => false,
+        };
+
+        // Check if LLM model is changing
+        let llm_model_changed = match (&request.llm_model_id, &current.llm_model_id) {
+            (Some(new_id), Some(current_id)) => new_id != current_id,
+            (Some(_), None) | (None, Some(_)) => true,
+            (None, None) => false,
+        };
+
+        engine_type_changed || engine_settings_changed || embedding_model_changed || llm_model_changed
+    } else {
+        false // Instance doesn't exist, no need to reset
+    };
+
     // Handle engine settings update
     let engine_settings_update = if let Some(settings) = &request.engine_settings {
         Some(serde_json::to_value(settings).unwrap_or_else(|_| serde_json::json!({})))
@@ -426,6 +473,15 @@ pub async fn update_rag_instance(
         .await?;
     }
 
+    // Reset instance state if configuration changes require it
+    if should_reset_state {
+        if let Err(e) = reset_rag_instance_state(instance_id).await {
+            tracing::warn!("Failed to reset state for updated RAG instance {}: {}", instance_id, e);
+        } else {
+            tracing::info!("Reset state for RAG instance {} due to configuration changes", instance_id);
+        }
+    }
+
     // Return the updated instance
     let instance = sqlx::query_as!(
         RAGInstance,
@@ -450,6 +506,15 @@ pub async fn delete_rag_instance(instance_id: Uuid) -> Result<bool, sqlx::Error>
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
+    // Clean up indexes and vector data before deleting the instance
+    if let Err(e) = drop_rag_instance_indexes(instance_id).await {
+        tracing::warn!("Failed to drop indexes for RAG instance {} during deletion: {}", instance_id, e);
+    }
+
+    if let Err(e) = clear_vector_documents(instance_id).await {
+        tracing::warn!("Failed to clear vector documents for RAG instance {} during deletion: {}", instance_id, e);
+    }
+
     // Delete RAG instance (CASCADE will automatically delete associated files and rag_instance_files)
     let result = sqlx::query!("DELETE FROM rag_instances WHERE id = $1", instance_id)
         .execute(pool)
@@ -458,12 +523,14 @@ pub async fn delete_rag_instance(instance_id: Uuid) -> Result<bool, sqlx::Error>
     let deleted = result.rows_affected() > 0;
 
     if deleted {
+        tracing::info!("Successfully deleted RAG instance {}", instance_id);
+        
         // Clean up file system
         if let Err(e) = crate::global::RAG_FILE_STORAGE
             .delete_instance_files(instance_id)
             .await
         {
-            eprintln!("Failed to delete RAG instance files from filesystem: {}", e);
+            tracing::error!("Failed to delete RAG instance files from filesystem: {}", e);
         }
     }
 
@@ -689,4 +756,243 @@ pub struct RAGFileProcessingDetail {
     pub current_stage: Option<String>,
     pub processing_error: Option<String>,
     pub processing_started_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+// ============================================================================
+// Index Lifecycle Management Functions
+// ============================================================================
+
+/// Drop all HNSW indexes for a specific RAG instance
+pub async fn drop_rag_instance_indexes(instance_id: Uuid) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let instance_id_str = instance_id.to_string().replace("-", "_");
+    let index_name = format!("idx_simple_vector_docs_embedding_{}", instance_id_str);
+
+    // Check if index exists first
+    let index_exists = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND indexname = $1
+        ) as "exists!"
+        "#,
+        index_name
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if index_exists {
+        // Drop the index
+        let drop_index_query = format!("DROP INDEX IF EXISTS {}", index_name);
+        
+        sqlx::query(&drop_index_query)
+            .execute(pool)
+            .await?;
+
+        tracing::info!("Dropped HNSW index {} for instance {}", index_name, instance_id);
+    } else {
+        tracing::debug!("No index found to drop for instance {}", instance_id);
+    }
+
+    Ok(())
+}
+
+/// Reset all file processing status to pending for a RAG instance
+pub async fn reset_processing_status(instance_id: Uuid) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let updated_count = sqlx::query!(
+        r#"
+        UPDATE rag_instance_files 
+        SET processing_status = $2, 
+            processing_error = NULL,
+            processed_at = NULL,
+            updated_at = NOW()
+        WHERE rag_instance_id = $1
+        "#,
+        instance_id,
+        RAGProcessingStatus::Pending.as_str()
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+
+    tracing::info!(
+        "Reset processing status to pending for {} files in instance {}",
+        updated_count,
+        instance_id
+    );
+
+    Ok(())
+}
+
+/// Clear all processing pipeline records for a RAG instance
+pub async fn clear_processing_pipeline(instance_id: Uuid) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let deleted_count = sqlx::query!(
+        "DELETE FROM rag_processing_pipeline WHERE rag_instance_id = $1",
+        instance_id
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+
+    tracing::info!(
+        "Cleared {} processing pipeline records for instance {}",
+        deleted_count,
+        instance_id
+    );
+
+    Ok(())
+}
+
+/// Delete all vector documents for a RAG instance
+pub async fn clear_vector_documents(instance_id: Uuid) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let deleted_count = sqlx::query!(
+        "DELETE FROM simple_vector_documents WHERE rag_instance_id = $1",
+        instance_id
+    )
+    .execute(pool)
+    .await?
+    .rows_affected();
+
+    tracing::info!(
+        "Cleared {} vector documents for instance {}",
+        deleted_count,
+        instance_id
+    );
+
+    Ok(())
+}
+
+/// Get embedding dimension from the AI provider
+async fn get_embedding_dimension(model_id: Uuid) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
+    // Get the model information
+    let model = crate::database::queries::models::get_model_by_id(model_id).await
+        .map_err(|e| format!("Failed to get model: {}", e))?
+        .ok_or("Model not found")?;
+    
+    // Get the model's provider
+    let model_provider = crate::database::queries::providers::get_provider_by_id(model.provider_id).await
+        .map_err(|e| format!("Failed to get model provider: {}", e))?
+        .ok_or("Model provider not found")?;
+    
+    // Create AI provider with the model
+    let provider = crate::ai::model_manager::create_ai_provider_with_model_id(
+        &model_provider,
+        Some(model_id),
+    ).await
+        .map_err(|e| format!("Failed to create AI provider: {}", e))?;
+    
+    // Get embedding dimension from provider
+    let dimension = provider.get_embedding_dimension(&model.name).await
+        .ok_or("Provider does not support embeddings or dimension is unknown")?;
+    
+    tracing::debug!("Model {} has embedding dimension: {}", model_id, dimension);
+    
+    Ok(dimension as i32)
+}
+
+/// Create HNSW index for a RAG instance with specific embedding dimension
+pub async fn create_rag_instance_index(instance_id: Uuid, embedding_dim: i32) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let instance_id_str = instance_id.to_string().replace("-", "_");
+    let index_name = format!("idx_simple_vector_docs_embedding_{}", instance_id_str);
+
+    // Check if index already exists
+    let index_exists = sqlx::query_scalar!(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND indexname = $1
+        ) as "exists!"
+        "#,
+        index_name
+    )
+    .fetch_one(pool)
+    .await?;
+
+    if !index_exists {
+        // Create the index
+        let create_index_query = format!(
+            r#"
+            CREATE INDEX CONCURRENTLY IF NOT EXISTS {}
+            ON simple_vector_documents USING hnsw (embedding::halfvec({}) halfvec_cosine_ops)
+            WHERE embedding IS NOT NULL AND rag_instance_id = $1
+            "#,
+            index_name, embedding_dim
+        );
+
+        sqlx::query(&create_index_query)
+            .bind(instance_id)
+            .execute(pool)
+            .await?;
+
+        tracing::info!("Created HNSW index {} for instance {} with dimension {}", index_name, instance_id, embedding_dim);
+    } else {
+        tracing::debug!("Index {} already exists for instance {}", index_name, instance_id);
+    }
+
+    Ok(())
+}
+
+/// Complete reset of RAG instance state - drops indexes, clears data, resets status, creates fresh index
+pub async fn reset_rag_instance_state(instance_id: Uuid) -> Result<(), sqlx::Error> {
+    tracing::info!("Starting complete state reset for RAG instance {}", instance_id);
+    
+    // Get the instance to check embedding model configuration
+    let instance = get_rag_instance_by_id(instance_id).await?;
+    let instance = match instance {
+        Some(inst) => inst,
+        None => {
+            tracing::warn!("RAG instance {} not found during state reset", instance_id);
+            return Ok(());
+        }
+    };
+    
+    // Drop indexes first
+    drop_rag_instance_indexes(instance_id).await?;
+    
+    // Clear vector documents
+    clear_vector_documents(instance_id).await?;
+    
+    // Clear processing pipeline
+    clear_processing_pipeline(instance_id).await?;
+    
+    // Reset file processing status
+    reset_processing_status(instance_id).await?;
+    
+    // Create fresh index if embedding model is configured
+    if let Some(embedding_model_id) = instance.embedding_model_id {
+        // Get embedding dimension from the actual model
+        match get_embedding_dimension(embedding_model_id).await {
+            Ok(embedding_dim) => {
+                if let Err(e) = create_rag_instance_index(instance_id, embedding_dim).await {
+                    tracing::warn!("Failed to create index for RAG instance {} during reset: {}", instance_id, e);
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to get embedding dimension for model {} in instance {}: {}", 
+                    embedding_model_id, instance_id, e);
+            }
+        }
+    }
+    
+    tracing::info!("Completed state reset for RAG instance {}", instance_id);
+    
+    Ok(())
 }
