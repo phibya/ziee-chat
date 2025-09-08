@@ -68,7 +68,7 @@ pub async fn delete_model(
         }
     };
 
-    // Get the provider to check if it's a Candle provider
+    // Get the provider to check if it's a local provider
     let provider = match providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model provider"))),
@@ -81,7 +81,7 @@ pub async fn delete_model(
         }
     };
 
-    // If it's a Candle provider, handle model shutdown and file deletion
+    // If it's a local provider, handle model shutdown and file deletion
     if provider.provider_type.as_str() == "local" {
         // First, stop the model if it's running
         println!(
@@ -103,7 +103,7 @@ pub async fn delete_model(
         let full_model_path = crate::get_app_data_dir().join(&model_path);
 
         println!(
-            "Deleting Candle model files at: {}",
+            "Deleting local model files at: {}",
             full_model_path.display()
         );
 
@@ -161,7 +161,7 @@ pub async fn get_model(
     }
 }
 
-// Start a Candle model
+// Start a local model
 #[debug_handler]
 pub async fn start_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
@@ -180,7 +180,7 @@ pub async fn start_model(
         }
     };
 
-    // Get the provider to check if it's a Candle provider
+    // Get the provider to check if it's a local provider
     let provider = match providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model provider"))),
@@ -202,7 +202,7 @@ pub async fn start_model(
     }
 }
 
-// Stop a Candle model
+// Stop a local model
 #[debug_handler]
 pub async fn stop_model(
     Extension(_auth_user): Extension<AuthenticatedUser>,
@@ -221,7 +221,7 @@ pub async fn stop_model(
         }
     };
 
-    // Get the provider to check if it's a Candle provider
+    // Get the provider to check if it's a local provider
     let provider = match providers::get_provider_by_id(model.provider_id).await {
         Ok(Some(provider)) => provider,
         Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("Model provider"))),
@@ -239,7 +239,7 @@ pub async fn stop_model(
             StatusCode::BAD_REQUEST,
             AppError::new(
                 crate::api::errors::ErrorCode::ValidInvalidInput,
-                "Only Candle models can be stopped",
+                "Only local models can be stopped",
             ),
         ));
     }

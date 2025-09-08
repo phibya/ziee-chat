@@ -774,7 +774,7 @@ impl AIProvider for GeminiProvider {
         &self,
         request: EmbeddingsRequest,
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = format!("{}/models/{}:embedText", self.base_url, request.model);
+        let url = format!("{}/models/{}:embedText", self.base_url, request.model_name);
 
         let gemini_request = json!({
             "texts": match &request.input {
@@ -834,7 +834,7 @@ impl AIProvider for GeminiProvider {
         Ok(EmbeddingsResponse {
             object: "list".to_string(),
             data: data?,
-            model: request.model,
+            model: request.model_name,
             usage: EmbeddingsUsage {
                 prompt_tokens: 0, // Gemini doesn't provide token counts
                 total_tokens: 0,

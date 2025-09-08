@@ -39,9 +39,8 @@ impl RAGSimpleVectorEngine {
         file_id: Uuid,
         stage: PipelineStage,
         status: ProcessingStatus,
-        error_message: Option<String>,
     ) -> RAGResult<()> {
-        queries::update_pipeline_status(self.instance_id, file_id, stage, status, error_message)
+        queries::update_pipeline_status(self.instance_id, file_id, stage, status)
             .await
     }
 
@@ -73,7 +72,6 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::TextExtraction,
             ProcessingStatus::InProgress,
-            None,
         )
         .await?;
 
@@ -86,6 +84,13 @@ impl RAGEngine for RAGSimpleVectorEngine {
         let file_path = get_rag_file_storage().get_file_path(self.instance_id, file_id, extension);
 
         if !file_path.exists() {
+            let error_msg = format!("File not found at path: {:?}", file_path);
+            self.update_pipeline_status(
+                file_id,
+                PipelineStage::TextExtraction,
+                ProcessingStatus::Failed(error_msg.clone()),
+            )
+            .await?;
             return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::FileReadError));
         }
 
@@ -94,16 +99,38 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::TextExtraction,
             ProcessingStatus::InProgress,
-            None,
         )
         .await?;
 
-        let processing_result =
-            text::extract_text_from_file(file_path.to_str().ok_or_else(|| {
-                tracing::error!("Invalid file path encoding for file: {:?}", file_path);
-                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
-            })?)
-            .await?;
+        let file_path_str = match file_path.to_str() {
+            Some(path) => path,
+            None => {
+                let error_msg = format!("Invalid file path encoding for file: {:?}", file_path);
+                tracing::error!("{}", error_msg);
+                self.update_pipeline_status(
+                    file_id,
+                    PipelineStage::TextExtraction,
+                    ProcessingStatus::Failed(error_msg.clone()),
+                )
+                .await?;
+                return Err(RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError));
+            }
+        };
+
+        let processing_result = match text::extract_text_from_file(file_path_str).await {
+            Ok(result) => result,
+            Err(e) => {
+                let error_msg = format!("Text extraction failed for {}: {}", filename, e);
+                tracing::error!("{}", error_msg);
+                self.update_pipeline_status(
+                    file_id,
+                    PipelineStage::TextExtraction,
+                    ProcessingStatus::Failed(error_msg.clone()),
+                )
+                .await?;
+                return Err(e);
+            }
+        };
 
         let content = processing_result.content;
         let _metadata = processing_result.metadata;
@@ -120,7 +147,6 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::TextExtraction,
             ProcessingStatus::Completed,
-            None,
         )
         .await?;
 
@@ -129,14 +155,39 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Chunking,
             ProcessingStatus::InProgress,
-            None,
         )
         .await?;
 
         let chunker = TokenBasedChunker::new();
-        let raw_chunks = chunker.chunk(&content, None, None, false, 0.7).await?;
+        let raw_chunks = match chunker.chunk(&content, None, None, false, 0.7).await {
+            Ok(chunks) => chunks,
+            Err(e) => {
+                let error_msg = format!("Text chunking failed for {}: {}", filename, e);
+                tracing::error!("{}", error_msg);
+                self.update_pipeline_status(
+                    file_id,
+                    PipelineStage::Chunking,
+                    ProcessingStatus::Failed(error_msg.clone()),
+                )
+                .await?;
+                return Err(e);
+            }
+        };
 
-        let optimized_chunks = chunker.process_chunks(raw_chunks).await?;
+        let optimized_chunks = match chunker.process_chunks(raw_chunks).await {
+            Ok(chunks) => chunks,
+            Err(e) => {
+                let error_msg = format!("Chunk processing failed for {}: {}", filename, e);
+                tracing::error!("{}", error_msg);
+                self.update_pipeline_status(
+                    file_id,
+                    PipelineStage::Chunking,
+                    ProcessingStatus::Failed(error_msg.clone()),
+                )
+                .await?;
+                return Err(e);
+            }
+        };
 
         tracing::info!(
             "Advanced processing completed: {} optimized chunks selected via chunking service",
@@ -147,7 +198,6 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Chunking,
             ProcessingStatus::Completed,
-            None,
         )
         .await?;
 
@@ -156,19 +206,31 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Embedding,
             ProcessingStatus::InProgress,
-            None,
         )
         .await?;
 
-        let embeddings = self
+        let embeddings = match self
             .process_embeddings_in_batches(&optimized_chunks)
-            .await?;
+            .await
+        {
+            Ok(embeddings) => embeddings,
+            Err(e) => {
+                let error_msg = format!("Embedding generation failed for {}: {}", filename, e);
+                tracing::error!("{}", error_msg);
+                self.update_pipeline_status(
+                    file_id,
+                    PipelineStage::Embedding,
+                    ProcessingStatus::Failed(error_msg.clone()),
+                )
+                .await?;
+                return Err(e);
+            }
+        };
 
         self.update_pipeline_status(
             file_id,
             PipelineStage::Embedding,
             ProcessingStatus::Completed,
-            None,
         )
         .await?;
 
@@ -177,18 +239,30 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Indexing,
             ProcessingStatus::InProgress,
-            None,
         )
         .await?;
 
-        self.store_chunks_with_metadata(file_id, optimized_chunks, embeddings)
-            .await?;
+        match self.store_chunks_with_metadata(file_id, optimized_chunks, embeddings)
+            .await
+        {
+            Ok(()) => (),
+            Err(e) => {
+                let error_msg = format!("Index storage failed for {}: {}", filename, e);
+                tracing::error!("{}", error_msg);
+                self.update_pipeline_status(
+                    file_id,
+                    PipelineStage::Indexing,
+                    ProcessingStatus::Failed(error_msg.clone()),
+                )
+                .await?;
+                return Err(e);
+            }
+        };
 
         self.update_pipeline_status(
             file_id,
             PipelineStage::Indexing,
             ProcessingStatus::Completed,
-            None,
         )
         .await?;
 
@@ -197,7 +271,6 @@ impl RAGEngine for RAGSimpleVectorEngine {
             file_id,
             PipelineStage::Completed,
             ProcessingStatus::Completed,
-            None,
         )
         .await?;
 

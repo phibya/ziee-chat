@@ -24,12 +24,12 @@ pub use models::*;
 pub use processors::*;
 pub use service::{RAGService, RAGServiceStatus};
 pub use types::*;
+use crate::impl_enum_option_from;
 
 /// Indexing error codes for file processing operations
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGIndexingErrorCode {
-    None,
     TextExtractionFailed,
     UnsupportedFileFormat,
     FileReadError,
@@ -44,10 +44,11 @@ pub enum RAGIndexingErrorCode {
     DatabaseError,
 }
 
+impl_enum_option_from!(RAGIndexingErrorCode);
+
 impl RAGIndexingErrorCode {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RAGIndexingErrorCode::None => "none",
             RAGIndexingErrorCode::TextExtractionFailed => "text_extraction_failed",
             RAGIndexingErrorCode::UnsupportedFileFormat => "unsupported_file_format",
             RAGIndexingErrorCode::FileReadError => "file_read_error",
@@ -65,7 +66,6 @@ impl RAGIndexingErrorCode {
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "none" => Some(RAGIndexingErrorCode::None),
             "text_extraction_failed" => Some(RAGIndexingErrorCode::TextExtractionFailed),
             "unsupported_file_format" => Some(RAGIndexingErrorCode::UnsupportedFileFormat),
             "file_read_error" => Some(RAGIndexingErrorCode::FileReadError),
@@ -89,11 +89,11 @@ impl std::fmt::Display for RAGIndexingErrorCode {
     }
 }
 
+
 /// Querying error codes for chat/search operations  
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGQueryingErrorCode {
-    None,
     InvalidQuery,
     SearchIndexUnavailable,
     EmbeddingGenerationFailed,
@@ -106,10 +106,11 @@ pub enum RAGQueryingErrorCode {
     InsufficientContext,
 }
 
+impl_enum_option_from!(RAGQueryingErrorCode);
+
 impl RAGQueryingErrorCode {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RAGQueryingErrorCode::None => "none",
             RAGQueryingErrorCode::InvalidQuery => "invalid_query",
             RAGQueryingErrorCode::SearchIndexUnavailable => "search_index_unavailable",
             RAGQueryingErrorCode::EmbeddingGenerationFailed => "embedding_generation_failed",
@@ -125,7 +126,6 @@ impl RAGQueryingErrorCode {
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "none" => Some(RAGQueryingErrorCode::None),
             "invalid_query" => Some(RAGQueryingErrorCode::InvalidQuery),
             "search_index_unavailable" => Some(RAGQueryingErrorCode::SearchIndexUnavailable),
             "embedding_generation_failed" => Some(RAGQueryingErrorCode::EmbeddingGenerationFailed),

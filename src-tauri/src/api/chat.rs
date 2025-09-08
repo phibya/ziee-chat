@@ -319,7 +319,7 @@ async fn stream_ai_response(
     // Count messages excluding system messages (assistant instructions)
     let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
 
-    // Create AI provider with model ID for Candle providers
+    // Create AI provider with model ID for local providers
     let ai_provider = match crate::ai::model_manager::create_ai_provider_with_model_id(
         &provider,
         Some(request.model_id),

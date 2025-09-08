@@ -183,6 +183,21 @@ macro_rules! impl_json_from {
     };
 }
 
+/// Implement From<Option<String>> for EnumOption<T> for enums with from_str() method
+/// Usage: impl_enum_option_from!(RAGIndexingErrorCode);
+/// This allows SQLx to automatically convert database Option<String> to EnumOption<T>
+#[macro_export]
+macro_rules! impl_enum_option_from {
+    ($enum_type:ty) => {
+        impl From<Option<String>> for crate::database::types::EnumOption<$enum_type> {
+            fn from(value: Option<String>) -> Self {
+                crate::database::types::EnumOption(value.and_then(|s| <$enum_type>::from_str(&s)))
+            }
+        }
+    };
+}
+
+pub use impl_enum_option_from;
 pub(crate) use impl_json_from;
 pub(crate) use impl_json_option_from;
 pub(crate) use impl_string_to_enum;

@@ -785,7 +785,7 @@ pub struct Model {
     pub parameters: JsonOption<ModelParameters>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    // Additional fields for Candle models (None for other providers)
+    // Additional fields for local models (None for other providers)
     pub file_size_bytes: Option<i64>,
     pub validation_status: Option<String>,
     pub validation_issues: JsonOption<Vec<String>>,

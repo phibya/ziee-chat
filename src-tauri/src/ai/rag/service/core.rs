@@ -6,6 +6,7 @@ use tokio::sync::{mpsc, RwLock};
 use tokio::time::{sleep, Duration};
 
 use super::processor::process_pending_files;
+use super::queries::reset_processing_files_to_pending;
 
 /// Simple RAG Service for managing RAG engines
 pub struct RAGService {
@@ -29,6 +30,13 @@ impl RAGService {
             return Err(RAGErrorCode::Instance(
                 RAGInstanceErrorCode::ConfigurationError,
             ));
+        }
+
+        // Reset any files that were left in 'processing' state back to 'pending'
+        // This handles cases where the service was interrupted during file processing
+        if let Err(e) = reset_processing_files_to_pending().await {
+            tracing::error!("Failed to reset processing files to pending: {}", e);
+            return Err(RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError));
         }
 
         // Create shutdown channel

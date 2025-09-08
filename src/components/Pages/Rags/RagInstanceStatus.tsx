@@ -88,7 +88,7 @@ export const RagInstanceStatus: React.FC = () => {
       <Card title="Status">
         <div className="space-y-3">
           {/* Error code display */}
-          {currentStatus.error_code !== 'none' && (
+          {currentStatus.error_code && (
             <div className="flex items-center justify-between">
               <Text type="secondary">Error:</Text>
               <Tag color="red">{currentStatus.error_code}</Tag>

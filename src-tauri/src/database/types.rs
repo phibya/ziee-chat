@@ -30,7 +30,7 @@ impl<T> JsonOption<T> {
 
 // Custom wrapper for optional enum fields that handles database string conversion
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct EnumOption<T>(Option<T>);
+pub struct EnumOption<T>(pub Option<T>);
 
 impl<T> EnumOption<T> {
     /// Create a new EnumOption

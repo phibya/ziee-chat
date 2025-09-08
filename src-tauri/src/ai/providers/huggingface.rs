@@ -760,7 +760,7 @@ impl AIProvider for HuggingFaceProvider {
         &self,
         request: EmbeddingsRequest,
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = format!("{}/models/{}", self.base_url, request.model);
+        let url = format!("{}/models/{}", self.base_url, request.model_name);
 
         let texts = match &request.input {
             EmbeddingsInput::Single(text) => vec![text.clone()],
@@ -806,7 +806,7 @@ impl AIProvider for HuggingFaceProvider {
         Ok(EmbeddingsResponse {
             object: "list".to_string(),
             data,
-            model: request.model,
+            model: request.model_name,
             usage: EmbeddingsUsage {
                 prompt_tokens: 0, // HuggingFace doesn't provide token counts
                 total_tokens: 0,

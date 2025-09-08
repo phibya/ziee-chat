@@ -77,7 +77,7 @@ pub struct SSERAGInstanceStatusUpdateData {
     pub name: String,
     pub is_active: bool,
     pub enabled: bool,
-    pub error_code: RAGInstanceErrorCode,
+    pub error_code: Option<RAGInstanceErrorCode>,
     pub total_files: i64,
     pub processed_files: i64,
     pub failed_files: i64,
@@ -296,10 +296,12 @@ pub async fn toggle_rag_instance_activate_handler(
         description: None,
         enabled: None,
         is_active: Some(new_is_active),
+        engine_type: None,
         embedding_model_id: None,
         llm_model_id: None,
         parameters: None,
         engine_settings: None,
+        error_code: None,
     };
 
     let instance = update_rag_instance(instance_id, update_request)
@@ -456,7 +458,7 @@ async fn get_rag_instance_status_update(
         name: instance.name,
         is_active: instance.is_active,
         enabled: instance.enabled,
-        error_code: instance.error_code,
+        error_code: instance.error_code.0,
         total_files: instance.total_files,
         processed_files: instance.processed_files,
         failed_files: instance.failed_files,

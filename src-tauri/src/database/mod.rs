@@ -2,6 +2,7 @@ use postgresql_embedded::{PostgreSQL, Settings, VersionReq};
 use sqlx::PgPool;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -11,6 +12,8 @@ pub mod macros;
 pub mod models;
 pub mod queries;
 pub mod types;
+
+const POSTGRES_VERSION: &str = "17.5.0";
 
 static DATABASE_POOL: OnceCell<Arc<PgPool>> = OnceCell::const_new();
 static POSTGRESQL_INSTANCE: OnceCell<Arc<Mutex<PostgreSQL>>> = OnceCell::const_new();
@@ -61,6 +64,60 @@ fn is_port_available(port: u16) -> bool {
             false
         }
     }
+}
+
+/// Stop any running PostgreSQL instance by checking for postmaster.pid and using pg_ctl stop
+fn stop_existing_postgres_instance(installation_dir: &PathBuf) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let data_dir = installation_dir.join("data");
+    let postmaster_pid_path = data_dir.join("postmaster.pid");
+    
+    if !postmaster_pid_path.exists() {
+        println!("No postmaster.pid found, no existing PostgreSQL instance to stop");
+        return Ok(());
+    }
+    
+    println!("Found existing postmaster.pid, stopping PostgreSQL instance...");
+    
+    // Handle cross-platform executable naming
+    let pg_ctl_exe = if cfg!(target_os = "windows") {
+        "pg_ctl.exe"
+    } else {
+        "pg_ctl"
+    };
+    
+    let pg_ctl_path = installation_dir
+        .join(POSTGRES_VERSION)
+        .join("bin")
+        .join(pg_ctl_exe);
+    
+    // Check if pg_ctl executable exists
+    if !pg_ctl_path.exists() {
+        println!("Warning: pg_ctl executable not found at {:?}", pg_ctl_path);
+        return Ok(());
+    }
+    
+    let output = Command::new(&pg_ctl_path)
+        .arg("stop")
+        .arg("-D")
+        .arg(&data_dir)
+        .arg("-m")
+        .arg("fast") // Use fast shutdown mode
+        .output()?;
+    
+    if output.status.success() {
+        println!("Successfully stopped existing PostgreSQL instance");
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        println!("Warning: pg_ctl stop returned non-zero exit code, but continuing:");
+        println!("STDERR: {}", stderr);
+        println!("STDOUT: {}", stdout);
+    }
+    
+    // Wait a moment for the process to fully stop
+    std::thread::sleep(std::time::Duration::from_millis(1000));
+    
+    Ok(())
 }
 
 pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>>
@@ -115,9 +172,13 @@ pub async fn initialize_database() -> Result<Arc<PgPool>, Box<dyn std::error::Er
 async fn try_initialize_database_once(
 ) -> Result<Arc<PgPool>, Box<dyn std::error::Error + Send + Sync>> {
     let mut settings = Settings::default();
-    settings.version = VersionReq::parse("=17.5.0")?;
+    settings.version = VersionReq::parse(&format!("={}", POSTGRES_VERSION))?;
     settings.temporary = false;
     settings.installation_dir = crate::get_app_data_dir().join("postgres");
+    
+    // Stop any existing PostgreSQL instance before proceeding
+    stop_existing_postgres_instance(&settings.installation_dir)?;
+    
     settings.username = "postgres".to_string();
     settings.password_file = settings.installation_dir.join(".pgpass");
     if settings.password_file.exists() {
@@ -195,8 +256,6 @@ async fn try_initialize_database_once(
     println!("Testing database connection...");
     sqlx::query("SELECT 1").execute(&pool).await?;
 
-    // Initialize Apache AGE extension for database connections (before migrations)
-    initialize_apache_age_extension(&pool).await?;
 
     // Run migrations
     println!("Running database migrations...");
@@ -227,13 +286,34 @@ async fn connect_with_retry(
 
     println!("Attempting to connect to database with retry logic...");
 
-    // Configure connection pool with timeouts
+    // Configure connection pool with timeouts and per-connection setup
     let pool_options = PgPoolOptions::new()
         .max_connections(10)
         .min_connections(1)
         .acquire_timeout(Duration::from_secs(5))
         .idle_timeout(Duration::from_secs(30))
-        .max_lifetime(Duration::from_secs(300));
+        .max_lifetime(Duration::from_secs(300))
+        .after_connect(|conn, _meta| {
+            Box::pin(async move {
+                // Load pgvector extension for this connection
+                sqlx::query("CREATE EXTENSION IF NOT EXISTS vector")
+                    .execute(conn.as_mut())
+                    .await?;
+                
+                // Load apache age extension for this connection
+                sqlx::query("CREATE EXTENSION IF NOT EXISTS age")
+                    .execute(conn.as_mut())
+                    .await?;
+                sqlx::query("LOAD 'age'")
+                    .execute(conn.as_mut())
+                    .await?;
+                sqlx::query("SET search_path = public, ag_catalog, \"$user\"")
+                    .execute(conn.as_mut())
+                    .await?;
+                
+                Ok(())
+            })
+        });
 
     loop {
         retry_count += 1;
@@ -594,49 +674,3 @@ async fn install_apache_age_from_built_library(
     Ok(())
 }
 
-/// Initialize Apache AGE extension for database connections
-/// This needs to be called for every connection to AGE
-async fn initialize_apache_age_extension(
-    pool: &PgPool,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Initializing Apache AGE extension for database connections...");
-
-    // Create the AGE extension if it doesn't exist
-    match sqlx::query("CREATE EXTENSION IF NOT EXISTS age")
-        .execute(pool)
-        .await
-    {
-        Ok(_) => println!("Apache AGE extension created/verified successfully"),
-        Err(e) => {
-            println!(
-                "Warning: Failed to create Apache AGE extension (it may not be installed): {}",
-                e
-            );
-            return Ok(()); // Don't fail if AGE is not installed
-        }
-    }
-
-    // Load the AGE library
-    match sqlx::query("LOAD 'age'").execute(pool).await {
-        Ok(_) => println!("Apache AGE library loaded successfully"),
-        Err(e) => {
-            println!("Warning: Failed to load Apache AGE library: {}", e);
-            return Ok(()); // Don't fail if AGE is not properly installed
-        }
-    }
-
-    // Set search path to include ag_catalog
-    match sqlx::query("SET search_path = ag_catalog, \"$user\", public")
-        .execute(pool)
-        .await
-    {
-        Ok(_) => println!("Apache AGE search_path configured successfully"),
-        Err(e) => {
-            println!("Warning: Failed to set Apache AGE search_path: {}", e);
-            return Ok(()); // Don't fail if AGE catalog doesn't exist
-        }
-    }
-
-    println!("Apache AGE extension initialization completed");
-    Ok(())
-}

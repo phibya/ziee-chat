@@ -300,7 +300,7 @@ impl AIProvider for LocalProvider {
 
         if !response.status().is_success() {
             let error_text = response.text().await?;
-            return Err(format!("Candle API error: {}", error_text).into());
+            return Err(format!("local API error: {}", error_text).into());
         }
 
         let api_response: LocalResponse = response.json().await?;
@@ -316,7 +316,7 @@ impl AIProvider for LocalProvider {
                 }),
             })
         } else {
-            Err("No choices returned from Candle API".into())
+            Err("No choices returned from local API".into())
         }
     }
 
@@ -346,7 +346,7 @@ impl AIProvider for LocalProvider {
 
         if !response.status().is_success() {
             let error_text = response.text().await?;
-            return Err(format!("Candle API error: {}", error_text).into());
+            return Err(format!("local API error: {}", error_text).into());
         }
 
         // Create a buffer to accumulate partial SSE chunks
@@ -431,7 +431,7 @@ impl AIProvider for LocalProvider {
         &self,
         request: EmbeddingsRequest,
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = format!("{}/embeddings", self.base_url);
+        let url = format!("{}/v1/embeddings", self.base_url);
 
         let response = self
             .client
@@ -499,7 +499,7 @@ impl LocalProvider {
                 }),
             })
         } else {
-            Err("No choices returned from Candle API".into())
+            Err("No choices returned from local API".into())
         }
     }
 
@@ -532,7 +532,7 @@ impl LocalProvider {
 
         if !response.status().is_success() {
             let error_text = response.text().await?;
-            return Err(format!("Candle API error: {}", error_text).into());
+            return Err(format!("local API error: {}", error_text).into());
         }
 
         // Create a buffer to accumulate partial SSE chunks

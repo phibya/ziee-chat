@@ -6,9 +6,6 @@ use crate::ai::rag::{
     RAGErrorCode, RAGIndexingErrorCode, RAGInstanceErrorCode, RAGResult,
 };
 use chrono::Utc;
-use futures;
-use std::sync::Arc;
-use tokio::sync::Semaphore;
 
 impl RAGSimpleVectorEngine {
     pub(super) async fn process_embeddings_in_batches(
@@ -51,6 +48,7 @@ impl RAGSimpleVectorEngine {
 
         // Create embedding tasks for each batch using AI provider directly
         let embedding_model_name = &self.instance_info.models.embedding_model.model.name;
+        let model_id = self.instance_info.models.embedding_model.model.id;
         let mut batch_futures = Vec::new();
         for batch in batches {
             let ai_provider = ai_provider.clone();
@@ -59,7 +57,8 @@ impl RAGSimpleVectorEngine {
             let future = async move {
                 // Create embeddings request using AI provider's standard format
                 let embedding_request = crate::ai::core::providers::EmbeddingsRequest {
-                    model: model_name.clone(),
+                    model_id,
+                    model_name: model_name.clone(),
                     input: crate::ai::core::providers::EmbeddingsInput::Multiple(batch),
                     encoding_format: Some("float".to_string()),
                     dimensions: None,
@@ -128,69 +127,41 @@ impl RAGSimpleVectorEngine {
             ));
         }
 
-        tracing::info!("Storing {} chunks with advanced metadata", chunks.len());
+        let chunk_count = chunks.len();
+        tracing::info!("Storing {} chunks with metadata", chunk_count);
 
-        // Get engine settings for parallel processing control
-        let engine_settings =
-            crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
-        let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
-            tracing::error!(
-                "SimpleVector engine settings not found for instance {}",
-                self.instance_id
+        // Process each chunk-embedding pair sequentially
+        for (chunk, embedding) in chunks.into_iter().zip(embeddings.into_iter()) {
+            // Enhanced metadata with quality scores and processing info
+            let mut enhanced_metadata = chunk.metadata.clone();
+            enhanced_metadata.insert(
+                "processing_timestamp".to_string(),
+                serde_json::json!(Utc::now().to_rfc3339()),
             );
-            RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)
-        })?;
-        let indexing_settings = vector_settings.indexing();
+            enhanced_metadata.insert(
+                "chunk_quality_score".to_string(),
+                serde_json::json!(0.85), // Placeholder quality score
+            );
+            enhanced_metadata.insert(
+                "embedding_model".to_string(),
+                serde_json::json!(embedding.model_name),
+            );
 
-        // Create semaphore for parallel processing control
-        let semaphore = Arc::new(Semaphore::new(indexing_settings.max_parallel_insert()));
-
-        let chunk_embedding_pairs: Vec<_> =
-            chunks.into_iter().zip(embeddings.into_iter()).collect();
-
-        let instance_id = self.instance_id; // Copy the instance_id
-
-        for batch in chunk_embedding_pairs.chunks(indexing_settings.embedding_batch_size()) {
-            let permit = semaphore.clone().acquire_owned().await.map_err(|e| {
-                tracing::error!("Failed to acquire semaphore: {}", e);
-                RAGErrorCode::Indexing(RAGIndexingErrorCode::ProcessingError)
-            })?;
-
-            let batch_data = batch.to_vec();
-
-            tokio::spawn(async move {
-                let _permit = permit;
-                for (chunk, embedding) in batch_data {
-                    // Enhanced metadata with quality scores and processing info
-                    let mut enhanced_metadata = chunk.metadata.clone();
-                    enhanced_metadata.insert(
-                        "processing_timestamp".to_string(),
-                        serde_json::json!(Utc::now().to_rfc3339()),
-                    );
-                    enhanced_metadata.insert(
-                        "chunk_quality_score".to_string(),
-                        serde_json::json!(0.85), // Placeholder quality score
-                    );
-                    enhanced_metadata.insert(
-                        "embedding_model".to_string(),
-                        serde_json::json!(embedding.model_name),
-                    );
-
-                    let _ = queries::upsert_vector_document(
-                        instance_id,
-                        file_id,
-                        chunk.chunk_index as i32,
-                        &chunk.content,
-                        &chunk.content_hash,
-                        chunk.token_count as i32,
-                        &embedding.vector,
-                        serde_json::to_value(&enhanced_metadata).unwrap_or_default(),
-                    )
-                    .await;
-                }
-            });
+            // Store the document and propagate any errors
+            queries::upsert_vector_document(
+                self.instance_id,
+                file_id,
+                chunk.chunk_index as i32,
+                &chunk.content,
+                &chunk.content_hash,
+                chunk.token_count as i32,
+                &embedding.vector,
+                serde_json::to_value(&enhanced_metadata).unwrap_or_default(),
+            )
+            .await?;
         }
 
+        tracing::info!("Successfully stored all {} chunks", chunk_count);
         Ok(())
     }
 }

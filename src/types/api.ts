@@ -939,6 +939,8 @@ export interface RAGFileProcessingStatus {
   started_at?: string
 }
 
+export type RAGIndexingErrorCode = 'text_extraction_failed' | 'unsupported_file_format' | 'file_read_error' | 'chunking_failed' | 'embedding_generation_failed' | 'embedding_model_unavailable' | 'index_storage_failed' | 'content_validation_failed' | 'file_too_large' | 'processing_timeout' | 'processing_error' | 'database_error'
+
 export interface RAGInstance {
   description?: string
   id: string
@@ -950,8 +952,8 @@ export interface RAGInstance {
   enabled: boolean
   is_active: boolean
   is_system: boolean
-  status: RAGInstanceStatus
-  error_code: RAGInstanceErrorCode
+  status?: RAGInstanceStatus
+  error_code?: RAGIndexingErrorCode
   engine_type: RAGEngineType
   engine_settings: RAGEngineSettings
   embedding_model_id?: string
@@ -962,7 +964,7 @@ export interface RAGInstance {
   updated_at: string
 }
 
-export type RAGInstanceErrorCode = 'none' | 'embedding_model_not_config' | 'embedding_model_not_found' | 'llm_model_not_config' | 'llm_model_not_found' | 'provider_connection_failed' | 'provider_not_found' | 'rag_instance_not_found' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
+export type RAGInstanceErrorCode = 'embedding_model_not_config' | 'embedding_model_not_found' | 'llm_model_not_config' | 'llm_model_not_found' | 'provider_connection_failed' | 'provider_not_found' | 'rag_instance_not_found' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
 
 export interface RAGInstanceFile {
   id: string
@@ -971,7 +973,7 @@ export interface RAGInstanceFile {
   filename: string
   processing_status: RAGProcessingStatus
   processed_at?: string
-  processing_error?: string
+  processing_error?: RAGIndexingErrorCode
   rag_metadata: any
   created_at: string
   updated_at: string
@@ -1004,7 +1006,7 @@ export interface RAGInstanceListResponse {
   per_page: number
 }
 
-export type RAGInstanceStatus = 'none' | 'indexing' | 'finished' | 'error'
+export type RAGInstanceStatus = 'indexing' | 'finished' | 'error'
 
 export type RAGProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -1213,7 +1215,7 @@ export interface SSERAGInstanceStatusUpdateData {
   name: string
   is_active: boolean
   enabled: boolean
-  error_code: RAGInstanceErrorCode
+  error_code?: RAGInstanceErrorCode
   total_files: number
   processed_files: number
   failed_files: number
@@ -1369,6 +1371,7 @@ export interface UpdateRAGInstanceRequest {
   llm_model_id?: string
   parameters?: any
   engine_settings?: RAGEngineSettings
+  error_code?: RAGInstanceErrorCode
 }
 
 export interface UpdateRAGProviderRequest {

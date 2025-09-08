@@ -13,7 +13,6 @@ pub async fn update_pipeline_status(
     file_id: Uuid,
     stage: PipelineStage,
     status: ProcessingStatus,
-    error_message: Option<String>,
 ) -> RAGResult<()> {
     let database = get_database_pool().map_err(|e| {
         tracing::error!(
@@ -36,6 +35,11 @@ pub async fn update_pipeline_status(
     };
 
     let status_str = status.as_str();
+    let error_message = match &status {
+        ProcessingStatus::Failed(msg) => Some(msg.clone()),
+        _ => None,
+    };
+    
     sqlx::query!(
         r#"
         INSERT INTO rag_processing_pipeline (

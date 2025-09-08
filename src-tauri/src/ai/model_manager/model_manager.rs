@@ -621,7 +621,7 @@ pub async fn shutdown_all_models() -> Result<(), Box<dyn std::error::Error + Sen
     }
 }
 
-/// Helper function to create AI provider instances with optional model ID for Candle providers
+/// Helper function to create AI provider instances with optional model ID for local providers
 pub async fn create_ai_provider_with_model_id(
     provider: &crate::database::models::Provider,
     model_id: Option<Uuid>,

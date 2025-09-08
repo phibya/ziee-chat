@@ -43,9 +43,7 @@ export const RagSimpleVectorEngineSettings: React.FC = () => {
                   if ('options' in option && Array.isArray(option.options)) {
                     // This is a group option - search in children
                     return option.options.some((child: any) =>
-                      child?.label
-                        ?.toLowerCase()
-                        .includes(input.toLowerCase()),
+                      child?.label?.toLowerCase().includes(input.toLowerCase()),
                     )
                   }
                   // This is a regular option
@@ -67,9 +65,7 @@ export const RagSimpleVectorEngineSettings: React.FC = () => {
                   if ('options' in option && Array.isArray(option.options)) {
                     // This is a group option - search in children
                     return option.options.some((child: any) =>
-                      child?.label
-                        ?.toLowerCase()
-                        .includes(input.toLowerCase()),
+                      child?.label?.toLowerCase().includes(input.toLowerCase()),
                     )
                   }
                   // This is a regular option
@@ -107,20 +103,6 @@ export const RagSimpleVectorEngineSettings: React.FC = () => {
                 placeholder="100"
                 min={0}
                 max={500}
-                className="w-full"
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="Cosine Similarity Threshold"
-              name={getFieldName('indexing', 'cosine_better_than_threshold')}
-              tooltip="Minimum cosine similarity score for relevance (default: 0.2)"
-            >
-              <InputNumber
-                placeholder="0.2"
-                min={0}
-                max={1}
-                step={0.1}
                 className="w-full"
               />
             </Form.Item>

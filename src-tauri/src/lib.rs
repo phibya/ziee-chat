@@ -19,6 +19,8 @@ use tokio::signal;
 use tower_http::cors::CorsLayer;
 
 pub fn run() {
+    tracing_subscriber::fmt::init();
+
     let port = get_http_port();
 
     if !is_desktop_app() {

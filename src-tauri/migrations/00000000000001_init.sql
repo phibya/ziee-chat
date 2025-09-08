@@ -11,11 +11,15 @@ RETURN NEW;
 END;
 $$ language 'plpgsql';
 
+
+-- EXTENSIONS
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS age;
+
 -- ===============================
 -- 2. CORE USER SYSTEM
 -- ===============================
 
--- Create users table (Meteor-like structure with separate tables for arrays)
 CREATE TABLE users (
                        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                        username VARCHAR(50) NOT NULL UNIQUE,
@@ -469,19 +473,20 @@ CREATE TABLE user_group_rag_providers (
 
 -- Simple Vector Engine Tables
 CREATE TABLE simple_vector_documents (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID DEFAULT gen_random_uuid(),
     rag_instance_id UUID NOT NULL REFERENCES rag_instances(id) ON DELETE CASCADE,
     file_id UUID NOT NULL REFERENCES files(id) ON DELETE CASCADE,
     chunk_index INTEGER NOT NULL,
     content TEXT NOT NULL,
     content_hash VARCHAR(64) NOT NULL,
     token_count INTEGER NOT NULL,
-    embedding TEXT, -- Store as JSON/text for compatibility with embedded PostgreSQL
+    embedding HALFVEC, -- Support up to 4000 dimensions with half precision
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (rag_instance_id, id),
     UNIQUE(rag_instance_id, file_id, chunk_index)
-);
+) PARTITION BY HASH (rag_instance_id);
 
 -- Simple Graph Engine Tables
 CREATE TABLE simple_graph_entities (

@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 // Supporting enums
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub enum RAGChunkSelectionMethod {
     #[serde(rename = "weight")]
     Weight,
@@ -10,7 +10,7 @@ pub enum RAGChunkSelectionMethod {
     Vector,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub enum RAGSimpleGraphQueryMode {
     #[serde(rename = "local")]
     Local,
@@ -27,11 +27,10 @@ pub enum RAGSimpleGraphQueryMode {
 }
 
 // Vector Engine Settings
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RAGSimpleVectorIndexingSettings {
     pub chunk_token_size: Option<i32>,
     pub chunk_overlap_token_size: Option<i32>,
-    pub cosine_better_than_threshold: Option<f32>,
     pub max_parallel_insert: Option<i32>,
     pub embedding_batch_size: Option<i32>,
 }
@@ -45,10 +44,6 @@ impl RAGSimpleVectorIndexingSettings {
         self.chunk_overlap_token_size.unwrap_or(100) as usize // CHUNK_OVERLAP_SIZE
     }
 
-    pub fn cosine_better_than_threshold(&self) -> f32 {
-        self.cosine_better_than_threshold.unwrap_or(0.2) // DEFAULT_COSINE_THRESHOLD
-    }
-
     pub fn max_parallel_insert(&self) -> usize {
         self.max_parallel_insert.unwrap_or(10) as usize // DEFAULT_MAX_PARALLEL_INSERT
     }
@@ -58,7 +53,7 @@ impl RAGSimpleVectorIndexingSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RAGSimpleVectorQueryingSettings {
     pub top_k: Option<i32>,
     pub chunk_top_k: Option<i32>,
@@ -107,7 +102,7 @@ impl RAGSimpleVectorQueryingSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RAGSimpleVectorEngineSettings {
     pub indexing: Option<RAGSimpleVectorIndexingSettings>,
     pub querying: Option<RAGSimpleVectorQueryingSettings>,
@@ -120,7 +115,6 @@ impl RAGSimpleVectorEngineSettings {
             .unwrap_or(RAGSimpleVectorIndexingSettings {
                 chunk_token_size: None,
                 chunk_overlap_token_size: None,
-                cosine_better_than_threshold: None,
                 max_parallel_insert: None,
                 embedding_batch_size: None,
             })
@@ -144,7 +138,7 @@ impl RAGSimpleVectorEngineSettings {
 }
 
 // Graph Engine Settings
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RAGSimpleGraphIndexingSettings {
     pub chunk_token_size: Option<i32>,
     pub chunk_overlap_token_size: Option<i32>,
@@ -200,7 +194,7 @@ impl RAGSimpleGraphIndexingSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RAGSimpleGraphQueryingSettings {
     pub max_entity_tokens: Option<i32>,
     pub max_relation_tokens: Option<i32>,
@@ -266,7 +260,7 @@ impl RAGSimpleGraphQueryingSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 pub struct RAGSimpleGraphEngineSettings {
     pub indexing: Option<RAGSimpleGraphIndexingSettings>,
     pub querying: Option<RAGSimpleGraphQueryingSettings>,

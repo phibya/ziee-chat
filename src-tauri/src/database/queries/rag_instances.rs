@@ -30,7 +30,7 @@ pub async fn create_user_rag_instance(
     let engine_type_str = request.engine_type.as_str();
 
     // Serialize consolidated engine settings for database storage
-    let engine_settings_json = serde_json::to_value(&request.engine_settings.unwrap_or_default())
+    let engine_settings_json = serde_json::to_value(&request.engine_settings.as_ref().cloned().unwrap_or_default())
         .unwrap_or_else(|_| serde_json::json!({}));
 
     let instance = sqlx::query_as!(
@@ -79,7 +79,7 @@ pub async fn create_system_rag_instance(
     let engine_type_str = request.engine_type.as_str();
 
     // Serialize consolidated engine settings for database storage
-    let engine_settings_json = serde_json::to_value(&request.engine_settings.unwrap_or_default())
+    let engine_settings_json = serde_json::to_value(&request.engine_settings.as_ref().cloned().unwrap_or_default())
         .unwrap_or_else(|_| serde_json::json!({}));
 
     let instance = sqlx::query_as!(
@@ -364,6 +364,17 @@ pub async fn update_rag_instance(
         .await?;
     }
 
+    if let Some(engine_type) = &request.engine_type {
+        let engine_type_str = engine_type.as_str();
+        sqlx::query!(
+            "UPDATE rag_instances SET engine_type = $1, updated_at = NOW() WHERE id = $2",
+            engine_type_str,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
     if let Some(embedding_model_id) = request.embedding_model_id {
         sqlx::query!(
             "UPDATE rag_instances SET embedding_model_id = $1, updated_at = NOW() WHERE id = $2",
@@ -388,6 +399,17 @@ pub async fn update_rag_instance(
         sqlx::query!(
             "UPDATE rag_instances SET parameters = $1, updated_at = NOW() WHERE id = $2",
             parameters,
+            instance_id
+        )
+        .execute(pool)
+        .await?;
+    }
+
+    if let Some(error_code) = &request.error_code {
+        let error_code_str = error_code.as_str();
+        sqlx::query!(
+            "UPDATE rag_instances SET error_code = $1, updated_at = NOW() WHERE id = $2",
+            error_code_str,
             instance_id
         )
         .execute(pool)
@@ -568,13 +590,14 @@ pub async fn get_rag_instance_status_with_stats(
         }
     }
 
-    let result = sqlx::query!(
+    let result = sqlx::query_as!(
+        RAGInstanceWithStats,
         r#"SELECT 
             ri.id, ri.name, ri.enabled, ri.is_active, ri.error_code, ri.updated_at,
-            COALESCE(file_stats.total_files, 0) as total_files,
-            COALESCE(file_stats.processed_files, 0) as processed_files,
-            COALESCE(file_stats.failed_files, 0) as failed_files,
-            COALESCE(file_stats.processing_files, 0) as processing_files
+            COALESCE(file_stats.total_files, 0) as "total_files!",
+            COALESCE(file_stats.processed_files, 0) as "processed_files!",
+            COALESCE(file_stats.failed_files, 0) as "failed_files!",
+            COALESCE(file_stats.processing_files, 0) as "processing_files!"
          FROM rag_instances ri
          LEFT JOIN (
             SELECT 
@@ -593,22 +616,7 @@ pub async fn get_rag_instance_status_with_stats(
     .fetch_optional(pool)
     .await?;
 
-    if let Some(row) = result {
-        Ok(Some(RAGInstanceWithStats {
-            id: row.id,
-            name: row.name,
-            enabled: row.enabled,
-            is_active: row.is_active,
-            error_code: row.error_code.into(),
-            total_files: row.total_files.unwrap_or(0),
-            processed_files: row.processed_files.unwrap_or(0),
-            failed_files: row.failed_files.unwrap_or(0),
-            processing_files: row.processing_files.unwrap_or(0),
-            updated_at: row.updated_at,
-        }))
-    } else {
-        Ok(None)
-    }
+    Ok(result)
 }
 
 /// Get file processing status details for a RAG instance
@@ -621,10 +629,12 @@ pub async fn get_instance_file_processing_details(
     let pool = pool.as_ref();
 
     if let Some(since_time) = since {
-        let files = sqlx::query!(
+        let files = sqlx::query_as!(
+            RAGFileProcessingDetail,
             r#"SELECT 
                 rif.file_id, f.filename, rif.processing_status, 
-                rif.processing_error, rif.created_at as processing_started_at
+                NULL as current_stage, rif.processing_error, 
+                rif.created_at as processing_started_at
              FROM rag_instance_files rif
              JOIN files f ON rif.file_id = f.id
              WHERE rif.rag_instance_id = $1 AND rif.updated_at > $2
@@ -635,24 +645,14 @@ pub async fn get_instance_file_processing_details(
         .fetch_all(pool)
         .await?;
 
-        let results = files
-            .into_iter()
-            .map(|row| RAGFileProcessingDetail {
-                file_id: row.file_id,
-                filename: row.filename,
-                processing_status: row.processing_status,
-                current_stage: None, // Not tracked yet
-                processing_error: row.processing_error,
-                processing_started_at: Some(row.processing_started_at),
-            })
-            .collect();
-
-        Ok(results)
+        Ok(files)
     } else {
-        let files = sqlx::query!(
+        let files = sqlx::query_as!(
+            RAGFileProcessingDetail,
             r#"SELECT 
                 rif.file_id, f.filename, rif.processing_status, 
-                rif.processing_error, rif.created_at as processing_started_at
+                NULL as current_stage, rif.processing_error, 
+                rif.created_at as processing_started_at
              FROM rag_instance_files rif
              JOIN files f ON rif.file_id = f.id
              WHERE rif.rag_instance_id = $1
@@ -662,19 +662,7 @@ pub async fn get_instance_file_processing_details(
         .fetch_all(pool)
         .await?;
 
-        let results = files
-            .into_iter()
-            .map(|row| RAGFileProcessingDetail {
-                file_id: row.file_id,
-                filename: row.filename,
-                processing_status: row.processing_status,
-                current_stage: None, // Not tracked yet
-                processing_error: row.processing_error,
-                processing_started_at: Some(row.processing_started_at),
-            })
-            .collect();
-
-        Ok(results)
+        Ok(files)
     }
 }
 
@@ -685,7 +673,7 @@ pub struct RAGInstanceWithStats {
     pub name: String,
     pub enabled: bool,
     pub is_active: bool,
-    pub error_code: RAGInstanceErrorCode,
+    pub error_code: crate::database::types::EnumOption<RAGInstanceErrorCode>,
     pub total_files: i64,
     pub processed_files: i64,
     pub failed_files: i64,

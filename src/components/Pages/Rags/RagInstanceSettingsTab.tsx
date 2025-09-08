@@ -7,6 +7,7 @@ import { Permission, UpdateRAGInstanceRequest } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { RagSimpleVectorEngineSettings } from './RagSimpleVectorEngineSettings.tsx'
 import { RagSimpleGraphEngineSettings } from './RagSimpleGraphEngineSettings.tsx'
+import { disconnectRAGStatus, subscribeToRAGStatus } from '../../../store'
 
 const { Text } = Typography
 
@@ -20,6 +21,16 @@ export const RagInstanceSettingsTab: React.FC = () => {
 
   // RAG instance store
   const { ragInstance, updateRAGInstance } = useRAGInstanceStore(ragInstanceId)
+
+  useEffect(() => {
+    if (ragInstanceId) {
+      subscribeToRAGStatus(ragInstanceId).catch(console.error)
+    }
+
+    return () => {
+      disconnectRAGStatus()
+    }
+  }, [ragInstanceId])
 
   // Initialize form with RAG instance data
   useEffect(() => {
@@ -132,22 +143,6 @@ export const RagInstanceSettingsTab: React.FC = () => {
               </Form>
             </div>
           </PermissionGuard>
-          {ragInstance?.embedding_model_id && (
-            <div className={'flex items-center justify-between'}>
-              <Text type="secondary">Embedding Model:</Text>
-              <Text style={{ fontSize: '12px' }}>
-                {ragInstance.embedding_model_id.substring(0, 20)}...
-              </Text>
-            </div>
-          )}
-          {ragInstance?.llm_model_id && (
-            <div className={'flex items-center justify-between'}>
-              <Text type="secondary">LLM Model:</Text>
-              <Text style={{ fontSize: '12px' }}>
-                {ragInstance.llm_model_id.substring(0, 20)}...
-              </Text>
-            </div>
-          )}
         </div>
 
         {/* RAG Configuration Form */}

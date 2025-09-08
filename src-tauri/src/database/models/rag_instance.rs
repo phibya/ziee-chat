@@ -1,9 +1,11 @@
 use crate::ai::rag::engines::settings::*;
-use crate::database::macros::{impl_json_from, impl_string_to_enum};
+use crate::ai::rag::RAGIndexingErrorCode;
+use crate::database::macros::{impl_enum_option_from, impl_json_from, impl_string_to_enum};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::database::types::EnumOption;
 
 /// Engine-specific settings for RAG instance configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default, JsonSchema, sqlx::Decode)]
@@ -29,8 +31,8 @@ pub struct RAGInstance {
     pub enabled: bool,
     pub is_active: bool,
     pub is_system: bool,
-    pub status: RAGInstanceStatus,
-    pub error_code: RAGInstanceErrorCode,
+    pub status: EnumOption<RAGInstanceStatus>,
+    pub error_code: EnumOption<RAGIndexingErrorCode>,
     pub engine_type: RAGEngineType,
     pub engine_settings: RAGEngineSettings,
     pub embedding_model_id: Option<Uuid>,
@@ -41,7 +43,7 @@ pub struct RAGInstance {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGEngineType {
     #[serde(rename = "simple_vector")]
@@ -73,16 +75,17 @@ impl_string_to_enum!(RAGEngineType);
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGInstanceStatus {
-    None,
     Indexing,
     Finished,
     Error,
 }
 
+impl_enum_option_from!(RAGInstanceStatus);
+impl_enum_option_from!(RAGInstanceErrorCode);
+
 impl RAGInstanceStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RAGInstanceStatus::None => "none",
             RAGInstanceStatus::Indexing => "indexing",
             RAGInstanceStatus::Finished => "finished",
             RAGInstanceStatus::Error => "error",
@@ -91,7 +94,6 @@ impl RAGInstanceStatus {
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "none" => Some(RAGInstanceStatus::None),
             "indexing" => Some(RAGInstanceStatus::Indexing),
             "finished" => Some(RAGInstanceStatus::Finished),
             "error" => Some(RAGInstanceStatus::Error),
@@ -106,7 +108,6 @@ impl_string_to_enum!(RAGInstanceStatus);
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum RAGInstanceErrorCode {
-    None,
     EmbeddingModelNotConfig,
     EmbeddingModelNotFound,
     LlmModelNotConfig,
@@ -123,7 +124,6 @@ pub enum RAGInstanceErrorCode {
 impl RAGInstanceErrorCode {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RAGInstanceErrorCode::None => "none",
             RAGInstanceErrorCode::EmbeddingModelNotConfig => "embedding_model_not_config",
             RAGInstanceErrorCode::EmbeddingModelNotFound => "embedding_model_not_found",
             RAGInstanceErrorCode::LlmModelNotConfig => "llm_model_not_config",
@@ -140,7 +140,6 @@ impl RAGInstanceErrorCode {
 
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "none" => Some(RAGInstanceErrorCode::None),
             "embedding_model_not_config" => Some(RAGInstanceErrorCode::EmbeddingModelNotConfig),
             "embedding_model_not_found" => Some(RAGInstanceErrorCode::EmbeddingModelNotFound),
             "llm_model_not_config" => Some(RAGInstanceErrorCode::LlmModelNotConfig),
@@ -200,10 +199,12 @@ pub struct UpdateRAGInstanceRequest {
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub is_active: Option<bool>,
+    pub engine_type: Option<RAGEngineType>,
     pub embedding_model_id: Option<Uuid>,
     pub llm_model_id: Option<Uuid>,
     pub parameters: Option<serde_json::Value>,
     pub engine_settings: Option<RAGEngineSettings>,
+    pub error_code: Option<RAGInstanceErrorCode>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -223,7 +224,7 @@ pub struct RAGInstanceFile {
     pub filename: String,
     pub processing_status: RAGProcessingStatus,
     pub processed_at: Option<DateTime<Utc>>,
-    pub processing_error: Option<String>,
+    pub processing_error: EnumOption<RAGIndexingErrorCode>,
     pub rag_metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

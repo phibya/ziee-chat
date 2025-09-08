@@ -147,6 +147,34 @@ pub async fn get_pending_files_for_instance(
     Ok(files)
 }
 
+/// Reset any files in 'processing' status back to 'pending' on service startup
+pub async fn reset_processing_files_to_pending() -> RAGResult<()> {
+    let database = get_database_pool()
+        .map_err(|_| RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError))?;
+    
+    let affected_rows = sqlx::query!(
+        r#"
+        UPDATE rag_instance_files 
+        SET processing_status = $1, updated_at = NOW()
+        WHERE processing_status = $2
+        "#,
+        ProcessingStatus::Pending.as_str(),
+        ProcessingStatus::InProgress.as_str()
+    )
+    .execute(&*database)
+    .await
+    .map_err(|_| RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError))?;
+
+    if affected_rows.rows_affected() > 0 {
+        tracing::info!(
+            "Reset {} files from 'processing' to 'pending' status on service startup",
+            affected_rows.rows_affected()
+        );
+    }
+
+    Ok(())
+}
+
 /// Update RAG instance active status
 pub async fn update_rag_instance_active_status(
     rag_instance_id: Uuid,

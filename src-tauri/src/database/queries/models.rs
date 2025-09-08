@@ -235,7 +235,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
     Ok(model_row)
 }
 
-/// Create a Candle model with required architecture and default settings
+/// Create a local model with required architecture and default settings
 pub async fn create_local_model(
     model_id: &Uuid,
     request: &CreateModelRequest,

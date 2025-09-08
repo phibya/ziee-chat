@@ -34,7 +34,8 @@ pub enum ProviderFileContent {
 // Embeddings-related data structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingsRequest {
-    pub model: String,
+    pub model_id: Uuid,
+    pub model_name: String,
     pub input: EmbeddingsInput,
     pub encoding_format: Option<String>, // "float" or "base64"
     pub dimensions: Option<u32>,

@@ -537,6 +537,14 @@ impl LlamaCppEngine {
             }
         }
 
+        // Add embeddings flag if model capabilities include text embedding support
+        if model.capabilities.as_option()
+            .and_then(|caps| caps.text_embedding)
+            .unwrap_or(false) {
+            args.push("--embeddings".to_string());
+            println!("Enabled embeddings support for model: {}", model.alias);
+        }
+
         Ok(args)
     }
 }
