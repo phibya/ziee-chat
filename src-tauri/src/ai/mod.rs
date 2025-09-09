@@ -34,22 +34,30 @@ pub enum ModelSelected {
 pub use core::device_detection;
 // Re-export commonly used items for convenience
 pub use core::{
-    build_http_client, AIProvider, ChatMessage, ChatRequest, ChatResponse, ContentPart,
-    FileReference, MessageContent, ProviderFileContent, ProxyConfig, StreamingChunk,
-    StreamingResponse, Usage,
+  build_http_client, AIModel, AIProvider, ChatMessage, ChatRequest, ChatResponse,
+  ContentPart, FileReference, MessageContent, ModelInstance, ProviderFileContent,
+  ProxyConfig, SimplifiedChatRequest,
+  // New AIModel exports
+  SimplifiedEmbeddingsRequest, StreamingChunk, StreamingResponse, Usage,
 };
 pub use model_manager::{
-    acquire_global_start_mutex,
-    check_and_cleanup_model,
-    // NEW EXPORTS for lifecycle management:
-    reconcile_model_states,
-    shutdown_all_models,
-    start_model,
-    // Core model starting functions:
-    start_model_core_protected,
-    stop_model,
-    verify_model_server_running,
-    ModelStartResult,
+  acquire_global_start_mutex,
+  check_and_cleanup_model,
+  // NEW EXPORTS for lifecycle management:
+  reconcile_model_states,
+  shutdown_all_models,
+  start_model,
+  // Core model starting functions:
+  start_model_core_protected,
+  stop_model,
+  verify_model_server_running,
+  ModelStartResult,
 };
-pub use model_manager::{register_model_access, start_auto_unload_task, AutoUnloadConfig};
+pub use model_manager::{
+  create_ai_provider_with_model_id, register_model_access, start_auto_unload_task,
+  // Keep existing function for backward compatibility
+  AutoUnloadConfig,
+};
+// New model factory exports
+pub use model_manager::model_factory::{create_ai_model, create_ai_model_with_provider};
 pub use providers::*;

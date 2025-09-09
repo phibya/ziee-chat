@@ -37,6 +37,7 @@ pub async fn get_rag_instance_info(
         .ok_or(RAGInstanceErrorCode::ProviderNotFound)?;
 
     // Create AI provider for embedding model
+    // Note: Keeping existing approach for RAG compatibility - both approaches coexist
     let embedding_ai_provider = crate::ai::model_manager::create_ai_provider_with_model_id(
         &embedding_model_provider,
         Some(embedding_model_id),
@@ -62,6 +63,7 @@ pub async fn get_rag_instance_info(
             .ok_or(RAGInstanceErrorCode::ProviderNotFound)?;
 
         // Create AI provider for LLM model
+        // Note: Keeping existing approach for RAG compatibility - both approaches coexist
         let llm_ai_provider = crate::ai::model_manager::create_ai_provider_with_model_id(
             &llm_model_provider,
             Some(llm_model_id),

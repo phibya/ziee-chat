@@ -878,25 +878,17 @@ pub async fn clear_vector_documents(instance_id: Uuid) -> Result<(), sqlx::Error
 /// Get embedding dimension from the AI provider
 async fn get_embedding_dimension(model_id: Uuid) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
     // Get the model information
-    let model = crate::database::queries::models::get_model_by_id(model_id).await
+    let _model = crate::database::queries::models::get_model_by_id(model_id).await
         .map_err(|e| format!("Failed to get model: {}", e))?
         .ok_or("Model not found")?;
     
-    // Get the model's provider
-    let model_provider = crate::database::queries::providers::get_provider_by_id(model.provider_id).await
-        .map_err(|e| format!("Failed to get model provider: {}", e))?
-        .ok_or("Model provider not found")?;
+    // Create AI model using simplified factory approach
+    let ai_model = crate::ai::model_manager::model_factory::create_ai_model(model_id).await
+        .map_err(|e| format!("Failed to create AI model: {}", e))?;
     
-    // Create AI provider with the model
-    let provider = crate::ai::model_manager::create_ai_provider_with_model_id(
-        &model_provider,
-        Some(model_id),
-    ).await
-        .map_err(|e| format!("Failed to create AI provider: {}", e))?;
-    
-    // Get embedding dimension from provider
-    let dimension = provider.get_embedding_dimension(&model.name).await
-        .ok_or("Provider does not support embeddings or dimension is unknown")?;
+    // Get embedding dimension from model
+    let dimension = ai_model.get_embedding_dimension().await
+        .ok_or("Model does not support embeddings or dimension is unknown")?;
     
     tracing::debug!("Model {} has embedding dimension: {}", model_id, dimension);
     

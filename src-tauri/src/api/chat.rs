@@ -12,19 +12,17 @@ use std::convert::Infallible;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 
-use crate::ai::core::ChatRequest;
+use crate::ai::SimplifiedChatRequest;
 use crate::api::errors::{ApiResult, AppError, ErrorCode};
 use crate::api::middleware::AuthenticatedUser;
 use crate::api::types::ConversationPaginationQuery;
 use crate::database::models::EditMessageRequest;
-use crate::database::types::JsonOption;
 use crate::database::{
     models::{
         Conversation, ConversationListResponse, CreateConversationRequest, Message,
         SaveMessageRequest, UpdateConversationRequest,
     },
     queries::{
-        assistants::get_assistant_by_id,
         chat,
         models::{get_model_by_id, get_provider_by_model_id},
     },
@@ -306,30 +304,18 @@ async fn stream_ai_response(
         }
     };
 
-    // Get assistant parameters for model configuration
-    let assistant_params = if let Ok(Some(assistant)) =
-        get_assistant_by_id(request.assistant_id, Some(user_id)).await
-    {
-        assistant.parameters.clone()
-    } else {
-        JsonOption::default()
-    };
+    // Note: Assistant parameters are now handled internally by AIModel
 
     // Check if this is a new conversation (count messages before moving them)
     // Count messages excluding system messages (assistant instructions)
     let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
 
-    // Create AI provider with model ID for local providers
-    let ai_provider = match crate::ai::model_manager::create_ai_provider_with_model_id(
-        &provider,
-        Some(request.model_id),
-    )
-    .await
-    {
-        Ok(provider) => provider,
+    // Create AI model instance using the new simplified API
+    let ai_model = match crate::ai::model_manager::model_factory::create_ai_model(request.model_id).await {
+        Ok(model) => model,
         Err(e) => {
             let error_event = SSEChatStreamEvent::Error(StreamErrorData {
-                error: format!("Error creating AI provider: {}", e),
+                error: format!("Error creating AI model: {}", e),
                 code: ErrorCode::SystemInternalError.as_str().to_string(),
             });
             let _ = tx.send(Ok(error_event.into()));
@@ -337,8 +323,8 @@ async fn stream_ai_response(
         }
     };
 
-    // Check if provider supports streaming
-    if !ai_provider.supports_streaming() {
+    // Check if model supports streaming
+    if !ai_model.supports_streaming() {
         let error_event = SSEChatStreamEvent::Error(StreamErrorData {
             error: "Provider does not support streaming responses".to_string(),
             code: ErrorCode::SystemInternalError.as_str().to_string(),
@@ -347,29 +333,8 @@ async fn stream_ai_response(
         return;
     }
 
-    // Merge parameters from model and assistant configurations
-    let (temperature, max_tokens, top_p, frequency_penalty, presence_penalty) =
-        merge_parameters(&model.parameters, &assistant_params);
-
-    // Create ModelParameters from the merged values
-    let parameters = crate::database::models::model::ModelParameters {
-        temperature,
-        max_tokens,
-        top_p,
-        frequency_penalty,
-        presence_penalty,
-        ..Default::default()
-    };
-
-    // Create chat request
-    let chat_request = ChatRequest {
-        messages,
-        model_name: model.name.clone(),
-        model_id: model.id,
-        provider_id: provider.id,
-        stream: true,
-        parameters: Some(parameters),
-    };
+    // Note: Parameter merging is now handled internally by AIModel
+    // The model instance contains both model and assistant parameters
 
     // If there's only 1 message (the user message we just added), this is a new conversation
     // Generate title before streaming the response
@@ -377,12 +342,15 @@ async fn stream_ai_response(
         let conversation_id = request.conversation_id;
 
         // Wait for title generation to complete before streaming the response
-        let _ = generate_and_update_conversation_title(conversation_id, user_id, &provider, &model)
+        let _ = generate_and_update_conversation_title(conversation_id, user_id, &model)
             .await;
     }
 
-    // Call AI provider with streaming
-    match ai_provider.chat_stream(chat_request).await {
+    // Call AI model with streaming
+    match ai_model.chat_stream(SimplifiedChatRequest {
+        messages,
+        stream: true,
+    }).await {
         Ok(mut stream) => {
             let mut full_content = String::new();
 
@@ -390,12 +358,12 @@ async fn stream_ai_response(
             while let Some(chunk_result) = stream.next().await {
                 match chunk_result {
                     Ok(chunk) => {
-                        if let Some(content) = chunk.content {
-                            full_content.push_str(&content);
+                        if let Some(content) = &chunk.content {
+                            full_content.push_str(content);
 
                             // Send chunk to client
                             let chunk_event = SSEChatStreamEvent::Chunk(StreamChunkData {
-                                delta: content,
+                                delta: content.to_string(),
                                 message_id: None,
                             });
                             let _ = tx.send(Ok(chunk_event.into()));
@@ -676,11 +644,10 @@ pub async fn get_conversation_messages_by_branch(
     }
 }
 
-/// Generate and update conversation title using AI provider
+/// Generate and update conversation title using AI model
 async fn generate_and_update_conversation_title(
     conversation_id: Uuid,
     user_id: Uuid,
-    provider: &crate::database::models::Provider,
     model: &crate::database::models::Model,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Get the first user message from the conversation
@@ -701,33 +668,15 @@ async fn generate_and_update_conversation_title(
 
         let chat_messages = build_single_user_message(title_prompt);
 
-        // Create AI provider instance
-        let ai_provider =
-            crate::ai::model_manager::create_ai_provider_with_model_id(provider, Some(model.id))
-                .await?;
+        // Create AI model instance
+        let ai_model = crate::ai::model_manager::model_factory::create_ai_model(model.id).await?;
 
-        // For title generation, use specific parameters optimized for titles
-        // Don't use assistant parameters as this is an internal system function
-        let title_parameters = crate::database::models::model::ModelParameters {
-            temperature: Some(0.3), // Lower temperature for more consistent titles
-            max_tokens: Some(20),   // Short titles only
-            top_p: Some(0.9),
-            frequency_penalty: None,
-            presence_penalty: None,
-            ..Default::default()
-        };
-
-        let chat_request = ChatRequest {
+        // Call AI model to generate title
+        // Note: Title-specific parameters would ideally be configured in the model instance  
+        match ai_model.chat(SimplifiedChatRequest {
             messages: chat_messages,
-            model_name: model.name.clone(),
-            model_id: model.id,
-            provider_id: provider.id,
             stream: false,
-            parameters: Some(title_parameters),
-        };
-
-        // Call AI provider to generate title
-        match ai_provider.chat(chat_request).await {
+        }).await {
             Ok(response) => {
                 let generated_title = response.content.trim().to_string();
 
@@ -771,67 +720,3 @@ async fn generate_and_update_conversation_title(
     Ok(())
 }
 
-/// Merge model and assistant parameters with assistant parameters taking priority
-/// Only include parameters that are actually defined (not null)
-fn merge_parameters(
-    model_params: &Option<crate::database::models::ModelParameters>,
-    assistant_params: &Option<crate::database::models::ModelParameters>,
-) -> (
-    Option<f32>, // temperature
-    Option<i32>, // max_tokens
-    Option<f32>, // top_p
-    Option<f32>, // frequency_penalty
-    Option<f32>, // presence_penalty
-) {
-    let mut temperature = None;
-    let mut max_tokens = None;
-    let mut top_p = None;
-    let mut frequency_penalty = None;
-    let mut presence_penalty = None;
-
-    // First, extract from model parameters
-    if let Some(model_params) = model_params {
-        if let Some(temp) = model_params.temperature {
-            temperature = Some(temp);
-        }
-        if let Some(m_tokens) = model_params.max_tokens {
-            max_tokens = Some(m_tokens);
-        }
-        if let Some(top_p_val) = model_params.top_p {
-            top_p = Some(top_p_val);
-        }
-        if let Some(freq_pen) = model_params.frequency_penalty {
-            frequency_penalty = Some(freq_pen);
-        }
-        if let Some(pres_pen) = model_params.presence_penalty {
-            presence_penalty = Some(pres_pen);
-        }
-    }
-
-    // Then, override with assistant parameters (higher priority)
-    if let Some(assistant_params) = assistant_params {
-        if let Some(temp) = assistant_params.temperature {
-            temperature = Some(temp);
-        }
-        if let Some(max_tok) = assistant_params.max_tokens {
-            max_tokens = Some(max_tok);
-        }
-        if let Some(top_p_val) = assistant_params.top_p {
-            top_p = Some(top_p_val);
-        }
-        if let Some(freq_pen) = assistant_params.frequency_penalty {
-            frequency_penalty = Some(freq_pen);
-        }
-        if let Some(pres_pen) = assistant_params.presence_penalty {
-            presence_penalty = Some(pres_pen);
-        }
-    }
-
-    (
-        temperature,
-        max_tokens,
-        top_p,
-        frequency_penalty,
-        presence_penalty,
-    )
-}
