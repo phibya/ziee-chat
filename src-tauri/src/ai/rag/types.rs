@@ -1,23 +1,17 @@
 // RAG-specific type definitions and utilities
 
-use crate::ai::core::AIProvider;
-use crate::database::models::{rag_instance::RAGInstance, Model, RAGProvider};
+use crate::ai::core::AIModel;
+use crate::database::models::{rag_instance::RAGInstance, RAGProvider};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
-/// A model with its corresponding AI provider
-pub struct RAGModel {
-    pub model: Model,
-    pub ai_provider: Arc<dyn AIProvider>,
-}
-
-/// Collection of models for a RAG instance
+/// Collection of models for a RAG instance using AIModel
 pub struct RAGModels {
-    pub embedding_model: RAGModel,
-    pub llm_model: Option<RAGModel>,
+    pub embedding_model: Arc<dyn AIModel>,
+    pub llm_model: Option<Arc<dyn AIModel>>,
 }
 
 /// Complete RAG instance information including provider and models
@@ -38,14 +32,6 @@ pub struct TextChunk {
     pub metadata: HashMap<String, serde_json::Value>,
 }
 
-/// Embedding vector with metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EmbeddingVector {
-    pub vector: Vec<f32>,
-    pub model_name: String,
-    pub dimensions: usize,
-    pub created_at: DateTime<Utc>,
-}
 
 /// Entity extracted from text
 #[derive(Debug, Clone, Serialize, Deserialize)]
