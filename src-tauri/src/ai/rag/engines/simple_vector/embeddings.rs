@@ -13,12 +13,11 @@ impl RAGSimpleVectorEngine {
         chunks: &[TextChunk],
     ) -> RAGResult<Vec<Vec<f32>>> {
         // Get engine settings for batch size
-        let engine_settings =
-            crate::ai::rag::utils::get_rag_engine_settings(&self.instance_info.instance);
+        let engine_settings = &self.rag_instance.instance.engine_settings;
         let vector_settings = engine_settings.simple_vector.as_ref().ok_or_else(|| {
             tracing::error!(
                 "SimpleVector engine settings not found for instance {}",
-                self.instance_id
+                self.id
             );
             RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError)
         })?;
@@ -35,7 +34,7 @@ impl RAGSimpleVectorEngine {
 
         // Get AI model from rag_instance_info (already created)
         let ai_model = self
-            .instance_info
+            .rag_instance
             .models
             .embedding_model
             .clone();
@@ -130,12 +129,12 @@ impl RAGSimpleVectorEngine {
             );
             enhanced_metadata.insert(
                 "embedding_model".to_string(),
-                serde_json::json!(self.instance_info.models.embedding_model.model_name()),
+                serde_json::json!(self.rag_instance.models.embedding_model.model_name()),
             );
 
             // Store the document and propagate any errors
             queries::upsert_vector_document(
-                self.instance_id,
+                self.id,
                 file_id,
                 chunk.chunk_index as i32,
                 &chunk.content,

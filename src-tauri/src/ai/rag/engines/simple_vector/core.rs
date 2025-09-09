@@ -14,8 +14,8 @@ use uuid::Uuid;
 /// Simple Vector RAG Engine
 pub struct RAGSimpleVectorEngine {
     // === INSTANCE ===
-    pub(super) instance_id: Uuid,
-    pub(super) instance_info: crate::ai::rag::types::RAGInstanceInfo,
+    pub(super) id: Uuid,
+    pub(super) rag_instance: crate::ai::rag::types::RAGInstanceInfo,
 }
 
 impl RAGSimpleVectorEngine {
@@ -29,8 +29,8 @@ impl RAGSimpleVectorEngine {
 
         Ok(Self {
             // === INSTANCE ===
-            instance_id,
-            instance_info,
+            id: instance_id,
+            rag_instance: instance_info,
         })
     }
 
@@ -40,7 +40,7 @@ impl RAGSimpleVectorEngine {
         stage: PipelineStage,
         status: ProcessingStatus,
     ) -> RAGResult<()> {
-        queries::update_pipeline_status(self.instance_id, file_id, stage, status)
+        queries::update_pipeline_status(self.id, file_id, stage, status)
             .await
     }
 
@@ -81,7 +81,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
             .and_then(|ext| ext.to_str())
             .unwrap_or("txt");
 
-        let file_path = get_rag_file_storage().get_file_path(self.instance_id, file_id, extension);
+        let file_path = get_rag_file_storage().get_file_path(self.id, file_id, extension);
 
         if !file_path.exists() {
             let error_msg = format!("File not found at path: {:?}", file_path);
@@ -278,7 +278,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         tracing::info!(
             "Processed file {} for instance {} in {:?}",
             filename,
-            self.instance_id,
+            self.id,
             elapsed
         );
 

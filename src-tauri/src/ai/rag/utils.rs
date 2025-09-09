@@ -1,7 +1,7 @@
 // Utility functions for RAG operations
 
 use crate::ai::rag::types::{RAGInstanceInfo, RAGModels};
-use crate::database::models::rag_instance::{RAGEngineSettings, RAGInstance, RAGInstanceErrorCode};
+use crate::database::models::rag_instance::RAGInstanceErrorCode;
 use crate::database::queries::{rag_instances, rag_providers};
 use uuid::Uuid;
 
@@ -51,7 +51,3 @@ pub async fn get_rag_instance_info(
     })
 }
 
-/// Get RAG engine settings from RAG instance
-pub fn get_rag_engine_settings(instance: &RAGInstance) -> &RAGEngineSettings {
-    &instance.engine_settings
-}
