@@ -133,7 +133,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         };
 
         let content = processing_result.content;
-        let _metadata = processing_result.metadata;
+        let metadata = processing_result.metadata;
         let quality_score = processing_result.quality_score;
 
         tracing::info!(
@@ -150,6 +150,10 @@ impl RAGEngine for RAGSimpleVectorEngine {
         )
         .await?;
 
+        // Save file metadata to rag_instance_files table
+        let metadata_json = serde_json::to_value(metadata).unwrap_or(serde_json::Value::Null);
+        queries::update_file_metadata(self.id, file_id, metadata_json).await?;
+
         // Step 2: Advanced Chunking with LightRAG-inspired processing
         self.update_pipeline_status(
             file_id,
@@ -159,7 +163,7 @@ impl RAGEngine for RAGSimpleVectorEngine {
         .await?;
 
         let chunker = TokenBasedChunker::new();
-        let raw_chunks = match chunker.chunk(&content, None, None, false, 0.7).await {
+        let raw_chunks = match chunker.chunk(&content, None, None, true, 0.7).await {
             Ok(chunks) => chunks,
             Err(e) => {
                 let error_msg = format!("Text chunking failed for {}: {}", filename, e);

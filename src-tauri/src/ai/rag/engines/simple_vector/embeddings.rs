@@ -5,7 +5,6 @@ use crate::ai::rag::{
     types::TextChunk,
     RAGErrorCode, RAGIndexingErrorCode, RAGInstanceErrorCode, RAGResult,
 };
-use chrono::Utc;
 
 impl RAGSimpleVectorEngine {
     pub(super) async fn process_embeddings_in_batches(
@@ -120,16 +119,8 @@ impl RAGSimpleVectorEngine {
             // Enhanced metadata with quality scores and processing info
             let mut enhanced_metadata = chunk.metadata.clone();
             enhanced_metadata.insert(
-                "processing_timestamp".to_string(),
-                serde_json::json!(Utc::now().to_rfc3339()),
-            );
-            enhanced_metadata.insert(
                 "chunk_quality_score".to_string(),
                 serde_json::json!(0.85), // Placeholder quality score
-            );
-            enhanced_metadata.insert(
-                "embedding_model".to_string(),
-                serde_json::json!(self.rag_instance.models.embedding_model.model_name()),
             );
 
             // Store the document and propagate any errors

@@ -157,3 +157,40 @@ pub async fn upsert_vector_document(
 
     Ok(())
 }
+
+/// Update file metadata in rag_instance_files table
+pub async fn update_file_metadata(
+    instance_id: Uuid,
+    file_id: Uuid,
+    metadata: serde_json::Value,
+) -> RAGResult<()> {
+    let database = get_database_pool().map_err(|e| {
+        tracing::error!("Failed to get database pool for file metadata update: {}", e);
+        RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
+    })?;
+
+    sqlx::query!(
+        r#"
+        UPDATE rag_instance_files 
+        SET rag_metadata = $3,
+            updated_at = NOW()
+        WHERE rag_instance_id = $1 AND file_id = $2
+        "#,
+        instance_id,
+        file_id,
+        metadata
+    )
+    .execute(&*database)
+    .await
+    .map_err(|e| {
+        tracing::error!(
+            "Failed to update file metadata for instance {} and file {}: {}",
+            instance_id,
+            file_id,
+            e
+        );
+        RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError)
+    })?;
+
+    Ok(())
+}
