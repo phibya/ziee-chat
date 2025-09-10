@@ -64,7 +64,7 @@ export function AddLocalModelUploadDrawer() {
       const values = await form.validateFields()
 
       // Auto-generate model ID from display name
-      const modelId = generateModelId(values.alias || 'model')
+      const modelId = generateModelId(values.display_name || 'model')
 
       if (selectedFiles.length === 0) {
         message.error(t('providers.selectModelFolderRequired'))
@@ -107,7 +107,7 @@ export function AddLocalModelUploadDrawer() {
       await uploadLocalModel({
         name: modelId,
         provider_id: providerId!,
-        alias: values.alias,
+        display_name: values.display_name,
         description: values.description,
         main_filename: values.main_filename,
         file_format: values.file_format,

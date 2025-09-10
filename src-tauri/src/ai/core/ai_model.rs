@@ -32,7 +32,7 @@ pub trait AIModel: Send + Sync {
     /// Get the unique identifier for this model
     fn model_id(&self) -> Uuid;
     
-    /// Get the model name/alias
+    /// Get the model name
     fn model_name(&self) -> &str;
     
     /// Get the provider ID this model belongs to
@@ -77,8 +77,14 @@ pub trait AIModel: Send + Sync {
     /// Get supported file types (delegates to provider)
     fn supported_file_types(&self) -> Vec<String>;
     
-    /// Forward request to provider's API (for proxy functionality)
-    async fn forward_request(
+    /// Forward chat request to provider's API (for proxy functionality)
+    async fn forward_chat_request(
+        &self,
+        request: serde_json::Value,
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>>;
+    
+    /// Forward embeddings request to provider's API (for proxy functionality)
+    async fn forward_embeddings_request(
         &self,
         request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>>;

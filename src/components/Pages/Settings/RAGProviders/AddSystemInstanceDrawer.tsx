@@ -29,7 +29,7 @@ export function AddSystemInstanceDrawer() {
       const requestData: CreateSystemRAGInstanceRequest = {
         provider_id: providerId,
         name: values.name,
-        alias: values.name, // Use name as alias
+        display_name: values.name, // Use name as alias
         description: values.description,
         llm_model_id: undefined,
         parameters: {},

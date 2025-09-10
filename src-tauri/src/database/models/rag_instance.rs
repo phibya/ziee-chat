@@ -26,13 +26,13 @@ pub struct RAGInstance {
     pub user_id: Option<Uuid>, // null for system instances
     pub project_id: Option<Uuid>,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub enabled: bool,
     pub is_active: bool,
     pub is_system: bool,
     pub status: EnumOption<RAGInstanceStatus>,
-    pub error_code: EnumOption<RAGIndexingErrorCode>,
+    pub error_code: EnumOption<RAGInstanceErrorCode>,
     pub engine_type: RAGEngineType,
     pub engine_settings: RAGEngineSettings,
     pub embedding_model_id: Option<Uuid>,
@@ -110,6 +110,7 @@ impl_string_to_enum!(RAGInstanceStatus);
 pub enum RAGInstanceErrorCode {
     EmbeddingModelNotConfig,
     EmbeddingModelNotFound,
+    EmbeddingModelTestFailed,
     LlmModelNotConfig,
     LlmModelNotFound,
     ProviderConnectionFailed,
@@ -126,6 +127,7 @@ impl RAGInstanceErrorCode {
         match self {
             RAGInstanceErrorCode::EmbeddingModelNotConfig => "embedding_model_not_config",
             RAGInstanceErrorCode::EmbeddingModelNotFound => "embedding_model_not_found",
+            RAGInstanceErrorCode::EmbeddingModelTestFailed => "embedding_model_test_failed",
             RAGInstanceErrorCode::LlmModelNotConfig => "llm_model_not_config",
             RAGInstanceErrorCode::LlmModelNotFound => "llm_model_not_found",
             RAGInstanceErrorCode::ProviderConnectionFailed => "provider_connection_failed",
@@ -142,6 +144,7 @@ impl RAGInstanceErrorCode {
         match s {
             "embedding_model_not_config" => Some(RAGInstanceErrorCode::EmbeddingModelNotConfig),
             "embedding_model_not_found" => Some(RAGInstanceErrorCode::EmbeddingModelNotFound),
+            "embedding_model_test_failed" => Some(RAGInstanceErrorCode::EmbeddingModelTestFailed),
             "llm_model_not_config" => Some(RAGInstanceErrorCode::LlmModelNotConfig),
             "llm_model_not_found" => Some(RAGInstanceErrorCode::LlmModelNotFound),
             "provider_connection_failed" => Some(RAGInstanceErrorCode::ProviderConnectionFailed),
@@ -171,7 +174,7 @@ pub struct CreateRAGInstanceRequest {
     pub provider_id: Uuid,
     pub project_id: Option<Uuid>,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub engine_type: RAGEngineType,
     pub embedding_model_id: Option<Uuid>,
@@ -184,7 +187,7 @@ pub struct CreateRAGInstanceRequest {
 pub struct CreateSystemRAGInstanceRequest {
     pub provider_id: Uuid,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub engine_type: RAGEngineType,
     pub embedding_model_id: Option<Uuid>,

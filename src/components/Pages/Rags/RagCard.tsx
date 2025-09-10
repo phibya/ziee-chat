@@ -54,7 +54,7 @@ export function RagCard({ ragInstance }: RagCardProps) {
         {/* Header with name */}
         <div className="mb-2">
           <Typography.Text strong className="m-0">
-            {ragInstance.name}
+            {ragInstance.display_name}
           </Typography.Text>
         </div>
 
@@ -117,7 +117,7 @@ export function RagCard({ ragInstance }: RagCardProps) {
                       e.domEvent.preventDefault()
                       modal.confirm({
                         title: 'Delete RAG Instance',
-                        content: `Are you sure you want to delete "${ragInstance.name}"?`,
+                        content: `Are you sure you want to delete "${ragInstance.display_name}"?`,
                         okText: 'Delete',
                         okType: 'danger',
                         onOk: () => handleDeleteInstance(ragInstance),

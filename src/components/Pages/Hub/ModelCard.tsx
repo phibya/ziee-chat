@@ -61,14 +61,14 @@ export function ModelCard({ model }: ModelCardProps) {
     const repo = repositories.find(repo => repo.url === model.repository_url)
     if (!repo) {
       message.error(
-        `Repository not found for model ${model.alias}. Please check the repository configuration.`,
+        `Repository not found for model ${model.display_name}. Please check the repository configuration.`,
       )
       return
     }
 
     if (!model.public && !adminRepositoryHasCredentials(repo)) {
       message.info(
-        `Model ${model.alias} is private and requires credentials. Please configure the repository with valid credentials.`,
+        `Model ${model.display_name} is private and requires credentials. Please configure the repository with valid credentials.`,
       )
 
       openRepositoryDrawer(repo)
@@ -79,7 +79,7 @@ export function ModelCard({ model }: ModelCardProps) {
 
     if (localProviders.length === 0) {
       message.error(
-        `No local provider found for model ${model.alias}. Please ensure a local provider is configured.`,
+        `No local provider found for model ${model.display_name}. Please ensure a local provider is configured.`,
       )
       return
     }
@@ -230,15 +230,15 @@ export function ModelCard({ model }: ModelCardProps) {
 
     try {
       // Generate a unique model name for local storage
-      const modelName = `${model.alias
+      const modelName = `${model.display_name
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')}-${Date.now().toString(36)}`
 
       // Prepare download request
-      const alias = selectedQuantization 
-        ? `${model.alias} (${selectedQuantization.name.toUpperCase()})`
-        : model.alias
+      const display_name = selectedQuantization
+        ? `${model.display_name} (${selectedQuantization.name.toUpperCase()})`
+        : model.display_name
 
       const downloadRequest = {
         provider_id: provider.id,
@@ -247,7 +247,7 @@ export function ModelCard({ model }: ModelCardProps) {
         main_filename: selectedFilename,
         repository_branch: 'main', // Default branch
         name: modelName,
-        alias: alias,
+        display_name: display_name,
         description:
           model.description || `Downloaded from ${model.repository_url}`,
         file_format: model.file_format,
@@ -264,12 +264,12 @@ export function ModelCard({ model }: ModelCardProps) {
       await downloadModelFromRepository(downloadRequest)
 
       message.success(
-        `Download started for ${model.alias}. You can monitor the progress in the download view.`,
+        `Download started for ${model.display_name}. You can monitor the progress in the download view.`,
       )
     } catch (error: any) {
       console.error('Failed to start model download:', error)
       message.error(
-        `Failed to start download for ${model.alias}: ${error.message || 'Unknown error'}`,
+        `Failed to start download for ${model.display_name}: ${error.message || 'Unknown error'}`,
       )
     }
   }
@@ -327,7 +327,7 @@ export function ModelCard({ model }: ModelCardProps) {
                     className="font-medium cursor-pointer"
                     onClick={handleCardClick}
                   >
-                    {model.alias}
+                    {model.display_name}
                   </Text>
                   {model.public ? (
                     <Tag color="green" icon={<UnlockOutlined />}>

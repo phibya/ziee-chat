@@ -112,7 +112,7 @@ impl ProgressTracker {
 pub struct CreateModelWithFilesRequest {
     pub provider_id: Uuid,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub file_format: FileFormat,
     pub main_filename: String,
@@ -266,7 +266,7 @@ async fn create_model_with_files(request: CreateModelWithFilesRequest) -> Result
     let create_request = crate::database::models::CreateModelRequest {
         provider_id: request.provider_id,
         name: request.name,
-        alias: request.alias,
+        display_name: request.display_name,
         description: request.description,
         enabled: Some(true), // Enable immediately since everything succeeded
         capabilities: request
@@ -499,7 +499,7 @@ pub struct DownloadFromRepositoryRequest {
     pub repository_path: String, // e.g., "microsoft/DialoGPT-medium"
     pub repository_branch: Option<String>, // e.g., "main"
     pub name: String,            // model ID
-    pub alias: String,           // display name
+    pub display_name: String,           // display name
     pub description: Option<String>,
     pub file_format: FileFormat,
     pub main_filename: String,
@@ -527,7 +527,7 @@ pub async fn upload_multiple_files_and_commit(
     let mut main_filename: Option<String> = None;
     let mut provider_id: Option<Uuid> = None;
     let mut name: Option<String> = None;
-    let mut alias: Option<String> = None;
+    let mut display_name: Option<String> = None;
     let mut description: Option<String> = None;
     let mut file_format: Option<String> = None;
     let mut capabilities: Option<ModelCapabilities> = None;
@@ -620,17 +620,17 @@ pub async fn upload_multiple_files_and_commit(
                 })?;
                 name = Some(value);
             }
-            "alias" => {
+            "display_name" => {
                 let value = field.text().await.map_err(|e| {
                     (
                         StatusCode::BAD_REQUEST,
                         AppError::new(
                             ErrorCode::ValidInvalidInput,
-                            format!("Failed to read alias: {}", e),
+                            format!("Failed to read display_name: {}", e),
                         ),
                     )
                 })?;
-                alias = Some(value);
+                display_name = Some(value);
             }
             "description" => {
                 let value = field.text().await.map_err(|e| {
@@ -748,12 +748,12 @@ pub async fn upload_multiple_files_and_commit(
         )
     })?;
 
-    let alias = alias.ok_or_else(|| {
+    let display_name = display_name.ok_or_else(|| {
         (
             StatusCode::BAD_REQUEST,
             AppError::new(
                 ErrorCode::ValidInvalidInput,
-                "Missing alias in multipart request",
+                "Missing display_name in multipart request",
             ),
         )
     })?;
@@ -769,11 +769,11 @@ pub async fn upload_multiple_files_and_commit(
     })?;
 
     println!(
-        "Processing multipart upload: {} files, main file: {}, name: {}, alias: {}",
+        "Processing multipart upload: {} files, main file: {}, name: {}, display_name: {}",
         uploaded_files.len(),
         main_filename,
         name,
-        alias
+        display_name
     );
 
     // Step 1: Upload files to temporary storage
@@ -820,7 +820,7 @@ pub async fn upload_multiple_files_and_commit(
     let model = create_model_with_files(CreateModelWithFilesRequest {
         provider_id,
         name,
-        alias,
+        display_name,
         description,
         file_format: FileFormat::from_str(&file_format).ok_or_else(|| {
             (
@@ -847,7 +847,7 @@ pub async fn upload_multiple_files_and_commit(
         )
     })?;
 
-    println!("Model created successfully: {} ({})", model.alias, model.id);
+    println!("Model created successfully: {} ({})", model.display_name, model.id);
 
     Ok((StatusCode::OK, Json(model)))
 }
@@ -879,7 +879,7 @@ pub async fn initiate_repository_download(
             files: None, // Download all files
             quantization: None,
             repository_path: Some(request.repository_path.clone()),
-            alias: Some(request.alias.clone()),
+            display_name: Some(request.display_name.clone()),
             description: request.description.clone(),
             file_format: Some(request.file_format.as_str().to_string()),
             main_filename: Some(request.main_filename.clone()),
@@ -1228,7 +1228,7 @@ pub async fn initiate_repository_download(
                 match create_model_with_files(CreateModelWithFilesRequest {
                     provider_id: request.provider_id,
                     name: request.name,
-                    alias: request.alias,
+                    display_name: request.display_name,
                     description: request.description,
                     file_format: request.file_format,
                     main_filename: request.main_filename,

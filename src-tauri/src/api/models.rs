@@ -346,7 +346,7 @@ pub async fn enable_model(
         model_id,
         UpdateModelRequest {
             name: None,
-            alias: None,
+            display_name: None,
             description: None,
             parameters: None,
             enabled: Some(true),
@@ -381,7 +381,7 @@ pub async fn disable_model(
         model_id,
         UpdateModelRequest {
             name: None,
-            alias: None,
+            display_name: None,
             description: None,
             parameters: None,
             enabled: Some(false),

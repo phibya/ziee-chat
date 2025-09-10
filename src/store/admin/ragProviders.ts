@@ -259,7 +259,7 @@ export const createSystemRAGInstance = async (
       provider_id: providerId,
       name: instanceData.name,
       description: instanceData.description,
-      alias: instanceData.alias || instanceData.name,
+      display_name: instanceData.display_name || instanceData.name,
       engine_type: instanceData.engine_type,
       embedding_model_id: instanceData.embedding_model_id,
       llm_model_id: instanceData.llm_model_id,

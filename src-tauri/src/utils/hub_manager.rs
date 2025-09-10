@@ -501,11 +501,11 @@ impl HubManager {
                                     base_model.name = name.to_string();
                                 }
                             }
-                            if let Some(alias) =
-                                override_model.get("alias").and_then(|v| v.as_str())
+                            if let Some(display_name) =
+                                override_model.get("display_name").and_then(|v| v.as_str())
                             {
-                                if !alias.is_empty() {
-                                    base_model.alias = alias.to_string();
+                                if !display_name.is_empty() {
+                                    base_model.display_name = display_name.to_string();
                                 }
                             }
                             if let Some(description) =

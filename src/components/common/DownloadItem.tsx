@@ -73,7 +73,7 @@ export function DownloadItem({
               if (onClick) onClick()
             }}
           >
-            {download.request_data.alias}
+            {download.request_data.display_name}
           </Link>
           {download.status !== 'failed' && (
             <Text type="secondary" className="!text-xs">
@@ -118,7 +118,7 @@ export function DownloadItem({
             to={`/settings/providers/${download.provider_id}`}
             className="text-xs truncate flex-1 pr-2"
           >
-            {download.request_data.alias}
+            {download.request_data.display_name}
           </Link>
           <Flex className="gap-1">
             {!['completed', 'failed', 'cancelled'].includes(
@@ -179,7 +179,7 @@ export function DownloadItem({
       <Flex justify="space-between" align="flex-start" className="mb-3">
         <div className="flex-1">
           <div className="text-base font-medium mb-1">
-            {download.request_data.alias}
+            {download.request_data.display_name}
           </div>
           {download.status !== 'failed' && (
             <Text type="secondary" className="text-xs">

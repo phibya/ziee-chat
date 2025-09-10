@@ -29,7 +29,7 @@ export const useAvailableModels = () => {
         options.push({
           label: provider.name,
           options: filteredModels.map((model: Model) => ({
-            label: model.alias || model.name,
+            label: model.display_name || model.name,
             value: model.id,
             description: model.description || '',
           })),

@@ -281,7 +281,7 @@ export function ModelsSection() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2 flex-wrap-reverse">
                     <div className={'flex-1 min-w-48'}>
-                      <Text className="font-medium">{model.alias}</Text>
+                      <Text className="font-medium">{model.display_name}</Text>
                       {model.is_deprecated && (
                         <span className="text-xs">⚠️</span>
                       )}

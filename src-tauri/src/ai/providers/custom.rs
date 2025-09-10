@@ -207,11 +207,11 @@ impl AIProvider for CustomProvider {
         }
     }
 
-    async fn forward_request(
+    async fn forward_chat_request(
         &self,
         request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        match self.inner.forward_request(request).await {
+        match self.inner.forward_chat_request(request).await {
             Ok(response) => Ok(response),
             Err(e) => Err(self.handle_custom_errors(&e.to_string())),
         }

@@ -141,7 +141,7 @@ function ModelItem({ proxyModel, onUpdate, onRemove, onEdit }: ModelItemProps) {
             <Flex gap={2} align="center">
               <Text className="font-medium">
                 {proxyModel.alias_id ||
-                  model?.alias ||
+                  model?.display_name ||
                   model?.name ||
                   'Unknown Model'}
               </Text>

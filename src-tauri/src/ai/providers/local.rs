@@ -132,9 +132,6 @@ impl LocalProvider {
         Ok(payload)
     }
 
-    fn get_endpoint_url(&self) -> String {
-        format!("{}/v1/chat/completions", self.base_url)
-    }
 
     /// Fetch model capabilities from database using model_id
     async fn get_model_capabilities(&self, model_id: Uuid) -> Option<ModelCapabilities> {
@@ -281,7 +278,7 @@ impl AIProvider for LocalProvider {
         &self,
         request: ChatRequest,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = self.get_endpoint_url();
+        let url = format!("{}/v1/chat/completions", self.base_url);
 
         // Fetch model capabilities from database
         let capabilities = self.get_model_capabilities(request.model_id).await;
@@ -324,7 +321,7 @@ impl AIProvider for LocalProvider {
         &self,
         request: ChatRequest,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = self.get_endpoint_url();
+        let url = format!("{}/v1/chat/completions", self.base_url);
 
         // Fetch model capabilities from database
         let capabilities = self.get_model_capabilities(request.model_id).await;
@@ -408,14 +405,33 @@ impl AIProvider for LocalProvider {
         "local"
     }
 
-    async fn forward_request(
+    async fn forward_chat_request(
         &self,
         request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        let url = self.get_endpoint_url();
+        let url = format!("{}/v1/chat/completions", self.base_url);
 
         // For local providers, we forward the request directly to the local model server
         // Local models typically use OpenAI-compatible endpoints
+        let response = self
+            .client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&request)
+            .send()
+            .await?;
+
+        Ok(response)
+    }
+
+    async fn forward_embeddings_request(
+        &self,
+        request: serde_json::Value,
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("{}/v1/embeddings", self.base_url);
+
+        // For local providers, we forward the request directly to the local model server
+        // Local models typically use OpenAI-compatible embeddings endpoints
         let response = self
             .client
             .post(&url)
@@ -433,11 +449,25 @@ impl AIProvider for LocalProvider {
     ) -> Result<EmbeddingsResponse, Box<dyn std::error::Error + Send + Sync>> {
         let url = format!("{}/v1/embeddings", self.base_url);
 
+        // Create a custom JSON payload that omits null fields
+        let mut json_body = serde_json::json!({
+            "model": request.model_name,
+            "input": request.input
+        });
+        
+        // Only include optional fields if they have values
+        if let Some(encoding_format) = request.encoding_format {
+            json_body["encoding_format"] = serde_json::Value::String(encoding_format);
+        }
+        // if let Some(dimensions) = request.dimensions {
+        //     json_body["dimensions"] = serde_json::Value::Number(dimensions.into());
+        // }
+
         let response = self
             .client
             .post(&url)
             .header("Content-Type", "application/json")
-            .json(&request)
+            .json(&json_body)
             .send()
             .await?;
 
@@ -460,7 +490,7 @@ impl LocalProvider {
         request: ChatRequest,
         capabilities: Option<ModelCapabilities>,
     ) -> Result<ChatResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = self.get_endpoint_url();
+        let url = format!("{}/v1/chat/completions", self.base_url);
 
         // Use provided capabilities or fetch from database
         let final_capabilities = if capabilities.is_some() {
@@ -509,7 +539,7 @@ impl LocalProvider {
         request: ChatRequest,
         capabilities: Option<ModelCapabilities>,
     ) -> Result<StreamingResponse, Box<dyn std::error::Error + Send + Sync>> {
-        let url = self.get_endpoint_url();
+        let url = format!("{}/v1/chat/completions", self.base_url);
 
         // Use provided capabilities or fetch from database
         let final_capabilities = if capabilities.is_some() {

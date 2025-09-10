@@ -542,7 +542,7 @@ impl LlamaCppEngine {
             .and_then(|caps| caps.text_embedding)
             .unwrap_or(false) {
             args.push("--embeddings".to_string());
-            println!("Enabled embeddings support for model: {}", model.alias);
+            println!("Enabled embeddings support for model: {}", model.display_name);
         }
 
         Ok(args)
@@ -572,10 +572,10 @@ impl LocalEngine for LlamaCppEngine {
         let timeout_seconds = self.calculate_timeout_for_model_size(model_size);
 
         println!(
-            "Starting LlamaCpp model {} with timeout {} seconds ({:.1} minutes)",
-            model.alias,
-            timeout_seconds,
-            timeout_seconds as f64 / 60.0
+          "Starting LlamaCpp model {} with timeout {} seconds ({:.1} minutes)",
+          model.display_name,
+          timeout_seconds,
+          timeout_seconds as f64 / 60.0
         );
 
         // Build command arguments

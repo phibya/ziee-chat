@@ -162,7 +162,7 @@ export const ChatInput = function ChatInput({
         options.push({
           label: provider.name,
           options: providerModels.map(model => ({
-            label: model.alias || model.id,
+            label: model.display_name || model.name,
             value: `${provider.id}:${model.id}`,
             description: model.description || '',
           })),

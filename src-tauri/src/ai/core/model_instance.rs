@@ -5,7 +5,7 @@ use crate::database::models::model::{Model, ModelCapabilities, ModelParameters};
 use super::ai_model::{AIModel, SimplifiedChatRequest, SimplifiedEmbeddingsRequest};
 use super::providers::{
     AIProvider, ChatRequest, ChatResponse, StreamingResponse,
-    EmbeddingsRequest, EmbeddingsResponse, FileReference, ProviderFileContent
+    EmbeddingsRequest, EmbeddingsResponse
 };
 
 /// Concrete implementation of AIModel that wraps a Model database record with an AIProvider instance
@@ -39,7 +39,7 @@ impl AIModel for ModelInstance {
     }
     
     fn model_name(&self) -> &str {
-        &self.model.alias
+        &self.model.name
     }
     
     fn provider_id(&self) -> Uuid {
@@ -61,7 +61,7 @@ impl AIModel for ModelInstance {
         // Convert SimplifiedChatRequest to full ChatRequest with model info populated
         let full_request = ChatRequest {
             messages: request.messages,
-            model_name: self.model.alias.clone(),
+            model_name: self.model.display_name.clone(),
             model_id: self.model.id,
             provider_id: self.model.provider_id,
             stream: request.stream,
@@ -79,7 +79,7 @@ impl AIModel for ModelInstance {
         // Convert SimplifiedChatRequest to full ChatRequest with model info populated
         let full_request = ChatRequest {
             messages: request.messages,
-            model_name: self.model.alias.clone(),
+            model_name: self.model.name.clone(),
             model_id: self.model.id,
             provider_id: self.model.provider_id,
             stream: request.stream,
@@ -97,7 +97,7 @@ impl AIModel for ModelInstance {
         // Convert SimplifiedEmbeddingsRequest to full EmbeddingsRequest with model info populated
         let full_request = EmbeddingsRequest {
             model_id: self.model.id,
-            model_name: self.model.alias.clone(),
+            model_name: self.model.name.clone(),
             input: request.input,
             encoding_format: request.encoding_format,
             dimensions: request.dimensions,
@@ -134,48 +134,35 @@ impl AIModel for ModelInstance {
         self.provider.supported_file_types()
     }
     
-    async fn forward_request(
+    async fn forward_chat_request(
         &self,
         request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        self.provider.forward_request(request).await
+        self.provider.forward_chat_request(request).await
+    }
+    
+    async fn forward_embeddings_request(
+        &self,
+        request: serde_json::Value,
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
+        self.provider.forward_embeddings_request(request).await
     }
     
     async fn get_embedding_dimension(&self) -> Option<u32> {
-        self.provider.get_embedding_dimension(&self.model.alias).await
-    }
-}
-
-// Additional methods that might be useful but not part of the core AIModel trait
-impl ModelInstance {
-    /// Upload a file using the underlying provider
-    pub async fn upload_file(
-        &self,
-        file_data: &[u8],
-        filename: &str,
-        mime_type: &str,
-    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        self.provider.upload_file(file_data, filename, mime_type).await
-    }
-    
-    /// Resolve file content using the underlying provider
-    pub async fn resolve_file_content(
-        &self,
-        file_ref: &mut FileReference,
-    ) -> Result<ProviderFileContent, Box<dyn std::error::Error + Send + Sync>> {
-        self.provider.resolve_file_content(file_ref, self.provider_id()).await
-    }
-    
-    /// Forward request to provider's API (for proxy functionality)
-    pub async fn forward_request(
-        &self,
-        request: serde_json::Value,
-    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        self.provider.forward_request(request).await
-    }
-    
-    /// Get embedding dimension for this model
-    pub async fn get_embedding_dimension(&self) -> Option<u32> {
-        self.provider.get_embedding_dimension(&self.model.alias).await
+        // First check if we already have the dimension stored in the database
+        if let Some(dimension) = self.model.embedding_dimension {
+            return Some(dimension as u32);
+        }
+        
+        // If not stored, query the provider
+        if let Some(dimension) = self.provider.get_embedding_dimension(&self.model.name).await {
+            // Save the dimension to the database
+            if let Err(e) = crate::database::queries::models::update_model_embedding_dimension(&self.model.id, dimension as i32).await {
+                eprintln!("Failed to save embedding dimension to database: {}", e);
+            }
+            return Some(dimension);
+        }
+        
+        None
     }
 }

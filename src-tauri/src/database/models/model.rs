@@ -776,7 +776,7 @@ pub struct Model {
     pub id: Uuid,
     pub provider_id: Uuid,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub enabled: bool,
     pub is_deprecated: bool,
@@ -785,7 +785,6 @@ pub struct Model {
     pub parameters: JsonOption<ModelParameters>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    // Additional fields for local models (None for other providers)
     pub file_size_bytes: Option<i64>,
     pub validation_status: Option<String>,
     pub validation_issues: JsonOption<Vec<String>>,
@@ -795,6 +794,7 @@ pub struct Model {
     pub engine_settings: JsonOption<ModelEngineSettings>, // Engine-specific settings
     pub file_format: FileFormat, // Model file format: safetensors, gguf, pytorch, etc. - REQUIRED
     pub source: JsonOption<SourceInfo>, // Source information for tracking download origin
+    pub embedding_dimension: Option<i32>, // Vector dimension for embedding models
 }
 
 // Request/Response structures for models
@@ -802,7 +802,7 @@ pub struct Model {
 pub struct CreateModelRequest {
     pub provider_id: Uuid,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub capabilities: Option<ModelCapabilities>,
@@ -816,7 +816,7 @@ pub struct CreateModelRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateModelRequest {
     pub name: Option<String>,
-    pub alias: Option<String>,
+    pub display_name: Option<String>,
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub is_active: Option<bool>,

@@ -122,7 +122,16 @@ pub trait AIProvider: Send + Sync {
 
     /// Forward request to provider's API and return raw response
     /// This is used for API proxy functionality
-    async fn forward_request(
+    async fn forward_chat_request(
+        &self,
+        _request: serde_json::Value,
+    ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
+        Err("HTTP forwarding not supported by this provider".into())
+    }
+
+    /// Forward embeddings request to provider's API and return raw response
+    /// This is used for API proxy functionality
+    async fn forward_embeddings_request(
         &self,
         _request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {

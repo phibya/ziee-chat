@@ -259,7 +259,7 @@ export const searchModels = (models: HubModel[], query: string): HubModel[] => {
   return models.filter(
     model =>
       model.name.toLowerCase().includes(searchTerm) ||
-      model.alias.toLowerCase().includes(searchTerm) ||
+      model.display_name.toLowerCase().includes(searchTerm) ||
       model.description?.toLowerCase().includes(searchTerm) ||
       model.tags.some(tag => tag.toLowerCase().includes(searchTerm)),
   )

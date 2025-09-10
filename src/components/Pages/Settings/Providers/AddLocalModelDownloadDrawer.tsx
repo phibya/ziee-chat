@@ -93,7 +93,7 @@ export function AddLocalModelDownloadDrawer() {
       const values = await form.validateFields()
 
       // Auto-generate model ID from display name
-      const modelId = generateModelId(values.alias || 'model')
+      const modelId = generateModelId(values.display_name || 'model')
 
       if (!values.repository_id) {
         message.error(t('providers.repositoryRequired'))
@@ -139,7 +139,7 @@ export function AddLocalModelDownloadDrawer() {
             main_filename: values.main_filename,
             repository_branch: values.repository_branch,
             name: modelId,
-            alias: values.alias,
+            display_name: values.display_name,
             description: values.description,
             file_format: values.file_format,
             capabilities: values.capabilities || {},
@@ -177,7 +177,7 @@ export function AddLocalModelDownloadDrawer() {
         // In view mode, populate form with download data from request_data
         const requestData = viewDownload.request_data
         form.setFieldsValue({
-          alias: requestData.alias,
+          display_name: requestData.display_name,
           description: requestData.description || '',
           file_format: requestData.file_format,
           repository_id: viewDownload.repository_id, // Get from download instance, not request_data
@@ -191,7 +191,7 @@ export function AddLocalModelDownloadDrawer() {
       } else if (!viewMode) {
         // In add mode, set default values
         form.setFieldsValue({
-          alias: 'TinyLlama Chat Model',
+          display_name: 'TinyLlama Chat Model',
           description:
             'Small 1.1B parameter chat model for quick testing (~637MB)',
           file_format: 'safetensors',

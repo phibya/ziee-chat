@@ -57,7 +57,9 @@ export const RagsPage: React.FC = () => {
     if (searchQuery.trim()) {
       filteredInstances = ragInstances.filter(
         instance =>
-          instance.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          instance.display_name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
           instance.description
             ?.toLowerCase()
             .includes(searchQuery.toLowerCase()),
@@ -74,7 +76,9 @@ export const RagsPage: React.FC = () => {
         )
         break
       case 'name':
-        sortedInstances.sort((a, b) => a.name.localeCompare(b.name))
+        sortedInstances.sort((a, b) =>
+          a.display_name.localeCompare(b.display_name),
+        )
         break
       case 'created':
         sortedInstances.sort(

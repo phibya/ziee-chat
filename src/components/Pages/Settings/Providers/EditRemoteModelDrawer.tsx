@@ -31,7 +31,7 @@ export function EditRemoteModelDrawer() {
     if (currentModel && open) {
       form.setFieldsValue({
         name: currentModel.name,
-        alias: currentModel.alias,
+        display_name: currentModel.display_name,
         description: currentModel.description,
         capabilities: currentModel.capabilities || {},
         parameters: currentModel.parameters || {},

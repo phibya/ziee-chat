@@ -16,7 +16,7 @@ pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, 
 
     let model_rows: Vec<Model> = sqlx::query_as!(
         Model,
-        r#"SELECT id, provider_id, name, alias, description,
+        r#"SELECT id, provider_id, name, display_name, description,
                 enabled, is_deprecated, is_active,
                 capabilities,
                 parameters,
@@ -26,7 +26,8 @@ pub async fn get_models_by_provider_id(provider_id: Uuid) -> Result<Vec<Model>, 
                 port, pid, engine_type,
                 engine_settings,
                 file_format,
-                source
+                source,
+                embedding_dimension
          FROM models 
          WHERE provider_id = $1 
          ORDER BY created_at ASC"#,
@@ -48,9 +49,9 @@ pub async fn create_model(
 
     let model_row: Model = sqlx::query_as!(
         Model,
-        r#"INSERT INTO models (id, provider_id, name, alias, description, enabled, capabilities, parameters, engine_type, engine_settings, file_format, source)
+        r#"INSERT INTO models (id, provider_id, name, display_name, description, enabled, capabilities, parameters, engine_type, engine_settings, file_format, source)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
-         RETURNING id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+         RETURNING id, provider_id, name, display_name, description, enabled, is_deprecated, is_active,
                    capabilities, 
                    parameters, 
                    created_at, updated_at, file_size_bytes, validation_status, 
@@ -59,11 +60,12 @@ pub async fn create_model(
                    engine_type, 
                    engine_settings, 
                    file_format, 
-                   source"#,
+                   source,
+                   embedding_dimension"#,
         model_id,
         provider_id,
         &request.name,
-        &request.alias,
+        &request.display_name,
         request.description.as_deref(),
         request.enabled.unwrap_or(true),
         request.capabilities.as_ref().map(|c| serde_json::to_value(c).unwrap()).unwrap_or_else(|| serde_json::json!({})),
@@ -91,7 +93,7 @@ pub async fn update_model(
 
     // If no updates provided, return existing record
     if request.name.is_none()
-        && request.alias.is_none()
+        && request.display_name.is_none()
         && request.description.is_none()
         && request.enabled.is_none()
         && request.is_active.is_none()
@@ -114,10 +116,10 @@ pub async fn update_model(
         .await?;
     }
 
-    if let Some(alias) = &request.alias {
+    if let Some(display_name) = &request.display_name {
         sqlx::query!(
-            "UPDATE models SET alias = $1, updated_at = NOW() WHERE id = $2",
-            alias,
+            "UPDATE models SET display_name = $1, updated_at = NOW() WHERE id = $2",
+            display_name,
             model_id
         )
         .execute(pool)
@@ -215,7 +217,7 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
 
     let model_row: Option<Model> = sqlx::query_as!(
         Model,
-        r#"SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+        r#"SELECT id, provider_id, name, display_name, description, enabled, is_deprecated, is_active,
                 capabilities, 
                 parameters,
                 created_at, updated_at, file_size_bytes, validation_status, 
@@ -224,7 +226,8 @@ pub async fn get_model_by_id(model_id: Uuid) -> Result<Option<Model>, sqlx::Erro
                 engine_type, 
                 engine_settings,
                 file_format, 
-                source
+                source,
+                embedding_dimension
          FROM models 
          WHERE id = $1"#,
         model_id
@@ -248,7 +251,7 @@ pub async fn create_local_model(
         Model,
         r#"
         INSERT INTO models (
-            id, provider_id, name, alias, description, 
+            id, provider_id, name, display_name, description,
             file_size_bytes, enabled, 
             is_deprecated, is_active, capabilities, parameters, 
             validation_status,
@@ -256,7 +259,7 @@ pub async fn create_local_model(
             file_format, source, created_at, updated_at
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
-        ) RETURNING id, provider_id, name, alias, description, 
+        ) RETURNING id, provider_id, name, display_name, description,
                    file_size_bytes, enabled, 
                    is_deprecated, is_active, 
                    capabilities, 
@@ -267,12 +270,13 @@ pub async fn create_local_model(
                    engine_settings, 
                    file_format, 
                    source, 
-                   port, pid, created_at, updated_at
+                   port, pid, created_at, updated_at,
+                   embedding_dimension
         "#,
         *model_id,
         &request.provider_id,
         &request.name,
-        &request.alias,
+        &request.display_name,
         request.description.as_deref(),
         0i64,
         request.enabled.unwrap_or(false),
@@ -452,6 +456,25 @@ pub async fn get_provider_by_model_id(model_id: Uuid) -> Result<Option<Provider>
     Ok(provider)
 }
 
+/// Update model embedding dimension
+pub async fn update_model_embedding_dimension(
+    model_id: &Uuid,
+    embedding_dimension: i32,
+) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    sqlx::query!(
+        "UPDATE models SET embedding_dimension = $1, updated_at = NOW() WHERE id = $2",
+        embedding_dimension,
+        model_id
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
 /// Get all models that are marked as active in the database (local models only)
 pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
     let pool = get_database_pool()?;
@@ -459,7 +482,7 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
 
     let models: Vec<Model> = sqlx::query_as!(
         Model,
-        r#"SELECT id, provider_id, name, alias, description, enabled, is_deprecated, is_active, 
+        r#"SELECT id, provider_id, name, display_name, description, enabled, is_deprecated, is_active,
                 capabilities, 
                 parameters, 
                 created_at, updated_at, file_size_bytes, validation_status, 
@@ -468,7 +491,8 @@ pub async fn get_all_active_models() -> Result<Vec<Model>, sqlx::Error> {
                 engine_type, 
                 engine_settings,
                 file_format, 
-                source
+                source,
+                embedding_dimension
          FROM models 
          WHERE is_active = true 
          AND provider_id IN (

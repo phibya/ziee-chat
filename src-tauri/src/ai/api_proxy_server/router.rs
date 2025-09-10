@@ -115,7 +115,7 @@ impl RequestRouter {
 
         // 5. Forward request using provider's implementation
         let response = ai_model
-            .forward_request(request)
+            .forward_chat_request(request)
             .await
             .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
 
@@ -148,7 +148,7 @@ impl RequestRouter {
 
         // 5. Forward request using provider's implementation
         let response = ai_model
-            .forward_request(request)
+            .forward_chat_request(request)
             .await
             .map_err(|e| ProxyError::ServerUnreachable(e.to_string()))?;
 

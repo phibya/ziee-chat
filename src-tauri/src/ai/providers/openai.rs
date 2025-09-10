@@ -286,11 +286,11 @@ impl AIProvider for OpenAIProvider {
         })
     }
 
-    async fn forward_request(
+    async fn forward_chat_request(
         &self,
         request: serde_json::Value,
     ) -> Result<reqwest::Response, Box<dyn std::error::Error + Send + Sync>> {
-        self.inner.forward_request(request).await
+        self.inner.forward_chat_request(request).await
     }
 
     async fn embeddings(

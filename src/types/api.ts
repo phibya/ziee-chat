@@ -171,7 +171,7 @@ export interface CreateModelRequest {
   description?: string
   provider_id: string
   name: string
-  alias: string
+  display_name: string
   enabled?: boolean
   capabilities?: ModelCapabilities
   parameters?: ModelParameters
@@ -201,7 +201,7 @@ export interface CreateRAGInstanceRequest {
   provider_id: string
   project_id?: string
   name: string
-  alias: string
+  display_name: string
   engine_type: RAGEngineType
   embedding_model_id?: string
   llm_model_id?: string
@@ -240,7 +240,7 @@ export interface CreateSystemRAGInstanceRequest {
   description?: string
   provider_id: string
   name: string
-  alias: string
+  display_name: string
   engine_type: RAGEngineType
   embedding_model_id?: string
   llm_model_id?: string
@@ -291,7 +291,7 @@ export interface DownloadFromRepositoryRequest {
   repository_path: string
   repository_branch?: string
   name: string
-  alias: string
+  display_name: string
   file_format: FileFormat
   main_filename: string
   capabilities?: ModelCapabilities
@@ -359,7 +359,7 @@ export interface DownloadRequestData {
   files?: string[]
   quantization?: string
   repository_path?: string
-  alias?: string
+  display_name?: string
   file_format?: string
   main_filename?: string
   capabilities?: ModelCapabilities
@@ -490,7 +490,7 @@ export interface HubModel {
   description?: string
   id: string
   name: string
-  alias: string
+  display_name: string
   repository_url: string
   repository_path: string
   main_filename: string
@@ -652,7 +652,7 @@ export interface Model {
   id: string
   provider_id: string
   name: string
-  alias: string
+  display_name: string
   enabled: boolean
   is_deprecated: boolean
   is_active: boolean
@@ -669,6 +669,7 @@ export interface Model {
   engine_settings?: ModelEngineSettings
   file_format: FileFormat
   source?: SourceInfo
+  embedding_dimension?: number
 }
 
 export interface ModelCapabilities {
@@ -948,12 +949,12 @@ export interface RAGInstance {
   user_id?: string
   project_id?: string
   name: string
-  alias: string
+  display_name: string
   enabled: boolean
   is_active: boolean
   is_system: boolean
   status?: RAGInstanceStatus
-  error_code?: RAGIndexingErrorCode
+  error_code?: RAGInstanceErrorCode
   engine_type: RAGEngineType
   engine_settings: RAGEngineSettings
   embedding_model_id?: string
@@ -964,7 +965,7 @@ export interface RAGInstance {
   updated_at: string
 }
 
-export type RAGInstanceErrorCode = 'embedding_model_not_config' | 'embedding_model_not_found' | 'llm_model_not_config' | 'llm_model_not_found' | 'provider_connection_failed' | 'provider_not_found' | 'rag_instance_not_found' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
+export type RAGInstanceErrorCode = 'embedding_model_not_config' | 'embedding_model_not_found' | 'embedding_model_test_failed' | 'llm_model_not_config' | 'llm_model_not_found' | 'provider_connection_failed' | 'provider_not_found' | 'rag_instance_not_found' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
 
 export interface RAGInstanceFile {
   id: string
@@ -1100,7 +1101,6 @@ export interface RAGSimpleVectorEngineSettings {
 export interface RAGSimpleVectorIndexingSettings {
   chunk_token_size?: number
   chunk_overlap_token_size?: number
-  cosine_better_than_threshold?: number
   max_parallel_insert?: number
   embedding_batch_size?: number
 }
@@ -1322,7 +1322,7 @@ export interface UpdateDefaultLanguageRequest {
 export interface UpdateModelRequest {
   description?: string
   name?: string
-  alias?: string
+  display_name?: string
   enabled?: boolean
   is_active?: boolean
   capabilities?: ModelCapabilities
@@ -1367,6 +1367,7 @@ export interface UpdateRAGInstanceRequest {
   name?: string
   enabled?: boolean
   is_active?: boolean
+  engine_type?: RAGEngineType
   embedding_model_id?: string
   llm_model_id?: string
   parameters?: any

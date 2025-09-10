@@ -94,7 +94,7 @@ export const BASIC_MODEL_FIELDS: ParameterFieldConfig[] = [
     help: 'Unique identifier for this model',
   },
   {
-    name: 'alias',
+    name: 'display_name',
     label: 'Display Name',
     type: 'text',
     required: true,
@@ -111,7 +111,7 @@ export const BASIC_MODEL_FIELDS: ParameterFieldConfig[] = [
 
 export const LOCAL_MODEL_FIELDS: ParameterFieldConfig[] = [
   {
-    name: 'alias',
+    name: 'display_name',
     label: 'Display Name',
     type: 'text',
     required: true,

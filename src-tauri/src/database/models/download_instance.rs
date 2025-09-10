@@ -87,7 +87,7 @@ pub struct DownloadRequestData {
     /// Repository path (e.g., "microsoft/DialoGPT-medium")
     pub repository_path: Option<String>,
     /// Model alias/display name
-    pub alias: Option<String>,
+    pub display_name: Option<String>,
     /// Model description
     pub description: Option<String>,
     /// File format of the model

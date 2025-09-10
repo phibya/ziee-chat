@@ -17,7 +17,7 @@ export interface LocalUploadRequest {
   files: File[]
   main_filename: string
   name: string
-  alias: string
+  display_name: string
   description?: string
   file_format: string
   capabilities: ModelCapabilities
@@ -84,7 +84,7 @@ export const uploadLocalModel = async (
     // Add metadata fields
     formData.append('provider_id', request.provider_id)
     formData.append('name', request.name)
-    formData.append('alias', request.alias)
+    formData.append('display_name', request.display_name)
     formData.append('main_filename', request.main_filename)
     formData.append('file_format', request.file_format)
 

@@ -98,7 +98,7 @@ export const createRAGInstance = async (data: {
   name: string
   description: string
   provider_id: string
-  alias: string
+  display_name: string
   engine_type: any
 }): Promise<RAGInstance> => {
   try {

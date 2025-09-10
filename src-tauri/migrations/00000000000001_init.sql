@@ -154,7 +154,7 @@ CREATE TABLE models (
                         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                         provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
                         name VARCHAR(255) NOT NULL,
-                        alias VARCHAR(255) NOT NULL,
+                        display_name VARCHAR(255) NOT NULL,
                         description TEXT,
                         enabled BOOLEAN DEFAULT TRUE NOT NULL,
                         is_deprecated BOOLEAN DEFAULT FALSE NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE models (
                         pid INTEGER,
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
                         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                        CONSTRAINT models_alias_not_empty CHECK (alias != ''),
+                        CONSTRAINT models_display_name_not_empty CHECK (display_name != ''),
     CONSTRAINT models_provider_id_name_unique UNIQUE (provider_id, name),
     CONSTRAINT check_engine_type CHECK (engine_type IN ('mistralrs', 'llamacpp', 'none')),
     CONSTRAINT check_file_format CHECK (file_format IN ('safetensors', 'pytorch', 'gguf')),
@@ -418,7 +418,7 @@ CREATE TABLE rag_instances (
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    alias VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
     description TEXT,
     enabled BOOLEAN DEFAULT TRUE NOT NULL,
     is_active BOOLEAN DEFAULT FALSE NOT NULL,
@@ -440,7 +440,7 @@ CREATE TABLE rag_instances (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     
-    UNIQUE(provider_id, alias)
+    UNIQUE(provider_id, display_name)
 );
 
 -- Create RAG instance files table
@@ -486,7 +486,7 @@ CREATE TABLE simple_vector_documents (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (rag_instance_id, id),
     UNIQUE(rag_instance_id, file_id, chunk_index)
-) PARTITION BY HASH (rag_instance_id);
+) PARTITION BY LIST (rag_instance_id);
 
 -- Simple Graph Engine Tables
 CREATE TABLE simple_graph_entities (
@@ -683,7 +683,7 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE api_proxy_server_models (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     model_id UUID NOT NULL REFERENCES models(id) ON DELETE CASCADE,
-    alias_id VARCHAR(255) NULL,           -- Human-readable alias for the model
+    alias_id VARCHAR(255) NULL,
     enabled BOOLEAN NOT NULL DEFAULT true,
     is_default BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
@@ -850,7 +850,7 @@ CREATE INDEX idx_rag_instances_active ON rag_instances(is_active);
 CREATE INDEX idx_rag_instances_age_graph ON rag_instances(age_graph_name);
 CREATE INDEX idx_rag_instances_embedding_model ON rag_instances(embedding_model_id);
 CREATE INDEX idx_rag_instances_llm_model ON rag_instances(llm_model_id);
-CREATE UNIQUE INDEX idx_rag_instances_user_alias ON rag_instances(user_id, alias) WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_rag_instances_user_name ON rag_instances(user_id, name) WHERE user_id IS NOT NULL;
 
 CREATE INDEX idx_rag_instance_files_instance ON rag_instance_files(rag_instance_id);
 CREATE INDEX idx_rag_instance_files_file ON rag_instance_files(file_id);
@@ -1183,7 +1183,7 @@ COMMENT ON COLUMN user_settings.key IS 'Setting key using camelCase format (e.g.
 COMMENT ON COLUMN user_settings.value IS 'Setting value stored as JSONB for flexibility';
 COMMENT ON COLUMN providers.provider_type IS 'Type of provider: local, openai, anthropic, groq, gemini, mistral, custom';
 COMMENT ON COLUMN models.name IS 'Unique model identifier within a provider';
-COMMENT ON COLUMN models.alias IS 'Human-readable display name (can be duplicated across providers)';
+COMMENT ON COLUMN models.display_name IS 'Human-readable display name (can be duplicated across providers)';
 COMMENT ON COLUMN models.is_active IS 'Whether the model is currently running (for local models)';
 COMMENT ON COLUMN models.file_size_bytes IS 'Total size of all model files in bytes - for Candle models only';
 COMMENT ON COLUMN models.validation_status IS 'Status of model validation and processing - for Candle models only';
@@ -1226,4 +1226,4 @@ COMMENT ON COLUMN provider_files.provider_file_id IS 'Provider-specific file ID 
 COMMENT ON COLUMN provider_files.provider_metadata IS 'Provider-specific metadata and processing info';
 
 -- Constraint comments
-COMMENT ON CONSTRAINT models_provider_id_name_unique ON models IS 'Ensures model IDs (name) are unique per provider, while allowing duplicate display names (alias) across providers';
+COMMENT ON CONSTRAINT models_provider_id_name_unique ON models IS 'Ensures model IDs (name) are unique per provider, while allowing duplicate display names across providers';

@@ -237,7 +237,7 @@ export const addNewModelToProvider = async (
   providerId: string,
   model: {
     name: string
-    alias: string
+    display_name: string
     description?: string
     enabled?: boolean
     capabilities?: ModelCapabilities

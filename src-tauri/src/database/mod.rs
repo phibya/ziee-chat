@@ -109,9 +109,10 @@ fn stop_existing_postgres_instance(installation_dir: &PathBuf) -> Result<(), Box
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
-        println!("Warning: pg_ctl stop returned non-zero exit code, but continuing:");
-        println!("STDERR: {}", stderr);
-        println!("STDOUT: {}", stdout);
+        eprintln!("Error: Failed to stop PostgreSQL instance. Exiting to prevent database corruption.");
+        eprintln!("STDERR: {}", stderr);
+        eprintln!("STDOUT: {}", stdout);
+        std::process::exit(1);
     }
     
     // Wait a moment for the process to fully stop

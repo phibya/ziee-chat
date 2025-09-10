@@ -4,6 +4,7 @@ use crate::database::{
         CreateRAGInstanceRequest, CreateSystemRAGInstanceRequest, RAGInstance,
         RAGInstanceListResponse, UpdateRAGInstanceRequest, RAGInstanceErrorCode,
         RAGProcessingStatus,
+        rag_instance,
     },
     queries::user_group_rag_providers::can_user_create_rag_instance,
 };
@@ -37,11 +38,11 @@ pub async fn create_user_rag_instance(
     let instance = sqlx::query_as!(
         RAGInstance,
         r#"INSERT INTO rag_instances (
-            id, provider_id, user_id, project_id, name, alias, description, 
+            id, provider_id, user_id, project_id, name, display_name, description,
             enabled, is_active, is_system, engine_type, 
             engine_settings, embedding_model_id, llm_model_id, parameters
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        RETURNING id, provider_id, user_id, project_id, name, alias, description, 
+        RETURNING id, provider_id, user_id, project_id, name, display_name, description,
                   enabled, is_active, is_system, status, error_code,
                   engine_type,
                   engine_settings,
@@ -52,7 +53,7 @@ pub async fn create_user_rag_instance(
         user_id,
         request.project_id,
         &request.name,
-        &request.alias,
+        &request.display_name,
         request.description.as_deref(),
         true,  // enabled = true by default
         false, // is_active = false by default
@@ -91,11 +92,11 @@ pub async fn create_system_rag_instance(
     let instance = sqlx::query_as!(
         RAGInstance,
         r#"INSERT INTO rag_instances (
-            id, provider_id, user_id, project_id, name, alias, description, 
+            id, provider_id, user_id, project_id, name, display_name, description,
             enabled, is_active, is_system, engine_type, 
             engine_settings, embedding_model_id, llm_model_id, parameters
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        RETURNING id, provider_id, user_id, project_id, name, alias, description, 
+        RETURNING id, provider_id, user_id, project_id, name, display_name, description,
                   enabled, is_active, is_system, status, error_code,
                   engine_type, 
                   engine_settings,
@@ -106,7 +107,7 @@ pub async fn create_system_rag_instance(
         None::<Uuid>, // user_id = null for system instances
         None::<Uuid>, // project_id = null for system instances
         &request.name,
-        &request.alias,
+        &request.display_name,
         request.description.as_deref(),
         true,  // enabled = true by default
         false, // is_active = false by default
@@ -149,7 +150,7 @@ pub async fn get_rag_instance(
         // Admin users can see all instances (enabled and disabled)
         sqlx::query_as!(
             RAGInstance,
-            r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
+            r#"SELECT id, provider_id, user_id, project_id, name, display_name, description,
                     enabled, is_active, is_system, status, error_code,
                     engine_type, 
                     engine_settings,
@@ -165,7 +166,7 @@ pub async fn get_rag_instance(
         // Regular users can only see enabled instances
         sqlx::query_as!(
             RAGInstance,
-            r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
+            r#"SELECT id, provider_id, user_id, project_id, name, display_name, description,
                     enabled, is_active, is_system, status, error_code,
                     engine_type, 
                     engine_settings,
@@ -213,7 +214,7 @@ pub async fn list_user_rag_instances(
         // Complex JOIN query with DISTINCT and multiple JOINs
         let instances = sqlx::query_as!(
             RAGInstance,
-            r#"SELECT DISTINCT ri.id, ri.provider_id, ri.user_id, ri.project_id, ri.name, ri.alias, ri.description, 
+            r#"SELECT DISTINCT ri.id, ri.provider_id, ri.user_id, ri.project_id, ri.name, ri.display_name, ri.description,
                     ri.enabled, ri.is_active, ri.is_system, ri.status, ri.error_code,
                     ri.engine_type, 
                     ri.engine_settings,
@@ -247,7 +248,7 @@ pub async fn list_user_rag_instances(
 
         let instances = sqlx::query_as!(
             RAGInstance,
-            r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
+            r#"SELECT id, provider_id, user_id, project_id, name, display_name, description,
                     enabled, is_active, is_system, status, error_code,
                     engine_type, 
                     engine_settings,
@@ -295,7 +296,7 @@ pub async fn list_system_rag_instances(
     // Get system instances with pagination
     let instances = sqlx::query_as!(
         RAGInstance,
-        r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
+        r#"SELECT id, provider_id, user_id, project_id, name, display_name, description,
                 enabled, is_active, is_system, status, error_code,
                 engine_type, 
                 engine_settings,
@@ -344,19 +345,15 @@ pub async fn update_rag_instance(
             })
             .unwrap_or(false);
 
-        // Check if embedding model is changing
-        let embedding_model_changed = match (&request.embedding_model_id, &current.embedding_model_id) {
-            (Some(new_id), Some(current_id)) => new_id != current_id,
-            (Some(_), None) | (None, Some(_)) => true,
-            (None, None) => false,
-        };
+        // Check if embedding model is changing (only if provided in request)
+        let embedding_model_changed = request.embedding_model_id
+            .map(|new_id| Some(new_id) != current.embedding_model_id)
+            .unwrap_or(false);
 
-        // Check if LLM model is changing
-        let llm_model_changed = match (&request.llm_model_id, &current.llm_model_id) {
-            (Some(new_id), Some(current_id)) => new_id != current_id,
-            (Some(_), None) | (None, Some(_)) => true,
-            (None, None) => false,
-        };
+        // Check if LLM model is changing (only if provided in request)
+        let llm_model_changed = request.llm_model_id
+            .map(|new_id| Some(new_id) != current.llm_model_id)
+            .unwrap_or(false);
 
         engine_type_changed || engine_settings_changed || embedding_model_changed || llm_model_changed
     } else {
@@ -485,7 +482,7 @@ pub async fn update_rag_instance(
     // Return the updated instance
     let instance = sqlx::query_as!(
         RAGInstance,
-        r#"SELECT id, provider_id, user_id, project_id, name, alias, description, 
+        r#"SELECT id, provider_id, user_id, project_id, name, display_name, description,
                   enabled, is_active, is_system, status, error_code,
                   engine_type, 
                   engine_settings,
@@ -506,13 +503,9 @@ pub async fn delete_rag_instance(instance_id: Uuid) -> Result<bool, sqlx::Error>
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
-    // Clean up indexes and vector data before deleting the instance
-    if let Err(e) = drop_rag_instance_indexes(instance_id).await {
-        tracing::warn!("Failed to drop indexes for RAG instance {} during deletion: {}", instance_id, e);
-    }
-
-    if let Err(e) = clear_vector_documents(instance_id).await {
-        tracing::warn!("Failed to clear vector documents for RAG instance {} during deletion: {}", instance_id, e);
+    // Drop partition (this instantly removes all vector documents and indexes)
+    if let Err(e) = drop_partition_for_instance(instance_id).await {
+        tracing::warn!("Failed to drop partition for RAG instance {} during deletion: {}", instance_id, e);
     }
 
     // Delete RAG instance (CASCADE will automatically delete associated files and rag_instance_files)
@@ -618,7 +611,7 @@ pub async fn get_rag_instance_by_id(instance_id: Uuid) -> Result<Option<RAGInsta
 
     let instance = sqlx::query_as!(
         RAGInstance,
-        r#"SELECT id, provider_id, user_id, project_id, name, alias, description, enabled, is_active, is_system, status, error_code,
+        r#"SELECT id, provider_id, user_id, project_id, name, display_name, description, enabled, is_active, is_system, status, error_code,
                 engine_type, 
                 engine_settings,
                 embedding_model_id, llm_model_id, age_graph_name, parameters, 
@@ -762,44 +755,6 @@ pub struct RAGFileProcessingDetail {
 // Index Lifecycle Management Functions
 // ============================================================================
 
-/// Drop all HNSW indexes for a specific RAG instance
-pub async fn drop_rag_instance_indexes(instance_id: Uuid) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let instance_id_str = instance_id.to_string().replace("-", "_");
-    let index_name = format!("idx_simple_vector_docs_embedding_{}", instance_id_str);
-
-    // Check if index exists first
-    let index_exists = sqlx::query_scalar!(
-        r#"
-        SELECT EXISTS (
-            SELECT 1
-            FROM pg_indexes
-            WHERE schemaname = 'public'
-              AND indexname = $1
-        ) as "exists!"
-        "#,
-        index_name
-    )
-    .fetch_one(pool)
-    .await?;
-
-    if index_exists {
-        // Drop the index
-        let drop_index_query = format!("DROP INDEX IF EXISTS {}", index_name);
-        
-        sqlx::query(&drop_index_query)
-            .execute(pool)
-            .await?;
-
-        tracing::info!("Dropped HNSW index {} for instance {}", index_name, instance_id);
-    } else {
-        tracing::debug!("No index found to drop for instance {}", instance_id);
-    }
-
-    Ok(())
-}
 
 /// Reset all file processing status to pending for a RAG instance
 pub async fn reset_processing_status(instance_id: Uuid) -> Result<(), sqlx::Error> {
@@ -853,57 +808,129 @@ pub async fn clear_processing_pipeline(instance_id: Uuid) -> Result<(), sqlx::Er
     Ok(())
 }
 
-/// Delete all vector documents for a RAG instance
-pub async fn clear_vector_documents(instance_id: Uuid) -> Result<(), sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
 
-    let deleted_count = sqlx::query!(
-        "DELETE FROM simple_vector_documents WHERE rag_instance_id = $1",
-        instance_id
-    )
-    .execute(pool)
-    .await?
-    .rows_affected();
-
-    tracing::info!(
-        "Cleared {} vector documents for instance {}",
-        deleted_count,
-        instance_id
-    );
-
-    Ok(())
-}
-
-/// Get embedding dimension from the AI provider
-async fn get_embedding_dimension(model_id: Uuid) -> Result<i32, Box<dyn std::error::Error + Send + Sync>> {
-    // Get the model information
-    let _model = crate::database::queries::models::get_model_by_id(model_id).await
-        .map_err(|e| format!("Failed to get model: {}", e))?
-        .ok_or("Model not found")?;
-    
-    // Create AI model using simplified factory approach
-    let ai_model = crate::ai::model_manager::model_factory::create_ai_model(model_id).await
-        .map_err(|e| format!("Failed to create AI model: {}", e))?;
-    
-    // Get embedding dimension from model
-    let dimension = ai_model.get_embedding_dimension().await
-        .ok_or("Model does not support embeddings or dimension is unknown")?;
-    
-    tracing::debug!("Model {} has embedding dimension: {}", model_id, dimension);
-    
-    Ok(dimension as i32)
-}
-
-/// Create HNSW index for a RAG instance with specific embedding dimension
-pub async fn create_rag_instance_index(instance_id: Uuid, embedding_dim: i32) -> Result<(), sqlx::Error> {
+/// Create a partition for a specific RAG instance
+async fn create_partition_for_instance(instance_id: Uuid) -> Result<(), sqlx::Error> {
     let pool = get_database_pool()?;
     let pool = pool.as_ref();
 
     let instance_id_str = instance_id.to_string().replace("-", "_");
+    let partition_name = format!("simple_vector_documents_{}", instance_id_str);
+
+    let create_partition_query = format!(
+        r#"
+        CREATE TABLE IF NOT EXISTS {}
+        PARTITION OF simple_vector_documents
+        FOR VALUES IN ('{}')
+        "#,
+        partition_name, instance_id
+    );
+
+    sqlx::query(&create_partition_query)
+        .execute(pool)
+        .await?;
+
+    tracing::info!("Created partition {} for RAG instance {}", partition_name, instance_id);
+    Ok(())
+}
+
+
+/// Drop partition for a specific RAG instance
+async fn drop_partition_for_instance(instance_id: Uuid) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let instance_id_str = instance_id.to_string().replace("-", "_");
+    let partition_name = format!("simple_vector_documents_{}", instance_id_str);
+
+    let drop_partition_query = format!(
+        r#"
+        DROP TABLE IF EXISTS {}
+        "#,
+        partition_name
+    );
+
+    sqlx::query(&drop_partition_query)
+        .execute(pool)
+        .await?;
+
+    tracing::info!("Dropped partition {} for RAG instance {}", partition_name, instance_id);
+    Ok(())
+}
+
+
+/// Create HNSW index for a RAG instance on its specific partition
+pub async fn create_rag_instance_index(instance_id: Uuid) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    let instance_id_str = instance_id.to_string().replace("-", "_");
+    let partition_name = format!("simple_vector_documents_{}", instance_id_str);
     let index_name = format!("idx_simple_vector_docs_embedding_{}", instance_id_str);
 
-    // Check if index already exists
+    // Get RAG instance to find embedding model
+    let instance = get_rag_instance_by_id(instance_id).await?
+        .ok_or_else(|| sqlx::Error::RowNotFound)?;
+    
+    // Get embedding model ID
+    let embedding_model_id = instance.embedding_model_id
+        .ok_or_else(|| {
+            tracing::warn!("No embedding model configured for RAG instance {}", instance_id);
+            sqlx::Error::RowNotFound
+        })?;
+    
+    // Get dimensions from AIModel
+    let dimensions = match crate::ai::model_manager::model_factory::create_ai_model(embedding_model_id).await {
+        Ok(ai_model) => {
+            match ai_model.get_embedding_dimension().await {
+                Some(dim) => dim,
+                None => {
+                    tracing::error!("Could not get dimensions from model {}, marking instance as failed", embedding_model_id);
+                    
+                    // Update RAG instance status to error
+                    let _ = sqlx::query!(
+                        r#"
+                        UPDATE rag_instances 
+                        SET status = $1, is_active = $2, error_code = $3, embedding_model_id = $4
+                        WHERE id = $5
+                        "#,
+                        rag_instance::RAGInstanceStatus::Error.as_str(),
+                        false,
+                        rag_instance::RAGInstanceErrorCode::EmbeddingModelTestFailed.as_str(),
+                        None::<Uuid>,
+                        instance_id
+                    )
+                    .execute(pool)
+                    .await;
+                    
+                    return Err(sqlx::Error::RowNotFound);
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Could not create AI model {}: {}, marking instance as failed", embedding_model_id, e);
+            
+            // Update RAG instance status to error
+            let _ = sqlx::query!(
+                r#"
+                UPDATE rag_instances 
+                SET status = $1, is_active = $2, error_code = $3, embedding_model_id = $4
+                WHERE id = $5
+                "#,
+                rag_instance::RAGInstanceStatus::Error.as_str(),
+                false,
+                rag_instance::RAGInstanceErrorCode::EmbeddingModelTestFailed.as_str(),
+                None::<Uuid>,
+                instance_id
+            )
+            .execute(pool)
+            .await;
+            
+            return Err(sqlx::Error::RowNotFound);
+        }
+    };
+
+    // Check if index already exists on the partition
     let index_exists = sqlx::query_scalar!(
         r#"
         SELECT EXISTS (
@@ -911,38 +938,39 @@ pub async fn create_rag_instance_index(instance_id: Uuid, embedding_dim: i32) ->
             FROM pg_indexes
             WHERE schemaname = 'public'
               AND indexname = $1
+              AND tablename = $2
         ) as "exists!"
         "#,
-        index_name
+        index_name,
+        partition_name
     )
     .fetch_one(pool)
     .await?;
 
     if !index_exists {
-        // Create the index
+        // Create the index on the specific partition with correct dimensions
         let create_index_query = format!(
             r#"
-            CREATE INDEX CONCURRENTLY IF NOT EXISTS {}
-            ON simple_vector_documents USING hnsw (embedding::halfvec({}) halfvec_cosine_ops)
-            WHERE embedding IS NOT NULL AND rag_instance_id = $1
+            CREATE INDEX IF NOT EXISTS {}
+            ON {} USING hnsw ((embedding::halfvec({})) halfvec_cosine_ops)
             "#,
-            index_name, embedding_dim
+            index_name, partition_name, dimensions
         );
 
         sqlx::query(&create_index_query)
-            .bind(instance_id)
             .execute(pool)
             .await?;
 
-        tracing::info!("Created HNSW index {} for instance {} with dimension {}", index_name, instance_id, embedding_dim);
+        tracing::info!("Created HNSW index {} on partition {} for instance {} with {} dimensions", 
+                      index_name, partition_name, instance_id, dimensions);
     } else {
-        tracing::debug!("Index {} already exists for instance {}", index_name, instance_id);
+        tracing::debug!("Index {} already exists on partition {} for instance {}", index_name, partition_name, instance_id);
     }
 
     Ok(())
 }
 
-/// Complete reset of RAG instance state - drops indexes, clears data, resets status, creates fresh index
+/// Complete reset of RAG instance state - drops partition and recreates fresh partition with index
 pub async fn reset_rag_instance_state(instance_id: Uuid) -> Result<(), sqlx::Error> {
     tracing::info!("Starting complete state reset for RAG instance {}", instance_id);
     
@@ -956,31 +984,26 @@ pub async fn reset_rag_instance_state(instance_id: Uuid) -> Result<(), sqlx::Err
         }
     };
     
-    // Drop indexes first
-    drop_rag_instance_indexes(instance_id).await?;
-    
-    // Clear vector documents
-    clear_vector_documents(instance_id).await?;
-    
     // Clear processing pipeline
     clear_processing_pipeline(instance_id).await?;
     
     // Reset file processing status
     reset_processing_status(instance_id).await?;
     
+    // Drop and recreate partition (this instantly clears all vector documents and indexes)
+    if let Err(e) = drop_partition_for_instance(instance_id).await {
+        tracing::warn!("Failed to drop partition for RAG instance {} during reset: {}", instance_id, e);
+    }
+    
+    if let Err(e) = create_partition_for_instance(instance_id).await {
+        tracing::warn!("Failed to create partition for RAG instance {} during reset: {}", instance_id, e);
+        return Err(e);
+    }
+    
     // Create fresh index if embedding model is configured
-    if let Some(embedding_model_id) = instance.embedding_model_id {
-        // Get embedding dimension from the actual model
-        match get_embedding_dimension(embedding_model_id).await {
-            Ok(embedding_dim) => {
-                if let Err(e) = create_rag_instance_index(instance_id, embedding_dim).await {
-                    tracing::warn!("Failed to create index for RAG instance {} during reset: {}", instance_id, e);
-                }
-            }
-            Err(e) => {
-                tracing::warn!("Failed to get embedding dimension for model {} in instance {}: {}", 
-                    embedding_model_id, instance_id, e);
-            }
+    if instance.embedding_model_id.is_some() {
+        if let Err(e) = create_rag_instance_index(instance_id).await {
+            tracing::warn!("Failed to create index for RAG instance {} during reset: {}", instance_id, e);
         }
     }
     

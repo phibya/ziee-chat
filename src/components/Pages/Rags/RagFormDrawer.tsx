@@ -14,7 +14,7 @@ import { Permission } from '../../../types'
 const { TextArea } = Input
 
 interface RAGInstanceFormData {
-  name: string
+  display_name: string
   description?: string
   provider_id: string
 }
@@ -41,9 +41,11 @@ export const RagFormDrawer: React.FC = () => {
         await updateRAGInstanceInList(editingInstance.id, finalValues)
       } else {
         await createRAGInstance({
-          name: finalValues.name,
+          name:
+            finalValues.display_name.toLowerCase().replace(/\s+/g, '_') +
+            `_${Date.now()}`,
           provider_id: values.provider_id,
-          alias: finalValues.name.toLowerCase().replace(/\s+/g, '_'),
+          display_name: finalValues.display_name,
           description: finalValues.description,
           engine_type: 'simple_vector', // Default to vector engine
         })
@@ -62,7 +64,7 @@ export const RagFormDrawer: React.FC = () => {
       if (editingInstance) {
         // Editing existing instance
         form.setFieldsValue({
-          name: editingInstance.name,
+          display_name: editingInstance.display_name,
           description: editingInstance.description,
           provider_id: editingInstance.provider_id,
         })
@@ -77,7 +79,7 @@ export const RagFormDrawer: React.FC = () => {
 
   const getTitle = () => {
     if (editingInstance) {
-      return `RAG Instance: ${editingInstance.name}`
+      return `RAG Instance: ${editingInstance.display_name}`
     }
     return 'Create RAG Instance'
   }
@@ -130,8 +132,8 @@ export const RagFormDrawer: React.FC = () => {
       >
         <Form form={form} onFinish={handleSubmit} layout="vertical">
           <Form.Item
-            name="name"
-            label="Instance Name"
+            name="display_name"
+            label="Display Name"
             rules={[
               { required: true, message: 'Please enter an instance name' },
             ]}

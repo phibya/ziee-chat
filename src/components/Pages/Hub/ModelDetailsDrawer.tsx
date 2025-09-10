@@ -29,13 +29,18 @@ export function ModelDetailsDrawer({
   if (!model) return null
 
   return (
-    <Drawer title={model.alias} open={open} onClose={onClose} width={600}>
+    <Drawer
+      title={model.display_name}
+      open={open}
+      onClose={onClose}
+      width={600}
+    >
       <Flex vertical className="gap-4">
         {/* Basic Info */}
         <div>
           <Flex justify="space-between" align="center" className="mb-2">
             <Title level={3} className="m-0">
-              {model.alias}
+              {model.display_name}
             </Title>
             {model.public ? (
               <Tag color="green" icon={<UnlockOutlined />}>

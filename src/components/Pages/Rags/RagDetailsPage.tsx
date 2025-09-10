@@ -157,7 +157,7 @@ export const RagDetailsPage: React.FC = () => {
                 className="!m-0 !leading-tight px-1 flex-1 !font-semibold"
                 ellipsis={true}
               >
-                {ragInstance?.name}
+                {ragInstance?.display_name}
               </Typography.Title>
             </div>
             <div className={'flex items-center justify-between gap-1'}>

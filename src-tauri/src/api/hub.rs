@@ -13,7 +13,7 @@ pub struct HubModelQuantizationOption {
 pub struct HubModel {
     pub id: String,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub repository_url: String,
     pub repository_path: String,

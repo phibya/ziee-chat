@@ -835,10 +835,10 @@ impl LocalEngine for MistralRsEngine {
         let timeout_seconds = self.calculate_timeout_for_model_size(model_size);
 
         println!(
-            "Starting MistralRS model {} with timeout {} seconds ({:.1} minutes)",
-            model.alias,
-            timeout_seconds,
-            timeout_seconds as f64 / 60.0
+          "Starting MistralRS model {} with timeout {} seconds ({:.1} minutes)",
+          model.display_name,
+          timeout_seconds,
+          timeout_seconds as f64 / 60.0
         );
 
         // Build command arguments

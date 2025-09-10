@@ -25,7 +25,7 @@ export function AddModelDrawer({ open, onClose }: AddModelDrawerProps) {
       options: (provider.models || [])
         .filter(model => !models.find(pm => pm.model_id === model.id))
         .map(model => ({
-          label: model.alias,
+          label: model.display_name,
           value: model.id,
           model: model, // Include model data for onChange handler
         })),

@@ -28,7 +28,7 @@ pub struct RagInstance {
     pub user_id: Option<Uuid>,
     pub project_id: Option<Uuid>,
     pub name: String,
-    pub alias: String,
+    pub display_name: String,
     pub description: Option<String>,
     pub enabled: bool,
     pub is_active: bool,
