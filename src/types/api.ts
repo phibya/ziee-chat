@@ -1034,6 +1034,27 @@ export interface RAGProviderListResponse {
 
 export type RAGProviderType = 'local' | 'lightrag' | 'ragstack' | 'chroma' | 'weaviate' | 'pinecone' | 'custom'
 
+export interface RAGQueryMetadata {
+  processing_time_ms: number
+  chunks_retrieved: number
+  chunks_filtered: number
+  rerank_applied: boolean
+}
+
+export interface RAGQueryRequest {
+  query: string
+  max_results?: number
+  enable_rerank?: boolean
+  similarity_threshold?: number
+}
+
+export interface RAGQueryResponse {
+  results: RAGSource[]
+  files: File[]
+  token_usage: RAGTokenUsage
+  metadata: RAGQueryMetadata
+}
+
 export interface RAGRepository {
   description?: string
   id: string
@@ -1117,8 +1138,21 @@ export interface RAGSimpleVectorQueryingSettings {
   min_rerank_score?: number
 }
 
+export interface RAGSource {
+  document: SimpleVectorDocument
+  similarity_score: number
+  entity_matches: string[]
+  relationship_matches: string[]
+}
+
 export interface RAGStatusStreamQuery {
   include_files?: boolean
+}
+
+export interface RAGTokenUsage {
+  total_tokens: number
+  embedding_tokens: number
+  max_total_tokens: number
 }
 
 export interface Repository {
@@ -1235,6 +1269,19 @@ export interface SearchQuery {
   page?: number
   per_page?: number
   project_id?: string
+}
+
+export interface SimpleVectorDocument {
+  id: string
+  rag_instance_id: string
+  file_id: string
+  chunk_index: number
+  content: string
+  content_hash: string
+  token_count: number
+  metadata: any
+  created_at: string
+  updated_at: string
 }
 
 export interface SourceInfo {
@@ -1682,6 +1729,7 @@ export const ApiEndpoints = {
   'Rag.listCreatableProviders': 'GET /api/rag/providers',
   'Rag.listInstanceFiles': 'GET /api/rag/instances/{instance_id}/files',
   'Rag.listInstances': 'GET /api/rag/instances',
+  'Rag.queryInstance': 'POST /api/rag/instances/{instance_id}/query',
   'Rag.subscribeInstanceStatus': 'GET /api/rag/instances/{instance_id}/status/stream',
   'Rag.toggleInstanceActivate': 'PUT /api/rag/instances/{instance_id}/toggle-activate',
   'Rag.updateInstance': 'PUT /api/rag/instances/{instance_id}',
@@ -1850,6 +1898,7 @@ export type ApiEndpointParameters = {
   'Rag.listCreatableProviders': void
   'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; status_filter?: RAGProcessingStatus; search?: string }
   'Rag.listInstances': { page?: number; per_page?: number; include_system?: boolean }
+  'Rag.queryInstance': { instance_id: string } & RAGQueryRequest
   'Rag.subscribeInstanceStatus': { instance_id: string; include_files?: boolean }
   'Rag.toggleInstanceActivate': { instance_id: string }
   'Rag.updateInstance': { instance_id: string } & UpdateRAGInstanceRequest
@@ -2018,6 +2067,7 @@ export type ApiEndpointResponses = {
   'Rag.listCreatableProviders': RAGProvider[]
   'Rag.listInstanceFiles': RAGInstanceFilesListResponse
   'Rag.listInstances': RAGInstanceListResponse
+  'Rag.queryInstance': RAGQueryResponse
   'Rag.subscribeInstanceStatus': SSERAGStatusEvent
   'Rag.toggleInstanceActivate': RAGInstance
   'Rag.updateInstance': RAGInstance

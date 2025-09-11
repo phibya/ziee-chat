@@ -62,6 +62,34 @@ pub async fn get_file_by_id_and_user(
     Ok(file)
 }
 
+/// Get multiple files by their IDs (for RAG query responses)
+pub async fn get_files_by_ids(file_ids: Vec<Uuid>) -> Result<Vec<File>, sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    if file_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let files = sqlx::query_as!(
+        File,
+        r#"
+        SELECT 
+            id, user_id, filename, file_size, mime_type, checksum,
+            project_id, thumbnail_count, page_count, processing_metadata,
+            created_at, updated_at
+        FROM files 
+        WHERE id = ANY($1)
+        ORDER BY filename
+        "#,
+        &file_ids[..]
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(files)
+}
+
 pub async fn get_files_by_project(
     project_id: Uuid,
     user_id: Uuid,

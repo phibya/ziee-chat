@@ -119,7 +119,7 @@ export const RagInstanceSettingsTab: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 w-full">
       {/* Instance Information Card */}
       <Card
         title={

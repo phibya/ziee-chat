@@ -76,10 +76,6 @@ impl TokenBasedChunker {
 }
 
 impl TokenBasedChunker {
-    pub async fn advanced_chunk_text(&self, content: &str) -> RAGResult<Vec<TextChunk>> {
-        self.chunk_with_overlap(content, 1024, 128).await
-    }
-
     /// Chunk text with overlap, matching LightRAG's approach exactly
     pub async fn chunk_with_overlap(
         &self,

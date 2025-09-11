@@ -226,7 +226,7 @@ export const RagDocumentsTab: React.FC = () => {
         </div>
       }
       classNames={{
-        body: '!px-0',
+        body: '!px-0 !w-full',
       }}
     >
       <div

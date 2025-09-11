@@ -15,12 +15,17 @@ use crate::api::{
     errors::{ApiResult, AppError},
     middleware::auth::AuthenticatedUser,
 };
+use crate::ai::rag::{
+    engines::{simple_vector::RAGSimpleVectorEngine, traits::RAGEngine},
+    QueryContext, QueryMode, RAGQuery, RAGSource,
+};
 use crate::database::{
     models::{
-        CreateRAGInstanceRequest, RAGInstance, RAGInstanceListResponse, RAGProvider,
+        file::File, CreateRAGInstanceRequest, RAGInstance, RAGInstanceListResponse, RAGProvider,
         UpdateRAGInstanceRequest, RAGInstanceErrorCode,
     },
     queries::{
+        files::get_files_by_ids,
         rag_instances::{
             create_user_rag_instance, delete_rag_instance, get_rag_instance,
             get_instance_file_processing_details, get_rag_instance_status_with_stats,
@@ -91,6 +96,53 @@ pub struct RAGInstanceListQuery {
     pub page: Option<i32>,
     pub per_page: Option<i32>,
     pub include_system: Option<bool>,
+}
+
+// RAG Query API structures
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct RAGQueryRequest {
+    /// The query text to search for
+    pub query: String,
+    /// Maximum number of results to return (optional, default: 10)
+    pub max_results: Option<usize>,
+    /// Enable reranking of results (optional, default: false)  
+    pub enable_rerank: Option<bool>,
+    /// Similarity threshold for vector search (optional, default: 0.7)
+    pub similarity_threshold: Option<f32>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct RAGQueryResponse {
+    /// RAG search results with similarity scores and entity matches
+    pub results: Vec<RAGSource>,
+    /// Unique files referenced in the search results
+    pub files: Vec<File>,
+    /// Token usage statistics
+    pub token_usage: RAGTokenUsage,
+    /// Processing metadata
+    pub metadata: RAGQueryMetadata,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct RAGTokenUsage {
+    /// Total tokens used in query processing
+    pub total_tokens: u32,
+    /// Tokens used for embedding queries
+    pub embedding_tokens: u32,
+    /// Maximum tokens that were budgeted
+    pub max_total_tokens: u32,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct RAGQueryMetadata {
+    /// Processing time in milliseconds
+    pub processing_time_ms: u64,
+    /// Number of chunks retrieved before filtering
+    pub chunks_retrieved: usize,
+    /// Number of chunks after similarity filtering
+    pub chunks_filtered: usize,
+    /// Whether reranking was applied
+    pub rerank_applied: bool,
 }
 
 /// List user's RAG instances
@@ -466,4 +518,117 @@ async fn get_rag_instance_status_update(
         current_files_processing: current_files,
         updated_at: instance.updated_at.to_rfc3339(),
     }))
+}
+
+/// Query RAG instance for testing purposes
+#[debug_handler]
+pub async fn query_rag_instance_handler(
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(instance_id): Path<Uuid>,
+    Json(request): Json<RAGQueryRequest>,
+) -> ApiResult<Json<RAGQueryResponse>> {
+    let start_time = std::time::Instant::now();
+    
+    // Validate user has access to this RAG instance
+    let has_access = validate_rag_instance_access(auth_user.user.id, instance_id, false)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?;
+    if !has_access {
+        return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied")));
+    }
+
+    // Get RAG instance details
+    let _instance = get_rag_instance(instance_id, auth_user.user.id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::from(e)))?
+        .ok_or((StatusCode::NOT_FOUND, AppError::not_found("RAG instance")))?;
+
+    // Create RAG engine
+    let engine = RAGSimpleVectorEngine::new(instance_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(&format!("Failed to create RAG engine: {}", e))))?;
+
+    // Build query parameters
+    let max_results = request.max_results.unwrap_or(10).min(50); // Cap at 50
+    let similarity_threshold = request.similarity_threshold.unwrap_or(0.7).clamp(0.0, 1.0);
+
+    // Build query context
+    let context = QueryContext {
+        conversation_id: None,
+        previous_queries: Vec::new(),
+        user_preferences: std::collections::HashMap::new(),
+        file_ids: None, // Query all files in instance
+        conversation_history: None,
+        response_type: None,
+        user_prompt: None,
+        enable_rerank: request.enable_rerank.unwrap_or(false),
+        stream: false, // No streaming for testing API
+    };
+
+    // Create RAG query
+    let rag_query = RAGQuery {
+        text: request.query,
+        mode: QueryMode::Retrieval, // Always use Retrieval mode for this testing endpoint
+        max_results: Some(max_results),
+        similarity_threshold: Some(similarity_threshold),
+        context: Some(context),
+        filters: None,
+    };
+
+    // Execute query
+    let rag_response = engine
+        .query(rag_query)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(&format!("Query failed: {}", e))))?;
+
+    let processing_time = start_time.elapsed().as_millis() as u64;
+
+    // The results are already in RAGSource format from the RAG engine
+    let results = rag_response.sources;
+
+    // Extract unique file IDs from results and fetch file information
+    let unique_file_ids: Vec<Uuid> = results
+        .iter()
+        .map(|source| source.document.file_id)
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect();
+
+    // Fetch file information
+    let files = if !unique_file_ids.is_empty() {
+        get_files_by_ids(unique_file_ids)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to fetch files for RAG query: {}", e);
+                (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Failed to fetch file information"))
+            })?
+    } else {
+        Vec::new()
+    };
+
+    let token_usage = RAGTokenUsage {
+        total_tokens: rag_response.metadata.get("total_tokens")
+            .and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+        embedding_tokens: rag_response.metadata.get("embedding_tokens")
+            .and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+        max_total_tokens: rag_response.metadata.get("max_total_tokens")
+            .and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+    };
+
+    let metadata = RAGQueryMetadata {
+        processing_time_ms: processing_time,
+        chunks_retrieved: rag_response.metadata.get("chunks_retrieved")
+            .and_then(|v| v.as_u64()).unwrap_or(0) as usize,
+        chunks_filtered: results.len(), // Number of results we're returning
+        rerank_applied: request.enable_rerank.unwrap_or(false),
+    };
+
+    let response = RAGQueryResponse {
+        results,
+        files,
+        token_usage,
+        metadata,
+    };
+
+    Ok((StatusCode::OK, Json(response)))
 }

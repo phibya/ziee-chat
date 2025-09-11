@@ -315,6 +315,12 @@ function getTypeFromSchema(
         return actualType
       }
     }
+
+    // Handle EnumOption_for_ types - extract the actual enum type
+    if (typeName.startsWith('EnumOption_for_')) {
+      const actualType = typeName.replace('EnumOption_for_', '')
+      return actualType
+    }
     
     return typeName
   }
@@ -445,8 +451,8 @@ function generateSchemaInterface(
     return `export type ${name} = ${extractSchemaName(schema.$ref)}`
   }
 
-  // Skip JsonOption_for_ types since we convert them inline
-  if (name.startsWith('JsonOption_for_')) {
+  // Skip JsonOption_for_ and EnumOption_for_ types since we convert them inline
+  if (name.startsWith('JsonOption_for_') || name.startsWith('EnumOption_for_')) {
     return ''
   }
 
@@ -466,12 +472,12 @@ function generateSchemaInterface(
     for (const [propName, propSchema] of Object.entries(schema.properties)) {
       let isOptional = !schema.required?.includes(propName)
 
-      // Check if this property references a JsonOption_for_ type
+      // Check if this property references a JsonOption_for_ or EnumOption_for_ type
       let propType: string
       if (isSchemaReference(propSchema)) {
         const refTypeName = extractSchemaName(propSchema.$ref)
-        if (refTypeName.startsWith('JsonOption_for_')) {
-          // This property uses a JsonOption type, so make it optional and get the actual type
+        if (refTypeName.startsWith('JsonOption_for_') || refTypeName.startsWith('EnumOption_for_')) {
+          // This property uses a JsonOption or EnumOption type, so make it optional and get the actual type
           isOptional = true
           propType = getTypeFromSchema(propSchema, true) // This will handle the conversion
         } else {

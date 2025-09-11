@@ -55,7 +55,7 @@ pub struct RagInstanceFile {
     pub updated_at: DateTime<Utc>,
 }
 /// Simple vector document model
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct SimpleVectorDocument {
     pub id: Uuid,
     pub rag_instance_id: Uuid,
@@ -64,7 +64,6 @@ pub struct SimpleVectorDocument {
     pub content: String,
     pub content_hash: String,
     pub token_count: i32,
-    pub embedding: Option<Vec<f32>>, // VECTOR type from database
     pub metadata: serde_json::Value,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -249,10 +248,7 @@ impl RagInstance {
 }
 
 impl SimpleVectorDocument {
-    // Note: No longer need to format embedding for DB - pgvector handles Vec<f32> directly
-    pub fn get_embedding_dimensions(&self) -> Option<usize> {
-        self.embedding.as_ref().map(|vec| vec.len())
-    }
+    // Note: Embedding field removed - not needed for client responses
 }
 
 impl SimpleGraphChunk {

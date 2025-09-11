@@ -343,6 +343,10 @@ pub enum QueryMode {
     Naive,
     /// Bypass RAG, direct LLM query
     Bypass,
+    /// Return only retrieval results without LLM generation
+    Retrieval,
+    /// Full generation with LLM response
+    Generation,
 }
 
 /// Query context information
@@ -351,6 +355,19 @@ pub struct QueryContext {
     pub conversation_id: Option<Uuid>,
     pub previous_queries: Vec<String>,
     pub user_preferences: HashMap<String, serde_json::Value>,
+    pub file_ids: Option<Vec<Uuid>>,
+    pub conversation_history: Option<Vec<ConversationMessage>>,
+    pub response_type: Option<String>,
+    pub user_prompt: Option<String>,
+    pub enable_rerank: bool,
+    pub stream: bool,
+}
+
+/// Conversation message for history processing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConversationMessage {
+    pub role: String,
+    pub content: String,
 }
 
 /// RAG query response
@@ -365,12 +382,9 @@ pub struct RAGQueryResponse {
 }
 
 /// Source information for RAG responses
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct RAGSource {
-    pub file_id: Uuid,
-    pub filename: String,
-    pub chunk_index: Option<usize>,
-    pub content_snippet: String,
+    pub document: SimpleVectorDocument,
     pub similarity_score: f32,
     pub entity_matches: Vec<String>,
     pub relationship_matches: Vec<String>,

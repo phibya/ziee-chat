@@ -4435,6 +4435,37 @@
           }
         }
       }
+    },
+    "/api/rag/instances/{instance_id}/query": {
+      "post": {
+        "tags": [
+          "rag"
+        ],
+        "description": "Query RAG instance for testing (not for chat integration)",
+        "operationId": "Rag.queryInstance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RAGQueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RAGQueryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5644,7 +5675,7 @@
           "name": {
             "type": "string"
           },
-          "alias": {
+          "display_name": {
             "type": "string"
           },
           "enabled": {
@@ -5711,13 +5742,20 @@
           },
           "source": {
             "$ref": "#/components/schemas/JsonOption_for_SourceInfo"
+          },
+          "embedding_dimension": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
           }
         },
         "required": [
           "id",
           "provider_id",
           "name",
-          "alias",
+          "display_name",
           "enabled",
           "is_deprecated",
           "is_active",
@@ -6647,7 +6685,7 @@
           "name": {
             "type": "string"
           },
-          "alias": {
+          "display_name": {
             "type": "string"
           },
           "enabled": {
@@ -6706,7 +6744,7 @@
         "required": [
           "provider_id",
           "name",
-          "alias",
+          "display_name",
           "engine_type",
           "file_format"
         ]
@@ -6726,7 +6764,7 @@
               "null"
             ]
           },
-          "alias": {
+          "display_name": {
             "type": [
               "string",
               "null"
@@ -6825,7 +6863,7 @@
           "name": {
             "type": "string"
           },
-          "alias": {
+          "display_name": {
             "type": "string"
           },
           "file_format": {
@@ -6883,7 +6921,7 @@
           "repository_id",
           "repository_path",
           "name",
-          "alias",
+          "display_name",
           "file_format",
           "main_filename",
           "source"
@@ -7005,7 +7043,7 @@
               "null"
             ]
           },
-          "alias": {
+          "display_name": {
             "description": "Model alias/display name",
             "type": [
               "string",
@@ -7470,7 +7508,7 @@
           "name": {
             "type": "string"
           },
-          "alias": {
+          "display_name": {
             "type": "string"
           },
           "enabled": {
@@ -7483,10 +7521,10 @@
             "type": "boolean"
           },
           "status": {
-            "$ref": "#/components/schemas/RAGInstanceStatus"
+            "$ref": "#/components/schemas/EnumOption_for_RAGInstanceStatus"
           },
           "error_code": {
-            "$ref": "#/components/schemas/RAGInstanceErrorCode"
+            "$ref": "#/components/schemas/EnumOption_for_RAGInstanceErrorCode"
           },
           "engine_type": {
             "$ref": "#/components/schemas/RAGEngineType"
@@ -7528,7 +7566,7 @@
           "id",
           "provider_id",
           "name",
-          "alias",
+          "display_name",
           "enabled",
           "is_active",
           "is_system",
@@ -7541,21 +7579,40 @@
           "updated_at"
         ]
       },
+      "EnumOption_for_RAGInstanceStatus": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/RAGInstanceStatus"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "RAGInstanceStatus": {
         "type": "string",
         "enum": [
-          "none",
           "indexing",
           "finished",
           "error"
         ]
       },
+      "EnumOption_for_RAGInstanceErrorCode": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/RAGInstanceErrorCode"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "RAGInstanceErrorCode": {
         "type": "string",
         "enum": [
-          "none",
           "embedding_model_not_config",
           "embedding_model_not_found",
+          "embedding_model_test_failed",
           "llm_model_not_config",
           "llm_model_not_found",
           "provider_connection_failed",
@@ -7643,13 +7700,6 @@
               "null"
             ],
             "format": "int32"
-          },
-          "cosine_better_than_threshold": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "float"
           },
           "max_parallel_insert": {
             "type": [
@@ -7950,7 +8000,7 @@
           "name": {
             "type": "string"
           },
-          "alias": {
+          "display_name": {
             "type": "string"
           },
           "engine_type": {
@@ -7985,7 +8035,7 @@
         "required": [
           "provider_id",
           "name",
-          "alias",
+          "display_name",
           "engine_type"
         ]
       },
@@ -8016,6 +8066,16 @@
               "null"
             ]
           },
+          "engine_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGEngineType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "embedding_model_id": {
             "type": [
               "string",
@@ -8035,6 +8095,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/RAGEngineSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGInstanceErrorCode"
               },
               {
                 "type": "null"
@@ -10363,7 +10433,7 @@
           "name": {
             "type": "string"
           },
-          "alias": {
+          "display_name": {
             "type": "string"
           },
           "repository_url": {
@@ -10456,7 +10526,7 @@
         "required": [
           "id",
           "name",
-          "alias",
+          "display_name",
           "repository_url",
           "repository_path",
           "main_filename",
@@ -10743,7 +10813,7 @@
           "name": {
             "type": "string"
           },
-          "alias": {
+          "display_name": {
             "type": "string"
           },
           "engine_type": {
@@ -10778,7 +10848,7 @@
         "required": [
           "provider_id",
           "name",
-          "alias",
+          "display_name",
           "engine_type"
         ]
       },
@@ -10861,7 +10931,14 @@
             "type": "boolean"
           },
           "error_code": {
-            "$ref": "#/components/schemas/RAGInstanceErrorCode"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RAGInstanceErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "total_files": {
             "type": "integer",
@@ -10894,7 +10971,6 @@
           "name",
           "is_active",
           "enabled",
-          "error_code",
           "total_files",
           "processed_files",
           "failed_files",
@@ -11057,10 +11133,7 @@
             "format": "date-time"
           },
           "processing_error": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "$ref": "#/components/schemas/EnumOption_for_RAGIndexingErrorCode"
           },
           "rag_metadata": true,
           "created_at": {
@@ -11078,9 +11151,260 @@
           "file_id",
           "filename",
           "processing_status",
+          "processing_error",
           "rag_metadata",
           "created_at",
           "updated_at"
+        ]
+      },
+      "EnumOption_for_RAGIndexingErrorCode": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/RAGIndexingErrorCode"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "RAGIndexingErrorCode": {
+        "description": "Indexing error codes for file processing operations",
+        "type": "string",
+        "enum": [
+          "text_extraction_failed",
+          "unsupported_file_format",
+          "file_read_error",
+          "chunking_failed",
+          "embedding_generation_failed",
+          "embedding_model_unavailable",
+          "index_storage_failed",
+          "content_validation_failed",
+          "file_too_large",
+          "processing_timeout",
+          "processing_error",
+          "database_error"
+        ]
+      },
+      "RAGQueryRequest": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "description": "The query text to search for",
+            "type": "string"
+          },
+          "max_results": {
+            "description": "Maximum number of results to return (optional, default: 10)",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0
+          },
+          "enable_rerank": {
+            "description": "Enable reranking of results (optional, default: false)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "similarity_threshold": {
+            "description": "Similarity threshold for vector search (optional, default: 0.7)",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "RAGQueryResponse": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "description": "RAG search results with similarity scores and entity matches",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RAGSource"
+            }
+          },
+          "files": {
+            "description": "Unique files referenced in the search results",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/File"
+            }
+          },
+          "token_usage": {
+            "description": "Token usage statistics",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RAGTokenUsage"
+              }
+            ]
+          },
+          "metadata": {
+            "description": "Processing metadata",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RAGQueryMetadata"
+              }
+            ]
+          }
+        },
+        "required": [
+          "results",
+          "files",
+          "token_usage",
+          "metadata"
+        ]
+      },
+      "RAGSource": {
+        "description": "Source information for RAG responses",
+        "type": "object",
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/SimpleVectorDocument"
+          },
+          "similarity_score": {
+            "type": "number",
+            "format": "float"
+          },
+          "entity_matches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "relationship_matches": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "document",
+          "similarity_score",
+          "entity_matches",
+          "relationship_matches"
+        ]
+      },
+      "SimpleVectorDocument": {
+        "description": "Simple vector document model",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "rag_instance_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "file_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chunk_index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "string"
+          },
+          "content_hash": {
+            "type": "string"
+          },
+          "token_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "metadata": true,
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "rag_instance_id",
+          "file_id",
+          "chunk_index",
+          "content",
+          "content_hash",
+          "token_count",
+          "metadata",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "RAGTokenUsage": {
+        "type": "object",
+        "properties": {
+          "total_tokens": {
+            "description": "Total tokens used in query processing",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          },
+          "embedding_tokens": {
+            "description": "Tokens used for embedding queries",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          },
+          "max_total_tokens": {
+            "description": "Maximum tokens that were budgeted",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "total_tokens",
+          "embedding_tokens",
+          "max_total_tokens"
+        ]
+      },
+      "RAGQueryMetadata": {
+        "type": "object",
+        "properties": {
+          "processing_time_ms": {
+            "description": "Processing time in milliseconds",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0
+          },
+          "chunks_retrieved": {
+            "description": "Number of chunks retrieved before filtering",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "chunks_filtered": {
+            "description": "Number of chunks after similarity filtering",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0
+          },
+          "rerank_applied": {
+            "description": "Whether reranking was applied",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "processing_time_ms",
+          "chunks_retrieved",
+          "chunks_filtered",
+          "rerank_applied"
         ]
       }
     }

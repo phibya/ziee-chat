@@ -233,10 +233,36 @@ export const RagDetailsPage: React.FC = () => {
             </div>
 
             {/* Render cards based on active tab */}
-            {activeTab === 'query' && <RagQueryTab />}
-            {activeTab === 'documents' && <RagDocumentsTab />}
-            {activeTab === 'status' && <RagStatusTab />}
-            {activeTab === 'settings' && <RagInstanceSettingsTab />}
+            <div
+              style={{
+                display: activeTab === 'query' ? 'flex' : 'none',
+              }}
+              className={'flex flex-col'}
+            >
+              <RagQueryTab />
+            </div>
+            <div
+              style={{
+                display: activeTab === 'documents' ? 'flex' : 'none',
+              }}
+              className={'flex flex-col w-full'}
+            >
+              <RagDocumentsTab />
+            </div>
+            <div
+              style={{
+                display: activeTab === 'status' ? 'flex' : 'none',
+              }}
+            >
+              <RagStatusTab />
+            </div>
+            <div
+              style={{
+                display: activeTab === 'settings' ? 'flex' : 'none',
+              }}
+            >
+              <RagInstanceSettingsTab />
+            </div>
           </div>
         </div>
       </div>

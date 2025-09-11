@@ -287,6 +287,9 @@ export {
   resetRAGStore,
   searchRAGInstances,
   toggleSystemInstances,
+  queryRAGInstance,
+  clearQueryResults,
+  clearQueryError,
   useRAGStore,
 } from './rag'
 

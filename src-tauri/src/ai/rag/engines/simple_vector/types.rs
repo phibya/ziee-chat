@@ -4,6 +4,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+// SimpleVectorDocument moved to crate::ai::rag::models to avoid duplication
+// and ensure it includes the embedding field that matches the database schema
+
 /// Multi-pass gleaning configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GleaningConfig {

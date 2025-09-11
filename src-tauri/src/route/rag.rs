@@ -1,10 +1,10 @@
 use crate::api::files::FileOperationSuccessResponse;
 use crate::api::rag::{files, instances};
+use crate::api::rag::instances::{RAGQueryResponse, SSERAGStatusEvent};
 use crate::database::models::{
     file::UploadFileResponse, RAGInstance, RAGInstanceFilesListResponse, RAGInstanceListResponse,
     RAGProvider,
 };
-use crate::api::rag::instances::SSERAGStatusEvent;
 use aide::axum::{
     routing::{delete_with, get_with, post_with, put_with},
     ApiRouter,
@@ -156,13 +156,17 @@ fn user_rag_routes() -> ApiRouter {
                 crate::api::middleware::files_delete_middleware,
             )),
         )
-    // TODO: Query endpoint - Enable once OperationHandler trait issue is resolved
-    // .api_route(
-    //     "/instances/{instance_id}/query",
-    //     post_with(instances::query_rag_instance, |op| {
-    //         op.description("Query RAG instance")
-    //             .id("Rag.queryInstance")
-    //             .tag("rag")
-    //     }),
-    // )
+        // Query RAG instance for testing purposes
+        .api_route(
+            "/instances/{instance_id}/query",
+            post_with(instances::query_rag_instance_handler, |op| {
+                op.description("Query RAG instance for testing (not for chat integration)")
+                    .id("Rag.queryInstance")
+                    .tag("rag")
+                    .response::<200, Json<RAGQueryResponse>>()
+            })
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::rag_instances_read_middleware,
+            )),
+        )
 }

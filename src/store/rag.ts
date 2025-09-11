@@ -4,6 +4,8 @@ import { ApiClient } from '../api/client'
 import type {
   RAGInstance,
   RAGProvider,
+  RAGQueryRequest,
+  RAGQueryResponse,
   UpdateRAGInstanceRequest,
 } from '../types/api'
 
@@ -22,6 +24,12 @@ interface RagState {
   // System instances toggle
   includeSystemInstances: boolean
 
+  // Query state
+  queryResults: RAGQueryResponse | null
+  querying: boolean
+  lastQuery: string | null
+  queryError: string | null
+
   // Error state
   error: string | null
 }
@@ -38,6 +46,10 @@ export const useRAGStore = create<RagState>()(
       updating: false,
       deleting: false,
       includeSystemInstances: false,
+      queryResults: null,
+      querying: false,
+      lastQuery: null,
+      queryError: null,
       error: null,
     }),
   ),
@@ -223,8 +235,54 @@ export const resetRAGStore = (): void => {
     updating: false,
     deleting: false,
     includeSystemInstances: false,
+    queryResults: null,
+    querying: false,
+    lastQuery: null,
+    queryError: null,
     error: null,
   })
+}
+
+// RAG Query actions
+export const queryRAGInstance = async (
+  instanceId: string,
+  queryData: RAGQueryRequest,
+): Promise<RAGQueryResponse> => {
+  try {
+    useRAGStore.setState({ querying: true, queryError: null })
+
+    const response = await ApiClient.Rag.queryInstance({
+      instance_id: instanceId,
+      ...queryData,
+    })
+
+    useRAGStore.setState({
+      queryResults: response,
+      lastQuery: queryData.query,
+      querying: false,
+    })
+
+    return response
+  } catch (error) {
+    useRAGStore.setState({
+      queryError:
+        error instanceof Error ? error.message : 'Failed to query RAG instance',
+      querying: false,
+    })
+    throw error
+  }
+}
+
+export const clearQueryResults = (): void => {
+  useRAGStore.setState({
+    queryResults: null,
+    lastQuery: null,
+    queryError: null,
+  })
+}
+
+export const clearQueryError = (): void => {
+  useRAGStore.setState({ queryError: null })
 }
 
 // Helper/utility functions
