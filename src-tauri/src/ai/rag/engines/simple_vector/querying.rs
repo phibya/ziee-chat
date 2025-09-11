@@ -329,7 +329,7 @@ impl RAGSimpleVectorEngine {
         RAGQueryResponse {
             answer: String::new(), // Empty for retrieval-only
             sources,
-            mode_used: QueryMode::Retrieval,
+            mode_used: QueryMode::Bypass,
             confidence_score: None,
             processing_time_ms: processing_time,
             metadata,
@@ -444,11 +444,11 @@ impl RAGSimpleVectorEngine {
         let processing_time = start_time.elapsed().as_millis() as u64;
 
         match query.mode {
-            QueryMode::Retrieval => {
+            QueryMode::Bypass => {
                 // Return just the sources without LLM generation
                 Ok(self.build_retrieval_response(processed_chunks, processing_time))
             }
-            QueryMode::Generation | QueryMode::Naive | QueryMode::Local => {
+            QueryMode::Naive | QueryMode::Local | QueryMode::Global | QueryMode::Hybrid | QueryMode::Mix => {
                 // 4. Context Assembly (format chunks for LLM)
                 let context_data = format_chunks_as_context(&processed_chunks);
 
@@ -464,14 +464,6 @@ impl RAGSimpleVectorEngine {
                     query.mode,
                     &token_budget,
                 ))
-            }
-            _ => {
-                // For unsupported modes, return retrieval-only results
-                tracing::warn!(
-                    "Unsupported query mode {:?}, falling back to retrieval",
-                    query.mode
-                );
-                Ok(self.build_retrieval_response(processed_chunks, processing_time))
             }
         }
     }

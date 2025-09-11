@@ -568,7 +568,7 @@ pub async fn query_rag_instance_handler(
     // Create RAG query
     let rag_query = RAGQuery {
         text: request.query,
-        mode: QueryMode::Retrieval, // Always use Retrieval mode for this testing endpoint
+        mode: QueryMode::Bypass, // Always use Bypass mode for this testing endpoint
         max_results: Some(max_results),
         similarity_threshold: Some(similarity_threshold),
         context: Some(context),

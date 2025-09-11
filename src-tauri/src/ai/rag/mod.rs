@@ -343,10 +343,6 @@ pub enum QueryMode {
     Naive,
     /// Bypass RAG, direct LLM query
     Bypass,
-    /// Return only retrieval results without LLM generation
-    Retrieval,
-    /// Full generation with LLM response
-    Generation,
 }
 
 /// Query context information
