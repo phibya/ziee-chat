@@ -3,7 +3,7 @@
 use super::queries::similarity_search_documents;
 use super::utils::{
     apply_rerank_if_enabled, deduplicate_chunks_by_id, format_chunks_as_context,
-    format_conversation_history, get_max_total_tokens, get_tokenizer, post_process_llm_response,
+    get_max_total_tokens, get_tokenizer, post_process_llm_response,
     truncate_chunks_by_tokens, TokenBudget,
 };
 use super::RAGSimpleVectorEngine;
@@ -52,9 +52,21 @@ impl RAGSimpleVectorEngine {
         // 1. Generate query embedding
         let query_embedding = self.generate_query_embedding(query_text).await?;
 
-        // 2. Determine search parameters
-        let search_top_k = query.max_results.unwrap_or(20); // chunk_top_k from LightRAG
-        let similarity_threshold = query.similarity_threshold;
+        // 2. Determine search parameters from engine settings
+        let (search_top_k, similarity_threshold) = {
+            let settings = &self.rag_instance.instance.engine_settings.simple_vector;
+            match settings.as_ref().and_then(|s| s.querying.as_ref()) {
+                Some(querying_settings) => {
+                    let top_k = querying_settings.top_k.unwrap_or(20) as usize;
+                    let threshold = querying_settings.similarity_threshold;
+                    (top_k, threshold)
+                },
+                None => {
+                    // Use default values when no querying settings configured
+                    (20, None)
+                }
+            }
+        };
 
         // 3. Execute similarity search with complete document data
         let results = similarity_search_documents(
@@ -62,7 +74,9 @@ impl RAGSimpleVectorEngine {
             &query_embedding,
             search_top_k,
             similarity_threshold,
-            query.context.as_ref().and_then(|c| c.file_ids.clone()),
+            query.context.as_ref()
+                .and_then(|c| c.chat_request.as_ref())
+                .and_then(|r| r.file_ids.clone()),
         )
         .await?;
 
@@ -79,7 +93,7 @@ impl RAGSimpleVectorEngine {
         &self,
         query_text: &str,
         chunks: Vec<(SimpleVectorDocument, f32)>,
-        query: &RAGQuery,
+        _query: &RAGQuery,
         available_chunk_tokens: usize,
     ) -> RAGResult<Vec<(SimpleVectorDocument, f32)>> {
         if chunks.is_empty() {
@@ -93,10 +107,9 @@ impl RAGSimpleVectorEngine {
         processed_chunks = deduplicate_chunks_by_id(processed_chunks);
 
         // 2. Reranking (if enabled and rerank model available)
-        if query
-            .context
+        if self.rag_instance.instance.engine_settings.simple_vector
             .as_ref()
-            .map_or(false, |c| c.enable_rerank)
+            .map_or(false, |s| s.querying.as_ref().map_or(false, |q| q.enable_rerank()))
         {
             processed_chunks = apply_rerank_if_enabled(query_text, processed_chunks).await?;
         }
@@ -123,25 +136,18 @@ impl RAGSimpleVectorEngine {
         let tokenizer = get_tokenizer();
 
         // 2. Calculate conversation history tokens
-        let history_context = query
-            .context
-            .as_ref()
-            .and_then(|c| c.conversation_history.as_ref())
-            .map(|h| format_conversation_history(h, 3)) // 3 turns max
-            .unwrap_or_default();
+        // For now, skip conversation history since we need user_id which isn't available in RAG testing context
+        // TODO: When RAG is integrated with chat, add user_id to RAGQuery to enable conversation history
+        let history_context = String::new();
         let history_tokens = tokenizer.count_tokens(&history_context);
 
         // 3. Calculate system prompt template overhead (empty content_data)
-        let response_type = query
-            .context
+        let response_type = "Multiple Paragraphs"; // Use default response type
+        let user_prompt = self.rag_instance.instance.engine_settings.simple_vector
             .as_ref()
-            .and_then(|c| c.response_type.as_ref())
-            .map_or("Multiple Paragraphs", |v| v.as_str());
-        let user_prompt = query
-            .context
-            .as_ref()
-            .and_then(|c| c.user_prompt.as_ref())
-            .map_or("", |v| v.as_str());
+            .and_then(|s| s.querying.as_ref())
+            .and_then(|q| q.user_prompt.as_deref())
+            .unwrap_or("");
 
         // Create sample system prompt to calculate overhead (LightRAG pattern)
         let sample_system_prompt = NAIVE_RAG_RESPONSE_TEMPLATE
@@ -210,7 +216,7 @@ impl RAGSimpleVectorEngine {
         &self,
         query_text: &str,
         context_data: &str,
-        query: &RAGQuery,
+        _query: &RAGQuery,
         token_budget: &TokenBudget,
     ) -> RAGResult<String> {
         // 1. Get LLM model
@@ -224,22 +230,15 @@ impl RAGSimpleVectorEngine {
             ))?;
 
         // 2. Format system prompt (LightRAG naive_rag_response pattern)
-        let response_type = query
-            .context
+        let response_type = "Multiple Paragraphs"; // Use default response type
+        // For now, skip conversation history since we need user_id which isn't available in RAG testing context
+        // TODO: When RAG is integrated with chat, add user_id to RAGQuery to enable conversation history
+        let history_context = String::new();
+        let user_prompt = self.rag_instance.instance.engine_settings.simple_vector
             .as_ref()
-            .and_then(|c| c.response_type.as_ref())
-            .map_or("Multiple Paragraphs", |v| v.as_str());
-        let history_context = query
-            .context
-            .as_ref()
-            .and_then(|c| c.conversation_history.as_ref())
-            .map(|h| format_conversation_history(h, 3))
-            .unwrap_or_default();
-        let user_prompt = query
-            .context
-            .as_ref()
-            .and_then(|c| c.user_prompt.as_ref())
-            .map_or("", |v| v.as_str());
+            .and_then(|s| s.querying.as_ref())
+            .and_then(|q| q.user_prompt.as_deref())
+            .unwrap_or("");
 
         let system_prompt = NAIVE_RAG_RESPONSE_TEMPLATE
             .replace("{content_data}", context_data)
@@ -285,7 +284,7 @@ impl RAGSimpleVectorEngine {
                     content: query_text.to_string().into(),
                 },
             ],
-            stream: query.context.as_ref().map_or(false, |c| c.stream),
+            stream: false, // Streaming is handled by chat feature, not RAG
         };
 
         let response = llm_model.chat(completion_request).await.map_err(|e| {
@@ -406,7 +405,7 @@ impl RAGSimpleVectorEngine {
     }
 
     /// Complete RAG query processing
-    pub async fn query_complete(&self, query: RAGQuery) -> RAGResult<RAGQueryResponse> {
+    pub async fn query_impl(&self, query: RAGQuery) -> RAGResult<RAGQueryResponse> {
         let start_time = std::time::Instant::now();
 
         tracing::info!(

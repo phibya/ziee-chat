@@ -46,6 +46,11 @@ impl RAGSimpleVectorEngine {
     pub(super) async fn get_filename_from_db(&self, file_id: Uuid) -> RAGResult<String> {
         queries::get_filename_from_db(file_id).await
     }
+
+    /// Get RAG instance info
+    pub fn rag_instance(&self) -> &crate::ai::rag::types::RAGInstanceInfo {
+        &self.rag_instance
+    }
 }
 
 #[async_trait]
@@ -55,25 +60,18 @@ impl RAGEngine for RAGSimpleVectorEngine {
     }
 
     async fn process_file(&self, file_id: Uuid) -> RAGResult<()> {
-        self.process_file_complete(file_id).await
+        self.process_file_impl(file_id).await
     }
 
     async fn initialize(&self, _settings: serde_json::Value) -> RAGResult<()> {
-        // For simple vector engine, initialization is minimal
-        // We might create indices or validate configuration here
-
-        // Vector extension is always available
-
         Ok(())
     }
 
     async fn query(&self, query: RAGQuery) -> RAGResult<RAGQueryResponse> {
-        self.query_complete(query).await
+        self.query_impl(query).await
     }
 
     async fn validate_configuration(&self, _settings: serde_json::Value) -> RAGResult<()> {
-        // Vector extension is always available
-
         Ok(())
     }
 

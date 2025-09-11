@@ -103,12 +103,6 @@ pub struct RAGInstanceListQuery {
 pub struct RAGQueryRequest {
     /// The query text to search for
     pub query: String,
-    /// Maximum number of results to return (optional, default: 10)
-    pub max_results: Option<usize>,
-    /// Enable reranking of results (optional, default: false)  
-    pub enable_rerank: Option<bool>,
-    /// Similarity threshold for vector search (optional, default: 0.7)
-    pub similarity_threshold: Option<f32>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -548,31 +542,18 @@ pub async fn query_rag_instance_handler(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error(&format!("Failed to create RAG engine: {}", e))))?;
 
-    // Build query parameters
-    let max_results = request.max_results.unwrap_or(10).min(50); // Cap at 50
-    let similarity_threshold = request.similarity_threshold.unwrap_or(0.7).clamp(0.0, 1.0);
-
     // Build query context
     let context = QueryContext {
-        conversation_id: None,
         previous_queries: Vec::new(),
-        user_preferences: std::collections::HashMap::new(),
-        file_ids: None, // Query all files in instance
-        conversation_history: None,
-        response_type: None,
-        user_prompt: None,
-        enable_rerank: request.enable_rerank.unwrap_or(false),
-        stream: false, // No streaming for testing API
+        chat_request: None, // No chat context for testing API
     };
 
+    // Create query params from request
     // Create RAG query
     let rag_query = RAGQuery {
         text: request.query,
         mode: QueryMode::Bypass, // Always use Bypass mode for this testing endpoint
-        max_results: Some(max_results),
-        similarity_threshold: Some(similarity_threshold),
         context: Some(context),
-        filters: None,
     };
 
     // Execute query
@@ -620,7 +601,9 @@ pub async fn query_rag_instance_handler(
         chunks_retrieved: rag_response.metadata.get("chunks_retrieved")
             .and_then(|v| v.as_u64()).unwrap_or(0) as usize,
         chunks_filtered: results.len(), // Number of results we're returning
-        rerank_applied: request.enable_rerank.unwrap_or(false),
+        rerank_applied: engine.rag_instance().instance.engine_settings.simple_vector
+            .as_ref()
+            .map_or(false, |s| s.querying.as_ref().map_or(false, |q| q.enable_rerank())),
     };
 
     let response = RAGQueryResponse {

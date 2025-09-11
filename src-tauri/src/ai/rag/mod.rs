@@ -322,10 +322,7 @@ impl std::fmt::Display for PipelineStage {
 pub struct RAGQuery {
     pub text: String,
     pub mode: QueryMode,
-    pub max_results: Option<usize>,
-    pub similarity_threshold: Option<f32>,
     pub context: Option<QueryContext>,
-    pub filters: Option<HashMap<String, serde_json::Value>>,
 }
 
 /// Query modes (inspired by LightRAG)
@@ -348,15 +345,8 @@ pub enum QueryMode {
 /// Query context information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryContext {
-    pub conversation_id: Option<Uuid>,
     pub previous_queries: Vec<String>,
-    pub user_preferences: HashMap<String, serde_json::Value>,
-    pub file_ids: Option<Vec<Uuid>>,
-    pub conversation_history: Option<Vec<ConversationMessage>>,
-    pub response_type: Option<String>,
-    pub user_prompt: Option<String>,
-    pub enable_rerank: bool,
-    pub stream: bool,
+    pub chat_request: Option<crate::api::chat::ChatMessageRequest>,
 }
 
 /// Conversation message for history processing

@@ -1043,9 +1043,6 @@ export interface RAGQueryMetadata {
 
 export interface RAGQueryRequest {
   query: string
-  max_results?: number
-  enable_rerank?: boolean
-  similarity_threshold?: number
 }
 
 export interface RAGQueryResponse {

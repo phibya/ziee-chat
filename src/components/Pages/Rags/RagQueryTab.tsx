@@ -2,13 +2,10 @@ import {
   App,
   Button,
   Card,
-  Checkbox,
-  Collapse,
   Divider,
   Flex,
   Form,
   Input,
-  InputNumber,
   Result,
   Space,
   Statistic,
@@ -40,7 +37,6 @@ import type {
 
 const { TextArea } = Input
 const { Text, Paragraph } = Typography
-const { Panel } = Collapse
 
 interface QueryFormData extends RAGQueryRequest {
   query: string
@@ -50,7 +46,6 @@ export const RagQueryTab: React.FC = () => {
   const [form] = Form.useForm<QueryFormData>()
   const { message, modal } = App.useApp()
   const { ragInstanceId } = useParams<{ ragInstanceId: string }>()
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   // Store usage - accessing query state from RAG store
   const { queryResults, querying, queryError, lastQuery } = Stores.RAG
@@ -419,11 +414,6 @@ export const RagQueryTab: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          initialValues={{
-            max_results: 10,
-            enable_rerank: false,
-            similarity_threshold: 0.7,
-          }}
         >
           <Form.Item
             name="query"
@@ -439,66 +429,6 @@ export const RagQueryTab: React.FC = () => {
               disabled={querying}
             />
           </Form.Item>
-
-          {/* Advanced Options */}
-          <Collapse
-            size="small"
-            ghost
-            activeKey={showAdvanced ? ['advanced'] : []}
-            onChange={keys => setShowAdvanced(keys.includes('advanced'))}
-            className={'!mb-3'}
-          >
-            <Panel key="advanced" header="Advanced Options">
-              <Space direction="vertical" size="middle" className="w-full">
-                <Flex justify="space-between" align="center">
-                  <Text>Maximum Results:</Text>
-                  <Form.Item
-                    name="max_results"
-                    tooltip="Maximum number of results to return (1-50)"
-                    className="mb-0"
-                  >
-                    <InputNumber
-                      min={1}
-                      max={50}
-                      placeholder="10"
-                      style={{ width: '120px' }}
-                      disabled={querying}
-                    />
-                  </Form.Item>
-                </Flex>
-
-                <Flex justify="space-between" align="center">
-                  <Text>Similarity Threshold:</Text>
-                  <Form.Item
-                    name="similarity_threshold"
-                    tooltip="Minimum similarity score for results (0.0-1.0)"
-                    className="mb-0"
-                  >
-                    <InputNumber
-                      min={0}
-                      max={1}
-                      step={0.1}
-                      placeholder="0.7"
-                      style={{ width: '120px' }}
-                      disabled={querying}
-                    />
-                  </Form.Item>
-                </Flex>
-
-                <Flex justify="space-between" align="center">
-                  <Text>Enable Reranking:</Text>
-                  <Form.Item
-                    name="enable_rerank"
-                    valuePropName="checked"
-                    tooltip="Apply reranking to improve result relevance"
-                    className="mb-0"
-                  >
-                    <Checkbox disabled={querying} />
-                  </Form.Item>
-                </Flex>
-              </Space>
-            </Panel>
-          </Collapse>
 
           {/* Submit buttons */}
           <Form.Item>

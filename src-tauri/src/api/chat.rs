@@ -38,7 +38,7 @@ pub struct SearchQuery {
     project_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ChatMessageRequest {
     pub conversation_id: Uuid,
     pub content: String,

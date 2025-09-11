@@ -148,7 +148,7 @@ impl RAGSimpleVectorEngine {
     }
 
     /// Complete file processing pipeline
-    pub async fn process_file_complete(&self, file_id: Uuid) -> RAGResult<()> {
+    pub async fn process_file_impl(&self, file_id: Uuid) -> RAGResult<()> {
         let start_time = std::time::Instant::now();
 
         // Get filename from database
