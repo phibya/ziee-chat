@@ -8,7 +8,7 @@ pub use simple_vector::RAGSimpleVectorEngine;
 pub use traits::{RAGEngine, RAGEngineType};
 
 use crate::ai::rag::{
-    rag_file_storage::RagFileStorage, RAGErrorCode, RAGInstanceErrorCode, RAGResult,
+    rag_file_storage::RagFileStorage, service::queries::get_engine_type_for_instance, RAGErrorCode, RAGInstanceErrorCode, RAGResult,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
@@ -38,28 +38,19 @@ pub fn get_rag_file_storage() -> &'static RagFileStorage {
 pub struct RAGEngineFactory;
 
 impl RAGEngineFactory {
-    /// Create a new RAG engine based on type
+    /// Create a new RAG engine based on instance ID (queries engine type from database)
     pub async fn create_engine(
-        engine_type: RAGEngineType,
         instance_id: Uuid,
     ) -> RAGResult<Box<dyn RAGEngine>> {
+        // Query engine type from database
+        let engine_type = get_engine_type_for_instance(instance_id).await?;
+
         match engine_type {
             RAGEngineType::SimpleVector => {
                 let engine = RAGSimpleVectorEngine::new(instance_id).await?;
                 Ok(Box::new(engine))
             }
             RAGEngineType::SimpleGraph => Err(RAGErrorCode::Instance(
-                RAGInstanceErrorCode::ConfigurationError,
-            )),
-        }
-    }
-
-    /// Get engine type from string
-    pub fn parse_engine_type(engine_type: &str) -> RAGResult<RAGEngineType> {
-        match engine_type {
-            "simple_vector" => Ok(RAGEngineType::SimpleVector),
-            "simple_graph" => Ok(RAGEngineType::SimpleGraph),
-            _ => Err(RAGErrorCode::Instance(
                 RAGInstanceErrorCode::ConfigurationError,
             )),
         }

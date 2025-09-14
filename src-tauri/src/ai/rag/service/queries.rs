@@ -43,24 +43,9 @@ pub async fn get_engine_type_for_instance(rag_instance_id: Uuid) -> RAGResult<RA
     .map_err(|_| RAGErrorCode::Instance(RAGInstanceErrorCode::DatabaseError))?
     .ok_or_else(|| RAGErrorCode::Instance(RAGInstanceErrorCode::RagInstanceNotFound))?;
 
-    // Convert string to RAGEngineType
-    let engine_type = match engine_type_str.as_str() {
-        "simple_vector" => RAGEngineType::SimpleVector,
-        "simple_graph" => {
-            // For now, we only support SimpleVector, so fallback
-            tracing::warn!(
-                "SimpleGraph engine type found but not supported yet, using SimpleVector"
-            );
-            RAGEngineType::SimpleVector
-        }
-        _ => {
-            tracing::warn!(
-                "Unknown engine type '{}', defaulting to SimpleVector",
-                engine_type_str
-            );
-            RAGEngineType::SimpleVector
-        }
-    };
+    // Convert string to RAGEngineType using the existing FromStr implementation
+    let engine_type = engine_type_str.parse::<RAGEngineType>()
+        .map_err(|_| RAGErrorCode::Instance(RAGInstanceErrorCode::ConfigurationError))?;
 
     tracing::debug!(
         "Engine type for RAG instance {}: {:?}",

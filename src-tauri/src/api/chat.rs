@@ -304,8 +304,6 @@ async fn stream_ai_response(
         }
     };
 
-    // Note: Assistant parameters are now handled internally by AIModel
-
     // Check if this is a new conversation (count messages before moving them)
     // Count messages excluding system messages (assistant instructions)
     let user_and_assistant_messages = messages.iter().filter(|m| m.role != "system").count();
@@ -332,9 +330,6 @@ async fn stream_ai_response(
         let _ = tx.send(Ok(error_event.into()));
         return;
     }
-
-    // Note: Parameter merging is now handled internally by AIModel
-    // The model instance contains both model and assistant parameters
 
     // If there's only 1 message (the user message we just added), this is a new conversation
     // Generate title before streaming the response

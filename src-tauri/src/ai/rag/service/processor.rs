@@ -12,7 +12,7 @@ use tokio::time::{sleep, Duration};
 use uuid::Uuid;
 
 use super::queries::{
-    get_engine_type_for_instance, get_pending_files_for_instance,
+    get_pending_files_for_instance,
     get_rag_instances_with_pending_files, update_file_status, update_file_status_with_error,
     update_rag_instance_active_status,
 };
@@ -127,34 +127,8 @@ async fn rag_instance_worker(
         rag_instance_id
     );
 
-    // Get engine type for this RAG instance
-    let engine_type = match get_engine_type_for_instance(rag_instance_id).await {
-        Ok(engine_type) => engine_type,
-        Err(e) => {
-            tracing::error!(
-                "Failed to get engine type for RAG instance {}: {}",
-                rag_instance_id,
-                e
-            );
-            // Deactivate the RAG instance due to engine type failure (only for instance errors)
-            if let Some(instance_error) = e.clone().into_instance_error() {
-                if let Err(update_err) =
-                    update_rag_instance_active_status(rag_instance_id, false, Some(instance_error))
-                        .await
-                {
-                    tracing::error!("Failed to deactivate RAG instance: {}", update_err);
-                }
-            } else {
-                // For non-instance errors, just log (don't deactivate the instance)
-                tracing::error!("Non-instance error (instance remains active): {}", e);
-            }
-            unregister_and_exit(rag_instance_id, &registry).await;
-            return Err(e);
-        }
-    };
-
-    // Create engine for this RAG instance
-    let engine = match RAGEngineFactory::create_engine(engine_type, rag_instance_id).await {
+    // Create engine for this RAG instance (engine type is queried internally)
+    let engine = match RAGEngineFactory::create_engine(rag_instance_id).await {
         Ok(engine) => engine,
         Err(e) => {
             tracing::error!(
