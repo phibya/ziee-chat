@@ -1106,7 +1106,8 @@ export interface RAGSimpleGraphQueryingSettings {
   related_chunk_number?: number
   query_mode?: RAGSimpleGraphQueryMode
   chunk_selection_method?: RAGChunkSelectionMethod
-  user_prompt?: string
+  prompt_template_pre_query?: string
+  prompt_template_post_query?: string
   enable_rerank?: boolean
   min_rerank_score?: number
 }
@@ -1130,7 +1131,8 @@ export interface RAGSimpleVectorQueryingSettings {
   related_chunk_number?: number
   max_total_tokens?: number
   chunk_selection_method?: RAGChunkSelectionMethod
-  user_prompt?: string
+  prompt_template_pre_query?: string
+  prompt_template_post_query?: string
   enable_rerank?: boolean
   min_rerank_score?: number
 }
@@ -1138,8 +1140,6 @@ export interface RAGSimpleVectorQueryingSettings {
 export interface RAGSource {
   document: SimpleVectorDocument
   similarity_score: number
-  entity_matches: string[]
-  relationship_matches: string[]
 }
 
 export interface RAGStatusStreamQuery {

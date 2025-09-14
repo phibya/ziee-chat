@@ -226,8 +226,7 @@ export const RagQueryTab: React.FC = () => {
     source,
     index,
   }) => {
-    const { document, similarity_score, entity_matches, relationship_matches } =
-      source
+    const { document, similarity_score } = source
 
     return (
       <Card
@@ -277,21 +276,6 @@ export const RagQueryTab: React.FC = () => {
               </Text>
             </div>
 
-            {entity_matches.length > 0 && (
-              <div>
-                <Text className="text-xs" type="secondary">
-                  Entities: {entity_matches.join(', ')}
-                </Text>
-              </div>
-            )}
-
-            {relationship_matches.length > 0 && (
-              <div>
-                <Text className="text-xs" type="secondary">
-                  Relationships: {relationship_matches.join(', ')}
-                </Text>
-              </div>
-            )}
           </Space>
         </div>
       </Card>

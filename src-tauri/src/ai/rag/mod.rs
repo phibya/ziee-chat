@@ -359,7 +359,6 @@ pub struct ConversationMessage {
 /// RAG query response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RAGQueryResponse {
-    pub answer: String,
     pub sources: Vec<RAGSource>,
     pub mode_used: QueryMode,
     pub confidence_score: Option<f32>,
@@ -372,8 +371,6 @@ pub struct RAGQueryResponse {
 pub struct RAGSource {
     pub document: SimpleVectorDocument,
     pub similarity_score: f32,
-    pub entity_matches: Vec<String>,
-    pub relationship_matches: Vec<String>,
 }
 
 /// Instance statistics

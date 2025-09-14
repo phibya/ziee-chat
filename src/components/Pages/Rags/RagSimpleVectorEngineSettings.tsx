@@ -197,13 +197,28 @@ export const RagSimpleVectorEngineSettings: React.FC = () => {
               />
             </Form.Item>
 
+            <Divider orientation="left" orientationMargin="0">
+              <Text type="secondary">Prompt Templates</Text>
+            </Divider>
+
             <Form.Item
-              label="User Prompt"
-              name={getFieldName('querying', 'user_prompt')}
-              tooltip="Custom prompt template for queries"
+              label="Pre-Query Template"
+              name={getFieldName('querying', 'prompt_template_pre_query')}
+              tooltip="Prompt template for query refinement before vector search (use {content} for query text, {history} for conversation history)"
             >
               <Input.TextArea
-                placeholder="Enter custom prompt template..."
+                placeholder="Enter pre-query prompt template..."
+                rows={3}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Post-Query Template"
+              name={getFieldName('querying', 'prompt_template_post_query')}
+              tooltip="Prompt template for final response generation after retrieval (use {content} for retrieved context, {history} for conversation history)"
+            >
+              <Input.TextArea
+                placeholder="Enter post-query prompt template..."
                 rows={3}
               />
             </Form.Item>

@@ -223,8 +223,7 @@ pub async fn similarity_search(
     instance_id: Uuid,
     query_embedding: &[f32],
     top_k: usize,
-    similarity_threshold: Option<f32>,
-    file_ids: Option<Vec<Uuid>>,
+    similarity_threshold: f32,
 ) -> RAGResult<Vec<VectorSearchResult>> {
     let database = get_database_pool().map_err(|e| {
         tracing::error!("Failed to get database pool for similarity search: {}", e);
@@ -233,57 +232,29 @@ pub async fn similarity_search(
 
     let query_vector = HalfVector::from_f32_slice(query_embedding);
     
-    let results = if let Some(file_ids) = file_ids {
-        // Search with file ID filtering
-        sqlx::query_as!(
-            VectorSearchResult,
-            r#"
-            SELECT 
-                file_id, 
-                chunk_index, 
-                content, 
-                metadata,
-                (1 - (embedding <=> $1::halfvec))::float4 as "similarity_score!"
-            FROM simple_vector_documents 
-            WHERE rag_instance_id = $2
-              AND file_id = ANY($3)
-              AND ($4::float4 IS NULL OR 1 - (embedding <=> $1::halfvec) >= $4)
-            ORDER BY embedding <=> $1::halfvec
-            LIMIT $5
-            "#,
-            query_vector as HalfVector,
-            instance_id,
-            &file_ids[..],
-            similarity_threshold,
-            top_k as i64
-        )
-        .fetch_all(&*database)
-        .await
-    } else {
-        // Search all documents in instance
-        sqlx::query_as!(
-            VectorSearchResult,
-            r#"
-            SELECT 
-                file_id, 
-                chunk_index, 
-                content, 
-                metadata,
-                (1 - (embedding <=> $1::halfvec))::float4 as "similarity_score!"
-            FROM simple_vector_documents 
-            WHERE rag_instance_id = $2
-              AND ($3::float4 IS NULL OR 1 - (embedding <=> $1::halfvec) >= $3)
-            ORDER BY embedding <=> $1::halfvec
-            LIMIT $4
-            "#,
-            query_vector as HalfVector,
-            instance_id,
-            similarity_threshold,
-            top_k as i64
-        )
-        .fetch_all(&*database)
-        .await
-    };
+    // Search all documents in instance
+    let results = sqlx::query_as!(
+        VectorSearchResult,
+        r#"
+        SELECT 
+            file_id, 
+            chunk_index, 
+            content, 
+            metadata,
+            (1 - (embedding <=> $1::halfvec))::float4 as "similarity_score!"
+        FROM simple_vector_documents 
+        WHERE rag_instance_id = $2
+          AND 1 - (embedding <=> $1::halfvec) >= $3
+        ORDER BY embedding <=> $1::halfvec
+        LIMIT $4
+        "#,
+        query_vector as HalfVector,
+        instance_id,
+        similarity_threshold as f64,
+        top_k as i64
+    )
+    .fetch_all(&*database)
+    .await;
 
     results.map_err(|e| {
         tracing::error!(
@@ -342,8 +313,7 @@ pub async fn similarity_search_documents(
     instance_id: Uuid,
     query_embedding: &[f32],
     top_k: usize,
-    similarity_threshold: Option<f32>,
-    file_ids: Option<Vec<Uuid>>,
+    similarity_threshold: f32,
 ) -> RAGResult<Vec<(SimpleVectorDocument, f32)>> {
     let database = get_database_pool().map_err(|e| {
         tracing::error!("Failed to get database pool for similarity search: {}", e);
@@ -352,19 +322,8 @@ pub async fn similarity_search_documents(
 
     let query_vector = HalfVector::from_f32_slice(query_embedding);
     
-    // Use sqlx::query_as with manual row mapping to avoid Record type issues
-    let sql = if file_ids.is_some() {
-        r#"
-        SELECT 
-            id, rag_instance_id, file_id, chunk_index, content, content_hash,
-            token_count, metadata, created_at, updated_at,
-            (1 - (embedding <=> $1::halfvec))::float4 as similarity_score
-        FROM simple_vector_documents 
-        WHERE rag_instance_id = $2 AND file_id = ANY($3)
-          AND ($4::float4 IS NULL OR 1 - (embedding <=> $1::halfvec) >= $4)
-        ORDER BY embedding <=> $1::halfvec LIMIT $5
-        "#
-    } else {
+    // Use query! macro for compile-time checking
+    let rows = sqlx::query!(
         r#"
         SELECT 
             id, rag_instance_id, file_id, chunk_index, content, content_hash,
@@ -372,31 +331,17 @@ pub async fn similarity_search_documents(
             (1 - (embedding <=> $1::halfvec))::float4 as similarity_score
         FROM simple_vector_documents 
         WHERE rag_instance_id = $2
-          AND ($3::float4 IS NULL OR 1 - (embedding <=> $1::halfvec) >= $3)
+          AND 1 - (embedding <=> $1::halfvec) >= $3
         ORDER BY embedding <=> $1::halfvec LIMIT $4
-        "#
-    };
-    
-    let rows = if let Some(file_ids) = file_ids {
-        sqlx::query(sql)
-            .bind(&query_vector)
-            .bind(instance_id)
-            .bind(&file_ids[..])
-            .bind(similarity_threshold)
-            .bind(top_k as i64)
-            .fetch_all(&*database)
-            .await
-    } else {
-        sqlx::query(sql)
-            .bind(&query_vector)
-            .bind(instance_id)
-            .bind(similarity_threshold)
-            .bind(top_k as i64)
-            .fetch_all(&*database)
-            .await
-    };
-
-    let rows = rows.map_err(|e| {
+        "#,
+        query_vector as HalfVector,
+        instance_id,
+        similarity_threshold as f64,
+        top_k as i64
+    )
+    .fetch_all(&*database)
+    .await
+    .map_err(|e| {
         tracing::error!(
             "Failed to execute similarity search for instance {}: {}",
             instance_id,
@@ -405,24 +350,23 @@ pub async fn similarity_search_documents(
         RAGErrorCode::Querying(RAGQueryingErrorCode::SimilaritySearchFailed)
     })?;
 
-    // Convert database rows to (SimpleVectorDocument, similarity_score) tuples
+    // Convert to (SimpleVectorDocument, similarity_score) tuples
     let documents_with_scores: Vec<(SimpleVectorDocument, f32)> = rows
         .into_iter()
         .map(|row| {
-            use sqlx::Row;
             let document = SimpleVectorDocument {
-                id: row.get("id"),
-                rag_instance_id: row.get("rag_instance_id"),
-                file_id: row.get("file_id"),
-                chunk_index: row.get("chunk_index"),
-                content: row.get("content"),
-                content_hash: row.get("content_hash"),
-                token_count: row.get("token_count"),
-                metadata: row.get("metadata"),
-                created_at: row.get("created_at"),
-                updated_at: row.get("updated_at"),
+                id: row.id,
+                rag_instance_id: row.rag_instance_id,
+                file_id: row.file_id,
+                chunk_index: row.chunk_index,
+                content: row.content,
+                content_hash: row.content_hash,
+                token_count: row.token_count,
+                metadata: row.metadata.unwrap_or_else(|| serde_json::json!({})),
+                created_at: row.created_at.unwrap_or_else(|| chrono::Utc::now()),
+                updated_at: row.updated_at.unwrap_or_else(|| chrono::Utc::now()),
             };
-            (document, row.get::<f32, _>("similarity_score"))
+            (document, row.similarity_score.unwrap_or(0.0))
         })
         .collect();
 

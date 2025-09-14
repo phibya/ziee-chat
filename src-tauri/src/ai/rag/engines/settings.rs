@@ -61,7 +61,8 @@ pub struct RAGSimpleVectorQueryingSettings {
     pub related_chunk_number: Option<i32>,
     pub max_total_tokens: Option<i32>,
     pub chunk_selection_method: Option<RAGChunkSelectionMethod>,
-    pub user_prompt: Option<String>,
+    pub prompt_template_pre_query: Option<String>,
+    pub prompt_template_post_query: Option<String>,
     pub enable_rerank: Option<bool>,
     pub min_rerank_score: Option<f32>,
 }
@@ -130,7 +131,8 @@ impl RAGSimpleVectorEngineSettings {
                 related_chunk_number: None,
                 max_total_tokens: None,
                 chunk_selection_method: None,
-                user_prompt: None,
+                prompt_template_pre_query: None,
+                prompt_template_post_query: None,
                 enable_rerank: None,
                 min_rerank_score: None,
             })
@@ -205,7 +207,8 @@ pub struct RAGSimpleGraphQueryingSettings {
     pub related_chunk_number: Option<i32>,
     pub query_mode: Option<RAGSimpleGraphQueryMode>,
     pub chunk_selection_method: Option<RAGChunkSelectionMethod>,
-    pub user_prompt: Option<String>,
+    pub prompt_template_pre_query: Option<String>,
+    pub prompt_template_post_query: Option<String>,
     pub enable_rerank: Option<bool>,
     pub min_rerank_score: Option<f32>,
 }
@@ -295,7 +298,8 @@ impl RAGSimpleGraphEngineSettings {
                 related_chunk_number: None,
                 query_mode: None,
                 chunk_selection_method: None,
-                user_prompt: None,
+                prompt_template_pre_query: None,
+                prompt_template_post_query: None,
                 enable_rerank: None,
                 min_rerank_score: None,
             })
