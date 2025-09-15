@@ -11,7 +11,7 @@ import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { isTauriView } from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
 import tinycolor from 'tinycolor2'
-import { resolveSystemTheme } from '../Providers/resolveTheme.ts'
+import { resolveSystemTheme } from '../providers/resolveTheme.ts'
 
 interface AppLayoutProps {
   children: React.ReactNode

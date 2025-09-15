@@ -650,8 +650,6 @@ fn detect_wgpu_gpus() -> Result<Vec<GPUDevice>, Box<dyn std::error::Error>> {
 // AMD GPU usage detection (Linux only)
 #[cfg(all(feature = "gpu-detect", target_os = "linux"))]
 fn get_amd_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
-    let mut gpu_usage = Vec::new();
-
     // Method 1: Try amdgpu_top with JSON output
     if let Ok(amd_usage) = get_amd_gpu_usage_amdgpu_top() {
         if !amd_usage.is_empty() {
@@ -863,7 +861,7 @@ fn get_amd_gpu_usage_sysfs() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>
 // Intel GPU usage detection (Linux and Windows)
 #[cfg(feature = "gpu-detect")]
 fn get_intel_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
-    let gpu_usage = Vec::new();
+    let mut gpu_usage: Vec<GPUUsage> = Vec::new();
 
     #[cfg(target_os = "linux")]
     {
