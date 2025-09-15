@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   CloseOutlined,
+  DatabaseOutlined,
   RobotOutlined,
   SendOutlined,
   SettingOutlined,
@@ -24,14 +25,18 @@ import {
   addNewConversationToList,
   createNewConversation,
   deleteFile,
-  loadUserAssistants,
-  loadUserProvidersWithAllModels,
   Stores,
   useChatStore,
 } from '../../../store'
 import { FileCard } from '../../common/FileCard'
 import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
-import { Assistant, Conversation, Message, Permission } from '../../../types'
+import {
+  Assistant,
+  Conversation,
+  Message,
+  Permission,
+  RAGInstance,
+} from '../../../types'
 import { createChatStore } from '../../../store/chat.ts'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
 import { IoIosArrowDown } from 'react-icons/io'
@@ -89,11 +94,7 @@ export const ChatInput = function ChatInput({
   const { assistants } = Stores.Assistants
   const { providers, modelsByProvider } = Stores.Providers
   const { user } = Stores.Auth
-
-  useEffect(() => {
-    loadUserAssistants()
-    loadUserProvidersWithAllModels()
-  }, [])
+  const { ragInstances } = Stores.RAG
 
   // ResizeObserver to listen to container width changes for UI breakpoints
   useEffect(() => {
@@ -172,6 +173,18 @@ export const ChatInput = function ChatInput({
 
     return options
   }, [providers, modelsByProvider])
+
+  // Get available RAG instances (only active and enabled) - memoized for performance
+  const availableRAGInstances = useMemo(() => {
+    return ragInstances
+      .filter((instance: RAGInstance) => instance.enabled && instance.is_active)
+      .map((instance: RAGInstance) => ({
+        label: instance.display_name || instance.name,
+        value: instance.id,
+        title:
+          instance.description || `${instance.name} - ${instance.engine_type}`,
+      }))
+  }, [ragInstances])
 
   // Initialize default selections
   useEffect(() => {
@@ -254,6 +267,7 @@ export const ChatInput = function ChatInput({
       message: messageToSend,
       assistant: selectedAssistant,
       model: selectedModel,
+      ragInstances: selectedRAGInstances,
     } = formValues
 
     if (!messageToSend?.trim()) {
@@ -279,6 +293,7 @@ export const ChatInput = function ChatInput({
           modelId: selectedModel.split(':')[1],
           content: messageToSend,
           fileIds: [...files.keys(), ...newFiles.keys()],
+          ragInstanceIds: selectedRAGInstances || [],
         })
         onDoneEditing?.() // Close the input after editing
       } catch (error) {
@@ -294,6 +309,7 @@ export const ChatInput = function ChatInput({
       assistantId: selectedAssistant,
       modelId: selectedModel.split(':')[1],
       fileIds: [...files.keys(), ...newFiles.keys()],
+      ragInstanceIds: selectedRAGInstances || [],
     }
 
     let newFilesBackup = new Map(newFiles) // Backup newFiles before clearing
@@ -438,6 +454,7 @@ export const ChatInput = function ChatInput({
               message: '',
               assistant: undefined,
               model: undefined,
+              ragInstances: [],
             }}
             disabled={isDisabled}
           >
@@ -497,7 +514,7 @@ export const ChatInput = function ChatInput({
                           }),
                         )}
                         style={{
-                          width: isBreaking ? 40 : 140,
+                          width: isBreaking ? 40 : 120,
                           paddingLeft: isBreaking ? 0 : 6,
                         }}
                         labelRender={isBreaking ? () => '' : undefined}
@@ -520,13 +537,43 @@ export const ChatInput = function ChatInput({
                         placeholder="Model"
                         disabled={isDisabled}
                         options={availableModels}
-                        style={{ width: isBreaking ? 40 : 140 }}
+                        style={{ width: isBreaking ? 40 : 120 }}
                         variant={isBreaking ? 'borderless' : undefined}
                         labelRender={isBreaking ? () => '' : undefined}
                         prefix={
                           isBreaking && (
                             <Button>
                               <SettingOutlined />
+                            </Button>
+                          )
+                        }
+                        suffixIcon={<IoIosArrowDown />}
+                      />
+                    </Form.Item>
+
+                    {/* RAG Instance selector */}
+                    <Form.Item name="ragInstances" noStyle>
+                      <Select
+                        mode="multiple"
+                        popupMatchSelectWidth={false}
+                        placeholder={
+                          availableRAGInstances.length > 0
+                            ? 'RAG Sources'
+                            : 'No RAG Sources'
+                        }
+                        disabled={
+                          isDisabled || availableRAGInstances.length === 0
+                        }
+                        allowClear
+                        maxTagCount={isBreaking ? 0 : 2}
+                        options={availableRAGInstances}
+                        style={{ width: isBreaking ? 40 : 160 }}
+                        variant={isBreaking ? 'borderless' : undefined}
+                        labelRender={isBreaking ? () => '' : undefined}
+                        prefix={
+                          isBreaking && (
+                            <Button>
+                              <DatabaseOutlined />
                             </Button>
                           )
                         }

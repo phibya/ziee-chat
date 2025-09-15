@@ -104,6 +104,7 @@ export interface ChatMessageRequest {
   model_id: string
   assistant_id: string
   file_ids?: string[]
+  rag_instance_ids?: string[]
 }
 
 export interface Conversation {
@@ -1409,6 +1410,7 @@ export interface UpdateProxySettingsRequest {
 export interface UpdateRAGInstanceRequest {
   description?: string
   name?: string
+  display_name?: string
   enabled?: boolean
   is_active?: boolean
   engine_type?: RAGEngineType

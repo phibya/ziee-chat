@@ -32,6 +32,11 @@ interface RagState {
 
   // Error state
   error: string | null
+
+  __init__: {
+    ragInstances: () => Promise<void>
+    creatableProviders: () => Promise<void>
+  }
 }
 
 export const useRAGStore = create<RagState>()(
@@ -51,6 +56,10 @@ export const useRAGStore = create<RagState>()(
       lastQuery: null,
       queryError: null,
       error: null,
+      __init__: {
+        ragInstances: () => loadAllUserRAGInstances(),
+        creatableProviders: () => loadAllUserRAGInstances(),
+      },
     }),
   ),
 )

@@ -11,6 +11,10 @@ interface ConversationsState {
   updating: boolean
   deleting: boolean
   error: string | null
+
+  __init__: {
+    conversations: () => Promise<void>
+  }
 }
 
 export const useConversationsStore = create<ConversationsState>()(
@@ -22,6 +26,9 @@ export const useConversationsStore = create<ConversationsState>()(
       updating: false,
       deleting: false,
       error: null,
+      __init__: {
+        conversations: () => loadAllRecentConversations(),
+      },
     }),
   ),
 )

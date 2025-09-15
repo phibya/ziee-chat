@@ -374,8 +374,18 @@ pub async fn update_rag_instance(
             name,
             instance_id
         )
-        .execute(pool)
-        .await?;
+          .execute(pool)
+          .await?;
+    }
+
+    if let Some(display_name) = &request.display_name {
+        sqlx::query!(
+            "UPDATE rag_instances SET display_name = $1, updated_at = NOW() WHERE id = $2",
+            display_name,
+            instance_id
+        )
+          .execute(pool)
+          .await?;
     }
 
     if let Some(description) = &request.description {

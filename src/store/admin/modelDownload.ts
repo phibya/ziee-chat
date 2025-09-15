@@ -17,6 +17,10 @@ interface ModelDownloadState {
   reconnectAttempts: number
   // Initialization state
   isInitialized: boolean
+
+  __init__: {
+    downloads: () => Promise<void>
+  }
 }
 
 export const useModelDownloadStore = create<ModelDownloadState>()(
@@ -28,6 +32,9 @@ export const useModelDownloadStore = create<ModelDownloadState>()(
       sseError: null,
       reconnectAttempts: 0,
       isInitialized: false,
+      __init__: {
+        downloads: () => initializeDownloadTracking(),
+      },
     }),
   ),
 )

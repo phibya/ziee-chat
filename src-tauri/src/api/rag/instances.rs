@@ -339,6 +339,7 @@ pub async fn toggle_rag_instance_activate_handler(
     let new_is_active = !current_instance.is_active;
     let update_request = UpdateRAGInstanceRequest {
         name: None,
+        display_name: None,
         description: None,
         enabled: None,
         is_active: Some(new_is_active),

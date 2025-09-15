@@ -9,7 +9,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   clearAssistantsStoreError,
-  loadUserAssistants,
   openAssistantDrawer,
   Stores,
 } from '../../../store'
@@ -46,10 +45,6 @@ export const AssistantsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'activity' | 'name' | 'created'>(
     'activity',
   )
-
-  useEffect(() => {
-    loadUserAssistants()
-  }, [])
 
   // Show errors
   useEffect(() => {

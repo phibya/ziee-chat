@@ -2,7 +2,6 @@ import { Alert, App, Button, Card, Progress, Spin, Tag, Typography } from 'antd'
 import { useEffect } from 'react'
 import {
   disconnectHardwareUsage,
-  loadHardwareInfo,
   Stores,
   subscribeToHardwareUsage,
 } from '../../store'
@@ -30,7 +29,6 @@ export function HardwareMonitor() {
   // Initialize hardware monitoring on component mount
   useEffect(() => {
     // Load hardware info first, then start monitoring
-    loadHardwareInfo().catch(console.error)
     subscribeToHardwareUsage().catch(console.error)
 
     // Cleanup on component unmount

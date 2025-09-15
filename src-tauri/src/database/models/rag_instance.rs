@@ -1,5 +1,5 @@
 use crate::ai::rag::engines::settings::*;
-use crate::ai::rag::RAGIndexingErrorCode;
+use crate::ai::rag::{QueryMode, RAGIndexingErrorCode};
 use crate::database::macros::{impl_enum_option_from, impl_json_from, impl_string_to_enum};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
@@ -199,6 +199,7 @@ pub struct CreateSystemRAGInstanceRequest {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct UpdateRAGInstanceRequest {
     pub name: Option<String>,
+    pub display_name: Option<String>,
     pub description: Option<String>,
     pub enabled: Option<bool>,
     pub is_active: Option<bool>,
@@ -297,4 +298,53 @@ pub struct RAGInstanceFilesListResponse {
     pub total: i64,
     pub page: i32,
     pub per_page: i32,
+}
+
+impl RAGInstance {
+    /// Get the prompt_template_post_query from engine settings
+    pub fn get_prompt_template_post_query(&self) -> Option<String> {
+        match self.engine_type {
+            RAGEngineType::RagSimpleVector => {
+                self.engine_settings.simple_vector
+                    .as_ref()
+                    .and_then(|s| s.querying.as_ref())
+                    .and_then(|q| q.prompt_template_post_query.clone())
+            }
+            RAGEngineType::RagSimpleGraph => {
+                self.engine_settings.simple_graph
+                    .as_ref()
+                    .and_then(|s| s.querying.as_ref())
+                    .and_then(|q| q.prompt_template_post_query.clone())
+            }
+        }
+    }
+
+    /// Get the query mode from engine settings
+    pub fn get_query_mode(&self) -> QueryMode {
+        match self.engine_type {
+            RAGEngineType::RagSimpleVector => {
+                QueryMode::Naive // Good default for chat: retrieval + LLM processing
+            }
+            RAGEngineType::RagSimpleGraph => {
+                // SimpleGraph has configurable query_mode
+                if let Some(graph_settings) = &self.engine_settings.simple_graph {
+                    if let Some(querying) = &graph_settings.querying {
+                        // Convert RAGSimpleGraphQueryMode to QueryMode
+                        match querying.query_mode() {
+                            RAGSimpleGraphQueryMode::Local => QueryMode::Local,
+                            RAGSimpleGraphQueryMode::Global => QueryMode::Global,
+                            RAGSimpleGraphQueryMode::Hybrid => QueryMode::Hybrid,
+                            RAGSimpleGraphQueryMode::Naive => QueryMode::Naive,
+                            RAGSimpleGraphQueryMode::Mix => QueryMode::Mix,
+                            RAGSimpleGraphQueryMode::Bypass => QueryMode::Bypass,
+                        }
+                    } else {
+                        QueryMode::Mix // Default for SimpleGraph
+                    }
+                } else {
+                    QueryMode::Mix // Default for SimpleGraph
+                }
+            }
+        }
+    }
 }

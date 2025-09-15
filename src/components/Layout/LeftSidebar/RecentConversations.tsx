@@ -1,5 +1,4 @@
 import { App, Button, theme, Typography } from 'antd'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -8,7 +7,6 @@ import {
   MessageOutlined,
 } from '@ant-design/icons'
 import {
-  loadAllRecentConversations,
   removeConversationFromList,
   setSidebarCollapsed,
   Stores,
@@ -26,13 +24,6 @@ export function RecentConversations() {
 
   const { conversations, isLoading } = Stores.Conversations
   const windowMinSize = useWindowMinSize()
-
-  useEffect(() => {
-    // Only load if we don't have conversations yet
-    if (conversations.length === 0) {
-      loadAllRecentConversations()
-    }
-  }, [conversations.length])
 
   const handleConversationClick = (conversationId: string) => {
     navigate(`/conversation/${conversationId}`)

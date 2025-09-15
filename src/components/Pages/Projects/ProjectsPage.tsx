@@ -4,7 +4,6 @@ import { FolderOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import {
   clearProjectsStoreError,
-  loadAllUserProjects,
   openProjectDrawer,
   Stores,
 } from '../../../store'
@@ -32,10 +31,6 @@ export const ProjectsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'activity' | 'name' | 'created'>(
     'activity',
   )
-
-  useEffect(() => {
-    loadAllUserProjects()
-  }, [])
 
   // Show errors
   useEffect(() => {

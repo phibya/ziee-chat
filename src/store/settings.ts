@@ -24,6 +24,11 @@ interface UserSettingsState {
   // Loading states
   loading: boolean
   initializing: boolean
+
+  __init__: {
+    settings: () => Promise<void>
+    globalDefaultLanguage: () => Promise<void>
+  }
 }
 
 export const useUserSettingsStore = create(
@@ -36,6 +41,10 @@ export const useUserSettingsStore = create(
       globalLanguageInitialized: false,
       loading: false,
       initializing: false,
+      __init__: {
+        settings: () => loadUserSettings(),
+        globalDefaultLanguage: () => loadGlobalDefaultLanguage(),
+      },
     }),
   ),
 )

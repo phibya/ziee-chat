@@ -16,6 +16,10 @@ interface ProjectsState {
 
   // Error state
   error: string | null
+
+  __init__: {
+    projects: () => Promise<void>
+  }
 }
 
 export const useProjectsStore = create<ProjectsState>()(
@@ -29,6 +33,9 @@ export const useProjectsStore = create<ProjectsState>()(
       updating: false,
       deleting: false,
       error: null,
+      __init__: {
+        projects: () => loadAllUserProjects(),
+      },
     }),
   ),
 )

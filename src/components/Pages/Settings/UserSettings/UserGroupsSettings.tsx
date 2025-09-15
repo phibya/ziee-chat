@@ -33,8 +33,6 @@ import {
   deleteUserGroup,
   getGroupProviders,
   getGroupRagProviders,
-  loadAllModelProviders,
-  loadAllRAGProviders,
   loadUserGroupMembers,
   loadUserGroups,
   Stores,
@@ -75,17 +73,6 @@ export function UserGroupsSettings() {
   const [groupRagProviders, setGroupRagProviders] = useState<
     Record<string, any[]>
   >({})
-
-  // Redirect if desktop app or insufficient permissions
-  useEffect(() => {
-    if (isTauriView) {
-      message.warning('User group management is not available in desktop mode')
-      return
-    }
-    loadUserGroups(1, 10)
-    loadAllModelProviders()
-    loadAllRAGProviders()
-  }, [])
 
   // Show errors
   useEffect(() => {

@@ -27,7 +27,7 @@ use crate::database::{
         models::{get_model_by_id, get_provider_by_model_id},
     },
 };
-use crate::utils::chat::{build_chat_messages, build_single_user_message};
+use crate::utils::chat::{build_chat_messages, build_single_user_message, apply_rag_context_to_messages};
 use schemars::JsonSchema;
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -45,6 +45,7 @@ pub struct ChatMessageRequest {
     pub model_id: Uuid,
     pub assistant_id: Uuid,
     pub file_ids: Option<Vec<Uuid>>, // Optional file attachments
+    pub rag_instance_ids: Option<Vec<Uuid>>, // Optional RAG instances
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -293,7 +294,20 @@ async fn stream_ai_response(
 
     // Build chat messages for AI provider using utility function
     let messages = match build_chat_messages(&request, user_id).await {
-        Ok(messages) => messages,
+        Ok(messages) => {
+            // Apply RAG context if rag_instance_ids provided
+            match apply_rag_context_to_messages(messages, &request, user_id).await {
+                Ok(enhanced_messages) => enhanced_messages,
+                Err(e) => {
+                    let error_event = SSEChatStreamEvent::Error(StreamErrorData {
+                        error: format!("Error applying RAG context: {}", e),
+                        code: ErrorCode::SystemInternalError.as_str().to_string(),
+                    });
+                    let _ = tx.send(Ok(error_event.into()));
+                    return;
+                }
+            }
+        }
         Err(e) => {
             let error_event = SSEChatStreamEvent::Error(StreamErrorData {
                 error: format!("Error building chat messages: {}", e),

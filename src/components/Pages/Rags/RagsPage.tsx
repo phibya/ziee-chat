@@ -8,7 +8,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   clearRAGStoreError,
-  loadAllUserRAGInstances,
   openRAGInstanceDrawer,
   Stores,
 } from '../../../store'
@@ -36,10 +35,6 @@ export const RagsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<'activity' | 'name' | 'created'>(
     'activity',
   )
-
-  useEffect(() => {
-    loadAllUserRAGInstances(true) // Always load system instances
-  }, [])
 
   // Show errors
   useEffect(() => {
