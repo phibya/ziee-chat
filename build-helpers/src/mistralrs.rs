@@ -9,13 +9,13 @@ fn get_comprehensive_features(target: &str) -> String {
         "metal,accelerate".to_string()
     } else if target.contains("darwin") && target.contains("x86_64") {
         // macOS Intel: Accelerate + MKL (if available)
-        "accelerate,mkl".to_string()
+        "accelerate".to_string()
     } else if target.contains("linux") {
         // Linux: All GPU backends + CPU optimizations
-        "cuda,vulkan,mkl,flash-attn,cudnn".to_string()
+        "cuda,flash-attn,cudnn".to_string()
     } else if target.contains("windows") {
         // Windows: CUDA + CPU optimizations
-        "cuda,mkl,flash-attn,cudnn".to_string()
+        "cuda,flash-attn,cudnn".to_string()
     } else {
         // Fallback for other platforms
         String::new()
