@@ -650,86 +650,15 @@ fn detect_wgpu_gpus() -> Result<Vec<GPUDevice>, Box<dyn std::error::Error>> {
 // AMD GPU usage detection (Linux only)
 #[cfg(all(feature = "gpu-detect", target_os = "linux"))]
 fn get_amd_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
-    // Method 1: Try amdgpu_top with JSON output
-    if let Ok(amd_usage) = get_amd_gpu_usage_amdgpu_top() {
-        if !amd_usage.is_empty() {
-            return Ok(amd_usage);
-        }
-    }
-
-    // Method 2: Try rocm-smi (ROCm System Management Interface)
+    // Method 1: Try rocm-smi (ROCm System Management Interface)
     if let Ok(amd_usage) = get_amd_gpu_usage_rocm_smi() {
         if !amd_usage.is_empty() {
             return Ok(amd_usage);
         }
     }
 
-    // Method 3: Fallback to sysfs parsing
+    // Method 2: Fallback to sysfs parsing
     get_amd_gpu_usage_sysfs()
-}
-
-// AMD GPU usage detection using amdgpu_top
-#[cfg(all(feature = "gpu-detect", target_os = "linux"))]
-fn get_amd_gpu_usage_amdgpu_top() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
-    let mut gpu_usage = Vec::new();
-
-    let output = std::process::Command::new("amdgpu_top")
-        .args(&["-J", "-i"]) // JSON output, single iteration
-        .output()?;
-
-    if !output.status.success() {
-        return Ok(gpu_usage);
-    }
-
-    let json_str = String::from_utf8_lossy(&output.stdout);
-    if let Ok(json_data) = serde_json::from_str::<serde_json::Value>(&json_str) {
-        if let Some(gpus) = json_data.get("gpus").and_then(|v| v.as_array()) {
-            for (index, gpu) in gpus.iter().enumerate() {
-                let device_name = gpu
-                    .get("name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("AMD GPU")
-                    .to_string();
-
-                let utilization = gpu
-                    .get("gfx_activity")
-                    .and_then(|v| v.as_f64())
-                    .map(|v| v as f32);
-
-                let memory_used = gpu.get("vram_usage").and_then(|v| v.as_u64());
-                let memory_total = gpu.get("vram_total").and_then(|v| v.as_u64());
-                let memory_usage_percentage =
-                    if let (Some(used), Some(total)) = (memory_used, memory_total) {
-                        Some((used as f32 / total as f32) * 100.0)
-                    } else {
-                        None
-                    };
-
-                let temperature = gpu
-                    .get("edge_temperature")
-                    .and_then(|v| v.as_f64())
-                    .map(|v| v as f32);
-
-                let power_usage = gpu
-                    .get("power_usage")
-                    .and_then(|v| v.as_f64())
-                    .map(|v| v as f32);
-
-                gpu_usage.push(GPUUsage {
-                    device_id: format!("amd:{}", index),
-                    device_name,
-                    utilization_percentage: utilization,
-                    memory_used,
-                    memory_total,
-                    memory_usage_percentage,
-                    temperature,
-                    power_usage,
-                });
-            }
-        }
-    }
-
-    Ok(gpu_usage)
 }
 
 // AMD GPU usage detection using rocm-smi
@@ -861,7 +790,7 @@ fn get_amd_gpu_usage_sysfs() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>
 // Intel GPU usage detection (Linux and Windows)
 #[cfg(feature = "gpu-detect")]
 fn get_intel_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
-    let mut gpu_usage: Vec<GPUUsage> = Vec::new();
+    let gpu_usage: Vec<GPUUsage> = Vec::new();
 
     #[cfg(target_os = "linux")]
     {
