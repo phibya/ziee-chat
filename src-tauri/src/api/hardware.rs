@@ -891,35 +891,7 @@ fn get_apple_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
     let chip_name = get_apple_chip_name();
     let device_name = format!("{} GPU", chip_name);
 
-    // Method 1: Try powermetrics with tasks sampler (doesn't require sudo)
-    if let Ok(metrics) = get_apple_gpu_usage_tasks() {
-        return Ok(vec![GPUUsage {
-            device_id: "metal:0".to_string(),
-            device_name,
-            utilization_percentage: metrics.utilization,
-            memory_used: None, // Apple Silicon uses unified memory
-            memory_total: None,
-            memory_usage_percentage: None,
-            temperature: None, // Temperature reported as pressure level
-            power_usage: metrics.power_consumption,
-        }]);
-    }
-
-    // Method 2: Try powermetrics with gpu_power sampler (may require sudo)
-    if let Ok(metrics) = get_apple_gpu_usage_gpu_power() {
-        return Ok(vec![GPUUsage {
-            device_id: "metal:0".to_string(),
-            device_name,
-            utilization_percentage: metrics.utilization,
-            memory_used: None,
-            memory_total: None,
-            memory_usage_percentage: None,
-            temperature: None,
-            power_usage: metrics.power_consumption,
-        }]);
-    }
-
-    // Method 3: Try activity monitor approach (iokit/IOReport)
+    // Try activity monitor approach (iokit/IOReport)
     if let Ok(metrics) = get_apple_gpu_usage_iokit() {
         // Calculate memory usage percentage if both values are available
         let memory_usage_percentage =
@@ -958,51 +930,7 @@ fn get_apple_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
     }])
 }
 
-// Method 1: Use powermetrics with tasks sampler (no sudo required)
-#[cfg(all(feature = "gpu-detect", target_os = "macos"))]
-fn get_apple_gpu_usage_tasks() -> Result<AppleGpuMetrics, Box<dyn std::error::Error>> {
-    let output = std::process::Command::new("powermetrics")
-        .args(&[
-            "--samplers",
-            "tasks",
-            "--sample-rate",
-            "250", // Faster sampling for real-time updates
-            "--sample-count",
-            "1",
-        ])
-        .output()?;
-
-    if !output.status.success() {
-        return Err("powermetrics tasks failed".into());
-    }
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    Ok(parse_apple_gpu_metrics_tasks(&output_str))
-}
-
-// Method 2: Use powermetrics with gpu_power sampler (may need sudo)
-#[cfg(all(feature = "gpu-detect", target_os = "macos"))]
-fn get_apple_gpu_usage_gpu_power() -> Result<AppleGpuMetrics, Box<dyn std::error::Error>> {
-    let output = std::process::Command::new("powermetrics")
-        .args(&[
-            "--samplers",
-            "gpu_power",
-            "--sample-rate",
-            "250",
-            "--sample-count",
-            "1",
-        ])
-        .output()?;
-
-    if !output.status.success() {
-        return Err("powermetrics gpu_power failed".into());
-    }
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    Ok(parse_apple_gpu_metrics(&output_str))
-}
-
-// Method 3: Use iokit to read GPU usage directly
+// Use iokit to read GPU usage directly
 #[cfg(all(feature = "gpu-detect", target_os = "macos"))]
 fn get_apple_gpu_usage_iokit() -> Result<AppleGpuMetrics, Box<dyn std::error::Error>> {
     // Try using ioreg to get GPU usage from IOKit
@@ -1016,47 +944,6 @@ fn get_apple_gpu_usage_iokit() -> Result<AppleGpuMetrics, Box<dyn std::error::Er
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     Ok(parse_apple_gpu_metrics_iokit(&output_str))
-}
-
-// Parse powermetrics tasks output for GPU utilization
-#[cfg(all(feature = "gpu-detect", target_os = "macos"))]
-fn parse_apple_gpu_metrics_tasks(output: &str) -> AppleGpuMetrics {
-    let mut utilization = None;
-
-    // Look for GPU-related process information in tasks output
-    let mut gpu_ms_total = 0.0;
-    for line in output.lines() {
-        let line = line.trim();
-
-        // Look for GPU time in process entries
-        if line.contains("GPU Time") || line.contains("gpu_time") {
-            // Extract GPU time in ms/s from process entries
-            if let Some(gpu_time_str) = line
-                .split("GPU Time")
-                .nth(1)
-                .or_else(|| line.split("gpu_time").nth(1))
-            {
-                if let Some(time_str) = gpu_time_str.split("ms/s").next() {
-                    if let Ok(gpu_ms) = time_str.trim().parse::<f32>() {
-                        gpu_ms_total += gpu_ms;
-                    }
-                }
-            }
-        }
-    }
-
-    // Calculate GPU utilization as percentage
-    // GPU ms/s represents milliseconds of GPU time per second of wall time
-    if gpu_ms_total > 0.0 {
-        utilization = Some((gpu_ms_total / 10.0).min(100.0)); // Convert ms/s to percentage, cap at 100%
-    }
-
-    AppleGpuMetrics {
-        utilization,
-        power_consumption: None,
-        memory_used: None,
-        total_system_memory: None,
-    }
 }
 
 // Parse ioreg output for GPU performance statistics
@@ -1138,7 +1025,6 @@ fn parse_apple_gpu_metrics_iokit(output: &str) -> AppleGpuMetrics {
 
     AppleGpuMetrics {
         utilization,
-        power_consumption: None,
         memory_used,
         total_system_memory,
     }
@@ -1286,43 +1172,9 @@ fn get_apple_chip_name() -> String {
     "Apple Silicon".to_string()
 }
 
-// Parse Apple GPU metrics from powermetrics output
-#[cfg(all(feature = "gpu-detect", target_os = "macos"))]
-fn parse_apple_gpu_metrics(output: &str) -> AppleGpuMetrics {
-    let mut utilization = None;
-    let mut power_consumption = None;
-
-    for line in output.lines() {
-        let line = line.trim();
-
-        if line.contains("GPU HW active residency:") {
-            if let Some(percent_str) = line.split(':').nth(1) {
-                if let Some(percent) = percent_str.split_whitespace().next() {
-                    utilization = percent.trim_end_matches('%').parse::<f32>().ok();
-                }
-            }
-        } else if line.contains("GPU Power:") && !line.contains("CPU + GPU") {
-            if let Some(power_str) = line.split(':').nth(1) {
-                if let Some(power) = power_str.split_whitespace().next() {
-                    power_consumption = power.parse::<f32>().ok().map(|p| p / 1000.0);
-                    // Convert mW to W
-                }
-            }
-        }
-    }
-
-    AppleGpuMetrics {
-        utilization,
-        power_consumption,
-        memory_used: None,
-        total_system_memory: None,
-    }
-}
-
 #[cfg(all(feature = "gpu-detect", target_os = "macos"))]
 struct AppleGpuMetrics {
     utilization: Option<f32>,
-    power_consumption: Option<f32>,
     memory_used: Option<u64>,
     total_system_memory: Option<u64>,
 }

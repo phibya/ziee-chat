@@ -47,8 +47,8 @@ fn main() {
     }
 
     // === Build mistralrs-server ===
-    println!("cargo:rerun-if-changed=src-engines/mistralrs-server");
-    let mistralrs_source = Path::new("../src-engines/mistralrs-server")
+    println!("cargo:rerun-if-changed=src-engines/mistralrs/mistralrs-server");
+    let mistralrs_source = Path::new("../src-engines/mistralrs/mistralrs-server")
         .canonicalize()
         .ok();
     let _mistralrs_path =

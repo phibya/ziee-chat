@@ -7,3 +7,6 @@
 [submodule "src-databases/apache-age"]
 	path = src-databases/apache-age
 	url = git@github.com:apache/age.git
+[submodule "src-engines/mistralrs"]
+	path = src-engines/mistralrs
+	url = https://github.com/EricLBuehler/mistral.rs.git

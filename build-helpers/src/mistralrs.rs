@@ -37,7 +37,7 @@ pub fn build(
     } else {
         default_path = std::env::current_dir()
             .unwrap_or_else(|_| PathBuf::from("."))
-            .join("../src-engines/mistralrs-server");
+            .join("../src-engines/mistralrs/mistralrs-server");
         &default_path
     };
 
