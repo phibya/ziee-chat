@@ -137,9 +137,6 @@ impl RAGSimpleVectorEngine {
             .unwrap_or_default())
     }
 
-
-
-
     /// Graceful failure handling
     pub(super) fn handle_empty_results(&self, query: &RAGQuery, processing_time: u64) -> RAGQueryResponse {
         RAGQueryResponse {
@@ -253,21 +250,6 @@ impl RAGSimpleVectorEngine {
         }
 
         let processing_time = start_time.elapsed().as_millis() as u64;
-
-        // 4. Context Assembly
-        let mut context_parts = Vec::new();
-
-        for (index, (document, similarity_score)) in processed_chunks.iter().enumerate() {
-            // Format each chunk with metadata like LightRAG
-            let chunk_context = format!(
-                "## Document Chunk {} (File: {}, Similarity: {:.3})\n{}\n",
-                index + 1,
-                document.file_id,
-                similarity_score,
-                document.content.trim()
-            );
-            context_parts.push(chunk_context);
-        }
 
         let sources: Vec<RAGSource> = processed_chunks
             .into_iter()

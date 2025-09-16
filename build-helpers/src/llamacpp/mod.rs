@@ -200,8 +200,6 @@ fn build_with_config(config: &BuildConfig) -> Result<PathBuf, Box<dyn std::error
     cmake_cmd.arg("-DGGML_BACKEND_DL=ON");
     cmake_cmd.arg("-DGGML_CPU_ALL_VARIANTS=ON");
 
-    // Ensure backends are loaded automatically
-    cmake_cmd.arg("-DLLAMA_SERVER_GGML_BACKEND_INIT=ON");
 
     // Install configuration
     cmake_cmd.arg("-DCMAKE_INSTALL_BINDIR=bin");

@@ -75,33 +75,3 @@ pub async fn create_ai_model_with_provider(
     
     Ok(Box::new(model_instance))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use uuid::Uuid;
-    
-    // Note: These tests would require a test database setup
-    // For now, they serve as documentation of the intended API
-    
-    #[tokio::test]
-    #[ignore = "requires database setup"]
-    async fn test_create_ai_model() {
-        let model_id = Uuid::new_v4(); // Would be a real model ID from database
-        
-        let result = create_ai_model(model_id).await;
-        assert!(result.is_ok());
-        
-        let ai_model = result.unwrap();
-        assert_eq!(ai_model.model_id(), model_id);
-    }
-    
-    #[tokio::test]
-    #[ignore = "requires database setup"]
-    async fn test_create_ai_model_nonexistent() {
-        let fake_model_id = Uuid::new_v4();
-        
-        let result = create_ai_model(fake_model_id).await;
-        assert!(result.is_err());
-    }
-}

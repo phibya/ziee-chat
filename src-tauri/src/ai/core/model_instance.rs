@@ -61,7 +61,7 @@ impl AIModel for ModelInstance {
         // Convert SimplifiedChatRequest to full ChatRequest with model info populated
         let full_request = ChatRequest {
             messages: request.messages,
-            model_name: self.model.display_name.clone(),
+            model_name: self.model.name.clone(),
             model_id: self.model.id,
             provider_id: self.model.provider_id,
             stream: request.stream,

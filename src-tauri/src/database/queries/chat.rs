@@ -649,6 +649,11 @@ pub async fn edit_message(
     // Start transaction for atomic operation
     let mut tx = pool.begin().await?;
 
+    println!(
+        "DEBUG: edit_message - user_id: {}, message_id: {}",
+        user_id, message_id
+    );
+
     // 1. Get the original message and verify ownership, also find its current branch
     let original_row = sqlx::query!(
         r#"

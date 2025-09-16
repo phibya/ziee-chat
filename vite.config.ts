@@ -30,6 +30,8 @@ export default defineConfig(async () => ({
       // 3. tell vite to ignore watching `src-tauri` and hidden files and directories
       ignored: [
         '**/src-tauri/**',
+        '**/src-databases/**',
+        '**/src-engines/**',
         '**/.*/**',
         '**/node_modules/**',
         '**/dist/**',

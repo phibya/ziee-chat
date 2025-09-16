@@ -7765,7 +7765,13 @@
               }
             ]
           },
-          "user_prompt": {
+          "prompt_template_pre_query": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prompt_template_post_query": {
             "type": [
               "string",
               "null"
@@ -7952,7 +7958,13 @@
               }
             ]
           },
-          "user_prompt": {
+          "prompt_template_pre_query": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "prompt_template_post_query": {
             "type": [
               "string",
               "null"
@@ -8049,6 +8061,12 @@
             ]
           },
           "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "display_name": {
             "type": [
               "string",
               "null"
@@ -9816,6 +9834,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          "rag_instance_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         },
         "required": [
@@ -11191,30 +11219,6 @@
           "query": {
             "description": "The query text to search for",
             "type": "string"
-          },
-          "max_results": {
-            "description": "Maximum number of results to return (optional, default: 10)",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0
-          },
-          "enable_rerank": {
-            "description": "Enable reranking of results (optional, default: false)",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "similarity_threshold": {
-            "description": "Similarity threshold for vector search (optional, default: 0.7)",
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "float"
           }
         },
         "required": [
@@ -11272,25 +11276,11 @@
           "similarity_score": {
             "type": "number",
             "format": "float"
-          },
-          "entity_matches": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "relationship_matches": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
           }
         },
         "required": [
           "document",
-          "similarity_score",
-          "entity_matches",
-          "relationship_matches"
+          "similarity_score"
         ]
       },
       "SimpleVectorDocument": {
