@@ -1,5 +1,5 @@
 import { Stores } from '../../store'
-import {isMacOS, isTauriView} from '../../api/core.ts'
+import { isMacOS, isTauriView } from '../../api/core.ts'
 import { theme } from 'antd'
 
 interface TitleBarWrapperProps {
@@ -25,7 +25,7 @@ export const TitleBarWrapper = ({
             : isSidebarCollapsed
               ? 48
               : 12,
-        paddingRight: isTauriView && !isFullscreen && !isMacOS ? 100 : 0,
+        paddingRight: isTauriView && !isFullscreen && !isMacOS ? 100 : 12,
         borderColor: token.colorBorderSecondary,
         backgroundColor: token.colorBgLayout,
         ...style,
