@@ -203,6 +203,15 @@ fn build_pgvector_extension(
     } else if target.contains("windows") {
         // Windows-specific makefile
         cmd.args(&["/f", "Makefile.win"]);
+        // Set PGROOT required by Makefile.win with proper Windows path format
+        // Remove UNC prefix \\?\ that display() might add, as MSVC can't handle it
+        let pgroot_path = postgres_dir.display().to_string();
+        let pgroot_clean = if pgroot_path.starts_with(r"\\?\") {
+            pgroot_path[4..].to_string()
+        } else {
+            pgroot_path
+        };
+        cmd.env("PGROOT", pgroot_clean);
     } else if target.contains("powerpc") || target.contains("ppc64") {
         // PowerPC doesn't support march=native
         cmd.env("OPTFLAGS", "");

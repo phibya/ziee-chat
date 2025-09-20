@@ -199,6 +199,8 @@ fn build_with_config(config: &BuildConfig) -> Result<PathBuf, Box<dyn std::error
     // Enable backend features
     cmake_cmd.arg("-DGGML_BACKEND_DL=ON");
     cmake_cmd.arg("-DGGML_CPU_ALL_VARIANTS=ON");
+    // Disable CURL to avoid dependency issues (matches official releases)
+    cmake_cmd.arg("-DLLAMA_CURL=OFF");
 
 
     // Install configuration

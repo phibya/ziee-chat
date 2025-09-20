@@ -122,7 +122,7 @@ pub fn run() {
 
                     // Open webview after initialization is complete
                     println!("Production mode: Opening default Tauri webview");
-                    let mut main_window_builder = WebviewWindowBuilder::new(
+                    let main_window_builder = WebviewWindowBuilder::new(
                         &app_handle,
                         "main",
                         tauri::WebviewUrl::App("index.html".into()),

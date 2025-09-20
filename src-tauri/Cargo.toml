@@ -32,6 +32,7 @@ path = "src/main.rs"
 name = "generate-openapi"
 path = "bin/generate-openapi.rs"
 
+
 [build-dependencies]
 tauri-build = { version = "2.4.0", features = [] }
 build-helpers = { path = "../build-helpers" }
@@ -116,5 +117,3 @@ winapi = { version = "0.3", features = ["processthreadsapi", "winnt", "handleapi
 default = ["gpu-detect"]
 gpu-detect = ["nvml-wrapper", "opencl3", "ash", "wgpu-hal", "metal", "core-foundation"]
 
-[profile.dev.package.gemm-f16]
-opt-level = 3

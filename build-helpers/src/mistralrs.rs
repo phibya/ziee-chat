@@ -77,6 +77,10 @@ pub fn build(
     // Build the mistralrs-server with appropriate features based on platform
     let mut cmd = Command::new("cargo");
 
+    // Set environment variables for optimized builds
+    cmd.env("CUDA_COMPUTE_CAP", "80")
+        .env("RAYON_NUM_THREADS", "4");
+
     cmd.arg("build")
         .arg("--manifest-path")
         .arg(mistralrs_dir.join("Cargo.toml"))

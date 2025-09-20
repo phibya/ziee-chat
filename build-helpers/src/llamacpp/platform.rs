@@ -103,7 +103,9 @@ fn windows_config(target: &str) -> PlatformConfig {
     }
 
     // Windows-specific settings
-    cmake_flags.insert("BUILD_SHARED_LIBS".to_string(), "OFF".to_string());
+    // Enable shared libraries for dynamic backend loading (GGML_BACKEND_DL)
+    // This allows the same build to work on both GPU and non-GPU machines
+    cmake_flags.insert("BUILD_SHARED_LIBS".to_string(), "ON".to_string());
     cmake_flags.insert("GGML_RPC".to_string(), "ON".to_string());
     cmake_flags.insert("LLAMA_BUILD_SERVER".to_string(), "ON".to_string());
 

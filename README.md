@@ -18,7 +18,16 @@
    - On MacOS: `brew install llvm cmake`
    - On Windows: Install via Visual Studio Installer
      - llvm/clang: https://github.com/llvm/llvm-project/releases/tag/llvmorg-18.1.8
+     - make
      - cmake: https://cmake.org/download/
+     - cuda-sdk
+     - cudnn
+     - vulkan-sdk
+     - winflexbison3
+     - winlibs
+     - cygwin
+     - strawberryperl
+     - check `dev-utils/windows-dev-env-activate.bat` for activation of the environment
 4. Build the back end: `cargo build` or `cargo build --release`
 5. Start the back end server: 
    - Run as web server: `APP_DATA_DIR=path/to/store/app/data HEADLESS=true cargo run --bin ziee`
