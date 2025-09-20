@@ -28,7 +28,12 @@
      - cygwin
      - strawberryperl
      - check `dev-utils/windows-dev-env-activate.bat` for activation of the environment
-4. Build the back end: `cargo build` or `cargo build --release`
+4. Build the back end: 
+   - Go to `build-helper` directory: `cd build-helper`
+   - Run `cargo run -- all` to build all dependencies and start postgres server
+   - Run `cargo run -- postgres` to start only postgres server after the first time
+   - Open another terminal and go to `src-tauri` directory: `cd ../src-tauri`
+   - Run `cargo build` to build the back end
 5. Start the back end server: 
    - Run as web server: `APP_DATA_DIR=path/to/store/app/data HEADLESS=true cargo run --bin ziee`
    - Run as desktop app: `APP_DATA_DIR=path/to/store/app/data cargo run --bin ziee`
