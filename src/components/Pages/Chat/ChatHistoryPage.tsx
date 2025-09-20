@@ -14,6 +14,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons'
 import { useChatHistoryStore } from '../../../store'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { Title, Text } = Typography
 
@@ -63,12 +64,12 @@ export const ChatHistoryPage: React.FC = () => {
         {/* Show ConversationHistory if there are conversations or loading */}
         {(conversations.length > 0 || loading) && (
           <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-            <div className={'h-full flex flex-col overflow-y-auto'}>
+            <DivScrollY className={'h-full flex flex-col'}>
               <ConversationHistory
                 key={pageMinSize.xs + ''}
                 getSearchBoxContainer={() => searchBoxContainerRef.current}
               />
-            </div>
+            </DivScrollY>
           </div>
         )}
 

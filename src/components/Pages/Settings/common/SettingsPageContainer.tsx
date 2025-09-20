@@ -1,5 +1,6 @@
 import { Typography } from 'antd'
 import { ReactNode } from 'react'
+import { DivScrollY } from '../../../common/DivScrollY.tsx'
 
 const { Title, Text } = Typography
 
@@ -15,9 +16,9 @@ export function SettingsPageContainer({
   children,
 }: SettingsPageContainerProps) {
   return (
-    <div className="flex flex-col gap-3 h-full overflow-y-auto">
+    <DivScrollY className="flex flex-col gap-3 h-full">
       <div className="w-full flex justify-center pt-3">
-        <div className={'max-w-4xl w-full flex flex-col gap-2 px-3'}>
+        <div className={'max-w-4xl w-full flex flex-col gap-2 px-3 pb-3'}>
           <Title level={4} className="!m-0 !leading-tight">
             {title}
           </Title>
@@ -40,6 +41,6 @@ export function SettingsPageContainer({
           {children}
         </div>
       </div>
-    </div>
+    </DivScrollY>
   )
 }

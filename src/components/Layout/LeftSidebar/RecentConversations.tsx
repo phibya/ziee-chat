@@ -13,6 +13,7 @@ import {
 } from '../../../store'
 import { ConversationSummary } from '../../../types'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { Text } = Typography
 
@@ -60,7 +61,7 @@ export function RecentConversations() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto space-y-0">
+    <DivScrollY className="flex-1 space-y-0">
       {isLoading ? (
         <div className="text-center p-3 text-gray-500">
           <div>{t('common.loading') || 'Loading...'}</div>
@@ -101,6 +102,6 @@ export function RecentConversations() {
           </div>
         ))
       )}
-    </div>
+    </DivScrollY>
   )
 }

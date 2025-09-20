@@ -254,7 +254,6 @@ export function SettingsPage() {
       className={`
       w-fit
       h-full
-      overflow-y-auto
       !p-1
       [&_.ant-menu]:!px-2
       [&_.ant-menu-item]:!h-8

@@ -15,6 +15,7 @@ import { PiSortAscending } from 'react-icons/pi'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { Permission } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { Title, Text } = Typography
 
@@ -175,7 +176,7 @@ export const ProjectsPage: React.FC = () => {
 
           return (
             <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-              <div className={'h-full flex flex-col overflow-y-auto'}>
+              <DivScrollY className={'h-full flex flex-col'}>
                 <div className="max-w-4xl flex flex-wrap gap-3 pt-3 w-full self-center px-3">
                   {filteredProjects.map(project => (
                     <div key={project.id} className={'min-w-70 flex-1'}>
@@ -187,7 +188,7 @@ export const ProjectsPage: React.FC = () => {
                   <div className={'min-w-70 flex-1'}></div>
                   <div className={'min-w-70 flex-1'}></div>
                 </div>
-              </div>
+              </DivScrollY>
             </div>
           )
         })()}

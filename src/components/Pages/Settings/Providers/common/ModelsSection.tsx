@@ -33,6 +33,7 @@ import {
   updateModelProvider,
 } from '../../../../../store'
 import { Model } from '../../../../../types'
+import { DivScrollY } from '../../../../common/DivScrollY'
 
 const { Text } = Typography
 
@@ -135,9 +136,9 @@ export function ModelsSection() {
           closable: true,
           maskClosable: false,
           content: (
-            <div className={'w-full h-full overflow-y-auto overflow-x-auto'}>
+            <DivScrollY className={'w-full h-full overflow-x-auto'}>
               <pre>{errorMessage}</pre>
-            </div>
+            </DivScrollY>
           ),
         })
       }

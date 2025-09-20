@@ -13,6 +13,7 @@ import { FiEdit } from 'react-icons/fi'
 import { useWindowMinSize } from '../../hooks/useWindowMinSize.ts'
 import { PiFiles, PiSmileySadLight } from 'react-icons/pi'
 import { Drawer } from '../../common/Drawer.tsx'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 export const ProjectDetailsPage: React.FC = () => {
   const { message } = App.useApp()
@@ -125,7 +126,7 @@ export const ProjectDetailsPage: React.FC = () => {
         }
       >
         {/*Left Side - Chat Input and Conversations*/}
-        <div className={'flex flex-col flex-1 overflow-y-auto h-full'}>
+        <DivScrollY className={'flex flex-col flex-1 h-full'}>
           {windowMinSize.xs && (
             <div className={'w-full pt-3 pb-6'}>
               <Typography.Title
@@ -171,7 +172,7 @@ export const ProjectDetailsPage: React.FC = () => {
               />
             </div>
           </div>
-        </div>
+        </DivScrollY>
         {/* Right Side - Project Knowledge */}
         {!windowMinSize.md ? (
           <div className={`p-3 w-96 h-full`}>

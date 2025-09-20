@@ -21,6 +21,7 @@ import { TitleBarWrapper } from '../../common/TitleBarWrapper.tsx'
 import { TauriDragRegion } from '../../common/TauriDragRegion.tsx'
 import { PiSortAscending } from 'react-icons/pi'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { Title, Text } = Typography
 
@@ -206,7 +207,7 @@ export const AssistantsPage: React.FC = () => {
 
           return (
             <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-              <div className={'h-full flex flex-col overflow-y-auto'}>
+              <DivScrollY className={'h-full flex flex-col'}>
                 <div className="max-w-4xl flex flex-wrap gap-3 pt-3 w-full self-center px-3">
                   {filteredAssistants.map((assistant: Assistant) => (
                     <div key={assistant.id} className={'min-w-70 flex-1'}>
@@ -218,7 +219,7 @@ export const AssistantsPage: React.FC = () => {
                   <div className={'min-w-70 flex-1'}></div>
                   <div className={'min-w-70 flex-1'}></div>
                 </div>
-              </div>
+              </DivScrollY>
             </div>
           )
         })()}

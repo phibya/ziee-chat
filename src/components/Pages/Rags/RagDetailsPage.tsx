@@ -31,6 +31,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 export const RagDetailsPage: React.FC = () => {
   const { message } = App.useApp()
@@ -182,7 +183,7 @@ export const RagDetailsPage: React.FC = () => {
           </div>
         </TitleBarWrapper>
       </div>
-      <div className="w-full overflow-y-auto">
+      <DivScrollY className="w-full">
         <div className="w-full flex-1 p-3 max-w-4xl mx-auto">
           <div className="flex flex-col gap-3">
             <div className={'h-full flex items-center justify-center'}>
@@ -265,7 +266,7 @@ export const RagDetailsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </DivScrollY>
       <RagFormDrawer />
     </div>
   )

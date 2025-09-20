@@ -8,10 +8,11 @@ import {
 } from '../../store'
 import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
-import {isMacOS, isTauriView} from '../../api/core.ts'
+import { isMacOS, isTauriView } from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
 import tinycolor from 'tinycolor2'
 import { resolveSystemTheme } from '../providers/resolveTheme.ts'
+import 'overlayscrollbars/overlayscrollbars.css'
 
 interface AppLayoutProps {
   children: React.ReactNode

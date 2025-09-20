@@ -9,6 +9,7 @@ import {
   PauseCircleOutlined,
   PlayCircleOutlined,
 } from '@ant-design/icons'
+import type { OverlayScrollbarsComponentRef } from 'overlayscrollbars-react'
 import { Stores } from '../../../../store'
 import {
   clearLogBuffer,
@@ -19,6 +20,7 @@ import {
 } from '../../../../store/admin/apiProxyLogMonitor.ts'
 import { isTauriView } from '../../../../api/core.ts'
 import { useSetBackgroundColor } from '../../../hooks/useSetBackgroundColor.ts'
+import { DivScrollY } from '../../../common/DivScrollY.tsx'
 
 const { Text, Title } = Typography
 
@@ -26,7 +28,7 @@ export function ApiProxyLogMonitor() {
   const { t } = useTranslation()
   const { message } = App.useApp()
   useSetBackgroundColor()
-  const logContainerRef = useRef<HTMLDivElement>(null)
+  const logContainerRef = useRef<OverlayScrollbarsComponentRef>(null)
 
   // Store state
   const {
@@ -52,7 +54,10 @@ export function ApiProxyLogMonitor() {
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
     if (autoScroll && logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+      const element = logContainerRef.current.getElement()
+      if (element) {
+        element.scrollTop = element.scrollHeight
+      }
     }
   }, [logs, autoScroll])
 
@@ -93,17 +98,23 @@ export function ApiProxyLogMonitor() {
 
   const handleScrollToBottom = () => {
     if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
-      setAutoScroll(true)
+      const element = logContainerRef.current.getElement()
+      if (element) {
+        element.scrollTop = element.scrollHeight
+        setAutoScroll(true)
+      }
     }
   }
 
   const handleScroll = () => {
     if (logContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current
-      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10
-      if (autoScroll !== isAtBottom) {
-        setAutoScroll(isAtBottom)
+      const element = logContainerRef.current.getElement()
+      if (element) {
+        const { scrollTop, scrollHeight, clientHeight } = element
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10
+        if (autoScroll !== isAtBottom) {
+          setAutoScroll(isAtBottom)
+        }
       }
     }
   }
@@ -258,9 +269,9 @@ export function ApiProxyLogMonitor() {
           body: '!p-0',
         }}
       >
-        <div
+        <DivScrollY
           ref={logContainerRef}
-          className="h-full p-4 overflow-y-auto font-mono text-sm"
+          className="h-full p-4 font-mono text-sm"
           onScroll={handleScroll}
         >
           {logs.length === 0 ? (
@@ -306,7 +317,7 @@ export function ApiProxyLogMonitor() {
               )
             })
           )}
-        </div>
+        </DivScrollY>
       </Card>
     </div>
   )

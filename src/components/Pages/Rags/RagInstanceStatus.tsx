@@ -6,6 +6,7 @@ import {
   disconnectRAGStatus,
   Stores,
 } from '../../../store'
+import { DivScrollY } from '../../common/DivScrollY'
 
 const { Text } = Typography
 
@@ -147,7 +148,7 @@ export const RagInstanceStatus: React.FC = () => {
 
     return (
       <Card title="Currently Processing Files">
-        <div className="space-y-2 max-h-40 overflow-y-auto">
+        <DivScrollY className="space-y-2 max-h-40">
           {currentStatus.current_files_processing.map(file => (
             <div
               key={file.file_id}
@@ -185,7 +186,7 @@ export const RagInstanceStatus: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+        </DivScrollY>
       </Card>
     )
   }

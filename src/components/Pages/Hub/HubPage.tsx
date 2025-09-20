@@ -24,6 +24,7 @@ import {
   PagePermissionGuard403,
   PermissionGuard,
 } from '../../Auth/PermissionGuard.tsx'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 export function HubPage() {
   const { message } = App.useApp()
@@ -213,9 +214,9 @@ export function HubPage() {
         </div>
       </TitleBarWrapper>
       <div className="flex flex-col w-full h-full overflow-hidden">
-        <div className="flex flex-1 w-full overflow-y-auto flex-col">
+        <DivScrollY className="flex flex-1 w-full flex-col">
           <div className="max-w-4xl w-full flex flex-col self-center">
-            <div className={`flex-1 h-full w-full overflow-y-auto`}>
+            <DivScrollY className={`flex-1 h-full w-full`}>
               <div className={'flex flex-col py-3'}>
                 {activeTab === 'models' ? (
                   <PagePermissionGuard403
@@ -231,9 +232,9 @@ export function HubPage() {
                   </PagePermissionGuard403>
                 )}
               </div>
-            </div>
+            </DivScrollY>
           </div>
-        </div>
+        </DivScrollY>
       </div>
     </Flex>
   )

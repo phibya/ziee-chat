@@ -36,6 +36,7 @@ import {
 import { Permission } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { debounce } from '../../../utils/debounce.ts'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { Text } = Typography
 
@@ -361,7 +362,7 @@ export const RagDocumentsTab: React.FC = () => {
         )}
 
         {/* Scrollable file list */}
-        <div className={'overflow-y-auto mt-1 flex-1 max-h-96'}>
+        <DivScrollY className={'mt-1 flex-1 max-h-96'}>
           <List
             className={'!px-3'}
             loading={filesLoading}
@@ -389,7 +390,7 @@ export const RagDocumentsTab: React.FC = () => {
                 : 'No files uploaded yet',
             }}
           />
-        </div>
+        </DivScrollY>
 
         {/* Fixed pagination at bottom */}
         {totalFiles > 0 && (

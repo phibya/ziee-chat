@@ -25,6 +25,7 @@ import { EditSystemInstanceDrawer } from './EditSystemInstanceDrawer'
 import { RAGProviderSettings } from './RAGProviderSettings'
 import { useMainContentMinSize } from '../../../hooks/useWindowMinSize'
 import { IoIosArrowDown } from 'react-icons/io'
+import { DivScrollY } from '../../../common/DivScrollY.tsx'
 
 const { Title } = Typography
 
@@ -97,7 +98,6 @@ export function RAGProvidersSettings() {
       w-full
       h-full
       !m-0
-      overflow-y-auto
       [&_.ant-menu]:!px-0
       [&_.ant-menu-item]:!h-8
       [&_.ant-menu-item]:!leading-[32px]
@@ -138,74 +138,72 @@ export function RAGProvidersSettings() {
 
   return (
     <div className="flex flex-col gap-3 h-full overflow-y-hidden">
-      <div
-        className={'flex w-full flex-1 overflow-y-auto relative justify-center'}
-      >
-        <div className={'w-full h-full max-w-4xl flex self-center'}>
+      <DivScrollY className={'flex w-full flex-1 relative justify-center'}>
+        <div className={'w-full h-full flex self-center'}>
           {!mainContentMinSize.sm && (
-            <div
-              className={'w-42 flex flex-col gap-2 overflow-y-auto h-full pt-3'}
-            >
+            <div className={'w-42 flex flex-col gap-2 h-full pt-3'}>
               <div className={'w-full px-3'}>
                 <Title level={4} className="!m-0 !leading-tight">
                   RAG Providers
                 </Title>
               </div>
-              <div className={'flex-1 pl-2'}>
+              <DivScrollY className={'flex-1 pl-2'}>
                 <ProviderMenu />
-              </div>
+              </DivScrollY>
             </div>
           )}
           {/* Main Content */}
           <div className={'flex flex-1 max-w-full'}>
-            <div
-              className={
-                'flex w-full flex-col py-3 px-3 overflow-y-auto overflow-x-hidden'
-              }
+            <DivScrollY
+              className={'flex w-full flex-col py-3 px-3 overflow-x-hidden'}
             >
-              {mainContentMinSize.sm && (
-                <div className={'w-full flex flex-row gap-2 items-center mb-4'}>
-                  <Dropdown
-                    className={'w-full'}
-                    menu={{
-                      items: menuItems.map(item => ({
-                        // @ts-ignore
-                        icon: item.icon,
-                        key: item.key,
-                        label: item.label,
-                      })),
-                      onClick: ({ key }) => {
-                        if (key === 'add-provider') {
-                          openAddRAGProviderDrawer()
-                        } else {
-                          navigate(`/settings/rag-providers/${key}`)
-                        }
-                      },
-                      selectedKeys: providerId ? [providerId] : [],
-                    }}
-                    trigger={['click']}
+              <div className={'flex flex-col flex-1 max-w-3xl m-auto'}>
+                {mainContentMinSize.sm && (
+                  <div
+                    className={'w-full flex flex-row gap-2 items-center mb-4'}
                   >
-                    <Button className="w-fit" size={'large'}>
-                      {currentProvider ? (
-                        <Flex className="gap-2 items-center">
-                          {(() => {
-                            const IconComponent =
-                              RAG_PROVIDER_ICONS[currentProvider.type]
-                            return <IconComponent className="text-lg" />
-                          })()}
-                          {currentProvider.name}
-                        </Flex>
-                      ) : (
-                        'Select RAG Provider'
-                      )}
-                      <IoIosArrowDown />
-                    </Button>
-                  </Dropdown>
-                </div>
-              )}
-              {renderProviderSettings()}
-              <div className={'w-full h-3 block'} />
-            </div>
+                    <Dropdown
+                      className={'w-full'}
+                      menu={{
+                        items: menuItems.map(item => ({
+                          // @ts-ignore
+                          icon: item.icon,
+                          key: item.key,
+                          label: item.label,
+                        })),
+                        onClick: ({ key }) => {
+                          if (key === 'add-provider') {
+                            openAddRAGProviderDrawer()
+                          } else {
+                            navigate(`/settings/rag-providers/${key}`)
+                          }
+                        },
+                        selectedKeys: providerId ? [providerId] : [],
+                      }}
+                      trigger={['click']}
+                    >
+                      <Button className="w-fit" size={'large'}>
+                        {currentProvider ? (
+                          <Flex className="gap-2 items-center">
+                            {(() => {
+                              const IconComponent =
+                                RAG_PROVIDER_ICONS[currentProvider.type]
+                              return <IconComponent className="text-lg" />
+                            })()}
+                            {currentProvider.name}
+                          </Flex>
+                        ) : (
+                          'Select RAG Provider'
+                        )}
+                        <IoIosArrowDown />
+                      </Button>
+                    </Dropdown>
+                  </div>
+                )}
+                {renderProviderSettings()}
+                <div className={'w-full h-3 block'} />
+              </div>
+            </DivScrollY>
           </div>
         </div>
 
@@ -214,7 +212,7 @@ export function RAGProvidersSettings() {
         <EditRAGProviderDrawer />
         <AddSystemInstanceDrawer />
         <EditSystemInstanceDrawer />
-      </div>
+      </DivScrollY>
     </div>
   )
 }

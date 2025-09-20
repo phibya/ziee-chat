@@ -19,6 +19,7 @@ import { PiSortAscending } from 'react-icons/pi'
 import { useMainContentMinSize } from '../../hooks/useWindowMinSize.ts'
 import { Permission } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { Title, Text } = Typography
 
@@ -192,7 +193,7 @@ export const RagsPage: React.FC = () => {
 
           return (
             <div className="flex flex-1 flex-col w-full justify-center overflow-hidden">
-              <div className={'h-full flex flex-col overflow-y-auto'}>
+              <DivScrollY className={'h-full flex flex-col'}>
                 <div className="max-w-4xl flex flex-col gap-4 pt-3 w-full self-center px-3">
                   {/* Personal Instances Section */}
                   {userInstances.length > 0 && (
@@ -236,7 +237,7 @@ export const RagsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-              </div>
+              </DivScrollY>
             </div>
           )
         })()}

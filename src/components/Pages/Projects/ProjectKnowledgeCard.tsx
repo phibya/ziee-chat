@@ -24,6 +24,7 @@ import { Permission } from '../../../types'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { hasPermission } from '../../../permissions/utils.ts'
 import { debounce } from '../../../utils/debounce.ts'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 const { Text } = Typography
 
@@ -219,7 +220,7 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
         <Text strong>Documents</Text>
       </div>
 
-      <div className={'overflow-y-auto mt-3 flex-1 px-3'}>
+      <DivScrollY className={'mt-3 flex-1 px-3'}>
         <div>
           <div className="flex gap-2 flex-wrap">
             {/* Show uploading files */}
@@ -249,7 +250,7 @@ export const ProjectKnowledgeCard: React.FC<ProjectKnowledgeCardProps> = ({
             ))}
           </div>
         </div>
-      </div>
+      </DivScrollY>
 
       {/* Hidden file input */}
       <input

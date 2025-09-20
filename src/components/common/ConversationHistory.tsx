@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useChatHistoryStore } from '../../store'
 import { ConversationSummaryCard } from './ConversationSummaryCard'
+import { DivScrollY } from './DivScrollY.tsx'
 
 const { Text } = Typography
 
@@ -202,7 +203,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
         )}
 
         {/* Conversation list */}
-        <Flex className="flex-1 w-full flex-col !py-3 overflow-y-auto overflow-x-visible">
+        <DivScrollY className="flex-1 w-full flex-col !py-3 overflow-x-visible">
           <div
             className={'gap-2 max-w-4xl w-full self-center overflow-x-visible'}
           >
@@ -226,13 +227,13 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 </Empty>
               </Card>
             ) : (
-              <div className="space-y-3 overflow-y-auto overflow-x-visible">
+              <DivScrollY className="space-y-3 overflow-x-visible">
                 {loading || isSearching ? (
                   <div className="flex justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2"></div>
                   </div>
                 ) : (
-                  <Flex className="flex-col gap-3 w-full flex-1 overflow-y-auto overflow-x-visible">
+                  <DivScrollY className="flex-col gap-3 w-full flex-1 overflow-x-visible">
                     {(searchText.trim() ? searchResults : conversations).map(
                       conversation => (
                         <div key={conversation.id} className="px-3">
@@ -271,12 +272,12 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                         )}
                       </Card>
                     )}
-                  </Flex>
+                  </DivScrollY>
                 )}
-              </div>
+              </DivScrollY>
             )}
           </div>
-        </Flex>
+        </DivScrollY>
       </div>
     </>
   )
