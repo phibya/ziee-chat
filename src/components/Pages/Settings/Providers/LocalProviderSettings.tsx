@@ -52,7 +52,7 @@ export function LocalProviderSettings() {
   }
 
   return (
-    <Flex className={'flex-col gap-3'}>
+    <Flex className={'flex-col gap-3 w-full'}>
       <ProviderHeader />
 
       {/* Downloads Section - For Local providers only */}

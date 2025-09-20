@@ -146,7 +146,7 @@ export function ProvidersSettings() {
 
   return (
     <div className="flex flex-col gap-3 h-full overflow-y-hidden">
-      <DivScrollY className={'flex w-full flex-1 relative justify-center'}>
+      <div className={'flex w-full h-full flex-1 relative justify-center'}>
         <div className={'w-full h-full flex self-center'}>
           {!mainContentMinSize.sm && (
             <div className={'w-42 flex flex-col gap-2 h-full pt-3'}>
@@ -163,7 +163,9 @@ export function ProvidersSettings() {
           {/* Main Content */}
           <div className={'flex flex-1'}>
             <DivScrollY className={'flex w-full flex-col py-3 px-3'}>
-              <div className={'flex flex-col flex-1 max-w-3xl m-auto'}>
+              <div
+                className={'flex flex-col flex-1 max-w-3xl self-center w-full'}
+              >
                 {mainContentMinSize.sm && (
                   <div
                     className={'w-full flex flex-row gap-2 items-center mb-4'}
@@ -222,7 +224,7 @@ export function ProvidersSettings() {
 
         <EditLocalModelDrawer />
         <EditRemoteModelDrawer />
-      </DivScrollY>
+      </div>
     </div>
   )
 }
