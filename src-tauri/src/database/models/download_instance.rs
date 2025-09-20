@@ -189,15 +189,6 @@ pub struct DownloadInstanceListResponse {
     pub per_page: i32,
 }
 
-/// Summary of downloads by status
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DownloadStatusSummary {
-    pub pending: i64,
-    pub downloading: i64,
-    pub completed: i64,
-    pub failed: i64,
-    pub cancelled: i64,
-}
 
 impl DownloadInstance {
     /// Check if the download is in a terminal state

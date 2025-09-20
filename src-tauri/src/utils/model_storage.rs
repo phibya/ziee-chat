@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -10,32 +9,8 @@ pub enum ModelStorageError {
     ModelAlreadyExists(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelMetadata {
-    pub name: String,
-    pub architecture: String,
-    pub parameters: Option<String>,
-    pub size_bytes: u64,
-    pub uploaded_at: chrono::DateTime<chrono::Utc>,
-    pub files: Vec<ModelFile>,
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ModelFile {
-    pub filename: String,
-    pub size_bytes: u64,
-    pub file_type: ModelFileType,
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ModelFileType {
-    ModelWeights,  // .safetensors, .bin, .pth files
-    Tokenizer,     // tokenizer.json
-    Config,        // config.json
-    Vocabulary,    // vocab.txt, vocab.json
-    Readme,        // README.md
-    Other(String), // Other files
-}
 
 #[derive(Debug, Clone)]
 pub struct TempFile {

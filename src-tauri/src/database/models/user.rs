@@ -36,14 +36,6 @@ pub struct UserLoginToken {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserGroupMembership {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub group_id: Uuid,
-    pub assigned_at: DateTime<Utc>,
-    pub assigned_by: Option<Uuid>,
-}
 
 // User group model provider relationship
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -267,22 +267,8 @@ impl RAGProcessingStatus {
 // Implement string to enum conversion for RAGProcessingStatus
 impl_string_to_enum!(RAGProcessingStatus);
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct AddFilesToRAGInstanceRequest {
-    pub file_ids: Vec<Uuid>,
-}
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct AddFilesToRAGInstanceResponse {
-    pub added_files: Vec<RAGInstanceFile>,
-    pub errors: Vec<RAGFileError>,
-}
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct RAGFileError {
-    pub file_id: Uuid,
-    pub error: String,
-}
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct RAGInstanceFilesQuery {

@@ -68,14 +68,6 @@ pub struct MessageMetadata {
 // Implement JSON conversion for Vec<MessageMetadata>
 impl_json_option_from!(Vec<MessageMetadata>);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConversationMetadata {
-    pub id: Uuid,
-    pub conversation_id: Uuid,
-    pub key: String,
-    pub value: serde_json::Value,
-    pub created_at: DateTime<Utc>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct CreateConversationRequest {
@@ -113,11 +105,6 @@ pub struct EditMessageResponse {
     pub branch: MessageBranch,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StreamChunk {
-    pub delta: String,
-    pub finish_reason: Option<String>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ConversationListResponse {
@@ -141,11 +128,6 @@ pub struct ConversationSummary {
     pub message_count: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ChatResponse {
-    pub message: Message,
-    pub conversation: Conversation,
-}
 
 // AI Provider related structs moved from ai/core/providers.rs
 #[derive(Debug, Clone, Serialize, Deserialize)]

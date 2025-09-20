@@ -25,14 +25,6 @@ pub struct File {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MessageFile {
-    pub id: Uuid,
-    pub message_id: Uuid,
-    pub file_id: Uuid,
-    pub file: Option<File>,
-    pub created_at: DateTime<Utc>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderFile {
@@ -44,13 +36,6 @@ pub struct ProviderFile {
     pub created_at: DateTime<Utc>,
 }
 
-// Request/Response structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UploadFileRequest {
-    pub filename: String,
-    pub file_size: i64,
-    pub mime_type: Option<String>,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct UploadFileResponse {
@@ -72,14 +57,6 @@ pub struct FileListParams {
     pub search: Option<String>,
 }
 
-// Processing structures
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProcessingResult {
-    pub text_content: Option<String>,
-    pub metadata: serde_json::Value,
-    pub thumbnail_count: i32,
-    pub page_count: i32,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileCreateData {

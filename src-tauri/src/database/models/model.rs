@@ -840,13 +840,6 @@ pub struct ModelFile {
     pub uploaded_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct ModelFileInfo {
-    pub filename: String,
-    pub file_size_bytes: i64,
-    pub file_type: String,
-    pub uploaded_at: DateTime<Utc>,
-}
 
 impl Model {
     /// Get the model path using the pattern {provider_id}/{id}
