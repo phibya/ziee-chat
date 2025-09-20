@@ -8,7 +8,7 @@ import {
 } from '../../store'
 import { Button, theme } from 'antd'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
-import { isTauriView } from '../../api/core.ts'
+import {isMacOS, isTauriView} from '../../api/core.ts'
 import { GoSidebarCollapse, GoSidebarExpand } from 'react-icons/go'
 import tinycolor from 'tinycolor2'
 import { resolveSystemTheme } from '../providers/resolveTheme.ts'
@@ -250,7 +250,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div
         className="flex items-center gap-6 mr-4 fixed z-10 h-[50px]"
         style={{
-          left: isTauriView && !isFullscreen ? 78 : 12,
+          left: isTauriView && !isFullscreen && isMacOS ? 78 : 12,
           top: 0,
         }}
       >

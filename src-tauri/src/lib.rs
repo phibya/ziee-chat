@@ -159,7 +159,7 @@ pub fn run() {
                     .min_inner_size(375.0, 600.0)
                     .resizable(true)
                     .fullscreen(false)
-                    .decorations(false)
+                    .decorations(true)
                     .center()
                     .effects(tauri::utils::config::WindowEffectsConfig {
                         effects: vec![
@@ -188,13 +188,18 @@ pub fn run() {
 
                     main_window_builder.build().unwrap();
 
-                    let main_window = app_handle.get_webview_window("main").unwrap();
-                    main_window.create_overlay_titlebar().unwrap();
-
                     #[cfg(target_os = "macos")]
                     {
+                        let main_window = app_handle.get_webview_window("main").unwrap();
+                        main_window.create_overlay_titlebar().unwrap();
                         main_window.make_transparent().unwrap();
                         main_window.set_traffic_lights_inset(12.0, 26.0).unwrap();
+                    }
+
+                    #[cfg(target_os = "windows")]
+                    {
+                        let main_window = app_handle.get_webview_window("main").unwrap();
+                        main_window.create_overlay_titlebar().unwrap();
                     }
 
                     // Keep the server running

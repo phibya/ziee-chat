@@ -8,7 +8,7 @@ import {
 import React, { useEffect, useRef } from 'react'
 import { ResizeHandle } from './ResizeHandle.tsx'
 import tinycolor from 'tinycolor2'
-import { isTauriView } from '../../api/core.ts'
+import {isMacOS, isTauriView} from '../../api/core.ts'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { IoIosArrowBack } from 'react-icons/io'
 import { TauriDragRegion } from './TauriDragRegion.tsx'
@@ -33,8 +33,9 @@ export const Drawer: React.FC<DrawerProps> = props => {
     const monitorPosition = () => {
       if (drawerDivRef.current && titleRef.current) {
         const rect = drawerDivRef.current.getBoundingClientRect()
-        if (rect.left < 72) {
-          titleRef.current.style.paddingLeft = 72 - rect.left + 'px'
+        const leftMin = isMacOS ? 72 : 0
+        if (rect.left < leftMin) {
+          titleRef.current.style.paddingLeft = leftMin - rect.left + 'px'
         } else {
           titleRef.current.style.paddingLeft = ''
         }
