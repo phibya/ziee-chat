@@ -61,7 +61,7 @@ export function RecentConversations() {
   }
 
   return (
-    <DivScrollY className="flex-1 space-y-0">
+    <DivScrollY className="flex-1 space-y-0 flex flex-col">
       {isLoading ? (
         <div className="text-center p-3 text-gray-500">
           <div>{t('common.loading') || 'Loading...'}</div>

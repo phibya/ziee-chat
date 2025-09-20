@@ -18,6 +18,7 @@ import { IoTimeOutline } from 'react-icons/io5'
 import { PermissionGuard } from '../../Auth/PermissionGuard.tsx'
 import { Permission } from '../../../types'
 import { PiSmileySadLight } from 'react-icons/pi'
+import { DivScrollY } from '../../common/DivScrollY.tsx'
 
 export function ExistingChatInterface() {
   const { conversationId } = useParams<{ conversationId?: string }>()
@@ -189,13 +190,15 @@ export function ExistingChatInterface() {
         </div>
       </TitleBarWrapper>
       <div className="flex flex-col w-full h-full overflow-hidden z-1 absolute">
-        <Flex className={'flex w-full flex-1 h-full overflow-auto'}>
+        <DivScrollY className={'flex w-full flex-1 h-full'}>
           <div
-            className={'self-center max-w-4xl w-full h-full m-auto px-4 pt-16'}
+            className={
+              'self-center max-w-4xl w-full m-auto px-4 pt-16 overflow-hidden'
+            }
           >
             <ChatMessageList />
           </div>
-        </Flex>
+        </DivScrollY>
         <div
           className={'w-full pb-2 items-center justify-center content-center'}
         >

@@ -8,10 +8,11 @@ import {
 import React, { useEffect, useRef } from 'react'
 import { ResizeHandle } from './ResizeHandle.tsx'
 import tinycolor from 'tinycolor2'
-import {isMacOS, isTauriView} from '../../api/core.ts'
+import { isMacOS, isTauriView } from '../../api/core.ts'
 import { useWindowMinSize } from '../hooks/useWindowMinSize.ts'
 import { IoIosArrowBack } from 'react-icons/io'
 import { TauriDragRegion } from './TauriDragRegion.tsx'
+import { DivScrollY } from './DivScrollY.tsx'
 
 export interface DrawerProps extends AntDrawerProps {
   children?: React.ReactNode
@@ -62,6 +63,7 @@ export const Drawer: React.FC<DrawerProps> = props => {
     placement = 'right',
     width = 520,
     maskClosable = true,
+    children,
     ...restProps
   } = props
 
@@ -83,7 +85,7 @@ export const Drawer: React.FC<DrawerProps> = props => {
       {...restProps}
       closable={false}
       classNames={{
-        body: `!p-3 !pt-0`,
+        body: `!pl-3 !pr-0 !pt-0`,
         wrapper: '!overflow-hidden !bg-transparent',
         ...(restProps.classNames || {}),
       }}
@@ -170,6 +172,20 @@ export const Drawer: React.FC<DrawerProps> = props => {
           </div>
         )
       }}
-    />
+    >
+      <DivScrollY className={'flex w-full h-full'}>
+        <div className={'flex w-full h-full pr-3'}>
+          {React.Children.map(children, (child) => {
+            if (React.isValidElement(child)) {
+              return React.cloneElement(child, {
+                ...child.props,
+                className: `w-full ${child.props.className || ''}`.trim(),
+              })
+            }
+            return child
+          })}
+        </div>
+      </DivScrollY>
+    </AntDrawer>
   )
 }
