@@ -122,7 +122,34 @@ pub fn run() {
 
                     // Open webview after initialization is complete
                     println!("Production mode: Opening default Tauri webview");
+                    #[cfg(any(target_os = "macos", target_os = "linux"))]
                     let mut main_window_builder = WebviewWindowBuilder::new(
+                        &app_handle,
+                        "main",
+                        tauri::WebviewUrl::App("index.html".into()),
+                    )
+                    .title("")
+                    .inner_size(1024.0, 800.0)
+                    .min_inner_size(375.0, 600.0)
+                    .resizable(true)
+                    .fullscreen(false)
+                    .decorations(false)
+                    .center()
+                    .effects(tauri::utils::config::WindowEffectsConfig {
+                        effects: vec![
+                            tauri::window::Effect::FullScreenUI,
+                            tauri::window::Effect::Mica,
+                            tauri::window::Effect::Acrylic,
+                            tauri::window::Effect::Blur,
+                            tauri::window::Effect::Tabbed,
+                        ],
+                        state: Some(tauri::window::EffectState::Active),
+                        radius: Some(8.0),
+                        color: None,
+                    });
+
+                    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+                    let main_window_builder = WebviewWindowBuilder::new(
                         &app_handle,
                         "main",
                         tauri::WebviewUrl::App("index.html".into()),

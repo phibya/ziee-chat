@@ -790,6 +790,10 @@ fn get_amd_gpu_usage_sysfs() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>
 // Intel GPU usage detection (Linux and Windows)
 #[cfg(feature = "gpu-detect")]
 fn get_intel_gpu_usage() -> Result<Vec<GPUUsage>, Box<dyn std::error::Error>> {
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
+    let mut gpu_usage: Vec<GPUUsage> = Vec::new();
+
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     let gpu_usage: Vec<GPUUsage> = Vec::new();
 
     #[cfg(target_os = "linux")]
