@@ -158,6 +158,24 @@ fn build_component(component: &str, src_tauri_target_dir: &Path, build_target_di
             println!("PostgreSQL server setup successfully");
             Ok(())
         }
+        "bun" => {
+            match build_helpers::bun::setup_bun(&target, &src_tauri_target_dir, &std::env::var("OUT_DIR").unwrap()) {
+                Ok(()) => {
+                    println!("Bun setup completed successfully");
+                    Ok(())
+                }
+                Err(e) => Err(e)
+            }
+        }
+        "uv" => {
+            match build_helpers::uv::setup_uv(&target, &src_tauri_target_dir, &std::env::var("OUT_DIR").unwrap()) {
+                Ok(()) => {
+                    println!("UV setup completed successfully");
+                    Ok(())
+                }
+                Err(e) => Err(e)
+            }
+        }
         _ => Err(format!("Unknown component: {}", component).into())
     }
 }
@@ -167,7 +185,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.len() < 2 {
         eprintln!("Usage: build_helper <component|all>");
-        eprintln!("Components: pgvector, apache_age, pandoc, pdfium, mistralrs, llamacpp, postgres");
+        eprintln!("Components: pgvector, apache_age, pandoc, pdfium, mistralrs, llamacpp, bun, uv, postgres");
         eprintln!("Use 'all' to build all components including postgres setup");
         std::process::exit(1);
     }
@@ -212,7 +230,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match component.as_str() {
         "all" => {
             println!("Building all components...");
-            let components = ["pgvector", "apache_age", "pandoc", "pdfium", "mistralrs", "llamacpp", "postgres"];
+            let components = ["pgvector", "apache_age", "pandoc", "pdfium", "mistralrs", "llamacpp", "bun", "uv", "postgres"];
 
             for comp in &components {
                 println!("\n=== Building {} ===", comp);

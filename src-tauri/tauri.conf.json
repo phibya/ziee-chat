@@ -31,6 +31,8 @@
       "../dist/ui": "ui",
       "./target/pdfium/target/*": "lib",
       "./target/pandoc/*": "bin",
+      "./target/bun/*": "bin",
+      "./target/uv/*": "bin",
       "./target/mistralrs/bin/*": "bin",
       "./target/llamacpp/bin/*": "bin",
       "./target/pgvector/*": "pgvector",
