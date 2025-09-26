@@ -157,8 +157,9 @@ export const ChatInput = function ChatInput({
     }> = []
 
     providers.forEach(provider => {
-      const providerModels = (modelsByProvider[provider.id] || [])
-        .filter(model => model.capabilities?.chat === true)
+      const providerModels = (modelsByProvider[provider.id] || []).filter(
+        model => model.capabilities?.chat === true,
+      )
 
       if (providerModels.length > 0) {
         options.push({

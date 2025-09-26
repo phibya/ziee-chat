@@ -15,7 +15,7 @@ use crate::database::{
         CreateUserGroupRequest, ProviderListResponse, RAGProviderListResponse,
         UpdateUserGroupRequest,
     },
-    queries::{user_group_providers, user_group_rag_providers, user_groups},
+    queries::{user_group_providers, user_group_rag_providers, user_groups, user_group_mcp_servers},
 };
 
 // Create user group
@@ -234,6 +234,11 @@ pub async fn delete_user_group(
     Extension(_auth_user): Extension<AuthenticatedUser>,
     Path(group_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
+    // First remove all MCP server assignments for this group
+    if let Err(e) = user_group_mcp_servers::remove_all_group_assignments(group_id).await {
+        tracing::warn!("Failed to remove group assignments during deletion: {}", e);
+    }
+
     match user_groups::delete_user_group(group_id).await {
         Ok(true) => Ok((StatusCode::NO_CONTENT, StatusCode::NO_CONTENT)),
         Ok(false) => Err((StatusCode::NOT_FOUND, AppError::not_found("User group"))),

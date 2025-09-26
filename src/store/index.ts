@@ -6,6 +6,7 @@ import { useAdminUserGroupsStore } from './admin/userGroups'
 import { useAdminProxySettingsStore } from './admin/proxySettings'
 import { useAdminNgrokSettingsStore } from './admin/ngrokSettings'
 import { useHardwareStore } from './admin/hardware'
+import { useAdminMCPServersStore } from './admin/mcpServers'
 import { useAuthStore } from './auth'
 import { useConversationsStore } from './conversations'
 import { useHubStore } from './hub'
@@ -24,6 +25,9 @@ import { useApiProxyServerStore } from './admin/apiProxyServer.ts'
 import { useApiProxyLogMonitorStore } from './admin/apiProxyLogMonitor.ts'
 import { useEngineStore } from './engine'
 import { useUserSettingsStore } from './settings'
+import { useMCPStore } from './mcp'
+import { useMCPApprovalsStore } from './mcpApprovals'
+import { useMCPExecutionStore } from './mcpExecution'
 import {
   useAddLocalModelDownloadDrawerStore,
   useAddLocalModelUploadDrawerStore,
@@ -46,6 +50,14 @@ import {
   useAddSystemInstanceDrawerStore,
   useEditSystemInstanceDrawerStore,
 } from './ui/ragProviderDrawers.ts'
+import {
+  useMCPServerDrawerStore,
+  useMCPToolDetailsDrawerStore,
+  useMCPToolExecutionDrawerStore,
+  useMCPExecutionLogsDrawerStore,
+  useMCPApprovalsDrawerStore,
+  useMCPServerManagementDrawerStore,
+} from './ui/mcpDrawers'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'
 
 export {
@@ -92,6 +104,35 @@ export {
   disconnectHardwareUsage,
   useHardwareStore,
 } from './admin/hardware'
+// Admin MCP Servers store
+export {
+  clearAdminMCPErrors,
+  createSystemServer,
+  deleteSystemServer,
+  getSystemServer,
+  loadSystemServers,
+  updateSystemServer,
+  startSystemServer,
+  stopSystemServer,
+  restartSystemServer,
+  loadAllExecutionLogs,
+  loadGroupAssignments,
+  loadStatistics,
+  getGroupServers,
+  getServerAccessGroups,
+  assignServersToGroup,
+  removeServerFromGroup,
+  refreshStatistics,
+  refreshSystemServers,
+  isServerOperationLoading,
+  getSystemServerById,
+  getActiveSystemServers,
+  getEnabledSystemServers,
+  searchSystemServers,
+  getExecutionLogsByServer,
+  getExecutionStatsSummary,
+  useAdminMCPServersStore,
+} from './admin/mcpServers'
 // Admin Users store
 export {
   clearAdminUsersStoreError,
@@ -364,6 +405,78 @@ export {
   useUserSettingsStore,
 } from './settings'
 
+// MCP store (user-level servers and tools)
+export {
+  clearMCPError,
+  createMCPServer,
+  deleteMCPServer,
+  discoverServerTools,
+  findToolByName,
+  getActiveServers,
+  getEnabledServers,
+  getMCPServer,
+  getServerTools,
+  getServersByType,
+  getSystemServers,
+  getToolByName,
+  getToolConflicts,
+  getToolsByServer,
+  getToolsByServerType,
+  getUserAssignedServers,
+  getUserServers,
+  loadMCPServers,
+  loadMCPTools,
+  restartMCPServer,
+  searchServers,
+  searchTools,
+  startMCPServer,
+  stopMCPServer,
+  updateMCPServer,
+  useMCPStore,
+} from './mcp'
+// MCP Approvals store
+export {
+  checkToolApproval,
+  cleanExpiredApprovals,
+  clearApprovalsError,
+  clearApprovalChecksCache,
+  createConversationApproval,
+  deleteConversationApproval,
+  getConversationApprovals,
+  getGlobalApprovalForTool,
+  isToolApprovedForConversation,
+  isToolGloballyApproved,
+  loadAllGlobalApprovals,
+  loadConversationApprovals,
+  removeGlobalToolApproval,
+  setGlobalToolApproval,
+  updateToolApproval,
+  useMCPApprovalsStore,
+} from './mcpApprovals'
+// MCP Execution store
+export {
+  cancelExecution,
+  clearExecutionError,
+  clearExecutionUpdatesCache,
+  executeTool,
+  filterExecutionLogsByDateRange,
+  getActiveExecutions,
+  getExecutionLogById,
+  getExecutionLogsByStatus,
+  getExecutionLogsByTool,
+  getExecutionStats,
+  getThreadLogs,
+  isExecutionCancelling,
+  isToolExecuting,
+  loadExecutionLogs,
+  loadThreadExecutionLogs,
+  refreshExecutionLogs,
+  searchExecutionLogs,
+  startExecutionMonitoring,
+  updateExecutionStatus,
+  useMCPExecutionStore,
+} from './mcpExecution'
+
 // UI stores with all actions
 export {
   closeAddLocalModelDownloadDrawer,
@@ -442,6 +555,47 @@ export {
   setEditSystemInstanceDrawerLoading,
 } from './ui/ragProviderDrawers.ts'
 
+// MCP UI Drawer stores
+export {
+  closeMCPServerDrawer,
+  openMCPServerDrawer,
+  setMCPServerDrawerLoading,
+  closeMCPToolDetailsDrawer,
+  openMCPToolDetailsDrawer,
+  setMCPToolDetailsDrawerLoading,
+  toggleMCPToolSchema,
+  toggleMCPToolExecutionHistory,
+  closeMCPToolExecutionDrawer,
+  openMCPToolExecutionDrawer,
+  setMCPToolExecutionDrawerLoading,
+  setMCPToolExecutionDrawerExecuting,
+  updateMCPToolExecutionParameters,
+  setMCPToolExecutionResult,
+  toggleMCPToolAutoApprove,
+  toggleMCPToolRequireApproval,
+  closeMCPExecutionLogsDrawer,
+  openMCPExecutionLogsDrawer,
+  setMCPExecutionLogsDrawerLoading,
+  toggleMCPExecutionDetails,
+  toggleMCPExecutionParameters,
+  toggleMCPExecutionResult,
+  updateMCPExecutionInDrawer,
+  closeMCPApprovalsDrawer,
+  openMCPApprovalsDrawer,
+  setMCPApprovalsDrawerLoading,
+  setMCPApprovalsDrawerMode,
+  toggleMCPGlobalApprovals,
+  toggleMCPConversationApprovals,
+  updateMCPApprovalInDrawer,
+  closeMCPServerManagementDrawer,
+  openMCPServerManagementDrawer,
+  setMCPServerManagementDrawerLoading,
+  setMCPServerManagementActiveTab,
+  updateMCPServerInManagementDrawer,
+  toggleMCPSystemServers,
+  toggleMCPUserServers,
+} from './ui/mcpDrawers'
+
 export const Stores = {
   Auth: createStoreProxy(useAuthStore),
   Admin: createStoreProxy(useAdminStore),
@@ -467,7 +621,11 @@ export const Stores = {
   AdminApiProxyServer: createStoreProxy(useApiProxyServerStore),
   AdminApiProxyLogMonitor: createStoreProxy(useApiProxyLogMonitorStore),
   AdminEngines: createStoreProxy(useEngineStore),
+  AdminMCPServers: createStoreProxy(useAdminMCPServersStore),
   Settings: createStoreProxy(useUserSettingsStore),
+  MCP: createStoreProxy(useMCPStore),
+  MCPApprovals: createStoreProxy(useMCPApprovalsStore),
+  MCPExecution: createStoreProxy(useMCPExecutionStore),
   UI: {
     Layout: createStoreProxy(useLayoutUIStore),
     PathHistory: createStoreProxy(usePathHistoryStore),
@@ -495,6 +653,15 @@ export const Stores = {
     AddSystemInstanceDrawer: createStoreProxy(useAddSystemInstanceDrawerStore),
     EditSystemInstanceDrawer: createStoreProxy(
       useEditSystemInstanceDrawerStore,
+    ),
+    // MCP drawer stores
+    MCPServerDrawer: createStoreProxy(useMCPServerDrawerStore),
+    MCPToolDetailsDrawer: createStoreProxy(useMCPToolDetailsDrawerStore),
+    MCPToolExecutionDrawer: createStoreProxy(useMCPToolExecutionDrawerStore),
+    MCPExecutionLogsDrawer: createStoreProxy(useMCPExecutionLogsDrawerStore),
+    MCPApprovalsDrawer: createStoreProxy(useMCPApprovalsDrawerStore),
+    MCPServerManagementDrawer: createStoreProxy(
+      useMCPServerManagementDrawerStore,
     ),
   },
 }

@@ -12,6 +12,7 @@ pub mod files;
 pub mod hardware;
 pub mod hub;
 pub mod macros;
+pub mod mcp;
 pub mod middleware;
 pub mod model_uploads;
 pub mod models;

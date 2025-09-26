@@ -210,9 +210,9 @@ export const RagQueryTab: React.FC = () => {
             prefix={<FileTextOutlined />}
             className="flex-1"
           />
-          <Statistic 
-            title="Total Tokens" 
-            value={token_usage.total_tokens} 
+          <Statistic
+            title="Total Tokens"
+            value={token_usage.total_tokens}
             className="flex-1"
           />
           {metadata.rerank_applied && <Tag color="blue">Reranked</Tag>}
@@ -275,7 +275,6 @@ export const RagQueryTab: React.FC = () => {
                 Chunk: {document.chunk_index}
               </Text>
             </div>
-
           </Space>
         </div>
       </Card>
@@ -394,11 +393,7 @@ export const RagQueryTab: React.FC = () => {
     <Space direction="vertical" size="large" className="w-full">
       {/* Query Interface Card */}
       <Card title="Query Interface">
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmit}
-        >
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             name="query"
             label="Query"

@@ -271,3 +271,29 @@ permission_middleware!(
 );
 permission_middleware!(hub_refresh_middleware, Permission::HubRefresh);
 permission_middleware!(hub_version_read_middleware, Permission::HubVersionRead);
+
+// MCP permissions
+permission_middleware!(mcp_servers_read_middleware, Permission::McpServersRead);
+permission_middleware!(mcp_servers_create_middleware, Permission::McpServersCreate);
+permission_middleware!(mcp_servers_edit_middleware, Permission::McpServersEdit);
+permission_middleware!(mcp_servers_delete_middleware, Permission::McpServersDelete);
+permission_middleware!(mcp_tools_read_middleware, Permission::McpToolsRead);
+permission_middleware!(mcp_tools_execute_middleware, Permission::McpToolsExecute);
+
+// MCP Admin permissions
+permission_middleware!(
+    mcp_admin_servers_read_middleware,
+    Permission::McpAdminServersRead
+);
+permission_middleware!(
+    mcp_admin_servers_create_middleware,
+    Permission::McpAdminServersCreate
+);
+permission_middleware!(
+    mcp_admin_servers_edit_middleware,
+    Permission::McpAdminServersEdit
+);
+permission_middleware!(
+    mcp_admin_servers_delete_middleware,
+    Permission::McpAdminServersDelete
+);

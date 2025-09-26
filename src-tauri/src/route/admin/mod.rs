@@ -5,6 +5,7 @@ pub mod downloads;
 pub mod engines;
 pub mod groups;
 pub mod hardware;
+pub mod mcp;
 pub mod models;
 pub mod providers;
 pub mod rag;
@@ -28,6 +29,7 @@ pub fn admin_routes() -> ApiRouter {
             .merge(downloads::admin_download_routes())
             .merge(engines::admin_engine_routes())
             .merge(hardware::hardware_routes())
-            .merge(api_proxy_server::admin_api_proxy_server_routes()),
+            .merge(api_proxy_server::admin_api_proxy_server_routes())
+            .nest("/mcp", mcp::admin_mcp_routes()),
     )
 }

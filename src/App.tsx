@@ -29,6 +29,7 @@ import {
   GeneralSettings,
   HardwareSettings,
   HttpsProxySettings,
+  MCPServersSettings,
   ModelRepositorySettings,
   NgrokSettings,
   PrivacySettings,
@@ -37,6 +38,7 @@ import {
   UserGroupsSettings,
   UsersSettings,
 } from './components/Pages/Settings'
+import { MCPAdminPage } from './components/Pages/Settings/MCPServers/Admin/MCPAdminPage'
 import './i18n'
 import '@ant-design/v5-patch-for-react-19'
 import './store/startup'
@@ -234,6 +236,26 @@ function App() {
                             permissions={[Permission.HardwareRead]}
                           >
                             <HardwareSettings />
+                          </PagePermissionGuard403>
+                        }
+                      />
+                      <Route
+                        path="mcp-servers"
+                        element={
+                          <PagePermissionGuard403
+                            permissions={[Permission.McpServersRead]}
+                          >
+                            <MCPServersSettings />
+                          </PagePermissionGuard403>
+                        }
+                      />
+                      <Route
+                        path="admin-mcp-servers"
+                        element={
+                          <PagePermissionGuard403
+                            permissions={[Permission.McpAdminServersRead]}
+                          >
+                            <MCPAdminPage />
                           </PagePermissionGuard403>
                         }
                       />

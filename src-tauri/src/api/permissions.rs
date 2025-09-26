@@ -261,6 +261,30 @@ pub enum Permission {
     #[serde(rename = "hub::version::read")]
     HubVersionRead,
 
+    // MCP (Model Context Protocol) permissions
+    #[serde(rename = "mcp::servers::read")]
+    McpServersRead,
+    #[serde(rename = "mcp::servers::create")]
+    McpServersCreate,
+    #[serde(rename = "mcp::servers::edit")]
+    McpServersEdit,
+    #[serde(rename = "mcp::servers::delete")]
+    McpServersDelete,
+    #[serde(rename = "mcp::tools::read")]
+    McpToolsRead,
+    #[serde(rename = "mcp::tools::execute")]
+    McpToolsExecute,
+
+    // MCP Admin permissions
+    #[serde(rename = "mcp::admin::servers::read")]
+    McpAdminServersRead,
+    #[serde(rename = "mcp::admin::servers::create")]
+    McpAdminServersCreate,
+    #[serde(rename = "mcp::admin::servers::edit")]
+    McpAdminServersEdit,
+    #[serde(rename = "mcp::admin::servers::delete")]
+    McpAdminServersDelete,
+
     // Wildcard permissions
     #[serde(rename = "*")]
     All,
@@ -418,6 +442,20 @@ impl Permission {
             Permission::HubAssistantsRead => "hub::assistants::read",
             Permission::HubRefresh => "hub::refresh",
             Permission::HubVersionRead => "hub::version::read",
+
+            // MCP permissions
+            Permission::McpServersRead => "mcp::servers::read",
+            Permission::McpServersCreate => "mcp::servers::create",
+            Permission::McpServersEdit => "mcp::servers::edit",
+            Permission::McpServersDelete => "mcp::servers::delete",
+            Permission::McpToolsRead => "mcp::tools::read",
+            Permission::McpToolsExecute => "mcp::tools::execute",
+
+            // MCP Admin permissions
+            Permission::McpAdminServersRead => "mcp::admin::servers::read",
+            Permission::McpAdminServersCreate => "mcp::admin::servers::create",
+            Permission::McpAdminServersEdit => "mcp::admin::servers::edit",
+            Permission::McpAdminServersDelete => "mcp::admin::servers::delete",
 
             // Wildcard permissions
             Permission::All => "*",

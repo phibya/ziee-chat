@@ -3,6 +3,7 @@ pub mod api_proxy;
 pub mod database;
 pub mod file_storage;
 pub mod hub;
+pub mod mcp;
 pub mod ngrok;
 pub mod rag;
 
@@ -11,6 +12,7 @@ pub use api_proxy::*;
 pub use database::*;
 pub use file_storage::*;
 pub use hub::*;
+pub use mcp::*;
 pub use ngrok::*;
 pub use rag::*;
 
@@ -37,12 +39,18 @@ pub async fn initialize_app_common() -> Result<(), String> {
     // Initialize RAG service
     initialize_rag().await?;
 
+    // Initialize MCP servers (restore previously running servers)
+    initialize_mcp().await?;
+
     Ok(())
 }
 
 /// Cleanup all application components
 pub async fn cleanup_app_common() {
-    // Cleanup RAG service first
+    // Cleanup MCP servers first (stop running servers)
+    cleanup_mcp().await;
+
+    // Cleanup RAG service
     cleanup_rag().await;
 
     // Cleanup AI models

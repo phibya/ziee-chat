@@ -11,119 +11,133 @@
 // =============================================================================
 
 export interface ApiProxyServerConfig {
-  port: number
   address: string
-  prefix: string
-  api_key: string
   allow_cors: boolean
-  log_level: string
+  api_key: string
   autostart_on_startup: boolean
+  log_level: string
+  port: number
+  prefix: string
 }
 
 export interface ApiProxyServerModel {
-  id: string
-  model_id: string
   alias_id?: string
-  enabled: boolean
-  is_default: boolean
   created_at: string
+  enabled: boolean
+  id: string
+  is_default: boolean
+  model_id: string
   updated_at: string
 }
 
 export interface ApiProxyServerStatus {
-  running: boolean
   active_models: number
+  running: boolean
   server_url?: string
 }
 
 export interface ApiProxyServerTrustedHost {
   description?: string
-  id: string
-  host: string
-  enabled: boolean
   created_at: string
+  enabled: boolean
+  host: string
+  id: string
   updated_at: string
 }
 
+export interface ApprovalCheckResponse {
+  approved: boolean
+  expires_at?: string
+  source?: string
+}
+
+export interface AssignServersRequest {
+  server_ids: string[]
+}
+
 export interface AssignUserToGroupRequest {
-  user_id: string
   group_id: string
+  user_id: string
 }
 
 export interface Assistant {
   description?: string
-  id: string
-  name: string
-  instructions?: string
-  parameters?: ModelParameters
-  created_by?: string
-  is_template: boolean
-  is_default: boolean
-  is_active: boolean
   created_at: string
+  created_by?: string
+  id: string
+  instructions?: string
+  is_active: boolean
+  is_default: boolean
+  is_template: boolean
+  name: string
+  parameters?: ModelParameters
   updated_at: string
 }
 
 export interface AssistantListResponse {
   assistants: Assistant[]
-  total: number
   page: number
   per_page: number
+  total: number
 }
 
 export interface AuthResponse {
+  expires_at: string
   token: string
   user: User
-  expires_at: string
 }
 
 export interface AvailableDevicesResponse {
-  devices: DeviceInfo[]
   default_device_type: DeviceType
+  devices: DeviceInfo[]
   supports_multi_gpu: boolean
 }
 
 export interface CPUInfo {
-  model: string
   architecture: string
-  cores: number
-  threads?: number
   base_frequency?: number
+  cores: number
   max_frequency?: number
+  model: string
+  threads?: number
 }
 
 export interface CPUUsage {
-  usage_percentage: number
-  temperature?: number
   frequency?: number
+  temperature?: number
+  usage_percentage: number
+}
+
+export interface CancelExecutionRequest {
+  reason?: string
 }
 
 export interface ChatMessageRequest {
-  conversation_id: string
-  content: string
-  model_id: string
   assistant_id: string
+  content: string
+  conversation_id: string
   file_ids?: string[]
+  model_id: string
   rag_instance_ids?: string[]
 }
 
 export interface Conversation {
   title: string
-  id: string
-  user_id: string
-  project_id?: string
-  assistant_id?: string
-  model_id?: string
   active_branch_id?: string
+  assistant_id?: string
   created_at: string
+  id: string
+  model_id?: string
+  project_id?: string
   updated_at: string
+  user_id: string
 }
 
 export interface ConversationListResponse {
   conversations: ConversationSummary[]
-  total: number
   page: number
   per_page: number
+  total: number
 }
 
 export interface ConversationPaginationQuery {
@@ -134,125 +148,163 @@ export interface ConversationPaginationQuery {
 
 export interface ConversationSummary {
   title: string
-  id: string
-  user_id: string
-  project_id?: string
   assistant_id?: string
-  model_id?: string
   created_at: string
-  updated_at: string
+  id: string
   last_message?: string
   message_count: number
+  model_id?: string
+  project_id?: string
+  updated_at: string
+  user_id: string
 }
 
 export interface CreateApiProxyServerModelRequest {
-  model_id: string
   alias_id?: string
   enabled?: boolean
   is_default?: boolean
+  model_id: string
 }
 
 export interface CreateAssistantRequest {
   description?: string
-  name: string
   instructions?: string
-  parameters?: ModelParameters
-  is_template?: boolean
   is_default?: boolean
+  is_template?: boolean
+  name: string
+  parameters?: ModelParameters
+}
+
+export interface CreateConversationApprovalRequest {
+  approved: boolean
+  expires_at?: string
+  notes?: string
+  server_id: string
+  tool_name: string
 }
 
 export interface CreateConversationRequest {
   title: string
-  project_id?: string
   assistant_id: string
   model_id: string
+  project_id?: string
+}
+
+export interface CreateMCPServerRequest {
+  description?: string
+  args?: any
+  command?: string
+  display_name: string
+  enabled?: boolean
+  environment_variables?: any
+  headers?: any
+  max_restart_attempts?: number
+  name: string
+  timeout_seconds?: number
+  transport_type: MCPTransportType
+  url?: string
 }
 
 export interface CreateModelRequest {
   description?: string
-  provider_id: string
-  name: string
+  capabilities?: ModelCapabilities
   display_name: string
   enabled?: boolean
-  capabilities?: ModelCapabilities
-  parameters?: ModelParameters
-  engine_type: EngineType
   engine_settings?: ModelEngineSettings
+  engine_type: EngineType
   file_format: FileFormat
+  name: string
+  parameters?: ModelParameters
+  provider_id: string
   source?: SourceInfo
 }
 
 export interface CreateProjectRequest {
   description?: string
-  name: string
   instruction?: string
+  name: string
 }
 
 export interface CreateProviderRequest {
   type: string
-  name: string
-  enabled?: boolean
   api_key?: string
   base_url?: string
+  enabled?: boolean
+  name: string
   proxy_settings?: ProxySettings
 }
 
 export interface CreateRAGInstanceRequest {
   description?: string
-  provider_id: string
-  project_id?: string
-  name: string
   display_name: string
-  engine_type: RAGEngineType
   embedding_model_id?: string
-  llm_model_id?: string
-  parameters?: any
   engine_settings?: RAGEngineSettings
+  engine_type: RAGEngineType
+  llm_model_id?: string
+  name: string
+  parameters?: any
+  project_id?: string
+  provider_id: string
 }
 
 export interface CreateRAGProviderRequest {
   type: string
-  name: string
-  enabled?: boolean
   api_key?: string
   base_url?: string
   can_user_create_instance?: boolean
+  enabled?: boolean
+  name: string
 }
 
 export interface CreateRAGRepositoryRequest {
   description?: string
-  name: string
-  url: string
-  enabled?: boolean
-  requires_auth?: boolean
   auth_token?: string
+  enabled?: boolean
+  name: string
   priority?: number
+  requires_auth?: boolean
+  url: string
 }
 
 export interface CreateRepositoryRequest {
+  auth_config?: RepositoryAuthConfig
+  auth_type: string
+  enabled?: boolean
   name: string
   url: string
-  auth_type: string
-  auth_config?: RepositoryAuthConfig
+}
+
+export interface CreateSystemMCPServerRequest {
+  description?: string
+  args?: any
+  command?: string
+  display_name: string
   enabled?: boolean
+  environment_variables?: any
+  headers?: any
+  max_restart_attempts?: number
+  name: string
+  timeout_seconds?: number
+  transport_type: MCPTransportType
+  url?: string
 }
 
 export interface CreateSystemRAGInstanceRequest {
   description?: string
-  provider_id: string
-  name: string
   display_name: string
-  engine_type: RAGEngineType
   embedding_model_id?: string
-  llm_model_id?: string
-  parameters?: any
   engine_settings?: RAGEngineSettings
+  engine_type: RAGEngineType
+  llm_model_id?: string
+  name: string
+  parameters?: any
+  provider_id: string
 }
 
 export interface CreateTrustedHostRequest {
   description?: string
-  host: string
   enabled?: boolean
+  host: string
 }
 
 export interface CreateUserGroupRequest {
@@ -264,64 +316,69 @@ export interface CreateUserGroupRequest {
 }
 
 export interface CreateUserRequest {
-  username: string
   email: string
   password: string
   profile?: any
+  username: string
 }
 
 export interface DefaultLanguageResponse {
   language: string
 }
 
+export interface DeleteConversationApprovalQuery {
+  server_id: string
+  tool_name: string
+}
+
 export interface DeviceInfo {
-  id: number
-  name: string
   device_type: DeviceType
-  memory_total?: number
-  memory_free?: number
+  id: number
   is_available: boolean
+  memory_free?: number
+  memory_total?: number
+  name: string
 }
 
 export type DeviceType = any
 
 export interface DownloadFromRepositoryRequest {
   description?: string
-  provider_id: string
-  repository_id: string
-  repository_path: string
-  repository_branch?: string
-  name: string
+  capabilities?: ModelCapabilities
   display_name: string
+  engine_settings?: ModelEngineSettings
+  engine_type?: EngineType
   file_format: FileFormat
   main_filename: string
-  capabilities?: ModelCapabilities
+  name: string
   parameters?: ModelParameters
-  engine_type?: EngineType
-  engine_settings?: ModelEngineSettings
+  provider_id: string
+  repository_branch?: string
+  repository_id: string
+  repository_path: string
   source: SourceInfo
 }
 
 export interface DownloadInstance {
+  completed_at?: string
+  created_at: string
+  error_message?: string
   id: string
+  model_id?: string
+  progress_data?: DownloadProgressData
   provider_id: string
   repository_id: string
   request_data: DownloadRequestData
-  status: DownloadStatus
-  progress_data?: DownloadProgressData
-  error_message?: string
   started_at: string
-  completed_at?: string
-  model_id?: string
-  created_at: string
+  status: DownloadStatus
   updated_at: string
 }
 
 export interface DownloadInstanceListResponse {
   downloads: DownloadInstance[]
-  total: number
   page: number
   per_page: number
+  total: number
 }
 
 export interface DownloadPaginationQuery {
@@ -333,40 +390,40 @@ export interface DownloadPaginationQuery {
 export type DownloadPhase = 'created' | 'connecting' | 'analyzing' | 'downloading' | 'receiving' | 'resolving' | 'checkingout' | 'committing' | 'complete' | 'error'
 
 export interface DownloadProgressData {
-  phase: DownloadPhase
   current: number
-  total: number
-  message: string
-  speed_bps: number
   eta_seconds: number
+  message: string
+  phase: DownloadPhase
+  speed_bps: number
+  total: number
 }
 
 export interface DownloadProgressUpdate {
-  id: string
-  status: string
-  phase: DownloadPhase
   current?: number
-  total?: number
-  message?: string
-  speed_bps?: number
-  eta_seconds?: number
   error_message?: string
+  eta_seconds?: number
+  id: string
+  message?: string
+  phase: DownloadPhase
+  speed_bps?: number
+  status: string
+  total?: number
 }
 
 export interface DownloadRequestData {
   description?: string
-  model_name: string
-  revision?: string
+  capabilities?: ModelCapabilities
+  display_name?: string
+  engine_settings?: ModelEngineSettings
+  engine_type?: EngineType
+  file_format?: string
   files?: string[]
+  main_filename?: string
+  model_name: string
+  parameters?: ModelParameters
   quantization?: string
   repository_path?: string
-  display_name?: string
-  file_format?: string
-  main_filename?: string
-  capabilities?: ModelCapabilities
-  parameters?: ModelParameters
-  engine_type?: EngineType
-  engine_settings?: ModelEngineSettings
+  revision?: string
   source?: SourceInfo
 }
 
@@ -377,33 +434,41 @@ export interface DownloadTokenParams {
 }
 
 export interface DownloadTokenResponse {
-  token: string
   expires_at: string
+  token: string
 }
 
 export interface EngineInfo {
   engine_type: EngineType
   name: string
-  version: string
   status: string
   supported_architectures?: string[]
+  version: string
 }
 
 export type EngineType = 'mistralrs' | 'llamacpp' | 'none'
 
+export interface ExecuteToolRequest {
+  auto_approve?: boolean
+  conversation_id?: string
+  parameters: any
+  server_id?: string
+  tool_name: string
+}
+
 export interface File {
-  id: string
-  user_id: string
-  filename: string
-  file_size: number
-  mime_type?: string
   checksum?: string
-  project_id?: string
-  thumbnail_count: number
+  created_at: string
+  file_size: number
+  filename: string
+  id: string
+  mime_type?: string
   page_count: number
   processing_metadata: any
-  created_at: string
+  project_id?: string
+  thumbnail_count: number
   updated_at: string
+  user_id: string
 }
 
 export type FileFormat = 'safetensors' | 'pytorch' | 'gguf'
@@ -416,13 +481,17 @@ export interface FileListParams {
 
 export interface FileListResponse {
   files: File[]
-  total: number
   page: number
   per_page: number
+  total: number
 }
 
 export interface FileOperationSuccessResponse {
   success: boolean
+}
+
+export interface FindToolQuery {
+  server_id?: string
 }
 
 export interface GPUComputeCapabilities {
@@ -434,30 +503,49 @@ export interface GPUComputeCapabilities {
 }
 
 export interface GPUDevice {
+  compute_capabilities: GPUComputeCapabilities
   device_id: string
+  driver_version?: string
+  memory?: number
   name: string
   vendor: string
-  memory?: number
-  driver_version?: string
-  compute_capabilities: GPUComputeCapabilities
 }
 
 export interface GPUUsage {
   device_id: string
   device_name: string
-  utilization_percentage?: number
-  memory_used?: number
   memory_total?: number
   memory_usage_percentage?: number
-  temperature?: number
+  memory_used?: number
   power_usage?: number
+  temperature?: number
+  utilization_percentage?: number
+}
+
+export interface GroupAssignmentResponse {
+  group_id: string
+  server_ids: string[]
+}
+
+export interface GroupServerAssignment {
+  assigned_at: string
+  assigned_by_name: string
+  server_display_name: string
+  server_id: string
+  server_name: string
+}
+
+export interface GroupServerAssignmentResponse {
+  group_id: string
+  group_name: string
+  server_assignments: GroupServerAssignment[]
 }
 
 export interface HardwareInfo {
-  operating_system: OperatingSystemInfo
   cpu: CPUInfo
-  memory: MemoryInfo
   gpu_devices: GPUDevice[]
+  memory: MemoryInfo
+  operating_system: OperatingSystemInfo
 }
 
 export interface HardwareInfoResponse {
@@ -465,54 +553,54 @@ export interface HardwareInfoResponse {
 }
 
 export interface HardwareUsageUpdate {
-  timestamp: string
   cpu: CPUUsage
-  memory: MemoryUsage
   gpu_devices: GPUUsage[]
+  memory: MemoryUsage
+  timestamp: string
 }
 
 export interface HubAssistant {
   description?: string
-  id: string
-  name: string
-  instructions?: string
-  parameters?: any
-  category: string
-  tags: string[]
-  recommended_models: string[]
-  capabilities_required: string[]
-  popularity_score?: number
   author?: string
-  use_cases?: string[]
+  capabilities_required: string[]
+  category: string
   example_prompts?: string[]
+  id: string
+  instructions?: string
+  name: string
+  parameters?: any
+  popularity_score?: number
+  recommended_models: string[]
+  tags: string[]
+  use_cases?: string[]
 }
 
 export interface HubModel {
   description?: string
-  id: string
-  name: string
-  display_name: string
-  repository_url: string
-  repository_path: string
-  main_filename: string
-  file_format: FileFormat
   capabilities?: ModelCapabilities
-  size_gb: number
-  tags: string[]
-  recommended_parameters?: any
-  public: boolean
-  popularity_score?: number
-  license?: string
-  quantization_options?: HubModelQuantizationOption[]
   context_length?: number
+  display_name: string
+  file_format: FileFormat
+  id: string
   language_support?: string[]
+  license?: string
+  main_filename: string
+  name: string
+  popularity_score?: number
+  public: boolean
+  quantization_options?: HubModelQuantizationOption[]
   recommended_engine?: EngineType
   recommended_engine_settings?: any
+  recommended_parameters?: any
+  repository_path: string
+  repository_url: string
+  size_gb: number
+  tags: string[]
 }
 
 export interface HubModelQuantizationOption {
-  name: string
   main_filename: string
+  name: string
 }
 
 export interface HubQueryParams {
@@ -524,44 +612,186 @@ export interface HubVersionResponse {
 }
 
 export interface InitResponse {
-  needs_setup: boolean
   allow_registration: boolean
   is_desktop: boolean
+  needs_setup: boolean
   token?: string
 }
 
+export interface ListConversationApprovalsQuery {
+  approved?: boolean
+  include_expired?: boolean
+  page?: number
+  per_page?: number
+  server_id?: string
+  tool_name?: string
+}
+
+export interface ListExecutionLogsQuery {
+  page?: number
+  per_page?: number
+  server_id?: string
+  status?: string
+  thread_id?: string
+}
+
+export interface ListExecutionLogsResponse {
+  logs: MCPExecutionLog[]
+  page: number
+  per_page: number
+  total: number
+}
+
+export interface ListServersQuery {
+  include_system?: boolean
+  page?: number
+  per_page?: number
+  status?: string
+}
+
+export interface ListServersResponse {
+  page: number
+  per_page: number
+  servers: MCPServer[]
+  total: number
+}
+
+export interface ListSystemServersQuery {
+  enabled?: boolean
+  page?: number
+  per_page?: number
+}
+
+export interface ListToolsQuery {
+  page?: number
+  per_page?: number
+  search?: string
+  server_id?: string
+}
+
+export interface ListToolsResponse {
+  page: number
+  per_page: number
+  tools: MCPToolWithServer[]
+  total: number
+}
+
 export interface LlamaCppSettings {
-  device_type?: DeviceType
-  device_ids?: number[]
-  ctx_size?: number
   batch_size?: number
-  ubatch_size?: number
-  parallel?: number
-  keep?: number
-  mlock?: boolean
-  no_mmap?: boolean
-  threads?: number
-  threads_batch?: number
+  cache_type_k?: string
+  cache_type_v?: string
   cont_batching?: boolean
+  ctx_size?: number
+  device_ids?: number[]
+  device_type?: DeviceType
   flash_attn?: boolean
-  no_kv_offload?: boolean
-  n_gpu_layers?: number
+  keep?: number
   main_gpu?: number
-  split_mode?: string
-  tensor_split?: string
+  mlock?: boolean
+  n_gpu_layers?: number
+  no_kv_offload?: boolean
+  no_mmap?: boolean
+  numa?: string
+  parallel?: number
   rope_freq_base?: number
   rope_freq_scale?: number
   rope_scaling?: string
-  cache_type_k?: string
-  cache_type_v?: string
   seed?: number
-  numa?: string
+  split_mode?: string
+  tensor_split?: string
+  threads?: number
+  threads_batch?: number
+  ubatch_size?: number
 }
 
 export interface LoginRequest {
-  username_or_email: string
   password: string
+  username_or_email: string
 }
+
+export interface MCPExecutionLog {
+  completed_at?: string
+  correlation_id?: string
+  duration_ms?: number
+  error_code?: string
+  error_message?: string
+  execution_result?: any
+  id: string
+  request_id?: string
+  server_id: string
+  started_at: string
+  status: MCPExecutionStatus
+  thread_id?: string
+  tool_name: string
+  tool_parameters?: any
+  user_id: string
+}
+
+export type MCPExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout'
+
+export interface MCPServer {
+  description?: string
+  args: any
+  command?: string
+  created_at: string
+  display_name: string
+  enabled: boolean
+  environment_variables: any
+  headers: any
+  id: string
+  is_active: boolean
+  is_system: boolean
+  last_health_check?: string
+  last_restart_at?: string
+  max_restart_attempts?: number
+  name: string
+  port?: number
+  process_id?: number
+  restart_count: number
+  status: MCPServerStatus
+  timeout_seconds?: number
+  tool_count?: number
+  tools_discovered_at?: string
+  transport_type: MCPTransportType
+  updated_at: string
+  url?: string
+  user_id?: string
+}
+
+export type MCPServerStartResult = any
+
+export type MCPServerStatus = 'stopped' | 'starting' | 'running' | 'error' | 'restarting'
+
+export interface MCPTool {
+  discovered_at: string
+  id: string
+  input_schema: any
+  last_used_at?: string
+  server_id: string
+  tool_description?: string
+  tool_name: string
+  usage_count: number
+}
+
+export interface MCPToolWithServer {
+  discovered_at: string
+  global_approval_expires_at?: string
+  global_approval_notes?: string
+  global_auto_approve?: boolean
+  id: string
+  input_schema: any
+  is_system: boolean
+  last_used_at?: string
+  server_display_name: string
+  server_id: string
+  server_name: string
+  tool_description?: string
+  tool_name: string
+  transport_type: string
+  usage_count: number
+}
+
+export type MCPTransportType = 'stdio' | 'http' | 'sse'
 
 export interface MemoryInfo {
   total_ram: number
@@ -569,165 +799,165 @@ export interface MemoryInfo {
 }
 
 export interface MemoryUsage {
-  used_ram: number
   available_ram: number
-  used_swap?: number
   available_swap?: number
   usage_percentage: number
+  used_ram: number
+  used_swap?: number
 }
 
 export interface Message {
-  id: string
-  conversation_id: string
-  role: string
   content: string
-  originated_from_id: string
-  edit_count: number
+  conversation_id: string
   created_at: string
-  updated_at: string
-  metadata?: MessageMetadata[]
+  edit_count: number
   files: MessageFiles
+  id: string
+  metadata?: MessageMetadata[]
+  originated_from_id: string
+  role: string
+  updated_at: string
 }
 
 export interface MessageBranch {
-  id: string
   conversation_id: string
   created_at: string
+  id: string
   is_clone: boolean
 }
 
 export type MessageFiles = File[]
 
 export interface MessageMetadata {
-  id: string
-  message_id: string
-  key: string
-  value: any
   created_at: string
+  id: string
+  key: string
+  message_id: string
+  value: any
 }
 
 export type MistralRsCommand = any
 
 export interface MistralRsSettings {
-  command?: MistralRsCommand
-  model_id_name?: string
-  tokenizer_json?: string
   arch?: string
-  quantized_filename?: string
-  weight_file?: string
-  device_type?: DeviceType
-  device_ids?: number[]
-  num_device_layers?: string[]
+  chat_template?: string
+  command?: MistralRsCommand
   cpu?: boolean
-  max_seqs?: number
+  device_ids?: number[]
+  device_type?: DeviceType
+  dtype?: string
+  enable_search?: boolean
+  enable_thinking?: boolean
+  in_situ_quant?: string
+  interactive_mode?: boolean
+  jinja_explicit?: string
+  log_file?: string
+  max_edge?: number
+  max_image_length?: number
+  max_num_images?: number
   max_seq_len?: number
+  max_seqs?: number
+  model_id_name?: string
   no_kv_cache?: boolean
-  truncate_sequence?: boolean
+  no_paged_attn?: boolean
+  num_device_layers?: string[]
+  paged_attn?: boolean
+  paged_attn_block_size?: number
   paged_attn_gpu_mem?: number
   paged_attn_gpu_mem_usage?: number
   paged_ctxt_len?: number
-  paged_attn_block_size?: number
-  no_paged_attn?: boolean
-  paged_attn?: boolean
-  chat_template?: string
-  jinja_explicit?: string
   prefix_cache_n?: number
   prompt_chunksize?: number
-  dtype?: string
-  in_situ_quant?: string
-  seed?: number
-  max_edge?: number
-  max_num_images?: number
-  max_image_length?: number
-  serve_ip?: string
-  log_file?: string
-  enable_search?: boolean
+  quantized_filename?: string
   search_bert_model?: string
-  interactive_mode?: boolean
-  enable_thinking?: boolean
+  seed?: number
+  serve_ip?: string
   token_source?: string
+  tokenizer_json?: string
+  truncate_sequence?: boolean
+  weight_file?: string
 }
 
 export interface Model {
   description?: string
-  id: string
-  provider_id: string
-  name: string
-  display_name: string
-  enabled: boolean
-  is_deprecated: boolean
-  is_active: boolean
   capabilities?: ModelCapabilities
-  parameters?: ModelParameters
   created_at: string
-  updated_at: string
-  file_size_bytes?: number
-  validation_status?: string
-  validation_issues?: string[]
-  port?: number
-  pid?: number
-  engine_type: EngineType
-  engine_settings?: ModelEngineSettings
-  file_format: FileFormat
-  source?: SourceInfo
+  display_name: string
   embedding_dimension?: number
+  enabled: boolean
+  engine_settings?: ModelEngineSettings
+  engine_type: EngineType
+  file_format: FileFormat
+  file_size_bytes?: number
+  id: string
+  is_active: boolean
+  is_deprecated: boolean
+  name: string
+  parameters?: ModelParameters
+  pid?: number
+  port?: number
+  provider_id: string
+  source?: SourceInfo
+  updated_at: string
+  validation_issues?: string[]
+  validation_status?: string
 }
 
 export interface ModelCapabilities {
-  vision?: boolean
   audio?: boolean
-  tools?: boolean
-  code_interpreter?: boolean
   chat?: boolean
-  text_embedding?: boolean
+  code_interpreter?: boolean
   image_generator?: boolean
+  text_embedding?: boolean
+  tools?: boolean
+  vision?: boolean
 }
 
 export interface ModelEngineSettings {
-  mistralrs?: MistralRsSettings
   llamacpp?: LlamaCppSettings
+  mistralrs?: MistralRsSettings
 }
 
 export interface ModelParameters {
+  frequency_penalty?: number
   max_tokens?: number
+  min_p?: number
+  presence_penalty?: number
+  repeat_last_n?: number
+  repeat_penalty?: number
+  seed?: number
+  stop?: string[]
   temperature?: number
   top_k?: number
   top_p?: number
-  min_p?: number
-  repeat_last_n?: number
-  repeat_penalty?: number
-  presence_penalty?: number
-  frequency_penalty?: number
-  seed?: number
-  stop?: string[]
 }
 
 export interface NgrokSettingsResponse {
   api_key: string
-  tunnel_enabled: boolean
-  tunnel_url?: string
-  tunnel_status: string
   auto_start: boolean
   domain?: string
+  tunnel_enabled: boolean
+  tunnel_status: string
+  tunnel_url?: string
 }
 
 export interface NgrokStatusResponse {
-  tunnel_active: boolean
-  tunnel_url?: string
-  tunnel_status: string
   last_error?: string
+  tunnel_active: boolean
+  tunnel_status: string
+  tunnel_url?: string
 }
 
 export interface OperatingSystemInfo {
+  architecture: string
+  kernel_version?: string
   name: string
   version: string
-  kernel_version?: string
-  architecture: string
 }
 
 export interface OperationSuccessResponse {
-  success: boolean
   message: string
+  success: boolean
 }
 
 export interface PaginationQuery {
@@ -848,6 +1078,16 @@ export enum Permission {
   HubAssistantsRead = 'hub::assistants::read',
   HubRefresh = 'hub::refresh',
   HubVersionRead = 'hub::version::read',
+  McpServersRead = 'mcp::servers::read',
+  McpServersCreate = 'mcp::servers::create',
+  McpServersEdit = 'mcp::servers::edit',
+  McpServersDelete = 'mcp::servers::delete',
+  McpToolsRead = 'mcp::tools::read',
+  McpToolsExecute = 'mcp::tools::execute',
+  McpAdminServersRead = 'mcp::admin::servers::read',
+  McpAdminServersCreate = 'mcp::admin::servers::create',
+  McpAdminServersEdit = 'mcp::admin::servers::edit',
+  McpAdminServersDelete = 'mcp::admin::servers::delete',
   All = '*'
 }
 
@@ -857,17 +1097,17 @@ export interface PreviewParams {
 
 export interface Project {
   description?: string
-  id: string
-  user_id: string
-  name: string
-  instruction?: string
   created_at: string
+  id: string
+  instruction?: string
+  name: string
   updated_at: string
+  user_id: string
 }
 
 export interface ProjectDetailResponse {
-  project: Project
   conversations: Conversation[]
+  project: Project
 }
 
 export interface ProjectListQuery {
@@ -877,135 +1117,135 @@ export interface ProjectListQuery {
 }
 
 export interface ProjectListResponse {
-  projects: Project[]
-  total: number
   page: number
   per_page: number
+  projects: Project[]
+  total: number
 }
 
 export interface Provider {
   type: ProviderType
-  id: string
-  name: string
-  enabled: boolean
   api_key?: string
   base_url?: string
   built_in: boolean
-  proxy_settings?: ProxySettings
   created_at: string
+  enabled: boolean
+  id: string
+  name: string
+  proxy_settings?: ProxySettings
   updated_at: string
 }
 
 export interface ProviderListResponse {
-  providers: Provider[]
-  total: number
   page: number
   per_page: number
+  providers: Provider[]
+  total: number
 }
 
 export type ProviderType = 'local' | 'openai' | 'anthropic' | 'groq' | 'gemini' | 'mistral' | 'deepseek' | 'huggingface' | 'custom'
 
 export interface ProxySettings {
   enabled?: boolean
+  ignore_ssl_certificates?: boolean
+  no_proxy?: string
+  password?: string
   url?: string
   username?: string
-  password?: string
-  no_proxy?: string
-  ignore_ssl_certificates?: boolean
 }
 
 export interface ProxySettingsResponse {
   enabled: boolean
+  ignore_ssl_certificates: boolean
+  no_proxy: string
+  password: string
   url: string
   username: string
-  password: string
-  no_proxy: string
-  ignore_ssl_certificates: boolean
 }
 
 export type RAGChunkSelectionMethod = 'weight' | 'vector'
 
 export interface RAGEngineSettings {
-  simple_vector?: RAGSimpleVectorEngineSettings
   simple_graph?: RAGSimpleGraphEngineSettings
+  simple_vector?: RAGSimpleVectorEngineSettings
 }
 
 export type RAGEngineType = 'simple_vector' | 'simple_graph'
 
 export interface RAGFileProcessingStatus {
+  error_message?: string
   file_id: string
   filename: string
-  status: string
   stage?: string
-  error_message?: string
   started_at?: string
+  status: string
 }
 
 export type RAGIndexingErrorCode = 'text_extraction_failed' | 'unsupported_file_format' | 'file_read_error' | 'chunking_failed' | 'embedding_generation_failed' | 'embedding_model_unavailable' | 'index_storage_failed' | 'content_validation_failed' | 'file_too_large' | 'processing_timeout' | 'processing_error' | 'database_error'
 
 export interface RAGInstance {
   description?: string
-  id: string
-  provider_id: string
-  user_id?: string
-  project_id?: string
-  name: string
+  age_graph_name?: string
+  created_at: string
   display_name: string
+  embedding_model_id?: string
   enabled: boolean
+  engine_settings: RAGEngineSettings
+  engine_type: RAGEngineType
+  error_code?: RAGInstanceErrorCode
+  id: string
   is_active: boolean
   is_system: boolean
-  status?: RAGInstanceStatus
-  error_code?: RAGInstanceErrorCode
-  engine_type: RAGEngineType
-  engine_settings: RAGEngineSettings
-  embedding_model_id?: string
   llm_model_id?: string
-  age_graph_name?: string
+  name: string
   parameters: any
-  created_at: string
+  project_id?: string
+  provider_id: string
+  status?: RAGInstanceStatus
   updated_at: string
+  user_id?: string
 }
 
 export type RAGInstanceErrorCode = 'embedding_model_not_config' | 'embedding_model_not_found' | 'embedding_model_test_failed' | 'llm_model_not_config' | 'llm_model_not_found' | 'provider_connection_failed' | 'provider_not_found' | 'rag_instance_not_found' | 'indexing_failed' | 'file_processing_failed' | 'database_error' | 'configuration_error'
 
 export interface RAGInstanceFile {
-  id: string
-  rag_instance_id: string
+  created_at: string
   file_id: string
   filename: string
-  processing_status: RAGProcessingStatus
+  id: string
   processed_at?: string
   processing_error?: RAGIndexingErrorCode
+  processing_status: RAGProcessingStatus
+  rag_instance_id: string
   rag_metadata: any
-  created_at: string
   updated_at: string
 }
 
 export interface RAGInstanceFilesListResponse {
   files: RAGInstanceFile[]
-  total: number
   page: number
   per_page: number
+  total: number
 }
 
 export interface RAGInstanceFilesQuery {
   page?: number
   per_page?: number
-  status_filter?: RAGProcessingStatus
   search?: string
+  status_filter?: RAGProcessingStatus
 }
 
 export interface RAGInstanceListQuery {
+  include_system?: boolean
   page?: number
   per_page?: number
-  include_system?: boolean
 }
 
 export interface RAGInstanceListResponse {
   instances: RAGInstance[]
-  total: number
   page: number
   per_page: number
+  total: number
 }
 
 export type RAGInstanceStatus = 'indexing' | 'finished' | 'error'
@@ -1014,31 +1254,31 @@ export type RAGProcessingStatus = 'pending' | 'processing' | 'completed' | 'fail
 
 export interface RAGProvider {
   type: RAGProviderType
-  id: string
-  name: string
-  enabled: boolean
   api_key?: string
   base_url?: string
   built_in: boolean
   can_user_create_instance: boolean
-  proxy_settings?: ProxySettings
   created_at: string
+  enabled: boolean
+  id: string
+  name: string
+  proxy_settings?: ProxySettings
   updated_at: string
 }
 
 export interface RAGProviderListResponse {
-  providers: RAGProvider[]
-  total: number
   page: number
   per_page: number
+  providers: RAGProvider[]
+  total: number
 }
 
 export type RAGProviderType = 'local' | 'lightrag' | 'ragstack' | 'chroma' | 'weaviate' | 'pinecone' | 'custom'
 
 export interface RAGQueryMetadata {
-  processing_time_ms: number
-  chunks_retrieved: number
   chunks_filtered: number
+  chunks_retrieved: number
+  processing_time_ms: number
   rerank_applied: boolean
 }
 
@@ -1047,36 +1287,36 @@ export interface RAGQueryRequest {
 }
 
 export interface RAGQueryResponse {
-  results: RAGSource[]
   files: File[]
-  token_usage: RAGTokenUsage
   metadata: RAGQueryMetadata
+  results: RAGSource[]
+  token_usage: RAGTokenUsage
 }
 
 export interface RAGRepository {
   description?: string
+  auth_token?: string
+  created_at: string
+  enabled: boolean
   id: string
   name: string
-  url: string
-  enabled: boolean
-  requires_auth: boolean
-  auth_token?: string
   priority: number
-  created_at: string
+  requires_auth: boolean
   updated_at: string
+  url: string
 }
 
 export interface RAGRepositoryConnectionTestResponse {
-  success: boolean
-  message: string
   available_databases_count?: number
+  message: string
+  success: boolean
 }
 
 export interface RAGRepositoryListResponse {
-  repositories: RAGRepository[]
-  total: number
   page: number
   per_page: number
+  repositories: RAGRepository[]
+  total: number
 }
 
 export interface RAGSimpleGraphEngineSettings {
@@ -1085,32 +1325,32 @@ export interface RAGSimpleGraphEngineSettings {
 }
 
 export interface RAGSimpleGraphIndexingSettings {
-  chunk_token_size?: number
   chunk_overlap_token_size?: number
+  chunk_token_size?: number
   entity_extract_max_gleaning?: number
+  entity_types?: string[]
+  extraction_language?: string
   force_llm_summary_on_merge?: number
   max_graph_nodes?: number
   summary_max_tokens?: number
-  entity_types?: string[]
-  extraction_language?: string
 }
 
 export type RAGSimpleGraphQueryMode = 'local' | 'global' | 'hybrid' | 'naive' | 'mix' | 'bypass'
 
 export interface RAGSimpleGraphQueryingSettings {
+  chunk_selection_method?: RAGChunkSelectionMethod
+  chunk_top_k?: number
+  enable_rerank?: boolean
   max_entity_tokens?: number
+  max_graph_nodes_per_query?: number
   max_relation_tokens?: number
   max_total_tokens?: number
-  max_graph_nodes_per_query?: number
-  top_k?: number
-  chunk_top_k?: number
-  related_chunk_number?: number
-  query_mode?: RAGSimpleGraphQueryMode
-  chunk_selection_method?: RAGChunkSelectionMethod
-  prompt_template_pre_query?: string
-  prompt_template_post_query?: string
-  enable_rerank?: boolean
   min_rerank_score?: number
+  prompt_template_post_query?: string
+  prompt_template_pre_query?: string
+  query_mode?: RAGSimpleGraphQueryMode
+  related_chunk_number?: number
+  top_k?: number
 }
 
 export interface RAGSimpleVectorEngineSettings {
@@ -1119,23 +1359,23 @@ export interface RAGSimpleVectorEngineSettings {
 }
 
 export interface RAGSimpleVectorIndexingSettings {
-  chunk_token_size?: number
   chunk_overlap_token_size?: number
-  max_parallel_insert?: number
+  chunk_token_size?: number
   embedding_batch_size?: number
+  max_parallel_insert?: number
 }
 
 export interface RAGSimpleVectorQueryingSettings {
-  top_k?: number
-  chunk_top_k?: number
-  similarity_threshold?: number
-  related_chunk_number?: number
-  max_total_tokens?: number
   chunk_selection_method?: RAGChunkSelectionMethod
-  prompt_template_pre_query?: string
-  prompt_template_post_query?: string
+  chunk_top_k?: number
   enable_rerank?: boolean
+  max_total_tokens?: number
   min_rerank_score?: number
+  prompt_template_post_query?: string
+  prompt_template_pre_query?: string
+  related_chunk_number?: number
+  similarity_threshold?: number
+  top_k?: number
 }
 
 export interface RAGSource {
@@ -1148,41 +1388,41 @@ export interface RAGStatusStreamQuery {
 }
 
 export interface RAGTokenUsage {
-  total_tokens: number
   embedding_tokens: number
   max_total_tokens: number
+  total_tokens: number
 }
 
 export interface Repository {
-  id: string
-  name: string
-  url: string
-  auth_type: string
   auth_config?: RepositoryAuthConfig
-  enabled: boolean
+  auth_type: string
   built_in: boolean
   created_at: string
+  enabled: boolean
+  id: string
+  name: string
   updated_at: string
+  url: string
 }
 
 export interface RepositoryAuthConfig {
   api_key?: string
-  username?: string
+  auth_test_api_endpoint?: string
   password?: string
   token?: string
-  auth_test_api_endpoint?: string
+  username?: string
 }
 
 export interface RepositoryListResponse {
-  repositories: Repository[]
-  total: number
   page: number
   per_page: number
+  repositories: Repository[]
+  total: number
 }
 
 export interface ResetPasswordRequest {
-  user_id: string
   new_password: string
+  user_id: string
 }
 
 export interface SSEChatStreamConnectedData {
@@ -1238,21 +1478,21 @@ export interface SSERAGInstanceStatusConnectedData {
 }
 
 export interface SSERAGInstanceStatusErrorData {
-  instance_id: string
   error: string
+  instance_id: string
 }
 
 export interface SSERAGInstanceStatusUpdateData {
-  instance_id: string
-  name: string
-  is_active: boolean
+  current_files_processing: RAGFileProcessingStatus[]
   enabled: boolean
   error_code?: RAGInstanceErrorCode
-  total_files: number
-  processed_files: number
   failed_files: number
+  instance_id: string
+  is_active: boolean
+  name: string
+  processed_files: number
   processing_files: number
-  current_files_processing: RAGFileProcessingStatus[]
+  total_files: number
   updated_at: string
 }
 
@@ -1263,22 +1503,39 @@ export type SSERAGStatusEvent = {
 }
 
 export interface SearchQuery {
-  q: string
   page?: number
   per_page?: number
   project_id?: string
+  q: string
+}
+
+export interface ServerActionResponse {
+  message: string
+  result?: MCPServerStartResult
+  success: boolean
+}
+
+export interface SetToolGlobalApprovalRequest {
+  auto_approve: boolean
+  expires_at?: string
+  notes?: string
+}
+
+export interface SimpleResponse {
+  message: string
+  success: boolean
 }
 
 export interface SimpleVectorDocument {
-  id: string
-  rag_instance_id: string
-  file_id: string
   chunk_index: number
   content: string
   content_hash: string
-  token_count: number
-  metadata: any
   created_at: string
+  file_id: string
+  id: string
+  metadata: any
+  rag_instance_id: string
+  token_count: number
   updated_at: string
 }
 
@@ -1293,19 +1550,19 @@ export interface StreamChunkData {
 }
 
 export interface StreamCompleteData {
-  message_id: string
   conversation_id: string
-  role: string
-  originated_from_id: string
-  edit_count: number
   created_at: string
-  updated_at: string
+  edit_count: number
+  message_id: string
+  originated_from_id: string
+  role: string
   total_tokens?: number
+  updated_at: string
 }
 
 export interface StreamErrorData {
-  error: string
   code: string
+  error: string
 }
 
 export interface SwitchBranchRequest {
@@ -1314,28 +1571,60 @@ export interface SwitchBranchRequest {
 
 export interface TestProxyConnectionRequest {
   enabled: boolean
+  ignore_ssl_certificates: boolean
+  no_proxy: string
+  password: string
   url: string
   username: string
-  password: string
-  no_proxy: string
-  ignore_ssl_certificates: boolean
 }
 
 export interface TestProxyConnectionResponse {
-  success: boolean
   message: string
+  success: boolean
 }
 
 export interface TestRepositoryConnectionRequest {
+  auth_config?: RepositoryAuthConfig
+  auth_type: string
   name: string
   url: string
-  auth_type: string
-  auth_config?: RepositoryAuthConfig
 }
 
 export interface TestRepositoryConnectionResponse {
-  success: boolean
   message: string
+  success: boolean
+}
+
+export interface ToolApprovalResponse {
+  approved: boolean
+  approved_at?: string
+  auto_approve: boolean
+  conversation_id?: string
+  created_at: string
+  expires_at?: string
+  id: string
+  is_expired: boolean
+  is_global: boolean
+  notes?: string
+  server_id: string
+  server_name: string
+  tool_name: string
+  updated_at: string
+  user_id: string
+}
+
+export interface ToolDiscoveryResponse {
+  message: string
+  success: boolean
+  tools_discovered: number
+}
+
+export interface ToolExecutionResponse {
+  duration_ms?: number
+  error_message?: string
+  execution_id: string
+  result?: any
+  status: MCPExecutionStatus
 }
 
 export interface UpdateApiProxyServerModelRequest {
@@ -1346,12 +1635,12 @@ export interface UpdateApiProxyServerModelRequest {
 
 export interface UpdateAssistantRequest {
   description?: string
-  name?: string
   instructions?: string
-  parameters?: ModelParameters
-  is_template?: boolean
-  is_default?: boolean
   is_active?: boolean
+  is_default?: boolean
+  is_template?: boolean
+  name?: string
+  parameters?: ModelParameters
 }
 
 export interface UpdateConversationRequest {
@@ -1364,103 +1653,123 @@ export interface UpdateDefaultLanguageRequest {
   language: string
 }
 
-export interface UpdateModelRequest {
+export interface UpdateMCPServerRequest {
   description?: string
-  name?: string
+  args?: any
+  command?: string
   display_name?: string
   enabled?: boolean
-  is_active?: boolean
+  environment_variables?: any
+  headers?: any
+  max_restart_attempts?: number
+  timeout_seconds?: number
+  url?: string
+}
+
+export interface UpdateModelRequest {
+  description?: string
   capabilities?: ModelCapabilities
-  parameters?: ModelParameters
-  engine_type?: EngineType
+  display_name?: string
+  enabled?: boolean
   engine_settings?: ModelEngineSettings
+  engine_type?: EngineType
   file_format?: FileFormat
+  is_active?: boolean
+  name?: string
+  parameters?: ModelParameters
 }
 
 export interface UpdateNgrokSettingsRequest {
   api_key?: string
-  tunnel_enabled?: boolean
   auto_start?: boolean
   domain?: string
+  tunnel_enabled?: boolean
 }
 
 export interface UpdateProjectRequest {
   description?: string
-  name?: string
   instruction?: string
+  name?: string
 }
 
 export interface UpdateProviderRequest {
-  name?: string
-  enabled?: boolean
   api_key?: string
   base_url?: string
+  enabled?: boolean
+  name?: string
   proxy_settings?: ProxySettings
 }
 
 export interface UpdateProxySettingsRequest {
   enabled: boolean
+  ignore_ssl_certificates: boolean
+  no_proxy: string
+  password: string
   url: string
   username: string
-  password: string
-  no_proxy: string
-  ignore_ssl_certificates: boolean
 }
 
 export interface UpdateRAGInstanceRequest {
   description?: string
-  name?: string
   display_name?: string
-  enabled?: boolean
-  is_active?: boolean
-  engine_type?: RAGEngineType
   embedding_model_id?: string
-  llm_model_id?: string
-  parameters?: any
+  enabled?: boolean
   engine_settings?: RAGEngineSettings
+  engine_type?: RAGEngineType
   error_code?: RAGInstanceErrorCode
+  is_active?: boolean
+  llm_model_id?: string
+  name?: string
+  parameters?: any
 }
 
 export interface UpdateRAGProviderRequest {
-  name?: string
-  enabled?: boolean
   api_key?: string
   base_url?: string
   can_user_create_instance?: boolean
+  enabled?: boolean
+  name?: string
   proxy_settings?: ProxySettings
 }
 
 export interface UpdateRAGRepositoryRequest {
   description?: string
-  name?: string
-  url?: string
-  enabled?: boolean
-  requires_auth?: boolean
   auth_token?: string
+  enabled?: boolean
+  name?: string
   priority?: number
+  requires_auth?: boolean
+  url?: string
 }
 
 export interface UpdateRepositoryRequest {
+  auth_config?: RepositoryAuthConfig
+  auth_type?: string
+  enabled?: boolean
   name?: string
   url?: string
-  auth_type?: string
-  auth_config?: RepositoryAuthConfig
-  enabled?: boolean
+}
+
+export interface UpdateToolApprovalRequest {
+  approved?: boolean
+  auto_approve?: boolean
+  expires_at?: string
+  notes?: string
 }
 
 export interface UpdateTrustedHostRequest {
   description?: string
-  host?: string
   enabled?: boolean
+  host?: string
 }
 
 export interface UpdateUserGroupRequest {
   description?: string
+  is_active?: boolean
   name?: string
   permissions?: string[]
   provider_ids?: string[]
   rag_provider_ids?: string[]
-  is_active?: boolean
 }
 
 export interface UpdateUserPasswordRequest {
@@ -1473,10 +1782,10 @@ export interface UpdateUserRegistrationRequest {
 }
 
 export interface UpdateUserRequest {
-  username?: string
   email?: string
   is_active?: boolean
   profile?: any
+  username?: string
 }
 
 export interface UploadFileResponse {
@@ -1484,17 +1793,17 @@ export interface UploadFileResponse {
 }
 
 export interface User {
-  id: string
-  username: string
-  emails: UserEmail[]
   created_at: string
-  profile?: any
-  services: UserServices
+  emails: UserEmail[]
+  groups: UserGroup[]
+  id: string
   is_active: boolean
   is_protected: boolean
   last_login_at?: string
+  profile?: any
+  services: UserServices
   updated_at: string
-  groups: UserGroup[]
+  username: string
 }
 
 export interface UserActiveStatusResponse {
@@ -1502,29 +1811,29 @@ export interface UserActiveStatusResponse {
 }
 
 export interface UserEmail {
+  address: string
+  created_at: string
   id: string
   user_id: string
-  address: string
   verified: boolean
-  created_at: string
 }
 
 export interface UserGroup {
   description?: string
+  created_at: string
   id: string
+  is_active: boolean
+  is_protected: boolean
   name: string
   permissions: UserGroupPermissions
-  is_protected: boolean
-  is_active: boolean
-  created_at: string
   updated_at: string
 }
 
 export interface UserGroupListResponse {
   groups: UserGroup[]
-  total: number
   page: number
   per_page: number
+  total: number
 }
 
 export type UserGroupPermissions = string[]
@@ -1534,10 +1843,10 @@ export interface UserHello {
 }
 
 export interface UserListResponse {
-  users: User[]
-  total: number
   page: number
   per_page: number
+  total: number
+  users: User[]
 }
 
 export interface UserRegistrationStatusResponse {
@@ -1549,12 +1858,12 @@ export interface UserServices {
 }
 
 export interface UserSetting {
-  id: string
-  user_id: string
-  key: string
-  value: any
   created_at: string
+  id: string
+  key: string
   updated_at: string
+  user_id: string
+  value: any
 }
 
 export interface UserSettingRequest {
@@ -1674,6 +1983,22 @@ export const ApiEndpoints = {
   'Admin.updateUser': 'PUT /api/admin/users/{user_id}',
   'Admin.updateUserRegistrationStatus': 'PUT /api/admin/config/user-registration',
   'Admin.uploadAndCommitModel': 'POST /api/admin/uploaded-models/upload-and-commit',
+  'AdminMcp.assignServersToGroup': 'POST /api/admin/mcp/groups/{group_id}/servers',
+  'AdminMcp.createSystemServer': 'POST /api/admin/mcp/system-servers',
+  'AdminMcp.deleteSystemServer': 'DELETE /api/admin/mcp/system-servers/{id}',
+  'AdminMcp.getExecutionStatistics': 'GET /api/admin/mcp/execution/statistics',
+  'AdminMcp.getGroupServers': 'GET /api/admin/mcp/groups/{group_id}/servers',
+  'AdminMcp.getServerAccessGroups': 'GET /api/admin/mcp/servers/{server_id}/groups',
+  'AdminMcp.getSystemServer': 'GET /api/admin/mcp/system-servers/{id}',
+  'AdminMcp.getToolStatistics': 'GET /api/admin/mcp/tools/statistics',
+  'AdminMcp.listAllExecutionLogs': 'GET /api/admin/mcp/execution/logs',
+  'AdminMcp.listAllGroupAssignments': 'GET /api/admin/mcp/assignments',
+  'AdminMcp.listSystemServers': 'GET /api/admin/mcp/system-servers',
+  'AdminMcp.removeServerFromGroup': 'DELETE /api/admin/mcp/groups/{group_id}/servers/{server_id}',
+  'AdminMcp.restartSystemServer': 'POST /api/admin/mcp/system-servers/{id}/restart',
+  'AdminMcp.startSystemServer': 'POST /api/admin/mcp/system-servers/{id}/start',
+  'AdminMcp.stopSystemServer': 'POST /api/admin/mcp/system-servers/{id}/stop',
+  'AdminMcp.updateSystemServer': 'PUT /api/admin/mcp/system-servers/{id}',
   'Assistants.createAssistant': 'POST /api/assistants',
   'Assistants.deleteAssistant': 'DELETE /api/assistants/{assistant_id}',
   'Assistants.getAssistant': 'GET /api/assistants/{assistant_id}',
@@ -1714,6 +2039,33 @@ export const ApiEndpoints = {
   'Hub.getHubModels': 'GET /api/hub/models',
   'Hub.getHubVersion': 'GET /api/hub/version',
   'Hub.refreshHubData': 'POST /api/hub/refresh',
+  'Mcp.cancelExecution': 'POST /api/mcp/execution/logs/{id}/cancel',
+  'Mcp.checkConversationApproval': 'GET /api/mcp/approvals/conversations/{conversation_id}/check',
+  'Mcp.cleanExpiredApprovals': 'POST /api/mcp/approvals/clean-expired',
+  'Mcp.createConversationApproval': 'POST /api/mcp/approvals/conversations/{conversation_id}',
+  'Mcp.createServer': 'POST /api/mcp/servers',
+  'Mcp.deleteConversationApproval': 'DELETE /api/mcp/approvals/conversations/{conversation_id}/tool',
+  'Mcp.deleteServer': 'DELETE /api/mcp/servers/{id}',
+  'Mcp.discoverServerTools': 'POST /api/mcp/servers/{id}/discover-tools',
+  'Mcp.executeTool': 'POST /api/mcp/tools/execute',
+  'Mcp.findTool': 'GET /api/mcp/tools/find',
+  'Mcp.getExecutionLog': 'GET /api/mcp/execution/logs/{id}',
+  'Mcp.getGlobalToolApproval': 'GET /api/mcp/servers/{server_id}/tools/{tool_name}/global-approval',
+  'Mcp.getServer': 'GET /api/mcp/servers/{id}',
+  'Mcp.getServerTools': 'GET /api/mcp/servers/{id}/tools',
+  'Mcp.getUserAssignedServers': 'GET /api/mcp/user/assigned-servers',
+  'Mcp.listConversationApprovals': 'GET /api/mcp/approvals/conversations/{conversation_id}',
+  'Mcp.listExecutionLogs': 'GET /api/mcp/execution/logs',
+  'Mcp.listServers': 'GET /api/mcp/servers',
+  'Mcp.listThreadExecutionLogs': 'GET /api/mcp/threads/{thread_id}/execution/logs',
+  'Mcp.listTools': 'GET /api/mcp/tools',
+  'Mcp.removeToolGlobalApproval': 'DELETE /api/mcp/servers/{server_id}/tools/{tool_name}/approve',
+  'Mcp.restartServer': 'POST /api/mcp/servers/{id}/restart',
+  'Mcp.setToolGlobalApproval': 'POST /api/mcp/servers/{server_id}/tools/{tool_name}/approve',
+  'Mcp.startServer': 'POST /api/mcp/servers/{id}/start',
+  'Mcp.stopServer': 'POST /api/mcp/servers/{id}/stop',
+  'Mcp.updateServer': 'PUT /api/mcp/servers/{id}',
+  'Mcp.updateToolApproval': 'PUT /api/mcp/approvals/{approval_id}',
   'Models.listEnabledProviderModels': 'GET /api/providers/{provider_id}/models',
   'Projects.createProject': 'POST /api/projects',
   'Projects.deleteProject': 'DELETE /api/projects/{project_id}',
@@ -1843,6 +2195,22 @@ export type ApiEndpointParameters = {
   'Admin.updateUser': { user_id: string } & UpdateUserRequest
   'Admin.updateUserRegistrationStatus': UpdateUserRegistrationRequest
   'Admin.uploadAndCommitModel': FormData
+  'AdminMcp.assignServersToGroup': { group_id: string } & AssignServersRequest
+  'AdminMcp.createSystemServer': CreateSystemMCPServerRequest
+  'AdminMcp.deleteSystemServer': { id: string }
+  'AdminMcp.getExecutionStatistics': void
+  'AdminMcp.getGroupServers': { group_id: string }
+  'AdminMcp.getServerAccessGroups': { server_id: string }
+  'AdminMcp.getSystemServer': { id: string }
+  'AdminMcp.getToolStatistics': void
+  'AdminMcp.listAllExecutionLogs': { page?: number; per_page?: number; server_id?: string; status?: string; thread_id?: string }
+  'AdminMcp.listAllGroupAssignments': void
+  'AdminMcp.listSystemServers': { enabled?: boolean; page?: number; per_page?: number }
+  'AdminMcp.removeServerFromGroup': { group_id: string; server_id: string }
+  'AdminMcp.restartSystemServer': { id: string }
+  'AdminMcp.startSystemServer': { id: string }
+  'AdminMcp.stopSystemServer': { id: string }
+  'AdminMcp.updateSystemServer': { id: string } & UpdateMCPServerRequest
   'Assistants.createAssistant': CreateAssistantRequest
   'Assistants.deleteAssistant': { assistant_id: string }
   'Assistants.getAssistant': { assistant_id: string }
@@ -1862,7 +2230,7 @@ export type ApiEndpointParameters = {
   'Chat.getConversationMessagesByBranch': { conversation_id: string; branch_id: string }
   'Chat.getMessageBranches': { message_id: string }
   'Chat.listConversations': { page?: number; per_page?: number; project_id?: string }
-  'Chat.searchConversations': { q: string; page?: number; per_page?: number; project_id?: string }
+  'Chat.searchConversations': { page?: number; per_page?: number; project_id?: string; q: string }
   'Chat.sendMessageStream': ChatMessageRequest
   'Chat.switchConversationBranch': { conversation_id: string } & SwitchBranchRequest
   'Chat.updateConversation': { conversation_id: string } & UpdateConversationRequest
@@ -1883,6 +2251,33 @@ export type ApiEndpointParameters = {
   'Hub.getHubModels': { lang?: string }
   'Hub.getHubVersion': void
   'Hub.refreshHubData': { lang?: string }
+  'Mcp.cancelExecution': { id: string } & CancelExecutionRequest
+  'Mcp.checkConversationApproval': { conversation_id: string; server_id: string; tool_name: string }
+  'Mcp.cleanExpiredApprovals': void
+  'Mcp.createConversationApproval': { conversation_id: string } & CreateConversationApprovalRequest
+  'Mcp.createServer': CreateMCPServerRequest
+  'Mcp.deleteConversationApproval': { conversation_id: string; server_id: string; tool_name: string }
+  'Mcp.deleteServer': { id: string }
+  'Mcp.discoverServerTools': { id: string }
+  'Mcp.executeTool': ExecuteToolRequest
+  'Mcp.findTool': { server_id?: string }
+  'Mcp.getExecutionLog': { id: string }
+  'Mcp.getGlobalToolApproval': { server_id: string; tool_name: string }
+  'Mcp.getServer': { id: string }
+  'Mcp.getServerTools': { id: string }
+  'Mcp.getUserAssignedServers': void
+  'Mcp.listConversationApprovals': { conversation_id: string; approved?: boolean; include_expired?: boolean; page?: number; per_page?: number; server_id?: string; tool_name?: string }
+  'Mcp.listExecutionLogs': { page?: number; per_page?: number; server_id?: string; status?: string; thread_id?: string }
+  'Mcp.listServers': { include_system?: boolean; page?: number; per_page?: number; status?: string }
+  'Mcp.listThreadExecutionLogs': { thread_id: string }
+  'Mcp.listTools': { page?: number; per_page?: number; search?: string; server_id?: string }
+  'Mcp.removeToolGlobalApproval': { server_id: string; tool_name: string }
+  'Mcp.restartServer': { id: string }
+  'Mcp.setToolGlobalApproval': { server_id: string; tool_name: string } & SetToolGlobalApprovalRequest
+  'Mcp.startServer': { id: string }
+  'Mcp.stopServer': { id: string }
+  'Mcp.updateServer': { id: string } & UpdateMCPServerRequest
+  'Mcp.updateToolApproval': { approval_id: string } & UpdateToolApprovalRequest
   'Models.listEnabledProviderModels': { provider_id: string }
   'Projects.createProject': CreateProjectRequest
   'Projects.deleteProject': { project_id: string }
@@ -1895,8 +2290,8 @@ export type ApiEndpointParameters = {
   'Rag.deleteInstanceFile': { instance_id: string; file_id: string }
   'Rag.getInstance': { instance_id: string }
   'Rag.listCreatableProviders': void
-  'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; status_filter?: RAGProcessingStatus; search?: string }
-  'Rag.listInstances': { page?: number; per_page?: number; include_system?: boolean }
+  'Rag.listInstanceFiles': { instance_id: string; page?: number; per_page?: number; search?: string; status_filter?: RAGProcessingStatus }
+  'Rag.listInstances': { include_system?: boolean; page?: number; per_page?: number }
   'Rag.queryInstance': { instance_id: string } & RAGQueryRequest
   'Rag.subscribeInstanceStatus': { instance_id: string; include_files?: boolean }
   'Rag.toggleInstanceActivate': { instance_id: string }
@@ -2012,6 +2407,22 @@ export type ApiEndpointResponses = {
   'Admin.updateUser': User
   'Admin.updateUserRegistrationStatus': UserRegistrationStatusResponse
   'Admin.uploadAndCommitModel': Model
+  'AdminMcp.assignServersToGroup': GroupAssignmentResponse
+  'AdminMcp.createSystemServer': MCPServer
+  'AdminMcp.deleteSystemServer': void
+  'AdminMcp.getExecutionStatistics': any
+  'AdminMcp.getGroupServers': string[]
+  'AdminMcp.getServerAccessGroups': string[]
+  'AdminMcp.getSystemServer': MCPServer
+  'AdminMcp.getToolStatistics': any[][]
+  'AdminMcp.listAllExecutionLogs': ListExecutionLogsResponse
+  'AdminMcp.listAllGroupAssignments': GroupServerAssignmentResponse[]
+  'AdminMcp.listSystemServers': ListServersResponse
+  'AdminMcp.removeServerFromGroup': void
+  'AdminMcp.restartSystemServer': ServerActionResponse
+  'AdminMcp.startSystemServer': ServerActionResponse
+  'AdminMcp.stopSystemServer': ServerActionResponse
+  'AdminMcp.updateSystemServer': MCPServer
   'Assistants.createAssistant': Assistant
   'Assistants.deleteAssistant': void
   'Assistants.getAssistant': Assistant
@@ -2052,6 +2463,33 @@ export type ApiEndpointResponses = {
   'Hub.getHubModels': HubModel[]
   'Hub.getHubVersion': HubVersionResponse
   'Hub.refreshHubData': void
+  'Mcp.cancelExecution': any
+  'Mcp.checkConversationApproval': ApprovalCheckResponse
+  'Mcp.cleanExpiredApprovals': any
+  'Mcp.createConversationApproval': ToolApprovalResponse
+  'Mcp.createServer': MCPServer
+  'Mcp.deleteConversationApproval': SimpleResponse
+  'Mcp.deleteServer': void
+  'Mcp.discoverServerTools': ToolDiscoveryResponse
+  'Mcp.executeTool': ToolExecutionResponse
+  'Mcp.findTool': MCPToolWithServer | null
+  'Mcp.getExecutionLog': MCPExecutionLog
+  'Mcp.getGlobalToolApproval': ToolApprovalResponse
+  'Mcp.getServer': MCPServer
+  'Mcp.getServerTools': MCPTool[]
+  'Mcp.getUserAssignedServers': string[]
+  'Mcp.listConversationApprovals': ToolApprovalResponse[]
+  'Mcp.listExecutionLogs': ListExecutionLogsResponse
+  'Mcp.listServers': ListServersResponse
+  'Mcp.listThreadExecutionLogs': MCPExecutionLog[]
+  'Mcp.listTools': ListToolsResponse
+  'Mcp.removeToolGlobalApproval': any
+  'Mcp.restartServer': ServerActionResponse
+  'Mcp.setToolGlobalApproval': any
+  'Mcp.startServer': ServerActionResponse
+  'Mcp.stopServer': ServerActionResponse
+  'Mcp.updateServer': MCPServer
+  'Mcp.updateToolApproval': ToolApprovalResponse
   'Models.listEnabledProviderModels': Model[]
   'Projects.createProject': Project
   'Projects.deleteProject': void

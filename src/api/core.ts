@@ -16,7 +16,9 @@ export const getAuthToken = () => {
 
 //@ts-ignore
 export const isTauriView = !!window.__TAURI_INTERNALS__
-export const isMacOS = navigator.userAgent.includes('Mac OS X') || navigator.userAgent.includes('Macintosh')
+export const isMacOS =
+  navigator.userAgent.includes('Mac OS X') ||
+  navigator.userAgent.includes('Macintosh')
 
 export const getBaseUrl = (function () {
   let baseUrl: Promise<string>
