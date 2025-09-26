@@ -12,7 +12,7 @@ interface MCPServerDrawerState {
   loading: boolean
   editingServer: MCPServer | null
   isCloning: boolean
-  mode: 'create' | 'edit' | 'clone'
+  mode: 'create' | 'edit' | 'clone' | 'create-system' | 'edit-system'
 }
 
 export const useMCPServerDrawerStore = create<MCPServerDrawerState>(() => ({
@@ -26,7 +26,7 @@ export const useMCPServerDrawerStore = create<MCPServerDrawerState>(() => ({
 // MCP Server Drawer Actions
 export const openMCPServerDrawer = (
   server?: MCPServer,
-  mode: 'create' | 'edit' | 'clone' = 'create',
+  mode: 'create' | 'edit' | 'clone' | 'create-system' | 'edit-system' = 'create',
 ) => {
   useMCPServerDrawerStore.setState({
     open: true,

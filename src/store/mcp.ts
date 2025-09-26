@@ -11,6 +11,7 @@ import type {
   UpdateMCPServerRequest,
   ServerActionResponse,
   ToolDiscoveryResponse,
+  SetToolGlobalApprovalRequest,
 } from '../types/api'
 
 // Enable Map and Set support in Immer
@@ -572,4 +573,63 @@ export const getToolsByServerType = (
   return tools.filter(
     tool => tool.transport_type.toLowerCase() === transportType.toLowerCase(),
   )
+}
+
+// Tool Approval Methods
+export const setToolGlobalApproval = async (
+  serverId: string,
+  toolName: string,
+  request: SetToolGlobalApprovalRequest,
+): Promise<void> => {
+  try {
+    await ApiClient.Mcp.setToolGlobalApproval({
+      server_id: serverId,
+      tool_name: toolName,
+      ...request,
+    })
+
+    // Update local tools state with new approval status
+    useMCPStore.setState(draft => {
+      draft.tools = draft.tools.map(tool => {
+        if (tool.server_id === serverId && tool.tool_name === toolName) {
+          return {
+            ...tool,
+            global_auto_approve: request.auto_approve,
+          }
+        }
+        return tool
+      })
+    })
+  } catch (error) {
+    console.error('Failed to set tool global approval:', error)
+    throw error
+  }
+}
+
+export const removeToolGlobalApproval = async (
+  serverId: string,
+  toolName: string,
+): Promise<void> => {
+  try {
+    await ApiClient.Mcp.removeToolGlobalApproval({
+      server_id: serverId,
+      tool_name: toolName,
+    })
+
+    // Update local tools state to remove approval status
+    useMCPStore.setState(draft => {
+      draft.tools = draft.tools.map(tool => {
+        if (tool.server_id === serverId && tool.tool_name === toolName) {
+          return {
+            ...tool,
+            global_auto_approve: undefined,
+          }
+        }
+        return tool
+      })
+    })
+  } catch (error) {
+    console.error('Failed to remove tool global approval:', error)
+    throw error
+  }
 }

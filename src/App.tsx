@@ -250,7 +250,17 @@ function App() {
                         }
                       />
                       <Route
-                        path="admin-mcp-servers"
+                        path="mcp-admin"
+                        element={
+                          <PagePermissionGuard403
+                            permissions={[Permission.McpAdminServersRead]}
+                          >
+                            <MCPAdminPage />
+                          </PagePermissionGuard403>
+                        }
+                      />
+                      <Route
+                        path="mcp-admin/:sectionId"
                         element={
                           <PagePermissionGuard403
                             permissions={[Permission.McpAdminServersRead]}

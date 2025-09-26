@@ -233,9 +233,9 @@ export function SettingsPage() {
         }
         if (hasPermission([Permission.McpAdminServersRead])) {
           items.push({
-            key: 'admin-mcp-servers',
+            key: 'mcp-admin',
             icon: <FaServer />,
-            label: 'Admin MCP Servers',
+            label: 'MCP Administration',
           })
         }
 

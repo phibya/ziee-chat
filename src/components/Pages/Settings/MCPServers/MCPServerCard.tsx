@@ -8,31 +8,18 @@ import {
   Tooltip,
   Switch,
   Flex,
-  Dropdown,
   List,
   Empty,
   Badge,
 } from 'antd'
-import {
-  EditOutlined,
-  DeleteOutlined,
-  PlayCircleOutlined,
-  StopOutlined,
-  MoreOutlined,
-  ToolOutlined,
-  LinkOutlined,
-  DownOutlined,
-  UpOutlined,
-  ReloadOutlined,
-} from '@ant-design/icons'
+import { EditOutlined, ToolOutlined, ReloadOutlined, CheckOutlined } from '@ant-design/icons'
 import type { MCPServer, MCPToolWithServer } from '../../../../types/api'
 import {
-  deleteMCPServer,
   startMCPServer,
   stopMCPServer,
-  restartMCPServer,
-  discoverServerTools,
   getServerTools,
+  setToolGlobalApproval,
+  removeToolGlobalApproval,
 } from '../../../../store/mcp'
 import { openMCPServerDrawer } from '../../../../store/ui/mcpDrawers'
 import { ToolTestingModal } from './ToolTestingModal'
@@ -41,10 +28,11 @@ const { Text } = Typography
 
 interface MCPServerCardProps {
   server: MCPServer
+  onEditClick?: (server: MCPServer) => void
 }
 
-export function MCPServerCard({ server }: MCPServerCardProps) {
-  const { message, modal } = App.useApp()
+export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
+  const { message } = App.useApp()
   const [showTools, setShowTools] = useState(false)
   const [tools, setTools] = useState<MCPToolWithServer[]>([])
   const [loadingTools, setLoadingTools] = useState(false)
@@ -84,23 +72,11 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
   }, [showTools, server.is_active])
 
   const handleEdit = () => {
-    openMCPServerDrawer(server, 'edit')
-  }
-
-  const handleDelete = () => {
-    modal.confirm({
-      title: 'Delete MCP Server',
-      content: `Are you sure you want to delete "${server.display_name}"? This action cannot be undone.`,
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          await deleteMCPServer(server.id)
-          message.success('Server deleted successfully')
-        } catch (error) {
-          message.error('Failed to delete server')
-        }
-      },
-    })
+    if (onEditClick) {
+      onEditClick(server)
+    } else {
+      openMCPServerDrawer(server, 'edit')
+    }
   }
 
   const handleToggleStatus = async (checked: boolean) => {
@@ -127,25 +103,6 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
     }
   }
 
-  const handleServerAction = async (action: 'restart') => {
-    setOperationLoading(action)
-
-    try {
-      await restartMCPServer(server.id)
-      message.success('Server restarted successfully')
-
-      // Refresh tools if they were showing
-      if (showTools) {
-        setTools([])
-        setTimeout(loadServerTools, 1000) // Wait a bit for server to start
-      }
-    } catch (error) {
-      message.error('Failed to restart server')
-    } finally {
-      setOperationLoading(null)
-    }
-  }
-
   const handleToggleTools = () => {
     const newShowTools = !showTools
     setShowTools(newShowTools)
@@ -153,24 +110,6 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
     // Load tools if server is active and we're showing tools
     if (newShowTools && server.is_active && tools.length === 0) {
       loadServerTools()
-    }
-  }
-
-  const handleDiscoverTools = async () => {
-    setOperationLoading('discover')
-
-    try {
-      await discoverServerTools(server.id)
-      message.success('Tool discovery completed successfully')
-
-      // Refresh tools if they're showing
-      if (showTools) {
-        loadServerTools()
-      }
-    } catch (error) {
-      message.error('Failed to discover tools')
-    } finally {
-      setOperationLoading(null)
     }
   }
 
@@ -188,248 +127,246 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
     setTestingTool(null)
   }
 
-  const getStatusColor = (server: MCPServer) => {
-    if (!server.enabled) return 'default'
-    if (server.is_active) return 'success'
-    if (server.status === 'error') return 'error'
-    return 'processing'
+  const handleToggleAutoApprove = async (tool: MCPToolWithServer, autoApprove: boolean) => {
+    try {
+      if (autoApprove) {
+        await setToolGlobalApproval(tool.server_id, tool.tool_name, {
+          auto_approve: true,
+        })
+        message.success(`Auto-approve enabled for ${tool.tool_name}`)
+      } else {
+        await removeToolGlobalApproval(tool.server_id, tool.tool_name)
+        message.success(`Auto-approve disabled for ${tool.tool_name}`)
+      }
+
+      // Update the local tool state to reflect the change
+      setTools(prevTools =>
+        prevTools.map(t =>
+          t.server_id === tool.server_id && t.tool_name === tool.tool_name
+            ? { ...t, global_auto_approve: autoApprove ? true : undefined }
+            : t
+        )
+      )
+    } catch (error) {
+      message.error(`Failed to ${autoApprove ? 'enable' : 'disable'} auto-approve for ${tool.tool_name}`)
+    }
   }
 
-  const getStatusText = (server: MCPServer) => {
-    if (!server.enabled) return 'Disabled'
-    if (server.is_active) return 'Running'
-    if (server.status === 'error') return 'Error'
-    return 'Stopped'
-  }
-
-  const menuItems = [
-    {
-      key: 'edit',
-      icon: <EditOutlined />,
-      label: 'Edit',
-      onClick: handleEdit,
-    },
-    ...(server.is_active
-      ? [
-          {
-            key: 'restart-server',
-            icon: <ReloadOutlined />,
-            label: 'Restart Server',
-            onClick: () => handleServerAction('restart'),
-            disabled: operationLoading === 'restart',
-          },
-          {
-            key: 'refresh-tools',
-            icon: <ToolOutlined />,
-            label: 'Discover Tools',
-            onClick: handleDiscoverTools,
-            disabled: operationLoading === 'discover',
-          },
-        ]
-      : []),
-    {
-      key: 'toggle-tools',
-      icon: showTools ? <UpOutlined /> : <DownOutlined />,
-      label: showTools ? 'Hide Tools' : 'Show Tools',
-      onClick: handleToggleTools,
-      disabled: !server.is_active,
-    },
-    { type: 'divider' as const },
-    ...(server.is_system
-      ? []
-      : [
-          {
-            key: 'delete',
-            icon: <DeleteOutlined />,
-            label: 'Delete',
-            onClick: handleDelete,
-            danger: true,
-          },
-        ]),
-  ]
 
   return (
-    <Card
-      hoverable
-      className="cursor-pointer relative group hover:!shadow-md transition-shadow h-full"
-      actions={[
-        <Tooltip
-          title={server.is_active ? 'Stop Server' : 'Start Server'}
-          key="toggle"
-        >
-          <Switch
-            checked={server.is_active}
-            onChange={handleToggleStatus}
-            loading={
-              operationLoading === 'start' || operationLoading === 'stop'
-            }
-            checkedChildren={<PlayCircleOutlined />}
-            unCheckedChildren={<StopOutlined />}
-          />
-        </Tooltip>,
-        <Tooltip title="Edit Server" key="edit">
-          <Button type="text" icon={<EditOutlined />} onClick={handleEdit} />
-        </Tooltip>,
-        <Dropdown menu={{ items: menuItems }} trigger={['click']} key="menu">
-          <Button type="text" icon={<MoreOutlined />} />
-        </Dropdown>,
-      ]}
-    >
-      <div className="flex items-start gap-3 flex-wrap">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <div className="flex-1 min-w-48">
-              <Flex className="gap-2 items-center flex-wrap">
-                <ToolOutlined />
-                <Text className="font-medium">{server.display_name}</Text>
-                {server.is_system && <Tag color="blue">System</Tag>}
-                <Tag color={getStatusColor(server)}>
-                  {getStatusText(server)}
-                </Tag>
-                {server.tool_count && server.tool_count > 0 && (
-                  <Tooltip
-                    title={
-                      server.is_active
-                        ? 'Click menu to view tools'
-                        : 'Start server to view tools'
-                    }
-                  >
-                    <Tag
-                      color="cyan"
-                      className={server.is_active ? 'cursor-pointer' : ''}
-                      onClick={server.is_active ? handleToggleTools : undefined}
-                    >
-                      {server.tool_count} tools
-                    </Tag>
-                  </Tooltip>
-                )}
-              </Flex>
-            </div>
-          </div>
-
-          <div className="mb-3">
-            <Text type="secondary" className="text-sm">
-              {server.description || 'No description'}
-            </Text>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
-            <Flex className="gap-2 items-center">
-              <LinkOutlined />
-              <Text type="secondary" className="text-xs">
-                {server.transport_type.toUpperCase()}
-              </Text>
-            </Flex>
-            {server.url && (
-              <Text type="secondary" className="text-xs truncate">
-                {server.url}
-              </Text>
-            )}
-            {server.command && (
-              <Text type="secondary" className="text-xs truncate">
-                {server.command}
-              </Text>
-            )}
-          </div>
-
-          {/* Tools Section - Only show when server is active */}
-          {server.is_active && showTools && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <Text strong className="text-sm flex items-center gap-2">
+    <>
+      <Card>
+        <div className="flex items-start gap-3 flex-wrap">
+          {/* Server Info */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <div className="flex-1 min-w-48">
+                <Flex className="gap-2 items-center">
                   <ToolOutlined />
-                  Available Tools
-                  {tools.length > 0 && (
-                    <Badge
-                      count={tools.length}
-                      showZero
-                      style={{ backgroundColor: '#52c41a' }}
-                    />
+                  <Text className="font-medium">
+                    {server.display_name}
+                  </Text>
+                  {server.is_system && <Tag color="blue">System</Tag>}
+                  {server.status === 'error' && <Tag color="red">Error</Tag>}
+                  {(server.tool_count ?? 0) > 0 && (
+                    <Tag color="cyan">{server.tool_count} tools</Tag>
                   )}
-                </Text>
+                </Flex>
+              </div>
+              <div className="flex gap-1 items-center justify-end">
+                {/* Only show controls for user servers or when onEditClick is provided (admin mode) */}
+                {(!server.is_system || onEditClick) && (
+                  <>
+                    <Tooltip
+                      title={server.is_active ? 'Stop Server' : 'Start Server'}
+                    >
+                      <div onClick={e => e.stopPropagation()}>
+                        <Switch
+                          checked={server.is_active}
+                          onChange={handleToggleStatus}
+                          loading={
+                            operationLoading === 'start' ||
+                            operationLoading === 'stop'
+                          }
+                        />
+                      </div>
+                    </Tooltip>
+                    <Button
+                      icon={<EditOutlined />}
+                      onClick={e => {
+                        e.stopPropagation()
+                        handleEdit()
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </>
+                )}
                 <Button
-                  type="text"
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  onClick={handleRefreshTools}
-                  loading={loadingTools}
-                />
+                  type={showTools ? 'primary' : 'default'}
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleToggleTools()
+                  }}
+                  disabled={!server.is_active}
+                >
+                  Tools
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Text type="secondary" className="text-sm mb-2 block">
+                {server.description || 'No description'}
+              </Text>
+
+              {/* Transport Information */}
+              <div className="mb-2">
+                <Text type="secondary" className="text-xs mr-2">
+                  Transport:
+                </Text>
+                <Tag color="default" className="text-xs">
+                  {server.transport_type.toUpperCase()}
+                </Tag>
+                {server.url && (
+                  <Text type="secondary" className="text-xs ml-2 truncate">
+                    {server.url}
+                  </Text>
+                )}
+                {server.command && (
+                  <Card size="small" className={'!mt-2'}>
+                    <pre className="text-xs overflow-auto m-0">
+                      {server.command}
+                      {server.args &&
+                        Array.isArray(server.args) &&
+                        server.args.length > 0 && (
+                          <span> {server.args.join(' ')}</span>
+                        )}
+                    </pre>
+                  </Card>
+                )}
               </div>
 
-              {loadingTools ? (
-                <div className="text-center py-4">
-                  <Text type="secondary">Loading tools...</Text>
-                </div>
-              ) : tools.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="No tools discovered"
-                  style={{ margin: '16px 0' }}
-                />
-              ) : (
-                <div className="max-h-32 overflow-y-auto">
-                  <List
-                    size="small"
-                    dataSource={tools}
-                    renderItem={tool => (
-                      <List.Item className="px-0 py-1">
-                        <div className="w-full">
-                          <div className="flex items-center justify-between">
-                            <Text className="font-medium text-sm">
-                              {tool.tool_name}
-                            </Text>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                count={tool.usage_count}
-                                showZero
-                                style={{
-                                  backgroundColor: '#f0f0f0',
-                                  color: '#666',
-                                }}
-                              />
-                              <Button
-                                type="link"
-                                size="small"
-                                className="p-0 h-auto text-xs"
-                                onClick={() => handleTestTool(tool)}
-                              >
-                                Test
-                              </Button>
+              {/* Tools Section - Show when expanded and server is active */}
+              {showTools && server.is_active && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <Text strong className="text-sm flex items-center gap-2">
+                      <ToolOutlined />
+                      Available Tools
+                      {tools.length > 0 && (
+                        <Badge
+                          count={tools.length}
+                          style={{ backgroundColor: '#52c41a' }}
+                        />
+                      )}
+                    </Text>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<ReloadOutlined />}
+                      onClick={e => {
+                        e.stopPropagation()
+                        handleRefreshTools()
+                      }}
+                      loading={loadingTools}
+                    >
+                      Refresh
+                    </Button>
+                  </div>
+
+                  {loadingTools ? (
+                    <div className="text-center py-4">
+                      <Text type="secondary">Loading tools...</Text>
+                    </div>
+                  ) : tools.length === 0 ? (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="No tools discovered"
+                      style={{ margin: '16px 0' }}
+                    />
+                  ) : (
+                    <div className="max-h-32 overflow-y-auto">
+                      <List
+                        size="small"
+                        dataSource={tools}
+                        renderItem={tool => (
+                          <List.Item className="px-0 py-1">
+                            <div className="w-full">
+                              <div className="flex items-center justify-between">
+                                <Text className="font-medium text-sm">
+                                  {tool.tool_name}
+                                </Text>
+                                <div className="flex items-center gap-2">
+                                  {tool.usage_count > 0 && (
+                                    <Badge
+                                      count={tool.usage_count}
+                                      style={{
+                                        backgroundColor: '#f0f0f0',
+                                        color: '#666',
+                                      }}
+                                    />
+                                  )}
+                                  <Tooltip title="Auto-approve this tool in all conversations">
+                                    <div onClick={e => e.stopPropagation()}>
+                                      <Switch
+                                        size="small"
+                                        checked={tool.global_auto_approve || false}
+                                        checkedChildren={<CheckOutlined />}
+                                        onChange={(checked) => handleToggleAutoApprove(tool, checked)}
+                                      />
+                                    </div>
+                                  </Tooltip>
+                                  <Button
+                                    type="link"
+                                    size="small"
+                                    className="p-0 h-auto text-xs"
+                                    onClick={e => {
+                                      e.stopPropagation()
+                                      handleTestTool(tool)
+                                    }}
+                                  >
+                                    Test
+                                  </Button>
+                                </div>
+                              </div>
+                              {tool.tool_description && (
+                                <Text
+                                  type="secondary"
+                                  className="text-xs block mt-1"
+                                >
+                                  {tool.tool_description.length > 80
+                                    ? `${tool.tool_description.substring(0, 80)}...`
+                                    : tool.tool_description}
+                                </Text>
+                              )}
                             </div>
-                          </div>
-                          {tool.tool_description && (
-                            <Text
-                              type="secondary"
-                              className="text-xs block mt-1"
-                            >
-                              {tool.tool_description.length > 80
-                                ? `${tool.tool_description.substring(0, 80)}...`
-                                : tool.tool_description}
-                            </Text>
-                          )}
-                        </div>
-                      </List.Item>
-                    )}
-                  />
+                          </List.Item>
+                        )}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Show tools toggle button for inactive servers with tools */}
-          {!server.is_active && server.tool_count && server.tool_count > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <Text
-                type="secondary"
-                className="text-sm flex items-center gap-2"
-              >
-                <ToolOutlined />
-                {server.tool_count} tools available when server is running
-              </Text>
+              {/* Show tools message for inactive servers with tools */}
+              {showTools &&
+                !server.is_active &&
+                (server.tool_count ?? 0) > 0 && (
+                  <div className="mt-4">
+                    <Text
+                      type="secondary"
+                      className="text-sm flex items-center gap-2"
+                    >
+                      <ToolOutlined />
+                      {server.tool_count} tools available when server is running
+                    </Text>
+                  </div>
+                )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      </Card>
 
       {/* Tool Testing Modal */}
       {testingTool && (
@@ -440,6 +377,6 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
           onClose={handleCloseTestModal}
         />
       )}
-    </Card>
+    </>
   )
 }
