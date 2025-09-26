@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import {
   getGroupProviders,
   getGroupRagProviders,
+  getGroupMCPServers,
   Stores,
   updateUserGroup,
 } from '../../../../store'
@@ -32,6 +33,7 @@ export function EditUserGroupDrawer({
 
   const { providers } = Stores.AdminProviders
   const { providers: ragProviders } = Stores.AdminRAGProviders
+  const { systemServers } = Stores.AdminMCPServers
   const { updating } = Stores.AdminUserGroups
 
   // Load providers for the group when it changes
@@ -41,15 +43,17 @@ export function EditUserGroupDrawer({
         setLoadingProviders(true)
         try {
           // Fetch providers for this group
-          const [providersResponse, ragProvidersResponse] = await Promise.all([
+          const [providersResponse, ragProvidersResponse, mcpServersResponse] = await Promise.all([
             getGroupProviders(group.id),
             getGroupRagProviders(group.id),
+            getGroupMCPServers(group.id),
           ])
 
           const providerIds = providersResponse.providers.map((p: any) => p.id)
           const ragProviderIds = ragProvidersResponse.providers.map(
             (p: any) => p.id,
           )
+          const mcpServerIds = mcpServersResponse.servers.map((s: any) => s.id)
 
           form.setFieldsValue({
             name: group.name,
@@ -57,6 +61,7 @@ export function EditUserGroupDrawer({
             permissions: JSON.stringify(group.permissions, null, 2),
             provider_ids: providerIds,
             rag_provider_ids: ragProviderIds,
+            mcp_server_ids: mcpServerIds,
             is_active: group.is_active,
           })
         } catch (error) {
@@ -67,6 +72,7 @@ export function EditUserGroupDrawer({
             permissions: JSON.stringify(group.permissions, null, 2),
             provider_ids: [],
             rag_provider_ids: [],
+            mcp_server_ids: [],
             is_active: group.is_active,
           })
           message.error('Failed to load group providers')
@@ -109,6 +115,7 @@ export function EditUserGroupDrawer({
         permissions,
         provider_ids: values.provider_ids || [],
         rag_provider_ids: values.rag_provider_ids || [],
+        mcp_server_ids: values.mcp_server_ids || [],
         is_active: values.is_active,
       }
 
@@ -204,6 +211,21 @@ export function EditUserGroupDrawer({
             options={ragProviders.map(provider => ({
               label: provider.name,
               value: provider.id,
+            }))}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+          />
+        </Form.Item>
+
+        <Form.Item name="mcp_server_ids" label="MCP Servers">
+          <Select
+            mode="multiple"
+            placeholder="Select MCP servers"
+            options={systemServers.map(server => ({
+              label: server.display_name,
+              value: server.id,
             }))}
             showSearch
             filterOption={(input, option) =>

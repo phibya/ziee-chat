@@ -60,6 +60,21 @@ pub async fn create_user_group(
                 }
             }
 
+            // If mcp_server_ids are provided, assign them to the group
+            if let Some(mcp_server_ids) = request.mcp_server_ids {
+                for server_id in mcp_server_ids {
+                    if let Err(e) = user_group_mcp_servers::assign_server_to_group(
+                        server_id,
+                        group.id,
+                        _auth_user.user_id,
+                    ).await
+                    {
+                        eprintln!("Error assigning MCP server to group: {}", e);
+                        // Continue with other servers even if one fails
+                    }
+                }
+            }
+
             // Return the updated group with model provider IDs
             match user_groups::get_user_group_by_id(group.id).await {
                 Ok(Some(updated_group)) => Ok((StatusCode::OK, Json(updated_group))),
@@ -197,6 +212,42 @@ pub async fn update_user_group(
                     user_group_rag_providers::assign_rag_provider_to_group(assign_request).await
                 {
                     eprintln!("Error assigning RAG provider to group: {}", e);
+                }
+            }
+        }
+    }
+
+    // Handle MCP server assignments if provided
+    if let Some(mcp_server_ids) = &request.mcp_server_ids {
+        // First, get current assignments
+        let current_mcp_servers = user_group_mcp_servers::get_group_mcp_servers(group_id)
+            .await
+            .unwrap_or_default();
+
+        // Remove MCP servers that are no longer in the list
+        for current_server in &current_mcp_servers {
+            if !mcp_server_ids.contains(current_server) {
+                if let Err(e) = user_group_mcp_servers::remove_server_from_group(
+                    group_id,
+                    *current_server,
+                )
+                .await
+                {
+                    eprintln!("Error removing MCP server from group: {}", e);
+                }
+            }
+        }
+
+        // Add new MCP servers
+        for server_id in mcp_server_ids {
+            if !current_mcp_servers.contains(server_id) {
+                if let Err(e) = user_group_mcp_servers::assign_server_to_group(
+                    *server_id,
+                    group_id,
+                    _auth_user.user_id,
+                ).await
+                {
+                    eprintln!("Error assigning MCP server to group: {}", e);
                 }
             }
         }
@@ -403,4 +454,22 @@ pub async fn get_group_rag_providers(
             per_page,
         }),
     ))
+}
+
+// Get MCP servers assigned to a group
+#[debug_handler]
+pub async fn get_group_mcp_servers(
+    Extension(_auth_user): Extension<AuthenticatedUser>,
+    Path(group_id): Path<Uuid>,
+) -> ApiResult<Json<Vec<Uuid>>> {
+    match user_group_mcp_servers::get_group_mcp_servers(group_id).await {
+        Ok(server_ids) => Ok((StatusCode::OK, Json(server_ids))),
+        Err(e) => {
+            eprintln!("Failed to get MCP servers for group {}: {}", group_id, e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                AppError::internal_error("Failed to get group MCP servers"),
+            ))
+        }
+    }
 }

@@ -48,19 +48,21 @@ pub async fn start_mcp_server(
 ) -> Result<MCPServerStartResult, Box<dyn std::error::Error + Send + Sync>> {
     let _lock = GLOBAL_MCP_START_MUTEX.lock().await;
 
-    // Check if already running
-    if let Some((pid, port)) = verify_mcp_server_running(server_id).await {
-        return Ok(MCPServerStartResult::AlreadyRunning {
-            pid: Some(pid),
-            port,
-        });
-    }
-
     // Load server from database
     let server = mcp_servers::get_mcp_server_by_id(*server_id)
         .await
         .map_err(|e| format!("Failed to load server: {}", e))?
         .ok_or_else(|| format!("Server {} not found", server_id))?;
+
+    // Only check if already running for stdio transport (which spawns processes)
+    if matches!(server.transport_type, MCPTransportType::Stdio) {
+        if verify_mcp_server_running(&server).await {
+            return Ok(MCPServerStartResult::AlreadyRunning {
+                pid: None, // This will be determined by the transport
+                port: None,
+            });
+        }
+    }
 
     // Create transport based on server configuration
     let transport = create_mcp_transport(&server).await?;
@@ -149,42 +151,43 @@ pub async fn stop_mcp_server(
 
 /// Verify MCP server is running and responsive
 pub async fn verify_mcp_server_running(
-    server_id: &Uuid,
-) -> Option<(u32, Option<u16>)> {
-    // Get runtime info from database
-    let (pid, port, _status) = match mcp_servers::get_mcp_server_runtime_info(server_id).await {
-        Ok(Some(info)) => info,
-        _ => return None,
-    };
+    server: &crate::database::models::mcp_server::MCPServer,
+) -> bool {
+    match server.transport_type {
+        MCPTransportType::Stdio => {
+            // For stdio servers, check if process is running
+            if let Some(pid) = server.process_id {
+                if !is_process_running(pid as u32) {
+                    // Clean up stale database entry and registry
+                    let _ = mcp_servers::update_mcp_server_runtime_info(
+                        &server.id,
+                        None,
+                        None,
+                        "stopped".to_string(),
+                        false,
+                    ).await;
 
-    // For stdio servers, check if process is running
-    if let Some(pid) = pid {
-        if !is_process_running(pid as u32) {
-            // Clean up stale database entry and registry
-            let _ = mcp_servers::update_mcp_server_runtime_info(
-                server_id,
-                None,
-                None,
-                "stopped".to_string(),
-                false,
-            ).await;
+                    // Remove from registry as well
+                    if let Ok(mut registry) = MCP_SERVER_REGISTRY.write() {
+                        registry.remove(&server.id);
+                    }
 
-            // Remove from registry as well
-            if let Ok(mut registry) = MCP_SERVER_REGISTRY.write() {
-                registry.remove(server_id);
+                    return false;
+                }
+                true
+            } else {
+                false
             }
-            return None;
+        }
+        MCPTransportType::Http | MCPTransportType::Sse => {
+            // For HTTP/SSE servers, make health check request
+            if let Some(port) = server.port {
+                verify_mcp_server_health(port as u16).await
+            } else {
+                false
+            }
         }
     }
-
-    // For HTTP/SSE servers, make health check request
-    if let Some(port) = port {
-        if !verify_mcp_server_health(port as u16).await {
-            return None;
-        }
-    }
-
-    Some((pid.unwrap_or(0) as u32, port.map(|p| p as u16)))
 }
 
 /// Health check for HTTP/SSE MCP servers
@@ -203,7 +206,7 @@ pub async fn reconcile_mcp_server_states() -> Result<(), Box<dyn std::error::Err
 
     for server in servers {
         // Verify if actually running
-        if verify_mcp_server_running(&server.id).await.is_none() {
+        if !verify_mcp_server_running(&server).await {
             // Server should be running but isn't, update database
             mcp_servers::update_mcp_server_runtime_info(
                 &server.id,
@@ -287,11 +290,12 @@ pub fn get_running_server_ids() -> Vec<Uuid> {
 }
 
 fn is_process_running(pid: u32) -> bool {
-    // Same implementation as model_manager
     #[cfg(unix)]
     {
         use std::process::{Command, Stdio};
-        match Command::new("kill")
+
+        // First check if the process exists
+        let process_exists = match Command::new("kill")
             .arg("-0")
             .arg(pid.to_string())
             .stdout(Stdio::null())
@@ -300,11 +304,104 @@ fn is_process_running(pid: u32) -> bool {
         {
             Ok(status) => status.success(),
             Err(_) => false,
+        };
+
+        if !process_exists {
+            return false;
+        }
+
+        // Check if the process has IS_ZIEE_MCP=1 environment variable
+        // First try Linux /proc method
+        if let Ok(env_data) = std::fs::read_to_string(format!("/proc/{}/environ", pid)) {
+            // Environment variables are null-separated in /proc/PID/environ
+            return env_data.split('\0').any(|env_var| env_var == "IS_ZIEE_MCP=1");
+        }
+
+        // Fallback for macOS and other Unix systems using ps
+        match Command::new("ps")
+            .arg("-p")
+            .arg(pid.to_string())
+            .arg("-wwE")  // Show environment variables with full width
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let env_output = String::from_utf8_lossy(&output.stdout);
+                // Check if IS_ZIEE_MCP=1 appears in the environment variables
+                env_output.contains("IS_ZIEE_MCP=1")
+            }
+            Err(_) => {
+                false
+            }
         }
     }
     #[cfg(windows)]
     {
-        // Windows implementation
-        false // Placeholder
+        use std::process::{Command, Stdio};
+
+        // First check if the process exists
+        let process_exists = match Command::new("tasklist")
+            .arg("/FI")
+            .arg(&format!("PID eq {}", pid))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+        {
+            Ok(status) => status.success(),
+            Err(_) => false,
+        };
+
+        if !process_exists {
+            return false;
+        }
+
+        // Check if the process has IS_ZIEE_MCP=1 environment variable using PowerShell
+        // PowerShell command to get environment variables of a specific process
+        let ps_command = format!(
+            "(Get-Process -Id {}).StartInfo.EnvironmentVariables | Out-String",
+            pid
+        );
+
+        match Command::new("powershell")
+            .arg("-NoProfile")
+            .arg("-NonInteractive")
+            .arg("-Command")
+            .arg(&ps_command)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .output()
+        {
+            Ok(output) => {
+                let env_output = String::from_utf8_lossy(&output.stdout);
+                // Check if IS_ZIEE_MCP=1 appears in the environment variables
+                env_output.contains("IS_ZIEE_MCP") && env_output.contains("1")
+            }
+            Err(_) => {
+                // Alternative method using WMI if PowerShell fails
+                let wmi_command = format!(
+                    "wmic process where \"processid={}\" get commandline /format:list",
+                    pid
+                );
+
+                match Command::new("cmd")
+                    .arg("/C")
+                    .arg(&wmi_command)
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::null())
+                    .output()
+                {
+                    Ok(output) => {
+                        let cmd_output = String::from_utf8_lossy(&output.stdout);
+                        // This is a fallback - we can't easily get env vars with WMI,
+                        // so we fall back to basic process check
+                        cmd_output.contains(&pid.to_string())
+                    }
+                    Err(_) => {
+                        false
+                    }
+                }
+            }
+        }
     }
 }

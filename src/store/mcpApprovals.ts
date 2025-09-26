@@ -85,9 +85,7 @@ export const loadAllGlobalApprovals = async (): Promise<void> => {
     })
 
     // Load user's servers first to get global approvals
-    const serversResponse = await ApiClient.Mcp.listServers({
-      include_system: true,
-    })
+    const serversResponse = await ApiClient.Mcp.listServers({})
     const globalApprovals = new Map<string, ToolApprovalResponse>()
 
     // For each server, try to get global approvals for tools

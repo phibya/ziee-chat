@@ -309,6 +309,7 @@ export interface CreateTrustedHostRequest {
 
 export interface CreateUserGroupRequest {
   description?: string
+  mcp_server_ids?: string[]
   name: string
   permissions: string[]
   provider_ids?: string[]
@@ -643,7 +644,6 @@ export interface ListExecutionLogsResponse {
 }
 
 export interface ListServersQuery {
-  include_system?: boolean
   page?: number
   per_page?: number
   status?: string
@@ -1766,6 +1766,7 @@ export interface UpdateTrustedHostRequest {
 export interface UpdateUserGroupRequest {
   description?: string
   is_active?: boolean
+  mcp_server_ids?: string[]
   name?: string
   permissions?: string[]
   provider_ids?: string[]
@@ -1918,6 +1919,7 @@ export const ApiEndpoints = {
   'Admin.getDefaultLanguage': 'GET /api/admin/config/default-language',
   'Admin.getDownload': 'GET /api/admin/downloads/{download_id}',
   'Admin.getGroup': 'GET /api/admin/groups/{group_id}',
+  'Admin.getGroupMcpServers': 'GET /api/admin/groups/{group_id}/mcp_servers',
   'Admin.getGroupMembers': 'GET /api/admin/groups/{group_id}/members',
   'Admin.getGroupProviders': 'GET /api/admin/groups/{group_id}/providers',
   'Admin.getGroupRagProviders': 'GET /api/admin/groups/{group_id}/rag_providers',
@@ -2130,6 +2132,7 @@ export type ApiEndpointParameters = {
   'Admin.getDefaultLanguage': void
   'Admin.getDownload': { download_id: string }
   'Admin.getGroup': { group_id: string }
+  'Admin.getGroupMcpServers': { group_id: string }
   'Admin.getGroupMembers': { group_id: string } & PaginationQuery
   'Admin.getGroupProviders': { group_id: string } & PaginationQuery
   'Admin.getGroupRagProviders': { group_id: string } & PaginationQuery
@@ -2268,7 +2271,7 @@ export type ApiEndpointParameters = {
   'Mcp.getUserAssignedServers': void
   'Mcp.listConversationApprovals': { conversation_id: string; approved?: boolean; include_expired?: boolean; page?: number; per_page?: number; server_id?: string; tool_name?: string }
   'Mcp.listExecutionLogs': { page?: number; per_page?: number; server_id?: string; status?: string; thread_id?: string }
-  'Mcp.listServers': { include_system?: boolean; page?: number; per_page?: number; status?: string }
+  'Mcp.listServers': { page?: number; per_page?: number; status?: string }
   'Mcp.listThreadExecutionLogs': { thread_id: string }
   'Mcp.listTools': { page?: number; per_page?: number; search?: string; server_id?: string }
   'Mcp.removeToolGlobalApproval': { server_id: string; tool_name: string }
@@ -2342,6 +2345,7 @@ export type ApiEndpointResponses = {
   'Admin.getDefaultLanguage': DefaultLanguageResponse
   'Admin.getDownload': DownloadInstance
   'Admin.getGroup': UserGroup
+  'Admin.getGroupMcpServers': string[]
   'Admin.getGroupMembers': UserListResponse
   'Admin.getGroupProviders': ProviderListResponse
   'Admin.getGroupRagProviders': RAGProviderListResponse

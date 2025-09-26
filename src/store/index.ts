@@ -73,6 +73,7 @@ export {
   deleteUserGroup,
   getGroupProviders,
   getGroupRagProviders,
+  getGroupMCPServers,
   loadUserGroups,
   loadUserGroupMembers,
   removeUserFromUserGroup,

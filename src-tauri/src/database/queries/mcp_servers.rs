@@ -440,23 +440,3 @@ pub async fn update_mcp_server_runtime_info(
     Ok(())
 }
 
-/// Get server runtime information (process ID, port, status)
-pub async fn get_mcp_server_runtime_info(
-    server_id: &Uuid,
-) -> Result<Option<(Option<i32>, Option<i32>, String)>, sqlx::Error> {
-    let pool = get_database_pool()?;
-    let pool = pool.as_ref();
-
-    let result = sqlx::query!(
-        r#"
-        SELECT process_id, port, status
-        FROM mcp_servers
-        WHERE id = $1
-        "#,
-        server_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(result.map(|row| (row.process_id, row.port, row.status)))
-}

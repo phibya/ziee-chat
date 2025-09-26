@@ -16,12 +16,11 @@ use crate::database::{
     models::mcp_server::{MCPServer, CreateMCPServerRequest, CreateSystemMCPServerRequest, UpdateMCPServerRequest},
     queries::{mcp_servers, user_group_mcp_servers},
 };
-use crate::mcp::{start_mcp_server, stop_mcp_server, MCPServerStartResult};
+use crate::mcp::{start_mcp_server, stop_mcp_server};
 
 // Request/Response types
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListServersQuery {
-    pub include_system: Option<bool>,
     pub page: Option<i32>,
     pub per_page: Option<i32>,
     pub status: Option<String>,
@@ -40,7 +39,6 @@ pub struct ListServersResponse {
 pub struct ServerActionResponse {
     pub success: bool,
     pub message: String,
-    pub result: Option<MCPServerStartResult>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -77,17 +75,6 @@ pub async fn list_user_servers(
         }
     };
 
-    // Include system servers if requested
-    if query.include_system.unwrap_or(false) {
-        match mcp_servers::list_system_mcp_servers().await {
-            Ok(system_servers) => {
-                servers.extend(system_servers);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to load system MCP servers: {}", e);
-            }
-        }
-    }
 
     // Apply status filtering if provided
     if let Some(status_filter) = &query.status {
@@ -260,17 +247,15 @@ pub async fn start_server(
     }
 
     match start_mcp_server(&server_id).await {
-        Ok(result) => Ok((StatusCode::OK, Json(ServerActionResponse {
+        Ok(_result) => Ok((StatusCode::OK, Json(ServerActionResponse {
             success: true,
             message: "Server start initiated".to_string(),
-            result: Some(result),
         }))),
         Err(e) => {
             tracing::error!("Failed to start MCP server: {}", e);
             Ok((StatusCode::OK, Json(ServerActionResponse {
                 success: false,
                 message: format!("Failed to start server: {}", e),
-                result: None,
             })))
         }
     }
@@ -299,14 +284,12 @@ pub async fn stop_server(
         Ok(_) => Ok((StatusCode::OK, Json(ServerActionResponse {
             success: true,
             message: "Server stopped".to_string(),
-            result: None,
         }))),
         Err(e) => {
             tracing::error!("Failed to stop MCP server: {}", e);
             Ok((StatusCode::OK, Json(ServerActionResponse {
                 success: false,
                 message: format!("Failed to stop server: {}", e),
-                result: None,
             })))
         }
     }
@@ -338,17 +321,15 @@ pub async fn restart_server(
     tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     match start_mcp_server(&server_id).await {
-        Ok(result) => Ok((StatusCode::OK, Json(ServerActionResponse {
+        Ok(_result) => Ok((StatusCode::OK, Json(ServerActionResponse {
             success: true,
             message: "Server restarted".to_string(),
-            result: Some(result),
         }))),
         Err(e) => {
             tracing::error!("Failed to restart MCP server: {}", e);
             Ok((StatusCode::OK, Json(ServerActionResponse {
                 success: false,
                 message: format!("Failed to restart server: {}", e),
-                result: None,
             })))
         }
     }

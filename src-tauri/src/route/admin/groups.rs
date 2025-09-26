@@ -120,4 +120,14 @@ pub fn admin_group_routes() -> ApiRouter {
             })
             .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
         )
+        .api_route(
+            "/groups/{group_id}/mcp_servers",
+            get_with(api::user_groups::get_group_mcp_servers, |op| {
+                op.description("Get MCP servers assigned to a user group")
+                    .id("Admin.getGroupMcpServers")
+                    .tag("admin")
+                    .response::<200, Json<Vec<uuid::Uuid>>>()
+            })
+            .layer(middleware::from_fn(api::middleware::groups_read_middleware)),
+        )
 }

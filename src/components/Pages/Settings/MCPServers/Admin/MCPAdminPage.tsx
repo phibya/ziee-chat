@@ -13,18 +13,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { IoIosArrowDown } from 'react-icons/io'
 import { SystemServersTab } from './SystemServersTab.tsx'
 import { ExecutionLogsTab } from './SimpleExecutionLogsTab.tsx'
-import { GlobalApprovalsTab } from './SimpleGlobalApprovalsTab.tsx'
-import { GroupAssignmentsTab } from './SimpleGroupAssignmentsTab.tsx'
-import { StatisticsTab } from './StatisticsTab.tsx'
 import { Stores } from '../../../../../store'
 import { useMainContentMinSize } from '../../../../hooks/useWindowMinSize'
-import {
-  FaServer,
-  FaHistory,
-  FaShieldAlt,
-  FaUsers,
-  FaChartBar,
-} from 'react-icons/fa'
+import { FaServer, FaHistory } from 'react-icons/fa'
 import { SettingsPageContainer } from '../../common/SettingsPageContainer'
 
 export function MCPAdminPage() {
@@ -33,7 +24,6 @@ export function MCPAdminPage() {
   const mainContentMinSize = useMainContentMinSize()
   const { token } = theme.useToken()
   const { systemServersInitialized } = Stores.AdminMCPServers
-  const { isInitialized: approvalsInitialized } = Stores.MCPApprovals
   const { executionLogsInitialized } = Stores.MCPExecution
 
   // Available sections
@@ -49,24 +39,6 @@ export function MCPAdminPage() {
       label: 'Execution Logs',
       shortLabel: 'Logs',
       icon: FaHistory,
-    },
-    {
-      key: 'global-approvals',
-      label: 'Global Approvals',
-      shortLabel: 'Approvals',
-      icon: FaShieldAlt,
-    },
-    {
-      key: 'group-assignments',
-      label: 'Group Assignments',
-      shortLabel: 'Groups',
-      icon: FaUsers,
-    },
-    {
-      key: 'statistics',
-      label: 'Statistics',
-      shortLabel: 'Stats',
-      icon: FaChartBar,
     },
   ]
 
@@ -101,14 +73,6 @@ export function MCPAdminPage() {
             '../../../../../store/admin/mcpServers.ts'
           )
           await loadSystemServers()
-        }
-
-        // Initialize approvals if not already done
-        if (!approvalsInitialized) {
-          const { loadAllGlobalApprovals } = await import(
-            '../../../../../store/mcpApprovals.ts'
-          )
-          await loadAllGlobalApprovals()
         }
 
         // Initialize execution logs if not already done
@@ -147,12 +111,6 @@ export function MCPAdminPage() {
         return <SystemServersTab />
       case 'execution-logs':
         return <ExecutionLogsTab />
-      case 'global-approvals':
-        return <GlobalApprovalsTab />
-      case 'group-assignments':
-        return <GroupAssignmentsTab />
-      case 'statistics':
-        return <StatisticsTab />
       default:
         return (
           <Empty
@@ -163,13 +121,13 @@ export function MCPAdminPage() {
     }
   }
 
-  // Create title with navigation for mobile
+  // Create title with navigation for desktop/mobile
   const titleWithNavigation = (
     <Flex align="center" justify="space-between" className="w-full">
-      <span>MCP Administration</span>
-      {/* Mobile: Show dropdown */}
-      {mainContentMinSize.xs && (
-        <div className="flex flex-1 items-center justify-end px-2">
+      <span>System MCP Servers</span>
+      {/* Mobile: Show dropdown, Desktop: Show segmented control */}
+      <div className="flex flex-1 items-center justify-end">
+        {mainContentMinSize.xs ? (
           <Dropdown
             menu={{
               items: sections.map(section => {
@@ -177,9 +135,9 @@ export function MCPAdminPage() {
                 return {
                   key: section.key,
                   label: (
-                    <Flex className={'gap-2'}>
+                    <Flex className={'gap-2 items-center'}>
                       <IconComponent />
-                      {section.label}
+                      <Typography.Text>{section.label}</Typography.Text>
                     </Flex>
                   ),
                 }
@@ -191,23 +149,11 @@ export function MCPAdminPage() {
             }}
             trigger={['click']}
           >
-            <Button type="text" size="small">
+            <Button>
               {getCurrentSectionLabel()} <IoIosArrowDown />
             </Button>
           </Dropdown>
-        </div>
-      )}
-    </Flex>
-  )
-
-  return (
-    <SettingsPageContainer
-      title={titleWithNavigation}
-      subtitle="Manage and monitor Model Context Protocol servers across the system"
-    >
-      {/* Desktop: Show segmented control */}
-      {!mainContentMinSize.xs && (
-        <div className="flex justify-center items-center">
+        ) : (
           <Segmented
             value={activeSection}
             onChange={handleSectionChange}
@@ -232,9 +178,16 @@ export function MCPAdminPage() {
               }
             })}
           />
-        </div>
-      )}
+        )}
+      </div>
+    </Flex>
+  )
 
+  return (
+    <SettingsPageContainer
+      title={titleWithNavigation}
+      subtitle="Manage and monitor Model Context Protocol servers across the system"
+    >
       {/* Content */}
       <div className="flex flex-col gap-3 h-full overflow-hidden">
         {renderSectionContent()}

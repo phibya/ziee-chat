@@ -169,6 +169,7 @@ pub struct CreateUserGroupRequest {
     pub permissions: Vec<String>,
     pub provider_ids: Option<Vec<Uuid>>,
     pub rag_provider_ids: Option<Vec<Uuid>>,
+    pub mcp_server_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -178,6 +179,7 @@ pub struct UpdateUserGroupRequest {
     pub permissions: Option<Vec<String>>,
     pub provider_ids: Option<Vec<Uuid>>,
     pub rag_provider_ids: Option<Vec<Uuid>>,
+    pub mcp_server_ids: Option<Vec<Uuid>>,
     pub is_active: Option<bool>,
 }
 

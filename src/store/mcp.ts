@@ -98,9 +98,7 @@ export const loadMCPServers = async (): Promise<void> => {
       draft.error = null
     })
 
-    const response = await ApiClient.Mcp.listServers({
-      include_system: true,
-    })
+    const response = await ApiClient.Mcp.listServers({})
 
     useMCPStore.setState(draft => {
       draft.servers = response.servers

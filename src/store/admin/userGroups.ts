@@ -329,3 +329,16 @@ export const getGroupRagProviders = async (
     per_page: pageSize || 20,
   })
 }
+
+export const getGroupMCPServers = async (groupId: string) => {
+  try {
+    const serverIds = await ApiClient.Admin.getGroupMcpServers({ group_id: groupId })
+    const { useAdminMCPServersStore } = await import('./mcpServers')
+    const allServers = useAdminMCPServersStore.getState().systemServers
+    const assignedServers = allServers.filter(server => serverIds.includes(server.id))
+    return { servers: assignedServers }
+  } catch (error) {
+    console.error('Failed to get group MCP servers:', error)
+    throw error
+  }
+}

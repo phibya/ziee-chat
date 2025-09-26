@@ -30,7 +30,10 @@ impl MCPTransport for StdioTransport {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        // Set environment variables
+        // Always set the IS_ZIEE_MCP environment variable
+        cmd.env("IS_ZIEE_MCP", "1");
+
+        // Set custom environment variables
         if let Ok(env_vars) = serde_json::from_value::<serde_json::Map<String, serde_json::Value>>(self.server.environment_variables.clone()) {
             for (key, value) in env_vars {
                 if let Some(val_str) = value.as_str() {

@@ -73,7 +73,7 @@ async fn check_and_restart_failed_servers(
         let now = Utc::now();
 
         // Check if server is healthy
-        if super::verify_mcp_server_running(&server.id).await.is_some() {
+        if super::verify_mcp_server_running(&server).await {
             // Server is healthy, update tracker
             if let Ok(mut tracker) = SERVER_HEALTH_TRACKER.write() {
                 tracker.insert(server.id, ServerHealthInfo {
