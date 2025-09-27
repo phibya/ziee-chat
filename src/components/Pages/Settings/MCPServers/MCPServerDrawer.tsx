@@ -20,7 +20,6 @@ import {
 import { createMCPServer, updateMCPServer } from '../../../../store/mcp'
 import {
   createSystemServer,
-  updateSystemServer,
 } from '../../../../store/admin/mcpServers'
 import type {
   CreateMCPServerRequest,
@@ -180,7 +179,7 @@ export function MCPServerDrawer() {
           environment_variables: environmentVariables,
           enabled: values.enabled ?? true,
         }
-        await updateSystemServer(editingServer.id, updateRequest)
+        await updateMCPServer(editingServer.id, updateRequest)
       }
 
       closeMCPServerDrawer()

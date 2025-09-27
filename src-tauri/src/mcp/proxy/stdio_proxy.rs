@@ -44,15 +44,18 @@ impl MCPClientSession {
     }
 
     pub async fn initialize(&self, server: &MCPServer) -> Result<(), ProxyError> {
-        // Start the stdio MCP server process
+        // Start the stdio MCP server process with bundled runtime support
         let command = server.command.as_ref()
             .ok_or_else(|| ProxyError::ClientCommunication("Command is required for stdio transport".to_string()))?;
 
         let args: Vec<String> = serde_json::from_value(server.args.clone()).unwrap_or_default();
         let env_vars = self.get_server_env(server).await?;
 
-        let mut cmd = Command::new(command);
-        cmd.args(&args)
+        // Use the same command resolution from stdio.rs for bundled runtime support
+        let (resolved_command, resolved_args) = crate::mcp::transports::stdio::resolve_command(command, &args);
+
+        let mut cmd = Command::new(resolved_command);
+        cmd.args(resolved_args)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
@@ -242,7 +245,7 @@ pub struct MCPProxyServer {
 }
 
 impl MCPProxyServer {
-    pub async fn new(client_session: Arc<MCPClientSession>, server_name: String) -> Self {
+    pub fn new(client_session: Arc<MCPClientSession>, server_name: String) -> Self {
         Self {
             client_session,
             server_name,
@@ -299,7 +302,7 @@ impl MCPStdioProxy {
         let proxy_server = Arc::new(MCPProxyServer::new(
             Arc::clone(&client_session),
             self.server_name.clone(),
-        ).await);
+        ));
 
         self.client_session = Some(client_session);
         self.proxy_server = Some(proxy_server);
@@ -308,7 +311,7 @@ impl MCPStdioProxy {
         self.proxy_port = port;
         self.proxy_url = format!("http://127.0.0.1:{}", port);
 
-        let app = self.create_http_server().await;
+        let app = self.create_http_server();
         let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
             .await
             .map_err(|e| ProxyError::HttpServerStart(e.to_string()))?;
@@ -342,13 +345,13 @@ impl MCPStdioProxy {
         self.client_session.is_some()
     }
 
-    async fn create_http_server(&self) -> Router {
+    fn create_http_server(&self) -> Router {
         let proxy_server = self.proxy_server.as_ref().unwrap().clone();
 
         Router::new()
             .route("/mcp", post(handle_mcp_request))
             .route("/sse", get(handle_sse_connection))
-            .route("/messages/:session_id", post(handle_sse_message))
+            .route("/messages/{session_id}", post(handle_sse_message))
             .route("/health", get(handle_health_check))
             .with_state(proxy_server)
     }

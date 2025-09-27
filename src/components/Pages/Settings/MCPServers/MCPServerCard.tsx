@@ -12,7 +12,14 @@ import {
   Empty,
   Badge,
 } from 'antd'
-import { EditOutlined, ToolOutlined, ReloadOutlined, CheckOutlined } from '@ant-design/icons'
+import {
+  EditOutlined,
+  ToolOutlined,
+  ReloadOutlined,
+  CheckOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
+} from '@ant-design/icons'
 import type { MCPServer, MCPToolWithServer } from '../../../../types/api'
 import {
   startMCPServer,
@@ -20,6 +27,7 @@ import {
   getServerTools,
   setToolGlobalApproval,
   removeToolGlobalApproval,
+  updateMCPServer,
 } from '../../../../store/mcp'
 import { openMCPServerDrawer } from '../../../../store/ui/mcpDrawers'
 import { ToolTestingModal } from './ToolTestingModal'
@@ -28,16 +36,20 @@ const { Text } = Typography
 
 interface MCPServerCardProps {
   server: MCPServer
-  onEditClick?: (server: MCPServer) => void
+  isEditable?: boolean
 }
 
-export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
+export function MCPServerCard({
+  server,
+  isEditable = true,
+}: MCPServerCardProps) {
   const { message } = App.useApp()
   const [showTools, setShowTools] = useState(false)
   const [tools, setTools] = useState<MCPToolWithServer[]>([])
   const [loadingTools, setLoadingTools] = useState(false)
   const [testingTool, setTestingTool] = useState<MCPToolWithServer | null>(null)
   const [operationLoading, setOperationLoading] = useState<string | null>(null)
+  const [enableLoading, setEnableLoading] = useState(false)
 
   // Load tools when server is active and tools section is expanded
   const loadServerTools = async () => {
@@ -72,8 +84,8 @@ export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
   }, [showTools, server.is_active])
 
   const handleEdit = () => {
-    if (onEditClick) {
-      onEditClick(server)
+    if (server.is_system) {
+      openMCPServerDrawer(server, 'edit-system')
     } else {
       openMCPServerDrawer(server, 'edit')
     }
@@ -127,7 +139,10 @@ export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
     setTestingTool(null)
   }
 
-  const handleToggleAutoApprove = async (tool: MCPToolWithServer, autoApprove: boolean) => {
+  const handleToggleAutoApprove = async (
+    tool: MCPToolWithServer,
+    autoApprove: boolean,
+  ) => {
     try {
       if (autoApprove) {
         await setToolGlobalApproval(tool.server_id, tool.tool_name, {
@@ -144,14 +159,30 @@ export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
         prevTools.map(t =>
           t.server_id === tool.server_id && t.tool_name === tool.tool_name
             ? { ...t, global_auto_approve: autoApprove ? true : undefined }
-            : t
-        )
+            : t,
+        ),
       )
     } catch (error) {
-      message.error(`Failed to ${autoApprove ? 'enable' : 'disable'} auto-approve for ${tool.tool_name}`)
+      message.error(
+        `Failed to ${autoApprove ? 'enable' : 'disable'} auto-approve for ${tool.tool_name}`,
+      )
     }
   }
 
+  const handleToggleEnable = async (enabled: boolean) => {
+    setEnableLoading(true)
+    try {
+      await updateMCPServer(server.id, {
+        enabled,
+      })
+      message.success(`Server ${enabled ? 'enabled' : 'disabled'} successfully`)
+    } catch (error) {
+      console.error('Failed to toggle server enable state:', error)
+      message.error(`Failed to ${enabled ? 'enable' : 'disable'} server`)
+    } finally {
+      setEnableLoading(false)
+    }
+  }
 
   return (
     <>
@@ -163,33 +194,56 @@ export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
               <div className="flex-1 min-w-48">
                 <Flex className="gap-2 items-center">
                   <ToolOutlined />
-                  <Text className="font-medium">
-                    {server.display_name}
-                  </Text>
-                  {server.is_system && <Tag color="blue">System</Tag>}
+                  <Text className="font-medium">{server.display_name}</Text>
+                  {!isEditable && server.is_system && (
+                    <Tag color="blue">System</Tag>
+                  )}
                   {server.status === 'error' && <Tag color="red">Error</Tag>}
+                  {/* Show enabled/disabled status tag for all system servers */}
                   {(server.tool_count ?? 0) > 0 && (
                     <Tag color="cyan">{server.tool_count} tools</Tag>
                   )}
                 </Flex>
               </div>
               <div className="flex gap-1 items-center justify-end">
-                {/* Only show controls for user servers or when onEditClick is provided (admin mode) */}
-                {(!server.is_system || onEditClick) && (
+                {/* Enable/disable switch for system servers */}
+                {isEditable && (
+                  <Tooltip
+                    title={server.enabled ? 'Disable Server' : 'Enable Server'}
+                  >
+                    <Switch
+                      checked={server.enabled}
+                      onChange={handleToggleEnable}
+                      loading={enableLoading}
+                    />
+                  </Tooltip>
+                )}
+                {/* Show controls based on isEditable prop */}
+                {isEditable && (
                   <>
                     <Tooltip
                       title={server.is_active ? 'Stop Server' : 'Start Server'}
                     >
-                      <div onClick={e => e.stopPropagation()}>
-                        <Switch
-                          checked={server.is_active}
-                          onChange={handleToggleStatus}
-                          loading={
-                            operationLoading === 'start' ||
-                            operationLoading === 'stop'
-                          }
-                        />
-                      </div>
+                      <Button
+                        type={server.is_active ? 'default' : 'primary'}
+                        icon={
+                          server.is_active ? (
+                            <StopOutlined />
+                          ) : (
+                            <PlayCircleOutlined />
+                          )
+                        }
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleToggleStatus(!server.is_active)
+                        }}
+                        loading={
+                          operationLoading === 'start' ||
+                          operationLoading === 'stop'
+                        }
+                      >
+                        {server.is_active ? 'Stop' : 'Start'}
+                      </Button>
                     </Tooltip>
                     <Button
                       icon={<EditOutlined />}
@@ -204,6 +258,7 @@ export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
                 )}
                 <Button
                   type={showTools ? 'primary' : 'default'}
+                  icon={<ToolOutlined />}
                   onClick={e => {
                     e.stopPropagation()
                     handleToggleTools()
@@ -311,9 +366,13 @@ export function MCPServerCard({ server, onEditClick }: MCPServerCardProps) {
                                     <div onClick={e => e.stopPropagation()}>
                                       <Switch
                                         size="small"
-                                        checked={tool.global_auto_approve || false}
+                                        checked={
+                                          tool.global_auto_approve || false
+                                        }
                                         checkedChildren={<CheckOutlined />}
-                                        onChange={(checked) => handleToggleAutoApprove(tool, checked)}
+                                        onChange={checked =>
+                                          handleToggleAutoApprove(tool, checked)
+                                        }
                                       />
                                     </div>
                                   </Tooltip>

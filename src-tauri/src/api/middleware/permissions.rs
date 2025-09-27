@@ -293,7 +293,3 @@ permission_middleware!(
     mcp_admin_servers_edit_middleware,
     Permission::McpAdminServersEdit
 );
-permission_middleware!(
-    mcp_admin_servers_delete_middleware,
-    Permission::McpAdminServersDelete
-);

@@ -12,12 +12,54 @@ use crate::api::{
     app::is_desktop_app,
     errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
+    permissions::{check_permission, Permission},
 };
 use crate::database::{
     models::mcp_server::{MCPServer, CreateMCPServerRequest, CreateSystemMCPServerRequest, UpdateMCPServerRequest, MCPTransportType},
     queries::{mcp_servers, user_group_mcp_servers},
 };
 use crate::mcp::{start_mcp_server, stop_mcp_server};
+
+// Helper function to check server access permissions
+async fn check_server_access(
+    auth_user: &AuthenticatedUser,
+    server_id: Uuid,
+    required_admin_permission: &str,
+    action_name: &str,
+) -> Result<MCPServer, (StatusCode, AppError)> {
+    // Get server details first
+    let server = match mcp_servers::get_mcp_server_by_id(server_id).await {
+        Ok(Some(server)) => server,
+        Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("MCP Server"))),
+        Err(e) => {
+            tracing::error!("Failed to get server: {}", e);
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")));
+        }
+    };
+
+    // Check permissions based on server type
+    if server.is_system {
+        // For system servers, check if user has admin permission
+        if !check_permission(&auth_user.user, required_admin_permission) {
+            return Err((StatusCode::FORBIDDEN, AppError::forbidden(&format!("Cannot {} system server", action_name))));
+        }
+    } else {
+        // For user servers, check if user can access this server
+        let can_access = match mcp_servers::can_user_access_server(auth_user.user_id, server_id).await {
+            Ok(access) => access,
+            Err(e) => {
+                tracing::error!("Failed to check server access: {}", e);
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")));
+            }
+        };
+
+        if !can_access {
+            return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied to MCP server")));
+        }
+    }
+
+    Ok(server)
+}
 
 // Request/Response types
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -169,17 +211,11 @@ pub async fn update_server(
     Path(server_id): Path<Uuid>,
     Json(request): Json<UpdateMCPServerRequest>,
 ) -> ApiResult<Json<MCPServer>> {
-    // Check if user owns this server
-    let server = match mcp_servers::get_mcp_server_by_id(server_id).await {
-        Ok(Some(server)) => server,
-        Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("MCP Server"))),
-        Err(e) => {
-            tracing::error!("Failed to get server: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")));
-        }
-    };
+    // Check server access permissions
+    let server = check_server_access(&auth_user, server_id, Permission::McpAdminServersEdit.as_str(), "update").await?;
 
-    if server.user_id != Some(auth_user.user_id) || server.is_system {
+    // For user servers, also check ownership
+    if !server.is_system && server.user_id != Some(auth_user.user_id) {
         return Err((StatusCode::FORBIDDEN, AppError::forbidden("Cannot update this server")));
     }
 
@@ -198,17 +234,11 @@ pub async fn delete_server(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(server_id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    // Check if user owns this server
-    let server = match mcp_servers::get_mcp_server_by_id(server_id).await {
-        Ok(Some(server)) => server,
-        Ok(None) => return Err((StatusCode::NOT_FOUND, AppError::not_found("MCP Server"))),
-        Err(e) => {
-            tracing::error!("Failed to get server: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")));
-        }
-    };
+    // Check server access permissions
+    let server = check_server_access(&auth_user, server_id, Permission::McpAdminServersDelete.as_str(), "delete").await?;
 
-    if server.user_id != Some(auth_user.user_id) || server.is_system {
+    // For user servers, also check ownership
+    if !server.is_system && server.user_id != Some(auth_user.user_id) {
         return Err((StatusCode::FORBIDDEN, AppError::forbidden("Cannot delete this server")));
     }
 
@@ -239,18 +269,8 @@ pub async fn start_server(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(server_id): Path<Uuid>,
 ) -> ApiResult<Json<ServerActionResponse>> {
-    // Check if user can access this server
-    let can_access = match mcp_servers::can_user_access_server(auth_user.user_id, server_id).await {
-        Ok(access) => access,
-        Err(e) => {
-            tracing::error!("Failed to check server access: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")));
-        }
-    };
-
-    if !can_access {
-        return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied to MCP server")));
-    }
+    // Check server access permissions
+    let _server = check_server_access(&auth_user, server_id, Permission::McpAdminServersEdit.as_str(), "start").await?;
 
     match start_mcp_server(&server_id).await {
         Ok(_result) => Ok((StatusCode::OK, Json(ServerActionResponse {
@@ -273,18 +293,8 @@ pub async fn stop_server(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(server_id): Path<Uuid>,
 ) -> ApiResult<Json<ServerActionResponse>> {
-    // Check if user can access this server
-    let can_access = match mcp_servers::can_user_access_server(auth_user.user_id, server_id).await {
-        Ok(access) => access,
-        Err(e) => {
-            tracing::error!("Failed to check server access: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")));
-        }
-    };
-
-    if !can_access {
-        return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied to MCP server")));
-    }
+    // Check server access permissions
+    let _server = check_server_access(&auth_user, server_id, Permission::McpAdminServersEdit.as_str(), "stop").await?;
 
     match stop_mcp_server(&server_id).await {
         Ok(_) => Ok((StatusCode::OK, Json(ServerActionResponse {
@@ -307,18 +317,8 @@ pub async fn restart_server(
     Extension(auth_user): Extension<AuthenticatedUser>,
     Path(server_id): Path<Uuid>,
 ) -> ApiResult<Json<ServerActionResponse>> {
-    // Check if user can access this server
-    let can_access = match mcp_servers::can_user_access_server(auth_user.user_id, server_id).await {
-        Ok(access) => access,
-        Err(e) => {
-            tracing::error!("Failed to check server access: {}", e);
-            return Err((StatusCode::INTERNAL_SERVER_ERROR, AppError::internal_error("Database error")));
-        }
-    };
-
-    if !can_access {
-        return Err((StatusCode::FORBIDDEN, AppError::forbidden("Access denied to MCP server")));
-    }
+    // Check server access permissions
+    let _server = check_server_access(&auth_user, server_id, Permission::McpAdminServersEdit.as_str(), "restart").await?;
 
     // Stop then start
     if let Err(e) = stop_mcp_server(&server_id).await {

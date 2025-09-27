@@ -86,7 +86,7 @@ async fn check_and_restart_failed_servers(
         }
 
         // Server is not healthy, check if we should restart
-        let (should_restart, should_disable) = {
+        let (should_restart, should_deactivate) = {
             if let Ok(mut tracker) = MCP_SERVER_HEALTH_TRACKER.write() {
                 let health_info = tracker.entry(server.id).or_insert_with(|| ServerHealthInfo {
                     last_health_check: now,
@@ -114,7 +114,7 @@ async fn check_and_restart_failed_servers(
                     }
                 } else {
                     eprintln!(
-                        "MCP server {} exceeded max restart attempts ({}), disabling server",
+                        "MCP server {} exceeded max restart attempts ({}), deactivating and disabling server",
                         server.name, config.max_restart_attempts
                     );
                     (false, true)
@@ -124,8 +124,19 @@ async fn check_and_restart_failed_servers(
             }
         };
 
-        // Handle server disabling outside the lock to avoid Send issues
-        if should_disable {
+        // Handle server disable and deactivation outside the lock to avoid Send issues
+        if should_deactivate {
+            // First, stop the server (deactivate)
+            match super::stop_mcp_server(&server.id).await {
+                Ok(_) => {
+                    println!("MCP server {} has been deactivated after exceeding max restart attempts", server.name);
+                }
+                Err(e) => {
+                    eprintln!("Failed to deactivate MCP server {} after exceeding max restart attempts: {}", server.name, e);
+                }
+            }
+
+            // Then, disable it in the database
             let update_request = crate::database::models::mcp_server::UpdateMCPServerRequest {
                 display_name: None,
                 description: None,

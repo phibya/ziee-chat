@@ -758,8 +758,6 @@ export interface MCPServer {
   user_id?: string
 }
 
-export type MCPServerStartResult = any
-
 export type MCPServerStatus = 'stopped' | 'starting' | 'running' | 'error' | 'restarting'
 
 export interface MCPTool {
@@ -1511,7 +1509,6 @@ export interface SearchQuery {
 
 export interface ServerActionResponse {
   message: string
-  result?: MCPServerStartResult
   success: boolean
 }
 
@@ -1987,20 +1984,14 @@ export const ApiEndpoints = {
   'Admin.uploadAndCommitModel': 'POST /api/admin/uploaded-models/upload-and-commit',
   'AdminMcp.assignServersToGroup': 'POST /api/admin/mcp/groups/{group_id}/servers',
   'AdminMcp.createSystemServer': 'POST /api/admin/mcp/system-servers',
-  'AdminMcp.deleteSystemServer': 'DELETE /api/admin/mcp/system-servers/{id}',
   'AdminMcp.getExecutionStatistics': 'GET /api/admin/mcp/execution/statistics',
   'AdminMcp.getGroupServers': 'GET /api/admin/mcp/groups/{group_id}/servers',
   'AdminMcp.getServerAccessGroups': 'GET /api/admin/mcp/servers/{server_id}/groups',
-  'AdminMcp.getSystemServer': 'GET /api/admin/mcp/system-servers/{id}',
   'AdminMcp.getToolStatistics': 'GET /api/admin/mcp/tools/statistics',
   'AdminMcp.listAllExecutionLogs': 'GET /api/admin/mcp/execution/logs',
   'AdminMcp.listAllGroupAssignments': 'GET /api/admin/mcp/assignments',
   'AdminMcp.listSystemServers': 'GET /api/admin/mcp/system-servers',
   'AdminMcp.removeServerFromGroup': 'DELETE /api/admin/mcp/groups/{group_id}/servers/{server_id}',
-  'AdminMcp.restartSystemServer': 'POST /api/admin/mcp/system-servers/{id}/restart',
-  'AdminMcp.startSystemServer': 'POST /api/admin/mcp/system-servers/{id}/start',
-  'AdminMcp.stopSystemServer': 'POST /api/admin/mcp/system-servers/{id}/stop',
-  'AdminMcp.updateSystemServer': 'PUT /api/admin/mcp/system-servers/{id}',
   'Assistants.createAssistant': 'POST /api/assistants',
   'Assistants.deleteAssistant': 'DELETE /api/assistants/{assistant_id}',
   'Assistants.getAssistant': 'GET /api/assistants/{assistant_id}',
@@ -2200,20 +2191,14 @@ export type ApiEndpointParameters = {
   'Admin.uploadAndCommitModel': FormData
   'AdminMcp.assignServersToGroup': { group_id: string } & AssignServersRequest
   'AdminMcp.createSystemServer': CreateSystemMCPServerRequest
-  'AdminMcp.deleteSystemServer': { id: string }
   'AdminMcp.getExecutionStatistics': void
   'AdminMcp.getGroupServers': { group_id: string }
   'AdminMcp.getServerAccessGroups': { server_id: string }
-  'AdminMcp.getSystemServer': { id: string }
   'AdminMcp.getToolStatistics': void
   'AdminMcp.listAllExecutionLogs': { page?: number; per_page?: number; server_id?: string; status?: string; thread_id?: string }
   'AdminMcp.listAllGroupAssignments': void
   'AdminMcp.listSystemServers': { enabled?: boolean; page?: number; per_page?: number }
   'AdminMcp.removeServerFromGroup': { group_id: string; server_id: string }
-  'AdminMcp.restartSystemServer': { id: string }
-  'AdminMcp.startSystemServer': { id: string }
-  'AdminMcp.stopSystemServer': { id: string }
-  'AdminMcp.updateSystemServer': { id: string } & UpdateMCPServerRequest
   'Assistants.createAssistant': CreateAssistantRequest
   'Assistants.deleteAssistant': { assistant_id: string }
   'Assistants.getAssistant': { assistant_id: string }
@@ -2413,20 +2398,14 @@ export type ApiEndpointResponses = {
   'Admin.uploadAndCommitModel': Model
   'AdminMcp.assignServersToGroup': GroupAssignmentResponse
   'AdminMcp.createSystemServer': MCPServer
-  'AdminMcp.deleteSystemServer': void
   'AdminMcp.getExecutionStatistics': any
   'AdminMcp.getGroupServers': string[]
   'AdminMcp.getServerAccessGroups': string[]
-  'AdminMcp.getSystemServer': MCPServer
   'AdminMcp.getToolStatistics': any[][]
   'AdminMcp.listAllExecutionLogs': ListExecutionLogsResponse
   'AdminMcp.listAllGroupAssignments': GroupServerAssignmentResponse[]
   'AdminMcp.listSystemServers': ListServersResponse
   'AdminMcp.removeServerFromGroup': void
-  'AdminMcp.restartSystemServer': ServerActionResponse
-  'AdminMcp.startSystemServer': ServerActionResponse
-  'AdminMcp.stopSystemServer': ServerActionResponse
-  'AdminMcp.updateSystemServer': MCPServer
   'Assistants.createAssistant': Assistant
   'Assistants.deleteAssistant': void
   'Assistants.getAssistant': Assistant

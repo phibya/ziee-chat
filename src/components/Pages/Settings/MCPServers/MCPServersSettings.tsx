@@ -218,7 +218,11 @@ export function MCPServersSettings() {
         <div className="flex-1 overflow-auto px-0 pb-3">
           <div className="flex flex-col gap-3">
             {filteredServers.map(server => (
-              <MCPServerCard key={server.id} server={server} />
+              <MCPServerCard
+                key={server.id}
+                server={server}
+                isEditable={!server.is_system}
+              />
             ))}
           </div>
 

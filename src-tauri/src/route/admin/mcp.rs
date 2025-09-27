@@ -1,9 +1,9 @@
 use crate::api::mcp::{servers, tools, execution};
 use crate::database::models::mcp_server::MCPServer;
 use crate::database::models::user_group_mcp_server::GroupServerAssignmentResponse;
-use servers::{ServerActionResponse, GroupAssignmentResponse};
+use servers::GroupAssignmentResponse;
 use aide::axum::{
-    routing::{delete_with, get_with, post_with, put_with},
+    routing::{delete_with, get_with, post_with},
     ApiRouter,
 };
 use axum::{middleware, Json};
@@ -35,79 +35,6 @@ pub fn admin_mcp_routes() -> ApiRouter {
             })
             .layer(middleware::from_fn(
                 crate::api::middleware::permissions::mcp_admin_servers_create_middleware,
-            )),
-        )
-        .api_route(
-            "/system-servers/{id}",
-            get_with(servers::get_server, |op| {
-                op.description("Get system MCP server by ID (admin only)")
-                    .id("AdminMcp.getSystemServer")
-                    .tag("mcp-admin")
-                    .response::<200, Json<MCPServer>>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_admin_servers_read_middleware,
-            )),
-        )
-        .api_route(
-            "/system-servers/{id}",
-            put_with(servers::update_server, |op| {
-                op.description("Update system MCP server (admin only)")
-                    .id("AdminMcp.updateSystemServer")
-                    .tag("mcp-admin")
-                    .response::<200, Json<MCPServer>>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_admin_servers_edit_middleware,
-            )),
-        )
-        .api_route(
-            "/system-servers/{id}",
-            delete_with(servers::delete_server, |op| {
-                op.description("Delete system MCP server (admin only)")
-                    .id("AdminMcp.deleteSystemServer")
-                    .tag("mcp-admin")
-                    .response::<204, ()>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_admin_servers_delete_middleware,
-            )),
-        )
-        // System server operations (admin only)
-        .api_route(
-            "/system-servers/{id}/start",
-            post_with(servers::start_server, |op| {
-                op.description("Start system MCP server (admin only)")
-                    .id("AdminMcp.startSystemServer")
-                    .tag("mcp-admin")
-                    .response::<200, Json<ServerActionResponse>>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_admin_servers_edit_middleware,
-            )),
-        )
-        .api_route(
-            "/system-servers/{id}/stop",
-            post_with(servers::stop_server, |op| {
-                op.description("Stop system MCP server (admin only)")
-                    .id("AdminMcp.stopSystemServer")
-                    .tag("mcp-admin")
-                    .response::<200, Json<ServerActionResponse>>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_admin_servers_edit_middleware,
-            )),
-        )
-        .api_route(
-            "/system-servers/{id}/restart",
-            post_with(servers::restart_server, |op| {
-                op.description("Restart system MCP server (admin only)")
-                    .id("AdminMcp.restartSystemServer")
-                    .tag("mcp-admin")
-                    .response::<200, Json<ServerActionResponse>>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_admin_servers_edit_middleware,
             )),
         )
         // Group assignment (admin only)

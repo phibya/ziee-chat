@@ -13,6 +13,7 @@ import type {
   ToolDiscoveryResponse,
   SetToolGlobalApprovalRequest,
 } from '../types/api'
+import { useAdminMCPServersStore } from './admin/mcpServers'
 
 // Enable Map and Set support in Immer
 enableMapSet()
@@ -82,6 +83,27 @@ export const useMCPStore = create<MCPState>()(
     ),
   ),
 )
+
+// Helper function to update both stores when a server changes
+const updateServerInBothStores = (updatedServer: MCPServer) => {
+  // Update main MCP store
+  useMCPStore.setState(draft => {
+    const index = draft.servers.findIndex(server => server.id === updatedServer.id)
+    if (index >= 0) {
+      draft.servers[index] = updatedServer
+    }
+  })
+
+  // Update admin store if server exists there (system servers)
+  if (updatedServer.is_system) {
+    useAdminMCPServersStore.setState(draft => {
+      const index = draft.systemServers.findIndex(server => server.id === updatedServer.id)
+      if (index >= 0) {
+        draft.systemServers[index] = updatedServer
+      }
+    })
+  }
+}
 
 // Store methods - following current Ziee patterns for loading state management
 export const loadMCPServers = async (): Promise<void> => {
@@ -194,11 +216,10 @@ export const updateMCPServer = async (
       ...data,
     })
 
+    // Update both stores
+    updateServerInBothStores(updatedServer)
+
     useMCPStore.setState(draft => {
-      const index = draft.servers.findIndex(server => server.id === serverId)
-      if (index >= 0) {
-        draft.servers[index] = updatedServer
-      }
       draft.operationsLoading.delete(serverId)
     })
 
@@ -223,9 +244,20 @@ export const deleteMCPServer = async (serverId: string): Promise<void> => {
   try {
     await ApiClient.Mcp.deleteServer({ id: serverId })
 
+    // Remove from both stores
     useMCPStore.setState(draft => {
+      // Find the server before deleting to check if it's a system server
+      const serverToDelete = draft.servers.find(server => server.id === serverId)
+
       draft.servers = draft.servers.filter(server => server.id !== serverId)
       draft.operationsLoading.delete(serverId)
+
+      // Also remove from admin store if it's a system server
+      if (serverToDelete?.is_system) {
+        useAdminMCPServersStore.setState(adminDraft => {
+          adminDraft.systemServers = adminDraft.systemServers.filter(server => server.id !== serverId)
+        })
+      }
     })
   } catch (error) {
     console.error('MCP server deletion failed:', error)
@@ -249,14 +281,25 @@ export const startMCPServer = async (
   try {
     const response = await ApiClient.Mcp.startServer({ id: serverId })
 
-    // Update server status in store
+    // Update server status in both stores
     useMCPStore.setState(draft => {
       const index = draft.servers.findIndex(server => server.id === serverId)
       if (index >= 0) {
-        draft.servers[index] = {
+        const updatedServer = {
           ...draft.servers[index],
           is_active: true,
-          status: 'running',
+          status: 'running' as const,
+        }
+        draft.servers[index] = updatedServer
+
+        // Also update admin store if it's a system server
+        if (updatedServer.is_system) {
+          useAdminMCPServersStore.setState(adminDraft => {
+            const adminIndex = adminDraft.systemServers.findIndex(server => server.id === serverId)
+            if (adminIndex >= 0) {
+              adminDraft.systemServers[adminIndex] = updatedServer
+            }
+          })
         }
       }
       draft.operationsLoading.delete(`${serverId}-start`)
@@ -285,14 +328,25 @@ export const stopMCPServer = async (
   try {
     const response = await ApiClient.Mcp.stopServer({ id: serverId })
 
-    // Update server status in store
+    // Update server status in both stores
     useMCPStore.setState(draft => {
       const index = draft.servers.findIndex(server => server.id === serverId)
       if (index >= 0) {
-        draft.servers[index] = {
+        const updatedServer = {
           ...draft.servers[index],
           is_active: false,
-          status: 'stopped',
+          status: 'stopped' as const,
+        }
+        draft.servers[index] = updatedServer
+
+        // Also update admin store if it's a system server
+        if (updatedServer.is_system) {
+          useAdminMCPServersStore.setState(adminDraft => {
+            const adminIndex = adminDraft.systemServers.findIndex(server => server.id === serverId)
+            if (adminIndex >= 0) {
+              adminDraft.systemServers[adminIndex] = updatedServer
+            }
+          })
         }
       }
       draft.operationsLoading.delete(`${serverId}-stop`)
@@ -321,14 +375,25 @@ export const restartMCPServer = async (
   try {
     const response = await ApiClient.Mcp.restartServer({ id: serverId })
 
-    // Update server status in store
+    // Update server status in both stores
     useMCPStore.setState(draft => {
       const index = draft.servers.findIndex(server => server.id === serverId)
       if (index >= 0) {
-        draft.servers[index] = {
+        const updatedServer = {
           ...draft.servers[index],
           is_active: true,
-          status: 'running',
+          status: 'running' as const,
+        }
+        draft.servers[index] = updatedServer
+
+        // Also update admin store if it's a system server
+        if (updatedServer.is_system) {
+          useAdminMCPServersStore.setState(adminDraft => {
+            const adminIndex = adminDraft.systemServers.findIndex(server => server.id === serverId)
+            if (adminIndex >= 0) {
+              adminDraft.systemServers[adminIndex] = updatedServer
+            }
+          })
         }
       }
       draft.operationsLoading.delete(`${serverId}-restart`)
@@ -381,13 +446,8 @@ export const getMCPServer = async (serverId: string): Promise<MCPServer> => {
   try {
     const server = await ApiClient.Mcp.getServer({ id: serverId })
 
-    // Update server in store if it exists
-    useMCPStore.setState(draft => {
-      const index = draft.servers.findIndex(s => s.id === serverId)
-      if (index >= 0) {
-        draft.servers[index] = server
-      }
-    })
+    // Update server in both stores
+    updateServerInBothStores(server)
 
     return server
   } catch (error) {

@@ -14,11 +14,13 @@ import {
 } from '@ant-design/icons'
 import { VscFilter } from 'react-icons/vsc'
 import { Stores } from '../../../../../store'
+import { Permission } from '../../../../../types'
 import {
   loadSystemServers,
   clearAdminMCPErrors,
 } from '../../../../../store/admin/mcpServers.ts'
 import { openMCPServerDrawer } from '../../../../../store/ui/mcpDrawers'
+import { hasPermission } from '../../../../../permissions/utils'
 import { MCPServerCard } from '../MCPServerCard'
 import { useMainContentMinSize } from '../../../../hooks/useWindowMinSize'
 import { MCPServerDrawer } from '../MCPServerDrawer'
@@ -228,7 +230,7 @@ export function SystemServersTab() {
             <MCPServerCard
               key={server.id}
               server={server}
-              onEditClick={(server) => openMCPServerDrawer(server, 'edit-system')}
+              isEditable={hasPermission([Permission.McpAdminServersEdit])}
             />
           ))}
         </div>

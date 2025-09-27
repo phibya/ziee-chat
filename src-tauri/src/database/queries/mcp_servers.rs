@@ -153,10 +153,13 @@ pub async fn list_user_accessible_mcp_servers(user_id: Uuid) -> Result<Vec<MCPSe
         LEFT JOIN user_group_mcp_servers ugms ON s.id = ugms.server_id
         LEFT JOIN user_group_memberships ugm ON ugms.group_id = ugm.group_id
         WHERE
-            -- User's own servers
-            s.user_id = $1
-            -- OR accessible system servers through group membership
-            OR (s.is_system = true AND ugm.user_id = $1)
+            s.enabled = true
+            AND (
+                -- User's own servers
+                s.user_id = $1
+                -- OR accessible system servers through group membership
+                OR (s.is_system = true AND s.is_active = true AND ugm.user_id = $1)
+            )
         ORDER BY s.is_system ASC, s.display_name ASC
         "#,
         user_id
