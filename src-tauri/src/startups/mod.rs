@@ -18,29 +18,52 @@ pub use rag::*;
 
 /// Initialize all application components
 pub async fn initialize_app_common() -> Result<(), String> {
-    // Initialize database
+    // Initialize database first - this must complete before other services
     initialize_database().await?;
 
-    // Initialize file storage
-    initialize_file_storage().await?;
+    // Start all other services concurrently without waiting for completion
+    // They will initialize in the background while the app continues
+    tokio::spawn(async {
+        if let Err(e) = initialize_file_storage().await {
+            eprintln!("File storage initialization failed: {}", e);
+        }
+    });
 
-    // Initialize hub manager
-    initialize_hub().await?;
+    tokio::spawn(async {
+        if let Err(e) = initialize_hub().await {
+            eprintln!("Hub initialization failed: {}", e);
+        }
+    });
 
-    // Initialize AI models and services
-    initialize_ai_models().await?;
+    tokio::spawn(async {
+        if let Err(e) = initialize_ai_models().await {
+            eprintln!("AI models initialization failed: {}", e);
+        }
+    });
 
-    // Initialize API proxy
-    initialize_api_proxy().await?;
+    tokio::spawn(async {
+        if let Err(e) = initialize_api_proxy().await {
+            eprintln!("API proxy initialization failed: {}", e);
+        }
+    });
 
-    // Initialize ngrok tunnel
-    initialize_ngrok().await?;
+    tokio::spawn(async {
+        if let Err(e) = initialize_ngrok().await {
+            eprintln!("Ngrok initialization failed: {}", e);
+        }
+    });
 
-    // Initialize RAG service
-    initialize_rag().await?;
+    tokio::spawn(async {
+        if let Err(e) = initialize_rag().await {
+            eprintln!("RAG service initialization failed: {}", e);
+        }
+    });
 
-    // Initialize MCP servers (restore previously running servers)
-    initialize_mcp().await?;
+    tokio::spawn(async {
+        if let Err(e) = initialize_mcp().await {
+            eprintln!("MCP servers initialization failed: {}", e);
+        }
+    });
 
     Ok(())
 }

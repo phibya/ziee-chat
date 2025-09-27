@@ -1,5 +1,7 @@
 pub mod server_manager;
 pub mod transports;
+pub mod proxy;
+pub mod protocol;
 
 // Re-export main functionality
 pub use server_manager::{
@@ -12,6 +14,11 @@ pub use server_manager::{
 };
 
 pub use server_manager::auto_restart::{
-    start_auto_restart_task,
-    AutoRestartConfig,
+  start_auto_restart_task,
+  MCPAutoRestartConfig,
+};
+
+pub use proxy::{
+  get_proxy_manager,
+  shutdown_all_mcp_proxies,
 };

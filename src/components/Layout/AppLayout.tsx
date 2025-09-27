@@ -224,7 +224,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       <div
         ref={sidebarRef}
-        className="absolute h-full z-1"
+        className="absolute h-full z-1 overflow-hidden"
         style={{
           width: `${currentWidth.current}px`,
           ...(windowMinSize.xs

@@ -14,6 +14,6 @@ pub use server_manager::{
 };
 
 pub use auto_restart::{
-    start_auto_restart_task,
-    AutoRestartConfig,
+  start_auto_restart_task,
+  MCPAutoRestartConfig,
 };

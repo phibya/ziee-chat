@@ -217,7 +217,7 @@ export function HubPage() {
         <DivScrollY className="flex flex-1 w-full flex-col">
           <div className="max-w-4xl w-full flex flex-col self-center">
             <DivScrollY className={`flex-1 h-full w-full`}>
-              <div className={'flex flex-col py-3'}>
+              <div className={'flex flex-col py-3 w-full'}>
                 {activeTab === 'models' ? (
                   <PagePermissionGuard403
                     permissions={[Permission.HubModelsRead]}

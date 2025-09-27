@@ -55,11 +55,27 @@ export function MCPServerDrawer() {
   const [form] = Form.useForm()
 
   const { open, loading, mode, editingServer } = Stores.UI.MCPServerDrawer
+  const { isDesktop } = Stores.Auth
 
   // Determine if drawer should be open for this mode
   const isOpen =
     open &&
     ['create', 'edit', 'clone', 'create-system', 'edit-system'].includes(mode)
+
+  // Filter transport types based on context
+  const getAvailableTransportTypes = () => {
+    const isSystemServer = mode === 'create-system' || mode === 'edit-system'
+
+    // Show stdio transport only for system servers or when running as desktop app
+    if (isSystemServer || isDesktop) {
+      return TRANSPORT_TYPES
+    } else {
+      // Filter out stdio transport for user servers in web app
+      return TRANSPORT_TYPES.filter(type => type.value !== 'stdio')
+    }
+  }
+
+  const availableTransportTypes = getAvailableTransportTypes()
 
   // Populate form when editing server changes
   useEffect(() => {
@@ -68,6 +84,11 @@ export function MCPServerDrawer() {
       isOpen &&
       (mode === 'edit' || mode === 'clone' || mode === 'edit-system')
     ) {
+      // Check if the existing transport_type is available in current context
+      const isTransportAvailable = availableTransportTypes.some(
+        type => type.value === editingServer.transport_type
+      )
+
       const formValues = {
         name:
           mode === 'clone' ? `${editingServer.name}-copy` : editingServer.name,
@@ -76,7 +97,9 @@ export function MCPServerDrawer() {
             ? `${editingServer.display_name} (Copy)`
             : editingServer.display_name,
         description: editingServer.description,
-        transport_type: editingServer.transport_type,
+        transport_type: isTransportAvailable
+          ? editingServer.transport_type
+          : (availableTransportTypes.length > 0 ? availableTransportTypes[0].value : 'http'),
         url: editingServer.url,
         command: editingServer.command,
         args: editingServer.args?.join(' ') || '',
@@ -85,7 +108,7 @@ export function MCPServerDrawer() {
       }
       form.setFieldsValue(formValues)
     }
-  }, [editingServer, isOpen, mode, form])
+  }, [editingServer, isOpen, mode, form, availableTransportTypes, isDesktop])
 
   const handleSubmit = async () => {
     try {
@@ -304,7 +327,7 @@ export function MCPServerDrawer() {
           layout="vertical"
           initialValues={{
             enabled: true,
-            transport_type: 'stdio',
+            transport_type: availableTransportTypes.length > 0 ? availableTransportTypes[0].value : 'http',
           }}
           className="flex flex-col gap-3"
         >
@@ -357,7 +380,7 @@ export function MCPServerDrawer() {
               >
                 <Select
                   optionRender={option => {
-                    const type = TRANSPORT_TYPES.find(
+                    const type = availableTransportTypes.find(
                       t => t.value === option.value,
                     )
                     return type ? (
@@ -369,7 +392,7 @@ export function MCPServerDrawer() {
                       </div>
                     ) : null
                   }}
-                  options={TRANSPORT_TYPES.map(type => ({
+                  options={availableTransportTypes.map(type => ({
                     label: type.label,
                     value: type.value,
                   }))}

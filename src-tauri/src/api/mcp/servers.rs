@@ -9,11 +9,12 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::api::{
-    errors::{ApiResult, AppError},
+    app::is_desktop_app,
+    errors::{ApiResult, AppError, ErrorCode},
     middleware::AuthenticatedUser,
 };
 use crate::database::{
-    models::mcp_server::{MCPServer, CreateMCPServerRequest, CreateSystemMCPServerRequest, UpdateMCPServerRequest},
+    models::mcp_server::{MCPServer, CreateMCPServerRequest, CreateSystemMCPServerRequest, UpdateMCPServerRequest, MCPTransportType},
     queries::{mcp_servers, user_group_mcp_servers},
 };
 use crate::mcp::{start_mcp_server, stop_mcp_server};
@@ -141,6 +142,11 @@ pub async fn create_user_server(
 ) -> ApiResult<Json<MCPServer>> {
     tracing::info!("create_user_server called for user: {}", auth_user.user_id);
     tracing::info!("Request data: name={}, transport_type={:?}", request.name, request.transport_type);
+
+    // Validate stdio transport is only allowed for desktop applications
+    if matches!(request.transport_type, MCPTransportType::Stdio) && !is_desktop_app() {
+        return Err((StatusCode::BAD_REQUEST, AppError::new(ErrorCode::ValidInvalidInput, "stdio transport is only available for desktop applications")));
+    }
 
     match mcp_servers::create_user_mcp_server(auth_user.user_id, request).await {
         Ok(server) => Ok((StatusCode::CREATED, Json(server))),

@@ -3,11 +3,11 @@ use std::process::{Command, Stdio};
 use crate::database::models::mcp_server::MCPServer;
 use super::{MCPTransport, MCPConnectionInfo};
 
-pub struct StdioTransport {
+pub struct MCPStdioTransport {
     server: MCPServer,
 }
 
-impl StdioTransport {
+impl MCPStdioTransport {
     pub fn new(server: &MCPServer) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             server: server.clone(),
@@ -16,7 +16,7 @@ impl StdioTransport {
 }
 
 #[async_trait]
-impl MCPTransport for StdioTransport {
+impl MCPTransport for MCPStdioTransport {
     async fn start(&self) -> Result<MCPConnectionInfo, Box<dyn std::error::Error + Send + Sync>> {
         let command = self.server.command.as_ref()
             .ok_or("Command is required for stdio transport")?;

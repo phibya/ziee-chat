@@ -102,6 +102,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 logroller = "0.1"
 libc = "0.2"
+eventsource-stream = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 metal = { version = "0.32.0", optional = true }

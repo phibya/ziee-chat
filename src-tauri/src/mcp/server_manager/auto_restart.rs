@@ -6,14 +6,14 @@ use uuid::Uuid;
 
 use crate::database::queries::mcp_servers;
 
-pub struct AutoRestartConfig {
+pub struct MCPAutoRestartConfig {
     pub health_check_interval_seconds: u64, // Default: 30 seconds
     pub max_restart_attempts: u32,          // Default: 3
     pub restart_delay_seconds: u64,         // Default: 5 seconds
     pub enabled: bool,                      // Default: true
 }
 
-impl Default for AutoRestartConfig {
+impl Default for MCPAutoRestartConfig {
     fn default() -> Self {
         Self {
             health_check_interval_seconds: 30,
@@ -31,11 +31,11 @@ struct ServerHealthInfo {
     last_restart_attempt: Option<DateTime<Utc>>,
 }
 
-static SERVER_HEALTH_TRACKER: std::sync::LazyLock<Arc<RwLock<HashMap<Uuid, ServerHealthInfo>>>> =
+static MCP_SERVER_HEALTH_TRACKER: std::sync::LazyLock<Arc<RwLock<HashMap<Uuid, ServerHealthInfo>>>> =
     std::sync::LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
 
 /// Start the auto-restart background task
-pub fn start_auto_restart_task(config: AutoRestartConfig) {
+pub fn start_auto_restart_task(config: MCPAutoRestartConfig) {
     if !config.enabled {
         println!("MCP server auto-restart is disabled");
         return;
@@ -59,7 +59,7 @@ pub fn start_auto_restart_task(config: AutoRestartConfig) {
 }
 
 async fn check_and_restart_failed_servers(
-    config: &AutoRestartConfig,
+    config: &MCPAutoRestartConfig,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Get all enabled servers
     let servers = mcp_servers::get_all_enabled_mcp_servers().await?;
@@ -75,7 +75,7 @@ async fn check_and_restart_failed_servers(
         // Check if server is healthy
         if super::verify_mcp_server_running(&server).await {
             // Server is healthy, update tracker
-            if let Ok(mut tracker) = SERVER_HEALTH_TRACKER.write() {
+            if let Ok(mut tracker) = MCP_SERVER_HEALTH_TRACKER.write() {
                 tracker.insert(server.id, ServerHealthInfo {
                     last_health_check: now,
                     consecutive_failures: 0,
@@ -86,8 +86,8 @@ async fn check_and_restart_failed_servers(
         }
 
         // Server is not healthy, check if we should restart
-        let should_restart = {
-            if let Ok(mut tracker) = SERVER_HEALTH_TRACKER.write() {
+        let (should_restart, should_disable) = {
+            if let Ok(mut tracker) = MCP_SERVER_HEALTH_TRACKER.write() {
                 let health_info = tracker.entry(server.id).or_insert_with(|| ServerHealthInfo {
                     last_health_check: now,
                     consecutive_failures: 0,
@@ -103,26 +103,48 @@ async fn check_and_restart_failed_servers(
                     if let Some(last_restart) = health_info.last_restart_attempt {
                         let time_since_restart = now.signed_duration_since(last_restart);
                         if time_since_restart < ChronoDuration::seconds(config.restart_delay_seconds as i64) {
-                            false // Too soon to restart again
+                            (false, false) // Too soon to restart again
                         } else {
                             health_info.last_restart_attempt = Some(now);
-                            true
+                            (true, false)
                         }
                     } else {
                         health_info.last_restart_attempt = Some(now);
-                        true
+                        (true, false)
                     }
                 } else {
                     eprintln!(
-                        "MCP server {} exceeded max restart attempts ({}), giving up",
+                        "MCP server {} exceeded max restart attempts ({}), disabling server",
                         server.name, config.max_restart_attempts
                     );
-                    false
+                    (false, true)
                 }
             } else {
-                false
+                (false, false)
             }
         };
+
+        // Handle server disabling outside the lock to avoid Send issues
+        if should_disable {
+            let update_request = crate::database::models::mcp_server::UpdateMCPServerRequest {
+                display_name: None,
+                description: None,
+                enabled: Some(false),
+                command: None,
+                args: None,
+                environment_variables: None,
+                url: None,
+                headers: None,
+                timeout_seconds: None,
+                max_restart_attempts: None,
+            };
+
+            if let Err(e) = crate::database::queries::mcp_servers::update_mcp_server(server.id, update_request).await {
+                eprintln!("Failed to disable MCP server {} in database: {}", server.name, e);
+            } else {
+                println!("MCP server {} has been disabled in database", server.name);
+            }
+        }
 
         if should_restart {
             println!("Auto-restarting failed MCP server: {}", server.name);

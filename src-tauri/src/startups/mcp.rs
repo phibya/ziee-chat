@@ -1,6 +1,6 @@
 use crate::database::queries::{mcp_servers, mcp_execution_logs};
 use crate::mcp::server_manager::{start_mcp_server, reconcile_mcp_server_states};
-use crate::mcp::{start_auto_restart_task, AutoRestartConfig};
+use crate::mcp::{start_auto_restart_task, MCPAutoRestartConfig};
 use crate::database::models::mcp_server::MCPServerStatus;
 use tracing::{info, warn, error};
 
@@ -73,7 +73,7 @@ pub async fn initialize_mcp() -> Result<(), String> {
     }
 
     // Start auto-restart task for system servers
-    let restart_config = AutoRestartConfig::default();
+    let restart_config = MCPAutoRestartConfig::default();
     start_auto_restart_task(restart_config);
     info!("MCP server auto-restart task started");
 

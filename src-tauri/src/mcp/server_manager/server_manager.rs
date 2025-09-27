@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use crate::database::models::mcp_server::MCPTransportType;
 use crate::database::queries::mcp_servers;
 use crate::mcp::transports::create_mcp_transport;
+use crate::mcp::proxy::get_proxy_manager;
 
 #[derive(Debug)]
 struct MCPServerProcess {
@@ -58,8 +59,8 @@ pub async fn start_mcp_server(
     if matches!(server.transport_type, MCPTransportType::Stdio) {
         if verify_mcp_server_running(&server).await {
             return Ok(MCPServerStartResult::AlreadyRunning {
-                pid: None, // This will be determined by the transport
-                port: None,
+                pid: server.process_id.map(|p| p as u32),
+                port: server.port.map(|p| p as u16),
             });
         }
     }
@@ -89,6 +90,9 @@ pub async fn start_mcp_server(
                 "running".to_string(),
                 true,
             ).await?;
+
+            // For stdio servers, the proxy URL will be accessible at http://127.0.0.1:{port}/mcp
+            // The database port field now stores the proxy port for internal reference
 
             // Update restart count if this is a restart operation
             let _ = mcp_servers::update_server_restart_count(
@@ -124,16 +128,22 @@ pub async fn stop_mcp_server(
     };
 
     if let Some(process) = server_process {
-        // Kill child process if exists (stdio transport)
-        if let Some(mut child) = process.child {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
+        // For stdio transport, stop the proxy instead of killing the process directly
+        if matches!(process.transport_type, MCPTransportType::Stdio) {
+            let proxy_manager = get_proxy_manager();
+            let _ = proxy_manager.stop_proxy(server_id).await;
+        } else {
+            // Kill child process if exists (for other transports)
+            if let Some(mut child) = process.child {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
 
-        // For HTTP/SSE, we might need to send shutdown request
-        if matches!(process.transport_type, MCPTransportType::Http | MCPTransportType::Sse) {
-            // Send shutdown request to server if supported
-            // This depends on the specific MCP server implementation
+            // For HTTP/SSE, we might need to send shutdown request
+            if matches!(process.transport_type, MCPTransportType::Http | MCPTransportType::Sse) {
+                // Send shutdown request to server if supported
+                // This depends on the specific MCP server implementation
+            }
         }
     }
 
@@ -255,6 +265,10 @@ pub async fn shutdown_all_mcp_servers() -> Result<(), Box<dyn std::error::Error 
     if let Ok(mut registry) = MCP_SERVER_REGISTRY.write() {
         registry.clear();
     }
+
+    // Also shutdown all proxies to ensure clean shutdown
+    let proxy_manager = get_proxy_manager();
+    let _ = proxy_manager.shutdown_all_proxies().await;
 
     Ok(())
 }

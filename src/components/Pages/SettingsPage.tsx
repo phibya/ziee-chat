@@ -97,13 +97,13 @@ export function SettingsPage() {
             icon: <FaMicrochip />,
             label: t('settings.hardware'),
           },
-          {
-            key: 'mcp-servers',
-            icon: <FaNetworkWired />,
-            label: 'MCP Servers',
-          },
         ]
       : []),
+    {
+      key: 'mcp-servers',
+      icon: <FaNetworkWired />,
+      label: 'MCP Servers',
+    },
 
     ...(isDesktop && isTauriView
       ? [
@@ -219,16 +219,6 @@ export function SettingsPage() {
             key: 'hardware',
             icon: <FaMicrochip />,
             label: t('settings.hardware'),
-          })
-        }
-        if (
-          hasPermission([Permission.McpServersRead]) ||
-          hasPermission([Permission.McpAdminServersRead])
-        ) {
-          items.push({
-            key: 'mcp-servers',
-            icon: <FaNetworkWired />,
-            label: 'MCP Servers',
           })
         }
         if (hasPermission([Permission.McpAdminServersRead])) {
