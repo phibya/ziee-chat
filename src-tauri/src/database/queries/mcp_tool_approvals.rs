@@ -25,6 +25,37 @@ pub async fn create_global_tool_approval(
         None
     };
 
+    // Use a separate query approach since the unique constraint is deferrable
+    // First try to update existing record
+    let existing = sqlx::query_as!(
+        MCPToolApproval,
+        r#"
+        UPDATE mcp_tool_approvals SET
+            approved = $4,
+            auto_approve = $4,
+            approved_at = $5,
+            expires_at = $6,
+            notes = $7,
+            updated_at = NOW()
+        WHERE user_id = $1 AND server_id = $2 AND tool_name = $3 AND is_global = true
+        RETURNING *
+        "#,
+        user_id,
+        server_id,
+        tool_name,
+        request.auto_approve,
+        approved_at,
+        request.expires_at,
+        request.notes
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(approval) = existing {
+        return Ok(approval);
+    }
+
+    // If no existing record, insert new one
     sqlx::query_as!(
         MCPToolApproval,
         r#"
@@ -33,14 +64,6 @@ pub async fn create_global_tool_approval(
             approved, auto_approve, is_global, approved_at, expires_at, notes
         )
         VALUES ($1, NULL, $2, $3, $4, $4, true, $5, $6, $7)
-        ON CONFLICT (user_id, server_id, tool_name)
-        DO UPDATE SET
-            approved = EXCLUDED.approved,
-            auto_approve = EXCLUDED.auto_approve,
-            approved_at = EXCLUDED.approved_at,
-            expires_at = EXCLUDED.expires_at,
-            notes = EXCLUDED.notes,
-            updated_at = NOW()
         RETURNING *
         "#,
         user_id,
@@ -94,6 +117,37 @@ pub async fn create_conversation_tool_approval(
         None
     };
 
+    // Use a separate query approach since the unique constraint is deferrable
+    // First try to update existing record
+    let existing = sqlx::query_as!(
+        MCPToolApproval,
+        r#"
+        UPDATE mcp_tool_approvals SET
+            approved = $5,
+            approved_at = $6,
+            expires_at = $7,
+            notes = $8,
+            updated_at = NOW()
+        WHERE user_id = $1 AND conversation_id = $2 AND server_id = $3 AND tool_name = $4 AND is_global = false
+        RETURNING *
+        "#,
+        user_id,
+        conversation_id,
+        request.server_id,
+        request.tool_name,
+        request.approved,
+        approved_at,
+        request.expires_at,
+        request.notes
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(approval) = existing {
+        return Ok(approval);
+    }
+
+    // If no existing record, insert new one
     sqlx::query_as!(
         MCPToolApproval,
         r#"
@@ -102,13 +156,6 @@ pub async fn create_conversation_tool_approval(
             approved, auto_approve, is_global, approved_at, expires_at, notes
         )
         VALUES ($1, $2, $3, $4, $5, false, false, $6, $7, $8)
-        ON CONFLICT (user_id, conversation_id, server_id, tool_name)
-        DO UPDATE SET
-            approved = EXCLUDED.approved,
-            approved_at = EXCLUDED.approved_at,
-            expires_at = EXCLUDED.expires_at,
-            notes = EXCLUDED.notes,
-            updated_at = NOW()
         RETURNING *
         "#,
         user_id,

@@ -41,6 +41,25 @@ pub struct MCPToolWithServer {
     pub global_approval_notes: Option<String>,
 }
 
+// Tool with approval status for server tools endpoint
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct MCPToolWithApproval {
+    // Tool info
+    pub id: Uuid,
+    pub server_id: Uuid,
+    pub tool_name: String,
+    pub tool_description: Option<String>,
+    pub input_schema: serde_json::Value,
+    pub discovered_at: DateTime<Utc>,
+    pub last_used_at: Option<DateTime<Utc>>,
+    pub usage_count: i32,
+
+    // Approval status for the requesting user
+    pub is_auto_approved: bool,
+    pub approval_source: Option<String>, // "global" or "conversation" or null
+    pub approval_expires_at: Option<DateTime<Utc>>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, sqlx::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum MCPExecutionStatus {

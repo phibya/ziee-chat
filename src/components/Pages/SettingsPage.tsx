@@ -225,7 +225,7 @@ export function SettingsPage() {
           items.push({
             key: 'mcp-admin',
             icon: <FaServer />,
-            label: 'System MCP Servers',
+            label: 'MCP Servers',
           })
         }
 

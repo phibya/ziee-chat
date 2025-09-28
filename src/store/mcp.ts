@@ -5,12 +5,11 @@ import { enableMapSet } from 'immer'
 import { ApiClient } from '../api/client'
 import type {
   MCPServer,
-  MCPTool,
   MCPToolWithServer,
+  MCPToolWithApproval,
   CreateMCPServerRequest,
   UpdateMCPServerRequest,
   ServerActionResponse,
-  ToolDiscoveryResponse,
   SetToolGlobalApprovalRequest,
 } from '../types/api'
 import { useAdminMCPServersStore } from './admin/mcpServers'
@@ -88,21 +87,23 @@ export const useMCPStore = create<MCPState>()(
 const updateServerInBothStores = (updatedServer: MCPServer) => {
   // Update main MCP store
   useMCPStore.setState(draft => {
-    const index = draft.servers.findIndex(server => server.id === updatedServer.id)
+    const index = draft.servers.findIndex(
+      server => server.id === updatedServer.id,
+    )
     if (index >= 0) {
       draft.servers[index] = updatedServer
     }
   })
 
-  // Update admin store if server exists there (system servers)
-  if (updatedServer.is_system) {
-    useAdminMCPServersStore.setState(draft => {
-      const index = draft.systemServers.findIndex(server => server.id === updatedServer.id)
-      if (index >= 0) {
-        draft.systemServers[index] = updatedServer
-      }
-    })
-  }
+  // Update admin store if server exists there (check independently)
+  useAdminMCPServersStore.setState(draft => {
+    const index = draft.systemServers.findIndex(
+      server => server.id === updatedServer.id,
+    )
+    if (index >= 0) {
+      draft.systemServers[index] = updatedServer
+    }
+  })
 }
 
 // Store methods - following current Ziee patterns for loading state management
@@ -244,20 +245,17 @@ export const deleteMCPServer = async (serverId: string): Promise<void> => {
   try {
     await ApiClient.Mcp.deleteServer({ id: serverId })
 
-    // Remove from both stores
+    // Remove from main MCP store
     useMCPStore.setState(draft => {
-      // Find the server before deleting to check if it's a system server
-      const serverToDelete = draft.servers.find(server => server.id === serverId)
-
       draft.servers = draft.servers.filter(server => server.id !== serverId)
       draft.operationsLoading.delete(serverId)
+    })
 
-      // Also remove from admin store if it's a system server
-      if (serverToDelete?.is_system) {
-        useAdminMCPServersStore.setState(adminDraft => {
-          adminDraft.systemServers = adminDraft.systemServers.filter(server => server.id !== serverId)
-        })
-      }
+    // Remove from admin store if it exists there
+    useAdminMCPServersStore.setState(adminDraft => {
+      adminDraft.systemServers = adminDraft.systemServers.filter(
+        server => server.id !== serverId,
+      )
     })
   } catch (error) {
     console.error('MCP server deletion failed:', error)
@@ -281,28 +279,31 @@ export const startMCPServer = async (
   try {
     const response = await ApiClient.Mcp.startServer({ id: serverId })
 
-    // Update server status in both stores
+    // Update server status in main MCP store
     useMCPStore.setState(draft => {
       const index = draft.servers.findIndex(server => server.id === serverId)
       if (index >= 0) {
-        const updatedServer = {
+        draft.servers[index] = {
           ...draft.servers[index],
           is_active: true,
           status: 'running' as const,
         }
-        draft.servers[index] = updatedServer
-
-        // Also update admin store if it's a system server
-        if (updatedServer.is_system) {
-          useAdminMCPServersStore.setState(adminDraft => {
-            const adminIndex = adminDraft.systemServers.findIndex(server => server.id === serverId)
-            if (adminIndex >= 0) {
-              adminDraft.systemServers[adminIndex] = updatedServer
-            }
-          })
-        }
       }
       draft.operationsLoading.delete(`${serverId}-start`)
+    })
+
+    // Update server status in admin store if it exists there
+    useAdminMCPServersStore.setState(adminDraft => {
+      const adminIndex = adminDraft.systemServers.findIndex(
+        server => server.id === serverId,
+      )
+      if (adminIndex >= 0) {
+        adminDraft.systemServers[adminIndex] = {
+          ...adminDraft.systemServers[adminIndex],
+          is_active: true,
+          status: 'running' as const,
+        }
+      }
     })
 
     return response
@@ -328,28 +329,31 @@ export const stopMCPServer = async (
   try {
     const response = await ApiClient.Mcp.stopServer({ id: serverId })
 
-    // Update server status in both stores
+    // Update server status in main MCP store
     useMCPStore.setState(draft => {
       const index = draft.servers.findIndex(server => server.id === serverId)
       if (index >= 0) {
-        const updatedServer = {
+        draft.servers[index] = {
           ...draft.servers[index],
           is_active: false,
           status: 'stopped' as const,
         }
-        draft.servers[index] = updatedServer
-
-        // Also update admin store if it's a system server
-        if (updatedServer.is_system) {
-          useAdminMCPServersStore.setState(adminDraft => {
-            const adminIndex = adminDraft.systemServers.findIndex(server => server.id === serverId)
-            if (adminIndex >= 0) {
-              adminDraft.systemServers[adminIndex] = updatedServer
-            }
-          })
-        }
       }
       draft.operationsLoading.delete(`${serverId}-stop`)
+    })
+
+    // Update server status in admin store if it exists there
+    useAdminMCPServersStore.setState(adminDraft => {
+      const adminIndex = adminDraft.systemServers.findIndex(
+        server => server.id === serverId,
+      )
+      if (adminIndex >= 0) {
+        adminDraft.systemServers[adminIndex] = {
+          ...adminDraft.systemServers[adminIndex],
+          is_active: false,
+          status: 'stopped' as const,
+        }
+      }
     })
 
     return response
@@ -366,14 +370,15 @@ export const stopMCPServer = async (
 
 export const discoverServerTools = async (
   serverId: string,
-): Promise<ToolDiscoveryResponse> => {
+): Promise<{ success: boolean; message: string; tools_discovered: number }> => {
   useMCPStore.setState(draft => {
     draft.operationsLoading.set(`${serverId}-discover`, true)
     draft.error = null
   })
 
   try {
-    const response = await ApiClient.Mcp.discoverServerTools({ id: serverId })
+    // Call getServerTools which now handles discovery automatically
+    const tools = await ApiClient.Mcp.getServerTools({ id: serverId })
 
     // Refresh both servers and tools to get updated counts
     await loadMCPServers()
@@ -383,7 +388,11 @@ export const discoverServerTools = async (
       draft.operationsLoading.delete(`${serverId}-discover`)
     })
 
-    return response
+    return {
+      success: true,
+      message: 'Tools discovered successfully',
+      tools_discovered: tools.length,
+    }
   } catch (error) {
     console.error('Tool discovery failed:', error)
     useMCPStore.setState(draft => {
@@ -409,7 +418,9 @@ export const getMCPServer = async (serverId: string): Promise<MCPServer> => {
   }
 }
 
-export const getServerTools = async (serverId: string): Promise<MCPTool[]> => {
+export const getServerTools = async (
+  serverId: string,
+): Promise<MCPToolWithApproval[]> => {
   try {
     const tools = await ApiClient.Mcp.getServerTools({ id: serverId })
     return tools

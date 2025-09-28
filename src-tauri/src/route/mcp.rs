@@ -127,18 +127,6 @@ fn all_mcp_routes() -> ApiRouter {
                 crate::api::middleware::permissions::mcp_tools_read_middleware,
             )),
         )
-        .api_route(
-            "/servers/{id}/discover-tools",
-            post_with(tools::discover_server_tools, |op| {
-                op.description("Trigger tool discovery for server")
-                    .id("Mcp.discoverServerTools")
-                    .tag("mcp")
-                    .response::<200, Json<tools::ToolDiscoveryResponse>>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_servers_edit_middleware,
-            )),
-        )
         // Tool execution
         .api_route(
             "/tools/find",

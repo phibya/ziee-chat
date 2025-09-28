@@ -20,8 +20,10 @@ use uuid::Uuid;
 use futures;
 
 use crate::database::models::mcp_server::MCPServer;
+use crate::database::queries::mcp_servers;
 use crate::mcp::logging::MCPLogger;
 use crate::mcp::protocol::{MCPRequest, MCPResponse, MCPNotification, InitializeRequest, InitializeResponse, MCPCapabilities, ClientInfo, methods, RootsCapability, PromptsCapability, ResourcesCapability, ToolsCapability, SessionCapability, StreamingCapability, MCPProtocolVersion, detect_protocol_version_from_request, parse_protocol_version};
+use crate::mcp::tool_discovery::{ToolDiscoveryClient, discover_and_cache_tools_direct};
 use crate::utils::resource_paths::ResourcePaths;
 use super::{MCPTransport, MCPConnectionInfo};
 
@@ -257,6 +259,21 @@ impl MCPClientSession {
         println!("[{}] MCP session initialized with protocol version: {}",
                  self.server_name, negotiated_version.as_str());
 
+        // Send notifications/initialized notification as required by MCP protocol
+        let initialized_notification = MCPNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "notifications/initialized".to_string(),
+            params: None,
+        };
+
+        if let Err(e) = self.send_notification(initialized_notification).await {
+            return Err(StdioTransportError::ClientCommunication(
+                format!("Failed to send initialized notification: {}", e)
+            ));
+        }
+
+        println!("[{}] Sent notifications/initialized notification", self.server_name);
+
         Ok(negotiated_version)
     }
 
@@ -456,6 +473,15 @@ impl MCPClientSession {
     }
 }
 
+// Implement ToolDiscoveryClient trait for MCPClientSession
+impl ToolDiscoveryClient for MCPClientSession {
+    type Error = StdioTransportError;
+
+    fn send_request(&self, request: MCPRequest) -> impl std::future::Future<Output = Result<MCPResponse, Self::Error>> + Send {
+        self.send_request(request)
+    }
+}
+
 // HTTP Proxy Server - handles HTTP/SSE endpoints
 struct MCPProxyServer {
     client_session: Arc<MCPClientSession>,
@@ -630,14 +656,34 @@ impl MCPTransport for MCPStdioTransport {
             Arc::clone(&client_session),
         ));
 
-        // Store components in state
+        // Store components in state and update database with proxy URL
+        let proxy_url = format!("http://127.0.0.1:{}/mcp", port);
         {
             let mut state = self.state.lock().await;
             state.client_session = Some(Arc::clone(&client_session));
             state.proxy_server = Some(Arc::clone(&proxy_server));
             state.proxy_port = port;
-            state.proxy_url = format!("http://127.0.0.1:{}", port);
+            state.proxy_url = proxy_url.clone();
         }
+
+        // Update database with the proxy URL
+        if let Err(e) = mcp_servers::update_mcp_server_proxy_url(&self.server_id, &proxy_url).await {
+            eprintln!("Failed to update MCP server proxy URL in database: {}", e);
+        }
+
+        // Discover tools immediately after server initialization
+        let client_session_for_discovery = Arc::clone(&client_session);
+        let server_id_for_discovery = self.server_id;
+        tokio::spawn(async move {
+            match discover_and_cache_tools_direct(server_id_for_discovery, client_session_for_discovery.as_ref()).await {
+                Ok(tool_count) => {
+                    tracing::info!("Automatically discovered {} tools for server {}", tool_count, server_id_for_discovery);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to automatically discover tools for server {}: {}", server_id_for_discovery, e);
+                }
+            }
+        });
 
         // Start HTTP server
         let app = self.create_http_server().await;
@@ -662,6 +708,11 @@ impl MCPTransport for MCPStdioTransport {
     async fn stop(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let logger = MCPLogger::new(self.server_id);
         logger.log_exec("INFO", "Stopping MCP stdio transport");
+
+        // Clear proxy URL from database
+        if let Err(e) = mcp_servers::update_mcp_server_proxy_url(&self.server_id, "").await {
+            eprintln!("Failed to clear MCP server proxy URL in database: {}", e);
+        }
 
         // Cleanup handled by Drop trait and internal session management
         Ok(())

@@ -771,6 +771,20 @@ export interface MCPTool {
   usage_count: number
 }
 
+export interface MCPToolWithApproval {
+  approval_expires_at?: string
+  approval_source?: string
+  discovered_at: string
+  id: string
+  input_schema: any
+  is_auto_approved: boolean
+  last_used_at?: string
+  server_id: string
+  tool_description?: string
+  tool_name: string
+  usage_count: number
+}
+
 export interface MCPToolWithServer {
   discovered_at: string
   global_approval_expires_at?: string
@@ -1610,12 +1624,6 @@ export interface ToolApprovalResponse {
   user_id: string
 }
 
-export interface ToolDiscoveryResponse {
-  message: string
-  success: boolean
-  tools_discovered: number
-}
-
 export interface ToolExecutionResponse {
   duration_ms?: number
   error_message?: string
@@ -2039,7 +2047,6 @@ export const ApiEndpoints = {
   'Mcp.createServer': 'POST /api/mcp/servers',
   'Mcp.deleteConversationApproval': 'DELETE /api/mcp/approvals/conversations/{conversation_id}/tool',
   'Mcp.deleteServer': 'DELETE /api/mcp/servers/{id}',
-  'Mcp.discoverServerTools': 'POST /api/mcp/servers/{id}/discover-tools',
   'Mcp.executeTool': 'POST /api/mcp/tools/execute',
   'Mcp.findTool': 'GET /api/mcp/tools/find',
   'Mcp.getExecutionLog': 'GET /api/mcp/execution/logs/{id}',
@@ -2245,7 +2252,6 @@ export type ApiEndpointParameters = {
   'Mcp.createServer': CreateMCPServerRequest
   'Mcp.deleteConversationApproval': { conversation_id: string; server_id: string; tool_name: string }
   'Mcp.deleteServer': { id: string }
-  'Mcp.discoverServerTools': { id: string }
   'Mcp.executeTool': ExecuteToolRequest
   'Mcp.findTool': { server_id?: string }
   'Mcp.getExecutionLog': { id: string }
@@ -2451,13 +2457,12 @@ export type ApiEndpointResponses = {
   'Mcp.createServer': MCPServer
   'Mcp.deleteConversationApproval': SimpleResponse
   'Mcp.deleteServer': void
-  'Mcp.discoverServerTools': ToolDiscoveryResponse
   'Mcp.executeTool': ToolExecutionResponse
   'Mcp.findTool': MCPToolWithServer | null
   'Mcp.getExecutionLog': MCPExecutionLog
   'Mcp.getGlobalToolApproval': ToolApprovalResponse
   'Mcp.getServer': MCPServer
-  'Mcp.getServerTools': MCPTool[]
+  'Mcp.getServerTools': MCPToolWithApproval[]
   'Mcp.getUserAssignedServers': string[]
   'Mcp.listConversationApprovals': ToolApprovalResponse[]
   'Mcp.listExecutionLogs': ListExecutionLogsResponse

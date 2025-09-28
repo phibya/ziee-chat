@@ -12,15 +12,17 @@ import {
   Empty,
   Badge,
 } from 'antd'
+import { DivScrollY } from '../../../common/DivScrollY'
 import {
   EditOutlined,
   ToolOutlined,
   ReloadOutlined,
-  CheckOutlined,
   PlayCircleOutlined,
   StopOutlined,
+  CheckOutlined,
+  CloseOutlined,
 } from '@ant-design/icons'
-import type { MCPServer, MCPToolWithServer } from '../../../../types/api'
+import type { MCPServer, MCPToolWithApproval } from '../../../../types/api'
 import {
   startMCPServer,
   stopMCPServer,
@@ -30,7 +32,6 @@ import {
   updateMCPServer,
 } from '../../../../store/mcp'
 import { openMCPServerDrawer } from '../../../../store/ui/mcpDrawers'
-import { ToolTestingModal } from './ToolTestingModal'
 
 const { Text } = Typography
 
@@ -45,11 +46,11 @@ export function MCPServerCard({
 }: MCPServerCardProps) {
   const { message } = App.useApp()
   const [showTools, setShowTools] = useState(false)
-  const [tools, setTools] = useState<MCPToolWithServer[]>([])
+  const [tools, setTools] = useState<MCPToolWithApproval[]>([])
   const [loadingTools, setLoadingTools] = useState(false)
-  const [testingTool, setTestingTool] = useState<MCPToolWithServer | null>(null)
   const [operationLoading, setOperationLoading] = useState<string | null>(null)
   const [enableLoading, setEnableLoading] = useState(false)
+  const [bulkApprovalLoading, setBulkApprovalLoading] = useState(false)
 
   // Load tools when server is active and tools section is expanded
   const loadServerTools = async () => {
@@ -58,16 +59,8 @@ export function MCPServerCard({
     setLoadingTools(true)
     try {
       const serverTools = await getServerTools(server.id)
-      // Convert MCPTool[] to MCPToolWithServer[] by adding server info
-      const toolsWithServer: MCPToolWithServer[] = serverTools.map(tool => ({
-        ...tool,
-        server_id: server.id,
-        server_name: server.name,
-        server_display_name: server.display_name,
-        is_system: server.is_system,
-        transport_type: server.transport_type,
-      }))
-      setTools(toolsWithServer)
+      // The API now returns MCPToolWithApproval[] with approval status
+      setTools(serverTools)
     } catch (error) {
       console.error('Failed to load server tools:', error)
       message.error('Failed to load tools for this server')
@@ -131,16 +124,8 @@ export function MCPServerCard({
     }
   }
 
-  const handleTestTool = (tool: MCPToolWithServer) => {
-    setTestingTool(tool)
-  }
-
-  const handleCloseTestModal = () => {
-    setTestingTool(null)
-  }
-
   const handleToggleAutoApprove = async (
-    tool: MCPToolWithServer,
+    tool: MCPToolWithApproval,
     autoApprove: boolean,
   ) => {
     try {
@@ -158,7 +143,11 @@ export function MCPServerCard({
       setTools(prevTools =>
         prevTools.map(t =>
           t.server_id === tool.server_id && t.tool_name === tool.tool_name
-            ? { ...t, global_auto_approve: autoApprove ? true : undefined }
+            ? {
+                ...t,
+                is_auto_approved: autoApprove,
+                approval_source: autoApprove ? 'global' : undefined,
+              }
             : t,
         ),
       )
@@ -181,6 +170,43 @@ export function MCPServerCard({
       message.error(`Failed to ${enabled ? 'enable' : 'disable'} server`)
     } finally {
       setEnableLoading(false)
+    }
+  }
+
+  const handleBulkToggleAutoApprove = async (autoApprove: boolean) => {
+    if (tools.length === 0) return
+
+    setBulkApprovalLoading(true)
+    const action = autoApprove ? 'enable' : 'disable'
+
+    try {
+      const promises = tools.map(tool => {
+        if (autoApprove) {
+          return setToolGlobalApproval(tool.server_id, tool.tool_name, {
+            auto_approve: true,
+          })
+        } else {
+          return removeToolGlobalApproval(tool.server_id, tool.tool_name)
+        }
+      })
+
+      await Promise.all(promises)
+
+      // Update all tools in local state
+      setTools(prevTools =>
+        prevTools.map(t => ({
+          ...t,
+          is_auto_approved: autoApprove,
+          approval_source: autoApprove ? 'global' : undefined,
+        })),
+      )
+
+      message.success(`Auto-approve ${action}d for all ${tools.length} tools`)
+    } catch (error) {
+      console.error(`Failed to ${action} bulk auto-approve:`, error)
+      message.error(`Failed to ${action} auto-approve for some tools`)
+    } finally {
+      setBulkApprovalLoading(false)
     }
   }
 
@@ -308,26 +334,65 @@ export function MCPServerCard({
                   <div className="flex items-center justify-between mb-3">
                     <Text strong className="text-sm flex items-center gap-2">
                       <ToolOutlined />
-                      Available Tools
+                      <span>Available Tools</span>
                       {tools.length > 0 && (
-                        <Badge
-                          count={tools.length}
-                          style={{ backgroundColor: '#52c41a' }}
-                        />
+                        <span className="ml-2">
+                          <Badge
+                            count={tools.length}
+                            style={{ backgroundColor: '#52c41a' }}
+                          />
+                        </span>
                       )}
                     </Text>
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<ReloadOutlined />}
-                      onClick={e => {
-                        e.stopPropagation()
-                        handleRefreshTools()
-                      }}
-                      loading={loadingTools}
-                    >
-                      Refresh
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {tools.length > 0 &&
+                        (!server.is_system || !isEditable) && (
+                          <>
+                            <Tooltip title="Enable auto-approve for all tools">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CheckOutlined />}
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleBulkToggleAutoApprove(true)
+                                }}
+                                loading={bulkApprovalLoading}
+                                disabled={tools.every(t => t.is_auto_approved)}
+                              >
+                                Approve All
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title="Disable auto-approve for all tools">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CloseOutlined />}
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleBulkToggleAutoApprove(false)
+                                }}
+                                loading={bulkApprovalLoading}
+                                disabled={tools.every(t => !t.is_auto_approved)}
+                              >
+                                Reject All
+                              </Button>
+                            </Tooltip>
+                          </>
+                        )}
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleRefreshTools()
+                        }}
+                        loading={loadingTools}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
                   </div>
 
                   {loadingTools ? (
@@ -341,69 +406,83 @@ export function MCPServerCard({
                       style={{ margin: '16px 0' }}
                     />
                   ) : (
-                    <div className="max-h-32 overflow-y-auto">
-                      <List
-                        size="small"
-                        dataSource={tools}
-                        renderItem={tool => (
-                          <List.Item className="px-0 py-1">
-                            <div className="w-full">
-                              <div className="flex items-center justify-between">
-                                <Text className="font-medium text-sm">
-                                  {tool.tool_name}
-                                </Text>
-                                <div className="flex items-center gap-2">
-                                  {tool.usage_count > 0 && (
-                                    <Badge
-                                      count={tool.usage_count}
-                                      style={{
-                                        backgroundColor: '#f0f0f0',
-                                        color: '#666',
-                                      }}
-                                    />
-                                  )}
-                                  <Tooltip title="Auto-approve this tool in all conversations">
-                                    <div onClick={e => e.stopPropagation()}>
-                                      <Switch
-                                        size="small"
-                                        checked={
-                                          tool.global_auto_approve || false
-                                        }
-                                        checkedChildren={<CheckOutlined />}
-                                        onChange={checked =>
-                                          handleToggleAutoApprove(tool, checked)
-                                        }
+                    <DivScrollY
+                      style={{ maxHeight: '500px' }}
+                      className="w-full"
+                    >
+                      <div className="w-full">
+                        <List
+                          size="small"
+                          dataSource={tools}
+                          renderItem={tool => (
+                            <List.Item className="px-0 py-1">
+                              <div className="w-full">
+                                <div className="flex items-center justify-between mb-2">
+                                  <Text className="font-medium text-sm">
+                                    {tool.tool_name}
+                                  </Text>
+                                  <div className="flex items-center gap-2">
+                                    {tool.usage_count > 0 && (
+                                      <Badge
+                                        count={tool.usage_count}
+                                        style={{
+                                          backgroundColor: '#f0f0f0',
+                                          color: '#666',
+                                        }}
                                       />
-                                    </div>
-                                  </Tooltip>
-                                  <Button
-                                    type="link"
-                                    size="small"
-                                    className="p-0 h-auto text-xs"
-                                    onClick={e => {
-                                      e.stopPropagation()
-                                      handleTestTool(tool)
-                                    }}
-                                  >
-                                    Test
-                                  </Button>
+                                    )}
+                                    {(!server.is_system || !isEditable) && (
+                                      <div className="flex items-center gap-2">
+                                        <Text className="text-xs">
+                                          Auto approve
+                                        </Text>
+                                        <Tooltip
+                                          title={`Auto-approve this tool in all conversations${tool.is_auto_approved && tool.approval_source === 'global' ? ' (globally approved)' : ''}`}
+                                        >
+                                          <Switch
+                                            size="small"
+                                            checked={
+                                              tool.is_auto_approved || false
+                                            }
+                                            onChange={checked =>
+                                              handleToggleAutoApprove(
+                                                tool,
+                                                checked,
+                                              )
+                                            }
+                                          />
+                                        </Tooltip>
+                                        {tool.is_auto_approved &&
+                                          tool.approval_expires_at && (
+                                            <Tooltip
+                                              title={`Approval expires at ${new Date(tool.approval_expires_at).toLocaleString()}`}
+                                            >
+                                              <Tag
+                                                color="orange"
+                                                className="text-xs"
+                                              >
+                                                Expires
+                                              </Tag>
+                                            </Tooltip>
+                                          )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
+                                {tool.tool_description && (
+                                  <Text
+                                    type="secondary"
+                                    className="text-xs block"
+                                  >
+                                    {tool.tool_description}
+                                  </Text>
+                                )}
                               </div>
-                              {tool.tool_description && (
-                                <Text
-                                  type="secondary"
-                                  className="text-xs block mt-1"
-                                >
-                                  {tool.tool_description.length > 80
-                                    ? `${tool.tool_description.substring(0, 80)}...`
-                                    : tool.tool_description}
-                                </Text>
-                              )}
-                            </div>
-                          </List.Item>
-                        )}
-                      />
-                    </div>
+                            </List.Item>
+                          )}
+                        />
+                      </div>
+                    </DivScrollY>
                   )}
                 </div>
               )}
@@ -426,16 +505,6 @@ export function MCPServerCard({
           </div>
         </div>
       </Card>
-
-      {/* Tool Testing Modal */}
-      {testingTool && (
-        <ToolTestingModal
-          tool={testingTool}
-          server={server}
-          open={!!testingTool}
-          onClose={handleCloseTestModal}
-        />
-      )}
     </>
   )
 }

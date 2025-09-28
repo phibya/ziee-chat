@@ -443,3 +443,27 @@ pub async fn update_mcp_server_runtime_info(
     Ok(())
 }
 
+/// Update MCP server proxy URL for stdio transport
+pub async fn update_mcp_server_proxy_url(
+    server_id: &Uuid,
+    proxy_url: &str,
+) -> Result<(), sqlx::Error> {
+    let pool = get_database_pool()?;
+    let pool = pool.as_ref();
+
+    sqlx::query!(
+        r#"
+        UPDATE mcp_servers SET
+            url = $2,
+            updated_at = NOW()
+        WHERE id = $1
+        "#,
+        server_id,
+        proxy_url
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+

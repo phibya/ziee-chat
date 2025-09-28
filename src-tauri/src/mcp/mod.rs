@@ -2,6 +2,7 @@ pub mod server_manager;
 pub mod transports;
 pub mod protocol;
 pub mod logging;
+pub mod tool_discovery;
 
 // Re-export main functionality
 pub use server_manager::{
