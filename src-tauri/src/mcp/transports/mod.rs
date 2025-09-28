@@ -5,7 +5,6 @@ use crate::database::models::mcp_server::{MCPServer, MCPTransportType};
 pub mod stdio;
 pub mod http;
 pub mod sse;
-pub mod proxy;
 
 #[derive(Debug)]
 pub struct MCPConnectionInfo {
@@ -26,8 +25,8 @@ pub async fn create_mcp_transport(
 ) -> Result<Box<dyn MCPTransport + Send + Sync>, Box<dyn std::error::Error + Send + Sync>> {
     match server.transport_type {
         MCPTransportType::Stdio => {
-            // For stdio servers, use proxy transport to wrap them in HTTP
-            Ok(Box::new(proxy::MCPProxyTransport::new(server)?))
+            // Use comprehensive stdio transport with built-in HTTP proxy
+            Ok(Box::new(stdio::MCPStdioTransport::new(server)?))
         },
         MCPTransportType::Http => Ok(Box::new(http::MCPHttpTransport::new(server)?)),
         MCPTransportType::Sse => Ok(Box::new(sse::MCPSSETransport::new(server)?)),

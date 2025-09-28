@@ -2053,7 +2053,6 @@ export const ApiEndpoints = {
   'Mcp.listThreadExecutionLogs': 'GET /api/mcp/threads/{thread_id}/execution/logs',
   'Mcp.listTools': 'GET /api/mcp/tools',
   'Mcp.removeToolGlobalApproval': 'DELETE /api/mcp/servers/{server_id}/tools/{tool_name}/approve',
-  'Mcp.restartServer': 'POST /api/mcp/servers/{id}/restart',
   'Mcp.setToolGlobalApproval': 'POST /api/mcp/servers/{server_id}/tools/{tool_name}/approve',
   'Mcp.startServer': 'POST /api/mcp/servers/{id}/start',
   'Mcp.stopServer': 'POST /api/mcp/servers/{id}/stop',
@@ -2260,7 +2259,6 @@ export type ApiEndpointParameters = {
   'Mcp.listThreadExecutionLogs': { thread_id: string }
   'Mcp.listTools': { page?: number; per_page?: number; search?: string; server_id?: string }
   'Mcp.removeToolGlobalApproval': { server_id: string; tool_name: string }
-  'Mcp.restartServer': { id: string }
   'Mcp.setToolGlobalApproval': { server_id: string; tool_name: string } & SetToolGlobalApprovalRequest
   'Mcp.startServer': { id: string }
   'Mcp.stopServer': { id: string }
@@ -2467,7 +2465,6 @@ export type ApiEndpointResponses = {
   'Mcp.listThreadExecutionLogs': MCPExecutionLog[]
   'Mcp.listTools': ListToolsResponse
   'Mcp.removeToolGlobalApproval': any
-  'Mcp.restartServer': ServerActionResponse
   'Mcp.setToolGlobalApproval': any
   'Mcp.startServer': ServerActionResponse
   'Mcp.stopServer': ServerActionResponse

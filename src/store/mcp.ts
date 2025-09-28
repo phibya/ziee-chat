@@ -364,53 +364,6 @@ export const stopMCPServer = async (
   }
 }
 
-export const restartMCPServer = async (
-  serverId: string,
-): Promise<ServerActionResponse> => {
-  useMCPStore.setState(draft => {
-    draft.operationsLoading.set(`${serverId}-restart`, true)
-    draft.error = null
-  })
-
-  try {
-    const response = await ApiClient.Mcp.restartServer({ id: serverId })
-
-    // Update server status in both stores
-    useMCPStore.setState(draft => {
-      const index = draft.servers.findIndex(server => server.id === serverId)
-      if (index >= 0) {
-        const updatedServer = {
-          ...draft.servers[index],
-          is_active: true,
-          status: 'running' as const,
-        }
-        draft.servers[index] = updatedServer
-
-        // Also update admin store if it's a system server
-        if (updatedServer.is_system) {
-          useAdminMCPServersStore.setState(adminDraft => {
-            const adminIndex = adminDraft.systemServers.findIndex(server => server.id === serverId)
-            if (adminIndex >= 0) {
-              adminDraft.systemServers[adminIndex] = updatedServer
-            }
-          })
-        }
-      }
-      draft.operationsLoading.delete(`${serverId}-restart`)
-    })
-
-    return response
-  } catch (error) {
-    console.error('Server restart failed:', error)
-    useMCPStore.setState(draft => {
-      draft.operationsLoading.delete(`${serverId}-restart`)
-      draft.error =
-        error instanceof Error ? error.message : 'Failed to restart server'
-    })
-    throw error
-  }
-}
-
 export const discoverServerTools = async (
   serverId: string,
 ): Promise<ToolDiscoveryResponse> => {

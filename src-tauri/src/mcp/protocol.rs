@@ -2,8 +2,46 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
-// MCP Protocol Version
-pub const MCP_PROTOCOL_VERSION: &str = "2024-11-05";
+// MCP Protocol Versions
+pub const MCP_PROTOCOL_VERSION_2024: &str = "2024-11-05";
+pub const MCP_PROTOCOL_VERSION_2025_FALLBACK: &str = "2025-03-26";
+pub const MCP_PROTOCOL_VERSION_2025: &str = "2025-06-18";
+pub const MCP_PROTOCOL_VERSION_DEFAULT: &str = MCP_PROTOCOL_VERSION_2025;
+
+// Legacy alias for backwards compatibility
+pub const MCP_PROTOCOL_VERSION: &str = MCP_PROTOCOL_VERSION_DEFAULT;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum MCPProtocolVersion {
+    #[serde(rename = "2024-11-05")]
+    V2024_11_05,
+    #[serde(rename = "2025-03-26")]
+    V2025_03_26,
+    #[serde(rename = "2025-06-18")]
+    V2025_06_18,
+}
+
+impl MCPProtocolVersion {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::V2024_11_05 => MCP_PROTOCOL_VERSION_2024,
+            Self::V2025_03_26 => MCP_PROTOCOL_VERSION_2025_FALLBACK,
+            Self::V2025_06_18 => MCP_PROTOCOL_VERSION_2025,
+        }
+    }
+
+    pub fn is_2025_spec(&self) -> bool {
+        matches!(self, Self::V2025_03_26 | Self::V2025_06_18)
+    }
+
+    pub fn supports_sessions(&self) -> bool {
+        self.is_2025_spec()
+    }
+
+    pub fn requires_origin_validation(&self) -> bool {
+        self.is_2025_spec()
+    }
+}
 
 // Base MCP message structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +84,29 @@ pub struct MCPCapabilities {
     pub roots: Option<RootsCapability>,
     pub sampling: Option<Value>,
     pub tools: Option<ToolsCapability>,
+    // New 2025 capabilities
+    #[serde(rename = "sessionManagement", skip_serializing_if = "Option::is_none")]
+    pub session_management: Option<SessionCapability>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub streaming: Option<StreamingCapability>,
+    #[serde(rename = "resumableConnections", skip_serializing_if = "Option::is_none")]
+    pub resumable_connections: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionCapability {
+    pub create: bool,
+    pub resume: bool,
+    pub terminate: bool,
+    pub list: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StreamingCapability {
+    pub sse: bool,
+    pub websocket: bool,
+    #[serde(rename = "httpStreaming")]
+    pub http_streaming: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -550,4 +611,59 @@ impl MCPError {
     pub fn internal_error(message: &str) -> Self {
         Self::new(error_codes::INTERNAL_ERROR, message)
     }
+}
+
+// Version detection and parsing utilities
+pub fn parse_protocol_version(version_str: &str) -> MCPProtocolVersion {
+    match version_str {
+        MCP_PROTOCOL_VERSION_2024 => MCPProtocolVersion::V2024_11_05,
+        MCP_PROTOCOL_VERSION_2025_FALLBACK => MCPProtocolVersion::V2025_03_26,
+        MCP_PROTOCOL_VERSION_2025 => MCPProtocolVersion::V2025_06_18,
+        _ => {
+            // Default to legacy version for unknown versions
+            eprintln!("Warning: Unknown MCP protocol version '{}', defaulting to 2024-11-05", version_str);
+            MCPProtocolVersion::V2024_11_05
+        }
+    }
+}
+
+pub fn detect_protocol_version_from_request(request: &MCPRequest) -> MCPProtocolVersion {
+    // For initialize requests, check the protocol_version field
+    if request.method == methods::INITIALIZE {
+        if let Some(params) = &request.params {
+            if let Ok(init_req) = serde_json::from_value::<InitializeRequest>(params.clone()) {
+                return parse_protocol_version(&init_req.protocol_version);
+            }
+        }
+    }
+
+    // For other requests, check if there's a protocolVersion in params
+    if let Some(params) = &request.params {
+        if let Some(obj) = params.as_object() {
+            if let Some(version) = obj.get("protocolVersion") {
+                if let Some(version_str) = version.as_str() {
+                    return parse_protocol_version(version_str);
+                }
+            }
+        }
+    }
+
+    // Default to legacy version if not specified
+    MCPProtocolVersion::V2024_11_05
+}
+
+pub fn get_supported_versions() -> Vec<MCPProtocolVersion> {
+    vec![
+        MCPProtocolVersion::V2025_06_18,
+        MCPProtocolVersion::V2025_03_26,
+        MCPProtocolVersion::V2024_11_05,
+    ]
+}
+
+pub fn is_compatible_version(version: &str) -> bool {
+    matches!(version,
+        MCP_PROTOCOL_VERSION_2024 |
+        MCP_PROTOCOL_VERSION_2025_FALLBACK |
+        MCP_PROTOCOL_VERSION_2025
+    )
 }

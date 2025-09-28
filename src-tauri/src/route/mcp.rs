@@ -102,18 +102,6 @@ fn all_mcp_routes() -> ApiRouter {
                 crate::api::middleware::permissions::mcp_servers_edit_middleware,
             )),
         )
-        .api_route(
-            "/servers/{id}/restart",
-            post_with(servers::restart_server, |op| {
-                op.description("Restart MCP server")
-                    .id("Mcp.restartServer")
-                    .tag("mcp")
-                    .response::<200, Json<ServerActionResponse>>()
-            })
-            .layer(middleware::from_fn(
-                crate::api::middleware::permissions::mcp_servers_edit_middleware,
-            )),
-        )
         // Tool management
         .api_route(
             "/tools",

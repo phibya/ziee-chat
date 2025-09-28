@@ -8,7 +8,6 @@ use schemars::JsonSchema;
 use crate::database::models::mcp_server::MCPTransportType;
 use crate::database::queries::mcp_servers;
 use crate::mcp::transports::create_mcp_transport;
-use crate::mcp::proxy::get_proxy_manager;
 use crate::mcp::logging::MCPLogger;
 
 #[derive(Debug)]
@@ -150,22 +149,19 @@ pub async fn stop_mcp_server(
     };
 
     if let Some(process) = server_process {
-        // For stdio transport, stop the proxy instead of killing the process directly
-        if matches!(process.transport_type, MCPTransportType::Stdio) {
-            let proxy_manager = get_proxy_manager();
-            let _ = proxy_manager.stop_proxy(server_id).await;
-        } else {
-            // Kill child process if exists (for other transports)
-            if let Some(mut child) = process.child {
-                let _ = child.kill();
-                let _ = child.wait();
-            }
+        // For stdio transport, the transport handles its own cleanup
+        // No need for proxy manager - each transport is self-contained
 
-            // For HTTP/SSE, we might need to send shutdown request
-            if matches!(process.transport_type, MCPTransportType::Http | MCPTransportType::Sse) {
-                // Send shutdown request to server if supported
-                // This depends on the specific MCP server implementation
-            }
+        // Kill child process if exists (for non-stdio transports)
+        if let Some(mut child) = process.child {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+
+        // For HTTP/SSE, we might need to send shutdown request
+        if matches!(process.transport_type, MCPTransportType::Http | MCPTransportType::Sse) {
+            // Send shutdown request to server if supported
+            // This depends on the specific MCP server implementation
         }
     }
 
@@ -289,9 +285,7 @@ pub async fn shutdown_all_mcp_servers() -> Result<(), Box<dyn std::error::Error 
         registry.clear();
     }
 
-    // Also shutdown all proxies to ensure clean shutdown
-    let proxy_manager = get_proxy_manager();
-    let _ = proxy_manager.shutdown_all_proxies().await;
+    // No more proxy manager to shutdown - transports are self-contained
 
     Ok(())
 }

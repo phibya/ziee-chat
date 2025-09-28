@@ -311,35 +311,6 @@ pub async fn stop_server(
     }
 }
 
-/// Restart an MCP server
-#[debug_handler]
-pub async fn restart_server(
-    Extension(auth_user): Extension<AuthenticatedUser>,
-    Path(server_id): Path<Uuid>,
-) -> ApiResult<Json<ServerActionResponse>> {
-    // Check server access permissions
-    let _server = check_server_access(&auth_user, server_id, Permission::McpAdminServersEdit.as_str(), "restart").await?;
-
-    // Stop then start
-    if let Err(e) = stop_mcp_server(&server_id).await {
-        tracing::warn!("Failed to stop server during restart: {}", e);
-    }
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-
-    match start_mcp_server(&server_id).await {
-        Ok(_result) => Ok((StatusCode::OK, Json(ServerActionResponse {
-            success: true,
-            message: "Server restarted".to_string(),
-        }))),
-        Err(e) => {
-            tracing::error!("Failed to restart MCP server: {}", e);
-            Ok((StatusCode::OK, Json(ServerActionResponse {
-                success: false,
-                message: format!("Failed to restart server: {}", e),
-            })))
-        }
-    }
-}
 
 
 // Admin MCP Server Operations

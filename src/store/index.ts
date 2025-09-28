@@ -421,7 +421,6 @@ export {
   getUserServers,
   loadMCPServers,
   loadMCPTools,
-  restartMCPServer,
   searchServers,
   searchTools,
   startMCPServer,
