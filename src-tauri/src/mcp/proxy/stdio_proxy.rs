@@ -18,11 +18,13 @@ use uuid::Uuid;
 
 use crate::database::models::mcp_server::MCPServer;
 use super::ProxyError;
+use crate::mcp::logging::MCPLogger;
 
-use crate::mcp::protocol::{MCPRequest, MCPResponse, MCPNotification, InitializeRequest, MCPCapabilities, ClientInfo, methods, RootsCapability, MCP_PROTOCOL_VERSION};
+use crate::mcp::protocol::{MCPRequest, MCPResponse, MCPNotification, InitializeRequest, MCPCapabilities, ClientInfo, methods, RootsCapability, PromptsCapability, ResourcesCapability, ToolsCapability, MCP_PROTOCOL_VERSION};
 
 // MCP Client Session - handles communication with stdio MCP server
 pub struct MCPClientSession {
+    server_id: Uuid,
     server_name: String,
     child_process: Arc<Mutex<Option<Child>>>,
     request_sender: Arc<Mutex<Option<tokio::process::ChildStdin>>>,
@@ -35,6 +37,7 @@ impl MCPClientSession {
         let (notification_sender, _) = broadcast::channel(1000);
 
         Ok(Self {
+            server_id: server.id,
             server_name: server.name.clone(),
             child_process: Arc::new(Mutex::new(None)),
             request_sender: Arc::new(Mutex::new(None)),
@@ -44,12 +47,18 @@ impl MCPClientSession {
     }
 
     pub async fn initialize(&self, server: &MCPServer) -> Result<(), ProxyError> {
+        let logger = MCPLogger::new(server.id);
+
+        logger.log_exec("INFO", &format!("Initializing MCP client session for server: {}", server.name));
+
         // Start the stdio MCP server process with bundled runtime support
         let command = server.command.as_ref()
             .ok_or_else(|| ProxyError::ClientCommunication("Command is required for stdio transport".to_string()))?;
 
         let args: Vec<String> = serde_json::from_value(server.args.clone()).unwrap_or_default();
         let env_vars = self.get_server_env(server).await?;
+
+        logger.log_exec("INFO", &format!("Starting MCP server process: {} {:?}", command, args));
 
         // Use the same command resolution from stdio.rs for bundled runtime support
         let (resolved_command, resolved_args) = crate::mcp::transports::stdio::resolve_command(command, &args);
@@ -65,15 +74,50 @@ impl MCPClientSession {
             cmd.env(key, value);
         }
 
-        let mut child = cmd.spawn().map_err(ProxyError::ProcessSpawn)?;
+        let mut child = cmd.spawn().map_err(|e| {
+            logger.log_exec("ERROR", &format!("Failed to spawn MCP server process: {}", e));
+            ProxyError::ProcessSpawn(e)
+        })?;
+
+        let pid = child.id();
+        logger.log_exec("INFO", &format!("MCP server process started successfully (PID: {:?})", pid));
 
         let stdin = child.stdin.take().ok_or_else(|| {
+            logger.log_exec("ERROR", "Failed to get stdin handle from child process");
             ProxyError::ClientCommunication("Failed to get stdin".to_string())
         })?;
 
         let stdout = child.stdout.take().ok_or_else(|| {
+            logger.log_exec("ERROR", "Failed to get stdout handle from child process");
             ProxyError::ClientCommunication("Failed to get stdout".to_string())
         })?;
+
+        // Capture stderr for logging
+        if let Some(stderr) = child.stderr.take() {
+            let logger_clone = logger.clone();
+            let server_name = server.name.clone();
+            tokio::spawn(async move {
+                let mut reader = BufReader::new(stderr);
+                let mut line = String::new();
+                loop {
+                    line.clear();
+                    match reader.read_line(&mut line).await {
+                        Ok(0) => break, // EOF
+                        Ok(_) => {
+                            let trimmed = line.trim_end();
+                            if !trimmed.is_empty() {
+                                logger_clone.log_stderr(trimmed);
+                            }
+                        }
+                        Err(e) => {
+                            logger_clone.log_exec("ERROR", &format!("Error reading stderr: {}", e));
+                            break;
+                        }
+                    }
+                }
+                println!("[{}] MCP server stderr reader closed", server_name);
+            });
+        }
 
         *self.request_sender.lock().await = Some(stdin);
         *self.child_process.lock().await = Some(child);
@@ -89,15 +133,22 @@ impl MCPClientSession {
             params: Some(serde_json::to_value(InitializeRequest {
                 protocol_version: MCP_PROTOCOL_VERSION.to_string(),
                 capabilities: MCPCapabilities {
-                    experimental: None,
-                    logging: None,
-                    prompts: None,
-                    resources: None,
+                    experimental: Some(std::collections::HashMap::new()),
+                    logging: Some(serde_json::json!({})),
+                    prompts: Some(PromptsCapability {
+                        list_changed: Some(false),
+                    }),
+                    resources: Some(ResourcesCapability {
+                        list_changed: Some(false),
+                        subscribe: Some(false),
+                    }),
                     roots: Some(RootsCapability {
                         list_changed: Some(true),
                     }),
                     sampling: Some(serde_json::json!({})),
-                    tools: None,
+                    tools: Some(ToolsCapability {
+                        list_changed: Some(false),
+                    }),
                 },
                 client_info: ClientInfo {
                     name: "ziee-mcp-proxy".to_string(),
@@ -113,10 +164,15 @@ impl MCPClientSession {
     }
 
     pub async fn send_request(&self, request: MCPRequest) -> Result<MCPResponse, ProxyError> {
+        let logger = MCPLogger::new(self.server_id);
+
         let request_id = request.id.as_ref()
-            .and_then(|id| id.as_str())
-            .unwrap_or("unknown")
-            .to_string();
+            .map(|id| match id {
+                Value::String(s) => s.clone(),
+                Value::Number(n) => n.to_string(),
+                _ => id.to_string(),
+            })
+            .unwrap_or_else(|| "unknown".to_string());
 
         let (response_sender, response_receiver) = tokio::sync::oneshot::channel();
 
@@ -128,6 +184,9 @@ impl MCPClientSession {
             let request_str = serde_json::to_string(&request)
                 .map_err(|e| ProxyError::JsonError(e))?;
             let request_line = format!("{}\n", request_str);
+
+            // Log what we're sending to stdin
+            logger.log_stdin(&request_str);
 
             match timeout(Duration::from_secs(5), stdin.write_all(request_line.as_bytes())).await {
                 Ok(Ok(_)) => {
@@ -174,6 +233,7 @@ impl MCPClientSession {
     }
 
     async fn start_stdout_reader(&self, stdout: ChildStdout) {
+        let logger = MCPLogger::new(self.server_id);
 
         let response_handlers = Arc::clone(&self.response_handlers);
         let notification_sender = Arc::clone(&self.notification_sender);
@@ -187,19 +247,28 @@ impl MCPClientSession {
                 line.clear();
                 match reader.read_line(&mut line).await {
                     Ok(0) => {
+                        logger.log_exec("INFO", "MCP server stdout closed");
                         println!("[{}] MCP server stdout closed", server_name);
                         break;
                     }
                     Ok(_) => {
                         let line = line.trim();
                         if !line.is_empty() {
+                            // Log what we received from stdout
+                            logger.log_stdout(line);
+
                             if let Ok(json_value) = serde_json::from_str::<Value>(line) {
                                 if json_value.get("id").is_some() {
                                     // This is a response
                                     if let Ok(response) = serde_json::from_value::<MCPResponse>(json_value) {
-                                        if let Some(id) = response.id.as_ref().and_then(|v| v.as_str()) {
+                                        if let Some(id_value) = response.id.as_ref() {
+                                            let id_string = match id_value {
+                                                Value::String(s) => s.clone(),
+                                                Value::Number(n) => n.to_string(),
+                                                _ => id_value.to_string(),
+                                            };
                                             let mut handlers = response_handlers.lock().await;
-                                            if let Some(sender) = handlers.remove(id) {
+                                            if let Some(sender) = handlers.remove(&id_string) {
                                                 let _ = sender.send(response);
                                             }
                                         }
@@ -214,6 +283,7 @@ impl MCPClientSession {
                         }
                     }
                     Err(e) => {
+                        logger.log_exec("ERROR", &format!("Error reading from stdout: {}", e));
                         eprintln!("[{}] Error reading from stdout: {}", server_name, e);
                         break;
                     }
@@ -294,6 +364,10 @@ impl MCPStdioProxy {
     }
 
     pub async fn start(&mut self, port: u16) -> Result<(), ProxyError> {
+        let logger = MCPLogger::new(self.server_id);
+
+        logger.log_exec("INFO", &format!("Starting MCP stdio proxy for server: {} on port {}", self.server_name, port));
+
         // 1. Create and initialize MCP client session
         let client_session = Arc::new(MCPClientSession::new(&self.server).await?);
         client_session.initialize(&self.server).await?;
@@ -324,18 +398,24 @@ impl MCPStdioProxy {
             }
         });
 
+        logger.log_exec("INFO", &format!("MCP stdio proxy started successfully on port {}", port));
         println!("Started MCP proxy for '{}' on port {}", self.server_name, port);
 
         Ok(())
     }
 
     pub async fn stop(&mut self) -> Result<(), ProxyError> {
+        let logger = MCPLogger::new(self.server_id);
+
+        logger.log_exec("INFO", "Stopping MCP stdio proxy");
+
         // Stop HTTP server (will be dropped when the proxy is dropped)
 
         // Clean up client session and proxy server
         self.client_session = None;
         self.proxy_server = None;
 
+        logger.log_exec("INFO", "MCP stdio proxy stopped successfully");
         println!("Stopped MCP proxy for '{}'", self.server_name);
         Ok(())
     }

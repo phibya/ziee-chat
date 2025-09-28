@@ -9,6 +9,7 @@ use crate::database::models::mcp_server::MCPTransportType;
 use crate::database::queries::mcp_servers;
 use crate::mcp::transports::create_mcp_transport;
 use crate::mcp::proxy::get_proxy_manager;
+use crate::mcp::logging::MCPLogger;
 
 #[derive(Debug)]
 struct MCPServerProcess {
@@ -47,17 +48,29 @@ pub enum MCPServerStartResult {
 pub async fn start_mcp_server(
     server_id: &Uuid,
 ) -> Result<MCPServerStartResult, Box<dyn std::error::Error + Send + Sync>> {
+    let logger = MCPLogger::new(*server_id);
     let _lock = GLOBAL_MCP_START_MUTEX.lock().await;
+
+    logger.log_exec("INFO", "Server start requested");
 
     // Load server from database
     let server = mcp_servers::get_mcp_server_by_id(*server_id)
         .await
-        .map_err(|e| format!("Failed to load server: {}", e))?
-        .ok_or_else(|| format!("Server {} not found", server_id))?;
+        .map_err(|e| {
+            logger.log_exec("ERROR", &format!("Failed to load server: {}", e));
+            format!("Failed to load server: {}", e)
+        })?
+        .ok_or_else(|| {
+            logger.log_exec("ERROR", "Server not found in database");
+            format!("Server {} not found", server_id)
+        })?;
+
+    logger.log_exec("INFO", &format!("Starting MCP server: {} ({:?})", server.name, server.transport_type));
 
     // Only check if already running for stdio transport (which spawns processes)
     if matches!(server.transport_type, MCPTransportType::Stdio) {
         if verify_mcp_server_running(&server).await {
+            logger.log_exec("INFO", "Server already running");
             return Ok(MCPServerStartResult::AlreadyRunning {
                 pid: server.process_id.map(|p| p as u32),
                 port: server.port.map(|p| p as u16),
@@ -71,6 +84,11 @@ pub async fn start_mcp_server(
     // Start the transport
     match transport.start().await {
         Ok(connection_info) => {
+            logger.log_exec("INFO", &format!(
+                "Server started successfully (PID: {:?}, Port: {:?})",
+                connection_info.pid,
+                connection_info.port
+            ));
             // Register in registry
             if let Ok(mut registry) = MCP_SERVER_REGISTRY.write() {
                 registry.insert(*server_id, MCPServerProcess {
@@ -106,6 +124,7 @@ pub async fn start_mcp_server(
             })
         }
         Err(e) => {
+            logger.log_exec("ERROR", &format!("Server start failed: {}", e));
             Ok(MCPServerStartResult::Failed {
                 error: e.to_string(),
                 log_path: create_server_log_path(server_id),
@@ -118,6 +137,9 @@ pub async fn start_mcp_server(
 pub async fn stop_mcp_server(
     server_id: &Uuid,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let logger = MCPLogger::new(*server_id);
+    logger.log_exec("INFO", "Server stop requested");
+
     // Get from registry
     let server_process = {
         if let Ok(mut registry) = MCP_SERVER_REGISTRY.write() {
@@ -156,6 +178,7 @@ pub async fn stop_mcp_server(
         false,
     ).await?;
 
+    logger.log_exec("INFO", "Server stopped successfully");
     Ok(())
 }
 
