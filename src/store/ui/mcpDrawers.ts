@@ -26,7 +26,12 @@ export const useMCPServerDrawerStore = create<MCPServerDrawerState>(() => ({
 // MCP Server Drawer Actions
 export const openMCPServerDrawer = (
   server?: MCPServer,
-  mode: 'create' | 'edit' | 'clone' | 'create-system' | 'edit-system' = 'create',
+  mode:
+    | 'create'
+    | 'edit'
+    | 'clone'
+    | 'create-system'
+    | 'edit-system' = 'create',
 ) => {
   useMCPServerDrawerStore.setState({
     open: true,

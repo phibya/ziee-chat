@@ -466,7 +466,7 @@ async fn generate_and_update_conversation_title(
     let first_user_message = messages
         .iter()
         .find(|msg| msg.role == "user")
-        .map(|msg| msg.content.clone());
+        .map(|msg| msg.get_text_content());
 
     if let Some(user_content) = first_user_message {
         // Create a title generation prompt

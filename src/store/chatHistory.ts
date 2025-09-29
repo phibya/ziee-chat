@@ -245,7 +245,9 @@ export const createChatHistoryStore = (projectId?: string) => {
           try {
             set({ deleting: true, error: null })
 
-            await ApiClient.Conversation.deleteConversation({ conversation_id: id })
+            await ApiClient.Conversation.deleteConversation({
+              conversation_id: id,
+            })
 
             set(state => {
               const newSelected = new Set(state.selectedConversations)
@@ -390,7 +392,9 @@ export const createChatHistoryStore = (projectId?: string) => {
             // Delete all selected conversations
             await Promise.all(
               selectedIds.map(id =>
-                ApiClient.Conversation.deleteConversation({ conversation_id: id }),
+                ApiClient.Conversation.deleteConversation({
+                  conversation_id: id,
+                }),
               ),
             )
 

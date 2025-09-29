@@ -18,9 +18,7 @@ import {
   Stores,
 } from '../../../../store'
 import { createMCPServer, updateMCPServer } from '../../../../store/mcp'
-import {
-  createSystemServer,
-} from '../../../../store/admin/mcpServers'
+import { createSystemServer } from '../../../../store/admin/mcpServers'
 import type {
   CreateMCPServerRequest,
   UpdateMCPServerRequest,
@@ -85,7 +83,7 @@ export function MCPServerDrawer() {
     ) {
       // Check if the existing transport_type is available in current context
       const isTransportAvailable = availableTransportTypes.some(
-        type => type.value === editingServer.transport_type
+        type => type.value === editingServer.transport_type,
       )
 
       const formValues = {
@@ -98,11 +96,15 @@ export function MCPServerDrawer() {
         description: editingServer.description,
         transport_type: isTransportAvailable
           ? editingServer.transport_type
-          : (availableTransportTypes.length > 0 ? availableTransportTypes[0].value : 'http'),
+          : availableTransportTypes.length > 0
+            ? availableTransportTypes[0].value
+            : 'http',
         url: editingServer.url,
         command: editingServer.command,
         args: editingServer.args?.join(' ') || '',
-        env: editingServer.environment_variables ? JSON.stringify(editingServer.environment_variables, null, 2) : '',
+        env: editingServer.environment_variables
+          ? JSON.stringify(editingServer.environment_variables, null, 2)
+          : '',
         enabled: editingServer.enabled,
       }
       form.setFieldsValue(formValues)
@@ -326,7 +328,10 @@ export function MCPServerDrawer() {
           layout="vertical"
           initialValues={{
             enabled: true,
-            transport_type: availableTransportTypes.length > 0 ? availableTransportTypes[0].value : 'http',
+            transport_type:
+              availableTransportTypes.length > 0
+                ? availableTransportTypes[0].value
+                : 'http',
           }}
           className="flex flex-col gap-3"
         >

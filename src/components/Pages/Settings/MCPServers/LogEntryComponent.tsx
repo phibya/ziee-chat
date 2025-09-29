@@ -17,7 +17,7 @@ export function LogEntryComponent({ entry }: LogEntryProps) {
       minute: '2-digit',
       second: '2-digit',
       hour12: false,
-      timeZoneName: 'short'
+      timeZoneName: 'short',
     })
   }
 

@@ -29,13 +29,8 @@ import {
 } from '../../../store'
 import { FileCard } from '../../common/FileCard'
 import { useChatInputUIStore } from '../../../store/ui/chatInput.ts'
-import {
-  Assistant,
-  Conversation,
-  Message,
-  Permission,
-} from '../../../types'
-import { createChatStore } from '../../../store/chat.ts'
+import { Assistant, Conversation, Message, Permission } from '../../../types'
+import { createChatStore, getMessageText } from '../../../store/chat.ts'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
 import { IoIosArrowDown } from 'react-icons/io'
 import { debounce } from '../../../utils/debounce.ts'
@@ -124,7 +119,9 @@ export const ChatInput = function ChatInput({
   useEffect(() => {
     form.setFieldValue(
       'message',
-      editingMessage?.content || store.__state.content || '',
+      (editingMessage ? getMessageText(editingMessage) : '') ||
+        store.__state.content ||
+        '',
     )
     if (editingMessage) {
       store.__setState({
@@ -172,7 +169,6 @@ export const ChatInput = function ChatInput({
 
     return options
   }, [providers, modelsByProvider])
-
 
   // Initialize default selections
   useEffect(() => {
@@ -534,7 +530,6 @@ export const ChatInput = function ChatInput({
                         suffixIcon={<IoIosArrowDown />}
                       />
                     </Form.Item>
-
                   </div>
 
                   <div className={`gap-2 flex flex-1 items-center justify-end`}>

@@ -45,8 +45,8 @@ pub async fn build_chat_messages(
         Ok(conversation_messages) => {
             for msg in conversation_messages {
                 messages.push(ChatMessage {
-                    role: msg.role,
-                    content: MessageContent::Text(msg.content),
+                    role: msg.role.clone(),
+                    content: MessageContent::Text(msg.get_text_content()),
                 });
             }
         }

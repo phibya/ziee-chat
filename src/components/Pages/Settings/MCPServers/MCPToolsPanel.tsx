@@ -156,41 +156,40 @@ export function MCPToolsPanel({
           )}
         </Text>
         <div className="flex items-center gap-1">
-          {tools.length > 0 &&
-            (!server.is_system || !isEditable) && (
-              <>
-                <Tooltip title="Enable auto-approve for all tools">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CheckOutlined />}
-                    onClick={e => {
-                      e.stopPropagation()
-                      handleBulkToggleAutoApprove(true)
-                    }}
-                    loading={bulkApprovalLoading}
-                    disabled={tools.every(t => t.is_auto_approved)}
-                  >
-                    Approve All
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Disable auto-approve for all tools">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<CloseOutlined />}
-                    onClick={e => {
-                      e.stopPropagation()
-                      handleBulkToggleAutoApprove(false)
-                    }}
-                    loading={bulkApprovalLoading}
-                    disabled={tools.every(t => !t.is_auto_approved)}
-                  >
-                    Reject All
-                  </Button>
-                </Tooltip>
-              </>
-            )}
+          {tools.length > 0 && (!server.is_system || !isEditable) && (
+            <>
+              <Tooltip title="Enable auto-approve for all tools">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CheckOutlined />}
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleBulkToggleAutoApprove(true)
+                  }}
+                  loading={bulkApprovalLoading}
+                  disabled={tools.every(t => t.is_auto_approved)}
+                >
+                  Approve All
+                </Button>
+              </Tooltip>
+              <Tooltip title="Disable auto-approve for all tools">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<CloseOutlined />}
+                  onClick={e => {
+                    e.stopPropagation()
+                    handleBulkToggleAutoApprove(false)
+                  }}
+                  loading={bulkApprovalLoading}
+                  disabled={tools.every(t => !t.is_auto_approved)}
+                >
+                  Reject All
+                </Button>
+              </Tooltip>
+            </>
+          )}
           <Button
             type="text"
             size="small"
@@ -217,10 +216,7 @@ export function MCPToolsPanel({
           style={{ margin: '16px 0' }}
         />
       ) : (
-        <DivScrollY
-          style={{ maxHeight: '500px' }}
-          className="w-full"
-        >
+        <DivScrollY style={{ maxHeight: '500px' }} className="w-full">
           <div className="w-full">
             <List
               size="small"
@@ -244,22 +240,15 @@ export function MCPToolsPanel({
                         )}
                         {(!server.is_system || !isEditable) && (
                           <div className="flex items-center gap-2">
-                            <Text className="text-xs">
-                              Auto approve
-                            </Text>
+                            <Text className="text-xs">Auto approve</Text>
                             <Tooltip
                               title={`Auto-approve this tool in all conversations${tool.is_auto_approved && tool.approval_source === 'global' ? ' (globally approved)' : ''}`}
                             >
                               <Switch
                                 size="small"
-                                checked={
-                                  tool.is_auto_approved || false
-                                }
+                                checked={tool.is_auto_approved || false}
                                 onChange={checked =>
-                                  handleToggleAutoApprove(
-                                    tool,
-                                    checked,
-                                  )
+                                  handleToggleAutoApprove(tool, checked)
                                 }
                               />
                             </Tooltip>
@@ -268,10 +257,7 @@ export function MCPToolsPanel({
                                 <Tooltip
                                   title={`Approval expires at ${new Date(tool.approval_expires_at).toLocaleString()}`}
                                 >
-                                  <Badge
-                                    status="warning"
-                                    text="Expires"
-                                  />
+                                  <Badge status="warning" text="Expires" />
                                 </Tooltip>
                               )}
                           </div>
@@ -279,10 +265,7 @@ export function MCPToolsPanel({
                       </div>
                     </div>
                     {tool.tool_description && (
-                      <Text
-                        type="secondary"
-                        className="text-xs block"
-                      >
+                      <Text type="secondary" className="text-xs block">
                         {tool.tool_description}
                       </Text>
                     )}

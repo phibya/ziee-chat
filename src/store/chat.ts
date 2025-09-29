@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 import { ApiClient } from '../api/client'
-import { Conversation, Message, MessageBranch } from '../types'
+import {
+  Conversation,
+  Message,
+  MessageBranch,
+  MessageContentDataText,
+} from '../types'
 import { useConversationsStore } from './conversations.ts'
 import { getFile } from './files.ts'
 import { createStoreProxy } from '../utils/createStoreProxy.ts'
@@ -10,6 +15,27 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { debounce } from '../utils/debounce'
 import { removeMessageBranchStoreByOriginatedId } from './messageBranches.ts'
+
+// Helper function to get text content from structured message contents
+export const getMessageText = (message: Message): string => {
+  return message.contents
+    .filter(c => c.content_type === 'text')
+    .map(c => (c.content as MessageContentDataText).text)
+    .join('\n')
+}
+
+// Helper function to create structured text content
+const createTextContent = (text: string) => [
+  {
+    id: crypto.randomUUID(),
+    message_id: '', // Will be set when message is created
+    content_type: 'text' as const,
+    content: { text },
+    sequence_order: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+]
 
 const BranchMessagesCacheMap = new Map<string, Message[]>()
 
@@ -271,10 +297,14 @@ export const createChatStore = (conversation: string | Conversation) => {
             const files = await Promise.all((params.fileIds || []).map(getFile))
 
             // Add user message immediately
+            const userMessageId = crypto.randomUUID()
             const userMessage: Message = {
-              id: crypto.randomUUID(),
+              id: userMessageId,
               conversation_id: conversationId,
-              content: params.content,
+              contents: createTextContent(params.content).map(c => ({
+                ...c,
+                message_id: userMessageId,
+              })),
               role: 'user',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -294,10 +324,14 @@ export const createChatStore = (conversation: string | Conversation) => {
             })
 
             // Create assistant message placeholder
+            const assistantMessageId = crypto.randomUUID()
             const assistantMessage: Message = {
-              id: crypto.randomUUID(),
+              id: assistantMessageId,
               conversation_id: conversationId,
-              content: '',
+              contents: createTextContent('').map(c => ({
+                ...c,
+                message_id: assistantMessageId,
+              })),
               role: 'assistant',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -349,7 +383,9 @@ export const createChatStore = (conversation: string | Conversation) => {
                     set(state => {
                       const finalMessage = {
                         ...assistantMessage,
-                        content: state.streamingMessage,
+                        contents: createTextContent(state.streamingMessage).map(
+                          c => ({ ...c, message_id: data.message_id }),
+                        ),
                         updated_at: new Date().toISOString(),
                         id: data.message_id,
                       }
@@ -433,7 +469,14 @@ export const createChatStore = (conversation: string | Conversation) => {
               return {
                 messages: currentMessages.map((msg: Message) =>
                   msg.id === messageId
-                    ? { ...msg, content: params.content, files }
+                    ? {
+                        ...msg,
+                        contents: createTextContent(params.content).map(c => ({
+                          ...c,
+                          message_id: messageId,
+                        })),
+                        files,
+                      }
                     : msg,
                 ),
               }
@@ -443,7 +486,10 @@ export const createChatStore = (conversation: string | Conversation) => {
             const assistantMessage: Message = {
               id: 'streaming-temp',
               conversation_id: conversation.id,
-              content: '',
+              contents: createTextContent('').map(c => ({
+                ...c,
+                message_id: 'streaming-temp',
+              })),
               role: 'assistant',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
@@ -516,7 +562,9 @@ export const createChatStore = (conversation: string | Conversation) => {
                         ),
                         {
                           ...assistantMessage,
-                          content: state.streamingMessage,
+                          contents: createTextContent(
+                            state.streamingMessage,
+                          ).map(c => ({ ...c, message_id: data.message_id })),
                           updated_at: new Date().toISOString(),
                           id: data.message_id,
                         },
@@ -663,7 +711,7 @@ export const useChatStore = (conversationId?: string) => {
         () => {
           const store = ChatStoreMap.get(prevId)
           if (store) {
-            store.destroy()
+            store.__state.destroy()
           }
           CleanupDebounceMap.delete(prevId)
         },

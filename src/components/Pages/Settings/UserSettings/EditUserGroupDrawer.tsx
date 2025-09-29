@@ -43,11 +43,12 @@ export function EditUserGroupDrawer({
         setLoadingProviders(true)
         try {
           // Fetch providers for this group
-          const [providersResponse, ragProvidersResponse, mcpServersResponse] = await Promise.all([
-            getGroupProviders(group.id),
-            getGroupRagProviders(group.id),
-            getGroupMCPServers(group.id),
-          ])
+          const [providersResponse, ragProvidersResponse, mcpServersResponse] =
+            await Promise.all([
+              getGroupProviders(group.id),
+              getGroupRagProviders(group.id),
+              getGroupMCPServers(group.id),
+            ])
 
           const providerIds = providersResponse.providers.map((p: any) => p.id)
           const ragProviderIds = ragProvidersResponse.providers.map(

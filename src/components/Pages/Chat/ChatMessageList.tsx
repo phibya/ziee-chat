@@ -4,6 +4,19 @@ import { MessageOutlined } from '@ant-design/icons'
 import { ChatMessage } from './ChatMessage'
 import { useChatStore } from '../../../store'
 
+// Helper function to create structured text content
+const createTextContent = (text: string) => [
+  {
+    id: crypto.randomUUID(),
+    message_id: '',
+    content_type: 'text' as const,
+    content: { text },
+    sequence_order: 0,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+]
+
 const { Text } = Typography
 
 export const ChatMessageList = memo(function ChatMessageList() {
@@ -35,7 +48,9 @@ export const ChatMessageList = memo(function ChatMessageList() {
           message={{
             id: 'streaming-temp',
             conversation_id: '',
-            content: isStreaming && streamingMessage ? streamingMessage : '',
+            contents: createTextContent(
+              isStreaming && streamingMessage ? streamingMessage : '',
+            ).map(c => ({ ...c, message_id: 'streaming-temp' })),
             role: 'assistant',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -50,7 +65,10 @@ export const ChatMessageList = memo(function ChatMessageList() {
           message={{
             id: 'streaming-error',
             conversation_id: '',
-            content: error,
+            contents: createTextContent(error).map(c => ({
+              ...c,
+              message_id: 'streaming-error',
+            })),
             role: 'assistant',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),

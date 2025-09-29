@@ -1,8 +1,8 @@
 use super::{branches, get_database_pool};
 use crate::database::models::{
     Conversation, ConversationListResponse, ConversationSummary, CreateConversationRequest,
-    EditMessageRequest, EditMessageResponse, Message, MessageBranch, SaveMessageRequest,
-    UpdateConversationRequest,
+    EditMessageRequest, EditMessageResponse, Message, MessageBranch, MessageContentItem,
+    MessageContentData, MessageContentRow, MessageContentType, MessageRow, SaveMessageRequest, UpdateConversationRequest,
 };
 use crate::database::types::JsonOption;
 use sqlx::Error;
@@ -73,6 +73,40 @@ async fn load_files_for_messages(
             .filter_map(|file_id| file_map.get(file_id).cloned())
             .collect();
         result.insert(*message_id, files);
+    }
+
+    Ok(result)
+}
+
+/// Helper function to load structured content for messages
+async fn load_message_contents(
+    pool: &sqlx::PgPool,
+    message_ids: &[Uuid],
+) -> Result<HashMap<Uuid, Vec<MessageContentItem>>, Error> {
+    if message_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let content_rows = sqlx::query_as!(
+        MessageContentRow,
+        r#"
+        SELECT id, message_id, content_type as "content_type: crate::database::models::MessageContentType", content, sequence_order, created_at, updated_at
+        FROM message_contents
+        WHERE message_id = ANY($1)
+        ORDER BY message_id, sequence_order ASC
+        "#,
+        message_ids
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut result: HashMap<Uuid, Vec<MessageContentItem>> = HashMap::new();
+    for content_row in content_rows {
+        let content_item = MessageContentItem::from(content_row);
+        result
+            .entry(content_item.message_id)
+            .or_insert_with(Vec::new)
+            .push(content_item);
     }
 
     Ok(result)
@@ -222,15 +256,18 @@ pub async fn list_conversations(
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
-            COALESCE(m.content, '') as last_message,
+            COALESCE(m.text_content, '') as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as "message_count!"
         FROM conversations c
         LEFT JOIN (
-            SELECT DISTINCT ON (conversation_id)
-                conversation_id, content
-            FROM messages
-            WHERE role = 'assistant'
-            ORDER BY conversation_id, created_at DESC
+            SELECT DISTINCT ON (m.conversation_id)
+                m.conversation_id,
+                COALESCE((SELECT string_agg(mc.content->>'text', ' ' ORDER BY mc.sequence_order)
+                         FROM message_contents mc
+                         WHERE mc.message_id = m.id AND mc.content_type = 'text'), '') as text_content
+            FROM messages m
+            WHERE m.role = 'assistant'
+            ORDER BY m.conversation_id, m.created_at DESC
         ) m ON c.id = m.conversation_id
         WHERE c.user_id = $1 AND c.project_id = $2
         ORDER BY c.updated_at DESC
@@ -250,15 +287,18 @@ pub async fn list_conversations(
         SELECT
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
-            COALESCE(m.content, '') as last_message,
+            COALESCE(m.text_content, '') as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as "message_count!"
         FROM conversations c
         LEFT JOIN (
-            SELECT DISTINCT ON (conversation_id)
-                conversation_id, content
-            FROM messages
-            WHERE role = 'assistant'
-            ORDER BY conversation_id, created_at DESC
+            SELECT DISTINCT ON (m.conversation_id)
+                m.conversation_id,
+                COALESCE((SELECT string_agg(mc.content->>'text', ' ' ORDER BY mc.sequence_order)
+                         FROM message_contents mc
+                         WHERE mc.message_id = m.id AND mc.content_type = 'text'), '') as text_content
+            FROM messages m
+            WHERE m.role = 'assistant'
+            ORDER BY m.conversation_id, m.created_at DESC
         ) m ON c.id = m.conversation_id
         WHERE c.user_id = $1 AND c.project_id IS NULL
         ORDER BY c.updated_at DESC
@@ -426,23 +466,36 @@ pub async fn save_message(
     // Start transaction for atomic message + branch_message creation
     let mut tx = pool.begin().await?;
 
-    // Insert the message
+    // Insert the message (WITHOUT content field)
     sqlx::query!(
         r#"
         INSERT INTO messages (
-            id, conversation_id, role, content,
+            id, conversation_id, role,
             originated_from_id, edit_count,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         "#,
         message_id,
         request.conversation_id,
         &request.role,
-        &request.content,
         message_id,
         0,
         now,
         now
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    // Create structured content from text
+    let content_id = Uuid::new_v4();
+    sqlx::query!(
+        r#"
+        INSERT INTO message_contents (id, message_id, content_type, content, sequence_order)
+        VALUES ($1, $2, 'text', $3, 0)
+        "#,
+        content_id,
+        message_id,
+        serde_json::json!({"text": request.content})
     )
     .execute(&mut *tx)
     .await?;
@@ -502,17 +555,28 @@ pub async fn save_message(
         vec![]
     };
 
+    // Create the content item for return
+    let content_item = MessageContentItem {
+        id: content_id,
+        message_id,
+        content_type: MessageContentType::Text,
+        content: MessageContentData::Text { text: request.content.clone() },
+        sequence_order: 0,
+        created_at: now,
+        updated_at: now,
+    };
+
     Ok(Message {
         id: message_id,
         conversation_id: request.conversation_id,
         role: request.role.to_string(),
-        content: request.content.to_string(),
         originated_from_id: message_id,
         edit_count: 0,
         created_at: now,
         updated_at: now,
         metadata: JsonOption::default(),
         files: files.into(),
+        contents: vec![content_item],
     })
 }
 
@@ -535,15 +599,14 @@ pub async fn get_conversation_messages(
     let active_branch_id = conversation.active_branch_id;
 
     // Get messages for the active branch
-    let mut messages = sqlx::query_as!(
-        Message,
+    let message_rows = sqlx::query_as!(
+        MessageRow,
         r#"
         SELECT
-            m.id, m.conversation_id, m.role, m.content,
+            m.id, m.conversation_id, m.role,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at,
-            '[]'::json as "metadata",
-            '[]'::json as "files!"
+            '{}'::jsonb as metadata
         FROM messages m
         INNER JOIN branch_messages bm ON m.id = bm.message_id
         WHERE bm.branch_id = $1
@@ -554,15 +617,41 @@ pub async fn get_conversation_messages(
     .fetch_all(pool)
     .await?;
 
-    // Get all files for these messages
-    let message_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
+    // Get all message IDs for bulk loading
+    let message_ids: Vec<Uuid> = message_rows.iter().map(|m| m.id).collect();
 
-    // Attach files to messages
-    for message in &mut messages {
-        if let Some(files) = files_by_message.get(&message.id) {
-            message.files = files.clone().into();
-        }
+    // Load files and contents
+    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
+    let contents_by_message = load_message_contents(pool, &message_ids).await?;
+
+    // Convert MessageRow to Message with loaded files and contents
+    let mut messages = Vec::new();
+    for message_row in message_rows {
+        let files = files_by_message
+            .get(&message_row.id)
+            .cloned()
+            .unwrap_or_default()
+            .into();
+        let contents = contents_by_message
+            .get(&message_row.id)
+            .cloned()
+            .unwrap_or_default();
+
+        let metadata: JsonOption<Vec<crate::database::models::chat::MessageMetadata>> =
+            serde_json::from_value(message_row.metadata).unwrap_or_default();
+
+        messages.push(Message {
+            id: message_row.id,
+            conversation_id: message_row.conversation_id,
+            role: message_row.role,
+            originated_from_id: message_row.originated_from_id,
+            edit_count: message_row.edit_count,
+            created_at: message_row.created_at,
+            updated_at: message_row.updated_at,
+            metadata,
+            files,
+            contents,
+        });
     }
 
     Ok(messages)
@@ -598,15 +687,14 @@ pub async fn get_conversation_messages_by_branch(
     }
 
     // Get messages for the specified branch
-    let mut messages = sqlx::query_as!(
-        Message,
+    let message_rows = sqlx::query_as!(
+        MessageRow,
         r#"
         SELECT
-            m.id, m.conversation_id, m.role, m.content,
+            m.id, m.conversation_id, m.role,
             m.originated_from_id, m.edit_count,
             m.created_at, m.updated_at,
-            '[]'::json as "metadata",
-            '[]'::json as "files!"
+            '{}'::jsonb as metadata
         FROM messages m
         INNER JOIN branch_messages bm ON m.id = bm.message_id
         WHERE bm.branch_id = $1
@@ -617,15 +705,41 @@ pub async fn get_conversation_messages_by_branch(
     .fetch_all(pool)
     .await?;
 
-    // Get all files for these messages
-    let message_ids: Vec<Uuid> = messages.iter().map(|m| m.id).collect();
-    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
+    // Get all message IDs for bulk loading
+    let message_ids: Vec<Uuid> = message_rows.iter().map(|m| m.id).collect();
 
-    // Attach files to messages
-    for message in &mut messages {
-        if let Some(files) = files_by_message.get(&message.id) {
-            message.files = files.clone().into();
-        }
+    // Load files and contents
+    let files_by_message = load_files_for_messages(pool, &message_ids).await?;
+    let contents_by_message = load_message_contents(pool, &message_ids).await?;
+
+    // Convert MessageRow to Message with loaded files and contents
+    let mut messages = Vec::new();
+    for message_row in message_rows {
+        let files = files_by_message
+            .get(&message_row.id)
+            .cloned()
+            .unwrap_or_default()
+            .into();
+        let contents = contents_by_message
+            .get(&message_row.id)
+            .cloned()
+            .unwrap_or_default();
+
+        let metadata: JsonOption<Vec<crate::database::models::chat::MessageMetadata>> =
+            serde_json::from_value(message_row.metadata).unwrap_or_default();
+
+        messages.push(Message {
+            id: message_row.id,
+            conversation_id: message_row.conversation_id,
+            role: message_row.role,
+            originated_from_id: message_row.originated_from_id,
+            edit_count: message_row.edit_count,
+            created_at: message_row.created_at,
+            updated_at: message_row.updated_at,
+            metadata,
+            files,
+            contents,
+        });
     }
 
     Ok(messages)
@@ -722,23 +836,36 @@ pub async fn edit_message(
     let new_message_id = Uuid::new_v4();
     let now = chrono::Utc::now();
 
-    // Insert the edited message
+    // Insert the edited message (WITHOUT content field)
     sqlx::query!(
         r#"
         INSERT INTO messages (
-            id, conversation_id, role, content,
+            id, conversation_id, role,
             originated_from_id, edit_count,
             created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
         "#,
         new_message_id,
         conversation_id,
         &role,
-        &request.content,
         originated_from_id,
         edit_count,
         now,
         now
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    // Create structured content from edited text
+    let content_id = Uuid::new_v4();
+    sqlx::query!(
+        r#"
+        INSERT INTO message_contents (id, message_id, content_type, content, sequence_order)
+        VALUES ($1, $2, 'text', $3, 0)
+        "#,
+        content_id,
+        new_message_id,
+        serde_json::json!({"text": request.content})
     )
     .execute(&mut *tx)
     .await?;
@@ -826,18 +953,29 @@ pub async fn edit_message(
         vec![]
     };
 
+    // Create the content item for return
+    let content_item = MessageContentItem {
+        id: content_id,
+        message_id: new_message_id,
+        content_type: MessageContentType::Text,
+        content: MessageContentData::Text { text: request.content.clone() },
+        sequence_order: 0,
+        created_at: now,
+        updated_at: now,
+    };
+
     // Return the response
     let message = Message {
         id: new_message_id,
         conversation_id,
         role,
-        content: request.content,
         originated_from_id: originated_from_id,
         edit_count: edit_count + 1, // Incremented count
         created_at: original_created_at,
         updated_at: now,
         metadata: JsonOption::default(),
         files: files.into(),
+        contents: vec![content_item],
     };
 
     Ok(Some(EditMessageResponse {
@@ -867,9 +1005,10 @@ pub async fn search_conversations(
         SELECT COUNT(DISTINCT c.id)
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
+        LEFT JOIN message_contents mc ON m.id = mc.message_id AND mc.content_type = 'text'
         WHERE c.user_id = $1
         AND c.project_id = $2
-        AND (c.title ILIKE $3 OR m.content ILIKE $3)
+        AND (c.title ILIKE $3 OR mc.content->>'text' ILIKE $3)
         "#,
             user_id,
             proj_id,
@@ -884,9 +1023,10 @@ pub async fn search_conversations(
         SELECT COUNT(DISTINCT c.id)
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
+        LEFT JOIN message_contents mc ON m.id = mc.message_id AND mc.content_type = 'text'
         WHERE c.user_id = $1
         AND c.project_id IS NULL
-        AND (c.title ILIKE $2 OR m.content ILIKE $2)
+        AND (c.title ILIKE $2 OR mc.content->>'text' ILIKE $2)
         "#,
             user_id,
             &search_pattern
@@ -904,20 +1044,24 @@ pub async fn search_conversations(
         SELECT DISTINCT ON (c.id)
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
-            latest_msg.content as last_message,
+            latest_msg.text_content as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as "message_count!"
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
+        LEFT JOIN message_contents mc ON m.id = mc.message_id AND mc.content_type = 'text'
         LEFT JOIN (
-            SELECT DISTINCT ON (conversation_id)
-                conversation_id, content
-            FROM messages
-            WHERE role = 'assistant'
-            ORDER BY conversation_id, created_at DESC
+            SELECT DISTINCT ON (m.conversation_id)
+                m.conversation_id,
+                COALESCE((SELECT string_agg(mc.content->>'text', ' ' ORDER BY mc.sequence_order)
+                         FROM message_contents mc
+                         WHERE mc.message_id = m.id AND mc.content_type = 'text'), '') as text_content
+            FROM messages m
+            WHERE m.role = 'assistant'
+            ORDER BY m.conversation_id, m.created_at DESC
         ) latest_msg ON c.id = latest_msg.conversation_id
         WHERE c.user_id = $1
         AND c.project_id = $2
-        AND (c.title ILIKE $3 OR m.content ILIKE $3)
+        AND (c.title ILIKE $3 OR mc.content->>'text' ILIKE $3)
         ORDER BY c.id, c.updated_at DESC
         LIMIT $4 OFFSET $5
         "#,
@@ -936,20 +1080,24 @@ pub async fn search_conversations(
         SELECT DISTINCT ON (c.id)
             c.id, c.title, c.user_id, c.project_id, c.assistant_id, c.model_id,
             c.created_at, c.updated_at,
-            latest_msg.content as last_message,
+            latest_msg.text_content as last_message,
             (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as "message_count!"
         FROM conversations c
         LEFT JOIN messages m ON c.id = m.conversation_id
+        LEFT JOIN message_contents mc ON m.id = mc.message_id AND mc.content_type = 'text'
         LEFT JOIN (
-            SELECT DISTINCT ON (conversation_id)
-                conversation_id, content
-            FROM messages
-            WHERE role = 'assistant'
-            ORDER BY conversation_id, created_at DESC
+            SELECT DISTINCT ON (m.conversation_id)
+                m.conversation_id,
+                COALESCE((SELECT string_agg(mc.content->>'text', ' ' ORDER BY mc.sequence_order)
+                         FROM message_contents mc
+                         WHERE mc.message_id = m.id AND mc.content_type = 'text'), '') as text_content
+            FROM messages m
+            WHERE m.role = 'assistant'
+            ORDER BY m.conversation_id, m.created_at DESC
         ) latest_msg ON c.id = latest_msg.conversation_id
         WHERE c.user_id = $1
         AND c.project_id IS NULL
-        AND (c.title ILIKE $2 OR m.content ILIKE $2)
+        AND (c.title ILIKE $2 OR mc.content->>'text' ILIKE $2)
         ORDER BY c.id, c.updated_at DESC
         LIMIT $3 OFFSET $4
         "#,
@@ -978,10 +1126,12 @@ pub async fn generate_conversation_title(conversation_id: Uuid) -> Result<String
     // Get the first user message from the conversation
     let row = sqlx::query!(
         r#"
-        SELECT content
-        FROM messages
-        WHERE conversation_id = $1 AND role = 'user'
-        ORDER BY created_at ASC
+        SELECT string_agg(mc.content->>'text', ' ') as text_content
+        FROM messages m
+        LEFT JOIN message_contents mc ON m.id = mc.message_id AND mc.content_type = 'text'
+        WHERE m.conversation_id = $1 AND m.role = 'user'
+        GROUP BY m.id
+        ORDER BY m.created_at ASC
         LIMIT 1
         "#,
         conversation_id
@@ -991,7 +1141,7 @@ pub async fn generate_conversation_title(conversation_id: Uuid) -> Result<String
 
     match row {
         Some(row) => {
-            let content = row.content;
+            let content = row.text_content.unwrap_or_default();
             // Take first 50 characters or until first newline/period
             let title = content
                 .lines()

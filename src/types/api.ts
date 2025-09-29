@@ -340,7 +340,7 @@ export interface DeviceInfo {
   name: string
 }
 
-export type DeviceType = any
+export type DeviceType = string | string | string | string | string | string | string
 
 export interface DownloadFromRepositoryRequest {
   description?: string
@@ -845,7 +845,7 @@ export interface MemoryUsage {
 }
 
 export interface Message {
-  content: string
+  contents: MessageContentItem[]
   conversation_id: string
   created_at: string
   edit_count: number
@@ -864,6 +864,46 @@ export interface MessageBranch {
   is_clone: boolean
 }
 
+export interface MessageContentDataText {
+  text: string
+}
+export interface MessageContentDataToolCall {
+  arguments: any
+  call_id: string
+  server_id: string
+  tool_name: string
+}
+export interface MessageContentDataToolResult {
+  call_id: string
+  error_message?: string | null
+  result: any
+  success: boolean
+}
+export interface MessageContentDataFileAttachment {
+  file_id: string
+  file_type?: string | null
+  filename: string
+}
+export interface MessageContentDataError {
+  details?: any
+  error_type: string
+  message: string
+}
+
+export type MessageContentData = MessageContentDataText | MessageContentDataToolCall | MessageContentDataToolResult | MessageContentDataFileAttachment | MessageContentDataError
+
+export interface MessageContentItem {
+  content: MessageContentData
+  content_type: MessageContentType
+  created_at: string
+  id: string
+  message_id: string
+  sequence_order: number
+  updated_at: string
+}
+
+export type MessageContentType = 'text' | 'tool_call' | 'tool_result' | 'file_attachment' | 'error'
+
 export type MessageFiles = File[]
 
 export interface MessageMetadata {
@@ -874,7 +914,7 @@ export interface MessageMetadata {
   value: any
 }
 
-export type MistralRsCommand = any
+export type MistralRsCommand = string | string | string | string | string | string | string
 
 export interface MistralRsSettings {
   arch?: string

@@ -1,17 +1,6 @@
 import { useState, useEffect } from 'react'
-import {
-  Button,
-  Input,
-  Select,
-  Typography,
-  Flex,
-  App,
-} from 'antd'
-import {
-  PlusOutlined,
-  SearchOutlined,
-  ClearOutlined,
-} from '@ant-design/icons'
+import { Button, Input, Select, Typography, Flex, App } from 'antd'
+import { PlusOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons'
 import { VscFilter } from 'react-icons/vsc'
 import { Stores } from '../../../../../store'
 import { Permission } from '../../../../../types'
@@ -178,7 +167,9 @@ export function SystemServersTab() {
   if (systemServersError && !systemServersInitialized) {
     return (
       <div className="text-center py-12">
-        <Text type="danger">Failed to load system servers: {systemServersError}</Text>
+        <Text type="danger">
+          Failed to load system servers: {systemServersError}
+        </Text>
         <div className="mt-4">
           <Button
             onClick={() => {
