@@ -423,7 +423,13 @@ export const getServerTools = async (
 ): Promise<MCPToolWithApproval[]> => {
   try {
     const tools = await ApiClient.Mcp.getServerTools({ id: serverId })
-    return tools
+    // Convert MCPTool[] to MCPToolWithApproval[] by adding approval fields
+    return tools.map(tool => ({
+      ...tool,
+      is_auto_approved: false,
+      approval_source: undefined,
+      approval_expires_at: undefined,
+    }))
   } catch (error) {
     console.error('Failed to get server tools:', error)
     throw error

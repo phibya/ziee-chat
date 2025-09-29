@@ -729,6 +729,33 @@ export interface MCPExecutionLog {
 
 export type MCPExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'timeout'
 
+export interface MCPInitialLogsComplete {
+  server_id: string
+  timestamp: string
+}
+
+export interface MCPLogConnectionInfo {
+  connected_at: string
+  initial_log_count: number
+  server_id: string
+  server_name: string
+}
+
+export interface MCPLogEntry {
+  level: string
+  log_type: MCPLogType
+  message: string
+  server_id: string
+  timestamp: string
+}
+
+export interface MCPLogError {
+  error: string
+  server_id: string
+}
+
+export type MCPLogType = 'Exec' | 'In' | 'Out' | 'Err'
+
 export interface MCPServer {
   description?: string
   args: any
@@ -1471,6 +1498,13 @@ export type SSEHardwareUsageEvent = {
   update: HardwareUsageUpdate
 }
 
+export type SSEMCPLogEvent = {
+  logEntry: MCPLogEntry
+  connected: MCPLogConnectionInfo
+  initialLogsComplete: MCPInitialLogsComplete
+  error: MCPLogError
+}
+
 export interface SSEProxyLogsConnectedData {
   message?: string
 }
@@ -2063,6 +2097,7 @@ export const ApiEndpoints = {
   'Mcp.setToolGlobalApproval': 'POST /api/mcp/servers/{server_id}/tools/{tool_name}/approve',
   'Mcp.startServer': 'POST /api/mcp/servers/{id}/start',
   'Mcp.stopServer': 'POST /api/mcp/servers/{id}/stop',
+  'Mcp.streamServerLogs': 'GET /api/mcp/servers/{server_id}/logs/stream',
   'Mcp.updateServer': 'PUT /api/mcp/servers/{id}',
   'Mcp.updateToolApproval': 'PUT /api/mcp/approvals/{approval_id}',
   'Models.listEnabledProviderModels': 'GET /api/providers/{provider_id}/models',
@@ -2268,6 +2303,7 @@ export type ApiEndpointParameters = {
   'Mcp.setToolGlobalApproval': { server_id: string; tool_name: string } & SetToolGlobalApprovalRequest
   'Mcp.startServer': { id: string }
   'Mcp.stopServer': { id: string }
+  'Mcp.streamServerLogs': { server_id: string }
   'Mcp.updateServer': { id: string } & UpdateMCPServerRequest
   'Mcp.updateToolApproval': { approval_id: string } & UpdateToolApprovalRequest
   'Models.listEnabledProviderModels': { provider_id: string }
@@ -2462,7 +2498,7 @@ export type ApiEndpointResponses = {
   'Mcp.getExecutionLog': MCPExecutionLog
   'Mcp.getGlobalToolApproval': ToolApprovalResponse
   'Mcp.getServer': MCPServer
-  'Mcp.getServerTools': MCPToolWithApproval[]
+  'Mcp.getServerTools': MCPTool[]
   'Mcp.getUserAssignedServers': string[]
   'Mcp.listConversationApprovals': ToolApprovalResponse[]
   'Mcp.listExecutionLogs': ListExecutionLogsResponse
@@ -2473,6 +2509,7 @@ export type ApiEndpointResponses = {
   'Mcp.setToolGlobalApproval': any
   'Mcp.startServer': ServerActionResponse
   'Mcp.stopServer': ServerActionResponse
+  'Mcp.streamServerLogs': SSEMCPLogEvent
   'Mcp.updateServer': MCPServer
   'Mcp.updateToolApproval': ToolApprovalResponse
   'Models.listEnabledProviderModels': Model[]

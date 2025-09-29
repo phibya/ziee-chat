@@ -470,6 +470,14 @@ export {
   updateExecutionStatus,
   useMCPExecutionStore,
 } from './mcpExecution'
+// MCP Logs store
+export {
+  createMCPLogsStore,
+  useMCPLogsStore,
+  disconnectFromServerLogs,
+  clearServerLogs,
+  updateServerPreferences,
+} from './mcpLogs'
 
 // UI stores with all actions
 export {

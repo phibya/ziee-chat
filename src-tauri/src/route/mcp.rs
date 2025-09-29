@@ -1,4 +1,4 @@
-use crate::api::mcp::{approvals, servers, tools, execution};
+use crate::api::mcp::{approvals, servers, tools, execution, logs};
 use crate::database::models::mcp_server::MCPServer;
 use crate::database::models::mcp_tool::{MCPTool, MCPToolWithServer, ToolExecutionResponse};
 use servers::ServerActionResponse;
@@ -224,6 +224,19 @@ fn all_mcp_routes() -> ApiRouter {
             })
             .layer(middleware::from_fn(
                 crate::api::middleware::permissions::mcp_tools_read_middleware,
+            )),
+        )
+        // Server logs streaming
+        .api_route(
+            "/servers/{server_id}/logs/stream",
+            get_with(logs::stream_server_logs, |op| {
+                op.description("Stream real-time logs for MCP server")
+                    .id("Mcp.streamServerLogs")
+                    .tag("mcp")
+                    .response::<200, Json<logs::SSEMCPLogEvent>>()
+            })
+            .layer(middleware::from_fn(
+                crate::api::middleware::permissions::mcp_servers_read_middleware,
             )),
         )
         // User server assignments
