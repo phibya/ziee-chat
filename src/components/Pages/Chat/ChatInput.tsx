@@ -16,7 +16,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   CloseOutlined,
-  DatabaseOutlined,
   RobotOutlined,
   SendOutlined,
   SettingOutlined,
@@ -35,7 +34,6 @@ import {
   Conversation,
   Message,
   Permission,
-  RAGInstance,
 } from '../../../types'
 import { createChatStore } from '../../../store/chat.ts'
 import { BsFileEarmarkPlus } from 'react-icons/bs'
@@ -94,7 +92,6 @@ export const ChatInput = function ChatInput({
   const { assistants } = Stores.Assistants
   const { providers, modelsByProvider } = Stores.Providers
   const { user } = Stores.Auth
-  const { ragInstances } = Stores.RAG
 
   // ResizeObserver to listen to container width changes for UI breakpoints
   useEffect(() => {
@@ -176,17 +173,6 @@ export const ChatInput = function ChatInput({
     return options
   }, [providers, modelsByProvider])
 
-  // Get available RAG instances (only active and enabled) - memoized for performance
-  const availableRAGInstances = useMemo(() => {
-    return ragInstances
-      .filter((instance: RAGInstance) => instance.enabled && instance.is_active)
-      .map((instance: RAGInstance) => ({
-        label: instance.display_name || instance.name,
-        value: instance.id,
-        title:
-          instance.description || `${instance.name} - ${instance.engine_type}`,
-      }))
-  }, [ragInstances])
 
   // Initialize default selections
   useEffect(() => {
@@ -269,7 +255,6 @@ export const ChatInput = function ChatInput({
       message: messageToSend,
       assistant: selectedAssistant,
       model: selectedModel,
-      ragInstances: selectedRAGInstances,
     } = formValues
 
     if (!messageToSend?.trim()) {
@@ -295,7 +280,6 @@ export const ChatInput = function ChatInput({
           modelId: selectedModel.split(':')[1],
           content: messageToSend,
           fileIds: [...files.keys(), ...newFiles.keys()],
-          ragInstanceIds: selectedRAGInstances || [],
         })
         onDoneEditing?.() // Close the input after editing
       } catch (error) {
@@ -311,7 +295,6 @@ export const ChatInput = function ChatInput({
       assistantId: selectedAssistant,
       modelId: selectedModel.split(':')[1],
       fileIds: [...files.keys(), ...newFiles.keys()],
-      ragInstanceIds: selectedRAGInstances || [],
     }
 
     let newFilesBackup = new Map(newFiles) // Backup newFiles before clearing
@@ -456,7 +439,6 @@ export const ChatInput = function ChatInput({
               message: '',
               assistant: undefined,
               model: undefined,
-              ragInstances: [],
             }}
             disabled={isDisabled}
           >
@@ -553,35 +535,6 @@ export const ChatInput = function ChatInput({
                       />
                     </Form.Item>
 
-                    {/* RAG Instance selector */}
-                    <Form.Item name="ragInstances" noStyle>
-                      <Select
-                        mode="multiple"
-                        popupMatchSelectWidth={false}
-                        placeholder={
-                          availableRAGInstances.length > 0
-                            ? 'RAG Sources'
-                            : 'No RAG Sources'
-                        }
-                        disabled={
-                          isDisabled || availableRAGInstances.length === 0
-                        }
-                        allowClear
-                        maxTagCount={isBreaking ? 0 : 2}
-                        options={availableRAGInstances}
-                        style={{ width: isBreaking ? 40 : 160 }}
-                        variant={isBreaking ? 'borderless' : undefined}
-                        labelRender={isBreaking ? () => '' : undefined}
-                        prefix={
-                          isBreaking && (
-                            <Button>
-                              <DatabaseOutlined />
-                            </Button>
-                          )
-                        }
-                        suffixIcon={<IoIosArrowDown />}
-                      />
-                    </Form.Item>
                   </div>
 
                   <div className={`gap-2 flex flex-1 items-center justify-end`}>

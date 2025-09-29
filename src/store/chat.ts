@@ -324,7 +324,6 @@ export const createChatStore = (conversation: string | Conversation) => {
                 model_id: params.modelId,
                 assistant_id: params.assistantId,
                 file_ids: params.fileIds,
-                rag_instance_ids: params.ragInstanceIds,
               },
               {
                 SSE: {
@@ -466,7 +465,6 @@ export const createChatStore = (conversation: string | Conversation) => {
                 assistant_id: params.assistantId,
                 content: params.content,
                 file_ids: params.fileIds,
-                rag_instance_ids: params.ragInstanceIds,
               },
               {
                 SSE: {
@@ -704,7 +702,6 @@ export interface SendChatMessageParams {
   assistantId: string
   modelId: string
   fileIds?: string[]
-  ragInstanceIds?: string[]
 }
 
 // this function is independent of the chat store

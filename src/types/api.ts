@@ -118,7 +118,6 @@ export interface ChatMessageRequest {
   conversation_id: string
   file_ids?: string[]
   model_id: string
-  rag_instance_ids?: string[]
 }
 
 export interface Conversation {
