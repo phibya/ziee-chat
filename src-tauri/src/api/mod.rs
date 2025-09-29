@@ -4,6 +4,7 @@ pub mod assistants;
 pub mod auth;
 pub mod chat;
 pub mod configuration;
+pub mod conversation;
 
 pub mod download_instances;
 pub mod engines;

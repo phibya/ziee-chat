@@ -41,7 +41,7 @@ export const loadAllRecentConversations = async (): Promise<void> => {
   }
   useConversationsStore.setState({ isLoading: true, error: null })
   try {
-    const response = await ApiClient.Chat.listConversations({
+    const response = await ApiClient.Conversation.listConversations({
       page: 1,
       per_page: 20, // Show recent 20 conversations
     })
@@ -80,7 +80,7 @@ export const updateExistingConversation = async (
   try {
     useConversationsStore.setState({ updating: true, error: null })
 
-    await ApiClient.Chat.updateConversation({
+    await ApiClient.Conversation.updateConversation({
       conversation_id: id,
       ...updates,
     })
@@ -125,7 +125,7 @@ export const removeConversationFromList = async (id: string): Promise<void> => {
   try {
     useConversationsStore.setState({ deleting: true, error: null })
 
-    await ApiClient.Chat.deleteConversation({ conversation_id: id })
+    await ApiClient.Conversation.deleteConversation({ conversation_id: id })
 
     useConversationsStore.setState(state => ({
       conversations: state.conversations.filter(conv => conv.id !== id),

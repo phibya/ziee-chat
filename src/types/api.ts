@@ -2046,19 +2046,19 @@ export const ApiEndpoints = {
   'Auth.me': 'GET /api/auth/me',
   'Auth.register': 'POST /api/auth/register',
   'Auth.setup': 'POST /api/auth/setup',
-  'Chat.createConversation': 'POST /api/chat/conversations',
-  'Chat.deleteConversation': 'DELETE /api/chat/conversations/{conversation_id}',
-  'Chat.editMessageStream': 'PUT /api/chat/messages/{message_id}/stream',
-  'Chat.getConversation': 'GET /api/chat/conversations/{conversation_id}',
-  'Chat.getConversationMessagesByBranch': 'GET /api/chat/conversations/{conversation_id}/messages/{branch_id}',
-  'Chat.getMessageBranches': 'GET /api/chat/messages/{message_id}/branches',
-  'Chat.listConversations': 'GET /api/chat/conversations',
-  'Chat.searchConversations': 'GET /api/chat/conversations/search',
-  'Chat.sendMessageStream': 'POST /api/chat/messages/stream',
-  'Chat.switchConversationBranch': 'PUT /api/chat/conversations/{conversation_id}/branch/switch',
-  'Chat.updateConversation': 'PUT /api/chat/conversations/{conversation_id}',
+  'Chat.editMessageStream': 'PUT /api/messages/{message_id}/stream',
+  'Chat.getConversationMessagesByBranch': 'GET /api/conversations/{conversation_id}/messages/{branch_id}',
+  'Chat.getMessageBranches': 'GET /api/messages/{message_id}/branches',
+  'Chat.sendMessageStream': 'POST /api/messages/stream',
   'Config.getDefaultLanguage': 'GET /api/config/default-language',
   'Config.getUserRegistrationStatus': 'GET /api/config/user-registration',
+  'Conversation.createConversation': 'POST /api/conversations',
+  'Conversation.deleteConversation': 'DELETE /api/conversations/{conversation_id}',
+  'Conversation.getConversation': 'GET /api/conversations/{conversation_id}',
+  'Conversation.listConversations': 'GET /api/conversations',
+  'Conversation.searchConversations': 'GET /api/conversations/search',
+  'Conversation.switchConversationBranch': 'PUT /api/conversations/{conversation_id}/branch/switch',
+  'Conversation.updateConversation': 'PUT /api/conversations/{conversation_id}',
   'Files.deleteFile': 'DELETE /api/files/{file_id}',
   'Files.downloadFile': 'GET /api/files/{file_id}/download',
   'Files.downloadFileWithToken': 'GET /api/files/{file_id}/download-with-token',
@@ -2252,19 +2252,19 @@ export type ApiEndpointParameters = {
   'Auth.me': void
   'Auth.register': CreateUserRequest
   'Auth.setup': CreateUserRequest
-  'Chat.createConversation': CreateConversationRequest
-  'Chat.deleteConversation': { conversation_id: string }
   'Chat.editMessageStream': { message_id: string } & ChatMessageRequest
-  'Chat.getConversation': { conversation_id: string }
   'Chat.getConversationMessagesByBranch': { conversation_id: string; branch_id: string }
   'Chat.getMessageBranches': { message_id: string }
-  'Chat.listConversations': { page?: number; per_page?: number; project_id?: string }
-  'Chat.searchConversations': { page?: number; per_page?: number; project_id?: string; q: string }
   'Chat.sendMessageStream': ChatMessageRequest
-  'Chat.switchConversationBranch': { conversation_id: string } & SwitchBranchRequest
-  'Chat.updateConversation': { conversation_id: string } & UpdateConversationRequest
   'Config.getDefaultLanguage': void
   'Config.getUserRegistrationStatus': void
+  'Conversation.createConversation': CreateConversationRequest
+  'Conversation.deleteConversation': { conversation_id: string }
+  'Conversation.getConversation': { conversation_id: string }
+  'Conversation.listConversations': { page?: number; per_page?: number; project_id?: string }
+  'Conversation.searchConversations': { page?: number; per_page?: number; project_id?: string; q: string }
+  'Conversation.switchConversationBranch': { conversation_id: string } & SwitchBranchRequest
+  'Conversation.updateConversation': { conversation_id: string } & UpdateConversationRequest
   'Files.deleteFile': { file_id: string }
   'Files.downloadFile': { file_id: string }
   'Files.downloadFileWithToken': { file_id: string; token?: string }
@@ -2458,19 +2458,19 @@ export type ApiEndpointResponses = {
   'Auth.me': User
   'Auth.register': AuthResponse
   'Auth.setup': AuthResponse
-  'Chat.createConversation': Conversation
-  'Chat.deleteConversation': void
   'Chat.editMessageStream': SSEChatStreamEvent
-  'Chat.getConversation': Conversation
   'Chat.getConversationMessagesByBranch': Message[]
   'Chat.getMessageBranches': MessageBranch[]
-  'Chat.listConversations': ConversationListResponse
-  'Chat.searchConversations': ConversationListResponse
   'Chat.sendMessageStream': SSEChatStreamEvent
-  'Chat.switchConversationBranch': OperationSuccessResponse
-  'Chat.updateConversation': Conversation
   'Config.getDefaultLanguage': DefaultLanguageResponse
   'Config.getUserRegistrationStatus': UserRegistrationStatusResponse
+  'Conversation.createConversation': Conversation
+  'Conversation.deleteConversation': void
+  'Conversation.getConversation': Conversation
+  'Conversation.listConversations': ConversationListResponse
+  'Conversation.searchConversations': ConversationListResponse
+  'Conversation.switchConversationBranch': OperationSuccessResponse
+  'Conversation.updateConversation': Conversation
   'Files.deleteFile': FileOperationSuccessResponse
   'Files.downloadFile': Blob
   'Files.downloadFileWithToken': Blob

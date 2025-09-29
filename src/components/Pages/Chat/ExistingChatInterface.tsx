@@ -190,12 +190,8 @@ export function ExistingChatInterface() {
         </div>
       </TitleBarWrapper>
       <div className="flex flex-col w-full h-full overflow-hidden z-1 absolute">
-        <DivScrollY className={'flex w-full flex-1 h-full'}>
-          <div
-            className={
-              'self-center max-w-4xl w-full m-auto px-4 pt-16 overflow-hidden'
-            }
-          >
+        <DivScrollY className={'flex w-full flex-1 h-full flex-col'}>
+          <div className={'max-w-4xl w-full px-4 pt-16 self-center'}>
             <ChatMessageList />
           </div>
         </DivScrollY>

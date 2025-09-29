@@ -127,7 +127,7 @@ export const createChatHistoryStore = (projectId?: string) => {
               error: null,
             })
 
-            const response = await ApiClient.Chat.listConversations({
+            const response = await ApiClient.Conversation.listConversations({
               page,
               per_page: 20,
               project_id: projectId,
@@ -182,7 +182,7 @@ export const createChatHistoryStore = (projectId?: string) => {
               return
             }
 
-            const response = await ApiClient.Chat.searchConversations({
+            const response = await ApiClient.Conversation.searchConversations({
               q: query,
               page,
               per_page: 20,
@@ -245,7 +245,7 @@ export const createChatHistoryStore = (projectId?: string) => {
           try {
             set({ deleting: true, error: null })
 
-            await ApiClient.Chat.deleteConversation({ conversation_id: id })
+            await ApiClient.Conversation.deleteConversation({ conversation_id: id })
 
             set(state => {
               const newSelected = new Set(state.selectedConversations)
@@ -274,7 +274,7 @@ export const createChatHistoryStore = (projectId?: string) => {
           try {
             set({ error: null })
 
-            await ApiClient.Chat.updateConversation({
+            await ApiClient.Conversation.updateConversation({
               conversation_id: id,
               title,
             })
@@ -390,7 +390,7 @@ export const createChatHistoryStore = (projectId?: string) => {
             // Delete all selected conversations
             await Promise.all(
               selectedIds.map(id =>
-                ApiClient.Chat.deleteConversation({ conversation_id: id }),
+                ApiClient.Conversation.deleteConversation({ conversation_id: id }),
               ),
             )
 

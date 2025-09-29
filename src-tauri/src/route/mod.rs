@@ -2,6 +2,7 @@ pub mod admin;
 mod auth;
 mod chat;
 mod config;
+mod conversation;
 mod files;
 mod helper;
 mod hub;
@@ -36,6 +37,7 @@ pub fn create_rest_router_internal() -> (OpenApi, Router) {
                 .merge(admin::admin_routes())
                 .merge(user::user_routes())
                 .merge(chat::chat_routes())
+                .merge(conversation::conversation_routes())
                 .merge(projects::project_routes())
                 .merge(hub::hub_routes())
                 .merge(files::file_routes())
