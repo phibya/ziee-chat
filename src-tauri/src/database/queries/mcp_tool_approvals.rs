@@ -117,8 +117,7 @@ pub async fn create_conversation_tool_approval(
         None
     };
 
-    // Use a separate query approach since the unique constraint is deferrable
-    // First try to update existing record
+    // First try to update existing record (including expired ones)
     let existing = sqlx::query_as!(
         MCPToolApproval,
         r#"

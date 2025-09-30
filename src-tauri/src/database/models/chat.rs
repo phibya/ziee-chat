@@ -462,6 +462,11 @@ impl FileReference {
 pub enum ContentPart {
     Text(String),
     FileReference(FileReference),
+    ToolUse {
+        id: String,
+        name: String,
+        input: serde_json::Value,
+    },
     ToolResult {
         call_id: String,
         output: String,

@@ -75,6 +75,9 @@ impl CustomProvider {
                             ContentPart::FileReference(file_ref) => {
                                 format!("[File: {}]", file_ref.filename)
                             }
+                            ContentPart::ToolUse { id, name, input } => {
+                                format!("[Tool Use {}] {}: {:?}", id, name, input)
+                            }
                             ContentPart::ToolResult { call_id, output } => {
                                 format!("[Tool Result {}]: {}", call_id, output)
                             }

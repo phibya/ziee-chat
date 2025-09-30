@@ -114,9 +114,12 @@ impl AnthropicProvider {
                     // Return system message text
                     Ok((Some(text.clone()), None))
                 } else {
+                    // Convert "tool" role to "user" for Anthropic
+                    let role = if msg.role == "tool" { "user" } else { msg.role.as_str() };
+
                     // Return regular message
                     let message = json!({
-                        "role": msg.role,
+                        "role": role,
                         "content": text
                     });
                     Ok((None, Some(message)))
@@ -142,6 +145,12 @@ impl AnthropicProvider {
                                 system_text
                                     .push_str(&format!("File reference: {}", file_ref.filename));
                             }
+                            ContentPart::ToolUse { id, name, input } => {
+                                if !system_text.is_empty() {
+                                    system_text.push('\n');
+                                }
+                                system_text.push_str(&format!("Tool use [{}] {}: {:?}", id, name, input));
+                            }
                             ContentPart::ToolResult { call_id, output } => {
                                 if !system_text.is_empty() {
                                     system_text.push('\n');
@@ -152,10 +161,13 @@ impl AnthropicProvider {
                     }
                     Ok((Some(system_text), None))
                 } else {
+                    // Convert "tool" role to "user" for Anthropic
+                    let role = if msg.role == "tool" { "user" } else { msg.role.as_str() };
+
                     // Regular multimodal message
                     let content_array = self.process_multimodal_parts(parts).await?;
                     let message = json!({
-                        "role": msg.role,
+                        "role": role,
                         "content": content_array
                     });
                     Ok((None, Some(message)))
@@ -208,6 +220,15 @@ impl AnthropicProvider {
                         );
                         // No MIME type - skip it completely
                     }
+                }
+                ContentPart::ToolUse { id, name, input } => {
+                    // Anthropic format for tool use
+                    content_array.push(json!({
+                        "type": "tool_use",
+                        "id": id,
+                        "name": name,
+                        "input": input
+                    }));
                 }
                 ContentPart::ToolResult { call_id, output } => {
                     // Anthropic format for tool results

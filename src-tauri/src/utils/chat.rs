@@ -51,6 +51,19 @@ pub async fn build_chat_messages(
                                 content: MessageContent::Text(text.clone()),
                             });
                         }
+                        MessageContentData::ToolCall { tool_name, server_id: _, arguments, call_id } => {
+                            // Tool calls should be sent to AI provider so tool_result has corresponding tool_use
+                            messages.push(ChatMessage {
+                                role: msg.role.clone(),
+                                content: MessageContent::Multimodal(vec![
+                                    ContentPart::ToolUse {
+                                        id: call_id.clone(),
+                                        name: tool_name.clone(),
+                                        input: arguments.clone(),
+                                    }
+                                ]),
+                            });
+                        }
                         MessageContentData::ToolResult { call_id, result, success, error_message } => {
                             // Tool results should be sent with role "tool"
                             let output = if *success {
@@ -69,7 +82,7 @@ pub async fn build_chat_messages(
                                 ]),
                             });
                         }
-                        // Skip other content types (ToolCall, ToolCallPendingApproval, etc.)
+                        // Skip other content types (ToolCallPendingApproval, etc.)
                         // as they are internal to our system and not sent to the AI provider
                         _ => {}
                     }

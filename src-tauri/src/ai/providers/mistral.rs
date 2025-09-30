@@ -168,6 +168,12 @@ impl MistralProvider {
                 ContentPart::Text(text) => {
                     content_array.push(MistralContentPart::Text { text: text.clone() });
                 }
+                ContentPart::ToolUse { id, name, input } => {
+                    // Convert tool use to text format
+                    content_array.push(MistralContentPart::Text {
+                        text: format!("[Tool Use {}] {}: {:?}", id, name, input),
+                    });
+                }
                 ContentPart::ToolResult { call_id, output } => {
                     // Convert tool result to text format
                     content_array.push(MistralContentPart::Text {
@@ -324,6 +330,9 @@ impl MistralProvider {
                                 ContentPart::Text(text) => text.clone(),
                                 ContentPart::FileReference(file_ref) => {
                                     format!("[File: {}]", file_ref.filename)
+                                }
+                                ContentPart::ToolUse { id, name, input } => {
+                                    format!("[Tool Use {}] {}: {:?}", id, name, input)
                                 }
                                 ContentPart::ToolResult { call_id, output } => {
                                     format!("[Tool Result {}]: {}", call_id, output)

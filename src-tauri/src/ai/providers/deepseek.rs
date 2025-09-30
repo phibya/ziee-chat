@@ -47,6 +47,9 @@ impl DeepSeekProvider {
                         ContentPart::Text(text) => {
                             text_parts.push(text.clone());
                         }
+                        ContentPart::ToolUse { id, name, input } => {
+                            text_parts.push(format!("[Tool Use {}] {}: {:?}", id, name, input));
+                        }
                         ContentPart::ToolResult { call_id, output } => {
                             text_parts.push(format!("[Tool Result {}]: {}", call_id, output));
                         }

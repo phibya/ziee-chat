@@ -505,8 +505,18 @@ pub async fn send_message_stream(
 
                 let last_message = messages.last();
                 let needs_approval = if let Some(msg) = last_message {
-                    msg.role == "assistant"
-                        && msg.contents.iter().any(|c| c.content_type == MessageContentType::ToolCallPendingApproval)
+                    if msg.role != "assistant" {
+                        false
+                    } else {
+                        // Sort contents by sequence_order and check if the LAST one is ToolCallPendingApproval
+                        let mut sorted_contents = msg.contents.clone();
+                        sorted_contents.sort_by_key(|c| c.sequence_order);
+
+                        sorted_contents
+                            .last()
+                            .map(|c| c.content_type == MessageContentType::ToolCallPendingApproval)
+                            .unwrap_or(false)
+                    }
                 } else {
                     false
                 };
@@ -514,11 +524,10 @@ pub async fn send_message_stream(
                 if needs_approval {
                     let last_msg = last_message.unwrap();
 
-                    // Find the pending approval content
-                    let pending_content = last_msg
-                        .contents
-                        .iter()
-                        .find(|c| c.content_type == MessageContentType::ToolCallPendingApproval);
+                    // Sort contents and get the last one (which should be ToolCallPendingApproval)
+                    let mut sorted_contents = last_msg.contents.clone();
+                    sorted_contents.sort_by_key(|c| c.sequence_order);
+                    let pending_content = sorted_contents.last();
 
                     if let Some(content) = pending_content {
                         // Try to parse the pending approval data
@@ -565,11 +574,9 @@ pub async fn send_message_stream(
                                 &tx,
                             ).await {
                                 send_error(&tx, format!("Tool execution failed: {}", e), ErrorCode::SystemInternalError).await;
-                                return;
+                                // Don't return - break out of loop and send Complete event
+                                break;
                             }
-
-                            // Continue to next iteration
-                            continue;
                         } else {
                             send_error(&tx, "Invalid pending approval data".to_string(), ErrorCode::SystemInternalError).await;
                             return;
@@ -884,7 +891,7 @@ async fn generate_and_update_conversation_title(
 
 /// Execute MCP tool and save result to DB (MOCK EXECUTION FOR NOW)
 async fn execute_tool_and_save_result(
-    pending_approval_content_id: Uuid,
+    _pending_approval_content_id: Uuid,
     message_id: Uuid,
     server_id: Uuid,
     tool_name: &str,
@@ -894,9 +901,26 @@ async fn execute_tool_and_save_result(
     // Generate call_id for this tool execution
     let call_id = Uuid::new_v4().to_string();
 
+    // Save ToolCall content to database
+    let tool_call_content = MessageContentData::ToolCall {
+        tool_name: tool_name.to_string(),
+        server_id,
+        arguments: arguments.clone(),
+        call_id: call_id.clone(),
+    };
+
+    let tool_call_content_id = chat::save_tool_call_content(message_id, tool_call_content).await?;
+
+    // Send NewMessageContent event for ToolCall
+    let new_content_event = SSEChatStreamEvent::NewMessageContent(NewMessageContentData {
+        message_content_id: tool_call_content_id,
+        message_id,
+    });
+    let _ = tx.send(Ok(new_content_event.into()));
+
     // Send ToolCall event (tool is approved and being executed)
     let tool_call_event = SSEChatStreamEvent::ToolCall(ToolCallData {
-        message_content_id: pending_approval_content_id,
+        message_content_id: tool_call_content_id,
         message_id,
         tool_name: tool_name.to_string(),
         server_id,

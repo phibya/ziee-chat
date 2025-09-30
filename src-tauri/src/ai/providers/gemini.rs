@@ -345,6 +345,12 @@ impl GeminiProvider {
                 ContentPart::Text(text) => {
                     gemini_parts.push(GeminiPart::Text { text: text.clone() });
                 }
+                ContentPart::ToolUse { id, name, input } => {
+                    // Convert tool use to text format for Gemini
+                    gemini_parts.push(GeminiPart::Text {
+                        text: format!("[Tool Use {}] {}: {:?}", id, name, input),
+                    });
+                }
                 ContentPart::ToolResult { call_id, output } => {
                     // Convert tool result to text format for Gemini
                     gemini_parts.push(GeminiPart::Text {
@@ -408,6 +414,12 @@ impl GeminiProvider {
                                     system_text.push('\n');
                                 }
                                 system_text.push_str(text);
+                            }
+                            ContentPart::ToolUse { id, name, input } => {
+                                if !system_text.is_empty() {
+                                    system_text.push('\n');
+                                }
+                                system_text.push_str(&format!("Tool use [{}] {}: {:?}", id, name, input));
                             }
                             ContentPart::ToolResult { call_id, output } => {
                                 if !system_text.is_empty() {

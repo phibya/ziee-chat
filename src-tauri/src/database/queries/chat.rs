@@ -1341,6 +1341,46 @@ pub async fn save_tool_result_content(
     Ok(content_id)
 }
 
+/// Save tool call content to message_contents table
+pub async fn save_tool_call_content(
+    message_id: Uuid,
+    tool_call_content: MessageContentData,
+) -> Result<Uuid, Error> {
+    let pool = get_database_pool().map_err(|e| Error::Configuration(e.into()))?;
+
+    // Get current max sequence order for this message
+    let max_seq = sqlx::query!(
+        "SELECT COALESCE(MAX(sequence_order), -1) as max_seq FROM message_contents WHERE message_id = $1",
+        message_id
+    )
+    .fetch_one(pool.as_ref())
+    .await?
+    .max_seq
+    .unwrap_or(-1);
+
+    let content_id = Uuid::new_v4();
+    let sequence = (max_seq + 1) as i32;
+    let content_type = MessageContentType::ToolCall.as_str();
+    let content_json = serde_json::to_value(&tool_call_content)
+        .map_err(|e| Error::Decode(Box::new(e)))?;
+
+    sqlx::query!(
+        r#"
+        INSERT INTO message_contents (id, message_id, content_type, content, sequence_order)
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+        content_id,
+        message_id,
+        content_type,
+        content_json,
+        sequence
+    )
+    .execute(pool.as_ref())
+    .await?;
+
+    Ok(content_id)
+}
+
 /// Save pending tool approval content to message_contents table
 pub async fn save_pending_tool_approval_content(
     message_id: Uuid,

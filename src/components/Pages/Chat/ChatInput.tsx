@@ -321,11 +321,11 @@ export const ChatInput = function ChatInput({
     if (isEditing) {
       try {
         await editMessage(editingMessage.id, {
-          assistantId: selectedAssistant,
-          modelId: selectedModel.split(':')[1],
+          assistant_id: selectedAssistant,
+          model_id: selectedModel.split(':')[1],
           content: messageToSend,
-          fileIds: [...files.keys(), ...newFiles.keys()],
-          enabledTools: selectedTools.length > 0 ? selectedTools : undefined,
+          file_ids: [...files.keys(), ...newFiles.keys()],
+          enabled_tools: selectedTools.length > 0 ? selectedTools : undefined,
         })
         onDoneEditing?.() // Close the input after editing
       } catch (error) {
@@ -338,10 +338,10 @@ export const ChatInput = function ChatInput({
 
     const payload = {
       content: messageToSend.trim(),
-      assistantId: selectedAssistant,
-      modelId: selectedModel.split(':')[1],
-      fileIds: [...files.keys(), ...newFiles.keys()],
-      enabledTools: selectedTools.length > 0 ? selectedTools : undefined,
+      assistant_id: selectedAssistant,
+      model_id: selectedModel.split(':')[1],
+      file_ids: [...files.keys(), ...newFiles.keys()],
+      enabled_tools: selectedTools.length > 0 ? selectedTools : undefined,
     }
 
     let newFilesBackup = new Map(newFiles) // Backup newFiles before clearing

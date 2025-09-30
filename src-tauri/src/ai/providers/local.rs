@@ -168,6 +168,13 @@ impl LocalProvider {
                         "text": text
                     }));
                 }
+                ContentPart::ToolUse { id, name, input } => {
+                    // Add tool use as text content
+                    content_array.push(json!({
+                        "type": "text",
+                        "text": format!("[Tool Use {}] {}: {:?}", id, name, input)
+                    }));
+                }
                 ContentPart::ToolResult { call_id, output } => {
                     // Add tool result as text content
                     content_array.push(json!({
